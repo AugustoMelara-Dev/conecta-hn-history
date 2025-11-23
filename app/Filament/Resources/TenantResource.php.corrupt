@@ -1,0 +1,265 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\TenantResource\Pages;
+use App\Models\Tenant;
+use Filament\Forms;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Builder;
+
+class TenantResource extends Resource
+{
+    protected static ?string $model = Tenant::class;
+
+    protected static ?string $modelPolicy = \App\Policies\TenantPolicy::class;
+
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-building-storefront';
+    
+    protected static ?string $navigationLabel = 'Negocios';
+    
+    protected static ?string $modelLabel = 'Negocio';
+    
+    protected static ?string $pluralModelLabel = 'Negocios';
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
+            ->schema([
+                Forms\Components\Section::make('Información del Negocio')
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Nombre del Negocio')
+                            ->required()
+                            ->maxLength(255)
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) => $operation === 'create' ? $set('slug', \Illuminate\Support\Str::slug($state)) : null),
+                        
+                        Forms\Components\TextInput::make('slug')
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(Tenant::class, 'slug', ignoreRecord: true),
+
+                        Forms\Components\Select::make('category_id')
+                            ->label('Categoría')
+                            ->relationship('category', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+
+                        Forms\Components\Select::make('user_id')
+                            ->label('Propietario (Usuario)')
+                            ->relationship('user', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('email')
+                                    ->email()
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('password')
+                                    ->password()
+                                    ->required()
+                                    ->maxLength(255),
+                            ]),
+
+                        Forms\Components\TextInput::make('city')
+                            ->label('Ciudad')
+                            ->maxLength(255),
+                    ])->columns(2),
+                
+                Forms\Components\Section::make('Estado y Plan')
+                    ->schema([
+                        Forms\Components\Select::make('status')
+                            ->label('Estado')
+        return $table
+            ->columns([
+                Tables\Columns\ImageColumn::make('logo_path')
+                    ->label('Logo')
+                    ->circular()
+                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name)),
+                
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Nombre')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold'),
+                
+                Tables\Columns\TextColumn::make('user.email')
+                    ->label('Dueño')
+                    ->searchable()
+                    ->icon('heroicon-m-envelope')
+                    ->color('gray'),
+                
+                Tables\Columns\TextColumn::make('city')
+                    ->label('Ciudad')
+                    ->searchable()
+                    ->sortable()
+                    ->icon('heroicon-m-map-pin'),
+                
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Estado')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'pending' => 'warning',
+                        'approved' => 'success',
+                        'rejected' => 'danger',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'pending' => 'Pendiente',
+                        'approved' => 'Aprobado',
+                        'rejected' => 'Rechazado',
+                    }),
+                
+                Tables\Columns\TextColumn::make('is_pro')
+                    ->label('Plan')
+                    ->badge()
+                    ->color(fn (bool $state): string => $state ? 'warning' : 'gray')
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'PRO' : 'Free'),
+                
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Registro')
+                    ->dateTime('d/m/Y')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Estado')
+                    ->options([
+                        'pending' => 'Pendiente',
+                        'approved' => 'Aprobado',
+                        'rejected' => 'Rechazado',
+                    ])
+                    ->default('pending'), // Default to pending as requested for workflow
+                
+                Tables\Filters\TernaryFilter::make('is_pro')
+                    ->label('Plan PRO')
+                    ->trueLabel('Solo PRO')
+                    ->falseLabel('Solo Free'),
+                
+                Tables\Filters\SelectFilter::make('city')
+                    ->label('Ciudad')
+                    ->options([
+                        'Tegucigalpa' => 'Tegucigalpa',
+                        'San Pedro Sula' => 'San Pedro Sula',
+                        'La Ceiba' => 'La Ceiba',
+                        'Choluteca' => 'Choluteca',
+                    ]),
+            ])
+            ->actions([
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('approve')
+                        ->label('Aprobar')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->visible(fn (Tenant $record): bool => $record->status !== 'approved')
+                        ->action(function (Tenant $record) {
+                            $record->update(['status' => 'approved']);
+                            
+                            Notification::make()
+                                ->title('Negocio Aprobado')
+                                ->success()
+                                ->body("El negocio '{$record->name}' ha sido aprobado exitosamente.")
+                                ->send();
+                        }),
+                    
+                    Tables\Actions\Action::make('reject')
+                        ->label('Rechazar')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('danger')
+                        ->form([
+                            Forms\Components\Textarea::make('reason')
+                                ->label('Motivo del rechazo')
+                                ->required()
+                                ->rows(3),
+                        ])
+                        ->visible(fn (Tenant $record): bool => $record->status !== 'rejected')
+                        ->action(function (Tenant $record, array $data) {
+                            $record->update(['status' => 'rejected']);
+                            
+                            // In a real app, we would save the reason or email the user
+                            Notification::make()
+                                ->title('Negocio Rechazado')
+                                ->warning()
+                                ->body("El negocio '{$record->name}' ha sido rechazado.")
+                                ->send();
+                        }),
+                        
+                    Tables\Actions\Action::make('upgrade_to_pro')
+                        ->label('Ascender a PRO')
+                        ->icon('heroicon-o-star')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->visible(fn (Tenant $record): bool => !$record->is_pro)
+                        ->action(function (Tenant $record) {
+                            $record->update(['is_pro' => true]);
+                            Notification::make()->title('Upgrade a PRO')->success()->send();
+                        }),
+
+                    Tables\Actions\Action::make('downgrade_to_free')
+                        ->label('Degradar a Free')
+                        ->icon('heroicon-o-arrow-down-circle')
+                        ->color('gray')
+                        ->visible(fn (Tenant $record): bool => $record->is_pro)
+                        ->action(function (Tenant $record) {
+                            $record->update(['is_pro' => false]);
+                            Notification::make()->title('Degradado a Free')->info()->send();
+                        }),
+
+                    Tables\Actions\Action::make('login_as_owner')
+                        ->label('Acceder como Dueño')
+                        ->icon('heroicon-o-arrow-right-start-on-rectangle')
+                        ->color('info')
+                        ->requiresConfirmation()
+                        ->action(function (Tenant $record) {
+                            \Illuminate\Support\Facades\Auth::login($record->user);
+                            return redirect('/app');
+                        }),
+                    
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\DeleteAction::make(),
+                ]),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\BulkAction::make('approve_bulk')
+                        ->label('Aprobar Seleccionados')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function ($records) {
+                            $records->each->update(['status' => 'approved']);
+                            Notification::make()->title('Negocios Aprobados')->success()->send();
+                        }),
+                ]),
+            ])
+            ->defaultSort('created_at', 'desc');
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListTenants::route('/'),
+            'create' => Pages\CreateTenant::route('/create'),
+            'edit' => Pages\EditTenant::route('/{record}/edit'),
+        ];
+    }
+}
