@@ -4,9 +4,8 @@ namespace App\Filament\App\Resources\Leads\Pages;
 
 use App\Filament\App\Resources\Leads\LeadResource;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
-
 use Filament\Resources\Components\Tab;
+use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListLeads extends ListRecords

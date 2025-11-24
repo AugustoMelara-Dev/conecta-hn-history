@@ -10,8 +10,8 @@ class StatsOverview extends StatsOverviewWidget
     protected function getStats(): array
     {
         $tenant = \Filament\Facades\Filament::getTenant();
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return [];
         }
 
@@ -34,7 +34,7 @@ class StatsOverview extends StatsOverviewWidget
                 ->description('Intenciones de compra')
                 ->descriptionIcon('heroicon-m-chat-bubble-left-right')
                 ->color('success'),
-            Stat::make('Tasa de Conversión', $conversionRate . '%')
+            Stat::make('Tasa de Conversión', $conversionRate.'%')
                 ->description('De visitas a clics')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('primary'),

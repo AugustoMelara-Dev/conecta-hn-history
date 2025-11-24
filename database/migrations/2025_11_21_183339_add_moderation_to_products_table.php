@@ -12,7 +12,7 @@ return new class extends Migration
             $table->string('status')->default('pending')->after('price');
             $table->text('moderation_note')->nullable()->after('status');
             $table->timestamp('rejected_at')->nullable()->after('moderation_note');
-            
+
             $table->index('status');
         });
     }

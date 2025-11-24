@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class City extends Model
 {
+    use \Illuminate\Database\Eloquent\Factories\HasFactory;
+
     protected $guarded = ['id'];
 
     protected $casts = [

@@ -50,7 +50,7 @@ class AuditTenantLimits implements ShouldQueue
 
                 // Lock the rest
                 foreach ($lockedProducts as $product) {
-                    if ($product->is_visible || !$product->is_locked) {
+                    if ($product->is_visible || ! $product->is_locked) {
                         $product->update([
                             'is_visible' => false,
                             'is_locked' => true,

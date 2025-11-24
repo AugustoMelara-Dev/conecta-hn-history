@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use App\Models\Tenant;
 use App\Models\Category;
+use App\Models\City;
 use App\Models\Department;
 use App\Models\Municipality;
-use App\Models\City;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -32,12 +32,12 @@ class DatabaseSeeder extends Seeder
         }
 
         // 2. Crear Jerarquía Geográfica (Departamento -> Municipio -> Ciudad)
-        
+
         // Zona Norte
         $cortes = Department::firstOrCreate(['name' => 'Cortés', 'slug' => 'cortes']);
         $spsMuni = Municipality::firstOrCreate(['name' => 'San Pedro Sula', 'slug' => 'sps-muni', 'department_id' => $cortes->id]);
         $sps = City::firstOrCreate(['name' => 'San Pedro Sula', 'slug' => 'san-pedro-sula', 'municipality_id' => $spsMuni->id], ['coordinates' => ['lat' => 15.5042, 'lng' => -88.0250]]);
-        
+
         $cholomaMuni = Municipality::firstOrCreate(['name' => 'Choloma', 'slug' => 'choloma-muni', 'department_id' => $cortes->id]);
         $choloma = City::firstOrCreate(['name' => 'Choloma', 'slug' => 'choloma', 'municipality_id' => $cholomaMuni->id]);
 

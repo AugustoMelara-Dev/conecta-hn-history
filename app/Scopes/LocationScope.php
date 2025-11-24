@@ -29,12 +29,12 @@ class LocationScope implements Scope
         }
 
         // Guard 3: Session check
-        if (!session()->has('active_city_id')) {
+        if (! session()->has('active_city_id')) {
             return;
         }
 
         // Apply the location filter
-        $builder->where($model->getTable() . '.city_id', session('active_city_id'));
+        $builder->where($model->getTable().'.city_id', session('active_city_id'));
     }
 
     /**

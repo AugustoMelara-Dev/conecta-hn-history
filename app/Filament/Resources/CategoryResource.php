@@ -4,16 +4,16 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CategoryResource\Pages;
 use App\Models\Category;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema; // Sintaxis v4
-use Filament\Forms\Components\TextInput; // Componentes directos
 use BackedEnum;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\DeleteAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema; // Sintaxis v4
+use Filament\Tables; // Componentes directos
 use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Table;
 
 class CategoryResource extends Resource
 {

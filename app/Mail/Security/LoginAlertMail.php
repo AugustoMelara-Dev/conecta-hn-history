@@ -14,7 +14,9 @@ class LoginAlertMail extends Mailable
     use Queueable, SerializesModels;
 
     public $user;
+
     public $ipAddress;
+
     public $time;
 
     /**

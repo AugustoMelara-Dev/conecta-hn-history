@@ -4,25 +4,24 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\FollowerResource\Pages;
 use App\Models\Follow;
-use App\Models\User;
+use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Facades\Filament;
 
 class FollowerResource extends Resource
 {
     protected static ?string $model = Follow::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-users';
-    
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
+
     protected static ?string $navigationLabel = 'Seguidores';
-    
+
     protected static ?string $modelLabel = 'Seguidor';
-    
+
     protected static ?string $pluralModelLabel = 'Seguidores';
 
     public static function canCreate(): bool
@@ -63,7 +62,7 @@ class FollowerResource extends Resource
                 // If PRO, show followers. If Free, show empty query (or we could handle this via view)
                 // But the requirement says "The table shows a placeholder message with upgrade CTA"
                 // We can achieve this by returning an empty query for Free users and using emptyState
-                fn (Builder $query) => $isPro 
+                fn (Builder $query) => $isPro
                     ? $query->where('tenant_id', Filament::getTenant()->id)
                     : $query->whereRaw('1 = 0')
             )
@@ -82,19 +81,19 @@ class FollowerResource extends Resource
                     ->sortable(),
             ])
             ->emptyStateHeading(
-                $isPro 
-                    ? 'Aún no tienes seguidores' 
+                $isPro
+                    ? 'Aún no tienes seguidores'
                     : 'Descubre quién te sigue con PRO'
             )
             ->emptyStateDescription(
-                $isPro 
-                    ? 'Comparte tu perfil para conseguir seguidores.' 
+                $isPro
+                    ? 'Comparte tu perfil para conseguir seguidores.'
                     : 'Actualiza a nuestro plan PRO para ver la lista completa de tus seguidores y contactarlos.'
             )
             ->emptyStateIcon($isPro ? 'heroicon-o-users' : 'heroicon-o-lock-closed')
             ->emptyStateActions(
-                $isPro 
-                    ? [] 
+                $isPro
+                    ? []
                     : [
                         Tables\Actions\Action::make('upgrade')
                             ->label('Actualizar a PRO')

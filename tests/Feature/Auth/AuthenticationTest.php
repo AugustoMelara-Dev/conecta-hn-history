@@ -27,7 +27,8 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        // Default user is buyer, so redirects to directory
+        $response->assertRedirect('/directorio');
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void

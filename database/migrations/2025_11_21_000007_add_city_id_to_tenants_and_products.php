@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -18,7 +17,7 @@ return new class extends Migration
                 ->after('slug')
                 ->constrained('cities')
                 ->nullOnDelete();
-            
+
             $table->index('city_id');
         });
 
@@ -28,7 +27,7 @@ return new class extends Migration
                 ->after('tenant_id')
                 ->constrained('cities')
                 ->nullOnDelete();
-            
+
             $table->index('city_id');
         });
 

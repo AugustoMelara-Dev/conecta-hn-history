@@ -8,6 +8,7 @@ use Filament\Widgets\ChartWidget;
 class TenantsChart extends ChartWidget
 {
     protected ?string $heading = 'Crecimiento de Negocios';
+
     protected static ?int $sort = 2;
 
     protected function getData(): array
@@ -19,7 +20,7 @@ class TenantsChart extends ChartWidget
             ->get()
             ->pluck('count', 'month')
             ->toArray();
-            
+
         // Fill missing months
         $counts = [];
         for ($i = 1; $i <= 12; $i++) {

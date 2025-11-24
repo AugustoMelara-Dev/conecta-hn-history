@@ -10,7 +10,7 @@ class HydrateLocationFromCookie
 {
     /**
      * Handle an incoming request.
-     * 
+     *
      * SECURITY DIRECTIVE 2: Sticky Persistence
      * Hydrate session from cookie if session is empty
      *
@@ -19,7 +19,7 @@ class HydrateLocationFromCookie
     public function handle(Request $request, Closure $next): Response
     {
         // If session doesn't have city but cookie does, restore it
-        if (!session()->has('active_city_id') && $request->cookie('conecta_city_id')) {
+        if (! session()->has('active_city_id') && $request->cookie('conecta_city_id')) {
             session(['active_city_id' => $request->cookie('conecta_city_id')]);
         }
 

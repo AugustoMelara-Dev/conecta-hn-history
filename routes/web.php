@@ -45,10 +45,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/mi-cuenta', [ProfileController::class, 'edit'])->name('mi-cuenta.edit');
     Route::patch('/mi-cuenta', [ProfileController::class, 'update'])->name('mi-cuenta.update');
     Route::delete('/mi-cuenta', [ProfileController::class, 'destroy'])->name('mi-cuenta.destroy');
-    
+
     // Analytics API
     Route::get('/analytics/data', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.data');
-    
+
     Route::post('/reviews', [\App\Http\Controllers\ReviewController::class, 'store'])->name('reviews.store');
 });
 
@@ -68,4 +68,3 @@ Route::middleware('auth')->group(function () {
 Route::get('/{tenant:slug}', [App\Http\Controllers\TenantController::class, 'show'])
     ->middleware('track.tenant')
     ->name('tenant.show');
-

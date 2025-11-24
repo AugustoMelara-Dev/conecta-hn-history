@@ -30,7 +30,7 @@ class ProductFactory extends Factory
                 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=500&q=60',
                 'https://images.unsplash.com/photo-1560343090-f0409e92791a?auto=format&fit=crop&w=500&q=60',
                 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?auto=format&fit=crop&w=500&q=60',
-            ]), 
+            ]),
             'is_visible' => true,
         ];
     }

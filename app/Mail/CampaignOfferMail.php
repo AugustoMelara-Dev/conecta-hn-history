@@ -5,7 +5,6 @@ namespace App\Mail;
 use App\Models\Campaign;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -16,6 +15,7 @@ class CampaignOfferMail extends Mailable
     use Queueable, SerializesModels;
 
     public $campaign;
+
     public $user;
 
     /**
@@ -35,8 +35,8 @@ class CampaignOfferMail extends Mailable
         return new Envelope(
             subject: $this->campaign->subject,
             from: new \Illuminate\Mail\Mailables\Address(
-                config('mail.from.address'), 
-                $this->campaign->tenant->name . ' via Conecta HN'
+                config('mail.from.address'),
+                $this->campaign->tenant->name.' via Conecta HN'
             ),
         );
     }

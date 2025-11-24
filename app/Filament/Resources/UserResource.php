@@ -4,13 +4,13 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
+use BackedEnum;
 use Filament\Forms;
-use Filament\Schemas\Schema;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Notifications\Notification;
-use BackedEnum;
 
 class UserResource extends Resource
 {
@@ -141,7 +141,7 @@ class UserResource extends Resource
                         ]);
                         Notification::make()->title('Contraseña actualizada')->success()->send();
                     }),
-                
+
                 Tables\Actions\Action::make('ban')
                     ->label('Banear')
                     ->icon('heroicon-o-no-symbol')
@@ -158,7 +158,7 @@ class UserResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (User $record): bool => !is_null($record->banned_at))
+                    ->visible(fn (User $record): bool => ! is_null($record->banned_at))
                     ->action(function (User $record) {
                         $record->update(['banned_at' => null]);
                         Notification::make()->title('Usuario desbaneado')->success()->send();

@@ -2,19 +2,18 @@
 
 namespace App\Models;
 
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasTenants;
+use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-
-use Filament\Models\Contracts\HasTenants;
-use Filament\Models\Contracts\FilamentUser;
-use Filament\Panel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
 
-class User extends Authenticatable implements HasTenants, MustVerifyEmail, FilamentUser
+class User extends Authenticatable implements FilamentUser, HasTenants, MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, \Spatie\Permission\Traits\HasRoles;
@@ -57,6 +56,7 @@ class User extends Authenticatable implements HasTenants, MustVerifyEmail, Filam
             'password' => 'hashed',
         ];
     }
+
     public function tenants(): HasMany
     {
         return $this->hasMany(Tenant::class);
@@ -94,4 +94,3 @@ class User extends Authenticatable implements HasTenants, MustVerifyEmail, Filam
         return $this->role === 'admin' || $this->role === 'super_admin' || $this->role === 'seller';
     }
 }
-

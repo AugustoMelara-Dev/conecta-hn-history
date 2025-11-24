@@ -5,13 +5,10 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\ProductResource\Pages;
 use App\Models\Product;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Filament\Schemas\Schema;
 
 class ProductResource extends Resource
 {
@@ -21,12 +18,12 @@ class ProductResource extends Resource
     {
         return 'heroicon-o-shopping-bag';
     }
-    
+
     public static function getNavigationLabel(): string
     {
         return 'Mis Productos';
     }
-    
+
     public static function getModelLabel(): string
     {
         return 'Producto';
@@ -42,18 +39,18 @@ class ProductResource extends Resource
                             ->label('Nombre')
                             ->required()
                             ->maxLength(255),
-                        
+
                         Forms\Components\Textarea::make('description')
                             ->label('Descripción')
                             ->rows(3)
                             ->columnSpanFull(),
-                        
+
                         Forms\Components\TextInput::make('price')
                             ->label('Precio (L)')
                             ->numeric()
                             ->prefix('L')
                             ->required(),
-                            
+
                         Forms\Components\Select::make('category_id')
                             ->relationship('category', 'name')
                             ->label('Categoría')
@@ -69,7 +66,7 @@ class ProductResource extends Resource
                             ->image()
                             ->directory('products')
                             ->imageEditor(),
-                            
+
                         Forms\Components\Toggle::make('is_visible')
                             ->label('Visible en el Catálogo')
                             ->default(true),
@@ -84,21 +81,21 @@ class ProductResource extends Resource
                 Tables\Columns\ImageColumn::make('image_path')
                     ->label('Imagen')
                     ->circular(),
-                
+
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('price')
                     ->label('Precio')
                     ->money('HNL')
                     ->sortable(),
-                    
+
                 Tables\Columns\IconColumn::make('is_visible')
                     ->label('Visible')
                     ->boolean(),
-                    
+
                 Tables\Columns\IconColumn::make('is_locked')
                     ->label('Bloqueado (Plan Free)')
                     ->boolean()

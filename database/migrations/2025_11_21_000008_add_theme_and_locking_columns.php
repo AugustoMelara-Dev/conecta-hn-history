@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::table('tenants', function (Blueprint $table) {
             // Theme configuration (CSS variables)
             $table->json('theme_config')->nullable()->after('description');
-            
+
             // Product limit (default: 10, manual control for Pro plans)
             $table->integer('product_limit')->default(10)->after('theme_config');
         });

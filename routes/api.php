@@ -1,9 +1,9 @@
 <?php
 
+use App\Http\Controllers\Auth\OtpController;
+use App\Http\Controllers\InteractionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\InteractionController;
-use App\Http\Controllers\Auth\OtpController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();

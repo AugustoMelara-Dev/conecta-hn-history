@@ -13,7 +13,7 @@ class SearchController extends Controller
     {
         $query = $request->input('query');
 
-        if (!$query || strlen($query) < 2) {
+        if (! $query || strlen($query) < 2) {
             return response()->json(['tenants' => [], 'products' => []]);
         }
 

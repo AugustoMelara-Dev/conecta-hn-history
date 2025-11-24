@@ -15,12 +15,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignId('product_id')->nullable()->constrained()->nullOnDelete(); // Si preguntan por un producto específico
-            
+
             $table->string('customer_name');
             $table->string('customer_phone'); // Vital para el mercado hondureño
             $table->text('message')->nullable();
             $table->enum('status', ['new', 'contacted', 'closed', 'archived'])->default('new');
-            
+
             $table->timestamps();
         });
     }

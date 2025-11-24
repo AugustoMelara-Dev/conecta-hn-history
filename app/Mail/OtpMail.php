@@ -13,6 +13,7 @@ class OtpMail extends Mailable
     use Queueable, SerializesModels;
 
     public string $code;
+
     public string $expiresInMinutes;
 
     /**

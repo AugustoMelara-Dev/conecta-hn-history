@@ -4,13 +4,12 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Category;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
@@ -54,10 +53,10 @@ class RegisteredUserController extends Controller
             // Auto-create tenant for sellers
             if ($request->role === 'seller' && $request->business_name) {
                 $defaultCategory = \App\Models\Category::where('slug', 'servicios')->first() ?? \App\Models\Category::first();
-                
+
                 $user->tenants()->create([
                     'name' => $request->business_name,
-                    'slug' => Str::slug($request->business_name) . '-' . Str::random(4),
+                    'slug' => Str::slug($request->business_name).'-'.Str::random(4),
                     'status' => 'approved', // Auto-approve for instant access
                     'category_id' => $defaultCategory ? $defaultCategory->id : 1,
                     'city_id' => 1, // Default city
@@ -78,9 +77,10 @@ class RegisteredUserController extends Controller
                 if ($tenant) {
                     return redirect("/app/{$tenant->slug}");
                 }
+
                 return redirect('/admin'); // Fallback if no tenant found (shouldn't happen due to transaction)
             }
-            
+
             return redirect('/directorio');
 
         } catch (\Exception $e) {

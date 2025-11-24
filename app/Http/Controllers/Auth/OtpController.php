@@ -29,8 +29,8 @@ class OtpController extends Controller
                     // Validate email OR phone in E.164 format
                     $isEmail = filter_var($value, FILTER_VALIDATE_EMAIL);
                     $isPhone = preg_match('/^\+[1-9]\d{1,14}$/', $value);
-                    
-                    if (!$isEmail && !$isPhone) {
+
+                    if (! $isEmail && ! $isPhone) {
                         $fail('El identificador debe ser un email válido o un número de teléfono en formato internacional (+504...).');
                     }
                 },
@@ -41,20 +41,20 @@ class OtpController extends Controller
         $ip = $request->ip();
 
         // Rate Limiting: Max 3 attempts per hour per IP/Identifier
-        $key = 'otp-generate:' . $ip . ':' . $identifier;
-        
+        $key = 'otp-generate:'.$ip.':'.$identifier;
+
         if (RateLimiter::tooManyAttempts($key, 3)) {
             $seconds = RateLimiter::availableIn($key);
-            
+
             // Log abuse attempt
             Log::warning('OTP Generation Rate Limit Hit', [
                 'ip' => $ip,
                 'identifier' => $identifier,
                 'attempts' => RateLimiter::attempts($key),
             ]);
-            
+
             throw ValidationException::withMessages([
-                'identifier' => ['Demasiados intentos. Por favor intenta en ' . ceil($seconds / 60) . ' minutos.'],
+                'identifier' => ['Demasiados intentos. Por favor intenta en '.ceil($seconds / 60).' minutos.'],
             ]);
         }
 
@@ -88,7 +88,7 @@ class OtpController extends Controller
             // Send email
             try {
                 Mail::to($identifier)->send(new OtpMail($code, 10));
-                
+
                 Log::info('OTP Email Sent', [
                     'identifier' => $identifier,
                     'expires_at' => $otp->expires_at,
@@ -98,7 +98,7 @@ class OtpController extends Controller
                     'identifier' => $identifier,
                     'error' => $e->getMessage(),
                 ]);
-                
+
                 // Development fallback
                 if (app()->environment('local')) {
                     Log::info('OTP Generated (DEV)', [
@@ -147,23 +147,23 @@ class OtpController extends Controller
         $ip = $request->ip();
 
         // Rate Limiting: Max 5 failed attempts before lockout
-        $key = 'otp-verify:' . $ip . ':' . $identifier;
-        
+        $key = 'otp-verify:'.$ip.':'.$identifier;
+
         if (RateLimiter::tooManyAttempts($key, 5)) {
             // Delete all OTPs for this identifier as security measure
             OneTimePassword::forIdentifier($identifier)->delete();
-            
+
             $seconds = RateLimiter::availableIn($key);
-            
+
             // Log security event
             Log::warning('OTP Verification Locked', [
                 'ip' => $ip,
                 'identifier' => $identifier,
                 'attempts' => RateLimiter::attempts($key),
             ]);
-            
+
             throw ValidationException::withMessages([
-                'code' => ['Código bloqueado por seguridad. Solicita uno nuevo en ' . ceil($seconds / 60) . ' minutos.'],
+                'code' => ['Código bloqueado por seguridad. Solicita uno nuevo en '.ceil($seconds / 60).' minutos.'],
             ]);
         }
 
@@ -173,29 +173,29 @@ class OtpController extends Controller
             ->latest()
             ->first();
 
-        if (!$otp) {
+        if (! $otp) {
             RateLimiter::hit($key, 600); // 10 minutes
-            
+
             Log::info('OTP Not Found', [
                 'ip' => $ip,
                 'identifier' => $identifier,
             ]);
-            
+
             throw ValidationException::withMessages([
                 'code' => ['Código inválido o expirado.'],
             ]);
         }
 
         // Verify code
-        if (!$otp->verifyCode($code)) {
+        if (! $otp->verifyCode($code)) {
             RateLimiter::hit($key, 600);
-            
+
             Log::info('OTP Verification Failed', [
                 'ip' => $ip,
                 'identifier' => $identifier,
                 'attempts' => RateLimiter::attempts($key),
             ]);
-            
+
             throw ValidationException::withMessages([
                 'code' => ['Código incorrecto.'],
             ]);
@@ -225,7 +225,7 @@ class OtpController extends Controller
 
         // User doesn't exist - need to complete registration
         $otp->delete();
-        
+
         return response()->json([
             'message' => 'Verificación exitosa. Completa tu registro.',
             'requires_registration' => true,
@@ -233,4 +233,3 @@ class OtpController extends Controller
         ]);
     }
 }
-

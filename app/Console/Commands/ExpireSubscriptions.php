@@ -46,8 +46,8 @@ class ExpireSubscriptions extends Command
 
                     // Trigger AuditTenantLimits job immediately
                     AuditTenantLimits::dispatch($tenant);
-                    
-                    $this->info("  -> Downgraded and audit job dispatched.");
+
+                    $this->info('  -> Downgraded and audit job dispatched.');
                 }
             });
 

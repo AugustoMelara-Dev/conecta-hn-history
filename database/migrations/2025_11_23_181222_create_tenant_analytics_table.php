@@ -18,7 +18,7 @@ return new class extends Migration
 
             // Composite index for fast range queries
             $table->index(['tenant_id', 'date']);
-            
+
             // Unique constraint to prevent duplicates
             $table->unique(['tenant_id', 'date']);
         });

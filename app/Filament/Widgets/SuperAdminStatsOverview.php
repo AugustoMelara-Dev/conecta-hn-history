@@ -14,7 +14,7 @@ class SuperAdminStatsOverview extends BaseWidget
                 ->description('Crecimiento mensual')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
-            
+
             Stat::make('Tráfico Total', \App\Models\Interaction::where('type', 'view')->count())
                 ->description('Visitas a micrositios')
                 ->color('primary'),

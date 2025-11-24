@@ -2,11 +2,7 @@
 
 namespace App\Filament\App\Resources\Leads;
 
-use App\Filament\App\Resources\Leads\Pages\CreateLead;
-use App\Filament\App\Resources\Leads\Pages\EditLead;
-use App\Filament\App\Resources\Leads\Pages\ListLeads;
 use App\Filament\App\Resources\Leads\Schemas\LeadForm;
-use App\Filament\App\Resources\Leads\Tables\LeadsTable;
 use App\Models\Lead;
 use BackedEnum;
 use Filament\Resources\Resource;

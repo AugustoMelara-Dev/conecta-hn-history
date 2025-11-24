@@ -12,7 +12,9 @@ class NewLoginDetected
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $user;
+
     public $ipAddress;
+
     public $time;
 
     /**

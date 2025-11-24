@@ -35,8 +35,8 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\City::observe(\App\Observers\CityObserver::class);
 
         // STRICT MODE: Prevent N+1 and silent failures in development
-        \Illuminate\Database\Eloquent\Model::preventLazyLoading(!app()->isProduction());
-        \Illuminate\Database\Eloquent\Model::preventSilentlyDiscardingAttributes(!app()->isProduction());
+        \Illuminate\Database\Eloquent\Model::preventLazyLoading(! app()->isProduction());
+        \Illuminate\Database\Eloquent\Model::preventSilentlyDiscardingAttributes(! app()->isProduction());
 
         // Security: Login Alert Event
         \Illuminate\Support\Facades\Event::listen(

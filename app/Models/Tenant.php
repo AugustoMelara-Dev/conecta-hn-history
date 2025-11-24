@@ -20,6 +20,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'category',
         'category_id',
         'logo_path',
+        'banner_path',
         'blur_hash',
         'primary_color',
         'is_pro',
@@ -115,31 +116,30 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Get theme configuration with validated hex colors and defaults.
-     * 
+     *
      * SECURITY: Validates hex color to prevent CSS injection
      */
     public function getThemeConfigAttribute($value): array
     {
         $config = $value ? json_decode($value, true) : [];
-        
+
         // Default theme
         $defaults = [
             'primary_color' => '#000000',
             'radius' => '0.5rem',
             'font' => 'Inter',
         ];
-        
+
         $theme = array_merge($defaults, $config ?? []);
-        
+
         // CRITICAL: Validate hex color to prevent injection
         if (isset($theme['primary_color'])) {
-            if (!preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $theme['primary_color'])) {
+            if (! preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $theme['primary_color'])) {
                 // Invalid hex, use default
                 $theme['primary_color'] = '#000000';
             }
         }
-        
+
         return $theme;
     }
 }
-

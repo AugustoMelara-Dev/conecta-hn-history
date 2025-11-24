@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
-use App\Models\Interaction;
-
 class InteractionController extends Controller
 {
     public function store(Request $request)
@@ -45,7 +43,7 @@ class InteractionController extends Controller
             if ($tenant && $tenant->user) {
                 \Filament\Notifications\Notification::make()
                     ->title('Nuevo Cliente Interesado')
-                    ->body("Alguien hizo clic en el producto: " . ($lead->product->name ?? 'Producto'))
+                    ->body('Alguien hizo clic en el producto: '.($lead->product->name ?? 'Producto'))
                     ->success()
                     ->sendToDatabase($tenant->user);
             }

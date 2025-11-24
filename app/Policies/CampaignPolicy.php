@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\Campaign;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class CampaignPolicy
 {
@@ -15,8 +14,8 @@ class CampaignPolicy
     public function viewAny(User $user): bool
     {
         $tenant = \Filament\Facades\Filament::getTenant();
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return false;
         }
 
@@ -29,8 +28,8 @@ class CampaignPolicy
     public function view(User $user, Campaign $campaign): bool
     {
         $tenant = \Filament\Facades\Filament::getTenant();
-        
-        if (!$tenant || !$tenant->is_pro) {
+
+        if (! $tenant || ! $tenant->is_pro) {
             return false;
         }
 
@@ -43,8 +42,8 @@ class CampaignPolicy
     public function create(User $user): bool
     {
         $tenant = \Filament\Facades\Filament::getTenant();
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return false;
         }
 
@@ -57,8 +56,8 @@ class CampaignPolicy
     public function update(User $user, Campaign $campaign): bool
     {
         $tenant = \Filament\Facades\Filament::getTenant();
-        
-        if (!$tenant || !$tenant->is_pro) {
+
+        if (! $tenant || ! $tenant->is_pro) {
             return false;
         }
 
@@ -71,8 +70,8 @@ class CampaignPolicy
     public function delete(User $user, Campaign $campaign): bool
     {
         $tenant = \Filament\Facades\Filament::getTenant();
-        
-        if (!$tenant || !$tenant->is_pro) {
+
+        if (! $tenant || ! $tenant->is_pro) {
             return false;
         }
 

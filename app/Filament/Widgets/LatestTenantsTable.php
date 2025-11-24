@@ -3,11 +3,9 @@
 namespace App\Filament\Widgets;
 
 use Filament\Actions\BulkActionGroup;
+use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget;
-use Illuminate\Database\Eloquent\Builder;
-use Tenant;
-use Filament\Tables; // Added this use statement
+use Filament\Widgets\TableWidget; // Added this use statement
 
 class LatestTenantsTable extends TableWidget
 {

@@ -10,7 +10,7 @@ class LocationController extends Controller
 {
     /**
      * Set the active city for filtering.
-     * 
+     *
      * SECURITY DIRECTIVE 2: Sticky Persistence
      * Store in both session AND cookie (forever)
      */

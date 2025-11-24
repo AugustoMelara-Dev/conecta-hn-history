@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Department extends Model
 {
+    use \Illuminate\Database\Eloquent\Factories\HasFactory;
+
     protected $guarded = ['id'];
 
     /**
      * Get the municipalities for the department.
      */
-    public function municipalities():  HasMany
+    public function municipalities(): HasMany
     {
         return $this->hasMany(Municipality::class);
     }

@@ -79,20 +79,20 @@ class GeoSeeder extends Seeder
         }
 
         $this->command->info('✅ Honduras geospatial data seeded successfully!');
-        
+
         // OPTION 1: Migrate existing tenants and products to San Pedro Sula
         $sanPedroSula = City::where('slug', 'san-pedro-sula')->first();
-        
+
         if ($sanPedroSula) {
             \DB::table('tenants')
                 ->whereNull('city_id')
                 ->update(['city_id' => $sanPedroSula->id]);
-            
+
             \DB::table('products')
                 ->whereNull('city_id')
                 ->update(['city_id' => $sanPedroSula->id]);
-            
-            $this->command->info('✅ Existing data migrated to San Pedro Sula (city_id: ' . $sanPedroSula->id . ')');
+
+            $this->command->info('✅ Existing data migrated to San Pedro Sula (city_id: '.$sanPedroSula->id.')');
         }
     }
 }

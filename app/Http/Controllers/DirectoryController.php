@@ -11,7 +11,7 @@ class DirectoryController extends Controller
     public function index(Request $request)
     {
         $city = $request->input('city', 'Tegucigalpa');
-        
+
         $query = Tenant::query()
             ->select('id', 'name', 'slug', 'logo_path', 'banner_path', 'blur_hash', 'city', 'is_pro', 'category_id', 'description')
             ->where('status', 'approved');
@@ -22,12 +22,12 @@ class DirectoryController extends Controller
         // Logic: Query Param > Session > Default
         $activeCityId = session('active_city_id');
         if ($request->has('city')) {
-             $query->where('city', $request->input('city'));
+            $query->where('city', $request->input('city'));
         } elseif ($activeCityId) {
-             $cityModel = \App\Models\City::find($activeCityId);
-             if ($cityModel) {
-                 $query->where('city', $cityModel->name);
-             }
+            $cityModel = \App\Models\City::find($activeCityId);
+            if ($cityModel) {
+                $query->where('city', $cityModel->name);
+            }
         }
 
         // Category Filter
@@ -40,13 +40,13 @@ class DirectoryController extends Controller
         // Search Filter
         if ($request->has('search')) {
             $search = $request->input('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhereHas('products', function($q) use ($search) {
-                      $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%");
-                  });
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('products', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%")
+                            ->orWhere('description', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -59,9 +59,9 @@ class DirectoryController extends Controller
         }
 
         // Eager Load Relationships
-        $query->with(['category', 'reviews', 'products' => function($q) { 
+        $query->with(['category', 'reviews', 'products' => function ($q) {
             $q->select('id', 'tenant_id', 'name', 'image_path', 'blur_hash', 'price')
-                ->take(4); 
+                ->take(4);
         }]);
 
         // Prioritize PRO tenants

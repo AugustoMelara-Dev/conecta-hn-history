@@ -19,7 +19,7 @@ return new class extends Migration
             $table->timestamp('sent_at')->nullable();
             $table->integer('recipients_count')->default(0);
             $table->timestamps();
-            
+
             // Index for tenant queries
             $table->index('tenant_id');
             $table->index('sent_at');

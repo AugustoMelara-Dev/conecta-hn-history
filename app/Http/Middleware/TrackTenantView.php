@@ -11,7 +11,7 @@ class TrackTenantView
 {
     /**
      * Handle an incoming request.
-     * 
+     *
      * Pilar 8: Real-time analytics using Redis HyperLogLog
      */
     public function handle(Request $request, Closure $next): Response
@@ -25,8 +25,8 @@ class TrackTenantView
 
         // Get tenant from route parameter
         $tenant = $request->route('tenant');
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return $response;
         }
 
@@ -38,7 +38,7 @@ class TrackTenantView
         // Basic bot detection
         $userAgent = $request->userAgent() ?? '';
         $botPatterns = ['bot', 'crawler', 'spider', 'scraper', 'curl', 'wget'];
-        
+
         foreach ($botPatterns as $pattern) {
             if (stripos($userAgent, $pattern) !== false) {
                 return $response;
@@ -50,16 +50,16 @@ class TrackTenantView
             if (extension_loaded('redis')) {
                 $date = now()->format('Y-m-d');
                 $key = "analytics:tenants:{$tenant->id}:visits:{$date}";
-                
+
                 // Unique visitor identifier (IP + User Agent)
-                $visitorId = $request->ip() . '|' . $userAgent;
-                
+                $visitorId = $request->ip().'|'.$userAgent;
+
                 // Add to HyperLogLog for unique count
                 Redis::pfadd($key, [$visitorId]);
-                
+
                 // Set TTL to 48 hours (gives sync job time to process)
                 Redis::expire($key, 60 * 60 * 48);
-                
+
                 // Optional: Track total visits (simple counter)
                 $totalKey = "analytics:tenants:{$tenant->id}:total:{$date}";
                 Redis::incr($totalKey);
@@ -67,7 +67,7 @@ class TrackTenantView
             }
         } catch (\Exception $e) {
             // Fallback: Log the error but don't break the user experience
-            \Log::warning('Analytics tracking failed: ' . $e->getMessage());
+            \Log::warning('Analytics tracking failed: '.$e->getMessage());
         }
 
         return $response;

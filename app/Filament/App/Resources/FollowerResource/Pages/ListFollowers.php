@@ -3,8 +3,8 @@
 namespace App\Filament\App\Resources\FollowerResource\Pages;
 
 use App\Filament\App\Resources\FollowerResource;
-use Filament\Resources\Pages\ListRecords;
 use Filament\Facades\Filament;
+use Filament\Resources\Pages\ListRecords;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 

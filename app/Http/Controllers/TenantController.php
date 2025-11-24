@@ -3,26 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tenant;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
 
 class TenantController extends Controller
 {
     public function show(Tenant $tenant)
     {
         // Load relationships with blur_hash for progressive loading
-        $tenant->load(['city', 'category', 'reviews.user', 'products' => function($q) { 
+        $tenant->load(['city', 'category', 'reviews.user', 'products' => function ($q) {
             $q->select('id', 'tenant_id', 'name', 'slug', 'image_path', 'blur_hash', 'price', 'description')
-              ->where('is_visible', true)
-              ->where('is_locked', false)
-              ->take(12); 
+                ->where('is_visible', true)
+                ->where('is_locked', false)
+                ->take(12);
         }]);
 
         // Generate SEO metadata for server-side injection (HYBRID SEO)
         $meta = [
-            'title' => $tenant->name . ' - Conecta HN',
+            'title' => $tenant->name.' - Conecta HN',
             'description' => Str::limit($tenant->description ?? 'Descubre productos y servicios de calidad en Honduras', 155),
             'image' => $tenant->logo_path ? Storage::url($tenant->logo_path) : asset('img/default-og.jpg'),
             'url' => route('tenant.show', $tenant->slug),

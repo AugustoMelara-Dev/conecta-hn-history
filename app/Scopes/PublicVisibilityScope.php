@@ -37,7 +37,7 @@ class PublicVisibilityScope implements Scope
         }
 
         // Apply the visibility filter (only unlocked products)
-        $builder->where($model->getTable() . '.is_locked', false);
+        $builder->where($model->getTable().'.is_locked', false);
     }
 
     /**
@@ -67,14 +67,14 @@ class PublicVisibilityScope implements Scope
      */
     protected function isTenantOwner(Builder $builder): bool
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return false;
         }
 
         // Check if we're querying products through a tenant relationship
         // This allows owners to see their own locked products
         $tenant = request()->route('tenant');
-        
+
         if ($tenant && Auth::user()->id === optional($tenant)->user_id) {
             return true;
         }

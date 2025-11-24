@@ -4,13 +4,13 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Product;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
+use BackedEnum;
 use Filament\Forms;
 use Filament\Notifications\Notification;
-use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables;
+use Filament\Tables\Table;
 
 class ProductResource extends Resource
 {
@@ -46,12 +46,12 @@ class ProductResource extends Resource
                             ->label('Nombre del Producto')
                             ->required()
                             ->maxLength(255),
-                        
+
                         Forms\Components\Textarea::make('description')
                             ->label('Descripción')
                             ->rows(3)
                             ->columnSpanFull(),
-                        
+
                         Forms\Components\TextInput::make('price')
                             ->label('Precio (L)')
                             ->numeric()
@@ -89,16 +89,16 @@ class ProductResource extends Resource
                 Tables\Columns\ImageColumn::make('image_path')
                     ->label('Imagen')
                     ->circular(),
-                
+
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('tenant.name')
                     ->label('Negocio')
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('price')
                     ->label('Precio')
                     ->money('HNL')
@@ -125,14 +125,14 @@ class ProductResource extends Resource
                     ->before(function (Tables\Actions\CreateAction $action) {
                         $user = auth()->user();
                         $tenant = $user->tenants->first();
-                        
-                        if ($tenant && !$tenant->is_pro && $tenant->products()->count() >= 10) {
+
+                        if ($tenant && ! $tenant->is_pro && $tenant->products()->count() >= 10) {
                             Notification::make()
                                 ->danger()
                                 ->title('Límite del Plan Gratuito alcanzado')
                                 ->body('Has alcanzado el límite de 10 productos. Actualiza a PRO para ilimitados.')
                                 ->send();
-                            
+
                             $action->halt();
                         }
                     }),

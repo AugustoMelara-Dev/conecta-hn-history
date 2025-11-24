@@ -2,13 +2,13 @@
 
 namespace App\Filament\App\Pages;
 
+use Filament\Actions\Action;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
-use Filament\Pages\Page;
-use Filament\Actions\Action;
 use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 
 class Settings extends Page
 {
@@ -55,9 +55,9 @@ class Settings extends Page
     public function save(): void
     {
         $data = $this->form->getState();
-        
+
         \Filament\Facades\Filament::getTenant()->update($data);
-        
+
         Notification::make()
             ->success()
             ->title('Configuración guardada')

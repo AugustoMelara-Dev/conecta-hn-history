@@ -17,14 +17,14 @@ class SyncAnalyticsJob implements ShouldQueue
 
     /**
      * Execute the job.
-     * 
+     *
      * Pilar 8: Sync Redis HyperLogLog data to PostgreSQL
      */
     public function handle(): void
     {
         // Process yesterday's data (give time for all visits to be recorded)
         $date = now()->subDay()->format('Y-m-d');
-        
+
         \Log::info("SyncAnalyticsJob: Processing analytics for {$date}");
 
         // Get all active tenants
@@ -34,11 +34,11 @@ class SyncAnalyticsJob implements ShouldQueue
                     try {
                         $uniqueKey = "analytics:tenants:{$tenant->id}:visits:{$date}";
                         $totalKey = "analytics:tenants:{$tenant->id}:total:{$date}";
-                        
+
                         // Get counts from Redis
                         $uniqueVisits = Redis::pfcount($uniqueKey);
                         $totalVisits = Redis::get($totalKey) ?? 0;
-                        
+
                         // Only save if there were visits
                         if ($uniqueVisits > 0 || $totalVisits > 0) {
                             TenantAnalytic::updateOrCreate(
@@ -51,21 +51,21 @@ class SyncAnalyticsJob implements ShouldQueue
                                     'total_visits' => $totalVisits,
                                 ]
                             );
-                            
+
                             \Log::info("Synced analytics for tenant {$tenant->id}: {$uniqueVisits} unique, {$totalVisits} total");
                         }
-                        
+
                         // Optional: Delete Redis keys after sync to save memory
                         // Redis::del($uniqueKey, $totalKey);
-                        
+
                     } catch (\Exception $e) {
                         \Log::error("Failed to sync analytics for tenant {$tenant->id}", [
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                     }
                 }
             });
-        
+
         \Log::info("SyncAnalyticsJob: Completed for {$date}");
     }
 }

@@ -4,7 +4,6 @@ namespace App\Casts;
 
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\OpeningHours\OpeningHours;
 
 class OpeningHoursCast implements CastsAttributes
 {

@@ -12,7 +12,7 @@ class FreePlanAlert extends Widget
         return 'filament.widgets.free-plan-alert';
     }
 
-    public function getColumnSpan(): int | string | array
+    public function getColumnSpan(): int|string|array
     {
         return 'full';
     }
@@ -20,14 +20,14 @@ class FreePlanAlert extends Widget
     public static function canView(): bool
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return false;
         }
-        
+
         $tenant = $user->tenants->first();
-        
+
         // Only show if tenant exists and is NOT pro
-        return $tenant && !$tenant->is_pro;
+        return $tenant && ! $tenant->is_pro;
     }
 
     public function getViewData(): array

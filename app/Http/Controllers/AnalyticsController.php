@@ -10,17 +10,17 @@ class AnalyticsController extends Controller
 {
     /**
      * Get analytics data for the authenticated tenant owner
-     * 
+     *
      * Pilar 8: Serve analytics data for frontend visualization
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-        
+
         // Get user's tenant
         $tenant = $user->tenants()->first();
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return response()->json(['error' => 'No tenant found'], 404);
         }
 
@@ -45,17 +45,17 @@ class AnalyticsController extends Controller
         // Fill in missing dates with zeros
         $filledData = [];
         $currentDate = $startDate->copy();
-        
+
         while ($currentDate <= $endDate) {
             $dateStr = $currentDate->format('Y-m-d');
             $existing = $analytics->firstWhere('date', $dateStr);
-            
+
             $filledData[] = [
                 'date' => $dateStr,
                 'visits' => $existing['visits'] ?? 0,
                 'total' => $existing['total'] ?? 0,
             ];
-            
+
             $currentDate->addDay();
         }
 

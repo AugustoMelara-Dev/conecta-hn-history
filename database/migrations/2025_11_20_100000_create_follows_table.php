@@ -19,7 +19,7 @@ return new class extends Migration
 
             // Prevent duplicate follows
             $table->unique(['user_id', 'tenant_id']);
-            
+
             // Indexes for performance
             $table->index('user_id');
             $table->index('tenant_id');

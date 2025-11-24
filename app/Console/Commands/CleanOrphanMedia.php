@@ -34,7 +34,7 @@ class CleanOrphanMedia extends Command
         } else {
             // Fallback logic for temporary uploads
             $this->info('Spatie Media Library not found. Cleaning temporary files...');
-            
+
             // Clean livewire-tmp if it exists (older than 24h)
             $tmpPath = 'livewire-tmp';
             if (Storage::exists($tmpPath)) {

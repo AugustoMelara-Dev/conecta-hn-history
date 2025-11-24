@@ -18,15 +18,15 @@ return new class extends Migration
             $table->string('slug')->unique()->index(); // Para conectahn.com/slug
             $table->string('logo_path')->nullable();
             $table->string('primary_color')->default('#000000'); // Personalización básica
-            
+
             // Estado de Suscripción (Lógica Freemium)
             $table->boolean('is_pro')->default(false);
             $table->timestamp('plan_expires_at')->nullable();
-            
+
             // Datos de Contacto (Para el botón de WhatsApp y Footer)
             $table->string('whatsapp_number')->nullable();
             $table->text('address')->nullable();
-            
+
             $table->foreignId('user_id')->constrained()->cascadeOnDelete(); // Dueño del negocio
             $table->timestamps();
         });
