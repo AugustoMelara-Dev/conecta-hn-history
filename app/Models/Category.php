@@ -12,22 +12,18 @@ class Category extends Model
     use HasFactory;
 
     protected $fillable = [
-        'tenant_id',
         'name',
         'slug',
         'icon',
         'color',
         'is_visible',
+        'is_active',
     ];
 
     protected $casts = [
         'is_visible' => 'boolean',
+        'is_active' => 'boolean',
     ];
-
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
 
     public function products(): HasMany
     {

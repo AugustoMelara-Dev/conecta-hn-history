@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 export default function Register() {
     const [step, setStep] = useState(0); // 0: Role, 1: Credentials, 2: Identity, 3: Business (if seller)
     const [role, setRole] = useState(null);
+    const [passwordMismatch, setPasswordMismatch] = useState(false);
+    const [passwordTooShort, setPasswordTooShort] = useState(false);
 
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         name: '',
@@ -24,6 +26,11 @@ export default function Register() {
     useEffect(() => {
         setData('role', role || '');
     }, [role]);
+
+    useEffect(() => {
+        setPasswordMismatch(data.password && data.password_confirmation && data.password !== data.password_confirmation);
+        setPasswordTooShort(data.password && data.password.length < 8);
+    }, [data.password, data.password_confirmation]);
 
     const nextStep = () => {
         clearErrors();
@@ -197,6 +204,7 @@ export default function Register() {
                                                 />
                                             </div>
                                             {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
+                                            {passwordTooShort && <p className="text-sm text-red-500">La contraseña debe tener al menos 8 caracteres</p>}
                                         </div>
 
                                         <div className="space-y-2">
@@ -211,6 +219,7 @@ export default function Register() {
                                                     placeholder="••••••••"
                                                 />
                                             </div>
+                                            {passwordMismatch && <p className="text-sm text-red-500">Las contraseñas no coinciden</p>}
                                         </div>
                                     </div>
 
@@ -218,7 +227,12 @@ export default function Register() {
                                         <Button type="button" variant="outline" onClick={() => setStep(0)} className="w-full h-12">
                                             Atrás
                                         </Button>
-                                        <Button type="button" onClick={nextStep} className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800">
+                                        <Button
+                                            type="button"
+                                            onClick={nextStep}
+                                            disabled={!data.email || !data.password || !data.password_confirmation || passwordMismatch || passwordTooShort}
+                                            className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
                                             Siguiente
                                         </Button>
                                     </div>
@@ -272,7 +286,11 @@ export default function Register() {
                                                 Siguiente
                                             </Button>
                                         ) : (
-                                            <Button type="submit" disabled={processing} className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800">
+                                            <Button
+                                                type="submit"
+                                                disabled={processing || !data.name || passwordMismatch || passwordTooShort}
+                                                className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
                                                 {processing ? <Loader2 className="animate-spin" /> : "Crear Cuenta"}
                                             </Button>
                                         )}
@@ -309,7 +327,11 @@ export default function Register() {
                                         <Button type="button" variant="outline" onClick={prevStep} className="w-full h-12">
                                             Atrás
                                         </Button>
-                                        <Button type="submit" disabled={processing} className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800">
+                                        <Button
+                                            type="submit"
+                                            disabled={processing || !data.business_name || passwordMismatch || passwordTooShort}
+                                            className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
                                             {processing ? <Loader2 className="animate-spin" /> : "Finalizar Registro"}
                                         </Button>
                                     </div>

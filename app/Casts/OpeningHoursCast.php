@@ -16,25 +16,17 @@ class OpeningHoursCast implements CastsAttributes
     public function get(Model $model, string $key, mixed $value, array $attributes): mixed
     {
         if (! $value) {
-            return OpeningHours::create([]);
+            return null;
         }
 
         $data = json_decode($value, true);
 
-        return OpeningHours::create($data);
+        return \Spatie\OpeningHours\OpeningHours::create($data ?? []);
     }
 
-    /**
-     * Prepare the given value for storage.
-     *
-     * @param  array<string, mixed>  $attributes
-     */
     public function set(Model $model, string $key, mixed $value, array $attributes): mixed
     {
-        if ($value instanceof OpeningHours) {
-            return json_encode($value->toArray());
-        }
-
-        return json_encode($value);
+        // Si ya es array, codificar a JSON. Si es objeto Spatie, json_encode maneja la serialización pública.
+        return is_array($value) ? json_encode($value) : json_encode($value);
     }
 }

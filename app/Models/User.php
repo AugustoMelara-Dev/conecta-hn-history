@@ -8,12 +8,13 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 use Filament\Models\Contracts\HasTenants;
+use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
-class User extends Authenticatable implements HasTenants, MustVerifyEmail
+class User extends Authenticatable implements HasTenants, MustVerifyEmail, FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, \Spatie\Permission\Traits\HasRoles;
@@ -83,6 +84,14 @@ class User extends Authenticatable implements HasTenants, MustVerifyEmail
     {
         return $this->belongsToMany(Tenant::class, 'follows')
             ->withTimestamps();
+    }
+
+    /**
+     * Determine if the user can access the Filament panel.
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->role === 'admin' || $this->role === 'super_admin' || $this->role === 'seller';
     }
 }
 

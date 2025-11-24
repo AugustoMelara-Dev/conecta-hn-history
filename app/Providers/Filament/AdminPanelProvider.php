@@ -33,7 +33,6 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Indigo,
             ])
-            ->viteTheme('resources/css/filament/admin/theme.css')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -43,6 +42,8 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 \Filament\Widgets\AccountWidget::class,
                 \Filament\Widgets\FilamentInfoWidget::class,
+                \App\Filament\Widgets\StatsOverview::class,
+                \App\Filament\Widgets\TenantsChart::class,
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -62,8 +63,12 @@ class AdminPanelProvider extends PanelProvider
 
     public function boot(): void
     {
-        // Unconditional access for super admin
         Filament::serving(function () {
+            // Only apply this check to the admin panel
+            if (Filament::getCurrentPanel()->getId() !== 'admin') {
+                return;
+            }
+
             if (auth()->check() && auth()->user()->email === 'admin@conectahn.com') {
                 return; // Allow full access
             }

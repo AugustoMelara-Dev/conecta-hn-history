@@ -9,6 +9,8 @@ export default {
 		'./storage/framework/views/*.php',
 		'./resources/views/**/*.blade.php',
 		'./resources/js/**/*.jsx',
+		'./app/Filament/**/*.php', // CRITICAL FOR ADMIN PANEL STYLES
+		'./vendor/filament/**/*.blade.php', // Filament vendor views
 	],
 	theme: {
 		container: {

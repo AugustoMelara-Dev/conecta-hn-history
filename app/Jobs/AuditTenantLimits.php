@@ -24,82 +24,52 @@ class AuditTenantLimits implements ShouldQueue
 
     /**
      * Execute the job.
-     * 
-     * SOFT-LOCKING Logic:
-     * 1. Iterate all tenants
-     * 2. Count products (without scopes)
-     * 3. If count > product_limit, lock oldest products
-     * 4. If count <= product_limit, unlock all products
      */
     public function handle(): void
     {
-        $tenants = Tenant::withCount(['products' => function ($query) {
-            $query->withoutGlobalScopes();
-        }])->get();
+        Log::info('Starting AuditTenantLimits job...');
 
-        foreach ($tenants as $tenant) {
-            $this->auditTenant($tenant);
-        }
+        // 1. Get all non-PRO tenants
+        $freeTenants = Tenant::where('is_pro', false)->get();
 
-        Log::info('AuditTenantLimits completed', [
-            'tenants_audited' => $tenants->count(),
-            'timestamp' => now(),
-        ]);
-    }
-
-    /**
-     * Audit individual tenant's product limit
-     */
-    protected function auditTenant(Tenant $tenant): void
-    {
-        $limit = $tenant->product_limit ?? 10; // Default to 10 if NULL
-        
-        // Special case: NULL or 0 = unlimited (optional bypass)
-        if ($limit === null || $limit === 0) {
-            // Unlock all products for unlimited plan
-            $tenant->products()->withoutGlobalScopes()->update(['is_locked' => false]);
-            return;
-        }
-
-        $products = $tenant->products()->withoutGlobalScopes()->get();
-        $productCount = $products->count();
-
-        if ($productCount > $limit) {
-            // Exceeds limit: Lock oldest products
-            $excessCount = $productCount - $limit;
-            
-            // Get oldest products (by created_at)
-            $productsToLock = $tenant->products()
-                ->withoutGlobalScopes()
-                ->where('is_locked', false)
-                ->orderBy('created_at', 'asc')
-                ->limit($excessCount)
+        foreach ($freeTenants as $tenant) {
+            // 2. Enforce Product Limit (Soft Lock)
+            $products = $tenant->products()
+                ->orderBy('created_at', 'desc')
                 ->get();
 
-            foreach ($productsToLock as $product) {
-                $product->update(['is_locked' => true]);
+            if ($products->count() > 10) {
+                // Keep the 10 most recent active
+                $allowedProducts = $products->take(10);
+                $lockedProducts = $products->slice(10);
+
+                // Ensure allowed are unlocked (optional, maybe we don't want to auto-unlock)
+                // $allowedProducts->each(function ($product) {
+                //     $product->update(['is_locked' => false]);
+                // });
+
+                // Lock the rest
+                foreach ($lockedProducts as $product) {
+                    if ($product->is_visible || !$product->is_locked) {
+                        $product->update([
+                            'is_visible' => false,
+                            'is_locked' => true,
+                        ]);
+                        Log::info("Locked product {$product->id} for tenant {$tenant->id}");
+                    }
+                }
             }
 
-            Log::warning('Tenant product limit exceeded', [
-                'tenant_id' => $tenant->id,
-                'tenant_name' => $tenant->name,
-                'product_count' => $productCount,
-                'limit' => $limit,
-                'locked_count' => $excessCount,
-            ]);
-        } else {
-            // Under limit: Unlock all products
-            $tenant->products()->withoutGlobalScopes()->update(['is_locked' => false]);
-            
-            if ($productCount < $limit) {
-                Log::info('Tenant under product limit', [
-                    'tenant_id' => $tenant->id,
-                    'tenant_name' => $tenant->name,
-                    'product_count' => $productCount,
-                    'limit' => $limit,
-                    'available_slots' => $limit - $productCount,
+            // 3. Reset Visual Customizations (Branding Reset)
+            if ($tenant->primary_color || $tenant->banner_path) {
+                $tenant->update([
+                    'primary_color' => null,
+                    'banner_path' => null,
                 ]);
+                Log::info("Reset branding for tenant {$tenant->id}");
             }
         }
+
+        Log::info('AuditTenantLimits job completed.');
     }
 }

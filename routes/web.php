@@ -28,6 +28,7 @@ Route::get('/directorio', [\App\Http\Controllers\DirectoryController::class, 'in
 Route::post('/location/set', [\App\Http\Controllers\LocationController::class, 'setCity'])->name('location.set');
 Route::post('/location/clear', [\App\Http\Controllers\LocationController::class, 'clearCity'])->name('location.clear');
 Route::get('/api/cities', [\App\Http\Controllers\LocationController::class, 'getCities'])->name('cities.all');
+Route::get('/api/search', [\App\Http\Controllers\Api\SearchController::class, 'index'])->name('api.search');
 
 /*
 |--------------------------------------------------------------------------
@@ -40,19 +41,15 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Unified Profile/Account Route
+    Route::get('/mi-cuenta', [ProfileController::class, 'edit'])->name('mi-cuenta.edit');
+    Route::patch('/mi-cuenta', [ProfileController::class, 'update'])->name('mi-cuenta.update');
+    Route::delete('/mi-cuenta', [ProfileController::class, 'destroy'])->name('mi-cuenta.destroy');
     
-    // Buyer Dashboard
-    Route::get('/mi-cuenta', function () {
-        return Inertia::render('UserDashboard');
-    })->name('buyer.dashboard');
+    // Analytics API
+    Route::get('/analytics/data', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.data');
     
     Route::post('/reviews', [\App\Http\Controllers\ReviewController::class, 'store'])->name('reviews.store');
-    
-    // Pilar 8: Analytics API
-    Route::get('/analytics/data', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.data');
 });
 
 require __DIR__.'/auth.php';

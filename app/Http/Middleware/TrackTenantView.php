@@ -46,29 +46,28 @@ class TrackTenantView
         }
 
         try {
-            $date = now()->format('Y-m-d');
-            $key = "analytics:tenants:{$tenant->id}:visits:{$date}";
-            
-            // Unique visitor identifier (IP + User Agent)
-            $visitorId = $request->ip() . '|' . $userAgent;
-            
-            // Add to HyperLogLog for unique count
-            Redis::pfadd($key, [$visitorId]);
-            
-            // Set TTL to 48 hours (gives sync job time to process)
-            Redis::expire($key, 60 * 60 * 48);
-            
-            // Optional: Track total visits (simple counter)
-            $totalKey = "analytics:tenants:{$tenant->id}:total:{$date}";
-            Redis::incr($totalKey);
-            Redis::expire($totalKey, 60 * 60 * 48);
-            
+            // Check if Redis extension is loaded to avoid "Class 'Redis' not found" error
+            if (extension_loaded('redis')) {
+                $date = now()->format('Y-m-d');
+                $key = "analytics:tenants:{$tenant->id}:visits:{$date}";
+                
+                // Unique visitor identifier (IP + User Agent)
+                $visitorId = $request->ip() . '|' . $userAgent;
+                
+                // Add to HyperLogLog for unique count
+                Redis::pfadd($key, [$visitorId]);
+                
+                // Set TTL to 48 hours (gives sync job time to process)
+                Redis::expire($key, 60 * 60 * 48);
+                
+                // Optional: Track total visits (simple counter)
+                $totalKey = "analytics:tenants:{$tenant->id}:total:{$date}";
+                Redis::incr($totalKey);
+                Redis::expire($totalKey, 60 * 60 * 48);
+            }
         } catch (\Exception $e) {
-            // Fail silently - don't break the user experience
-            \Log::error('Analytics tracking failed', [
-                'tenant_id' => $tenant->id,
-                'error' => $e->getMessage()
-            ]);
+            // Fallback: Log the error but don't break the user experience
+            \Log::warning('Analytics tracking failed: ' . $e->getMessage());
         }
 
         return $response;

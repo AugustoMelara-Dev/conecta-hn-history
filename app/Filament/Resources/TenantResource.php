@@ -10,6 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use BackedEnum;
 
 class TenantResource extends Resource
 {
@@ -17,18 +18,31 @@ class TenantResource extends Resource
 
     protected static ?string $modelPolicy = \App\Policies\TenantPolicy::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-building-storefront';
-    
-    protected static ?string $navigationLabel = 'Negocios';
-    
-    protected static ?string $modelLabel = 'Negocio';
-    
-    protected static ?string $pluralModelLabel = 'Negocios';
+    // Use methods instead of properties for v4 compatibility
+    public static function getNavigationIcon(): string|BackedEnum|null
+    {
+        return 'heroicon-o-building-storefront';
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Negocios';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Negocio';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Negocios';
+    }
 
     public static function form(Schema $schema): Schema
     {
         return $schema
-            ->schema([
+            ->components([
                 Forms\Components\Section::make('Información Principal')
                     ->schema([
                         Forms\Components\TextInput::make('name')

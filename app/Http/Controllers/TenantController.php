@@ -13,7 +13,7 @@ class TenantController extends Controller
     public function show(Tenant $tenant)
     {
         // Load relationships with blur_hash for progressive loading
-        $tenant->load(['category', 'reviews', 'products' => function($q) { 
+        $tenant->load(['city', 'category', 'reviews.user', 'products' => function($q) { 
             $q->select('id', 'tenant_id', 'name', 'slug', 'image_path', 'blur_hash', 'price', 'description')
               ->where('is_visible', true)
               ->where('is_locked', false)
@@ -51,6 +51,7 @@ class TenantController extends Controller
         return Inertia::render('Tenant/Show', [
             'tenant' => $tenant,
             'isOpen' => $isOpen,
+            'openingHours' => $tenant->hours_data, // Pass this so frontend knows if hours exist
             'isFollowing' => $isFollowing,
         ])->withViewData(['meta' => $meta]); // SEO injection for crawlers
     }

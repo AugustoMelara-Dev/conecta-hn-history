@@ -9,6 +9,8 @@ use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Notifications\Notification;
+use BackedEnum;
 
 class UserResource extends Resource
 {
@@ -16,18 +18,35 @@ class UserResource extends Resource
 
     protected static ?string $modelPolicy = \App\Policies\UserPolicy::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-users';
-    
-    protected static ?string $navigationLabel = 'Usuarios';
-    
-    protected static ?string $modelLabel = 'Usuario';
-    
-    protected static ?string $pluralModelLabel = 'Usuarios';
+    public static function getNavigationIcon(): string|BackedEnum|null
+    {
+        return 'heroicon-o-users';
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Usuarios';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Usuario';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Usuarios';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return 'Gestión de Usuarios';
+    }
 
     public static function form(Schema $schema): Schema
     {
         return $schema
-            ->schema([
+            ->components([
                 Forms\Components\TextInput::make('name')
                     ->label('Nombre')
                     ->required()
