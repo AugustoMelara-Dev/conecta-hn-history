@@ -1,8 +1,9 @@
 import { Link, usePage } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
-import { Search, Bell, Menu } from 'lucide-react';
+import { Search, Bell, Menu, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/Components/ui/sheet';
 import useScrollDirection from '@/Hooks/useScrollDirection';
 import { cn } from '@/lib/utils';
 import LocationPicker from '@/Components/Organisms/LocationPicker';
@@ -31,7 +32,35 @@ export default function SmartNavbar() {
                         </span>
                     </Link>
 
-                    {/* Search Bar & Location - Hidden on mobile */}
+                    {/* Mobile Filters Trigger */}
+                    <div className="md:hidden flex-1 flex justify-end mr-2">
+                        <Sheet>
+                            <SheetTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-2 rounded-full border-border bg-background/50 backdrop-blur-sm">
+                                    <SlidersHorizontal className="w-4 h-4" />
+                                    <span className="text-xs font-medium">Filtros</span>
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent side="top" className="w-full h-[80vh] rounded-b-2xl">
+                                <SheetHeader className="mb-4">
+                                    <SheetTitle>Explorar Conecta HN</SheetTitle>
+                                </SheetHeader>
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Ubicación</label>
+                                        <LocationPicker />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Búsqueda</label>
+                                        <LiveSearch />
+                                    </div>
+                                    {/* Add more filters here later */}
+                                </div>
+                            </SheetContent>
+                        </Sheet>
+                    </div>
+
+                    {/* Search Bar & Location - Desktop */}
                     <div className="hidden md:flex flex-1 max-w-2xl items-center gap-2">
                         {/* Location Picker */}
                         <div className="shrink-0">
@@ -68,7 +97,7 @@ export default function SmartNavbar() {
                                             {/* Super Admin & Admin Links */}
                                             {(auth.user.role === 'admin' || auth.user.role === 'super_admin') && (
                                                 <>
-                                                    <a href="/admin" className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors">
+                                                    <a href="/admin" data-turbo="false" className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors">
                                                         <Icons.LayoutDashboard className="w-4 h-4" />
                                                         Panel Maestro
                                                     </a>
@@ -82,7 +111,7 @@ export default function SmartNavbar() {
                                             {/* Seller Links */}
                                             {auth.user.role === 'seller' && (
                                                 <>
-                                                    <a href="/admin" className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors">
+                                                    <a href="/app" data-turbo="false" className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors">
                                                         <Icons.Store className="w-4 h-4" />
                                                         Mi Negocio
                                                     </a>
@@ -114,10 +143,11 @@ export default function SmartNavbar() {
                         ) : (
                             <div className="flex items-center gap-2">
                                 <Link href={route('login')}>
-                                    <Button variant="ghost">Ingresar</Button>
+                                    <Button variant="ghost" size="sm" className="hidden sm:inline-flex">Ingresar</Button>
+                                    <Button variant="ghost" size="icon" className="sm:hidden"><Icons.LogIn className="w-5 h-5" /></Button>
                                 </Link>
                                 <Link href={route('register')}>
-                                    <Button>Registrarse</Button>
+                                    <Button size="sm">Registrarse</Button>
                                 </Link>
                             </div>
                         )}
