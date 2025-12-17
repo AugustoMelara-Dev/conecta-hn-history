@@ -10,13 +10,13 @@ use Filament\Forms\Components\TextInput;
 
 /**
  * SeoFields - Schema Reutilizable para SEO
- * 
+ *
  * Componente inyectable en cualquier formulario de Filament
  * para gestionar campos SEO estandarizados.
- * 
+ *
  * Uso:
  * use App\Filament\Components\SeoFields;
- * 
+ *
  * public static function form(Schema $schema): Schema {
  *     return $schema->components([
  *         // ...otros campos
@@ -91,11 +91,11 @@ class SeoFields
     {
         $count = $state ? strlen($state) : 0;
         $remaining = $limit - $count;
-        
+
         if ($remaining < 0) {
-            return "⚠️ {$label} | Excedido por " . abs($remaining) . " caracteres";
+            return "⚠️ {$label} | Excedido por ".abs($remaining).' caracteres';
         }
-        
+
         return "{$label} | {$remaining} caracteres disponibles";
     }
 
@@ -105,15 +105,15 @@ class SeoFields
     private static function getCharacterCountBadge(?string $state, int $limit): string
     {
         $count = $state ? strlen($state) : 0;
-        
+
         if ($count > $limit) {
             return "⚠️ {$count}/{$limit}";
         }
-        
+
         if ($count > $limit * 0.9) {
             return "⚡ {$count}/{$limit}";
         }
-        
+
         return "{$count}/{$limit}";
     }
 }

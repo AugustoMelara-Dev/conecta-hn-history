@@ -11,7 +11,7 @@ class FinancialStatsOverview extends BaseWidget
 {
     protected static ?int $sort = 1;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     /**
      * Control de Visibilidad por Rol
@@ -21,11 +21,15 @@ class FinancialStatsOverview extends BaseWidget
     public static function canView(): bool
     {
         $user = auth()->user();
-        if (!$user) return false;
-        
+        if (! $user) {
+            return false;
+        }
+
         // Soporte no puede ver widgets financieros
-        if ($user->hasRole('soporte')) return false;
-        
+        if ($user->hasRole('soporte')) {
+            return false;
+        }
+
         // super_admin, auditor, o admin@conectahn.com pueden ver
         return $user->hasRole(['super_admin', 'auditor']) || $user->email === 'admin@conectahn.com';
     }
@@ -52,18 +56,18 @@ class FinancialStatsOverview extends BaseWidget
         $pendingPayments = Payment::where('status', 'pending')->count();
 
         return [
-            Stat::make('MRR (Ingreso Mensual Recurrente)', 'L. ' . number_format($mrr, 2))
-                ->description($proTenants . ' suscripciones activas')
+            Stat::make('MRR (Ingreso Mensual Recurrente)', 'L. '.number_format($mrr, 2))
+                ->description($proTenants.' suscripciones activas')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
 
-            Stat::make('Ingresos Brutos Totales', 'L. ' . number_format($totalRevenue, 2))
+            Stat::make('Ingresos Brutos Totales', 'L. '.number_format($totalRevenue, 2))
                 ->description('Flujo de caja historico')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('primary'),
 
-            Stat::make('Tasa de Conversion', $conversionRate . '%')
-                ->description($proTenants . ' de ' . $totalTenants . ' negocios son PRO')
+            Stat::make('Tasa de Conversion', $conversionRate.'%')
+                ->description($proTenants.' de '.$totalTenants.' negocios son PRO')
                 ->descriptionIcon('heroicon-m-chart-pie')
                 ->color($conversionRate >= 5 ? 'success' : ($conversionRate >= 2 ? 'warning' : 'danger')),
 

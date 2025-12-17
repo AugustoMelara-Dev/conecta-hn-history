@@ -53,6 +53,7 @@ class ProductOption extends Model
         }
 
         $sign = $this->price_modifier > 0 ? '+' : '';
+
         return sprintf('%sL. %.2f', $sign, $this->price_modifier);
     }
 

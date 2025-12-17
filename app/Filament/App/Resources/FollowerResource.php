@@ -76,6 +76,7 @@ class FollowerResource extends Resource
                 if ($isPro) {
                     return $query->where('tenant_id', Filament::getTenant()->id);
                 }
+
                 return $query->whereRaw('1 = 0');
             })
             ->columns([

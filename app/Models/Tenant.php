@@ -15,7 +15,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 #[ObservedBy(\App\Observers\TenantObserver::class)]
 class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 {
-    use HasFactory, \Spatie\MediaLibrary\InteractsWithMedia, SoftDeletes, LogsActivity;
+    use HasFactory, LogsActivity, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
 
     protected $fillable = [
         'name',
@@ -210,24 +210,23 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Obtiene la estructura de menú pública (Feature Gating)
-     * 
+     *
      * LÓGICA DE COMPUERTA (FEATURE GATE):
      * - PRO: Retorna secciones activas con productos eager loaded
      * - FREE: Retorna null (fuerza aplanamiento de estructura)
-     * 
+     *
      * IMPACTO ARQUITECTÓNICO:
      * Esta lógica encapsulada protege el modelo de negocio en cualquier
      * interfaz futura (web, API móvil, endpoints JSON).
-     * 
-     * @param int|null $productLimit Límite de productos (null = sin límite para PRO)
-     * @return \Illuminate\Support\Collection|null
+     *
+     * @param  int|null  $productLimit  Límite de productos (null = sin límite para PRO)
      */
     public function getPublicMenuStructure(?int $productLimit = null): ?\Illuminate\Support\Collection
     {
         // ═══ COMPUERTA DE PLAN ═══
         // Si no es PRO, retornamos null INTENCIONALMENTE
         // Esto fuerza al consumidor a usar una lista plana
-        if (!$this->is_pro) {
+        if (! $this->is_pro) {
             return null;
         }
 
@@ -241,15 +240,14 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
                     $query->take($productLimit);
                 }
             }])
-            ->withCount(['products' => fn($q) => $q->where('is_visible', true)])
+            ->withCount(['products' => fn ($q) => $q->where('is_visible', true)])
             ->get();
     }
 
     /**
      * Obtiene los productos públicos con restricciones de plan
-     * 
-     * @param int $limit Límite de productos para FREE
-     * @return \Illuminate\Database\Eloquent\Collection
+     *
+     * @param  int  $limit  Límite de productos para FREE
      */
     public function getPublicProducts(int $limit = 10): \Illuminate\Database\Eloquent\Collection
     {
@@ -257,7 +255,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             ->where('is_visible', true)
             ->orderBy('name');
 
-        if (!$this->is_pro) {
+        if (! $this->is_pro) {
             // FREE: Aplicar límite duro (Guillotina de Inventario)
             $query->take($limit);
         }

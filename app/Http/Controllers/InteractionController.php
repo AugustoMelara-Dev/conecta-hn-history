@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Tenant;
 use App\Models\Interaction;
-use Illuminate\Http\Request;
+use App\Models\Tenant;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 /**
  * InteractionController - Analytics Tracking
- * 
+ *
  * Métodos:
  * - store(): API endpoint para tracking AJAX
  * - whatsapp(): Redirect middleware para WhatsApp
@@ -78,22 +78,22 @@ class InteractionController extends Controller
     {
         // Construir URL de WhatsApp
         $phone = preg_replace('/[^0-9]/', '', $tenant->whatsapp_number ?? $tenant->phone ?? '');
-        
+
         if (empty($phone)) {
             return redirect()->back()->with('error', 'Este negocio no tiene WhatsApp configurado.');
         }
-        
+
         // Agregar código de país Honduras si no lo tiene
         if (strlen($phone) === 8) {
-            $phone = '504' . $phone;
+            $phone = '504'.$phone;
         }
 
         // Mensaje opcional (puede venir de producto específico)
         $text = $request->input('text', '');
-        
+
         $finalUrl = "https://wa.me/{$phone}";
-        if (!empty($text)) {
-            $finalUrl .= "?text=" . urlencode($text);
+        if (! empty($text)) {
+            $finalUrl .= '?text='.urlencode($text);
         }
 
         // Registrar interacción
@@ -104,7 +104,7 @@ class InteractionController extends Controller
             'user_agent' => $request->userAgent(),
             'referrer' => $request->header('referer'),
             'url' => $request->fullUrl(),
-            'metadata' => !empty($text) ? ['message' => substr($text, 0, 200)] : null,
+            'metadata' => ! empty($text) ? ['message' => substr($text, 0, 200)] : null,
         ]);
 
         return redirect()->away($finalUrl);
@@ -116,7 +116,7 @@ class InteractionController extends Controller
     public function call(Request $request, Tenant $tenant): RedirectResponse
     {
         $phone = $tenant->phone ?? $tenant->whatsapp_number ?? '';
-        
+
         if (empty($phone)) {
             return redirect()->back()->with('error', 'Este negocio no tiene teléfono configurado.');
         }
@@ -138,10 +138,10 @@ class InteractionController extends Controller
     public function maps(Request $request, Tenant $tenant): RedirectResponse
     {
         // Priorizar coordenadas GPS
-        if (!empty($tenant->latitude) && !empty($tenant->longitude)) {
+        if (! empty($tenant->latitude) && ! empty($tenant->longitude)) {
             $url = "https://www.google.com/maps/dir/?api=1&destination={$tenant->latitude},{$tenant->longitude}";
-        } elseif (!empty($tenant->address)) {
-            $url = "https://www.google.com/maps/search/?api=1&query=" . urlencode($tenant->address);
+        } elseif (! empty($tenant->address)) {
+            $url = 'https://www.google.com/maps/search/?api=1&query='.urlencode($tenant->address);
         } else {
             return redirect()->back()->with('error', 'Este negocio no tiene ubicación configurada.');
         }
@@ -157,4 +157,3 @@ class InteractionController extends Controller
         return redirect()->away($url);
     }
 }
-

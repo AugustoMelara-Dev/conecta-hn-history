@@ -8,7 +8,7 @@ use Filament\Widgets\Widget;
 
 /**
  * AccountCompletenessWidget - Gamificación de Completitud del Perfil
- * 
+ *
  * Filament v4 Compatible: Usa métodos en lugar de propiedades estáticas.
  */
 class AccountCompletenessWidget extends Widget
@@ -40,8 +40,8 @@ class AccountCompletenessWidget extends Widget
     protected function getViewData(): array
     {
         $tenant = Filament::getTenant();
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return [
                 'percentage' => 0,
                 'missingItems' => [],
@@ -65,32 +65,32 @@ class AccountCompletenessWidget extends Widget
     protected function calculateCompleteness(Tenant $tenant): array
     {
         $tenantSlug = $tenant->slug;
-        
+
         $checks = [
             [
                 'field' => 'Logo',
-                'check' => !empty($tenant->logo_path),
+                'check' => ! empty($tenant->logo_path),
                 'icon' => '📷',
                 'action' => 'Sube tu logo',
                 'url' => "/app/{$tenantSlug}/edit-tenant-profile",
             ],
             [
                 'field' => 'Banner',
-                'check' => !empty($tenant->banner_path),
+                'check' => ! empty($tenant->banner_path),
                 'icon' => '🖼️',
                 'action' => 'Agrega portada',
                 'url' => "/app/{$tenantSlug}/edit-tenant-profile",
             ],
             [
                 'field' => 'Descripción',
-                'check' => !empty($tenant->description) && strlen($tenant->description) > 30,
+                'check' => ! empty($tenant->description) && strlen($tenant->description) > 30,
                 'icon' => '📝',
                 'action' => 'Escribe descripción',
                 'url' => "/app/{$tenantSlug}/edit-tenant-profile",
             ],
             [
                 'field' => 'WhatsApp',
-                'check' => !empty($tenant->whatsapp_number),
+                'check' => ! empty($tenant->whatsapp_number),
                 'icon' => '📱',
                 'action' => 'Agrega WhatsApp',
                 'url' => "/app/{$tenantSlug}/edit-tenant-profile",
@@ -104,11 +104,11 @@ class AccountCompletenessWidget extends Widget
             ],
         ];
 
-        $completed = array_filter($checks, fn($c) => $c['check']);
-        $missing = array_filter($checks, fn($c) => !$c['check']);
-        
-        $percentage = count($checks) > 0 
-            ? round((count($completed) / count($checks)) * 100) 
+        $completed = array_filter($checks, fn ($c) => $c['check']);
+        $missing = array_filter($checks, fn ($c) => ! $c['check']);
+
+        $percentage = count($checks) > 0
+            ? round((count($completed) / count($checks)) * 100)
             : 0;
 
         return [

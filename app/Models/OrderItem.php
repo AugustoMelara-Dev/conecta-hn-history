@@ -61,7 +61,7 @@ class OrderItem extends Model
         }
 
         return collect($this->selected_options)
-            ->map(fn($opt) => $opt['option'] ?? '')
+            ->map(fn ($opt) => $opt['option'] ?? '')
             ->filter()
             ->implode(', ');
     }

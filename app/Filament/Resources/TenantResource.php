@@ -6,9 +6,9 @@ use App\Filament\Resources\TenantResource\Pages;
 use App\Models\Tenant;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Actions\EditAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -80,7 +80,7 @@ class TenantResource extends Resource
                             ->searchable()
                             ->preload()
                             ->required(),
-                            
+
                         Forms\Components\TextInput::make('address')
                             ->label('Direccion')
                             ->maxLength(255),
@@ -88,7 +88,7 @@ class TenantResource extends Resource
                         Forms\Components\TextInput::make('phone')
                             ->label('Telefono')
                             ->tel(),
-                            
+
                         Forms\Components\TextInput::make('website')
                             ->label('Sitio Web')
                             ->url(),
@@ -108,7 +108,7 @@ class TenantResource extends Resource
                             ->minValue(0)
                             ->required()
                             ->helperText('Cantidad maxima de productos visibles. Default: 10.'),
-                            
+
                         Forms\Components\Toggle::make('is_active')
                             ->label('Negocio Activo')
                             ->default(true)
@@ -136,13 +136,13 @@ class TenantResource extends Resource
                             ->default('#000000')
                             ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
                             ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
-                            
+
                         Forms\Components\TextInput::make('whatsapp_number')
                             ->label('WhatsApp Business')
                             ->tel()
                             ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
                             ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar el Boton Magico.' : null),
-                            
+
                         Forms\Components\KeyValue::make('social_links')
                             ->label('Redes Sociales')
                             ->keyLabel('Plataforma (facebook, instagram, etc)')
@@ -164,7 +164,7 @@ class TenantResource extends Resource
                     ->label('')
                     ->circular()
                     ->size(45)
-                    ->defaultImageUrl(fn($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&background=random'),
+                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&background=random'),
 
                 // ═══════════════════════════════════════════════════════════
                 // COLUMNA 2: Nombre del negocio con link al micrositio
@@ -213,7 +213,7 @@ class TenantResource extends Resource
                     ->state(function (Tenant $record): string {
                         $lastActivity = $record->updated_at;
                         $hoursSince = $lastActivity->diffInHours(now());
-                        
+
                         if ($hoursSince <= 48) {
                             return 'Activo';
                         } elseif ($hoursSince <= 168) { // 7 dias
@@ -226,7 +226,7 @@ class TenantResource extends Resource
                     })
                     ->color(function (Tenant $record): string {
                         $hoursSince = $record->updated_at->diffInHours(now());
-                        
+
                         if ($hoursSince <= 48) {
                             return 'success';
                         } elseif ($hoursSince <= 168) {
@@ -239,7 +239,7 @@ class TenantResource extends Resource
                     })
                     ->icon(function (Tenant $record): string {
                         $hoursSince = $record->updated_at->diffInHours(now());
-                        
+
                         if ($hoursSince <= 48) {
                             return 'heroicon-o-heart';
                         } elseif ($hoursSince <= 168) {
@@ -250,7 +250,7 @@ class TenantResource extends Resource
                             return 'heroicon-o-exclamation-triangle';
                         }
                     })
-                    ->tooltip(fn (Tenant $record): string => 'Ultima actividad: ' . $record->updated_at->diffForHumans()),
+                    ->tooltip(fn (Tenant $record): string => 'Ultima actividad: '.$record->updated_at->diffForHumans()),
 
                 // ═══════════════════════════════════════════════════════════
                 // COLUMNA 7: Estado de Aprobacion
@@ -260,15 +260,15 @@ class TenantResource extends Resource
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'approved' => 'success',
-                        'pending'  => 'warning',
+                        'pending' => 'warning',
                         'rejected' => 'danger',
-                        default    => 'gray',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'approved' => 'Aprobado',
-                        'pending'  => 'Pendiente',
+                        'pending' => 'Pendiente',
                         'rejected' => 'Rechazado',
-                        default    => ucfirst($state),
+                        default => ucfirst($state),
                     }),
 
                 // ═══════════════════════════════════════════════════════════
@@ -364,7 +364,7 @@ class TenantResource extends Resource
                             'status' => 'approved',
                             'is_active' => true,
                         ]);
-                        
+
                         \Filament\Notifications\Notification::make()
                             ->success()
                             ->title('Negocio Aprobado')
@@ -388,7 +388,7 @@ class TenantResource extends Resource
                             'status' => 'rejected',
                             'is_active' => false,
                         ]);
-                        
+
                         \Filament\Notifications\Notification::make()
                             ->danger()
                             ->title('Negocio Rechazado')
@@ -410,10 +410,10 @@ class TenantResource extends Resource
                         // Guardar ID del admin original en sesion
                         session(['impersonator_id' => auth()->id()]);
                         session(['impersonator_name' => auth()->user()->name]);
-                        
+
                         // Autenticar como el usuario del tenant
                         \Illuminate\Support\Facades\Auth::login($record->user);
-                        
+
                         // Redirigir al panel del tenant
                         return redirect('/app');
                     }),
@@ -427,18 +427,18 @@ class TenantResource extends Resource
                     ->color(fn ($record) => $record->is_active ? 'danger' : 'success')
                     ->requiresConfirmation()
                     ->modalHeading(fn ($record) => $record->is_active ? 'KILL SWITCH - Suspension Inmediata' : 'Reactivar Negocio')
-                    ->modalDescription(fn ($record) => $record->is_active 
+                    ->modalDescription(fn ($record) => $record->is_active
                         ? 'ADVERTENCIA: Esta accion congelara TODA la operacion del negocio inmediatamente. El micrositio mostrara error 403 y el panel de control sera inaccesible.'
                         : 'El negocio sera reactivado y podra funcionar normalmente.')
                     ->modalSubmitActionLabel(fn ($record) => $record->is_active ? 'Confirmar Suspension' : 'Confirmar Reactivacion')
                     ->action(function ($record) {
                         $wasActive = $record->is_active;
-                        $record->update(['is_active' => !$record->is_active]);
-                        
+                        $record->update(['is_active' => ! $record->is_active]);
+
                         \Filament\Notifications\Notification::make()
                             ->title($wasActive ? 'Kill Switch Activado' : 'Negocio Reactivado')
-                            ->body($wasActive 
-                                ? "El negocio '{$record->name}' ha sido suspendido." 
+                            ->body($wasActive
+                                ? "El negocio '{$record->name}' ha sido suspendido."
                                 : "El negocio '{$record->name}' ahora puede operar.")
                             ->color($wasActive ? 'danger' : 'success')
                             ->send();
@@ -449,7 +449,7 @@ class TenantResource extends Resource
                     ->label('Forzar PRO')
                     ->icon('heroicon-o-arrow-up-circle')
                     ->color('info')
-                    ->visible(fn ($record) => !$record->is_pro)
+                    ->visible(fn ($record) => ! $record->is_pro)
                     ->requiresConfirmation()
                     ->modalHeading('Activar Plan PRO Manualmente')
                     ->modalDescription('Esto activara el Plan PRO sin registro de pago. Usar solo para regalos o pruebas.')
@@ -467,8 +467,8 @@ class TenantResource extends Resource
                             ->required(),
                     ])
                     ->action(function ($record, array $data) {
-                        $months = $data['duration'] == '999' ? 1200 : (int)$data['duration'];
-                        
+                        $months = $data['duration'] == '999' ? 1200 : (int) $data['duration'];
+
                         $record->update([
                             'is_pro' => true,
                             'plan_expires_at' => now()->addMonths($months),

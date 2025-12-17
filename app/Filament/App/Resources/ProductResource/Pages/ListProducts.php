@@ -5,7 +5,6 @@ namespace App\Filament\App\Resources\ProductResource\Pages;
 use App\Filament\App\Resources\ProductResource;
 use App\Settings\GeneralSettings;
 use Filament\Actions;
-use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 
@@ -19,11 +18,11 @@ class ListProducts extends ListRecords
     public function getHeading(): string
     {
         $limitInfo = ProductResource::getProductLimitInfo();
-        
+
         if ($limitInfo['isPro'] ?? false) {
             return "Mis Productos ({$limitInfo['count']})";
         }
-        
+
         return "Mis Productos ({$limitInfo['count']}/{$limitInfo['limit']})";
     }
 
@@ -33,7 +32,7 @@ class ListProducts extends ListRecords
     public function getSubheading(): ?string
     {
         $limitInfo = ProductResource::getProductLimitInfo();
-        
+
         if ($limitInfo['isPro'] ?? false) {
             return null;
         }
@@ -59,16 +58,16 @@ class ListProducts extends ListRecords
                 ->color('warning')
                 ->icon('heroicon-o-sparkles')
                 ->url('/admin/billing')
-                ->visible(!$limitInfo['canCreate'] && !($limitInfo['isPro'] ?? false)),
+                ->visible(! $limitInfo['canCreate'] && ! ($limitInfo['isPro'] ?? false)),
 
             // Botón de crear
             Actions\CreateAction::make()
-                ->disabled(!$limitInfo['canCreate'])
+                ->disabled(! $limitInfo['canCreate'])
                 ->before(function ($action) use ($limitInfo) {
-                    if (!$limitInfo['canCreate']) {
+                    if (! $limitInfo['canCreate']) {
                         $settings = app(GeneralSettings::class);
                         $price = number_format($settings->pro_plan_price ?? 500, 2);
-                        
+
                         Notification::make()
                             ->danger()
                             ->title('¡Tu catálogo está creciendo! 🚀')
@@ -95,9 +94,9 @@ class ListProducts extends ListRecords
     protected function getHeaderWidgets(): array
     {
         $limitInfo = ProductResource::getProductLimitInfo();
-        
+
         // Mostrar banner si está al 80% o más del límite
-        if (!($limitInfo['isPro'] ?? false) && $limitInfo['percentage'] >= 80) {
+        if (! ($limitInfo['isPro'] ?? false) && $limitInfo['percentage'] >= 80) {
             return [
                 \App\Filament\App\Widgets\ProductLimitWarning::class,
             ];

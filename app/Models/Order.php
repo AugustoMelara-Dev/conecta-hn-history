@@ -69,12 +69,12 @@ class Order extends Model
         $count = static::where('tenant_id', $tenantId)
             ->whereYear('created_at', $year)
             ->count() + 1;
-        
+
         return sprintf('%s-%d-%06d', $prefix, $year, $count);
     }
 
     // ═══ RELACIONES ═══
-    
+
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);

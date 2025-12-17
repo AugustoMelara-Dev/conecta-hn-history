@@ -9,10 +9,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * CheckMaintenanceMode - Kill Switch Inteligente
- * 
+ *
  * Protocolo de bloqueo discriminatorio que permite acceso
  * administrativo mientras bloquea el acceso público.
- * 
+ *
  * Lógica:
  * - Si maintenance_mode = false → Permitir todo el tráfico
  * - Si maintenance_mode = true:
@@ -30,7 +30,7 @@ class CheckMaintenanceMode
         $settings = app(GeneralSettings::class);
 
         // Si el modo mantenimiento está DESACTIVADO, permitir todo
-        if (!$settings->maintenance_mode) {
+        if (! $settings->maintenance_mode) {
             return $next($request);
         }
 
@@ -54,7 +54,7 @@ class CheckMaintenanceMode
         ];
 
         foreach ($allowedPaths as $path) {
-            if ($request->is($path) || $request->is($path . '/*')) {
+            if ($request->is($path) || $request->is($path.'/*')) {
                 return $next($request);
             }
         }

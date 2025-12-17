@@ -66,7 +66,7 @@ return [
         |--------------------------------------------------------------------------
         | R2 es compatible con S3 API pero sin costos de egress.
         | Ideal para galerías ilimitadas del Plan PRO.
-        | 
+        |
         | Variables de entorno requeridas:
         | - R2_ACCESS_KEY_ID
         | - R2_SECRET_ACCESS_KEY

@@ -22,7 +22,7 @@ return new class extends Migration
             $table->timestamp('paid_at')->nullable();
             $table->timestamps();
         });
-        
+
         Schema::create('tenant_analytics', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
@@ -33,7 +33,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['tenant_id', 'date']);
         });
-        
+
         Schema::create('one_time_passwords', function (Blueprint $table) {
             $table->id();
             $table->string('identifier');

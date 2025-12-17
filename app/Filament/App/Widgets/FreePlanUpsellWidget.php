@@ -6,7 +6,7 @@ use Filament\Widgets\Widget;
 
 /**
  * FreePlanUpsellWidget - Banner de Upsell para usuarios Free
- * 
+ *
  * Filament v4 Compatible: Usa métodos en lugar de propiedades.
  */
 class FreePlanUpsellWidget extends Widget
@@ -29,8 +29,8 @@ class FreePlanUpsellWidget extends Widget
     public static function canView(): bool
     {
         $tenant = auth()->user()?->tenants()->first();
-        
-        return $tenant && !$tenant->is_pro;
+
+        return $tenant && ! $tenant->is_pro;
     }
 
     public function getUpgradeUrl(): string
@@ -39,6 +39,7 @@ class FreePlanUpsellWidget extends Widget
         if ($tenant) {
             return "/app/{$tenant->slug}/billing";
         }
+
         return '#';
     }
 }

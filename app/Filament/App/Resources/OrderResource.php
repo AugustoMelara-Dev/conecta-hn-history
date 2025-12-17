@@ -5,19 +5,17 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\OrderResource\Pages;
 use App\Models\Order;
 use Filament\Facades\Filament;
-use Filament\Forms;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteBulkAction;
-
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class OrderResource extends Resource
 {
@@ -52,7 +50,9 @@ class OrderResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         $tenant = Filament::getTenant();
-        if (!$tenant) return null;
+        if (! $tenant) {
+            return null;
+        }
 
         $count = static::getModel()::where('tenant_id', $tenant->id)
             ->where('status', 'pending')
@@ -223,7 +223,7 @@ class OrderResource extends Resource
                     DeleteBulkAction::make(),
                 ]),
             ])
-            // ->poll('30s') // Auto-refresh 
+            // ->poll('30s') // Auto-refresh
             ->striped()
             ->defaultSort('created_at', 'desc')
             ->emptyStateHeading('Sin pedidos')
@@ -256,12 +256,12 @@ class OrderResource extends Resource
                                 Infolists\Components\TextEntry::make('customer_email')
                                     ->label('Email')
                                     ->icon('heroicon-o-envelope')
-                                    ->visible(fn ($state) => !empty($state)),
+                                    ->visible(fn ($state) => ! empty($state)),
 
                                 Infolists\Components\TextEntry::make('delivery_address')
                                     ->label('Dirección')
                                     ->icon('heroicon-o-map-pin')
-                                    ->visible(fn ($state) => !empty($state))
+                                    ->visible(fn ($state) => ! empty($state))
                                     ->columnSpanFull(),
 
                                 Infolists\Components\Actions::make([
@@ -269,8 +269,7 @@ class OrderResource extends Resource
                                         ->label('Abrir WhatsApp')
                                         ->icon('heroicon-o-chat-bubble-left-ellipsis')
                                         ->color('success')
-                                        ->url(fn (Order $record): string => 
-                                            'https://wa.me/' . preg_replace('/[^0-9]/', '', $record->customer_phone)
+                                        ->url(fn (Order $record): string => 'https://wa.me/'.preg_replace('/[^0-9]/', '', $record->customer_phone)
                                         )
                                         ->openUrlInNewTab(),
                                 ]),
@@ -329,7 +328,7 @@ class OrderResource extends Resource
 
                                 Infolists\Components\TextEntry::make('customer_notes')
                                     ->label('Notas del Cliente')
-                                    ->visible(fn ($state) => !empty($state))
+                                    ->visible(fn ($state) => ! empty($state))
                                     ->columnSpanFull()
                                     ->prose(),
 
@@ -366,22 +365,27 @@ class OrderResource extends Resource
                                         Infolists\Components\TextEntry::make('selected_options')
                                             ->label('')
                                             ->formatStateUsing(function ($state): string {
-                                                if (empty($state)) return '';
-                                                
+                                                if (empty($state)) {
+                                                    return '';
+                                                }
+
                                                 $options = is_array($state) ? $state : json_decode($state, true);
-                                                if (empty($options)) return '';
-                                                
+                                                if (empty($options)) {
+                                                    return '';
+                                                }
+
                                                 $formatted = collect($options)
                                                     ->groupBy('group')
                                                     ->map(function ($items, $group) {
                                                         $names = $items->pluck('option')->implode(', ');
+
                                                         return "{$group}: {$names}";
                                                     })
                                                     ->implode(' | ');
-                                                
+
                                                 return $formatted;
                                             })
-                                            ->visible(fn ($state) => !empty($state))
+                                            ->visible(fn ($state) => ! empty($state))
                                             ->color('gray')
                                             ->size('sm'),
                                     ])

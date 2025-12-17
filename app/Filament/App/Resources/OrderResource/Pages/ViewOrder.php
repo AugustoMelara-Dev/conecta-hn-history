@@ -17,7 +17,7 @@ class ViewOrder extends ViewRecord
                 ->label('Contactar Cliente')
                 ->icon('heroicon-o-chat-bubble-left-ellipsis')
                 ->color('success')
-                ->url(fn () => 'https://wa.me/' . preg_replace('/[^0-9]/', '', $this->record->customer_phone))
+                ->url(fn () => 'https://wa.me/'.preg_replace('/[^0-9]/', '', $this->record->customer_phone))
                 ->openUrlInNewTab(),
 
             Actions\Action::make('print')
@@ -30,6 +30,6 @@ class ViewOrder extends ViewRecord
 
     public function getTitle(): string
     {
-        return 'Pedido ' . $this->record->order_number;
+        return 'Pedido '.$this->record->order_number;
     }
 }

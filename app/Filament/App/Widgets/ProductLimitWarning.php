@@ -28,7 +28,10 @@ class ProductLimitWarning extends Widget
     public static function canView(): bool
     {
         $info = ProductResource::getProductLimitInfo();
-        if ($info['isPro'] ?? false) return false;
+        if ($info['isPro'] ?? false) {
+            return false;
+        }
+
         return ($info['percentage'] ?? 0) >= 80;
     }
 

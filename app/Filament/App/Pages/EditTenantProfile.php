@@ -10,7 +10,7 @@ use Illuminate\Support\HtmlString;
 
 /**
  * EditTenantProfile - Centro de Control de Identidad del Negocio
- * 
+ *
  * ESTRATEGIA DE MONETIZACIÓN:
  * - FREE ("La Jaula"): Campos premium visibles pero DESHABILITADOS
  * - PRO ("El Estudio"): Acceso completo a personalización
@@ -26,7 +26,7 @@ class EditTenantProfile extends BaseEditTenantProfile
     {
         $isPro = Filament::getTenant()?->is_pro ?? false;
         $billingUrl = '#';
-        
+
         try {
             $billingUrl = route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug ?? '']);
         } catch (\Exception $e) {
@@ -88,13 +88,13 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->imageEditor()
                                             ->imageCropAspectRatio('16:9')
                                             ->directory('tenants/banners')
-                                            ->disabled(!$isPro)
-                                            ->hint(!$isPro ? '🔒 PRO' : null),
+                                            ->disabled(! $isPro)
+                                            ->hint(! $isPro ? '🔒 PRO' : null),
 
                                         Forms\Components\ColorPicker::make('primary_color')
                                             ->label('Color de Marca')
-                                            ->disabled(!$isPro)
-                                            ->hint(!$isPro ? '🔒 PRO' : null),
+                                            ->disabled(! $isPro)
+                                            ->hint(! $isPro ? '🔒 PRO' : null),
                                     ])
                                     ->columns(2),
                             ]),
@@ -147,14 +147,14 @@ class EditTenantProfile extends BaseEditTenantProfile
                                         Forms\Components\TextInput::make('latitude')
                                             ->label('Latitud')
                                             ->numeric()
-                                            ->disabled(!$isPro)
-                                            ->hint(!$isPro ? '🔒 PRO' : null),
+                                            ->disabled(! $isPro)
+                                            ->hint(! $isPro ? '🔒 PRO' : null),
 
                                         Forms\Components\TextInput::make('longitude')
                                             ->label('Longitud')
                                             ->numeric()
-                                            ->disabled(!$isPro)
-                                            ->hint(!$isPro ? '🔒 PRO' : null),
+                                            ->disabled(! $isPro)
+                                            ->hint(! $isPro ? '🔒 PRO' : null),
                                     ])
                                     ->columns(2),
                             ]),
@@ -172,32 +172,32 @@ class EditTenantProfile extends BaseEditTenantProfile
                                         Forms\Components\TextInput::make('facebook_url')
                                             ->label('Facebook')
                                             ->url()
-                                            ->disabled(!$isPro)
+                                            ->disabled(! $isPro)
                                             ->prefixIcon('heroicon-o-globe-alt'),
 
                                         Forms\Components\TextInput::make('instagram_url')
                                             ->label('Instagram')
                                             ->url()
-                                            ->disabled(!$isPro)
+                                            ->disabled(! $isPro)
                                             ->prefixIcon('heroicon-o-camera'),
 
                                         Forms\Components\TextInput::make('tiktok_url')
                                             ->label('TikTok')
                                             ->url()
-                                            ->disabled(!$isPro)
+                                            ->disabled(! $isPro)
                                             ->prefixIcon('heroicon-o-play'),
 
                                         Forms\Components\TextInput::make('website_url')
                                             ->label('Sitio Web')
                                             ->url()
-                                            ->disabled(!$isPro)
+                                            ->disabled(! $isPro)
                                             ->prefixIcon('heroicon-o-globe-americas'),
                                     ])
                                     ->columns(2),
 
                                 // Horario Simple para FREE
                                 Forms\Components\Section::make('Horario General')
-                                    ->visible(!$isPro)
+                                    ->visible(! $isPro)
                                     ->schema([
                                         Forms\Components\TextInput::make('simple_schedule')
                                             ->label('Horario de Atención')
@@ -269,14 +269,14 @@ class EditTenantProfile extends BaseEditTenantProfile
                 ->label('Ver mi Sitio')
                 ->icon('heroicon-o-arrow-top-right-on-square')
                 ->color('gray')
-                ->url(fn () => url('/' . $this->tenant->slug))
+                ->url(fn () => url('/'.$this->tenant->slug))
                 ->openUrlInNewTab(),
 
             \Filament\Actions\Action::make('upgrade')
                 ->label('✨ Mejorar a PRO')
                 ->icon('heroicon-m-sparkles')
                 ->color('warning')
-                ->visible(!$isPro)
+                ->visible(! $isPro)
                 ->url(fn () => route('filament.app.pages.manage-billing', ['tenant' => $this->tenant->slug])),
         ];
     }

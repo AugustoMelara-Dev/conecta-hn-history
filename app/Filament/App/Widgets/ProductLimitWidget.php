@@ -8,11 +8,11 @@ use Filament\Widgets\Widget;
 
 /**
  * ProductLimitWidget - Monitor Inteligente de Recursos
- * 
+ *
  * Widget de alto impacto que cambia radicalmente según el plan:
  * - FREE: Barra de progreso con semáforo + CTA de upgrades
  * - PRO: Tarjeta VIP premium con validación de beneficios
- * 
+ *
  * Posicionado en la parte superior del dashboard (sort: -10)
  * Ocupa todo el ancho (columnSpan: 'full')
  */
@@ -32,17 +32,23 @@ class ProductLimitWidget extends Widget
      * Propiedades públicas accesibles en la vista
      */
     public bool $isPro = false;
+
     public int $currentCount = 0;
+
     public int $limit = 10;
+
     public float $percentage = 0;
+
     public string $upgradeUrl = '';
+
     public string $billingUrl = '';
+
     public ?string $planExpiresAt = null;
 
     /**
      * Configuración del layout
      */
-    public function getColumnSpan(): int | string | array
+    public function getColumnSpan(): int|string|array
     {
         return 'full';
     }
@@ -54,7 +60,7 @@ class ProductLimitWidget extends Widget
     {
         $tenant = Filament::getTenant();
 
-        if (!$tenant) {
+        if (! $tenant) {
             return;
         }
 
@@ -78,17 +84,17 @@ class ProductLimitWidget extends Widget
         // ═══════════════════════════════════════════════════════════════
         // CÁLCULO DE MÉTRICAS (Solo para usuarios Free)
         // ═══════════════════════════════════════════════════════════════
-        if (!$this->isPro) {
+        if (! $this->isPro) {
             // Conteo eficiente de productos
             $this->currentCount = $tenant->products()->count();
 
             // Límite: primero del tenant, luego de settings globales
-            $this->limit = $tenant->product_limit 
-                ?? app(GeneralSettings::class)->free_plan_product_limit 
+            $this->limit = $tenant->product_limit
+                ?? app(GeneralSettings::class)->free_plan_product_limit
                 ?? 10;
 
             // Porcentaje de saturación (manejo de división por cero)
-            $this->percentage = $this->limit > 0 
+            $this->percentage = $this->limit > 0
                 ? min(100, round(($this->currentCount / $this->limit) * 100, 1))
                 : 0;
         }

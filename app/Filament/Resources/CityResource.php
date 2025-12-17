@@ -5,10 +5,10 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\CityResource\Pages;
 use App\Models\City;
 use BackedEnum;
-use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -100,7 +100,7 @@ class CityResource extends Resource
                             ->label('URL Amigable (Slug)')
                             ->required()
                             ->unique(City::class, 'slug', ignoreRecord: true)
-                            ->prefix(config('app.url') . '/')
+                            ->prefix(config('app.url').'/')
                             ->helperText('Editable para optimizacion SEO. Ej: "tocoa" para conectahn.com/tocoa'),
 
                         Select::make('department')
@@ -196,7 +196,7 @@ class CityResource extends Resource
                     ->label('')
                     ->circular()
                     ->size(45)
-                    ->defaultImageUrl(fn($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&background=random'),
+                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&background=random'),
 
                 Tables\Columns\TextColumn::make('name')
                     ->label('Ciudad')

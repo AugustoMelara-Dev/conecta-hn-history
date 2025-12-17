@@ -21,12 +21,12 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * ManageMarketing - Pack de Herramientas de Venta PRO
- * 
+ *
  * Dashboard de Growth Tools exclusivo para suscriptores PRO:
  * - Configurador de WhatsApp con Live Preview
  * - Generador de Cartelería QR (PDF Engine)
  * - Gestor de Secciones de Menú (Sortable)
- * 
+ *
  * Velvet Rope: FREE users ven un paywall atractivo.
  */
 class ManageMarketing extends Page implements HasForms, HasTable
@@ -59,7 +59,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
     // ═══════════════════════════════════════════════════════════════════════
     // ESTADO DEL COMPONENTE
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     /**
      * ¿Es usuario PRO?
      */
@@ -92,7 +92,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
     {
         $tenant = Filament::getTenant();
 
-        if (!$tenant) {
+        if (! $tenant) {
             return;
         }
 
@@ -100,7 +100,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
         $this->isPro = (bool) $tenant->is_pro;
 
         // URL del negocio
-        $this->businessUrl = url('/' . $tenant->slug);
+        $this->businessUrl = url('/'.$tenant->slug);
 
         // Solo cargar datos si es PRO
         if ($this->isPro) {
@@ -160,7 +160,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
     /**
      * Configuración de la tabla de secciones de menú
-     * 
+     *
      * MEJORAS UX:
      * 1. TextInputColumn: Edición en línea sin modales
      * 2. Semáforo Visual: Verde = sana, Rojo = vacía
@@ -196,11 +196,11 @@ class ManageMarketing extends Page implements HasForms, HasTable
                     ->label('Productos')
                     ->badge()
                     ->color(fn (int $state): string => $state > 0 ? 'success' : 'danger')
-                    ->icon(fn (int $state): string => $state > 0 
-                        ? 'heroicon-o-check-circle' 
+                    ->icon(fn (int $state): string => $state > 0
+                        ? 'heroicon-o-check-circle'
                         : 'heroicon-o-exclamation-triangle')
-                    ->tooltip(fn (int $state): string => $state > 0 
-                        ? "Esta sección tiene {$state} producto(s)" 
+                    ->tooltip(fn (int $state): string => $state > 0
+                        ? "Esta sección tiene {$state} producto(s)"
                         : '⚠️ Sección vacía - Agrega productos'),
 
                 // Toggle rápido de visibilidad
@@ -220,7 +220,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
             // Motor de arrastre para reordenar
             ->reorderable('sort_order')
             ->defaultSort('sort_order')
-            
+
             // Acciones de cabecera
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -244,11 +244,12 @@ class ManageMarketing extends Page implements HasForms, HasTable
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['tenant_id'] = Filament::getTenant()->id;
                         $data['sort_order'] = MenuSection::where('tenant_id', Filament::getTenant()->id)->max('sort_order') + 1;
+
                         return $data;
                     })
                     ->successNotificationTitle('✅ Sección creada exitosamente'),
             ])
-            
+
             // Acciones por fila
             ->actions([
                 Tables\Actions\EditAction::make()
@@ -263,7 +264,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
                         Forms\Components\Toggle::make('is_active')
                             ->label('Activa'),
                     ]),
-                    
+
                 // ═══════════════════════════════════════════════════════
                 // ORPHAN GUARD: Eliminación defensiva inteligente
                 // ═══════════════════════════════════════════════════════
@@ -275,24 +276,24 @@ class ManageMarketing extends Page implements HasForms, HasTable
                     ->modalDescription(function (MenuSection $record): string {
                         // Obtener conteo actualizado
                         $count = $record->products()->count();
-                        
+
                         if ($count > 0) {
                             // ⚠️ ADVERTENCIA: Sección con productos
-                            return "⚠️ **ADVERTENCIA:** Esta sección contiene **{$count} producto(s)** asociados.\n\n" .
-                                   "Si la eliminas:\n" .
-                                   "• Los productos **NO se borrarán** de la base de datos\n" .
-                                   "• Quedarán **'Sin Categoría'**\n" .
-                                   "• **Dejarán de ser visibles** en tu menú público hasta que los reasignes\n\n" .
-                                   "¿Estás seguro de continuar?";
+                            return "⚠️ **ADVERTENCIA:** Esta sección contiene **{$count} producto(s)** asociados.\n\n".
+                                   "Si la eliminas:\n".
+                                   "• Los productos **NO se borrarán** de la base de datos\n".
+                                   "• Quedarán **'Sin Categoría'**\n".
+                                   "• **Dejarán de ser visibles** en tu menú público hasta que los reasignes\n\n".
+                                   '¿Estás seguro de continuar?';
                         }
-                        
+
                         // ✅ Sección vacía - eliminación segura
                         return "Esta sección está vacía (0 productos). ¿Estás seguro de eliminarla?\n\nEsta acción no se puede deshacer.";
                     })
                     ->modalSubmitActionLabel('Sí, eliminar sección')
                     ->successNotificationTitle('Sección eliminada'),
             ])
-            
+
             // Estado vacío (Onboarding)
             ->emptyStateHeading('Sin secciones de menú')
             ->emptyStateDescription('Crea tu primera categoría (ej. Entradas, Bebidas) para comenzar a organizar tu catálogo.')
@@ -315,11 +316,11 @@ class ManageMarketing extends Page implements HasForms, HasTable
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['tenant_id'] = Filament::getTenant()->id;
                         $data['sort_order'] = 0;
+
                         return $data;
                     }),
             ]);
     }
-
 
     // ═══════════════════════════════════════════════════════════════════════
     // MÉTODOS DE WHATSAPP
@@ -331,7 +332,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
     public function updateMessagePreview(): void
     {
         $template = $this->data['whatsapp_message'] ?? 'Hola, me interesa...';
-        
+
         // Reemplazar variables con datos de ejemplo
         $this->messagePreview = str_replace(
             ['{producto}', '{precio}'],
@@ -347,8 +348,9 @@ class ManageMarketing extends Page implements HasForms, HasTable
     {
         try {
             $tenant = Filament::getTenant();
-            if (!$tenant) {
+            if (! $tenant) {
                 $this->qrCodeSvg = '';
+
                 return;
             }
 
@@ -361,28 +363,29 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
     /**
      * Guarda la configuración de WhatsApp
-     * 
+     *
      * GUARD: Solo usuarios PRO pueden ejecutar esta acción
      */
     public function saveWhatsAppConfig(): void
     {
         // ═══ GUARD: Verificación de seguridad PRO ═══
-        if (!$this->isPro) {
+        if (! $this->isPro) {
             Notification::make()
                 ->danger()
                 ->title('Acción no autorizada')
                 ->body('Debes tener un Plan PRO para usar esta funcionalidad.')
                 ->send();
+
             return;
         }
 
         $data = $this->form->getState();
-        
+
         $tenant = Filament::getTenant();
-        
+
         // Formatear número con código de país
         $cleanNumber = preg_replace('/[^0-9]/', '', $data['whatsapp_number']);
-        
+
         $tenant->update([
             'whatsapp_number' => $cleanNumber,
             'whatsapp_message' => $data['whatsapp_message'],
@@ -401,29 +404,31 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
     /**
      * Descarga el cartel con código QR en PDF
-     * 
+     *
      * GUARD: Solo usuarios PRO pueden ejecutar esta acción
      */
     public function downloadPoster()
     {
         // ═══ GUARD: Verificación de seguridad PRO ═══
-        if (!$this->isPro) {
+        if (! $this->isPro) {
             Notification::make()
                 ->danger()
                 ->title('Acción no autorizada')
                 ->body('Debes tener un Plan PRO para descargar carteles.')
                 ->send();
+
             return;
         }
 
         $tenant = Filament::getTenant();
 
-        if (!$tenant) {
+        if (! $tenant) {
             Notification::make()
                 ->danger()
                 ->title('Error')
                 ->body('No se pudo generar el cartel.')
                 ->send();
+
             return;
         }
 
@@ -446,7 +451,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();
-        }, $tenant->slug . '-cartel-qr.pdf', [
+        }, $tenant->slug.'-cartel-qr.pdf', [
             'Content-Type' => 'application/pdf',
         ]);
     }
@@ -456,7 +461,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
      */
     protected function getHeaderActions(): array
     {
-        if (!$this->isPro) {
+        if (! $this->isPro) {
             return [];
         }
 
@@ -483,4 +488,3 @@ class ManageMarketing extends Page implements HasForms, HasTable
         return true; // Todos ven el menú, pero FREE ven paywall
     }
 }
-

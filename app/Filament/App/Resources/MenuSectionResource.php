@@ -13,10 +13,10 @@ use Filament\Tables\Table;
 
 /**
  * MenuSectionResource - Velvet Rope Feature (PRO-Only)
- * 
+ *
  * Permite a usuarios PRO organizar su catálogo en secciones:
  * - Entradas, Bebidas, Postres, etc.
- * 
+ *
  * ESTRATEGIA "VELVET ROPE":
  * - Usuarios Free no pueden ver ni acceder a este módulo
  * - Implementado en canViewAny() y shouldRegisterNavigation()
@@ -62,6 +62,7 @@ class MenuSectionResource extends Resource
     public static function canViewAny(): bool
     {
         $tenant = Filament::getTenant();
+
         return $tenant?->is_pro ?? false;
     }
 
@@ -71,6 +72,7 @@ class MenuSectionResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         $tenant = Filament::getTenant();
+
         return $tenant?->is_pro ?? false;
     }
 
@@ -80,9 +82,12 @@ class MenuSectionResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         $tenant = Filament::getTenant();
-        if (!$tenant) return null;
+        if (! $tenant) {
+            return null;
+        }
 
         $count = MenuSection::where('tenant_id', $tenant->id)->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
@@ -158,8 +163,8 @@ class MenuSectionResource extends Resource
                     ->badge()
                     ->color(fn ($state): string => $state > 0 ? 'success' : 'danger')
                     ->icon(fn ($state): string => $state > 0 ? 'heroicon-o-check-circle' : 'heroicon-o-exclamation-triangle')
-                    ->tooltip(fn ($state): string => $state > 0 
-                        ? "Esta sección tiene {$state} productos" 
+                    ->tooltip(fn ($state): string => $state > 0
+                        ? "Esta sección tiene {$state} productos"
                         : '⚠️ Sección vacía - Agrega productos'),
 
                 Tables\Columns\TextColumn::make('sort_order')
@@ -193,7 +198,7 @@ class MenuSectionResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->iconButton(),
-                    
+
                 // ═══════════════════════════════════════════════════════════
                 // BORRADO SEGURO: Modal que elimina ansiedad operativa
                 // ═══════════════════════════════════════════════════════════

@@ -26,23 +26,23 @@ return new class extends Migration
             $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('city_id')->nullable()->constrained()->nullOnDelete(); // Denormalized for search
             $table->foreignId('menu_section_id')->nullable()->constrained()->nullOnDelete();
-            
+
             $table->string('name');
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2);
-            
+
             $table->string('image_path')->nullable();
             $table->json('gallery')->nullable(); // Multiple images
             $table->string('blur_hash')->nullable();
-            
+
             $table->boolean('is_active')->default(true);
             $table->boolean('is_featured')->default(false);
             $table->boolean('is_visible')->default(true);
             $table->boolean('is_locked')->default(false); // Admin moderation
-            
+
             $table->json('variants')->nullable(); // Size, Color, etc.
-            
+
             $table->timestamps();
             $table->softDeletes(); // Added SoftDeletes
 

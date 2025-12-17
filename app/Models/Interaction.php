@@ -14,9 +14,13 @@ class Interaction extends Model
      * Tipos de interacción disponibles
      */
     public const TYPE_VISIT = 'visit';
+
     public const TYPE_PRODUCT_VIEW = 'product_view';
+
     public const TYPE_WHATSAPP_CLICK = 'whatsapp_click';
+
     public const TYPE_CALL_CLICK = 'call_click';
+
     public const TYPE_SHARE = 'share';
 
     protected $fillable = [
@@ -72,6 +76,6 @@ class Interaction extends Model
     public function scopeThisMonth($query)
     {
         return $query->whereMonth('created_at', now()->month)
-                     ->whereYear('created_at', now()->year);
+            ->whereYear('created_at', now()->year);
     }
 }

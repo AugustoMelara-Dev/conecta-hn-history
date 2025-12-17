@@ -9,11 +9,11 @@ use Livewire\Component;
 
 /**
  * ShowTenant - Perfil del Negocio (Microsite)
- * 
+ *
  * Interfaz Polimórfica que se adapta automáticamente:
  * - FREE: Horario simple, sin mapa embebido, redes limitadas
  * - PRO: Horario estructurado con "Abierto/Cerrado", mapa GPS, redes completas
- * 
+ *
  * Mobile-First | Conversion-Focused | SEO Optimized
  */
 class ShowTenant extends Component
@@ -97,7 +97,7 @@ class ShowTenant extends Component
 
     /**
      * Inicialización del componente con Route Model Binding
-     * 
+     *
      * AJUSTES CRÍTICOS SaaS:
      * 1. Seguridad: Bloquear tenants inactivos
      * 2. Analítica: Contador de visitas
@@ -116,7 +116,7 @@ class ShowTenant extends Component
         // Si is_active = false y no estamos en preview, denegar acceso
         // Esto evita que enlaces directos muestren negocios no publicados
         // ═══════════════════════════════════════════════════════════════════
-        if (!$tenant->is_active && !$this->previewMode) {
+        if (! $tenant->is_active && ! $this->previewMode) {
             abort(404, 'Este negocio no está disponible actualmente.');
         }
 
@@ -124,7 +124,7 @@ class ShowTenant extends Component
         $this->tenant = $tenant->load([
             'category:id,name,slug,color',
             'city:id,name,slug',
-            'products' => fn($q) => $q->where('is_active', true)->orderBy('created_at', 'desc'),
+            'products' => fn ($q) => $q->where('is_active', true)->orderBy('created_at', 'desc'),
         ]);
 
         // ═══════════════════════════════════════════════════════════════════
@@ -132,12 +132,12 @@ class ShowTenant extends Component
         // Solo si NO estamos en preview (evita inflar estadísticas)
         // increment() no dispara eventos de modelo = más rápido
         // ═══════════════════════════════════════════════════════════════════
-        if (!$this->previewMode) {
+        if (! $this->previewMode) {
             Tenant::where('id', $this->tenant->id)->increment('views');
         }
 
         // Detectar características del tenant
-        $this->hasGpsCoordinates = !empty($this->tenant->latitude) && !empty($this->tenant->longitude);
+        $this->hasGpsCoordinates = ! empty($this->tenant->latitude) && ! empty($this->tenant->longitude);
         $this->hasStructuredHours = $this->detectStructuredHours();
 
         // ═══════════════════════════════════════════════════════════════════
@@ -151,7 +151,7 @@ class ShowTenant extends Component
             $this->menuSections = $this->tenant->menuSections()
                 ->where('is_active', true)
                 ->orderBy('sort_order')
-                ->withCount(['products' => fn($q) => $q->where('is_visible', true)])
+                ->withCount(['products' => fn ($q) => $q->where('is_visible', true)])
                 ->get();
 
             // Inicializar con primera sección si existe
@@ -219,7 +219,7 @@ class ShowTenant extends Component
     /**
      * Calcula si el negocio está abierto ahora
      * Solo funciona con datos estructurados (PRO)
-     * 
+     *
      * IMPORTANTE: Usamos zona horaria de Honduras (America/Tegucigalpa)
      * para evitar desfases cuando el servidor está en UTC
      */
@@ -230,9 +230,10 @@ class ShowTenant extends Component
         $this->currentDayName = $this->getDayName($now->dayOfWeek);
 
         // Si no tiene horarios estructurados, retornar null (no podemos calcular)
-        if (!$this->hasStructuredHours) {
+        if (! $this->hasStructuredHours) {
             $this->isOpen = null;
             $this->todayHoursFormatted = null;
+
             return;
         }
 
@@ -243,8 +244,9 @@ class ShowTenant extends Component
             $hours = json_decode($hours, true);
         }
 
-        if (!$hours) {
+        if (! $hours) {
             $this->isOpen = null;
+
             return;
         }
 
@@ -258,16 +260,18 @@ class ShowTenant extends Component
         }
 
         // Si no hay datos para hoy
-        if (!$todayData) {
+        if (! $todayData) {
             $this->isOpen = null;
             $this->todayHoursFormatted = 'Sin horario definido';
+
             return;
         }
 
         // Verificar si está cerrado hoy
-        if (!empty($todayData['is_closed'])) {
+        if (! empty($todayData['is_closed'])) {
             $this->isOpen = false;
             $this->todayHoursFormatted = 'Cerrado hoy';
+
             return;
         }
 
@@ -304,6 +308,7 @@ class ShowTenant extends Component
     protected function getDayName(int $dayOfWeek): string
     {
         $days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+
         return $days[$dayOfWeek] ?? 'lunes';
     }
 
@@ -324,7 +329,7 @@ class ShowTenant extends Component
 
         // FREE: Texto simple
         $simpleSchedule = $this->tenant->simple_schedule;
-        
+
         return [
             'type' => 'simple',
             'data' => $simpleSchedule ?: 'Horario no especificado',
@@ -338,7 +343,7 @@ class ShowTenant extends Component
      */
     public function getMapEmbedUrl(): ?string
     {
-        if (!$this->hasGpsCoordinates) {
+        if (! $this->hasGpsCoordinates) {
             return null;
         }
 
@@ -383,7 +388,7 @@ class ShowTenant extends Component
         ];
 
         foreach ($networks as $key => $network) {
-            if (!empty($network['url'])) {
+            if (! empty($network['url'])) {
                 $links[] = [
                     'key' => $key,
                     'url' => $network['url'],
@@ -402,7 +407,7 @@ class ShowTenant extends Component
      */
     protected function getFormattedHours(): array
     {
-        if (!$this->hasStructuredHours) {
+        if (! $this->hasStructuredHours) {
             return [];
         }
 
@@ -412,7 +417,7 @@ class ShowTenant extends Component
             $hours = json_decode($hours, true);
         }
 
-        if (!$hours || !is_array($hours)) {
+        if (! $hours || ! is_array($hours)) {
             return [];
         }
 
@@ -438,12 +443,12 @@ class ShowTenant extends Component
         }
 
         foreach ($daysOrder as $day) {
-            if (!isset($dayMap[$day])) {
+            if (! isset($dayMap[$day])) {
                 continue;
             }
 
             $dayData = $dayMap[$day];
-            $isClosed = !empty($dayData['is_closed']);
+            $isClosed = ! empty($dayData['is_closed']);
 
             $formatted[] = [
                 'day' => $displayNames[$day] ?? ucfirst($day),
@@ -452,7 +457,7 @@ class ShowTenant extends Component
                 'isClosed' => $isClosed,
                 'hours' => $isClosed
                     ? 'Cerrado'
-                    : $this->formatTime($dayData['open'] ?? '08:00') . ' - ' . $this->formatTime($dayData['close'] ?? '18:00'),
+                    : $this->formatTime($dayData['open'] ?? '08:00').' - '.$this->formatTime($dayData['close'] ?? '18:00'),
             ];
         }
 
@@ -461,7 +466,7 @@ class ShowTenant extends Component
 
     /**
      * Obtiene productos con restricciones de plan
-     * 
+     *
      * REGLAS DE NEGOCIO:
      * - REGLA 2: GUILLOTINA DE INVENTARIO - FREE limitado a X productos
      * - REGLA 3: DESACTIVACIÓN DE FILTROS - Solo PRO puede filtrar por sección
@@ -482,7 +487,7 @@ class ShowTenant extends Component
             if ($this->activeSectionId) {
                 $query->where('menu_section_id', $this->activeSectionId);
             }
-            
+
             // PRO: Sin límite de productos
             return $query->get();
         } else {
@@ -496,11 +501,11 @@ class ShowTenant extends Component
             } catch (\Exception $e) {
                 $limit = 10; // Fallback seguro
             }
-            
+
             // Ignorar cualquier intento de filtrar por sección
             // REGLA 3: Protección contra manipulación de estado
             // $this->activeSectionId es ignorado completamente para FREE
-            
+
             return $query->take($limit)->get();
         }
     }
@@ -542,21 +547,21 @@ class ShowTenant extends Component
 
     /**
      * Genera URL de WhatsApp CON TRACKING
-     * 
+     *
      * En lugar de devolver wa.me directo, devolvemos la ruta de tracking
      * que registra el clic y luego redirige a WhatsApp.
      */
     public function getWhatsAppUrl(?string $productName = null): string
     {
         $phone = $this->tenant->whatsapp_number ?? $this->tenant->phone ?? '';
-        
+
         if (empty($phone)) {
             return '#';
         }
 
         // Construir mensaje
         $customMessage = $this->tenant->whatsapp_message;
-        
+
         if ($customMessage && $productName) {
             $message = str_replace(
                 ['{producto}', '{precio}'],
@@ -584,7 +589,7 @@ class ShowTenant extends Component
     public function getPhoneUrl(): string
     {
         $phone = $this->tenant->phone ?? $this->tenant->whatsapp_number ?? '';
-        
+
         if (empty($phone)) {
             return '#';
         }
@@ -598,7 +603,7 @@ class ShowTenant extends Component
      */
     public function getMapsUrl(): string
     {
-        if (!$this->hasGpsCoordinates && empty($this->tenant->address)) {
+        if (! $this->hasGpsCoordinates && empty($this->tenant->address)) {
             return '#';
         }
 
@@ -656,7 +661,7 @@ class ShowTenant extends Component
             $parts[] = $this->tenant->city->name;
         }
 
-        return implode(' - ', $parts) . ' | Conecta HN';
+        return implode(' - ', $parts).' | Conecta HN';
     }
 
     protected function getPageDescription(): string
@@ -679,11 +684,11 @@ class ShowTenant extends Component
     protected function getOgImage(): ?string
     {
         if ($this->tenant->banner_path) {
-            return asset('storage/' . $this->tenant->banner_path);
+            return asset('storage/'.$this->tenant->banner_path);
         }
 
         if ($this->tenant->logo_path) {
-            return asset('storage/' . $this->tenant->logo_path);
+            return asset('storage/'.$this->tenant->logo_path);
         }
 
         return null;

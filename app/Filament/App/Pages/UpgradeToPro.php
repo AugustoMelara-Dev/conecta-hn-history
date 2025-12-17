@@ -2,8 +2,8 @@
 
 namespace App\Filament\App\Pages;
 
-use Filament\Pages\Page;
 use Filament\Facades\Filament;
+use Filament\Pages\Page;
 
 class UpgradeToPro extends Page
 {
@@ -29,7 +29,8 @@ class UpgradeToPro extends Page
     public static function shouldRegisterNavigation(): bool
     {
         $tenant = Filament::getTenant();
-        return $tenant && !$tenant->is_pro;
+
+        return $tenant && ! $tenant->is_pro;
     }
 
     public function getViewData(): array

@@ -55,10 +55,10 @@ class CreateProduct extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $tenant = Filament::getTenant();
-        
+
         $data['tenant_id'] = $tenant?->id;
         $data['city_id'] = $tenant?->city_id;
-        
+
         return $data;
     }
 

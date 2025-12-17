@@ -7,12 +7,12 @@ use App\Filament\Resources\Payments\Pages\EditPayment;
 use App\Filament\Resources\Payments\Pages\ListPayments;
 use App\Filament\Resources\Payments\Pages\ViewPayment;
 use App\Models\Payment;
-use Filament\Actions\ViewAction;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -175,7 +175,7 @@ class PaymentResource extends Resource
             ->actions([
                 ViewAction::make()
                     ->label('Revisar'),
-                
+
                 // ═══════════════════════════════════════════════════════════
                 // ACCION CRITICA: CONFIRMAR PAGO (Transaccion Atomica)
                 // ═══════════════════════════════════════════════════════════
@@ -185,10 +185,9 @@ class PaymentResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Confirmar Pago y Activar PRO')
-                    ->modalDescription(fn (Payment $record): string => 
-                        "Confirmar pago de L. " . number_format($record->amount, 2) . 
-                        " del negocio '" . $record->tenant->name . "'?\n\n" .
-                        "Esto activara el Plan PRO y enviara confirmacion al cliente."
+                    ->modalDescription(fn (Payment $record): string => 'Confirmar pago de L. '.number_format($record->amount, 2).
+                        " del negocio '".$record->tenant->name."'?\n\n".
+                        'Esto activara el Plan PRO y enviara confirmacion al cliente.'
                     )
                     ->modalSubmitActionLabel('Confirmar y Activar PRO')
                     ->visible(fn (Payment $record): bool => $record->status === 'pending')
@@ -204,7 +203,7 @@ class PaymentResource extends Resource
                                 // 2. Calcular fecha de vencimiento inteligente
                                 $tenant = $record->tenant;
                                 $currentExpiry = $tenant->plan_expires_at;
-                                
+
                                 if ($currentExpiry && $currentExpiry->isFuture()) {
                                     // Plan activo: sumar 30 dias a la fecha existente
                                     $newExpiry = $currentExpiry->addDays(30);
@@ -226,14 +225,14 @@ class PaymentResource extends Resource
                                         new \App\Mail\PaymentConfirmedMail($record, $tenant)
                                     );
                                 } catch (\Exception $e) {
-                                    \Log::warning('No se pudo enviar email de confirmacion: ' . $e->getMessage());
+                                    \Log::warning('No se pudo enviar email de confirmacion: '.$e->getMessage());
                                 }
                             });
 
                             \Filament\Notifications\Notification::make()
                                 ->success()
                                 ->title('Pago Confirmado')
-                                ->body("El negocio '{$record->tenant->name}' ahora es PRO hasta " . 
+                                ->body("El negocio '{$record->tenant->name}' ahora es PRO hasta ".
                                     $record->tenant->fresh()->plan_expires_at->format('d/m/Y'))
                                 ->send();
 
@@ -277,7 +276,7 @@ class PaymentResource extends Resource
                                 new \App\Mail\PaymentRejectedMail($record, $data['rejection_reason'])
                             );
                         } catch (\Exception $e) {
-                            \Log::warning('No se pudo enviar email de rechazo: ' . $e->getMessage());
+                            \Log::warning('No se pudo enviar email de rechazo: '.$e->getMessage());
                         }
 
                         \Filament\Notifications\Notification::make()

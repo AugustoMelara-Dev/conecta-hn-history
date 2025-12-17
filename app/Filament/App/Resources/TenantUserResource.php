@@ -4,18 +4,17 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\TenantUserResource\Pages;
 use App\Models\TenantUser;
-use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
 
 class TenantUserResource extends Resource
 {
@@ -150,20 +149,17 @@ class TenantUserResource extends Resource
                     ->schema([
                         Forms\Components\Placeholder::make('invited_at_display')
                             ->label('Invitado')
-                            ->content(fn (?TenantUser $record): string => 
-                                $record?->invited_at?->format('d/m/Y H:i') ?? 'N/A'
+                            ->content(fn (?TenantUser $record): string => $record?->invited_at?->format('d/m/Y H:i') ?? 'N/A'
                             ),
 
                         Forms\Components\Placeholder::make('accepted_at_display')
                             ->label('Aceptado')
-                            ->content(fn (?TenantUser $record): string => 
-                                $record?->accepted_at?->format('d/m/Y H:i') ?? 'Pendiente'
+                            ->content(fn (?TenantUser $record): string => $record?->accepted_at?->format('d/m/Y H:i') ?? 'Pendiente'
                             ),
 
                         Forms\Components\Placeholder::make('last_access_display')
                             ->label('Último Acceso')
-                            ->content(fn (?TenantUser $record): string => 
-                                $record?->last_access_at?->diffForHumans() ?? 'Nunca'
+                            ->content(fn (?TenantUser $record): string => $record?->last_access_at?->diffForHumans() ?? 'Nunca'
                             ),
                     ]),
             ]);
@@ -224,10 +220,19 @@ class TenantUserResource extends Resource
                     ->label('Permisos')
                     ->state(function (TenantUser $record): string {
                         $perms = [];
-                        if ($record->can_manage_products) $perms[] = '📦';
-                        if ($record->can_manage_orders) $perms[] = '📋';
-                        if ($record->can_view_analytics) $perms[] = '📊';
-                        if ($record->can_manage_settings) $perms[] = '⚙️';
+                        if ($record->can_manage_products) {
+                            $perms[] = '📦';
+                        }
+                        if ($record->can_manage_orders) {
+                            $perms[] = '📋';
+                        }
+                        if ($record->can_view_analytics) {
+                            $perms[] = '📊';
+                        }
+                        if ($record->can_manage_settings) {
+                            $perms[] = '⚙️';
+                        }
+
                         return implode(' ', $perms) ?: '—';
                     })
                     ->tooltip('📦=Productos, 📋=Pedidos, 📊=Analytics, ⚙️=Config'),

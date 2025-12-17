@@ -3,12 +3,12 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 /**
  * RolesAndPermissionsSeeder - Jerarquia RBAC Granular
- * 
+ *
  * Define roles operativos con permisos especificos:
  * - super_admin: Control total
  * - ventas: Adquisicion (view tenants, forbidden delete)
@@ -25,7 +25,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // ═══════════════════════════════════════════════════════════════════
         // DEFINIR PERMISOS POR RECURSO
         // ═══════════════════════════════════════════════════════════════════
-        
+
         $resources = [
             'tenant' => ['view_any', 'view', 'create', 'update', 'delete', 'force_delete', 'restore'],
             'payment' => ['view_any', 'view', 'create', 'update', 'delete', 'approve', 'reject'],
@@ -124,7 +124,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // Acceso limitado al panel para gestionar su propio negocio
         // ═══════════════════════════════════════════════════════════════════
         $panelUser = Role::firstOrCreate(['name' => 'panel_user']);
-        // Este rol no necesita permisos específicos aquí porque 
+        // Este rol no necesita permisos específicos aquí porque
         // la lógica de acceso está controlada por policies y tenant scoping
 
         $this->command->info('Roles y permisos creados exitosamente:');

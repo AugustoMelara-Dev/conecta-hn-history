@@ -25,6 +25,6 @@ class EditTenantUser extends EditRecord
 
     public function getTitle(): string
     {
-        return 'Editar Miembro: ' . $this->record->user->name;
+        return 'Editar Miembro: '.$this->record->user->name;
     }
 }

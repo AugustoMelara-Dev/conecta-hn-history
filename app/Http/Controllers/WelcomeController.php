@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Cache;
+use Inertia\Inertia;
 
 class WelcomeController extends Controller
 {
@@ -32,7 +32,7 @@ class WelcomeController extends Controller
                 ->orderByDesc('tenants_count')
                 ->take(6)
                 ->get()
-                ->map(fn($cat) => [
+                ->map(fn ($cat) => [
                     'id' => $cat->id,
                     'name' => $cat->name,
                     'slug' => $cat->slug,

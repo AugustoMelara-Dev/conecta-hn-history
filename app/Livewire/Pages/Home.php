@@ -9,10 +9,10 @@ use Livewire\Component;
 
 /**
  * Home - Página Principal SSR
- * 
+ *
  * Componente Livewire para renderizado del lado del servidor
  * maximizando SEO y velocidad de carga inicial.
- * 
+ *
  * Secciones:
  * 1. Hero de Búsqueda Inteligente (Typewriter Effect)
  * 2. Navegación Táctil de Categorías (Pills Horizontales)
@@ -102,7 +102,7 @@ class Home extends Component
      */
     public function performSearch()
     {
-        if (!empty($this->search)) {
+        if (! empty($this->search)) {
             return redirect()->route('search', ['q' => $this->search]);
         }
     }

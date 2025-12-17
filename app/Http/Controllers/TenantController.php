@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tenant;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -23,9 +22,9 @@ class TenantController extends Controller
                 'category',
                 'products' => function ($query) {
                     $query->where('is_visible', true)
-                          ->orderBy('sort_order', 'asc') // Asumiendo que existe sort_order
-                          ->orderBy('created_at', 'desc');
-                }
+                        ->orderBy('sort_order', 'asc') // Asumiendo que existe sort_order
+                        ->orderBy('created_at', 'desc');
+                },
             ])
             ->first();
 
@@ -39,9 +38,9 @@ class TenantController extends Controller
         // - Status is 'approved' AND is_active is true
         // - OR Current User is the Owner
         // - OR Current User is an Admin
-        
+
         $canAccess = false;
-        
+
         if ($tenant->status === 'approved' && $tenant->is_active) {
             $canAccess = true;
         } elseif (Auth::check()) {
@@ -57,7 +56,7 @@ class TenantController extends Controller
         }
 
         // 4. Record Visit (Optional logic if you have it)
-        // visits($tenant)->increment(); 
+        // visits($tenant)->increment();
 
         // 5. Logic for PRO vs FREE Differentiation
         // Filter sensitive or premium data based on plan
@@ -79,7 +78,7 @@ class TenantController extends Controller
                 'title' => $tenant->name,
                 'description' => $tenant->description,
                 'image' => $tenant->banner_path ? Storage::url($tenant->banner_path) : null,
-            ]
+            ],
         ]);
     }
 
@@ -88,9 +87,11 @@ class TenantController extends Controller
      */
     protected function checkIfOpen(Tenant $tenant): bool
     {
-        if (! $tenant->hours_data) return false;
-        
-        // Simple logic placeholder. 
+        if (! $tenant->hours_data) {
+            return false;
+        }
+
+        // Simple logic placeholder.
         // Real implementation depends on your OpeningHours package/cast
         try {
             if (is_callable([$tenant->hours_data, 'isOpenAt'])) {
@@ -99,7 +100,7 @@ class TenantController extends Controller
         } catch (\Exception $e) {
             return false;
         }
-        
+
         return false;
     }
 }

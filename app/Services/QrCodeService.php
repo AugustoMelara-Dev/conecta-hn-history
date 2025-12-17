@@ -3,14 +3,15 @@
 namespace App\Services;
 
 use App\Models\Tenant;
-use chillerlan\QRCode\{QRCode, QROptions};
 use chillerlan\QRCode\Data\QRMatrix;
 use chillerlan\QRCode\Output\QROutputInterface;
+use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\QROptions;
 use Illuminate\Support\Facades\Cache;
 
 /**
  * QrCodeService - Generador de Códigos QR
- * 
+ *
  * Utiliza chillerlan/php-qrcode (compatible con Laravel 12)
  * Genera códigos QR en formato SVG para máxima calidad de impresión
  */
@@ -27,11 +28,11 @@ class QrCodeService
     public function getQrCode(Tenant $tenant, int $size = 300): string
     {
         $cacheKey = $this->getCacheKey($tenant);
-        
+
         return Cache::remember(
-            $cacheKey, 
-            now()->addDays(self::CACHE_DAYS), 
-            fn() => $this->generateQrCode($tenant, $size)
+            $cacheKey,
+            now()->addDays(self::CACHE_DAYS),
+            fn () => $this->generateQrCode($tenant, $size)
         );
     }
 
@@ -45,18 +46,18 @@ class QrCodeService
     protected function generateQrCode(Tenant $tenant, int $size): string
     {
         try {
-            $url = url('/' . $tenant->slug);
-            
+            $url = url('/'.$tenant->slug);
+
             $options = new QROptions([
-                'outputType'         => QROutputInterface::MARKUP_SVG,
-                'eccLevel'           => QRCode::ECC_H, // Alta corrección de errores
-                'svgViewBoxSize'     => $size,
-                'addQuietzone'       => true,
-                'quietzoneSize'      => 2,
-                'drawLightModules'   => false,
-                'connectPaths'       => true,
+                'outputType' => QROutputInterface::MARKUP_SVG,
+                'eccLevel' => QRCode::ECC_H, // Alta corrección de errores
+                'svgViewBoxSize' => $size,
+                'addQuietzone' => true,
+                'quietzoneSize' => 2,
+                'drawLightModules' => false,
+                'connectPaths' => true,
                 'drawCircularModules' => false,
-                'keepAsSquare'       => [
+                'keepAsSquare' => [
                     QRMatrix::M_FINDER_DARK,
                     QRMatrix::M_FINDER_DOT,
                     QRMatrix::M_ALIGNMENT_DARK,
@@ -95,12 +96,12 @@ class QrCodeService
      */
     public function getQrCodeForPoster(Tenant $tenant): string
     {
-        $cacheKey = $this->getCacheKey($tenant) . '_poster';
-        
+        $cacheKey = $this->getCacheKey($tenant).'_poster';
+
         return Cache::remember(
             $cacheKey,
             now()->addDays(self::CACHE_DAYS),
-            fn() => $this->generateQrCode($tenant, 500)
+            fn () => $this->generateQrCode($tenant, 500)
         );
     }
 
@@ -110,7 +111,8 @@ class QrCodeService
     public function getQrCodeAsDataUri(Tenant $tenant, int $size = 300): string
     {
         $svg = $this->getQrCode($tenant, $size);
-        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+
+        return 'data:image/svg+xml;base64,'.base64_encode($svg);
     }
 
     /**
@@ -126,4 +128,3 @@ class QrCodeService
 SVG;
     }
 }
-

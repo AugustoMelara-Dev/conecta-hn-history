@@ -13,15 +13,15 @@ use Symfony\Component\HttpFoundation\Response;
  * ═══════════════════════════════════════════════════════════════════════════
  * TRACK TENANT VISIT MIDDLEWARE - Motor de Analytics
  * ═══════════════════════════════════════════════════════════════════════════
- * 
+ *
  * Este middleware rastrea visitas únicas a los micrositios de tenants.
  * Es crítico para las métricas del Plan PRO.
- * 
+ *
  * THROTTLE INTELIGENTE:
  * - Usa caché para evitar registrar múltiples visitas del mismo usuario
  * - Clave única: hash(ip + tenant_id + user_agent)
  * - Expira en 1 hora
- * 
+ *
  * EXCLUSIONES:
  * - Bots conocidos (Google, Bing, etc.)
  * - Assets estáticos
@@ -59,14 +59,14 @@ class TrackTenantVisit
         $response = $next($request);
 
         // Solo rastrear en respuestas exitosas
-        if (!$response->isSuccessful()) {
+        if (! $response->isSuccessful()) {
             return $response;
         }
 
         // Obtener el tenant de la ruta
         $tenant = $request->route('tenant');
-        
-        if (!$tenant instanceof Tenant) {
+
+        if (! $tenant instanceof Tenant) {
             return $response;
         }
 
@@ -108,8 +108,8 @@ class TrackTenantVisit
     protected function isOwner(Request $request, Tenant $tenant): bool
     {
         $user = $request->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return false;
         }
 
@@ -124,10 +124,10 @@ class TrackTenantVisit
     {
         $ip = $request->ip();
         $userAgent = $request->userAgent() ?? 'unknown';
-        
+
         // Generar clave única para el throttle
         $cacheKey = $this->generateCacheKey($ip, $tenant->id, $userAgent);
-        
+
         // Verificar si ya se registró esta visita en la última hora
         if (Cache::has($cacheKey)) {
             return;
@@ -150,7 +150,7 @@ class TrackTenantVisit
 
             // Marcar como registrada por 1 hora
             Cache::put($cacheKey, true, now()->addHour());
-            
+
         } catch (\Exception $e) {
             // Silenciar errores para no afectar la experiencia del usuario
             \Log::warning('Failed to track visit', [
@@ -167,6 +167,7 @@ class TrackTenantVisit
     {
         // Hash para mantener la clave corta pero única
         $hash = md5("{$ip}_{$tenantId}_{$userAgent}");
+
         return "tenant_visit_{$hash}";
     }
 

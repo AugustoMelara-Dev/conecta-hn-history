@@ -4,15 +4,15 @@ namespace App\Traits;
 
 /**
  * HasSEO Trait - Funcionalidad SEO Reutilizable
- * 
+ *
  * Proporciona métodos helper para gestión de metadatos SEO
  * en cualquier modelo Eloquent.
- * 
+ *
  * Uso:
  * class Tenant extends Model {
  *     use HasSEO;
  * }
- * 
+ *
  * // En Blade:
  * $tenant->getSeoTitle()
  * $tenant->getSeoDescription()
@@ -22,24 +22,25 @@ trait HasSEO
 {
     /**
      * Obtiene el título SEO con fallback automático
-     * 
+     *
      * Cascada:
      * 1. seo_title personalizado
      * 2. "{name} | Conecta HN"
      */
     public function getSeoTitle(): string
     {
-        if (!empty($this->seo_title)) {
+        if (! empty($this->seo_title)) {
             return $this->seo_title;
         }
 
         $name = $this->name ?? $this->title ?? 'Página';
+
         return "{$name} | Conecta HN";
     }
 
     /**
      * Obtiene la meta descripción con fallback automático
-     * 
+     *
      * Cascada:
      * 1. seo_description personalizado
      * 2. description del modelo (truncado a 160 chars)
@@ -47,15 +48,16 @@ trait HasSEO
      */
     public function getSeoDescription(): string
     {
-        if (!empty($this->seo_description)) {
+        if (! empty($this->seo_description)) {
             return $this->seo_description;
         }
 
-        if (!empty($this->description)) {
+        if (! empty($this->description)) {
             return \Illuminate\Support\Str::limit(strip_tags($this->description), 160);
         }
 
         $name = $this->name ?? $this->title ?? 'esta página';
+
         return "Descubre {$name} en Conecta HN - El directorio de negocios más completo de Honduras.";
     }
 
@@ -68,8 +70,8 @@ trait HasSEO
             return '';
         }
 
-        $keywords = is_array($this->seo_keywords) 
-            ? $this->seo_keywords 
+        $keywords = is_array($this->seo_keywords)
+            ? $this->seo_keywords
             : json_decode($this->seo_keywords, true);
 
         return is_array($keywords) ? implode(', ', $keywords) : '';
@@ -77,7 +79,7 @@ trait HasSEO
 
     /**
      * Obtiene la URL completa de la imagen OG con fallback
-     * 
+     *
      * Cascada:
      * 1. og_image personalizada
      * 2. banner_path del modelo
@@ -86,20 +88,20 @@ trait HasSEO
      */
     public function getOgImage(): string
     {
-        if (!empty($this->og_image)) {
-            return asset('storage/' . $this->og_image);
+        if (! empty($this->og_image)) {
+            return asset('storage/'.$this->og_image);
         }
 
-        if (!empty($this->banner_path)) {
-            return asset('storage/' . $this->banner_path);
+        if (! empty($this->banner_path)) {
+            return asset('storage/'.$this->banner_path);
         }
 
-        if (!empty($this->logo_path)) {
-            return asset('storage/' . $this->logo_path);
+        if (! empty($this->logo_path)) {
+            return asset('storage/'.$this->logo_path);
         }
 
-        if (!empty($this->hero_image)) {
-            return asset('storage/' . $this->hero_image);
+        if (! empty($this->hero_image)) {
+            return asset('storage/'.$this->hero_image);
         }
 
         // Imagen por defecto de la plataforma

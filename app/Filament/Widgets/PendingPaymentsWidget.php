@@ -18,7 +18,7 @@ class PendingPaymentsWidget extends BaseWidget
 
     protected static ?int $sort = 4;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     /**
      * Control de Visibilidad por Rol
@@ -28,11 +28,15 @@ class PendingPaymentsWidget extends BaseWidget
     public static function canView(): bool
     {
         $user = auth()->user();
-        if (!$user) return false;
-        
+        if (! $user) {
+            return false;
+        }
+
         // Soporte no puede ver widgets financieros
-        if ($user->hasRole('soporte')) return false;
-        
+        if ($user->hasRole('soporte')) {
+            return false;
+        }
+
         // super_admin, auditor, o admin@conectahn.com pueden ver
         return $user->hasRole(['super_admin', 'auditor']) || $user->email === 'admin@conectahn.com';
     }
@@ -69,12 +73,10 @@ class PendingPaymentsWidget extends BaseWidget
 
                 TextColumn::make('waiting_time')
                     ->label('Espera')
-                    ->state(fn (Payment $record): string =>
-                        $record->created_at->diffForHumans()
+                    ->state(fn (Payment $record): string => $record->created_at->diffForHumans()
                     )
                     ->badge()
-                    ->color(fn (Payment $record): string =>
-                        $record->created_at->diffInHours() > 24 ? 'danger' : 'warning'
+                    ->color(fn (Payment $record): string => $record->created_at->diffInHours() > 24 ? 'danger' : 'warning'
                     ),
 
                 ImageColumn::make('proof_image_path')
@@ -89,9 +91,8 @@ class PendingPaymentsWidget extends BaseWidget
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Aprobar Pago')
-                    ->modalDescription(fn (Payment $record): string =>
-                        'Confirmar pago de L. ' . number_format($record->amount, 2) .
-                        ' del negocio ' . $record->tenant->name . '?'
+                    ->modalDescription(fn (Payment $record): string => 'Confirmar pago de L. '.number_format($record->amount, 2).
+                        ' del negocio '.$record->tenant->name.'?'
                     )
                     ->action(function (Payment $record) {
                         DB::transaction(function () use ($record) {
@@ -109,7 +110,7 @@ class PendingPaymentsWidget extends BaseWidget
                         Notification::make()
                             ->success()
                             ->title('Pago Aprobado')
-                            ->body('El negocio ' . $record->tenant->name . ' ahora es PRO.')
+                            ->body('El negocio '.$record->tenant->name.' ahora es PRO.')
                             ->send();
                     }),
 
@@ -142,8 +143,7 @@ class PendingPaymentsWidget extends BaseWidget
                     ->label('Ver')
                     ->icon('heroicon-o-photo')
                     ->color('info')
-                    ->url(fn (Payment $record): string =>
-                        asset('storage/' . $record->proof_image_path)
+                    ->url(fn (Payment $record): string => asset('storage/'.$record->proof_image_path)
                     )
                     ->openUrlInNewTab(),
             ])

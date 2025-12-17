@@ -7,7 +7,7 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 /**
  * StatsOverview - Widget de Estadísticas Generales
- * 
+ *
  * Filament v4 Compatible: Extiende StatsOverviewWidget.
  */
 class StatsOverview extends StatsOverviewWidget
@@ -21,7 +21,7 @@ class StatsOverview extends StatsOverviewWidget
     {
         $tenant = \Filament\Facades\Filament::getTenant();
 
-        if (!$tenant) {
+        if (! $tenant) {
             return [];
         }
 

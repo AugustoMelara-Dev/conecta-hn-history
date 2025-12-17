@@ -8,7 +8,7 @@ use Filament\Widgets\ChartWidget;
 
 /**
  * WhatsAppClicksChart - Gráfico de Clics de WhatsApp
- * 
+ *
  * Filament v4 Compatible: Extiende ChartWidget.
  */
 class WhatsAppClicksChart extends ChartWidget
@@ -28,8 +28,8 @@ class WhatsAppClicksChart extends ChartWidget
     protected function getData(): array
     {
         $tenant = Filament::getTenant();
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return [
                 'datasets' => [],
                 'labels' => [],

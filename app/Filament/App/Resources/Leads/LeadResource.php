@@ -2,16 +2,15 @@
 
 namespace App\Filament\App\Resources\Leads;
 
-use App\Filament\App\Resources\Leads\Pages;
 use App\Filament\App\Resources\Leads\Schemas\LeadForm;
 use App\Models\Lead;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Table;
 
 class LeadResource extends Resource
 {

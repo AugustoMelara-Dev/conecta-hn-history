@@ -39,16 +39,16 @@ class AuthenticatedSessionController extends Controller
         event(new NewLoginDetected($user, $request->ip()));
 
         // Role-based redirection logic
-        
+
         // Seller -> Tenant App Panel
         if ($user->role === 'seller') {
             $tenant = $user->tenants->first();
-            
+
             if ($tenant) {
                 // Hard reload compatible with Filament
                 return Inertia::location("/app/{$tenant->slug}");
             }
-            
+
             // Fallback: If seller has no shop, send to registration
             return Inertia::location(route('register'));
         }

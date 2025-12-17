@@ -15,7 +15,7 @@ class CreateTenantUser extends CreateRecord
         $data['tenant_id'] = Filament::getTenant()->id;
         $data['invited_at'] = now();
         $data['invited_by'] = auth()->user()->email;
-        
+
         return $data;
     }
 

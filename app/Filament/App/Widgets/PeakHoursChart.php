@@ -8,7 +8,7 @@ use Filament\Widgets\ChartWidget;
 
 /**
  * PeakHoursChart - Gráfico de Horas Pico
- * 
+ *
  * Filament v4 Compatible: Extiende ChartWidget que maneja propiedades internamente.
  */
 class PeakHoursChart extends ChartWidget
@@ -28,8 +28,8 @@ class PeakHoursChart extends ChartWidget
     protected function getData(): array
     {
         $tenant = Filament::getTenant();
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return [
                 'datasets' => [],
                 'labels' => [],
@@ -47,7 +47,7 @@ class PeakHoursChart extends ChartWidget
         $data = [];
 
         for ($i = 0; $i < 24; $i++) {
-            $labels[] = str_pad($i, 2, '0', STR_PAD_LEFT) . ':00';
+            $labels[] = str_pad($i, 2, '0', STR_PAD_LEFT).':00';
             $data[] = $hourlyData[$i] ?? 0;
         }
 

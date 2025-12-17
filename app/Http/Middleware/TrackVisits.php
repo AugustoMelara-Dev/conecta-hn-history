@@ -9,9 +9,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * TrackVisits - Rastreador de Métricas Ligero
- * 
+ *
  * Middleware de analytics que incrementa visits_count con debouncing.
- * 
+ *
  * Características:
  * - Prevención de spam: 1 visita por sesión cada 60 minutos
  * - No bloquea requests (after middleware)
@@ -34,7 +34,7 @@ class TrackVisits
 
         $tenant = $request->route('tenant');
 
-        if (!$tenant instanceof Tenant) {
+        if (! $tenant instanceof Tenant) {
             return $response;
         }
 
@@ -58,7 +58,7 @@ class TrackVisits
         // ═══════════════════════════════════════════════════════════════════
         $sessionKey = "viewed_tenant_{$tenant->id}";
 
-        if (!session()->has($sessionKey)) {
+        if (! session()->has($sessionKey)) {
             // Registrar en tabla de interacciones para analytics detallados
             try {
                 \App\Models\Interaction::create([

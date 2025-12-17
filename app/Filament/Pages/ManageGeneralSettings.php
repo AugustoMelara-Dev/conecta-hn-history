@@ -16,14 +16,14 @@ use Filament\Pages\Page;
 
 /**
  * ManageGeneralSettings - Torre de Control del Sistema
- * 
+ *
  * Página centralizada para gestionar todas las configuraciones
  * del sistema sin necesidad de modificar código.
  */
 class ManageGeneralSettings extends Page
 {
     // Navigation Icon removed to fix type error (Filament v4)
-    
+
     protected string $view = 'filament.pages.manage-general-settings';
 
     public ?array $data = [];
@@ -34,6 +34,7 @@ class ManageGeneralSettings extends Page
     public static function canAccess(): bool
     {
         $user = auth()->user();
+
         return $user && ($user->hasRole('super_admin') || $user->email === 'admin@conectahn.com');
     }
 

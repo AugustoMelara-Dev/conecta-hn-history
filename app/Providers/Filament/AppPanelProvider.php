@@ -22,12 +22,12 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /**
  * AppPanelProvider - Panel del Inquilino (Mobile-First)
- * 
+ *
  * Arquitectura optimizada para:
  * - 90% de interacciones desde móviles Android gama media
  * - Conexiones a internet intermitentes
  * - Experiencia de aplicación nativa
- * 
+ *
  * Diferenciación Visual:
  * - Color Indigo (vs Blue del Admin) para clara distinción
  * - Tipografía Inter para legibilidad móvil
@@ -91,7 +91,7 @@ class AppPanelProvider extends PanelProvider
                 'danger' => Color::Rose,
                 'info' => Color::Cyan,
             ])
-            
+
             // ═══════════════════════════════════════════════════════════════
             // TIPOGRAFÍA: Inter (Optimizada para móvil)
             // ═══════════════════════════════════════════════════════════════
@@ -121,7 +121,7 @@ class AppPanelProvider extends PanelProvider
                     ->group('Mi Negocio')
                     ->sort(99)
                     ->openUrlInNewTab(),
-                    
+
                 // Enlace externo: Compartir en WhatsApp
                 NavigationItem::make('Compartir Negocio')
                     ->url(fn () => $this->getShareUrl())
@@ -188,8 +188,9 @@ class AppPanelProvider extends PanelProvider
     {
         $tenant = Filament::getTenant();
         if ($tenant) {
-            return url('/' . $tenant->slug);
+            return url('/'.$tenant->slug);
         }
+
         return url('/');
     }
 
@@ -200,10 +201,12 @@ class AppPanelProvider extends PanelProvider
     {
         $tenant = Filament::getTenant();
         if ($tenant) {
-            $url = url('/' . $tenant->slug);
+            $url = url('/'.$tenant->slug);
             $text = "¡Mira mi negocio {$tenant->name} en Conecta HN!";
-            return "https://wa.me/?text=" . urlencode("{$text}\n\n{$url}");
+
+            return 'https://wa.me/?text='.urlencode("{$text}\n\n{$url}");
         }
+
         return '#';
     }
 }

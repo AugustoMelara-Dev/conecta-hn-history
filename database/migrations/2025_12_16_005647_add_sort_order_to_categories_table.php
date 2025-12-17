@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::table('categories', function (Blueprint $table) {
             // Campo de ordenamiento para merchandising
-            if (!Schema::hasColumn('categories', 'sort_order')) {
+            if (! Schema::hasColumn('categories', 'sort_order')) {
                 $table->unsignedInteger('sort_order')->default(0)->after('icon');
             }
-            
+
             // Campo para icono SVG personalizado
-            if (!Schema::hasColumn('categories', 'icon_svg')) {
+            if (! Schema::hasColumn('categories', 'icon_svg')) {
                 $table->string('icon_svg')->nullable()->after('icon');
             }
         });

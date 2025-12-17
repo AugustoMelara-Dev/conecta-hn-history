@@ -8,10 +8,10 @@ use Livewire\Component;
 
 /**
  * PaymentPending - Instrucciones de Pago para Plan PRO
- * 
+ *
  * Página dedicada para usuarios PRO que acaban de registrarse
  * pero aún no han completado su pago.
- * 
+ *
  * Características:
  * - Muestra instrucciones de transferencia bancaria dinámicas
  * - Genera enlace de WhatsApp con mensaje prellenado
@@ -46,6 +46,7 @@ class PaymentPending extends Component
                 session()->flash('success', '¡Tu pago ya fue confirmado! Inicia sesión para continuar.');
                 $this->redirect('/login');
             }
+
             return;
         }
 
@@ -63,14 +64,14 @@ class PaymentPending extends Component
     public function getWhatsAppUrl(): string
     {
         $phone = preg_replace('/[^0-9]/', '', $this->supportWhatsApp);
-        
+
         if (empty($phone)) {
             return '#';
         }
 
         // Agregar código de país si no lo tiene
         if (strlen($phone) === 8) {
-            $phone = '504' . $phone; // Honduras
+            $phone = '504'.$phone; // Honduras
         }
 
         $tenantName = $this->payment->tenant?->name ?? 'Mi Negocio';
@@ -82,7 +83,7 @@ class PaymentPending extends Component
         $message .= "📋 Referencia: *{$reference}*\n";
         $message .= "💰 Monto: *L. {$amount}*";
 
-        return "https://wa.me/{$phone}?text=" . urlencode($message);
+        return "https://wa.me/{$phone}?text=".urlencode($message);
     }
 
     /**

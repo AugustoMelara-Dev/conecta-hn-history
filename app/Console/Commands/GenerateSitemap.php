@@ -11,15 +11,15 @@ use Spatie\Sitemap\Tags\Url;
 
 /**
  * GenerateSitemap - Automatización de Rastreo para Google
- * 
+ *
  * Este comando construye el sitemap.xml iterando explícitamente
  * sobre la base de datos en lugar de rastrear URLs locales.
- * 
+ *
  * Ventajas:
  * - No falla en producción por URLs inaccesibles
  * - Control total sobre qué incluir
  * - Más rápido que crawling
- * 
+ *
  * Programación: Laravel Scheduler diariamente a medianoche
  */
 class GenerateSitemap extends Command
@@ -33,15 +33,17 @@ class GenerateSitemap extends Command
      * Contadores para estadísticas
      */
     private int $citiesCount = 0;
+
     private int $categoriesCount = 0;
+
     private int $tenantsCount = 0;
 
     public function handle(): int
     {
         $dryRun = $this->option('dry-run');
-        
+
         $this->info('═══════════════════════════════════════════════════════════');
-        $this->info('   GENERADOR DE SITEMAP - ' . now()->format('Y-m-d H:i:s'));
+        $this->info('   GENERADOR DE SITEMAP - '.now()->format('Y-m-d H:i:s'));
         $this->info('═══════════════════════════════════════════════════════════');
         $this->newLine();
 
@@ -79,7 +81,7 @@ class GenerateSitemap extends Command
         // ═══════════════════════════════════════════════════════════════════
         // ESCRIBIR ARCHIVO
         // ═══════════════════════════════════════════════════════════════════
-        if (!$dryRun) {
+        if (! $dryRun) {
             $path = public_path('sitemap.xml');
             $sitemap->writeToFile($path);
             $this->info("Sitemap escrito en: {$path}");
@@ -113,21 +115,21 @@ class GenerateSitemap extends Command
     private function addCities(Sitemap $sitemap, bool $dryRun): void
     {
         $cities = City::where('is_available', true)->get();
-        
+
         foreach ($cities as $city) {
             $url = url("/ciudad/{$city->slug}");
-            
+
             if ($dryRun) {
                 $this->line("  → {$url}");
             }
-            
+
             $sitemap->add(
                 Url::create($url)
                     ->setLastModificationDate($city->updated_at ?? now())
                     ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
                     ->setPriority(0.9)
             );
-            
+
             $this->citiesCount++;
         }
 
@@ -140,21 +142,21 @@ class GenerateSitemap extends Command
     private function addCategories(Sitemap $sitemap, bool $dryRun): void
     {
         $categories = Category::where('is_active', true)->get();
-        
+
         foreach ($categories as $category) {
             $url = url("/categoria/{$category->slug}");
-            
+
             if ($dryRun) {
                 $this->line("  → {$url}");
             }
-            
+
             $sitemap->add(
                 Url::create($url)
                     ->setLastModificationDate($category->updated_at ?? now())
                     ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
                     ->setPriority(0.8)
             );
-            
+
             $this->categoriesCount++;
         }
 
@@ -170,24 +172,24 @@ class GenerateSitemap extends Command
         $tenants = Tenant::where('is_active', true)
             ->where('status', 'approved')
             ->get();
-        
+
         foreach ($tenants as $tenant) {
             $url = url("/{$tenant->slug}");
-            
+
             if ($dryRun) {
                 $this->line("  → {$url}");
             }
-            
+
             // Los negocios PRO tienen mayor prioridad
             $priority = $tenant->is_pro ? 0.9 : 0.7;
-            
+
             $sitemap->add(
                 Url::create($url)
                     ->setLastModificationDate($tenant->updated_at ?? now())
                     ->setChangeFrequency(Url::CHANGE_FREQUENCY_DAILY)
                     ->setPriority($priority)
             );
-            
+
             $this->tenantsCount++;
         }
 

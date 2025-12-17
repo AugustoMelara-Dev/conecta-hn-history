@@ -13,15 +13,15 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * ProductResource - Herramienta de Merchandising Visual
- * 
+ *
  * Optimizado para uso móvil con una sola mano.
  * Implementa el "Muro de Contención" para límites de suscripción.
- * 
+ *
  * Características:
  * - Instagram-style image upload con editor 1:1
  * - Toggle columns para gestión rápida
@@ -68,8 +68,8 @@ class ProductResource extends Resource
     public static function canCreate(): bool
     {
         $tenant = Filament::getTenant();
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return false;
         }
 
@@ -96,8 +96,8 @@ class ProductResource extends Resource
     public static function getProductLimitInfo(): array
     {
         $tenant = Filament::getTenant();
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return ['count' => 0, 'limit' => 0, 'percentage' => 0, 'canCreate' => false];
         }
 
@@ -107,7 +107,7 @@ class ProductResource extends Resource
 
         $settings = app(GeneralSettings::class);
         $limit = $settings->free_plan_product_limit ?? 10;
-        
+
         $currentCount = Product::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
             ->count();
@@ -133,8 +133,8 @@ class ProductResource extends Resource
                 // SECCIÓN 1: IMAGEN INSTAGRAM-STYLE
                 // ═══════════════════════════════════════════════════════════
                 Forms\Components\Section::make('📷 Imagen del Producto')
-                    ->description(fn () => Filament::getTenant()?->is_pro 
-                        ? 'Sube hasta 5 imágenes. Arrastra para reordenar.' 
+                    ->description(fn () => Filament::getTenant()?->is_pro
+                        ? 'Sube hasta 5 imágenes. Arrastra para reordenar.'
                         : '⚠️ Plan Gratuito: Solo 1 imagen. Actualiza a PRO para más.')
                     ->schema([
                         Forms\Components\FileUpload::make('image_path')
@@ -213,11 +213,11 @@ class ProductResource extends Resource
                         Forms\Components\Select::make('menu_section_id')
                             // Solo visible para usuarios PRO
                             ->visible(fn () => Filament::getTenant()?->is_pro ?? false)
-                            
+
                             // SEGURIDAD: Filtro estricto por tenant_id
                             ->relationship(
-                                'menuSection', 
-                                'name', 
+                                'menuSection',
+                                'name',
                                 fn ($query) => $query
                                     ->where('tenant_id', Filament::getTenant()?->id)
                                     ->where('is_active', true)
@@ -227,7 +227,7 @@ class ProductResource extends Resource
                             ->placeholder('Selecciona o crea una sección...')
                             ->searchable()
                             ->preload()
-                            
+
                             // CREACIÓN EN LÍNEA: Modal de alta velocidad
                             ->createOptionForm([
                                 Forms\Components\TextInput::make('name')
@@ -236,15 +236,15 @@ class ProductResource extends Resource
                                     ->required()
                                     ->maxLength(100)
                                     ->autofocus(),
-                                    
+
                                 // Inyección automática del tenant_id (seguridad)
                                 Forms\Components\Hidden::make('tenant_id')
                                     ->default(fn () => Filament::getTenant()?->id),
-                                    
+
                                 // Sección activa por defecto
                                 Forms\Components\Hidden::make('is_active')
                                     ->default(true),
-                                    
+
                                 // Sort order auto-calculado al final
                                 Forms\Components\Hidden::make('sort_order')
                                     ->default(fn () => \App\Models\MenuSection::where('tenant_id', Filament::getTenant()?->id)->max('sort_order') + 1),
@@ -261,20 +261,20 @@ class ProductResource extends Resource
                         // ═══════════════════════════════════════════════════
                         Forms\Components\Select::make('menu_section_id_locked')
                             // Solo visible para usuarios FREE
-                            ->visible(fn () => !(Filament::getTenant()?->is_pro ?? false))
-                            
+                            ->visible(fn () => ! (Filament::getTenant()?->is_pro ?? false))
+
                             // Estado bloqueado
                             ->disabled()
                             ->dehydrated(false) // No se envía al backend
-                            
+
                             ->label('🔒 Sección del Menú')
                             ->placeholder('Disponible solo en Plan PRO')
                             ->options([])
-                            
+
                             // Mensaje persuasivo con link de upsell
                             ->helperText(new \Illuminate\Support\HtmlString(
-                                '<span class="text-gray-600">Organiza tus productos en secciones personalizadas.</span> ' .
-                                '<a href="' . route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug ?? '']) . '" ' .
+                                '<span class="text-gray-600">Organiza tus productos en secciones personalizadas.</span> '.
+                                '<a href="'.route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug ?? '']).'" '.
                                 'class="text-primary-600 font-bold hover:underline">→ Desbloquear con PRO</a>'
                             )),
                     ])
@@ -305,7 +305,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 Forms\Components\Section::make('✨ Desbloquea Funciones PRO')
                     ->description('Mejora tu presencia y convierte más clientes.')
-                    ->visible(fn () => !Filament::getTenant()?->is_pro)
+                    ->visible(fn () => ! Filament::getTenant()?->is_pro)
                     ->schema([
                         Forms\Components\Placeholder::make('upsell_features')
                             ->label('')
@@ -383,9 +383,8 @@ class ProductResource extends Resource
                             ->defaultItems(0)
                             ->addActionLabel('+ Agregar Variante')
                             ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => 
-                                isset($state['name'], $state['value']) 
-                                    ? "{$state['name']}: {$state['value']}" 
+                            ->itemLabel(fn (array $state): ?string => isset($state['name'], $state['value'])
+                                    ? "{$state['name']}: {$state['value']}"
                                     : null
                             ),
                     ])
@@ -485,7 +484,7 @@ class ProductResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->iconButton(),
-                    
+
                 // ═══════════════════════════════════════════════════════════
                 // CLONACIÓN INTELIGENTE: Crear variaciones rápidamente
                 // ═══════════════════════════════════════════════════════════
@@ -500,26 +499,27 @@ class ProductResource extends Resource
                     // Modificar datos antes de guardar
                     ->mutateRecordDataUsing(function (array $data): array {
                         // Añadir sufijo al nombre
-                        $data['name'] = $data['name'] . ' (Copia)';
+                        $data['name'] = $data['name'].' (Copia)';
                         // Generar nuevo slug único
-                        $data['slug'] = Str::slug($data['name']) . '-' . uniqid();
+                        $data['slug'] = Str::slug($data['name']).'-'.uniqid();
                         // Nacer inactivo para evitar publicación accidental
                         $data['is_visible'] = false;
                         $data['is_featured'] = false;
+
                         return $data;
                     })
                     ->successNotificationTitle('Producto duplicado')
                     ->modalHeading('Duplicar producto')
                     ->modalDescription('Se creará una copia inactiva que podrás editar.')
                     ->modalSubmitActionLabel('Duplicar'),
-                    
+
                 Tables\Actions\DeleteAction::make()
                     ->iconButton(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
-                    
+
                     // ═══════════════════════════════════════════════════════════
                     // BULK ACTION PRO: Asignación Masiva de Sección
                     // ═══════════════════════════════════════════════════════════
@@ -530,10 +530,10 @@ class ProductResource extends Resource
                         ->label('Mover a Sección')
                         ->icon('heroicon-o-folder-arrow-down')
                         ->color('primary')
-                        
+
                         // VELVET ROPE: Solo PRO puede usar esta herramienta
                         ->visible(fn () => Filament::getTenant()?->is_pro ?? false)
-                        
+
                         // Modal con selector de sección
                         ->form([
                             Forms\Components\Select::make('menu_section_id')
@@ -552,20 +552,20 @@ class ProductResource extends Resource
                                 ->preload()
                                 ->helperText('Solo se muestran tus secciones activas'),
                         ])
-                        
+
                         // Motor de procesamiento
                         ->action(function (Collection $records, array $data): void {
                             $sectionId = $data['menu_section_id'];
                             $count = $records->count();
-                            
+
                             // Actualización masiva eficiente
                             $records->each(function ($record) use ($sectionId) {
                                 $record->update(['menu_section_id' => $sectionId]);
                             });
-                            
+
                             // Obtener nombre de la sección para el mensaje
                             $sectionName = \App\Models\MenuSection::find($sectionId)?->name ?? 'la sección';
-                            
+
                             // Notificación de éxito
                             Notification::make()
                                 ->success()
@@ -574,10 +574,10 @@ class ProductResource extends Resource
                                 ->icon('heroicon-o-check-circle')
                                 ->send();
                         })
-                        
+
                         // Limpiar selección después de completar
                         ->deselectRecordsAfterCompletion()
-                        
+
                         // Confirmación antes de ejecutar
                         ->requiresConfirmation()
                         ->modalHeading('Mover productos a sección')

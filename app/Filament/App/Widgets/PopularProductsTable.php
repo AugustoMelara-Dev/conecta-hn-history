@@ -11,7 +11,7 @@ use Filament\Widgets\TableWidget as BaseWidget;
 
 /**
  * PopularProductsTable - Tabla de Productos Populares
- * 
+ *
  * Filament v4 Compatible: Extiende TableWidget.
  */
 class PopularProductsTable extends BaseWidget

@@ -5,13 +5,12 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\CategoryResource\Pages;
 use App\Models\Category;
 use BackedEnum;
-use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Set;
@@ -71,7 +70,7 @@ class CategoryResource extends Resource
                             ->label('Slug SEO')
                             ->required()
                             ->unique(Category::class, 'slug', ignoreRecord: true)
-                            ->prefix(config('app.url') . '/categoria/')
+                            ->prefix(config('app.url').'/categoria/')
                             ->helperText('URL amigable generada automaticamente'),
                     ])->columns(2),
 
@@ -148,7 +147,7 @@ class CategoryResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold')
-                    ->description(fn (Category $record): string => '/' . $record->slug),
+                    ->description(fn (Category $record): string => '/'.$record->slug),
 
                 // ═══════════════════════════════════════════════════════════
                 // COLUMNA: Icono

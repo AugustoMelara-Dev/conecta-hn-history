@@ -6,10 +6,10 @@ use Livewire\Component;
 
 /**
  * LandingPage - Página de Ventas B2B para Conecta HN
- * 
+ *
  * Diseñada para convencer a dueños de negocios de registrarse.
  * Transmite: confianza, modernidad, "cero fricción".
- * 
+ *
  * NO es una página para buscar comida, es una página de ventas SaaS.
  */
 class LandingPage extends Component

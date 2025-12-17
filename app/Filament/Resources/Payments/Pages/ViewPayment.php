@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Payments\Pages;
 
 use App\Filament\Resources\Payments\PaymentResource;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
+use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
@@ -26,10 +26,9 @@ class ViewPayment extends ViewRecord
                 ->size('lg')
                 ->requiresConfirmation()
                 ->modalHeading('Confirmar Pago y Activar PRO')
-                ->modalDescription(fn () => 
-                    "Confirmar pago de L. " . number_format($this->record->amount, 2) . 
-                    " del negocio '" . $this->record->tenant->name . "'?\n\n" .
-                    "Esto activara el Plan PRO y enviara confirmacion al cliente."
+                ->modalDescription(fn () => 'Confirmar pago de L. '.number_format($this->record->amount, 2).
+                    " del negocio '".$this->record->tenant->name."'?\n\n".
+                    'Esto activara el Plan PRO y enviara confirmacion al cliente.'
                 )
                 ->modalSubmitActionLabel('Confirmar y Activar PRO')
                 ->visible(fn (): bool => $this->record->status === 'pending')
@@ -37,7 +36,7 @@ class ViewPayment extends ViewRecord
                     try {
                         DB::transaction(function () {
                             $record = $this->record;
-                            
+
                             $record->update([
                                 'status' => 'approved',
                                 'reviewed_at' => now(),
@@ -45,7 +44,7 @@ class ViewPayment extends ViewRecord
 
                             $tenant = $record->tenant;
                             $currentExpiry = $tenant->plan_expires_at;
-                            
+
                             if ($currentExpiry && $currentExpiry->isFuture()) {
                                 $newExpiry = $currentExpiry->addDays(30);
                             } else {
@@ -63,14 +62,14 @@ class ViewPayment extends ViewRecord
                                     new \App\Mail\PaymentConfirmedMail($record, $tenant)
                                 );
                             } catch (\Exception $e) {
-                                \Log::warning('Email error: ' . $e->getMessage());
+                                \Log::warning('Email error: '.$e->getMessage());
                             }
                         });
 
                         \Filament\Notifications\Notification::make()
                             ->success()
                             ->title('Pago Confirmado')
-                            ->body("Plan PRO activado hasta " . 
+                            ->body('Plan PRO activado hasta '.
                                 $this->record->tenant->fresh()->plan_expires_at->format('d/m/Y'))
                             ->send();
 
@@ -116,7 +115,7 @@ class ViewPayment extends ViewRecord
                             new \App\Mail\PaymentRejectedMail($this->record, $data['rejection_reason'])
                         );
                     } catch (\Exception $e) {
-                        \Log::warning('Email error: ' . $e->getMessage());
+                        \Log::warning('Email error: '.$e->getMessage());
                     }
 
                     \Filament\Notifications\Notification::make()

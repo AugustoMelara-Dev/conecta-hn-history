@@ -10,6 +10,7 @@ class MunicipalityFactory extends Factory
     public function definition(): array
     {
         $name = fake()->city();
+
         return [
             'department_id' => Department::factory(),
             'name' => $name,

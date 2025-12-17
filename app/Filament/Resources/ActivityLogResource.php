@@ -14,7 +14,7 @@ use Spatie\Activitylog\Models\Activity;
 
 /**
  * ActivityLogResource - La "Caja Negra" del Sistema
- * 
+ *
  * Registro forense inmutable de todas las operaciones críticas.
  * Solo usuarios con rol 'super_admin' o 'auditor' pueden acceder.
  */
@@ -63,6 +63,7 @@ class ActivityLogResource extends Resource
     public static function canViewAny(): bool
     {
         $user = auth()->user();
+
         return $user && ($user->hasRole(['super_admin', 'auditor']) || $user->email === 'admin@conectahn.com');
     }
 

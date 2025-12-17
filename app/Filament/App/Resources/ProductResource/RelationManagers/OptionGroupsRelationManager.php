@@ -7,16 +7,15 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class OptionGroupsRelationManager extends RelationManager
 {
     protected static string $relationship = 'optionGroups';
 
     protected static ?string $title = 'Variantes y Extras';
-    
+
     protected static ?string $modelLabel = 'Grupo de Opciones';
-    
+
     protected static ?string $pluralModelLabel = 'Grupos de Opciones';
 
     public function form(Schema $schema): Schema

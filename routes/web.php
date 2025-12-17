@@ -80,26 +80,26 @@ Route::middleware('auth')->group(function () {
 
     // Reviews
     Route::post('/reviews', [\App\Http\Controllers\ReviewController::class, 'store'])->name('reviews.store');
-    
+
     // Follow/Unfollow
     Route::post('/tenants/{tenant}/toggle-follow', [\App\Http\Controllers\FollowController::class, 'toggle'])->name('tenant.toggle-follow');
-    
+
     // ═══════════════════════════════════════════════════════════════════
     // SHADOW LOGIN - Impersonation Exit Route
     // ═══════════════════════════════════════════════════════════════════
     Route::get('/impersonate/leave', function () {
         $impersonatorId = session('impersonator_id');
-        
+
         if ($impersonatorId) {
             session()->forget('impersonator_id');
             session()->forget('impersonator_name');
-            
+
             $admin = \App\Models\User::find($impersonatorId);
             if ($admin) {
                 \Illuminate\Support\Facades\Auth::login($admin);
             }
         }
-        
+
         return redirect('/admin');
     })->name('impersonate.leave');
 });

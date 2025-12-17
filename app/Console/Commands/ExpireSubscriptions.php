@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Jobs\AuditTenantLimits;
-use App\Mail\SubscriptionExpiringMail;
 use App\Mail\SubscriptionExpiredMail;
+use App\Mail\SubscriptionExpiringMail;
 use App\Models\Tenant;
 use App\Settings\GeneralSettings;
 use Illuminate\Console\Command;
@@ -12,11 +12,11 @@ use Illuminate\Support\Facades\Mail;
 
 /**
  * CheckSubscriptionExpiry - El Automata de Ciclo de Vida
- * 
+ *
  * Este comando gestiona automaticamente:
  * 1. Degradacion de planes vencidos (Reaper)
  * 2. Alertas preventivas a 5 y 1 dia de vencimiento
- * 
+ *
  * Los parametros se obtienen dinamicamente de GeneralSettings (Torre de Control).
  * Debe ejecutarse diariamente via cron/scheduler.
  */
@@ -44,28 +44,28 @@ class ExpireSubscriptions extends Command
         // INYECCION DE CONFIGURACION DESDE "TORRE DE CONTROL"
         // ═══════════════════════════════════════════════════════════════════
         $settings = app(GeneralSettings::class);
-        
+
         // Prioridad: Argumento manual > Configuracion global
         $optionGraceDays = $this->option('grace-days');
-        $graceDays = $optionGraceDays !== null 
-            ? (int) $optionGraceDays 
+        $graceDays = $optionGraceDays !== null
+            ? (int) $optionGraceDays
             : $settings->grace_period_days;
 
         $freeProductLimit = $settings->free_plan_product_limit;
         $dryRun = $this->option('dry-run');
 
         $this->info('═══════════════════════════════════════════════════════════');
-        $this->info('   AUTOMATA DE SUSCRIPCIONES - ' . now()->format('Y-m-d H:i:s'));
+        $this->info('   AUTOMATA DE SUSCRIPCIONES - '.now()->format('Y-m-d H:i:s'));
         $this->info('═══════════════════════════════════════════════════════════');
-        
+
         if ($optionGraceDays !== null) {
             $this->warn("   Dias de gracia: {$graceDays} (SOBREESCRITURA MANUAL)");
         } else {
             $this->info("   Ejecutando con politica global de [{$graceDays}] dias de gracia");
         }
-        
+
         $this->info("   Limite productos Free: {$freeProductLimit}");
-        
+
         if ($dryRun) {
             $this->warn('   MODO SIMULACION - No se realizaran cambios');
         }
@@ -83,7 +83,7 @@ class ExpireSubscriptions extends Command
 
         $this->newLine();
         $this->info('Proceso completado exitosamente.');
-        
+
         return Command::SUCCESS;
     }
 
@@ -109,8 +109,8 @@ class ExpireSubscriptions extends Command
 
             foreach ($tenants as $tenant) {
                 $this->line("    -> Alertando: {$tenant->name} ({$tenant->user->email})");
-                
-                if (!$dryRun) {
+
+                if (! $dryRun) {
                     try {
                         Mail::to($tenant->user->email)->queue(
                             new SubscriptionExpiringMail($tenant, $days)
@@ -145,6 +145,7 @@ class ExpireSubscriptions extends Command
 
         if ($expiredTenants->isEmpty()) {
             $this->info('  No hay suscripciones para degradar.');
+
             return;
         }
 
@@ -153,13 +154,14 @@ class ExpireSubscriptions extends Command
 
         foreach ($expiredTenants as $tenant) {
             $expiredDaysAgo = $tenant->plan_expires_at->diffInDays(now());
-            
+
             $this->warn("  [{$tenant->id}] {$tenant->name}");
             $this->line("      Expiro hace: {$expiredDaysAgo} dias");
             $this->line("      Email: {$tenant->user->email}");
 
             if ($dryRun) {
-                $this->comment("      (Simulacion - sin cambios)");
+                $this->comment('      (Simulacion - sin cambios)');
+
                 continue;
             }
 
@@ -180,13 +182,13 @@ class ExpireSubscriptions extends Command
                     Mail::to($tenant->user->email)->queue(
                         new SubscriptionExpiredMail($tenant)
                     );
-                    $this->info("      Email de suspension enviado.");
+                    $this->info('      Email de suspension enviado.');
                 } catch (\Exception $e) {
                     $this->error("      Error enviando email: {$e->getMessage()}");
                 }
 
                 $downgraded++;
-                $this->info("      DEGRADADO exitosamente.");
+                $this->info('      DEGRADADO exitosamente.');
 
             } catch (\Exception $e) {
                 $errors++;
@@ -196,8 +198,8 @@ class ExpireSubscriptions extends Command
             $this->newLine();
         }
 
-        $this->info("═══════════════════════════════════════════════════════════");
+        $this->info('═══════════════════════════════════════════════════════════');
         $this->info("  RESUMEN: {$downgraded} degradados, {$errors} errores");
-        $this->info("═══════════════════════════════════════════════════════════");
+        $this->info('═══════════════════════════════════════════════════════════');
     }
 }

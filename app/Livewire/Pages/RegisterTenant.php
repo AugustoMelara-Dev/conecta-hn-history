@@ -17,12 +17,12 @@ use Livewire\Component;
 
 /**
  * RegisterTenant - Wizard de Registro Multi-Paso
- * 
+ *
  * Embudo de conversión con 3 pasos:
  * 1. Credenciales de Usuario
  * 2. Perfil del Negocio
  * 3. Selección de Plan
- * 
+ *
  * Características:
  * - Gatekeeper: Verifica allow_registrations
  * - Transacción atómica: User + Tenant + Role + Payment
@@ -34,23 +34,31 @@ class RegisterTenant extends Component
     // WIZARD STATE
     // ═══════════════════════════════════════════════════════════════════════
     public int $currentStep = 1;
+
     public int $totalSteps = 3;
 
     // ═══════════════════════════════════════════════════════════════════════
     // PASO 1: CAMPOS DE USUARIO
     // ═══════════════════════════════════════════════════════════════════════
     public string $name = '';
+
     public string $email = '';
+
     public string $password = '';
+
     public string $password_confirmation = '';
 
     // ═══════════════════════════════════════════════════════════════════════
     // PASO 2: CAMPOS DEL NEGOCIO
     // ═══════════════════════════════════════════════════════════════════════
     public string $business_name = '';
+
     public string $slug = '';
+
     public ?int $city_id = null;
+
     public ?int $category_id = null;
+
     public string $whatsapp = '';
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -62,9 +70,13 @@ class RegisterTenant extends Component
     // ESTADO DEL COMPONENTE
     // ═══════════════════════════════════════════════════════════════════════
     public bool $registrationsEnabled = true;
+
     public int $freeProductLimit = 10;
+
     public int $proProductLimit = 100;
+
     public float $proPlanPrice = 500.00;
+
     public bool $isSubmitting = false;
 
     /**
@@ -73,7 +85,7 @@ class RegisterTenant extends Component
     public function mount(): void
     {
         $settings = app(GeneralSettings::class);
-        
+
         $this->registrationsEnabled = $settings->allow_registrations ?? true;
         $this->freeProductLimit = $settings->free_plan_product_limit ?? 10;
         $this->proProductLimit = $settings->pro_plan_product_limit ?? 100;
@@ -91,10 +103,10 @@ class RegisterTenant extends Component
     public function updatedBusinessName(string $value): void
     {
         $baseSlug = Str::slug($value);
-        
+
         // Verificar unicidad y agregar sufijo si es necesario
         if (Tenant::where('slug', $baseSlug)->exists()) {
-            $this->slug = $baseSlug . '-' . Str::random(4);
+            $this->slug = $baseSlug.'-'.Str::random(4);
         } else {
             $this->slug = $baseSlug;
         }
@@ -126,7 +138,7 @@ class RegisterTenant extends Component
      */
     protected function rulesForStep(int $step): array
     {
-        return match($step) {
+        return match ($step) {
             1 => [
                 'name' => 'required|string|max:255',
                 'email' => 'required|email|unique:users,email',
@@ -201,8 +213,9 @@ class RegisterTenant extends Component
     public function register(): void
     {
         // Verificar gatekeeper
-        if (!$this->registrationsEnabled) {
+        if (! $this->registrationsEnabled) {
             session()->flash('error', 'Los registros están temporalmente deshabilitados.');
+
             return;
         }
 
@@ -250,7 +263,7 @@ class RegisterTenant extends Component
                     // Estado según plan:
                     // Free: approved + active + !pro
                     // PRO: pending + inactive (hasta pagar) + pro
-                    'is_active' => !$isPro, // Free = activo inmediato
+                    'is_active' => ! $isPro, // Free = activo inmediato
                     'is_pro' => $isPro,
                     'status' => $isPro ? 'pending' : 'approved',
                 ]);
@@ -263,8 +276,8 @@ class RegisterTenant extends Component
                         'amount' => $this->proPlanPrice,
                         'gateway' => 'bank_transfer',
                         'status' => 'pending',
-                        'reference_number' => 'PAY-' . now()->timestamp . '-' . strtoupper(Str::random(6)),
-                        'description' => 'Suscripción Plan PRO - ' . $this->business_name,
+                        'reference_number' => 'PAY-'.now()->timestamp.'-'.strtoupper(Str::random(6)),
+                        'description' => 'Suscripción Plan PRO - '.$this->business_name,
                     ]);
                 }
 
@@ -287,7 +300,7 @@ class RegisterTenant extends Component
                 // Ruta Free: Autenticar y ir al dashboard
                 Auth::login($result['user']);
                 session()->flash('success', '¡Bienvenido a Conecta HN! Tu negocio ha sido creado.');
-                $this->redirect('/app/' . $result['tenant']->slug);
+                $this->redirect('/app/'.$result['tenant']->slug);
             }
 
         } catch (\Exception $e) {

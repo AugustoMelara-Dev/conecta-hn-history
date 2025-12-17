@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * MenuSection - Sección de Menú para organización de productos (PRO Feature)
- * 
+ *
  * Permite a los negocios organizar su catálogo en categorías visuales:
  * Entradas, Bebidas, Postres, etc.
- * 
+ *
  * ARQUITECTURA:
  * - tenant_id: Aislamiento Multi-Tenant con cascadeOnDelete
  * - sort_order: Motor de ordenamiento para narrativa de ventas
@@ -44,7 +44,7 @@ class MenuSection extends Model
 
     /**
      * Todos los productos en esta sección (pre-ordenados)
-     * 
+     *
      * IMPORTANTE: orderBy('name') quita carga de procesamiento al frontend
      */
     public function products(): HasMany

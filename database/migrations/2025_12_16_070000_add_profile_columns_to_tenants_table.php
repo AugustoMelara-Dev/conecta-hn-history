@@ -17,37 +17,37 @@ return new class extends Migration
     {
         Schema::table('tenants', function (Blueprint $table) {
             // Horario simple para usuarios FREE
-            if (!Schema::hasColumn('tenants', 'simple_schedule')) {
+            if (! Schema::hasColumn('tenants', 'simple_schedule')) {
                 $table->string('simple_schedule')->nullable();
             }
-            
+
             // Coordenadas GPS (PRO-only)
-            if (!Schema::hasColumn('tenants', 'latitude')) {
+            if (! Schema::hasColumn('tenants', 'latitude')) {
                 $table->decimal('latitude', 10, 8)->nullable();
             }
-            if (!Schema::hasColumn('tenants', 'longitude')) {
+            if (! Schema::hasColumn('tenants', 'longitude')) {
                 $table->decimal('longitude', 11, 8)->nullable();
             }
-            
+
             // Canales de contacto
-            if (!Schema::hasColumn('tenants', 'email')) {
+            if (! Schema::hasColumn('tenants', 'email')) {
                 $table->string('email')->nullable();
             }
-            if (!Schema::hasColumn('tenants', 'phone')) {
+            if (! Schema::hasColumn('tenants', 'phone')) {
                 $table->string('phone')->nullable();
             }
-            
+
             // Redes sociales
-            if (!Schema::hasColumn('tenants', 'facebook_url')) {
+            if (! Schema::hasColumn('tenants', 'facebook_url')) {
                 $table->string('facebook_url')->nullable();
             }
-            if (!Schema::hasColumn('tenants', 'instagram_url')) {
+            if (! Schema::hasColumn('tenants', 'instagram_url')) {
                 $table->string('instagram_url')->nullable();
             }
-            if (!Schema::hasColumn('tenants', 'tiktok_url')) {
+            if (! Schema::hasColumn('tenants', 'tiktok_url')) {
                 $table->string('tiktok_url')->nullable();
             }
-            if (!Schema::hasColumn('tenants', 'website_url')) {
+            if (! Schema::hasColumn('tenants', 'website_url')) {
                 $table->string('website_url')->nullable();
             }
         });
@@ -67,7 +67,7 @@ return new class extends Migration
                 'tiktok_url',
                 'website_url',
             ];
-            
+
             foreach ($columns as $column) {
                 if (Schema::hasColumn('tenants', $column)) {
                     $table->dropColumn($column);

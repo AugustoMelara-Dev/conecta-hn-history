@@ -20,7 +20,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /**
  * AdminPanelProvider - Centro de Comando Super Admin
- * 
+ *
  * Configuración del panel administrativo con:
  * - Paleta de colores azul profesional
  * - Tipografía Outfit (moderna y tecnológica)
@@ -40,7 +40,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->authGuard('web')
-            
+
             // ═══════════════════════════════════════════════════════════════
             // BRANDING: Logo y Nombre
             // ═══════════════════════════════════════════════════════════════
@@ -48,7 +48,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(fn () => view('filament.components.brand'))
             ->brandLogoHeight('2.5rem')
             ->favicon(asset('favicon.ico'))
-            
+
             // ═══════════════════════════════════════════════════════════════
             // PALETA DE COLORES: Azul Profesional
             // ═══════════════════════════════════════════════════════════════
@@ -60,24 +60,24 @@ class AdminPanelProvider extends PanelProvider
                 'danger' => Color::Rose,
                 'info' => Color::Sky,
             ])
-            
+
             // ═══════════════════════════════════════════════════════════════
             // TIPOGRAFÍA: Outfit (Google Fonts)
             // ═══════════════════════════════════════════════════════════════
             ->font('Outfit')
-            
+
             // ═══════════════════════════════════════════════════════════════
             // ERGONOMÍA DE NAVEGACIÓN
             // ═══════════════════════════════════════════════════════════════
             ->sidebarCollapsibleOnDesktop()
             ->collapsibleNavigationGroups(false)
             ->maxContentWidth('full')
-            
+
             // ═══════════════════════════════════════════════════════════════
             // MODO OSCURO
             // ═══════════════════════════════════════════════════════════════
             ->darkMode(true)
-            
+
             // ═══════════════════════════════════════════════════════════════
             // DESCUBRIMIENTO DE RECURSOS
             // ═══════════════════════════════════════════════════════════════
@@ -92,21 +92,21 @@ class AdminPanelProvider extends PanelProvider
                 // EL CEREBRO DIGITAL - Dashboard Super Admin
                 // Jerarquía Visual: KPIs → Gráficos → Tabla de Acción
                 // ══════════════════════════════════════════════════════════
-                
+
                 // 1. Bienvenida (contexto de usuario)
                 \Filament\Widgets\AccountWidget::class,
-                
+
                 // 2. NIVEL 1: KPIs Estratégicos (MRR, Revenue, Conversión)
                 \App\Filament\Widgets\FinancialStatsOverview::class,
-                
+
                 // 3. NIVEL 2: Análisis Temporal (Gráficos de Tendencia)
                 \App\Filament\Widgets\AcquisitionGrowthChart::class,
                 \App\Filament\Widgets\PlanDistributionChart::class,
-                
+
                 // 4. NIVEL 3: Centro de Comando (Tabla de Pagos Pendientes)
                 \App\Filament\Widgets\PendingPaymentsWidget::class,
             ])
-            
+
             // ═══════════════════════════════════════════════════════════════
             // MIDDLEWARE STACK
             // ═══════════════════════════════════════════════════════════════
@@ -140,7 +140,7 @@ class AdminPanelProvider extends PanelProvider
             }
 
             // Other admins must have super_admin role
-            if (!auth()->user()?->hasRole('super_admin')) {
+            if (! auth()->user()?->hasRole('super_admin')) {
                 abort(403, 'Acceso denegado. Se requiere rol de Super Admin.');
             }
         });

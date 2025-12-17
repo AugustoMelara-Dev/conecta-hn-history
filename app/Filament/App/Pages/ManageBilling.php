@@ -22,12 +22,12 @@ use Illuminate\Support\HtmlString;
 
 /**
  * ManageBilling - Centro de Suscripción y Pagos
- * 
+ *
  * Máquina de Estados Financieros Polimórfica:
  * - FREE: Muestra wizard para enviar pago con instrucciones bancarias
  * - PENDING: Muestra pantalla de espera mientras se valida
  * - PRO: Muestra dashboard con historial y recibos descargables
- * 
+ *
  * Crítico para la monetización del sistema.
  * Integrado con GeneralSettings para precios e instrucciones dinámicas.
  */
@@ -61,7 +61,7 @@ class ManageBilling extends Page implements HasForms, HasTable
     // ═══════════════════════════════════════════════════════════════════════
     // ESTADOS FINANCIEROS
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     /** Estado 1: Hay pago pendiente de revisión */
     public bool $isPending = false;
 
@@ -106,7 +106,7 @@ class ManageBilling extends Page implements HasForms, HasTable
     {
         $tenant = Filament::getTenant();
 
-        if (!$tenant) {
+        if (! $tenant) {
             return;
         }
 
@@ -116,7 +116,7 @@ class ManageBilling extends Page implements HasForms, HasTable
         try {
             $settings = app(GeneralSettings::class);
             $this->subscriptionAmount = $settings->pro_plan_price ?? 99.00;
-            $this->formattedPrice = 'L. ' . number_format($this->subscriptionAmount, 2);
+            $this->formattedPrice = 'L. '.number_format($this->subscriptionAmount, 2);
             $this->bankInstructions = $settings->bank_transfer_instructions ?? '';
             $this->supportWhatsApp = $settings->support_whatsapp_number ?? '';
         } catch (\Exception $e) {
@@ -214,7 +214,7 @@ class ManageBilling extends Page implements HasForms, HasTable
                                 ->columnSpanFull(),
                         ]),
                 ])
-                ->submitAction(new HtmlString('
+                    ->submitAction(new HtmlString('
                     <button 
                         type="submit" 
                         wire:click="submitPayment"
@@ -236,12 +236,12 @@ class ManageBilling extends Page implements HasForms, HasTable
     protected function getBankInstructionsHtml(): string
     {
         $price = $this->formattedPrice;
-        
+
         // Si tenemos instrucciones personalizadas, usarlas
-        if (!empty($this->bankInstructions)) {
+        if (! empty($this->bankInstructions)) {
             return str_replace('{precio}', $price, $this->bankInstructions);
         }
-        
+
         // HTML por defecto con precio dinámico
         return '
             <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl p-6 border border-blue-100 dark:border-gray-700">
@@ -270,7 +270,7 @@ class ManageBilling extends Page implements HasForms, HasTable
                     </div>
                     <div class="flex justify-between items-center pt-2">
                         <span class="text-gray-600 dark:text-gray-400">Monto a Pagar</span>
-                        <span class="text-3xl font-bold text-green-600 dark:text-green-400">' . $price . '</span>
+                        <span class="text-3xl font-bold text-green-600 dark:text-green-400">'.$price.'</span>
                     </div>
                 </div>
                 
@@ -296,12 +296,13 @@ class ManageBilling extends Page implements HasForms, HasTable
         $data = $this->form->getState();
         $tenant = Filament::getTenant();
 
-        if (!$tenant) {
+        if (! $tenant) {
             Notification::make()
                 ->danger()
                 ->title('Error')
                 ->body('No se pudo procesar el pago.')
                 ->send();
+
             return;
         }
 
@@ -316,6 +317,7 @@ class ManageBilling extends Page implements HasForms, HasTable
                 ->title('Ya tienes un pago pendiente')
                 ->body('Espera a que se procese tu pago anterior.')
                 ->send();
+
             return;
         }
 
@@ -415,7 +417,7 @@ class ManageBilling extends Page implements HasForms, HasTable
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();
-        }, 'recibo-' . $payment->id . '.pdf', [
+        }, 'recibo-'.$payment->id.'.pdf', [
             'Content-Type' => 'application/pdf',
         ]);
     }

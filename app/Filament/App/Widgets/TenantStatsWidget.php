@@ -2,38 +2,43 @@
 
 namespace App\Filament\App\Widgets;
 
-use Filament\Widgets\Widget;
 use App\Models\Interaction;
+use Filament\Widgets\Widget;
 
 /**
  * TenantStatsWidget - Dashboard Bento Grid con Psicología de Ventas
- * 
+ *
  * Arquitectura de Datos:
  * - Visitas: $tenant->views (contador atómico, optimizado)
  * - Clics WhatsApp: Interaction::where('type', 'whatsapp_click')
  * - Productos: $tenant->products()->count()
  * - Rating: $tenant->rating (promedio de reseñas)
- * 
+ *
  * Growth Hacking:
  * - Tarjeta de Plan cambia de color según FREE/PRO
  * - Límite de productos genera presión visual en FREE
  */
 class TenantStatsWidget extends Widget
 {
-    protected static string $view = 'filament.app.widgets.tenant-stats-widget';
-
-    protected int|string|array $columnSpan = 'full';
+    protected string $view = 'filament.app.widgets.tenant-stats-widget';
 
     // ═══════════════════════════════════════════════════════════════════════
     // PROPIEDADES PÚBLICAS (Accesibles en la vista Blade)
     // ═══════════════════════════════════════════════════════════════════════
     public int $views = 0;
+
     public int $whatsappClicks = 0;
+
     public int $productsCount = 0;
+
     public float $rating = 0.0;
+
     public int $reviewsCount = 0;
+
     public string $planName = 'Plan Gratuito';
+
     public bool $isPro = false;
+
     public int $productLimit = 10;
 
     public static function getSort(): int
@@ -45,7 +50,7 @@ class TenantStatsWidget extends Widget
     {
         $tenant = \Filament\Facades\Filament::getTenant();
 
-        if (!$tenant) {
+        if (! $tenant) {
             return;
         }
 
@@ -72,7 +77,7 @@ class TenantStatsWidget extends Widget
         // 4. RATING Y RESEÑAS
         // ═══════════════════════════════════════════════════════════════════
         $this->rating = (float) ($tenant->rating ?? 0);
-        
+
         // Verificar si existe la relación reviews
         if (method_exists($tenant, 'reviews')) {
             $this->reviewsCount = $tenant->reviews()->count();
@@ -99,11 +104,11 @@ class TenantStatsWidget extends Widget
     public function getUpgradeUrl(): string
     {
         $tenant = \Filament\Facades\Filament::getTenant();
-        
+
         if ($tenant) {
             return route('filament.app.pages.manage-billing', ['tenant' => $tenant->slug]);
         }
-        
+
         return '#';
     }
 
@@ -115,7 +120,7 @@ class TenantStatsWidget extends Widget
         if ($this->views === 0) {
             return 0;
         }
-        
+
         return round(($this->whatsappClicks / $this->views) * 100, 1);
     }
 }

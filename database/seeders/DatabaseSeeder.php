@@ -6,10 +6,10 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\Department;
 use App\Models\Municipality;
-use App\Models\Tenant;
-use App\Models\User;
 use App\Models\Product;
 use App\Models\Review;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // 0. Limpieza (Opción mental - en realidad solo creamos si no existe)
-        
+
         // 1. Crear Categorías
         $categoriesData = [
             ['name' => 'Automotriz', 'slug' => 'automotriz', 'icon' => '🚗', 'color' => '#ef4444'],
@@ -43,11 +43,11 @@ class DatabaseSeeder extends Seeder
         $cortes = Department::firstOrCreate(['name' => 'Cortés', 'slug' => 'cortes']);
         $spsMuni = Municipality::firstOrCreate(['name' => 'San Pedro Sula', 'slug' => 'sps-muni', 'department_id' => $cortes->id]);
         $sps = City::firstOrCreate(['name' => 'San Pedro Sula', 'slug' => 'san-pedro-sula', 'municipality_id' => $spsMuni->id], ['coordinates' => ['lat' => 15.5042, 'lng' => -88.0250]]);
-        
+
         $fm = Department::firstOrCreate(['name' => 'Francisco Morazán', 'slug' => 'francisco-morazan']);
         $dc = Municipality::firstOrCreate(['name' => 'Distrito Central', 'slug' => 'distrito-central', 'department_id' => $fm->id]);
         $tegus = City::firstOrCreate(['name' => 'Tegucigalpa', 'slug' => 'tegucigalpa', 'municipality_id' => $dc->id], ['coordinates' => ['lat' => 14.0723, 'lng' => -87.1921]]);
-        
+
         $atlantida = Department::firstOrCreate(['name' => 'Atlántida', 'slug' => 'atlantida']);
         $ceibaMuni = Municipality::firstOrCreate(['name' => 'La Ceiba', 'slug' => 'la-ceiba-muni', 'department_id' => $atlantida->id]);
         $ceiba = City::firstOrCreate(['name' => 'La Ceiba', 'slug' => 'la-ceiba', 'municipality_id' => $ceibaMuni->id]);
@@ -87,7 +87,7 @@ class DatabaseSeeder extends Seeder
         $createProducts = function ($tenant, $count) {
             Product::factory()->count($count)->create([
                 'tenant_id' => $tenant->id,
-                'is_visible' => true
+                'is_visible' => true,
             ]);
         };
 
@@ -101,8 +101,8 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($proTenantsData as $idx => $data) {
-            $user = User::factory()->create(['role' => 'seller', 'name' => 'Dueño ' . $data['name']]);
-            
+            $user = User::factory()->create(['role' => 'seller', 'name' => 'Dueño '.$data['name']]);
+
             $tenant = Tenant::create([
                 'name' => $data['name'],
                 'slug' => \Illuminate\Support\Str::slug($data['name']),
@@ -114,10 +114,10 @@ class DatabaseSeeder extends Seeder
                 'is_pro' => true,
                 'product_limit' => 999,
                 'banner_path' => null, // Dejamos null o pondríamos path real si tuviéramos archivos
-                'description' => "Somos líderes en {$data['name']}. Ofrecemos la mejor calidad y servicio en " . $data['city']->name . ".",
+                'description' => "Somos líderes en {$data['name']}. Ofrecemos la mejor calidad y servicio en ".$data['city']->name.'.',
                 'social_links' => json_encode([
                     ['platform' => 'facebook', 'url' => 'https://facebook.com'],
-                    ['platform' => 'instagram', 'url' => 'https://instagram.com']
+                    ['platform' => 'instagram', 'url' => 'https://instagram.com'],
                 ]),
                 'whatsapp_number' => '50499999999',
                 'primary_color' => $categoriesData[$idx % count($categoriesData)]['color'], // Color temático
@@ -138,7 +138,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($freeTenantsData as $data) {
-            $user = User::factory()->create(['role' => 'seller', 'name' => 'Dueño ' . $data['name']]);
+            $user = User::factory()->create(['role' => 'seller', 'name' => 'Dueño '.$data['name']]);
 
             $tenant = Tenant::create([
                 'name' => $data['name'],

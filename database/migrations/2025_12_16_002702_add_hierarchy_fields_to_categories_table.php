@@ -13,27 +13,27 @@ return new class extends Migration
     {
         Schema::table('categories', function (Blueprint $table) {
             // Jerarquia padre-hijo (solo si no existe)
-            if (!Schema::hasColumn('categories', 'parent_id')) {
+            if (! Schema::hasColumn('categories', 'parent_id')) {
                 $table->foreignId('parent_id')->nullable()->after('slug')
                     ->constrained('categories')->nullOnDelete();
             }
-            
+
             // Identidad visual (solo si no existen)
-            if (!Schema::hasColumn('categories', 'color')) {
+            if (! Schema::hasColumn('categories', 'color')) {
                 $table->string('color', 7)->default('#3b82f6')->after('icon');
             }
-            if (!Schema::hasColumn('categories', 'icon_image')) {
+            if (! Schema::hasColumn('categories', 'icon_image')) {
                 $table->string('icon_image')->nullable()->after('color');
             }
-            if (!Schema::hasColumn('categories', 'cover_image')) {
+            if (! Schema::hasColumn('categories', 'cover_image')) {
                 $table->string('cover_image')->nullable()->after('icon_image');
             }
-            
+
             // Control de visualizacion (solo si no existen)
-            if (!Schema::hasColumn('categories', 'is_featured')) {
+            if (! Schema::hasColumn('categories', 'is_featured')) {
                 $table->boolean('is_featured')->default(false)->after('is_active');
             }
-            if (!Schema::hasColumn('categories', 'display_order')) {
+            if (! Schema::hasColumn('categories', 'display_order')) {
                 $table->unsignedInteger('display_order')->default(0)->after('is_featured');
             }
         });

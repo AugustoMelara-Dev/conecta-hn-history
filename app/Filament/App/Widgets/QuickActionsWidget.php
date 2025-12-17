@@ -28,8 +28,8 @@ class QuickActionsWidget extends Widget
     protected function getViewData(): array
     {
         $tenant = Filament::getTenant();
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return ['tenant' => null, 'isOpen' => false, 'productsCount' => 0];
         }
 
@@ -42,22 +42,30 @@ class QuickActionsWidget extends Widget
 
     protected function isBusinessOpen($tenant): bool
     {
-        if (empty($tenant->hours_data)) return true;
-        
-        $hours = is_array($tenant->hours_data) 
-            ? $tenant->hours_data 
+        if (empty($tenant->hours_data)) {
+            return true;
+        }
+
+        $hours = is_array($tenant->hours_data)
+            ? $tenant->hours_data
             : json_decode($tenant->hours_data, true);
 
-        if (!$hours) return true;
+        if (! $hours) {
+            return true;
+        }
 
         $dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
         $today = $dayNames[now()->dayOfWeek] ?? 'lunes';
         $currentTime = now()->format('H:i');
 
-        if (!isset($hours[$today])) return true;
-        
+        if (! isset($hours[$today])) {
+            return true;
+        }
+
         $todayHours = $hours[$today];
-        if (!empty($todayHours['closed'])) return false;
+        if (! empty($todayHours['closed'])) {
+            return false;
+        }
 
         $open = $todayHours['open'] ?? $todayHours['open_time'] ?? '08:00';
         $close = $todayHours['close'] ?? $todayHours['close_time'] ?? '18:00';

@@ -7,7 +7,7 @@ use Filament\Widgets\Widget;
 
 /**
  * PendingReviewAlert - Alerta de Revisión Pendiente
- * 
+ *
  * Filament v4 Compatible: Usa métodos en lugar de propiedades.
  */
 class PendingReviewAlert extends Widget
@@ -31,11 +31,11 @@ class PendingReviewAlert extends Widget
     {
         $tenant = Filament::getTenant();
 
-        if (!$tenant) {
+        if (! $tenant) {
             return false;
         }
 
         // Show if pending, rejected, or inactive
-        return in_array($tenant->status, ['pending', 'rejected']) || !$tenant->is_active;
+        return in_array($tenant->status, ['pending', 'rejected']) || ! $tenant->is_active;
     }
 }

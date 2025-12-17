@@ -9,9 +9,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * CheckTenantStatus - Guardián de Estado del Tenant
- * 
+ *
  * Middleware de seguridad que valida el acceso a micrositios.
- * 
+ *
  * Reglas de Acceso:
  * 1. Bloquea si status !== 'approved' OR is_active === false
  * 2. Excepción: Dueño del negocio o Super Admin pueden ver en modo preview
@@ -27,7 +27,7 @@ class CheckTenantStatus
         $tenant = $request->route('tenant');
 
         // Si no hay tenant o no es instancia válida, continuar (404 nativo)
-        if (!$tenant instanceof Tenant) {
+        if (! $tenant instanceof Tenant) {
             return $next($request);
         }
 
@@ -54,7 +54,7 @@ class CheckTenantStatus
             if ($isSuperAdmin || $isOwner) {
                 // Inyectar indicador de modo preview en la request
                 $request->merge(['_preview_mode' => true]);
-                
+
                 // También guardar en session para acceder desde Blade
                 session()->flash('tenant_preview_mode', true);
                 session()->flash('tenant_preview_reason', $this->getPreviewReason($tenant));
@@ -82,7 +82,7 @@ class CheckTenantStatus
             return 'Este negocio fue rechazado. Revisa los comentarios.';
         }
 
-        if (!$tenant->is_active) {
+        if (! $tenant->is_active) {
             return 'Este negocio está desactivado temporalmente';
         }
 

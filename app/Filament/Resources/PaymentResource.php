@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Models\Payment;
-use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -16,11 +15,11 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * PaymentResource - Centro de Comando Financiero
- * 
+ *
  * Este recurso es un Disparador de Eventos de Negocio:
  * - Aprobar Pago → Activa cuenta PRO + is_active + plan_expires_at
  * - Rechazar Pago → Notifica al usuario con motivo
- * 
+ *
  * Panel Administrativo con auto-refresh cada 30s.
  */
 class PaymentResource extends Resource
@@ -60,6 +59,7 @@ class PaymentResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         $count = Payment::where('status', 'pending')->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
@@ -147,8 +147,7 @@ class PaymentResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold')
-                    ->description(fn (Payment $record): ?string => 
-                        $record->tenant?->user?->email ?? 'Sin email'
+                    ->description(fn (Payment $record): ?string => $record->tenant?->user?->email ?? 'Sin email'
                     ),
 
                 // ═══════════════════════════════════════════════════════
@@ -244,7 +243,7 @@ class PaymentResource extends Resource
             ->actions([
                 // ═══════════════════════════════════════════════════════
                 // ACCIÓN CRÍTICA: APROBAR PAGO
-                // Dispara: status=approved, is_pro=true, is_active=true, 
+                // Dispara: status=approved, is_pro=true, is_active=true,
                 //          plan_expires_at=+30 días
                 // ═══════════════════════════════════════════════════════
                 Tables\Actions\Action::make('approve')
