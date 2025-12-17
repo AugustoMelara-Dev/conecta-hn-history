@@ -124,6 +124,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/reports', \App\Livewire\Tenant\Reports\Index::class)
         ->name('tenant.reports.index');
 
+    // ═══════════════════════════════════════════════════════════════════
+    // SETTINGS (Branding, Schedule, Social)
+    // ═══════════════════════════════════════════════════════════════════
+    Route::get('/admin/settings', \App\Livewire\Tenant\Settings\Profile::class)
+        ->name('tenant.settings.profile');
+
     // Unified Profile/Account Route
     Route::get('/mi-cuenta', [ProfileController::class, 'edit'])->name('mi-cuenta.edit');
     Route::patch('/mi-cuenta', [ProfileController::class, 'update'])->name('mi-cuenta.update');
