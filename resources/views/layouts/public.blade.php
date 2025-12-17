@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     
+    {{-- Security: CSRF Token --}}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    
     {{-- SEO Meta Tags Dinámicos --}}
     <title>{{ $title ?? 'Conecta HN - El Directorio de Negocios de Honduras' }}</title>
     <meta name="description" content="{{ $description ?? 'Descubre los mejores negocios de Honduras. Restaurantes, tiendas, servicios y más.' }}">
@@ -43,6 +46,7 @@
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
         }
+        [x-cloak] { display: none !important; }
     </style>
 </head>
 <body class="bg-gray-50 antialiased">
@@ -55,6 +59,29 @@
     @guest
         <livewire:auth.auth-modal />
     @endguest
+
+    {{-- Global Toast Notifications --}}
+    @if(session('toast'))
+        <div 
+            x-data="{ show: true }"
+            x-show="show"
+            x-init="setTimeout(() => show = false, 4000)"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-4"
+            class="fixed bottom-4 right-4 z-50 px-6 py-3 bg-gray-900 text-white rounded-xl shadow-2xl flex items-center gap-3"
+        >
+            <span>{{ session('toast') }}</span>
+            <button @click="show = false" class="text-gray-400 hover:text-white">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+    @endif
     
     {{-- Footer Simple --}}
     <footer class="bg-gray-900 text-white py-12">
@@ -75,10 +102,10 @@
                 <div>
                     <h4 class="font-semibold mb-4">Enlaces</h4>
                     <ul class="space-y-2 text-gray-400">
-                        <li><a href="/" class="hover:text-white transition-colors">Inicio</a></li>
-                        <li><a href="{{ route('register') }}" class="hover:text-white transition-colors">Registrar Negocio</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Sobre Nosotros</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Contacto</a></li>
+                        <li><a href="/" wire:navigate class="hover:text-white transition-colors">Inicio</a></li>
+                        <li><a href="{{ route('register') }}" wire:navigate class="hover:text-white transition-colors">Registrar Negocio</a></li>
+                        <li><a href="/directorio" wire:navigate class="hover:text-white transition-colors">Directorio</a></li>
+                        <li><a href="/login" wire:navigate class="hover:text-white transition-colors">Iniciar Sesión</a></li>
                     </ul>
                 </div>
                 
@@ -119,3 +146,4 @@
     @stack('scripts')
 </body>
 </html>
+

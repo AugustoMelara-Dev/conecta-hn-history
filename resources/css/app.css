@@ -98,3 +98,91 @@
     color: hsl(var(--foreground));
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPA NAVIGATION & LOADING STATES
+   Custom Livewire progress bar and standardized loading utilities
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* ─────────────────────────────────────────────────────────────────────────
+     Livewire Progress Bar (NProgress Alternative)
+     ───────────────────────────────────────────────────────────────────────── */
+  [x-ref="progressbar"],
+  .livewire-progress-bar {
+    background: linear-gradient(90deg, #4F46E5, #7C3AED, #4F46E5);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    height: 3px !important;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Button Loading State (.btn-loading)
+     ───────────────────────────────────────────────────────────────────────── */
+  .btn-loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .btn-loading::after {
+    content: '';
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    margin-left: 0.5rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Spinner Animation
+     ───────────────────────────────────────────────────────────────────────── */
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Page Transition (wire:navigate)
+     ───────────────────────────────────────────────────────────────────────── */
+  [wire\:navigate] {
+    transition: opacity 0.15s ease-in-out;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Glass Effect (for modals/overlays)
+     ───────────────────────────────────────────────────────────────────────── */
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Safe Area Padding (for mobile notch/home indicator)
+     ───────────────────────────────────────────────────────────────────────── */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+}
