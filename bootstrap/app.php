@@ -18,12 +18,15 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\HydrateLocationFromCookie::class, // DIRECTIVE 2: Sticky persistence
+            \App\Http\Middleware\CheckMaintenanceMode::class, // Kill Switch Inteligente
         ]);
 
         $middleware->alias([
             'tenant.status' => \App\Http\Middleware\CheckTenantStatus::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'track.tenant' => \App\Http\Middleware\TrackTenantView::class,
+            'track.visits' => \App\Http\Middleware\TrackVisits::class, // Analytics con debouncing
+            'maintenance' => \App\Http\Middleware\CheckMaintenanceMode::class, // Alias para uso granular
         ]);
 
         //
@@ -44,6 +47,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Pilar 8: Analytics Sync (Daily at 00:05 AM)
         $schedule->job(new \App\Jobs\SyncAnalyticsJob)->dailyAt('00:05');
+
+        // ═══════════════════════════════════════════════════════════════════
+        // PILAR SEO: Generación automática de sitemap (Diario a medianoche)
+        // ═══════════════════════════════════════════════════════════════════
+        $schedule->command('seo:generate-sitemap')->daily()->at('00:30');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
