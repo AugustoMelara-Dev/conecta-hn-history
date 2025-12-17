@@ -96,6 +96,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/app/{tenant:slug}', \App\Livewire\Tenant\Dashboard::class)
         ->name('tenant.dashboard');
 
+    // ═══════════════════════════════════════════════════════════════════
+    // UPGRADE TO PRO (Pricing Table + Payment Order)
+    // ═══════════════════════════════════════════════════════════════════
+    Route::get('/upgrade/{tenant:slug}', \App\Livewire\Tenant\Upgrade::class)
+        ->name('tenant.upgrade');
+
     // Unified Profile/Account Route
     Route::get('/mi-cuenta', [ProfileController::class, 'edit'])->name('mi-cuenta.edit');
     Route::patch('/mi-cuenta', [ProfileController::class, 'update'])->name('mi-cuenta.update');
