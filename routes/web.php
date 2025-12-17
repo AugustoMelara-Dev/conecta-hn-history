@@ -125,10 +125,14 @@ Route::middleware('auth')->group(function () {
         ->name('tenant.reports.index');
 
     // ═══════════════════════════════════════════════════════════════════
-    // SETTINGS (Branding, Schedule, Social)
+    // SETTINGS (Branding, Schedule, Security)
     // ═══════════════════════════════════════════════════════════════════
     Route::get('/admin/settings', \App\Livewire\Tenant\Settings\Profile::class)
         ->name('tenant.settings.profile');
+    Route::get('/admin/settings/schedule', \App\Livewire\Tenant\Settings\Schedule::class)
+        ->name('tenant.settings.schedule');
+    Route::get('/admin/settings/security', \App\Livewire\Tenant\Settings\Security::class)
+        ->name('tenant.settings.security');
 
     // ═══════════════════════════════════════════════════════════════════
     // MARKETING (WhatsApp Config, QR Generation)
