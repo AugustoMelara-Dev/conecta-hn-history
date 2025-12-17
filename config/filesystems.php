@@ -60,6 +60,50 @@ return [
             'report' => false,
         ],
 
+        /*
+        |--------------------------------------------------------------------------
+        | Cloudflare R2 - Alternativa económica a S3 para Conecta HN
+        |--------------------------------------------------------------------------
+        | R2 es compatible con S3 API pero sin costos de egress.
+        | Ideal para galerías ilimitadas del Plan PRO.
+        | 
+        | Variables de entorno requeridas:
+        | - R2_ACCESS_KEY_ID
+        | - R2_SECRET_ACCESS_KEY
+        | - R2_BUCKET
+        | - R2_URL (URL pública del bucket)
+        | - R2_ENDPOINT (https://<account_id>.r2.cloudflarestorage.com)
+        */
+        'r2' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => 'auto',
+            'bucket' => env('R2_BUCKET'),
+            'url' => env('R2_URL'),
+            'endpoint' => env('R2_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'throw' => false,
+            'report' => false,
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | Media Disk - Disco principal para MediaLibrary (Producción)
+        |--------------------------------------------------------------------------
+        | Este disco se usa para todas las imágenes de productos y tenants.
+        | En desarrollo: usa 'public'
+        | En producción: cambiar MEDIA_DISK a 's3' o 'r2'
+        */
+        'media' => [
+            'driver' => env('MEDIA_DISK_DRIVER', 'local'),
+            'root' => storage_path('app/public'),
+            'url' => env('MEDIA_DISK_URL', env('APP_URL').'/storage'),
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*
