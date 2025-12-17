@@ -90,6 +90,12 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    // ═══════════════════════════════════════════════════════════════════
+    // TENANT DASHBOARD (Owner Panel)
+    // ═══════════════════════════════════════════════════════════════════
+    Route::get('/app/{tenant:slug}', \App\Livewire\Tenant\Dashboard::class)
+        ->name('tenant.dashboard');
+
     // Unified Profile/Account Route
     Route::get('/mi-cuenta', [ProfileController::class, 'edit'])->name('mi-cuenta.edit');
     Route::patch('/mi-cuenta', [ProfileController::class, 'update'])->name('mi-cuenta.update');
