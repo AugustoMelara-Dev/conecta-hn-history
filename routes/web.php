@@ -118,6 +118,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/orders', \App\Livewire\Tenant\Orders\Manage::class)
         ->name('tenant.orders.manage');
 
+    // ═══════════════════════════════════════════════════════════════════
+    // REPORTS & ANALYTICS (Tiered Access)
+    // ═══════════════════════════════════════════════════════════════════
+    Route::get('/admin/reports', \App\Livewire\Tenant\Reports\Index::class)
+        ->name('tenant.reports.index');
+
     // Unified Profile/Account Route
     Route::get('/mi-cuenta', [ProfileController::class, 'edit'])->name('mi-cuenta.edit');
     Route::patch('/mi-cuenta', [ProfileController::class, 'update'])->name('mi-cuenta.update');
