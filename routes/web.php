@@ -6,36 +6,65 @@ use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
-| Public Routes (Landing & Directory)
+| Public Routes - Marketplace Frontend
 |--------------------------------------------------------------------------
+|
+| Rutas del frontend público usando componentes Livewire.
+| Prioridad: Rutas específicas PRIMERO, wildcard (/{slug}) AL FINAL.
+|
 */
 
-Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('welcome');
+// ═══════════════════════════════════════════════════════════════════════
+// 1. LANDING PAGE: Página de Ventas B2B
+// ═══════════════════════════════════════════════════════════════════════
+Route::get('/', \App\Livewire\LandingPage::class)->name('home');
 
-// Auth Demo Route
-Route::get('/auth-demo', function () {
-    return Inertia::render('AuthDemo');
-})->name('auth.demo');
+// Motor de Descubrimiento (antiguo home, ahora secundario)
+Route::get('/explorar', \App\Livewire\Pages\Home::class)->name('explore');
 
-Route::get('/directorio', [\App\Http\Controllers\DirectoryController::class, 'index'])->name('directory.index');
+// ═══════════════════════════════════════════════════════════════════════
+// 2. DIRECTORIO: Búsqueda y Filtros
+// ═══════════════════════════════════════════════════════════════════════
+Route::get('/directorio', \App\Livewire\Pages\Directory::class)->name('directory');
 
-/*
-|--------------------------------------------------------------------------
-| Location Routes
-|--------------------------------------------------------------------------
-*/
+// Ruta SEO para Ciudades (ej. /ciudad/tocoa)
+Route::get('/ciudad/{city}', \App\Livewire\Pages\Directory::class)->name('city.show');
 
+// Listado de todas las ciudades
+Route::get('/ciudades', \App\Livewire\Pages\Directory::class)->name('cities.index');
+
+// Ruta SEO para Categorías (ej. /categoria/restaurantes)
+Route::get('/categoria/{category}', \App\Livewire\Pages\Directory::class)->name('category.show');
+
+// ═══════════════════════════════════════════════════════════════════════
+// 3. REGISTRO DE NEGOCIOS
+// ═══════════════════════════════════════════════════════════════════════
+Route::get('/registrar-negocio', \App\Livewire\Pages\RegisterTenant::class)->name('tenant.register');
+
+// Página de Pago Pendiente (PRO Post-Registro)
+Route::get('/registro/pago-pendiente/{payment}', \App\Livewire\Pages\PaymentPending::class)->name('payment.pending');
+
+// ═══════════════════════════════════════════════════════════════════════
+// Location API Routes
+// ═══════════════════════════════════════════════════════════════════════
 Route::post('/location/set', [\App\Http\Controllers\LocationController::class, 'setCity'])->name('location.set');
 Route::post('/location/clear', [\App\Http\Controllers\LocationController::class, 'clearCity'])->name('location.clear');
 Route::get('/api/cities', [\App\Http\Controllers\LocationController::class, 'getCities'])->name('cities.all');
 Route::get('/api/search', [\App\Http\Controllers\Api\SearchController::class, 'index'])->name('api.search');
 
-/*
-|--------------------------------------------------------------------------
-| Auth Routes
-|--------------------------------------------------------------------------
-*/
+// ═══════════════════════════════════════════════════════════════════════
+// TRACKING ROUTES - Analytics Middleware
+// Registran clics antes de redirigir a destinos externos
+// ═══════════════════════════════════════════════════════════════════════
+Route::prefix('track')->group(function () {
+    Route::get('/wa/{tenant:slug}', [\App\Http\Controllers\InteractionController::class, 'whatsapp'])->name('track.whatsapp');
+    Route::get('/call/{tenant:slug}', [\App\Http\Controllers\InteractionController::class, 'call'])->name('track.call');
+    Route::get('/maps/{tenant:slug}', [\App\Http\Controllers\InteractionController::class, 'maps'])->name('track.maps');
+});
 
+// ═══════════════════════════════════════════════════════════════════════
+// Auth Routes (Dashboard, Mi Cuenta)
+// ═══════════════════════════════════════════════════════════════════════
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -49,22 +78,46 @@ Route::middleware('auth')->group(function () {
     // Analytics API
     Route::get('/analytics/data', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.data');
 
+    // Reviews
     Route::post('/reviews', [\App\Http\Controllers\ReviewController::class, 'store'])->name('reviews.store');
+    
+    // Follow/Unfollow
+    Route::post('/tenants/{tenant}/toggle-follow', [\App\Http\Controllers\FollowController::class, 'toggle'])->name('tenant.toggle-follow');
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SHADOW LOGIN - Impersonation Exit Route
+    // ═══════════════════════════════════════════════════════════════════
+    Route::get('/impersonate/leave', function () {
+        $impersonatorId = session('impersonator_id');
+        
+        if ($impersonatorId) {
+            session()->forget('impersonator_id');
+            session()->forget('impersonator_name');
+            
+            $admin = \App\Models\User::find($impersonatorId);
+            if ($admin) {
+                \Illuminate\Support\Facades\Auth::login($admin);
+            }
+        }
+        
+        return redirect('/admin');
+    })->name('impersonate.leave');
 });
 
 require __DIR__.'/auth.php';
 
 /*
 |--------------------------------------------------------------------------
-| Tenant Microsite Routes (Wildcard - MUST BE LAST)
+| Tenant Microsite Routes (Wildcard - MUST BE LAST!)
 |--------------------------------------------------------------------------
+|
+| REGLA CRÍTICA: Esta ruta usa un "wildcard" que captura cualquier slug.
+| DEBE IR AL FINAL del archivo para no bloquear rutas específicas como
+| /directorio, /ciudad, /registrar-negocio, etc.
+|
 */
 
-Route::middleware('auth')->group(function () {
-    Route::post('/tenants/{tenant}/toggle-follow', [\App\Http\Controllers\FollowController::class, 'toggle'])->name('tenant.toggle-follow');
-});
-
-// Pilar 8: Track tenant visits with Redis HyperLogLog
-Route::get('/{tenant:slug}', [App\Http\Controllers\TenantController::class, 'show'])
-    ->middleware('track.tenant')
+// ═══ TENANT MICROSITES (MUST BE LAST) ═══
+Route::get('/{tenant:slug}', \App\Livewire\Pages\ShowTenant::class)
+    ->middleware(['tenant.status', 'track.visits'])
     ->name('tenant.show');
