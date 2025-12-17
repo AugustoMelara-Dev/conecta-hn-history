@@ -30,7 +30,7 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -57,7 +57,7 @@ class RegisteredUserController extends Controller
                 $user->tenants()->create([
                     'name' => $request->business_name,
                     'slug' => Str::slug($request->business_name).'-'.Str::random(4),
-                    'status' => 'approved', // Auto-approve for instant access
+                    'status' => 'pending', // SECURITY: Must be approved by Admin
                     'category_id' => $defaultCategory ? $defaultCategory->id : 1,
                     'city_id' => 1, // Default city
                     'is_pro' => false,
@@ -71,14 +71,14 @@ class RegisteredUserController extends Controller
 
             Auth::login($user);
 
-            // Role-based redirect (using absolute paths for clarity)
+            // Role-based redirect (Force full reload for Admin context)
             if ($user->role === 'seller') {
                 $tenant = $user->tenants->first();
                 if ($tenant) {
-                    return redirect("/app/{$tenant->slug}");
+                    return Inertia::location("/app/{$tenant->slug}");
                 }
 
-                return redirect('/admin'); // Fallback if no tenant found (shouldn't happen due to transaction)
+                return Inertia::location('/admin'); // Fallback if no tenant found
             }
 
             return redirect('/directorio');
