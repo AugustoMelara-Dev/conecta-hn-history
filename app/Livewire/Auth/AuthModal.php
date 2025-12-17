@@ -222,12 +222,18 @@ class AuthModal extends Component
 
     /**
      * Redirige a Google OAuth
-     * TODO: Implementar con Laravel Socialite
      */
-    public function loginWithGoogle(): void
+    public function loginWithGoogle()
     {
-        // $this->redirect(route('auth.google.redirect'));
-        session()->flash('toast', 'Google OAuth próximamente disponible');
+        return redirect()->route('social.redirect', 'google');
+    }
+
+    /**
+     * Redirige a Facebook OAuth
+     */
+    public function loginWithFacebook()
+    {
+        return redirect()->route('social.redirect', 'facebook');
     }
 
     // ═══════════════════════════════════════════════════════════════════════

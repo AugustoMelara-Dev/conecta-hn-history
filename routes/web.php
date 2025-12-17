@@ -53,6 +53,16 @@ Route::get('/api/cities', [\App\Http\Controllers\LocationController::class, 'get
 Route::get('/api/search', [\App\Http\Controllers\Api\SearchController::class, 'index'])->name('api.search');
 
 // ═══════════════════════════════════════════════════════════════════════
+// SOCIAL AUTHENTICATION (OAuth)
+// ═══════════════════════════════════════════════════════════════════════
+Route::prefix('auth')->group(function () {
+    Route::get('/{provider}/redirect', [\App\Http\Controllers\Auth\SocialAuthController::class, 'redirect'])
+        ->name('social.redirect');
+    Route::get('/{provider}/callback', [\App\Http\Controllers\Auth\SocialAuthController::class, 'callback'])
+        ->name('social.callback');
+});
+
+// ═══════════════════════════════════════════════════════════════════════
 // TRACKING ROUTES - Analytics Middleware
 // Registran clics antes de redirigir a destinos externos
 // ═══════════════════════════════════════════════════════════════════════
