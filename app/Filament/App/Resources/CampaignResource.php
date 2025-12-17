@@ -14,15 +14,30 @@ class CampaignResource extends Resource
 {
     protected static ?string $model = Campaign::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-megaphone';
+    public static function getNavigationIcon(): ?string
+    {
+        return 'heroicon-o-megaphone';
+    }
 
-    protected static ?string $navigationLabel = 'Campañas';
+    public static function getNavigationLabel(): string
+    {
+        return 'Campañas';
+    }
 
-    protected static ?string $modelLabel = 'Campaña';
+    public static function getModelLabel(): string
+    {
+        return 'Campaña';
+    }
 
-    protected static ?string $pluralModelLabel = 'Campañas';
+    public static function getPluralModelLabel(): string
+    {
+        return 'Campañas';
+    }
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Marketing PRO';
+    public static function getNavigationGroup(): ?string
+    {
+        return 'Marketing PRO';
+    }
 
     public static function form(Schema $schema): Schema
     {

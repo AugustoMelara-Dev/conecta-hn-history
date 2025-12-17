@@ -2,21 +2,27 @@
 
 namespace App\Filament\App\Resources\Leads;
 
+use App\Filament\App\Resources\Leads\Pages;
 use App\Filament\App\Resources\Leads\Schemas\LeadForm;
 use App\Models\Lead;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
+use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
 
 class LeadResource extends Resource
 {
     protected static ?string $model = Lead::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
-
     protected static ?string $recordTitleAttribute = 'customer_name';
+
+    public static function getNavigationIcon(): ?string
+    {
+        return 'heroicon-o-rectangle-stack';
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -55,11 +61,11 @@ class LeadResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

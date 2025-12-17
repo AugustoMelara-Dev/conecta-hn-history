@@ -3,10 +3,8 @@
 namespace App\Filament\App\Resources\FollowerResource\Pages;
 
 use App\Filament\App\Resources\FollowerResource;
-use Filament\Facades\Filament;
+use App\Filament\App\Widgets\FollowerCountWidget;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Widgets\StatsOverviewWidget;
-use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class ListFollowers extends ListRecords
 {
@@ -20,18 +18,3 @@ class ListFollowers extends ListRecords
     }
 }
 
-class FollowerCountWidget extends StatsOverviewWidget
-{
-    protected function getStats(): array
-    {
-        $tenant = Filament::getTenant();
-        $count = $tenant->followers()->count();
-
-        return [
-            Stat::make('Total de Seguidores', $count)
-                ->description('Usuarios que siguen tu negocio')
-                ->descriptionIcon('heroicon-m-users')
-                ->color('primary'),
-        ];
-    }
-}

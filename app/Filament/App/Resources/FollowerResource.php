@@ -4,6 +4,7 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\FollowerResource\Pages;
 use App\Models\Follow;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
@@ -16,13 +17,25 @@ class FollowerResource extends Resource
 {
     protected static ?string $model = Follow::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
+    public static function getNavigationIcon(): ?string
+    {
+        return 'heroicon-o-users';
+    }
 
-    protected static ?string $navigationLabel = 'Seguidores';
+    public static function getNavigationLabel(): string
+    {
+        return 'Seguidores';
+    }
 
-    protected static ?string $modelLabel = 'Seguidor';
+    public static function getModelLabel(): string
+    {
+        return 'Seguidor';
+    }
 
-    protected static ?string $pluralModelLabel = 'Seguidores';
+    public static function getPluralModelLabel(): string
+    {
+        return 'Seguidores';
+    }
 
     public static function canCreate(): bool
     {
@@ -58,14 +71,13 @@ class FollowerResource extends Resource
         $isPro = Filament::getTenant()->is_pro;
 
         return $table
-            ->query(
-                // If PRO, show followers. If Free, show empty query (or we could handle this via view)
-                // But the requirement says "The table shows a placeholder message with upgrade CTA"
-                // We can achieve this by returning an empty query for Free users and using emptyState
-                fn (Builder $query) => $isPro
-                    ? $query->where('tenant_id', Filament::getTenant()->id)
-                    : $query->whereRaw('1 = 0')
-            )
+            ->modifyQueryUsing(function (Builder $query) use ($isPro) {
+                // If PRO, show followers. If Free, show empty query
+                if ($isPro) {
+                    return $query->where('tenant_id', Filament::getTenant()->id);
+                }
+                return $query->whereRaw('1 = 0');
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Nombre')
@@ -95,9 +107,9 @@ class FollowerResource extends Resource
                 $isPro
                     ? []
                     : [
-                        Tables\Actions\Action::make('upgrade')
+                        Action::make('upgrade')
                             ->label('Actualizar a PRO')
-                            ->url('#') // In a real app, this would go to billing
+                            ->url(fn () => route('filament.app.pages.upgrade-to-pro', ['tenant' => Filament::getTenant()->slug]))
                             ->icon('heroicon-o-star')
                             ->button(),
                     ]
