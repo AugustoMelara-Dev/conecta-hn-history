@@ -4,41 +4,89 @@ namespace App\Livewire\Pages;
 
 use App\Models\Category;
 use App\Models\City;
-use App\Models\Payment;
 use App\Models\Tenant;
-use App\Models\User;
+use App\Services\TenantRegistrationService;
 use App\Settings\GeneralSettings;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Component;
 
 /**
- * RegisterTenant - Wizard de Registro Multi-Paso
+ * RegisterTenant - Experiencia Inmersiva de "Reclamación de Identidad"
  *
- * Embudo de conversión con 3 pasos:
- * 1. Credenciales de Usuario
- * 2. Perfil del Negocio
- * 3. Selección de Plan
+ * Embudo de conversión con UX gamificada:
+ * 1. Identity Claim: El usuario "reclama" su URL única
+ * 2. Credenciales de Usuario
+ * 3. Perfil del Negocio
+ * 4. Selección de Plan
  *
  * Características:
- * - Gatekeeper: Verifica allow_registrations
- * - Transacción atómica: User + Tenant + Role + Payment
- * - Enrutamiento inteligente: Free → Dashboard, PRO → Pago Pendiente
+ * - 🛡️ Firewall de nombres reservados (Blacklist)
+ * - 🔍 Validación de disponibilidad en tiempo real
+ * - 💡 Motor de sugerencias inteligentes
+ * - 🎮 UX gamificada con feedback visual
  */
 class RegisterTenant extends Component
 {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ FIREWALL: NOMBRES RESERVADOS (BLACKLIST)
+    // ═══════════════════════════════════════════════════════════════════════
+    protected const RESERVED_SLUGS = [
+        // Sistema
+        'admin', 'administrator', 'dashboard', 'panel', 'app', 'api', 'system',
+        // Auth
+        'login', 'logout', 'register', 'registrar', 'signup', 'signin', 'auth',
+        // Rutas críticas
+        'directorio', 'directory', 'explorar', 'explore', 'buscar', 'search',
+        'categoria', 'category', 'ciudad', 'city', 'ciudades', 'cities',
+        // Soporte
+        'soporte', 'support', 'help', 'ayuda', 'contacto', 'contact',
+        // Seguridad
+        'root', 'superadmin', 'moderator', 'mod', 'staff', 'team',
+        // Marca
+        'conecta', 'conectahn', 'conecta-hn', 'oficial', 'official',
+        // Utilidades
+        'track', 'tracking', 'webhook', 'webhooks', 'callback', 'oauth',
+        'payment', 'payments', 'pago', 'pagos', 'checkout', 'billing',
+        // Legales
+        'terms', 'privacy', 'legal', 'about', 'nosotros', 'acerca',
+        // Impersonation
+        'impersonate', 'shadow', 'sudo',
+        // Storage
+        'storage', 'uploads', 'files', 'images', 'assets', 'public',
+        // Testing
+        'test', 'demo', 'example', 'sample', 'prueba',
+    ];
+
     // ═══════════════════════════════════════════════════════════════════════
     // WIZARD STATE
     // ═══════════════════════════════════════════════════════════════════════
     public int $currentStep = 1;
 
-    public int $totalSteps = 3;
+    public int $totalSteps = 4; // Ahora son 4 pasos
 
     // ═══════════════════════════════════════════════════════════════════════
-    // PASO 1: CAMPOS DE USUARIO
+    // PASO 1: IDENTITY CLAIM (Nuevo paso inmersivo)
+    // ═══════════════════════════════════════════════════════════════════════
+    public string $business_name = '';
+
+    public string $slug = '';
+
+    public bool $isChecking = false;
+
+    public bool $isAvailable = false;
+
+    public bool $isReserved = false;
+
+    public bool $isTaken = false;
+
+    public string $availabilityMessage = '';
+
+    public array $suggestions = [];
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PASO 2: CAMPOS DE USUARIO
     // ═══════════════════════════════════════════════════════════════════════
     public string $name = '';
 
@@ -49,12 +97,8 @@ class RegisterTenant extends Component
     public string $password_confirmation = '';
 
     // ═══════════════════════════════════════════════════════════════════════
-    // PASO 2: CAMPOS DEL NEGOCIO
+    // PASO 3: PERFIL DEL NEGOCIO
     // ═══════════════════════════════════════════════════════════════════════
-    public string $business_name = '';
-
-    public string $slug = '';
-
     public ?int $city_id = null;
 
     public ?int $category_id = null;
@@ -62,7 +106,7 @@ class RegisterTenant extends Component
     public string $whatsapp = '';
 
     // ═══════════════════════════════════════════════════════════════════════
-    // PASO 3: SELECCIÓN DE PLAN
+    // PASO 4: SELECCIÓN DE PLAN
     // ═══════════════════════════════════════════════════════════════════════
     public string $selectedPlan = 'free';
 
@@ -97,20 +141,118 @@ class RegisterTenant extends Component
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔍 MOTOR DE VALIDACIÓN EN TIEMPO REAL
+    // ═══════════════════════════════════════════════════════════════════════
+
     /**
-     * Genera slug automáticamente basado en el nombre del negocio
+     * Hook: Se ejecuta cuando el nombre del negocio cambia
+     * Genera slug y valida disponibilidad en tiempo real
      */
     public function updatedBusinessName(string $value): void
     {
-        $baseSlug = Str::slug($value);
+        // Resetear estados
+        $this->resetAvailabilityState();
 
-        // Verificar unicidad y agregar sufijo si es necesario
-        if (Tenant::where('slug', $baseSlug)->exists()) {
-            $this->slug = $baseSlug.'-'.Str::random(4);
-        } else {
-            $this->slug = $baseSlug;
+        // Generar slug limpio
+        $this->slug = Str::slug($value);
+
+        // No validar si está vacío o muy corto
+        if (strlen($this->slug) < 3) {
+            $this->availabilityMessage = '';
+
+            return;
         }
+
+        // Ejecutar validación
+        $this->checkAvailability();
     }
+
+    /**
+     * Hook: Se ejecuta cuando el slug cambia directamente
+     */
+    public function updatedSlug(string $value): void
+    {
+        // Limpiar y slugify
+        $this->slug = Str::slug($value);
+
+        if (strlen($this->slug) < 3) {
+            $this->resetAvailabilityState();
+
+            return;
+        }
+
+        $this->checkAvailability();
+    }
+
+    /**
+     * Resetea el estado de disponibilidad
+     */
+    protected function resetAvailabilityState(): void
+    {
+        $this->isAvailable = false;
+        $this->isReserved = false;
+        $this->isTaken = false;
+        $this->suggestions = [];
+        $this->availabilityMessage = '';
+    }
+
+    /**
+     * 🔍 Motor principal de validación de disponibilidad
+     */
+    public function checkAvailability(): void
+    {
+        $this->isChecking = true;
+        $this->resetAvailabilityState();
+
+        // 1. 🛡️ FIREWALL: Verificar blacklist primero
+        if ($this->isReservedSlug($this->slug)) {
+            $this->isReserved = true;
+            $this->availabilityMessage = '🚫 Esta dirección está reservada por el sistema';
+            $this->isChecking = false;
+
+            return;
+        }
+
+        // 2. 🗃️ Verificar en base de datos
+        if (Tenant::where('slug', $this->slug)->exists()) {
+            $this->isTaken = true;
+            $this->availabilityMessage = '❌ Esta dirección ya está en uso';
+            $this->generateSuggestions();
+            $this->isChecking = false;
+
+            return;
+        }
+
+        // 3. ✅ Disponible
+        $this->isAvailable = true;
+        $this->availabilityMessage = '✅ ¡Esta dirección está disponible!';
+        $this->isChecking = false;
+    }
+
+    protected function isReservedSlug(string $slug): bool
+    {
+        return TenantRegistrationService::isReservedSlug($slug);
+    }
+
+    protected function generateSuggestions(): void
+    {
+        $this->suggestions = TenantRegistrationService::generateSuggestions($this->slug, 3);
+    }
+
+    /**
+     * Seleccionar una sugerencia con un clic
+     */
+    public function selectSuggestion(string $suggestion): void
+    {
+        $this->slug = $suggestion;
+        $this->business_name = str_replace('-', ' ', $suggestion);
+        $this->checkAvailability();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // VALIDACIÓN DE OTROS CAMPOS
+    // ═══════════════════════════════════════════════════════════════════════
 
     /**
      * Validación en tiempo real del email
@@ -123,35 +265,26 @@ class RegisterTenant extends Component
     }
 
     /**
-     * Validación en tiempo real del slug
-     */
-    public function updatedSlug(): void
-    {
-        $this->slug = Str::slug($this->slug);
-        $this->validateOnly('slug', [
-            'slug' => 'required|alpha_dash|unique:tenants,slug|min:3|max:50',
-        ]);
-    }
-
-    /**
      * Reglas de validación por paso
      */
     protected function rulesForStep(int $step): array
     {
         return match ($step) {
             1 => [
+                'business_name' => 'required|string|min:3|max:255',
+                'slug' => 'required|alpha_dash|min:3|max:50',
+            ],
+            2 => [
                 'name' => 'required|string|max:255',
                 'email' => 'required|email|unique:users,email',
                 'password' => ['required', 'confirmed', Password::min(8)],
             ],
-            2 => [
-                'business_name' => 'required|string|max:255',
-                'slug' => 'required|alpha_dash|unique:tenants,slug|min:3|max:50',
+            3 => [
                 'city_id' => 'required|exists:cities,id',
                 'category_id' => 'required|exists:categories,id',
                 'whatsapp' => 'nullable|string|max:20',
             ],
-            3 => [
+            4 => [
                 'selectedPlan' => 'required|in:free,pro',
             ],
             default => [],
@@ -164,9 +297,11 @@ class RegisterTenant extends Component
     protected function messages(): array
     {
         return [
-            'email.unique' => 'Este correo ya está registrado.',
-            'slug.unique' => 'Esta URL ya está en uso. Elige otra.',
+            'business_name.required' => 'Ingresa el nombre de tu negocio.',
+            'business_name.min' => 'El nombre debe tener al menos 3 caracteres.',
+            'slug.required' => 'La URL de tu negocio es requerida.',
             'slug.alpha_dash' => 'La URL solo puede contener letras, números y guiones.',
+            'email.unique' => 'Este correo ya está registrado.',
             'city_id.required' => 'Selecciona una ciudad.',
             'category_id.required' => 'Selecciona una categoría.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
@@ -178,6 +313,29 @@ class RegisterTenant extends Component
      */
     public function nextStep(): void
     {
+        // Validación especial para paso 1 (Identity Claim)
+        if ($this->currentStep === 1) {
+            if (! $this->isAvailable) {
+                $this->addError('slug', 'Debes elegir una dirección disponible antes de continuar.');
+
+                return;
+            }
+
+            // Verificar una última vez antes de continuar
+            if ($this->isReservedSlug($this->slug)) {
+                $this->addError('slug', 'Esta dirección está reservada por el sistema.');
+
+                return;
+            }
+
+            if (Tenant::where('slug', $this->slug)->exists()) {
+                $this->addError('slug', 'Esta dirección acaba de ser tomada. Elige otra.');
+                $this->checkAvailability();
+
+                return;
+            }
+        }
+
         // Validar paso actual
         $this->validate($this->rulesForStep($this->currentStep), $this->messages());
 
@@ -219,11 +377,25 @@ class RegisterTenant extends Component
             return;
         }
 
-        // Validar todos los pasos
+        // Validación final de slug (doble verificación de seguridad)
+        if ($this->isReservedSlug($this->slug)) {
+            $this->addError('slug', 'Esta dirección está reservada.');
+
+            return;
+        }
+
+        if (Tenant::where('slug', $this->slug)->exists()) {
+            $this->addError('slug', 'Esta dirección ya está ocupada.');
+
+            return;
+        }
+
+        // Validar todos los pasos primero
         $allRules = array_merge(
             $this->rulesForStep(1),
             $this->rulesForStep(2),
-            $this->rulesForStep(3)
+            $this->rulesForStep(3),
+            $this->rulesForStep(4)
         );
         $this->validate($allRules, $this->messages());
 
@@ -231,78 +403,39 @@ class RegisterTenant extends Component
 
         try {
             // ═══════════════════════════════════════════════════════════════
-            // TRANSACCIÓN ATÓMICA: User + Tenant + Role + Payment
+            // DELEGATE TO SERVICE (Clean Architecture)
             // ═══════════════════════════════════════════════════════════════
-            $result = DB::transaction(function () {
-                // 1. Crear Usuario
-                $user = User::create([
-                    'name' => $this->name,
-                    'email' => $this->email,
-                    'password' => Hash::make($this->password),
-                    'email_verified_at' => now(),
-                ]);
-
-                // 2. Asignar Rol (Spatie Permission / Filament Shield)
-                if (method_exists($user, 'assignRole')) {
-                    $user->assignRole('panel_user');
-                }
-
-                // 3. Determinar límites y estado según plan
-                $isPro = $this->selectedPlan === 'pro';
-                $productLimit = $isPro ? $this->proProductLimit : $this->freeProductLimit;
-
-                // 4. Crear Tenant
-                $tenant = Tenant::create([
-                    'user_id' => $user->id,
-                    'name' => $this->business_name,
-                    'slug' => $this->slug,
-                    'city_id' => $this->city_id,
-                    'category_id' => $this->category_id,
-                    'whatsapp_number' => $this->whatsapp,
-                    'product_limit' => $productLimit,
-                    // Estado según plan:
-                    // Free: approved + active + !pro
-                    // PRO: pending + inactive (hasta pagar) + pro
-                    'is_active' => ! $isPro, // Free = activo inmediato
-                    'is_pro' => $isPro,
-                    'status' => $isPro ? 'pending' : 'approved',
-                ]);
-
-                // 5. Crear Pago (Solo PRO)
-                $payment = null;
-                if ($isPro) {
-                    $payment = Payment::create([
-                        'tenant_id' => $tenant->id,
-                        'amount' => $this->proPlanPrice,
-                        'gateway' => 'bank_transfer',
-                        'status' => 'pending',
-                        'reference_number' => 'PAY-'.now()->timestamp.'-'.strtoupper(Str::random(6)),
-                        'description' => 'Suscripción Plan PRO - '.$this->business_name,
-                    ]);
-                }
-
-                return [
-                    'user' => $user,
-                    'tenant' => $tenant,
-                    'payment' => $payment,
-                    'isPro' => $isPro,
-                ];
-            });
+            $service = new TenantRegistrationService();
+            $service->register([
+                'name' => $this->name,
+                'email' => $this->email,
+                'password' => $this->password,
+                'business_name' => $this->business_name,
+                'slug' => $this->slug,
+                'city_id' => $this->city_id,
+                'category_id' => $this->category_id,
+                'whatsapp' => $this->whatsapp,
+                'selected_plan' => $this->selectedPlan,
+                'free_product_limit' => $this->freeProductLimit,
+                'pro_product_limit' => $this->proProductLimit,
+                'pro_plan_price' => $this->proPlanPrice,
+            ]);
 
             // ═══════════════════════════════════════════════════════════════
-            // ENRUTAMIENTO POST-REGISTRO (The Fork)
+            // POST-REGISTRATION ROUTING
             // ═══════════════════════════════════════════════════════════════
-            if ($result['isPro']) {
-                // Ruta PRO: NO autenticar, ir a instrucciones de pago
-                session()->flash('success', '¡Negocio registrado! Completa el pago para activar tu cuenta.');
-                $this->redirect(route('payment.pending', $result['payment']->id));
-            } else {
-                // Ruta Free: Autenticar y ir al dashboard
-                Auth::login($result['user']);
-                session()->flash('success', '¡Bienvenido a Conecta HN! Tu negocio ha sido creado.');
-                $this->redirect('/app/'.$result['tenant']->slug);
+            $flash = $service->getFlashMessage();
+            session()->flash($flash['type'], $flash['message']);
+
+            if (! $service->isPro) {
+                Auth::login($service->user);
             }
 
+            $this->redirect($service->getRedirectRoute());
+
+        } catch (\InvalidArgumentException $e) {
+            $this->isSubmitting = false;
+            $this->addError('slug', $e->getMessage());
         } catch (\Exception $e) {
             $this->isSubmitting = false;
             session()->flash('error', 'Ocurrió un error al crear tu cuenta. Intenta nuevamente.');
