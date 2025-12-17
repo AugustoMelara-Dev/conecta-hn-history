@@ -64,6 +64,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'theme_config' => 'array',
         'social_links' => 'array',
         'plan_expires_at' => 'datetime',
+        'next_billing_date' => 'date',
     ];
 
     public function registerMediaConversions(?\Spatie\MediaLibrary\MediaCollections\Models\Media $media = null): void
