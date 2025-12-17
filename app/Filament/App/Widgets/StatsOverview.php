@@ -5,13 +5,23 @@ namespace App\Filament\App\Widgets;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
+/**
+ * StatsOverview - Widget de Estadísticas Generales
+ * 
+ * Filament v4 Compatible: Extiende StatsOverviewWidget.
+ */
 class StatsOverview extends StatsOverviewWidget
 {
+    public static function getSort(): int
+    {
+        return 5;
+    }
+
     protected function getStats(): array
     {
         $tenant = \Filament\Facades\Filament::getTenant();
 
-        if (! $tenant) {
+        if (!$tenant) {
             return [];
         }
 
