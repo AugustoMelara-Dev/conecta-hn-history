@@ -5,6 +5,10 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\TenantResource\Pages;
 use App\Models\Tenant;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -18,7 +22,6 @@ class TenantResource extends Resource
 
     protected static ?string $modelPolicy = \App\Policies\TenantPolicy::class;
 
-    // Use methods instead of properties for v4 compatibility
     public static function getNavigationIcon(): string|BackedEnum|null
     {
         return 'heroicon-o-building-storefront';
@@ -43,7 +46,7 @@ class TenantResource extends Resource
     {
         return $schema
             ->components([
-                Forms\Components\Section::make('Información Principal')
+                Forms\Components\Section::make('Informacion Principal')
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre del Negocio')
@@ -64,50 +67,89 @@ class TenantResource extends Resource
                             ->preload()
                             ->required(),
 
-                        Forms\Components\TextInput::make('city')
+                        Forms\Components\Select::make('category_id')
+                            ->label('Categoria')
+                            ->relationship('category', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+
+                        Forms\Components\Select::make('city_id')
                             ->label('Ciudad')
+                            ->relationship('city', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                            
+                        Forms\Components\TextInput::make('address')
+                            ->label('Direccion')
                             ->maxLength(255),
+
+                        Forms\Components\TextInput::make('phone')
+                            ->label('Telefono')
+                            ->tel(),
+                            
+                        Forms\Components\TextInput::make('website')
+                            ->label('Sitio Web')
+                            ->url(),
                     ])->columns(2),
 
-                Forms\Components\Section::make('Configuración de Plan')
+                Forms\Components\Section::make('Configuracion de Plan')
                     ->schema([
                         Forms\Components\Toggle::make('is_pro')
                             ->label('Plan PRO Activo')
-                            ->default(false),
+                            ->default(false)
+                            ->live(),
 
                         Forms\Components\TextInput::make('product_limit')
-                            ->label('Límite de Productos')
+                            ->label('Limite de Productos')
                             ->numeric()
                             ->default(10)
                             ->minValue(0)
                             ->required()
-                            ->helperText('Cantidad máxima de productos visibles. Default: 10.'),
-                    ])->columns(2),
+                            ->helperText('Cantidad maxima de productos visibles. Default: 10.'),
+                            
+                        Forms\Components\Toggle::make('is_active')
+                            ->label('Negocio Activo')
+                            ->default(true)
+                            ->helperText('Si se desactiva, el negocio no podra operar.'),
+                    ])->columns(3),
 
-                Forms\Components\Section::make('Apariencia del Micrositio')
-                    ->description('Personaliza los colores y fuentes de la tienda pública.')
+                Forms\Components\Section::make('Personalizacion (PRO)')
+                    ->description('Personaliza la apariencia del micrositio. Exclusivo para planes PRO.')
                     ->schema([
-                        Forms\Components\ColorPicker::make('theme_config.primary_color')
-                            ->label('Color Principal')
+                        Forms\Components\FileUpload::make('logo_path')
+                            ->label('Logo')
+                            ->image()
+                            ->directory('tenants/logos')
+                            ->imageEditor(),
+
+                        Forms\Components\FileUpload::make('banner_path')
+                            ->label('Banner de Portada')
+                            ->image()
+                            ->directory('tenants/banners')
+                            ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
+                            ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
+
+                        Forms\Components\ColorPicker::make('primary_color')
+                            ->label('Color de Marca')
                             ->default('#000000')
-                            ->helperText('Color hexadecimal para botones y acentos.'),
-
-                        Forms\Components\TextInput::make('theme_config.radius')
-                            ->label('Radio de Bordes')
-                            ->default('0.5rem')
-                            ->placeholder('0.5rem'),
-
-                        Forms\Components\Select::make('theme_config.font')
-                            ->label('Tipografía')
-                            ->options([
-                                'Inter' => 'Inter (Seria/Clean)',
-                                'Roboto' => 'Roboto (Standard)',
-                                'Poppins' => 'Poppins (Moderna)',
-                            ])
-                            ->default('Inter'),
-                    ])
-                    ->collapsible()
-                    ->collapsed(),
+                            ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
+                            ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
+                            
+                        Forms\Components\TextInput::make('whatsapp_number')
+                            ->label('WhatsApp Business')
+                            ->tel()
+                            ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
+                            ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar el Boton Magico.' : null),
+                            
+                        Forms\Components\KeyValue::make('social_links')
+                            ->label('Redes Sociales')
+                            ->keyLabel('Plataforma (facebook, instagram, etc)')
+                            ->valueLabel('URL Completa')
+                            ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
+                            ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
+                    ])->columns(2),
             ]);
     }
 
@@ -115,35 +157,338 @@ class TenantResource extends Resource
     {
         return $table
             ->columns([
+                // ═══════════════════════════════════════════════════════════
+                // COLUMNA 1: Logo con identificacion visual inmediata
+                // ═══════════════════════════════════════════════════════════
+                Tables\Columns\ImageColumn::make('logo_path')
+                    ->label('')
+                    ->circular()
+                    ->size(45)
+                    ->defaultImageUrl(fn($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&background=random'),
+
+                // ═══════════════════════════════════════════════════════════
+                // COLUMNA 2: Nombre del negocio con link al micrositio
+                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Nombre')
+                    ->label('Negocio')
                     ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('city')
-                    ->label('Ciudad')
-                    ->sortable(),
-                Tables\Columns\IconColumn::make('is_pro')
-                    ->label('PRO')
-                    ->boolean(),
-                Tables\Columns\TextColumn::make('product_limit')
-                    ->label('Límite')
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold')
+                    ->description(fn (Tenant $record): string => $record->slug),
+
+                // ═══════════════════════════════════════════════════════════
+                // COLUMNA 3: Propietario con email
+                // ═══════════════════════════════════════════════════════════
+                Tables\Columns\TextColumn::make('user.name')
+                    ->label('Propietario')
+                    ->searchable()
+                    ->sortable()
+                    ->description(fn (Tenant $record): string => $record->user->email ?? ''),
+
+                // ═══════════════════════════════════════════════════════════
+                // COLUMNA 4: Ciudad y Categoria
+                // ═══════════════════════════════════════════════════════════
+                Tables\Columns\TextColumn::make('city.name')
+                    ->label('Ubicacion')
+                    ->searchable()
+                    ->sortable()
+                    ->description(fn (Tenant $record): string => $record->category->name ?? ''),
+
+                // ═══════════════════════════════════════════════════════════
+                // COLUMNA 5: Badge de Plan (PRO/FREE) con colores
+                // ═══════════════════════════════════════════════════════════
+                Tables\Columns\TextColumn::make('is_pro')
+                    ->label('Plan')
+                    ->badge()
+                    ->color(fn (bool $state): string => $state ? 'success' : 'gray')
+                    ->icon(fn (bool $state): string => $state ? 'heroicon-o-star' : 'heroicon-o-user')
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'PRO' : 'FREE'),
+
+                // ═══════════════════════════════════════════════════════════
+                // COLUMNA 6: Algoritmo de Salud del Negocio
+                // ═══════════════════════════════════════════════════════════
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->label('Salud')
+                    ->badge()
+                    ->state(function (Tenant $record): string {
+                        $lastActivity = $record->updated_at;
+                        $hoursSince = $lastActivity->diffInHours(now());
+                        
+                        if ($hoursSince <= 48) {
+                            return 'Activo';
+                        } elseif ($hoursSince <= 168) { // 7 dias
+                            return 'Normal';
+                        } elseif ($hoursSince <= 720) { // 30 dias
+                            return 'Inactivo';
+                        } else {
+                            return 'En Riesgo';
+                        }
+                    })
+                    ->color(function (Tenant $record): string {
+                        $hoursSince = $record->updated_at->diffInHours(now());
+                        
+                        if ($hoursSince <= 48) {
+                            return 'success';
+                        } elseif ($hoursSince <= 168) {
+                            return 'info';
+                        } elseif ($hoursSince <= 720) {
+                            return 'warning';
+                        } else {
+                            return 'danger';
+                        }
+                    })
+                    ->icon(function (Tenant $record): string {
+                        $hoursSince = $record->updated_at->diffInHours(now());
+                        
+                        if ($hoursSince <= 48) {
+                            return 'heroicon-o-heart';
+                        } elseif ($hoursSince <= 168) {
+                            return 'heroicon-o-check-circle';
+                        } elseif ($hoursSince <= 720) {
+                            return 'heroicon-o-clock';
+                        } else {
+                            return 'heroicon-o-exclamation-triangle';
+                        }
+                    })
+                    ->tooltip(fn (Tenant $record): string => 'Ultima actividad: ' . $record->updated_at->diffForHumans()),
+
+                // ═══════════════════════════════════════════════════════════
+                // COLUMNA 7: Estado de Aprobacion
+                // ═══════════════════════════════════════════════════════════
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Estado')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'approved' => 'success',
+                        'pending'  => 'warning',
+                        'rejected' => 'danger',
+                        default    => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'approved' => 'Aprobado',
+                        'pending'  => 'Pendiente',
+                        'rejected' => 'Rechazado',
+                        default    => ucfirst($state),
+                    }),
+
+                // ═══════════════════════════════════════════════════════════
+                // COLUMNA 8: Kill Switch - Estado Operativo
+                // ═══════════════════════════════════════════════════════════
+                Tables\Columns\IconColumn::make('is_active')
+                    ->label('Operativo')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-no-symbol')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->tooltip(fn ($record): string => $record->is_active ? 'Negocio operando normalmente' : 'SUSPENDIDO - Kill Switch activado'),
+
+                // ═══════════════════════════════════════════════════════════
+                // COLUMNA 9: Conteo de productos
+                // ═══════════════════════════════════════════════════════════
+                Tables\Columns\TextColumn::make('products_count')
+                    ->label('Productos')
+                    ->counts('products')
+                    ->sortable()
+                    ->badge()
+                    ->color('gray'),
+
+                // ═══════════════════════════════════════════════════════════
+                // COLUMNA 10: Fecha de registro
+                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('created_at')
+                    ->label('Registro')
                     ->dateTime('d/m/Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            // ═══════════════════════════════════════════════════════════════
+            // MOTOR DE SEGMENTACION GRANULAR - Filtros Avanzados
+            // ═══════════════════════════════════════════════════════════════
             ->filters([
-                Tables\Filters\TernaryFilter::make('is_pro')->label('Solo PRO'),
+                Tables\Filters\SelectFilter::make('city_id')
+                    ->label('Ciudad')
+                    ->relationship('city', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->multiple(),
+
+                Tables\Filters\SelectFilter::make('category_id')
+                    ->label('Categoria')
+                    ->relationship('category', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->multiple(),
+
+                Tables\Filters\TernaryFilter::make('is_pro')
+                    ->label('Plan')
+                    ->placeholder('Todos')
+                    ->trueLabel('Solo PRO')
+                    ->falseLabel('Solo FREE'),
+
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('Estado Operativo')
+                    ->placeholder('Todos')
+                    ->trueLabel('Activos')
+                    ->falseLabel('Suspendidos'),
+
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Estado de Aprobacion')
+                    ->options([
+                        'approved' => 'Aprobados',
+                        'pending' => 'Pendientes',
+                        'rejected' => 'Rechazados',
+                    ]),
+
+                Tables\Filters\Filter::make('en_riesgo')
+                    ->label('Negocios en Riesgo')
+                    ->query(fn ($query) => $query->where('updated_at', '<', now()->subDays(30)))
+                    ->toggle(),
             ])
+            ->filtersFormColumns(3)
+            // ═══════════════════════════════════════════════════════════════
+            // ACCIONES DE FILA
+            // ═══════════════════════════════════════════════════════════════
             ->actions([
-                Tables\Actions\EditAction::make(),
+                // Accion: Aprobar Negocio
+                Action::make('approve')
+                    ->label('Aprobar')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('success')
+                    ->visible(fn ($record) => $record->status === 'pending')
+                    ->requiresConfirmation()
+                    ->modalHeading('Aprobar Negocio')
+                    ->modalDescription('El negocio sera visible publicamente y el dueno podra operar.')
+                    ->action(function ($record) {
+                        $record->update([
+                            'status' => 'approved',
+                            'is_active' => true,
+                        ]);
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->success()
+                            ->title('Negocio Aprobado')
+                            ->send();
+                    }),
+
+                // Accion: Rechazar Negocio
+                Action::make('reject')
+                    ->label('Rechazar')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn ($record) => $record->status === 'pending')
+                    ->requiresConfirmation()
+                    ->form([
+                        \Filament\Forms\Components\Textarea::make('rejection_reason')
+                            ->label('Motivo del rechazo')
+                            ->required(),
+                    ])
+                    ->action(function ($record, array $data) {
+                        $record->update([
+                            'status' => 'rejected',
+                            'is_active' => false,
+                        ]);
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->danger()
+                            ->title('Negocio Rechazado')
+                            ->send();
+                    }),
+
+                // ═══════════════════════════════════════════════════════════
+                // SHADOW LOGIN - Suplantacion de Identidad
+                // ═══════════════════════════════════════════════════════════
+                Action::make('impersonate')
+                    ->label('Acceder como Cliente')
+                    ->icon('heroicon-o-user-circle')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Shadow Login - Soporte Tecnico')
+                    ->modalDescription(fn ($record) => "Seras autenticado como '{$record->user->name}' ({$record->user->email}). Podras ver su panel exactamente como el lo ve. Usa el banner superior para regresar.")
+                    ->modalSubmitActionLabel('Iniciar Sesion como Cliente')
+                    ->action(function ($record) {
+                        // Guardar ID del admin original en sesion
+                        session(['impersonator_id' => auth()->id()]);
+                        session(['impersonator_name' => auth()->user()->name]);
+                        
+                        // Autenticar como el usuario del tenant
+                        \Illuminate\Support\Facades\Auth::login($record->user);
+                        
+                        // Redirigir al panel del tenant
+                        return redirect('/app');
+                    }),
+
+                // ═══════════════════════════════════════════════════════════
+                // KILL SWITCH - Suspension Inmediata
+                // ═══════════════════════════════════════════════════════════
+                Action::make('killSwitch')
+                    ->label(fn ($record) => $record->is_active ? 'SUSPENDER' : 'REACTIVAR')
+                    ->icon(fn ($record) => $record->is_active ? 'heroicon-o-no-symbol' : 'heroicon-o-bolt')
+                    ->color(fn ($record) => $record->is_active ? 'danger' : 'success')
+                    ->requiresConfirmation()
+                    ->modalHeading(fn ($record) => $record->is_active ? 'KILL SWITCH - Suspension Inmediata' : 'Reactivar Negocio')
+                    ->modalDescription(fn ($record) => $record->is_active 
+                        ? 'ADVERTENCIA: Esta accion congelara TODA la operacion del negocio inmediatamente. El micrositio mostrara error 403 y el panel de control sera inaccesible.'
+                        : 'El negocio sera reactivado y podra funcionar normalmente.')
+                    ->modalSubmitActionLabel(fn ($record) => $record->is_active ? 'Confirmar Suspension' : 'Confirmar Reactivacion')
+                    ->action(function ($record) {
+                        $wasActive = $record->is_active;
+                        $record->update(['is_active' => !$record->is_active]);
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title($wasActive ? 'Kill Switch Activado' : 'Negocio Reactivado')
+                            ->body($wasActive 
+                                ? "El negocio '{$record->name}' ha sido suspendido." 
+                                : "El negocio '{$record->name}' ahora puede operar.")
+                            ->color($wasActive ? 'danger' : 'success')
+                            ->send();
+                    }),
+
+                // Accion: Forzar Upgrade a PRO
+                Action::make('forceUpgrade')
+                    ->label('Forzar PRO')
+                    ->icon('heroicon-o-arrow-up-circle')
+                    ->color('info')
+                    ->visible(fn ($record) => !$record->is_pro)
+                    ->requiresConfirmation()
+                    ->modalHeading('Activar Plan PRO Manualmente')
+                    ->modalDescription('Esto activara el Plan PRO sin registro de pago. Usar solo para regalos o pruebas.')
+                    ->form([
+                        \Filament\Forms\Components\Select::make('duration')
+                            ->label('Duracion')
+                            ->options([
+                                '1' => '1 Mes',
+                                '3' => '3 Meses',
+                                '6' => '6 Meses',
+                                '12' => '1 Ano',
+                                '999' => 'Permanente',
+                            ])
+                            ->default('1')
+                            ->required(),
+                    ])
+                    ->action(function ($record, array $data) {
+                        $months = $data['duration'] == '999' ? 1200 : (int)$data['duration'];
+                        
+                        $record->update([
+                            'is_pro' => true,
+                            'plan_expires_at' => now()->addMonths($months),
+                        ]);
+
+                        \Filament\Notifications\Notification::make()
+                            ->success()
+                            ->title('Plan PRO Activado')
+                            ->body("Vigencia: {$months} meses")
+                            ->send();
+                    }),
+
+                EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->defaultSort('created_at', 'desc');
     }
 
     public static function getRelations(): array
