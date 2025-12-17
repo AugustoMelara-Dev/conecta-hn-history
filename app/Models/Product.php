@@ -23,11 +23,13 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'slug',
         'description',
         'price',
+        'stock_status',
         'variants',
         'image_path',
         'blur_hash',
         'is_visible',
         'is_featured',
+        'is_new',
         'is_locked',
         'status',
         'moderation_note',
@@ -39,6 +41,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'variants' => 'array',
         'is_visible' => 'boolean',
         'is_featured' => 'boolean',
+        'is_new' => 'boolean',
         'is_locked' => 'boolean',
         'rejected_at' => 'datetime',
     ];
@@ -65,6 +68,10 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
             ->quality(80);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // RELATIONSHIPS
+    // ═══════════════════════════════════════════════════════════════════════
+
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
@@ -73,6 +80,14 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     public function menuSection(): BelongsTo
     {
         return $this->belongsTo(MenuSection::class);
+    }
+
+    /**
+     * Alias for menuSection (consistency)
+     */
+    public function section(): BelongsTo
+    {
+        return $this->menuSection();
     }
 
     public function category(): BelongsTo
@@ -91,10 +106,31 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     }
 
     /**
+     * Product gallery images (PRO Feature)
+     */
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)->ordered();
+    }
+
+    /**
      * Grupos de opciones del producto (variantes, extras)
      */
     public function optionGroups(): HasMany
     {
         return $this->hasMany(ProductOptionGroup::class)->orderBy('sort_order');
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ACCESSORS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Check if product is in stock
+     */
+    public function getIsInStockAttribute(): bool
+    {
+        return $this->stock_status === 'in_stock';
+    }
 }
+
