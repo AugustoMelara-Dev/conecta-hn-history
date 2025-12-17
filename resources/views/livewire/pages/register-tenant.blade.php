@@ -410,81 +410,179 @@
             @endif
 
             {{-- ═══════════════════════════════════════════════════════════════ --}}
-            {{-- PASO 3: PERFIL DEL NEGOCIO --}}
+            {{-- PASO 3: PERFIL DEL NEGOCIO (Visual Category Grid) --}}
             {{-- ═══════════════════════════════════════════════════════════════ --}}
             @if($currentStep === 3)
-                <div class="text-center mb-8">
-                    <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                        Cuéntanos de tu negocio
-                    </h1>
-                    <p class="text-gray-600">
-                        Ayuda a tus clientes a encontrarte
-                    </p>
-                </div>
+                @php
+                    // 🎨 Mapeo de Iconos por Nombre de Categoría
+                    $categoryIcons = [
+                        // Comida & Bebidas
+                        'Restaurantes' => '🍽️',
+                        'Comida' => '🍔',
+                        'Cafeterías' => '☕',
+                        'Bebidas' => '🥤',
+                        'Repostería' => '🍰',
+                        'Baleadas' => '🫓',
+                        
+                        // Moda & Belleza
+                        'Ropa' => '👗',
+                        'Moda' => '👔',
+                        'Zapatos' => '👟',
+                        'Belleza' => '💄',
+                        'Peluquerías' => '💇',
+                        'Spa' => '🧖',
+                        'Joyería' => '💍',
+                        
+                        // Tecnología & Electrónica
+                        'Tecnología' => '💻',
+                        'Electrónica' => '📱',
+                        'Celulares' => '📱',
+                        'Computadoras' => '🖥️',
+                        
+                        // Salud & Bienestar
+                        'Salud' => '💊',
+                        'Farmacias' => '💊',
+                        'Médicos' => '🏥',
+                        'Gimnasios' => '🏋️',
+                        'Deportes' => '⚽',
+                        
+                        // Servicios
+                        'Servicios' => '🛠️',
+                        'Profesionales' => '👨‍💼',
+                        'Educación' => '📚',
+                        'Transporte' => '🚗',
+                        'Hogar' => '🏠',
+                        'Mascotas' => '🐶',
+                        
+                        // Comercio
+                        'Tiendas' => '🛒',
+                        'Supermercados' => '🏪',
+                        'Ferreterías' => '🔧',
+                        'Muebles' => '🛋️',
+                        
+                        // Entretenimiento
+                        'Entretenimiento' => '🎉',
+                        'Eventos' => '🎊',
+                        'Arte' => '🎨',
+                        'Música' => '🎵',
+                        
+                        // Otros
+                        'Otros' => '✨',
+                    ];
+                @endphp
 
-                <div class="space-y-5">
-                    {{-- Ciudad --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">¿En qué ciudad estás?</label>
-                        <select
-                            wire:model="city_id"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        >
-                            <option value="">Selecciona una ciudad</option>
-                            @foreach($cities as $city)
-                                <option value="{{ $city->id }}">{{ $city->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('city_id') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                <div 
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-4"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                >
+                    <div class="text-center mb-8">
+                        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                            Define tu identidad
+                        </h1>
+                        <p class="text-gray-600">
+                            ¿Qué tipo de negocio es <span class="font-semibold text-blue-600">{{ $slug }}</span>?
+                        </p>
                     </div>
 
-                    {{-- Categoría --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Categoría de tu negocio</label>
-                        <select
-                            wire:model="category_id"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        >
-                            <option value="">Selecciona una categoría</option>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->id }}">{{ $category->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('category_id') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
-                    </div>
-
-                    {{-- WhatsApp --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">WhatsApp (opcional)</label>
-                        <div class="flex">
-                            <span class="inline-flex items-center px-4 bg-gray-100 border border-r-0 border-gray-300 rounded-l-xl text-gray-500">
-                                +504
-                            </span>
-                            <input
-                                wire:model="whatsapp"
-                                type="tel"
-                                placeholder="9999-0000"
-                                class="flex-1 px-4 py-3 border border-gray-300 rounded-r-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                            />
+                    <div class="space-y-6">
+                        {{-- 📍 Ciudad con Selector Moderno --}}
+                        <div>
+                            <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                                <span class="text-lg">📍</span> ¿En qué ciudad estás?
+                            </label>
+                            <div class="relative">
+                                <select
+                                    wire:model="city_id"
+                                    class="w-full appearance-none px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer pr-10"
+                                >
+                                    <option value="">Selecciona tu ciudad</option>
+                                    @foreach($cities as $city)
+                                        <option value="{{ $city->id }}">{{ $city->name }}</option>
+                                    @endforeach
+                                </select>
+                                {{-- Flecha personalizada --}}
+                                <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            @error('city_id') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                         </div>
-                    </div>
 
-                    {{-- Navegación --}}
-                    <div class="flex gap-4 pt-4">
-                        <button
-                            wire:click="previousStep"
-                            type="button"
-                            class="flex-1 py-3 px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-all"
-                        >
-                            ← Atrás
-                        </button>
-                        <button
-                            wire:click="nextStep"
-                            type="button"
-                            class="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all"
-                        >
-                            Continuar →
-                        </button>
+                        {{-- 🏷️ Categoría - Visual Selection Grid --}}
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                Elige la categoría que mejor describe tu negocio
+                            </label>
+                            
+                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                @foreach($categories as $category)
+                                    @php
+                                        $icon = $categoryIcons[$category->name] ?? '✨';
+                                        $isSelected = $category_id == $category->id;
+                                    @endphp
+                                    
+                                    <button
+                                        type="button"
+                                        wire:click="$set('category_id', {{ $category->id }})"
+                                        class="relative flex flex-col items-center justify-center h-28 p-3 rounded-2xl border-2 transition-all duration-200 active:scale-95 cursor-pointer
+                                            {{ $isSelected 
+                                                ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-500/20' 
+                                                : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50' }}"
+                                    >
+                                        {{-- Check Badge (Solo cuando está seleccionado) --}}
+                                        @if($isSelected)
+                                            <div class="absolute top-2 right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </div>
+                                        @endif
+                                        
+                                        {{-- Emoji Icon --}}
+                                        <span class="text-3xl mb-2">{{ $icon }}</span>
+                                        
+                                        {{-- Category Name --}}
+                                        <span class="text-xs font-medium text-center leading-tight
+                                            {{ $isSelected ? 'text-blue-700' : 'text-gray-700' }}">
+                                            {{ $category->name }}
+                                        </span>
+                                    </button>
+                                @endforeach
+                            </div>
+                            
+                            @error('category_id') 
+                                <p class="mt-2 text-sm text-red-500 text-center">{{ $message }}</p> 
+                            @enderror
+                        </div>
+
+                        {{-- Navegación --}}
+                        <div class="flex gap-4 pt-4">
+                            <button
+                                wire:click="previousStep"
+                                type="button"
+                                class="py-3.5 px-6 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-all shadow-sm"
+                            >
+                                ← Atrás
+                            </button>
+                            <button
+                                wire:click="nextStep"
+                                wire:loading.attr="disabled"
+                                wire:loading.class="opacity-50"
+                                type="button"
+                                class="flex-1 py-3.5 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl"
+                            >
+                                <span wire:loading.remove>Continuar →</span>
+                                <span wire:loading class="flex items-center justify-center gap-2">
+                                    <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                    </svg>
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             @endif
