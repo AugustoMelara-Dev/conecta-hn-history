@@ -2,73 +2,282 @@
 
 namespace App\Filament\App\Pages;
 
-use Filament\Forms\Components\ColorPicker;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
+use Filament\Facades\Filament;
+use Filament\Forms;
 use Filament\Pages\Tenancy\EditTenantProfile as BaseEditTenantProfile;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
 
+/**
+ * EditTenantProfile - Centro de Control de Identidad del Negocio
+ * 
+ * ESTRATEGIA DE MONETIZACIÓN:
+ * - FREE ("La Jaula"): Campos premium visibles pero DESHABILITADOS
+ * - PRO ("El Estudio"): Acceso completo a personalización
+ */
 class EditTenantProfile extends BaseEditTenantProfile
 {
     public static function getLabel(): string
     {
-        return 'Perfil de Negocio';
+        return 'Perfil de mi Negocio';
     }
 
-    public function form(Schema $schema): Schema
+    public function form(Schema $form): Schema
     {
-        return $schema
+        $isPro = Filament::getTenant()?->is_pro ?? false;
+        $billingUrl = '#';
+        
+        try {
+            $billingUrl = route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug ?? '']);
+        } catch (\Exception $e) {
+            // Route may not exist during app boot
+        }
+
+        return $form
             ->components([
-                Section::make('Información Básica')
-                    ->schema([
-                        TextInput::make('name')
-                            ->label('Nombre del Negocio')
-                            ->required(),
+                Forms\Components\Tabs::make('ProfileSettings')
+                    ->tabs([
+                        // ═══════════════════════════════════════════════════════════
+                        // TAB 1: IDENTIDAD VISUAL
+                        // ═══════════════════════════════════════════════════════════
+                        Forms\Components\Tabs\Tab::make('Identidad')
+                            ->label('🎨 Marca')
+                            ->icon('heroicon-o-paint-brush')
+                            ->schema([
+                                Forms\Components\Section::make('Información del Negocio')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('name')
+                                            ->label('Nombre del Negocio')
+                                            ->required()
+                                            ->maxLength(100),
 
-                        TextInput::make('slug')
-                            ->label('URL (Slug)')
-                            ->required()
-                            ->unique(ignoreRecord: true),
+                                        Forms\Components\TextInput::make('slug')
+                                            ->label('URL Personalizada')
+                                            ->prefix('conectahn.com/')
+                                            ->required()
+                                            ->unique(ignoreRecord: true)
+                                            ->alphaDash()
+                                            ->helperText(new HtmlString(
+                                                '<span class="text-warning-600">⚠️ Cambiar esto romperá enlaces compartidos.</span>'
+                                            )),
 
-                        FileUpload::make('logo_path')
-                            ->label('Logo')
-                            ->image()
-                            ->directory('tenants/logos')
-                            ->imageEditor(),
+                                        Forms\Components\Textarea::make('description')
+                                            ->label('Sobre Nosotros')
+                                            ->rows(4)
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(2),
 
-                        Textarea::make('description')
-                            ->label('Descripción')
-                            ->rows(3),
+                                Forms\Components\Section::make('Logo')
+                                    ->schema([
+                                        Forms\Components\FileUpload::make('logo_path')
+                                            ->label('Logo')
+                                            ->avatar()
+                                            ->image()
+                                            ->imageEditor()
+                                            ->imageCropAspectRatio('1:1')
+                                            ->directory('tenants/logos'),
+                                    ]),
 
-                        TextInput::make('phone')
-                            ->label('Teléfono')
-                            ->tel(),
+                                Forms\Components\Section::make('Personalización Premium')
+                                    ->description($isPro ? '✨ Personaliza tu marca.' : '🔒 Funciones PRO')
+                                    ->schema([
+                                        Forms\Components\FileUpload::make('banner_path')
+                                            ->label('Banner')
+                                            ->image()
+                                            ->imageEditor()
+                                            ->imageCropAspectRatio('16:9')
+                                            ->directory('tenants/banners')
+                                            ->disabled(!$isPro)
+                                            ->hint(!$isPro ? '🔒 PRO' : null),
 
-                        TextInput::make('address')
-                            ->label('Dirección'),
+                                        Forms\Components\ColorPicker::make('primary_color')
+                                            ->label('Color de Marca')
+                                            ->disabled(!$isPro)
+                                            ->hint(!$isPro ? '🔒 PRO' : null),
+                                    ])
+                                    ->columns(2),
+                            ]),
 
-                        TextInput::make('website')
-                            ->label('Sitio Web')
-                            ->url(),
-                    ])->columns(2),
+                        // ═══════════════════════════════════════════════════════════
+                        // TAB 2: UBICACIÓN
+                        // ═══════════════════════════════════════════════════════════
+                        Forms\Components\Tabs\Tab::make('Ubicación')
+                            ->label('📍 Ubicación')
+                            ->icon('heroicon-o-map-pin')
+                            ->schema([
+                                Forms\Components\Section::make('Contacto')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('email')
+                                            ->label('Email')
+                                            ->email()
+                                            ->prefixIcon('heroicon-o-envelope'),
 
-                Section::make('Personalización (PRO)')
-                    ->description('Personaliza la apariencia de tu micrositio. Exclusivo para planes PRO.')
-                    ->schema([
-                        FileUpload::make('banner_path')
-                            ->label('Banner de Portada')
-                            ->image()
-                            ->directory('tenants/banners')
-                            ->disabled(fn () => ! $this->tenant->is_pro)
-                            ->helperText(fn () => ! $this->tenant->is_pro ? 'Actualiza a PRO para subir un banner.' : null),
+                                        Forms\Components\TextInput::make('phone')
+                                            ->label('Teléfono')
+                                            ->tel()
+                                            ->prefixIcon('heroicon-o-phone'),
 
-                        ColorPicker::make('primary_color')
-                            ->label('Color de Marca')
-                            ->disabled(fn () => ! $this->tenant->is_pro)
-                            ->helperText(fn () => ! $this->tenant->is_pro ? 'Actualiza a PRO para personalizar tu color.' : null),
-                    ])->columns(2),
+                                        Forms\Components\TextInput::make('whatsapp_number')
+                                            ->label('WhatsApp')
+                                            ->tel()
+                                            ->prefixIcon('heroicon-o-chat-bubble-left-right'),
+                                    ])
+                                    ->columns(3),
+
+                                Forms\Components\Section::make('Dirección')
+                                    ->schema([
+                                        Forms\Components\Select::make('city_id')
+                                            ->label('Ciudad')
+                                            ->relationship('city', 'name')
+                                            ->searchable()
+                                            ->preload()
+                                            ->required(),
+
+                                        Forms\Components\Textarea::make('address')
+                                            ->label('Dirección')
+                                            ->rows(2)
+                                            ->columnSpanFull(),
+                                    ]),
+
+                                Forms\Components\Section::make('GPS')
+                                    ->description($isPro ? 'Pin en el mapa' : '🔒 PRO-only')
+                                    ->collapsed()
+                                    ->schema([
+                                        Forms\Components\TextInput::make('latitude')
+                                            ->label('Latitud')
+                                            ->numeric()
+                                            ->disabled(!$isPro)
+                                            ->hint(!$isPro ? '🔒 PRO' : null),
+
+                                        Forms\Components\TextInput::make('longitude')
+                                            ->label('Longitud')
+                                            ->numeric()
+                                            ->disabled(!$isPro)
+                                            ->hint(!$isPro ? '🔒 PRO' : null),
+                                    ])
+                                    ->columns(2),
+                            ]),
+
+                        // ═══════════════════════════════════════════════════════════
+                        // TAB 3: OPERACIONES
+                        // ═══════════════════════════════════════════════════════════
+                        Forms\Components\Tabs\Tab::make('Operaciones')
+                            ->label('⏰ Operaciones')
+                            ->icon('heroicon-o-clock')
+                            ->schema([
+                                Forms\Components\Section::make('Redes Sociales')
+                                    ->description($isPro ? 'Conecta tus redes' : '🔒 PRO-only')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('facebook_url')
+                                            ->label('Facebook')
+                                            ->url()
+                                            ->disabled(!$isPro)
+                                            ->prefixIcon('heroicon-o-globe-alt'),
+
+                                        Forms\Components\TextInput::make('instagram_url')
+                                            ->label('Instagram')
+                                            ->url()
+                                            ->disabled(!$isPro)
+                                            ->prefixIcon('heroicon-o-camera'),
+
+                                        Forms\Components\TextInput::make('tiktok_url')
+                                            ->label('TikTok')
+                                            ->url()
+                                            ->disabled(!$isPro)
+                                            ->prefixIcon('heroicon-o-play'),
+
+                                        Forms\Components\TextInput::make('website_url')
+                                            ->label('Sitio Web')
+                                            ->url()
+                                            ->disabled(!$isPro)
+                                            ->prefixIcon('heroicon-o-globe-americas'),
+                                    ])
+                                    ->columns(2),
+
+                                // Horario Simple para FREE
+                                Forms\Components\Section::make('Horario General')
+                                    ->visible(!$isPro)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('simple_schedule')
+                                            ->label('Horario de Atención')
+                                            ->placeholder('Ej: Lunes a Viernes de 8:00 AM a 5:00 PM')
+                                            ->columnSpanFull(),
+                                    ]),
+
+                                // Horario Complejo para PRO
+                                Forms\Components\Section::make('Horarios Detallados')
+                                    ->visible($isPro)
+                                    ->collapsed()
+                                    ->schema([
+                                        Forms\Components\Repeater::make('hours_data')
+                                            ->label('')
+                                            ->schema([
+                                                Forms\Components\Select::make('day')
+                                                    ->label('Día')
+                                                    ->options([
+                                                        'lunes' => 'Lunes',
+                                                        'martes' => 'Martes',
+                                                        'miercoles' => 'Miércoles',
+                                                        'jueves' => 'Jueves',
+                                                        'viernes' => 'Viernes',
+                                                        'sabado' => 'Sábado',
+                                                        'domingo' => 'Domingo',
+                                                    ])
+                                                    ->required(),
+
+                                                Forms\Components\TimePicker::make('open')
+                                                    ->label('Apertura')
+                                                    ->seconds(false),
+
+                                                Forms\Components\TimePicker::make('close')
+                                                    ->label('Cierre')
+                                                    ->seconds(false),
+
+                                                Forms\Components\Toggle::make('is_closed')
+                                                    ->label('Cerrado'),
+                                            ])
+                                            ->columns(4)
+                                            ->reorderable()
+                                            ->collapsible()
+                                            ->addActionLabel('+ Agregar día')
+                                            ->defaultItems(0)
+                                            ->maxItems(7),
+                                    ]),
+
+                                Forms\Components\Section::make('WhatsApp')
+                                    ->collapsed()
+                                    ->schema([
+                                        Forms\Components\Textarea::make('whatsapp_message')
+                                            ->label('Mensaje Predeterminado')
+                                            ->rows(2)
+                                            ->placeholder('Hola, me interesa...'),
+                                    ]),
+                            ]),
+                    ])
+                    ->persistTabInQueryString()
+                    ->columnSpanFull(),
             ]);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        $isPro = $this->tenant?->is_pro ?? false;
+
+        return [
+            \Filament\Actions\Action::make('view_site')
+                ->label('Ver mi Sitio')
+                ->icon('heroicon-o-arrow-top-right-on-square')
+                ->color('gray')
+                ->url(fn () => url('/' . $this->tenant->slug))
+                ->openUrlInNewTab(),
+
+            \Filament\Actions\Action::make('upgrade')
+                ->label('✨ Mejorar a PRO')
+                ->icon('heroicon-m-sparkles')
+                ->color('warning')
+                ->visible(!$isPro)
+                ->url(fn () => route('filament.app.pages.manage-billing', ['tenant' => $this->tenant->slug])),
+        ];
     }
 }
