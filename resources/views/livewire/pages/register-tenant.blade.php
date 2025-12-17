@@ -176,82 +176,250 @@
             @endif
 
             {{-- ═══════════════════════════════════════════════════════════════ --}}
-            {{-- PASO 2: CREDENCIALES DE USUARIO --}}
+            {{-- PASO 2: CREDENCIALES DE USUARIO (Enhanced UX) --}}
             {{-- ═══════════════════════════════════════════════════════════════ --}}
             @if($currentStep === 2)
-                <div class="text-center mb-8">
-                    <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                        Crea tu cuenta
-                    </h1>
-                    <p class="text-gray-600">
-                        Para administrar <span class="font-semibold text-blue-600">{{ $slug }}</span>
-                    </p>
-                </div>
-
-                <div class="space-y-5">
-                    {{-- Nombre --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Tu nombre completo</label>
-                        <input
-                            wire:model="name"
-                            type="text"
-                            placeholder="Juan Pérez"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        />
-                        @error('name') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                <div 
+                    x-data="{
+                        showPassword: false,
+                        showConfirmPassword: false,
+                        password: '',
+                        strengthScore: 0,
+                        strengthLabel: '',
+                        strengthColor: 'bg-gray-200',
+                        
+                        checkStrength() {
+                            let score = 0;
+                            const pw = this.password;
+                            
+                            // Length check
+                            if (pw.length >= 8) score++;
+                            if (pw.length >= 12) score++;
+                            
+                            // Contains number
+                            if (/\d/.test(pw)) score++;
+                            
+                            // Contains special char
+                            if (/[!@#$%^&*(),.?\":{}|<>]/.test(pw)) score++;
+                            
+                            // Contains uppercase
+                            if (/[A-Z]/.test(pw)) score++;
+                            
+                            this.strengthScore = Math.min(score, 4);
+                            
+                            if (score === 0) {
+                                this.strengthLabel = '';
+                                this.strengthColor = 'bg-gray-200';
+                            } else if (score === 1) {
+                                this.strengthLabel = '🔴 Débil - Agrega más caracteres';
+                                this.strengthColor = 'bg-red-500';
+                            } else if (score === 2) {
+                                this.strengthLabel = '🟠 Regular - Agrega un número';
+                                this.strengthColor = 'bg-orange-500';
+                            } else if (score === 3) {
+                                this.strengthLabel = '🟡 Buena - Agrega un símbolo';
+                                this.strengthColor = 'bg-yellow-500';
+                            } else {
+                                this.strengthLabel = '🟢 ¡Excelente!';
+                                this.strengthColor = 'bg-emerald-500';
+                            }
+                        }
+                    }"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-4"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                >
+                    <div class="text-center mb-8">
+                        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                            Crea tu cuenta
+                        </h1>
+                        <p class="text-gray-600">
+                            Para administrar <span class="font-semibold text-blue-600">{{ $slug }}</span>
+                        </p>
                     </div>
 
-                    {{-- Email --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Correo electrónico</label>
-                        <input
-                            wire:model.live.debounce.500ms="email"
-                            type="email"
-                            placeholder="tu@email.com"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        />
-                        @error('email') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
-                    </div>
+                    <div class="space-y-5">
+                        {{-- Grid Responsivo: 2 columnas en desktop --}}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{-- Nombre --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Tu nombre completo
+                                </label>
+                                <input
+                                    wire:model="name"
+                                    type="text"
+                                    placeholder="Juan Pérez"
+                                    autofocus
+                                    tabindex="1"
+                                    class="w-full px-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm focus:shadow-md"
+                                />
+                                @error('name') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                            </div>
 
-                    {{-- Password --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
-                        <input
-                            wire:model="password"
-                            type="password"
-                            placeholder="Mínimo 8 caracteres"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        />
-                        @error('password') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
-                    </div>
+                            {{-- WhatsApp con prefijo Honduras --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    WhatsApp <span class="text-gray-400 font-normal">(opcional)</span>
+                                </label>
+                                <div class="flex">
+                                    <span class="inline-flex items-center gap-2 px-4 bg-gray-100 border border-r-0 border-gray-300 rounded-l-xl text-gray-600 text-sm font-medium">
+                                        <span class="text-lg">🇭🇳</span> +504
+                                    </span>
+                                    <input
+                                        wire:model="whatsapp"
+                                        type="tel"
+                                        placeholder="9999-0000"
+                                        tabindex="2"
+                                        inputmode="numeric"
+                                        maxlength="9"
+                                        class="flex-1 px-4 py-3.5 border border-gray-300 rounded-r-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm focus:shadow-md"
+                                    />
+                                </div>
+                            </div>
+                        </div>
 
-                    {{-- Confirm Password --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Confirmar contraseña</label>
-                        <input
-                            wire:model="password_confirmation"
-                            type="password"
-                            placeholder="Repite tu contraseña"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        />
-                    </div>
+                        {{-- Email (Fila completa) --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Correo electrónico
+                            </label>
+                            <div class="relative">
+                                <input
+                                    wire:model.live.debounce.500ms="email"
+                                    type="email"
+                                    placeholder="tu@email.com"
+                                    tabindex="3"
+                                    class="w-full px-4 py-3.5 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm focus:shadow-md
+                                        @error('email') border-red-300 @enderror"
+                                />
+                                {{-- Spinner de validación --}}
+                                <div wire:loading wire:target="email" class="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <svg class="animate-spin h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            @error('email') 
+                                <p class="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                    {{ $message }}
+                                    @if($message === 'Este correo ya está registrado.')
+                                        <a href="/login" class="underline hover:text-red-700">
+                                            ¿Iniciar sesión?
+                                        </a>
+                                    @endif
+                                </p>
+                            @enderror
+                        </div>
 
-                    {{-- Navegación --}}
-                    <div class="flex gap-4 pt-4">
-                        <button
-                            wire:click="previousStep"
-                            type="button"
-                            class="flex-1 py-3 px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-all"
-                        >
-                            ← Atrás
-                        </button>
-                        <button
-                            wire:click="nextStep"
-                            type="button"
-                            class="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all"
-                        >
-                            Continuar →
-                        </button>
+                        {{-- Contraseña (Fila completa con Strength Meter) --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Contraseña
+                            </label>
+                            <div class="relative">
+                                <input
+                                    wire:model="password"
+                                    x-model="password"
+                                    @input="checkStrength()"
+                                    :type="showPassword ? 'text' : 'password'"
+                                    placeholder="Mínimo 8 caracteres"
+                                    tabindex="4"
+                                    class="w-full px-4 py-3.5 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm focus:shadow-md"
+                                />
+                                {{-- Toggle de Visibilidad --}}
+                                <button
+                                    type="button"
+                                    @click="showPassword = !showPassword"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <svg x-show="!showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                    <svg x-show="showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: none;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            
+                            {{-- Password Strength Meter (Gamified) --}}
+                            <div class="mt-3" x-show="password.length > 0" x-transition>
+                                <div class="flex gap-1 mb-2">
+                                    <div class="h-1.5 flex-1 rounded-full transition-all duration-300"
+                                        :class="strengthScore >= 1 ? strengthColor : 'bg-gray-200'"></div>
+                                    <div class="h-1.5 flex-1 rounded-full transition-all duration-300"
+                                        :class="strengthScore >= 2 ? strengthColor : 'bg-gray-200'"></div>
+                                    <div class="h-1.5 flex-1 rounded-full transition-all duration-300"
+                                        :class="strengthScore >= 3 ? strengthColor : 'bg-gray-200'"></div>
+                                    <div class="h-1.5 flex-1 rounded-full transition-all duration-300"
+                                        :class="strengthScore >= 4 ? strengthColor : 'bg-gray-200'"></div>
+                                </div>
+                                <p class="text-xs transition-all" 
+                                   :class="strengthScore >= 4 ? 'text-emerald-600' : strengthScore >= 3 ? 'text-yellow-600' : 'text-gray-500'"
+                                   x-text="strengthLabel"></p>
+                            </div>
+                            @error('password') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                        </div>
+
+                        {{-- Confirmar Contraseña --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Confirmar contraseña
+                            </label>
+                            <div class="relative">
+                                <input
+                                    wire:model="password_confirmation"
+                                    :type="showConfirmPassword ? 'text' : 'password'"
+                                    placeholder="Repite tu contraseña"
+                                    tabindex="5"
+                                    class="w-full px-4 py-3.5 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm focus:shadow-md"
+                                />
+                                <button
+                                    type="button"
+                                    @click="showConfirmPassword = !showConfirmPassword"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <svg x-show="!showConfirmPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                    <svg x-show="showConfirmPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: none;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Navegación --}}
+                        <div class="flex gap-4 pt-4">
+                            <button
+                                wire:click="previousStep"
+                                type="button"
+                                tabindex="7"
+                                class="flex-1 py-3.5 px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-all"
+                            >
+                                ← Atrás
+                            </button>
+                            <button
+                                wire:click="nextStep"
+                                wire:loading.attr="disabled"
+                                wire:loading.class="opacity-50"
+                                type="button"
+                                tabindex="6"
+                                class="flex-1 py-3.5 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl"
+                            >
+                                <span wire:loading.remove>Continuar →</span>
+                                <span wire:loading class="flex items-center justify-center gap-2">
+                                    <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                    </svg>
+                                    Validando...
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             @endif

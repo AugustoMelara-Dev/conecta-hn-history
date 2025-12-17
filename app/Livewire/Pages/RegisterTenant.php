@@ -405,7 +405,7 @@ class RegisterTenant extends Component
             // ═══════════════════════════════════════════════════════════════
             // DELEGATE TO SERVICE (Clean Architecture)
             // ═══════════════════════════════════════════════════════════════
-            $service = new TenantRegistrationService();
+            $service = new TenantRegistrationService;
             $service->register([
                 'name' => $this->name,
                 'email' => $this->email,
