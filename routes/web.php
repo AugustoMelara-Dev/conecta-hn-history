@@ -102,6 +102,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/upgrade/{tenant:slug}', \App\Livewire\Tenant\Upgrade::class)
         ->name('tenant.upgrade');
 
+    // ═══════════════════════════════════════════════════════════════════
+    // PRODUCTS CRUD (Tenant Panel)
+    // ═══════════════════════════════════════════════════════════════════
+    Route::get('/admin/products', \App\Livewire\Tenant\Products\Index::class)
+        ->name('tenant.products.index');
+    Route::get('/admin/products/create', \App\Livewire\Tenant\Products\Form::class)
+        ->name('tenant.products.create');
+    Route::get('/admin/products/{product}/edit', \App\Livewire\Tenant\Products\Form::class)
+        ->name('tenant.products.edit');
+
     // Unified Profile/Account Route
     Route::get('/mi-cuenta', [ProfileController::class, 'edit'])->name('mi-cuenta.edit');
     Route::patch('/mi-cuenta', [ProfileController::class, 'update'])->name('mi-cuenta.update');
