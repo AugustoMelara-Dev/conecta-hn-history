@@ -112,6 +112,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/products/{product}/edit', \App\Livewire\Tenant\Products\Form::class)
         ->name('tenant.products.edit');
 
+    // ═══════════════════════════════════════════════════════════════════
+    // ORDERS MANAGEMENT (Kanban PRO / List FREE)
+    // ═══════════════════════════════════════════════════════════════════
+    Route::get('/admin/orders', \App\Livewire\Tenant\Orders\Manage::class)
+        ->name('tenant.orders.manage');
+
     // Unified Profile/Account Route
     Route::get('/mi-cuenta', [ProfileController::class, 'edit'])->name('mi-cuenta.edit');
     Route::patch('/mi-cuenta', [ProfileController::class, 'update'])->name('mi-cuenta.update');

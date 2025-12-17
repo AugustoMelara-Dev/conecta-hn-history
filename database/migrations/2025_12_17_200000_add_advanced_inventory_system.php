@@ -21,59 +21,55 @@ return new class extends Migration
         // ═══════════════════════════════════════════════════════════════════
         // TABLE: menu_sections (Product Categories per Tenant)
         // ═══════════════════════════════════════════════════════════════════
-        Schema::create('menu_sections', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('tenant_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->string('name', 255);
-            $table->boolean('is_active')->default(true);
-            $table->integer('sort_order')->default(0);
-            $table->timestamps();
+        if (!Schema::hasTable('menu_sections')) {
+            Schema::create('menu_sections', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('tenant_id')
+                    ->constrained()
+                    ->cascadeOnDelete();
+                $table->string('name', 255);
+                $table->boolean('is_active')->default(true);
+                $table->integer('sort_order')->default(0);
+                $table->timestamps();
 
-            // Composite index for optimized menu queries
-            $table->index(['tenant_id', 'sort_order']);
-        });
+                // Composite index for optimized menu queries
+                $table->index(['tenant_id', 'sort_order']);
+            });
+        }
 
         // ═══════════════════════════════════════════════════════════════════
         // TABLE: product_images (Gallery - PRO Feature)
         // ═══════════════════════════════════════════════════════════════════
-        Schema::create('product_images', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('product_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->string('image_path', 2048);
-            $table->integer('sort_order')->default(0);
-            $table->timestamps();
+        if (!Schema::hasTable('product_images')) {
+            Schema::create('product_images', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('product_id')
+                    ->constrained()
+                    ->cascadeOnDelete();
+                $table->string('image_path', 2048);
+                $table->integer('sort_order')->default(0);
+                $table->timestamps();
 
-            $table->index(['product_id', 'sort_order']);
-        });
+                $table->index(['product_id', 'sort_order']);
+            });
+        }
 
         // ═══════════════════════════════════════════════════════════════════
-        // ALTER: products (Add Advanced Inventory Fields)
+        // ALTER: products (Add Advanced Inventory Fields - Safe)
         // ═══════════════════════════════════════════════════════════════════
         Schema::table('products', function (Blueprint $table) {
-            // Category relation (nullable - PRO feature)
-            $table->foreignId('menu_section_id')
-                ->nullable()
-                ->after('tenant_id')
-                ->constrained('menu_sections')
-                ->nullOnDelete();
+            // Only add columns if they don't exist
+            if (!Schema::hasColumn('products', 'stock_status')) {
+                $table->string('stock_status', 20)
+                    ->default('in_stock')
+                    ->after('price');
+            }
 
-            // Stock management
-            $table->string('stock_status', 20)
-                ->default('in_stock')
-                ->after('price');
-
-            // Marketing flags (PRO features)
-            $table->boolean('is_featured')
-                ->default(false)
-                ->after('is_visible');
-
-            $table->boolean('is_new')
-                ->default(false)
-                ->after('is_featured');
+            if (!Schema::hasColumn('products', 'is_new')) {
+                $table->boolean('is_new')
+                    ->default(false)
+                    ->after('is_featured');
+            }
         });
     }
 
