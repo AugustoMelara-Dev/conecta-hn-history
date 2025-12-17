@@ -702,7 +702,7 @@
                     <button
                         wire:click="previousStep"
                         type="button"
-                        class="flex-1 py-3 px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-all"
+                        class="py-3.5 px-6 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-all shadow-sm"
                     >
                         ← Atrás
                     </button>
@@ -711,13 +711,13 @@
                         wire:loading.attr="disabled"
                         wire:loading.class="opacity-50 cursor-wait"
                         type="button"
-                        class="flex-1 py-3 px-6 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-all"
+                        class="flex-1 py-3.5 px-6 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
                     >
                         <span wire:loading.remove>
                             @if($selectedPlan === 'pro')
-                                Continuar al pago →
+                                ⚡ Activar Plan PRO →
                             @else
-                                Crear mi negocio →
+                                🚀 Crear mi Micrositio Ahora
                             @endif
                         </span>
                         <span wire:loading class="flex items-center justify-center gap-2">
@@ -725,7 +725,7 @@
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                             </svg>
-                            Creando...
+                            Creando tu micrositio...
                         </span>
                     </button>
                 </div>

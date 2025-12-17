@@ -50,6 +50,11 @@
     <main>
         {{ $slot }}
     </main>
+
+    {{-- Global AuthModal (B2C Invisible Barrier) --}}
+    @guest
+        <livewire:auth.auth-modal />
+    @endguest
     
     {{-- Footer Simple --}}
     <footer class="bg-gray-900 text-white py-12">

@@ -239,7 +239,7 @@ class TenantRegistrationService
 
         return [
             'type' => 'success',
-            'message' => '¡Bienvenido a Conecta HN! Tu negocio ha sido creado.',
+            'message' => '🎉 ¡Bienvenido! Tu tienda está lista para configurarse.',
         ];
     }
 }
