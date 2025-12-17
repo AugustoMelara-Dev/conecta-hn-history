@@ -1,24 +1,111 @@
-*.log
-.DS_Store
+# ─────────────────────────────────────────────────────
+# CONECTA HN - GITIGNORE COMPLETO
+# Actualizado para deployment seguro y Git Flow
+# ─────────────────────────────────────────────────────
+
+# ═══ CREDENCIALES Y SECRETOS (CRÍTICO) ═══
 .env
+.env.*
 .env.backup
 .env.production
-.phpactor.json
-.phpunit.result.cache
-/.fleet
-/.idea
-/.nova
-/.phpunit.cache
-/.vscode
-/.zed
-/auth.json
+.env.staging
+.env.local
+auth.json
+*.key
+*.pem
+*.p12
+.credentials/
+
+# ═══ DEPENDENCIAS ═══
+/vendor
 /node_modules
+
+# ═══ BUILD Y COMPILADOS ═══
 /public/build
 /public/hot
 /public/storage
-/storage/*.key
-/storage/pail
-/vendor
+/public/css/filament
+/public/js/filament
+*.compiled.*
+.vite/
+
+# ═══ CACHE Y LOGS ═══
+*.log
+*.cache
+.phpunit.result.cache
+.phpunit.cache/
+storage/*.key
+storage/pail/
+storage/logs/*
+!storage/logs/.gitkeep
+storage/framework/cache/*
+!storage/framework/cache/.gitkeep
+storage/framework/sessions/*
+!storage/framework/sessions/.gitkeep
+storage/framework/views/*
+!storage/framework/views/.gitkeep
+bootstrap/cache/*.php
+
+# ═══ IDEs Y EDITORES ═══
+.idea/
+.vscode/
+.fleet/
+.nova/
+.zed/
+*.sublime-*
+*.swp
+*.swo
+.phpactor.json
+.project
+.classpath
+.settings/
+nbproject/
+
+# ═══ SISTEMA OPERATIVO ═══
+.DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.bak
+*~
+
+# ═══ TESTING ═══
+/coverage
+.phpunit.result.cache
+phpunit.xml.bak
+.pest/
+.phpunit/
+
+# ═══ DEPLOYMENT ═══
 Homestead.json
 Homestead.yaml
-Thumbs.db
+docker-compose.override.yml
+.vagrant/
+*.box
+
+# ═══ UPLOADS LOCALES (desarrollo) ═══
+storage/app/public/*
+!storage/app/public/.gitkeep
+
+# ═══ ARCHIVOS TEMPORALES ═══
+*.tmp
+*.temp
+*.swp
+.sass-cache/
+
+# ═══ DATABASE ═══
+*.sqlite
+*.sqlite-journal
+database/database.sqlite
+
+# ═══ DOCUMENTOS DE AUDITORÍA LOCAL ═══
+AUDIT_REPORT.md
+QA_CERTIFICATION.md
+error_log.txt
+
+# ═══ ARCHIVOS DE DESARROLLO ═══
+todo.md
+notes.md
+scratch.php
+test.php
