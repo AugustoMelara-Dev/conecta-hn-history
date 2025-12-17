@@ -10,35 +10,36 @@ class DirectoryController extends Controller
 {
     public function index(Request $request)
     {
-        $city = $request->input('city', 'Tegucigalpa');
+        $activeCityId = session('active_city_id');
 
         $query = Tenant::query()
-            ->select('id', 'name', 'slug', 'logo_path', 'banner_path', 'blur_hash', 'city', 'is_pro', 'category_id', 'description')
-            ->where('status', 'approved');
+            ->select('id', 'name', 'slug', 'logo_path', 'banner_path', 'blur_hash', 'city_id', 'is_pro', 'category_id', 'description')
+            ->where('status', 'approved')
+            ->where('is_active', true);
 
         // Location Filter (Strict)
-        // If a city is selected in the picker (session/cookie), it overrides the default
-        // But if passed via query param (e.g. from landing), use that.
         // Logic: Query Param > Session > Default
-        $activeCityId = session('active_city_id');
-        if ($request->has('city')) {
-            $query->where('city', $request->input('city'));
+        if ($request->filled('city')) {
+            $query->whereHas('city', function ($q) use ($request) {
+                $q->where('name', $request->input('city'));
+            });
         } elseif ($activeCityId) {
-            $cityModel = \App\Models\City::find($activeCityId);
-            if ($cityModel) {
-                $query->where('city', $cityModel->name);
-            }
+            // Optimization: Filter directly by ID if we have it from session
+            $query->where('city_id', $activeCityId);
         }
 
         // Category Filter
-        if ($request->has('category')) {
+        if ($request->filled('category')) {
             $query->whereHas('category', function ($q) use ($request) {
                 $q->where('slug', $request->input('category'));
             });
         }
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->input('category_id'));
+        }
 
         // Search Filter
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -51,26 +52,26 @@ class DirectoryController extends Controller
         }
 
         // Rating Filter
-        if ($request->has('rating')) {
+        if ($request->filled('rating')) {
             $minRating = (int) $request->input('rating');
             $query->whereHas('reviews')
                 ->withAvg('reviews', 'rating')
                 ->having('reviews_avg_rating', '>=', $minRating);
         }
 
-        // Eager Load Relationships
-        $query->with(['category', 'reviews', 'products' => function ($q) {
+        // Eager Load Relationships (Added city)
+        $query->with(['category', 'city', 'reviews', 'products' => function ($q) {
             $q->select('id', 'tenant_id', 'name', 'image_path', 'blur_hash', 'price')
                 ->take(4);
         }]);
 
-        // Prioritize PRO tenants
+        // Prioritize PRO tenants & Pagination
         $tenants = $query->orderByDesc('is_pro')
             ->orderBy('name')
-            ->get();
+            ->paginate(12)
+            ->withQueryString();
 
         // Get all categories for pills (Cached)
-        // DYNAMIC DATA: Fetch only active categories
         $categories = \Illuminate\Support\Facades\Cache::rememberForever('categories_list', function () {
             return \App\Models\Category::where('is_active', true)
                 ->select('id', 'name', 'slug', 'icon', 'color')
@@ -87,8 +88,8 @@ class DirectoryController extends Controller
 
         // Get active city safely
         $activeCity = null;
-        if (session('active_city_id')) {
-            $activeCity = \App\Models\City::find(session('active_city_id'));
+        if ($activeCityId) {
+            $activeCity = \App\Models\City::find($activeCityId);
         }
 
         return Inertia::render('Directory/Index', [
@@ -96,12 +97,7 @@ class DirectoryController extends Controller
             'categories' => $categories,
             'cities' => $cities,
             'activeCity' => $activeCity,
-            'filters' => [
-                'category' => $request->input('category'),
-                'city' => $request->input('city'),
-                'search' => $request->input('search'),
-                'rating' => $request->input('rating'),
-            ],
+            'filters' => $request->only(['search', 'category', 'category_id', 'rating', 'city']),
         ]);
     }
 }
