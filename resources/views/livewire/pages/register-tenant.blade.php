@@ -183,46 +183,33 @@
                     x-data="{
                         showPassword: false,
                         showConfirmPassword: false,
-                        password: '',
-                        strengthScore: 0,
-                        strengthLabel: '',
-                        strengthColor: 'bg-gray-200',
+                        password: @entangle('password').live,
                         
-                        checkStrength() {
-                            let score = 0;
-                            const pw = this.password;
-                            
-                            // Length check
-                            if (pw.length >= 8) score++;
-                            if (pw.length >= 12) score++;
-                            
-                            // Contains number
-                            if (/\d/.test(pw)) score++;
-                            
-                            // Contains special char
-                            if (/[!@#$%^&*(),.?\":{}|<>]/.test(pw)) score++;
-                            
-                            // Contains uppercase
-                            if (/[A-Z]/.test(pw)) score++;
-                            
-                            this.strengthScore = Math.min(score, 4);
-                            
-                            if (score === 0) {
-                                this.strengthLabel = '';
-                                this.strengthColor = 'bg-gray-200';
-                            } else if (score === 1) {
-                                this.strengthLabel = '🔴 Débil - Agrega más caracteres';
-                                this.strengthColor = 'bg-red-500';
-                            } else if (score === 2) {
-                                this.strengthLabel = '🟠 Regular - Agrega un número';
-                                this.strengthColor = 'bg-orange-500';
-                            } else if (score === 3) {
-                                this.strengthLabel = '🟡 Buena - Agrega un símbolo';
-                                this.strengthColor = 'bg-yellow-500';
-                            } else {
-                                this.strengthLabel = '🟢 ¡Excelente!';
-                                this.strengthColor = 'bg-emerald-500';
-                            }
+                        get strength() {
+                            let s = 0;
+                            const pw = this.password || '';
+                            if (pw.length > 5) s++;  // Longitud mínima
+                            if (pw.length > 8) s++;  // Longitud ideal
+                            if (/[0-9]/.test(pw)) s++;  // Números
+                            if (/[^A-Za-z0-9]/.test(pw)) s++;  // Símbolos
+                            return Math.min(s, 4);
+                        },
+                        
+                        get strengthLabel() {
+                            if (!this.password || this.password.length === 0) return '';
+                            if (this.strength === 1) return '🔴 Débil - Agrega más caracteres';
+                            if (this.strength === 2) return '🟠 Regular - Agrega un número';
+                            if (this.strength === 3) return '🟡 Buena - Agrega un símbolo';
+                            if (this.strength >= 4) return '🟢 ¡Excelente!';
+                            return '';
+                        },
+                        
+                        get strengthColor() {
+                            if (this.strength === 1) return 'bg-red-500';
+                            if (this.strength === 2) return 'bg-orange-500';
+                            if (this.strength === 3) return 'bg-yellow-500';
+                            if (this.strength >= 4) return 'bg-emerald-500';
+                            return 'bg-gray-200';
                         }
                     }"
                     x-transition:enter="transition ease-out duration-300"
@@ -320,9 +307,7 @@
                             </label>
                             <div class="relative">
                                 <input
-                                    wire:model="password"
                                     x-model="password"
-                                    @input="checkStrength()"
                                     :type="showPassword ? 'text' : 'password'"
                                     placeholder="Mínimo 8 caracteres"
                                     tabindex="4"
@@ -345,19 +330,19 @@
                             </div>
                             
                             {{-- Password Strength Meter (Gamified) --}}
-                            <div class="mt-3" x-show="password.length > 0" x-transition>
+                            <div class="mt-3" x-show="password?.length > 0" x-transition>
                                 <div class="flex gap-1 mb-2">
                                     <div class="h-1.5 flex-1 rounded-full transition-all duration-300"
-                                        :class="strengthScore >= 1 ? strengthColor : 'bg-gray-200'"></div>
+                                        :class="strength >= 1 ? strengthColor : 'bg-gray-200'"></div>
                                     <div class="h-1.5 flex-1 rounded-full transition-all duration-300"
-                                        :class="strengthScore >= 2 ? strengthColor : 'bg-gray-200'"></div>
+                                        :class="strength >= 2 ? strengthColor : 'bg-gray-200'"></div>
                                     <div class="h-1.5 flex-1 rounded-full transition-all duration-300"
-                                        :class="strengthScore >= 3 ? strengthColor : 'bg-gray-200'"></div>
+                                        :class="strength >= 3 ? strengthColor : 'bg-gray-200'"></div>
                                     <div class="h-1.5 flex-1 rounded-full transition-all duration-300"
-                                        :class="strengthScore >= 4 ? strengthColor : 'bg-gray-200'"></div>
+                                        :class="strength >= 4 ? strengthColor : 'bg-gray-200'"></div>
                                 </div>
                                 <p class="text-xs transition-all" 
-                                   :class="strengthScore >= 4 ? 'text-emerald-600' : strengthScore >= 3 ? 'text-yellow-600' : 'text-gray-500'"
+                                   :class="strength >= 4 ? 'text-emerald-600' : strength >= 3 ? 'text-yellow-600' : 'text-gray-500'"
                                    x-text="strengthLabel"></p>
                             </div>
                             @error('password') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
