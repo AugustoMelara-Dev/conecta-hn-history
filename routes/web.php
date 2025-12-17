@@ -130,6 +130,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/settings', \App\Livewire\Tenant\Settings\Profile::class)
         ->name('tenant.settings.profile');
 
+    // ═══════════════════════════════════════════════════════════════════
+    // MARKETING (WhatsApp Config, QR Generation)
+    // ═══════════════════════════════════════════════════════════════════
+    Route::get('/admin/marketing', \App\Livewire\Tenant\Marketing\Index::class)
+        ->name('tenant.marketing.index');
+
     // Unified Profile/Account Route
     Route::get('/mi-cuenta', [ProfileController::class, 'edit'])->name('mi-cuenta.edit');
     Route::patch('/mi-cuenta', [ProfileController::class, 'update'])->name('mi-cuenta.update');
