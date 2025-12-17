@@ -159,7 +159,7 @@ require __DIR__.'/auth.php';
 |
 */
 
-// ═══ TENANT MICROSITES (MUST BE LAST) ═══
-Route::get('/{tenant:slug}', \App\Livewire\Pages\ShowTenant::class)
-    ->middleware(['tenant.status', 'track.visits'])
+// ═══ TENANT MICROSITES / STOREFRONT (MUST BE LAST) ═══
+Route::get('/{tenant:slug}', \App\Livewire\Tenant\Shop\Show::class)
     ->name('tenant.show');
+
