@@ -3,18 +3,40 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
+/**
+ * Favorite Model - Polymorphic relation
+ *
+ * Allows users to favorite any model (Tenant, Product, etc.)
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property int $favoritable_id
+ * @property string $favoritable_type
+ */
 class Favorite extends Model
 {
-    protected $fillable = ['user_id', 'product_id'];
+    protected $fillable = [
+        'user_id',
+        'favoritable_id',
+        'favoritable_type',
+    ];
 
-    public function user()
+    /**
+     * Get the user who created the favorite
+     */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function product()
+    /**
+     * Get the favoritable model (Tenant, Product, etc.)
+     */
+    public function favoritable(): MorphTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->morphTo();
     }
 }
