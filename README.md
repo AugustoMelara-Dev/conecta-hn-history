@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Laravel-11.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel 11"/>
+  <img src="https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel 12"/>
   <img src="https://img.shields.io/badge/Livewire-3.x-FB70A9?style=for-the-badge&logo=livewire&logoColor=white" alt="Livewire 3"/>
-  <img src="https://img.shields.io/badge/FilamentPHP-3.x-FFAE00?style=for-the-badge&logo=laravel&logoColor=white" alt="Filament 3"/>
+  <img src="https://img.shields.io/badge/FilamentPHP-4.2-FFAE00?style=for-the-badge&logo=laravel&logoColor=white" alt="Filament 4"/>
   <img src="https://img.shields.io/badge/Tailwind-3.x-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS"/>
   <img src="https://img.shields.io/badge/Alpine.js-3.x-8BC0D0?style=for-the-badge&logo=alpine.js&logoColor=white" alt="Alpine.js"/>
   <img src="https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL"/>
@@ -38,7 +38,7 @@ Cada negocio registrado obtiene su propio **Micrositio Optimizado** (`/nombre-ne
 
 ## 🔧 Stack Tecnológico
 
-### Backend: Laravel 11
+### Backend: Laravel 12
 Laravel actúa como el **orquestador central de lógica de negocio**, manejando autenticación multi-tenant, validación de límites de plan, y una capa de servicios desacoplada. Implementamos:
 - **Route Model Binding** con slugs para URLs SEO-friendly
 - **Eloquent Relationships** polimórficas para flexibilidad
@@ -52,7 +52,7 @@ Los componentes Livewire operan en **modo SPA** mediante `wire:navigate`, elimin
 - **Reactive State Management** sin JavaScript complejo
 - **Form Wizards** multi-paso para registro de negocios
 
-### Panel Administrativo: FilamentPHP 3
+### Panel Administrativo: FilamentPHP 4
 Implementamos **dos paneles completamente separados**:
 - **Super Admin (`/admin`)**: Gestión de tenants, moderación, pagos, analítica global
 - **Tenant App (`/app`)**: Dashboard personalizado por negocio con métricas de conversión
@@ -275,5 +275,5 @@ Este proyecto está bajo la licencia MIT. Ver el archivo `LICENSE` para más det
 
 <p align="center">
   <strong>Construido con ❤️ para el comercio hondureño</strong><br>
-  <sub>© 2024 Conecta HN. Todos los derechos reservados.</sub>
+  <sub>© 2025 Conecta HN. Todos los derechos reservados.</sub>
 </p>
