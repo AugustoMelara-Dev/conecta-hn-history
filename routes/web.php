@@ -41,8 +41,18 @@ Route::get('/categoria/{category}', \App\Livewire\Pages\Directory::class)->name(
 // ═══════════════════════════════════════════════════════════════════════
 Route::get('/registrar-negocio', \App\Livewire\Pages\RegisterTenant::class)->name('tenant.register');
 
+// Alias for legacy route name
+Route::get('/register', \App\Livewire\Pages\RegisterTenant::class)->name('register');
+
 // Página de Pago Pendiente (PRO Post-Registro)
 Route::get('/registro/pago-pendiente/{payment}', \App\Livewire\Pages\PaymentPending::class)->name('payment.pending');
+
+// ═══════════════════════════════════════════════════════════════════════
+// 4. AUTHENTICATION (Login Page - RBAC Redirect)
+// ═══════════════════════════════════════════════════════════════════════
+Route::get('/login', \App\Livewire\Auth\Login::class)
+    ->middleware('guest')
+    ->name('login');
 
 // ═══════════════════════════════════════════════════════════════════════
 // Location API Routes
