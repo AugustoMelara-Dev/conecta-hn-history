@@ -21,6 +21,9 @@
         </div>
     </header>
 
+    {{-- Admin Navigation --}}
+    <x-ui.admin-nav />
+
     <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {{-- ═══════════════════════════════════════════════════════════════════ --}}
         {{-- CARD 1: WhatsApp Channel --}}
