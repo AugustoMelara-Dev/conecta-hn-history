@@ -8,19 +8,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 {
-    use HasFactory, \Spatie\MediaLibrary\InteractsWithMedia;
+    use HasFactory, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
 
     protected $fillable = [
         'tenant_id',
         'city_id',
         'category_id',
+        'menu_section_id',
         'name',
         'slug',
         'description',
         'price',
+        'variants',
         'image_path',
         'blur_hash',
         'is_visible',
@@ -33,6 +36,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 
     protected $casts = [
         'price' => 'decimal:2',
+        'variants' => 'array',
         'is_visible' => 'boolean',
         'is_featured' => 'boolean',
         'is_locked' => 'boolean',
@@ -66,6 +70,11 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->belongsTo(Tenant::class);
     }
 
+    public function menuSection(): BelongsTo
+    {
+        return $this->belongsTo(MenuSection::class);
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
@@ -79,5 +88,13 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Grupos de opciones del producto (variantes, extras)
+     */
+    public function optionGroups(): HasMany
+    {
+        return $this->hasMany(ProductOptionGroup::class)->orderBy('sort_order');
     }
 }

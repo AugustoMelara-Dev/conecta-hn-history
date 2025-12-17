@@ -91,6 +91,16 @@ class User extends Authenticatable implements FilamentUser, HasTenants, MustVeri
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->role === 'admin' || $this->role === 'super_admin' || $this->role === 'seller';
+        // 1. Always allow Super Admin or Specific Email to access 'admin' panel
+        if ($panel->getId() === 'admin') {
+            return $this->role === 'super_admin' || $this->email === 'admin@conectahn.com';
+        }
+
+        // 2. Allow 'seller' to access 'app' panel
+        if ($panel->getId() === 'app') {
+            return $this->role === 'seller';
+        }
+
+        return false;
     }
 }

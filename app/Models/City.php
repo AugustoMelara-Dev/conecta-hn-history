@@ -10,10 +10,26 @@ class City extends Model
 {
     use \Illuminate\Database\Eloquent\Factories\HasFactory;
 
-    protected $guarded = ['id'];
+    protected $fillable = [
+        'name',
+        'slug',
+        'department',
+        'hero_image',
+        'welcome_text',
+        'meta_title',
+        'meta_description',
+        'population',
+        'is_available',
+        'is_featured',
+        'launch_order',
+        'coordinates',
+        'municipality_id',
+    ];
 
     protected $casts = [
         'coordinates' => 'array',
+        'is_available' => 'boolean',
+        'is_featured' => 'boolean',
     ];
 
     /**
