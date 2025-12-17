@@ -36,9 +36,12 @@ export default function DirectoryIndex({ tenants, categories, cities, activeCity
             <div className="min-h-screen bg-background">
                 {/* Main Content */}
                 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    {/* Category Rail */}
+                    {/* Category Rail (With 'View All' Button injected) */}
                     <div className="mb-8">
-                        <CategoryRail categories={categories} activeCategory={filters.category} />
+                        <CategoryRail
+                            categories={[{ id: 'all', name: 'Ver Todos', slug: '', icon: '🔍' }, ...categories]}
+                            activeCategory={filters.category}
+                        />
                     </div>
                     <div className="flex items-center justify-between mb-6">
                         <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -49,14 +52,14 @@ export default function DirectoryIndex({ tenants, categories, cities, activeCity
                                     : 'Descubre lo mejor de Honduras'}
                         </h1>
                         <span className="text-sm font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                            {tenants.length} resultados
+                            {tenants.data?.length || 0} resultados
                         </span>
                     </div>
 
                     {/* Results Grid */}
-                    {tenants.length > 0 ? (
+                    {(tenants.data || tenants).length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {tenants.map((tenant) => (
+                            {(tenants.data || tenants).map((tenant) => (
                                 <Link
                                     key={tenant.id}
                                     href={route('tenant.show', tenant.slug)}
@@ -117,7 +120,7 @@ export default function DirectoryIndex({ tenants, categories, cities, activeCity
                                             <div className="flex items-center justify-between pt-3 border-t mt-auto">
                                                 <div className="flex items-center text-xs text-muted-foreground truncate max-w-[65%]">
                                                     <MapPin className="w-3.5 h-3.5 mr-1.5 shrink-0 text-primary/70" />
-                                                    <span className="truncate font-medium">{tenant.city || 'Honduras'}</span>
+                                                    <span className="truncate font-medium">{tenant.city?.name || 'Honduras'}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-md border border-amber-100 dark:border-amber-900/50">
                                                     <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
@@ -130,7 +133,7 @@ export default function DirectoryIndex({ tenants, categories, cities, activeCity
                             ))}
                         </div>
                     ) : (
-                        /* Empty State */
+                        /* Robust Empty State */
                         <div className="flex flex-col items-center justify-center py-24 text-center">
                             <div className="w-24 h-24 bg-muted/30 rounded-full flex items-center justify-center mb-6">
                                 <Search className="w-10 h-10 text-muted-foreground/50" />
@@ -139,7 +142,7 @@ export default function DirectoryIndex({ tenants, categories, cities, activeCity
                                 No encontramos resultados
                             </h3>
                             <p className="text-muted-foreground max-w-md mx-auto mb-8">
-                                No hay negocios que coincidan con "{searchTerm}" en esta ubicación. Intenta con otra categoría o ciudad.
+                                No hay negocios que coincidan con tu búsqueda. Intenta limpiar los filtros para ver todo el catálogo.
                             </p>
                             <Button
                                 variant="outline"
