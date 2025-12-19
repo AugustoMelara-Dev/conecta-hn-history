@@ -189,3 +189,4 @@ class TrackTenantVisit
         return 'desktop';
     }
 }
+

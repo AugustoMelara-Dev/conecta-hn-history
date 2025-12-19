@@ -105,6 +105,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @layer components {
+
   /* ─────────────────────────────────────────────────────────────────────────
      Livewire Progress Bar (NProgress Alternative)
      ───────────────────────────────────────────────────────────────────────── */
@@ -117,8 +118,13 @@
   }
 
   @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+      background-position: 200% 0;
+    }
+
+    100% {
+      background-position: -200% 0;
+    }
   }
 
   /* ─────────────────────────────────────────────────────────────────────────
@@ -146,7 +152,9 @@
      Spinner Animation
      ───────────────────────────────────────────────────────────────────────── */
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .animate-spin {
@@ -184,5 +192,34 @@
 
   .safe-top {
     padding-top: env(safe-area-inset-top, 0);
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Premium PRO Badge Shimmer Animation
+     ───────────────────────────────────────────────────────────────────────── */
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 3s ease-in-out infinite;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Hide Scrollbar for horizontal scroll containers
+     ───────────────────────────────────────────────────────────────────────── */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

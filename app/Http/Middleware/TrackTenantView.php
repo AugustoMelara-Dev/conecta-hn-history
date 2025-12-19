@@ -73,3 +73,4 @@ class TrackTenantView
         return $response;
     }
 }
+

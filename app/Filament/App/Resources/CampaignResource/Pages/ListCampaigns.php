@@ -16,3 +16,4 @@ class ListCampaigns extends ListRecords
         ];
     }
 }
+

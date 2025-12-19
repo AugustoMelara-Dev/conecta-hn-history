@@ -17,3 +17,4 @@ class EditTenant extends EditRecord
         ];
     }
 }
+

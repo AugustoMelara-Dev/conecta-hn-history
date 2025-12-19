@@ -377,31 +377,27 @@ class RegisterTenant extends Component
             return;
         }
 
-        // Validación final de slug (doble verificación de seguridad)
-        if ($this->isReservedSlug($this->slug)) {
-            $this->addError('slug', 'Esta dirección está reservada.');
-
-            return;
-        }
-
-        if (Tenant::where('slug', $this->slug)->exists()) {
-            $this->addError('slug', 'Esta dirección ya está ocupada.');
-
-            return;
-        }
-
-        // Validar todos los pasos primero
-        $allRules = array_merge(
-            $this->rulesForStep(1),
-            $this->rulesForStep(2),
-            $this->rulesForStep(3),
-            $this->rulesForStep(4)
-        );
-        $this->validate($allRules, $this->messages());
-
         $this->isSubmitting = true;
 
         try {
+            // Validación final de slug (doble verificación de seguridad)
+            if ($this->isReservedSlug($this->slug)) {
+                throw new \InvalidArgumentException('Esta dirección está reservada.');
+            }
+
+            if (Tenant::where('slug', $this->slug)->exists()) {
+                throw new \InvalidArgumentException('Esta dirección ya está ocupada.');
+            }
+
+            // Validar todos los pasos
+            $allRules = array_merge(
+                $this->rulesForStep(1),
+                $this->rulesForStep(2),
+                $this->rulesForStep(3),
+                $this->rulesForStep(4)
+            );
+            $this->validate($allRules, $this->messages());
+
             // ═══════════════════════════════════════════════════════════════
             // DELEGATE TO SERVICE (Clean Architecture)
             // ═══════════════════════════════════════════════════════════════
@@ -433,13 +429,38 @@ class RegisterTenant extends Component
 
             $this->redirect($service->getRedirectRoute());
 
-        } catch (\InvalidArgumentException $e) {
+        } catch (\Illuminate\Validation\ValidationException $e) {
             $this->isSubmitting = false;
-            $this->addError('slug', $e->getMessage());
-        } catch (\Exception $e) {
+            
+            // Detectar en qué paso está el error y redirigir
+            $failedFields = array_keys($e->validator->errors()->toArray());
+            
+            if (array_intersect($failedFields, ['business_name', 'slug'])) {
+                $this->currentStep = 1;
+            } elseif (array_intersect($failedFields, ['name', 'email', 'password'])) {
+                $this->currentStep = 2;
+            } elseif (array_intersect($failedFields, ['city_id', 'category_id', 'whatsapp'])) {
+                $this->currentStep = 3;
+            } elseif (array_intersect($failedFields, ['selectedPlan'])) {
+                $this->currentStep = 4;
+            }
+
+            // Relanzar los errores al componente
+            $this->validate($allRules, $this->messages());
+            
+        } catch (\Throwable $e) { // Catch-all robusto (incluye TypeError)
             $this->isSubmitting = false;
-            session()->flash('error', 'Ocurrió un error al crear tu cuenta. Intenta nuevamente.');
-            report($e);
+            
+            // Si es un error de dominio (validación manual), lo mostramos limpio
+            if ($e instanceof \InvalidArgumentException) {
+                $this->addError('slug', $e->getMessage());
+                $this->currentStep = 1; // Asumimos que errores de dominio suelen ser del paso 1
+                session()->flash('error', $e->getMessage());
+            } else {
+                // Errores inesperados del sistema
+                session()->flash('error', 'Ocurrió un error inesperado al crear tu cuenta. Por favor intenta nuevamente.');
+                report($e);
+            }
         }
     }
 
@@ -456,3 +477,4 @@ class RegisterTenant extends Component
         ]);
     }
 }
+

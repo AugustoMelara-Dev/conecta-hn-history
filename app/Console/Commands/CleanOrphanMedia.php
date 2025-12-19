@@ -55,3 +55,4 @@ class CleanOrphanMedia extends Command
         $this->info('Orphan media cleaning completed.');
     }
 }
+

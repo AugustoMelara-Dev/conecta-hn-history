@@ -26,3 +26,4 @@ class HydrateLocationFromCookie
         return $next($request);
     }
 }
+

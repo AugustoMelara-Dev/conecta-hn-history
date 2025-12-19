@@ -74,3 +74,4 @@ class CheckMaintenanceMode
         abort(503, 'Estamos realizando mejoras en la plataforma. Vuelve pronto.');
     }
 }
+

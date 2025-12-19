@@ -78,3 +78,4 @@ class ProductPolicy
         return false;
     }
 }
+

@@ -9,3 +9,4 @@ class CreateCity extends CreateRecord
 {
     protected static string $resource = CityResource::class;
 }
+

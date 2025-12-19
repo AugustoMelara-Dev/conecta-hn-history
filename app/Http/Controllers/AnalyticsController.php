@@ -77,3 +77,4 @@ class AnalyticsController extends Controller
         ]);
     }
 }
+

@@ -128,3 +128,4 @@ class QrCodeService
 SVG;
     }
 }
+

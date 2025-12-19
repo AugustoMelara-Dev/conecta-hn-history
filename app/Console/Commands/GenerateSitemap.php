@@ -196,3 +196,4 @@ class GenerateSitemap extends Command
         $this->info("  {$this->tenantsCount} negocios agregados");
     }
 }
+

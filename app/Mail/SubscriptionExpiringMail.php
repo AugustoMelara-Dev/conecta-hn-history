@@ -40,3 +40,4 @@ class SubscriptionExpiringMail extends Mailable implements ShouldQueue
         return [];
     }
 }
+

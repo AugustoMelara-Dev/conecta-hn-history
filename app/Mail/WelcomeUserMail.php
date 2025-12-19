@@ -50,3 +50,4 @@ class WelcomeUserMail extends Mailable
         return [];
     }
 }
+

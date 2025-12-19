@@ -9,3 +9,4 @@ class CreateTenant extends CreateRecord
 {
     protected static string $resource = TenantResource::class;
 }
+

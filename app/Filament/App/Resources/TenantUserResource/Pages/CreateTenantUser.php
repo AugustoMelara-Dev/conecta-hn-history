@@ -29,3 +29,4 @@ class CreateTenantUser extends CreateRecord
         return 'Agregar Miembro al Equipo';
     }
 }
+

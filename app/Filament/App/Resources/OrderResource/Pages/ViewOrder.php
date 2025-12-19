@@ -33,3 +33,4 @@ class ViewOrder extends ViewRecord
         return 'Pedido '.$this->record->order_number;
     }
 }
+

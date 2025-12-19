@@ -69,3 +69,4 @@ class SyncAnalyticsJob implements ShouldQueue
         \Log::info("SyncAnalyticsJob: Completed for {$date}");
     }
 }
+

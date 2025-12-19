@@ -17,3 +17,4 @@ class ListCities extends ListRecords
         ];
     }
 }
+

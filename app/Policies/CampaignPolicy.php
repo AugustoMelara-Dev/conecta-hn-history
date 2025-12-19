@@ -94,3 +94,4 @@ class CampaignPolicy
         return $this->delete($user, $campaign);
     }
 }
+

@@ -55,6 +55,16 @@
         {{-- Card Principal --}}
         <div class="w-full max-w-lg bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-gray-200/50 p-8 md:p-10">
             
+            {{-- Global Error Alert --}}
+            @if(session('error'))
+                <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex gap-3 text-red-700 text-sm animate-shake">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="font-medium">{{ session('error') }}</span>
+                </div>
+            @endif
+
             {{-- ═══════════════════════════════════════════════════════════════ --}}
             {{-- PASO 1: IDENTITY CLAIM (El Hero Input) --}}
             {{-- ═══════════════════════════════════════════════════════════════ --}}
@@ -606,7 +616,7 @@
                         class="block p-5 border-2 rounded-2xl cursor-pointer transition-all
                             {{ $selectedPlan === 'free' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300' }}"
                     >
-                        <input type="radio" wire:model="selectedPlan" value="free" class="sr-only" />
+                        <input type="radio" wire:model.live="selectedPlan" value="free" class="sr-only" />
                         <div class="flex items-start gap-4">
                             <div class="w-5 h-5 mt-1 rounded-full border-2 flex items-center justify-center
                                 {{ $selectedPlan === 'free' ? 'border-blue-500' : 'border-gray-300' }}">
@@ -652,7 +662,7 @@
                         <div class="absolute top-0 right-0 px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold rounded-bl-xl">
                             POPULAR
                         </div>
-                        <input type="radio" wire:model="selectedPlan" value="pro" class="sr-only" />
+                        <input type="radio" wire:model.live="selectedPlan" value="pro" class="sr-only" />
                         <div class="flex items-start gap-4">
                             <div class="w-5 h-5 mt-1 rounded-full border-2 flex items-center justify-center
                                 {{ $selectedPlan === 'pro' ? 'border-indigo-500' : 'border-gray-300' }}">

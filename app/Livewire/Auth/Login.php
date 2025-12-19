@@ -81,27 +81,25 @@ class Login extends Component
         session()->flash('toast', '¡Hola de nuevo, '.$user->name.'! 👋');
 
         // ═══════════════════════════════════════════════════════════════════
-        // RBAC REDIRECT MATRIX
+        // RBAC REDIRECT MATRIX (usando campo role, no Spatie)
         // ═══════════════════════════════════════════════════════════════════
 
-        // Level 1: Super Admin
-        if ($user->hasRole('super_admin')) {
-            return redirect()->intended('/super-admin');
-        }
-
-        // Level 2: Tenant Owner (Panel User)
-        if ($user->hasRole('panel_user')) {
-            // Find their tenant for personalized redirect
-            $tenant = $user->tenant;
-            if ($tenant) {
-                return redirect()->to('/app/'.$tenant->slug);
-            }
-
-            // Fallback to Filament admin
+        // Level 1: Super Admin → Filament Admin Panel
+        if ($user->role === 'super_admin' || $user->email === 'admin@conectahn.com') {
             return redirect()->to('/admin');
         }
 
-        // Level 3: Regular User (Consumer)
+        // Level 2: Seller (Tenant Owner) → Dashboard del Tenant
+        if ($user->role === 'seller') {
+            $tenant = $user->tenants()->first();
+            if ($tenant) {
+                return redirect()->to('/app/'.$tenant->slug);
+            }
+            // Si es seller sin tenant, crear uno
+            return redirect()->to('/registrar-negocio');
+        }
+
+        // Level 3: Regular User (Consumer) → Home
         return redirect()->intended('/');
     }
 
@@ -151,3 +149,4 @@ class Login extends Component
             ->title('Iniciar Sesión | Conecta HN');
     }
 }
+

@@ -319,3 +319,4 @@ class Form extends Component
             ->title($title.' | '.$this->tenant->name);
     }
 }
+

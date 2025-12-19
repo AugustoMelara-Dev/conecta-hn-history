@@ -44,3 +44,4 @@ class ProductRejectedNotification extends Notification implements ShouldQueue
         ];
     }
 }
+

@@ -199,3 +199,4 @@ class Index extends Component
             ->title('Reportes | '.$this->tenant->name);
     }
 }
+

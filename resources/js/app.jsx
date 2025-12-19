@@ -1,25 +1,23 @@
-import '../css/app.css';
 import './bootstrap';
+import '../css/app.css';
 
 import { createInertiaApp } from '@inertiajs/react';
-import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Conecta HN';
 
 createInertiaApp({
-    title: (title) => `${title} - ${appName}`,
-    resolve: (name) =>
-        resolvePageComponent(
-            `./Pages/${name}.jsx`,
-            import.meta.glob('./Pages/**/*.jsx'),
-        ),
+    title: (title) => title ? `${title} - ${appName}` : appName,
+    resolve: (name) => resolvePageComponent(
+        `./Pages/${name}.jsx`,
+        import.meta.glob('./Pages/**/*.jsx')
+    ),
     setup({ el, App, props }) {
-        const root = createRoot(el);
-
-        root.render(<App {...props} />);
+        createRoot(el).render(<App {...props} />);
     },
     progress: {
-        color: '#4B5563',
+        color: '#4F46E5', // Indigo progress bar
+        showSpinner: true,
     },
 });

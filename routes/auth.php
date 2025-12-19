@@ -7,21 +7,20 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::get('register', [RegisteredUserController::class, 'create'])
-        ->name('register');
-
-    Route::post('register', [RegisteredUserController::class, 'store']);
-
-    Route::get('login', [AuthenticatedSessionController::class, 'create'])
+    // ═══════════════════════════════════════════════════════════════════════
+    // LIVEWIRE AUTH ROUTES (Migrated from Inertia)
+    // ═══════════════════════════════════════════════════════════════════════
+    Route::get('login', \App\Livewire\Auth\Login::class)
         ->name('login');
 
-    Route::post('login', [AuthenticatedSessionController::class, 'store']);
+    Route::get('register', \App\Livewire\Pages\RegisterTenant::class)
+        ->name('register');
 
+    // Password Reset (still using controllers for now)
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 

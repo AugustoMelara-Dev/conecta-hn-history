@@ -98,3 +98,4 @@ class PaymentPending extends Component
         ]);
     }
 }
+

@@ -73,3 +73,4 @@ class WelcomeController extends Controller
         ]);
     }
 }
+

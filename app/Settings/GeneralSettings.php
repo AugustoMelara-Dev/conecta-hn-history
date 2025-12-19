@@ -59,3 +59,4 @@ class GeneralSettings extends Settings
         return 'general';
     }
 }
+

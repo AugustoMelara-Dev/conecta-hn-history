@@ -155,3 +155,4 @@ class Index extends Component
             ->title('Marketing | '.$this->tenant->name);
     }
 }
+

@@ -59,7 +59,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         // Buyers / Default -> Directory
-        return redirect()->intended(route('directory.index'));
+        return redirect()->intended(route('directory'));
     }
 
     /**
@@ -76,3 +76,4 @@ class AuthenticatedSessionController extends Controller
         return redirect('/');
     }
 }
+

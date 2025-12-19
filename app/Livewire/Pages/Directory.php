@@ -98,6 +98,7 @@ class Directory extends Component
             'activeFiltersCount' => $this->getActiveFiltersCount(),
             'searchTerm' => $this->search,
             'selectedCityName' => $this->getSelectedCityName(),
+            'selectedCategoryName' => $this->getSelectedCategoryName(),
         ])->layout('layouts.public', [
             'title' => $this->getPageTitle(),
             'description' => $this->getPageDescription(),
@@ -176,7 +177,7 @@ class Directory extends Component
     /**
      * Verifica si un tenant está abierto ahora
      */
-    public function isBusinessOpen(Tenant $tenant): bool
+    public function isBusinessOpenNow(Tenant $tenant): bool
     {
         if (empty($tenant->hours_data)) {
             return true; // Asumimos abierto si no hay datos
@@ -268,6 +269,27 @@ class Directory extends Component
         }
 
         return City::where('slug', $this->city)->value('name');
+    }
+
+    /**
+     * Obtiene nombre de categoría seleccionada
+     */
+    protected function getSelectedCategoryName(): ?string
+    {
+        if (! $this->category) {
+            return null;
+        }
+
+        return Category::where('slug', $this->category)->value('name');
+    }
+
+    /**
+     * Limpia todos los filtros
+     */
+    public function clearAllFilters(): void
+    {
+        $this->reset(['search', 'category', 'city', 'isOpen', 'sort']);
+        $this->resetPage();
     }
 
     /**
@@ -383,3 +405,4 @@ class Directory extends Component
         $this->resetPage();
     }
 }
+

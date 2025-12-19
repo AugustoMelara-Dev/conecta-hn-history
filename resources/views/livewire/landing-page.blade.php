@@ -74,7 +74,7 @@
                 <div class="hidden md:flex items-center gap-4">
                     {{-- Login Link (Ghost) --}}
                     <a 
-                        href="/app/login" 
+                        href="/login" 
                         class="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors"
                     >
                         Iniciar Sesión
@@ -82,7 +82,7 @@
                     
                     {{-- Register Button (CTA Dominante) --}}
                     <a 
-                        href="/app/register"
+                        href="/registrar-negocio"
                         class="px-6 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold shadow-lg shadow-slate-900/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200"
                     >
                         Registrar Negocio
@@ -173,13 +173,13 @@
                 {{-- Botones de Acción (Full Width) --}}
                 <div class="space-y-3">
                     <a 
-                        href="/app/login"
+                        href="/login"
                         class="block w-full px-4 py-3 text-center rounded-xl border-2 border-slate-200 text-slate-700 font-semibold hover:border-indigo-600 hover:text-indigo-600 transition-colors"
                     >
                         Iniciar Sesión
                     </a>
                     <a 
-                        href="/app/register"
+                        href="/registrar-negocio"
                         class="block w-full px-4 py-3 text-center rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20"
                     >
                         Registrar Mi Negocio
@@ -533,8 +533,8 @@
                 
                 <div class="flex items-center gap-6 text-sm text-slate-400">
                     <a href="{{ route('directory') }}" class="hover:text-white transition-colors">Directorio</a>
-                    <a href="/app/login" class="hover:text-white transition-colors">Acceso</a>
-                    <a href="/app/register" class="hover:text-white transition-colors">Registrarse</a>
+                    <a href="/login" class="hover:text-white transition-colors">Acceso</a>
+                    <a href="/registrar-negocio" class="hover:text-white transition-colors">Registrarse</a>
                 </div>
 
                 <p class="text-sm text-slate-500">

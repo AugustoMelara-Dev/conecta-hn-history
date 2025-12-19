@@ -26,3 +26,4 @@ class LandingPage extends Component
             ]);
     }
 }
+

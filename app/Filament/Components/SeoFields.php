@@ -17,8 +17,8 @@ use Filament\Forms\Components\TextInput;
  * Uso:
  * use App\Filament\Components\SeoFields;
  *
- * public static function form(Schema $schema): Schema {
- *     return $schema->components([
+ * public static function form(Form $form): Form {
+ *     return $form->schema([
  *         // ...otros campos
  *         SeoFields::make(),
  *     ]);
@@ -117,3 +117,4 @@ class SeoFields
         return "{$count}/{$limit}";
     }
 }
+

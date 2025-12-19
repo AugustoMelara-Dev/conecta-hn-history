@@ -210,3 +210,4 @@ class AppPanelProvider extends PanelProvider
         return '#';
     }
 }
+

@@ -233,3 +233,4 @@ class OtpController extends Controller
         ]);
     }
 }
+

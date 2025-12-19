@@ -139,3 +139,4 @@ class Upgrade extends Component
         ])->title('Mejorar a PRO | '.$this->tenant->name);
     }
 }
+

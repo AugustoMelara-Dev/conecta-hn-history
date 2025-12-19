@@ -23,3 +23,4 @@ class CityObserver
         Cache::forget('cities_list');
     }
 }
+

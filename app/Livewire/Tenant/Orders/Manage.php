@@ -319,3 +319,4 @@ class Manage extends Component
             ->title('Gestión de Pedidos | '.$this->tenant->name);
     }
 }
+

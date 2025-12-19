@@ -34,10 +34,11 @@ class RedirectIfAuthenticated
                     return redirect('/mi-cuenta');
                 }
 
-                return redirect(route('directory.index'));
+                return redirect(route('directory'));
             }
         }
 
         return $next($request);
     }
 }
+

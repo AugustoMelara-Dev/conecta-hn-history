@@ -29,3 +29,4 @@ class OpeningHoursCast implements CastsAttributes
         return is_array($value) ? json_encode($value) : json_encode($value);
     }
 }
+

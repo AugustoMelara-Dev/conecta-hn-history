@@ -164,3 +164,4 @@ class Schedule extends Component
             ->title('Horarios | '.$this->tenant->name);
     }
 }
+

@@ -245,3 +245,4 @@ class AuthModal extends Component
         return view('livewire.auth.auth-modal');
     }
 }
+

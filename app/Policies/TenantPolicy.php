@@ -63,3 +63,4 @@ class TenantPolicy
         return $user->hasRole('Super Admin');
     }
 }
+

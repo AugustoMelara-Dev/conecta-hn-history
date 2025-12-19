@@ -89,3 +89,4 @@ class CheckTenantStatus
         return 'Este negocio no está publicado';
     }
 }
+
