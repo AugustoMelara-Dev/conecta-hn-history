@@ -36,12 +36,9 @@ class ManageBilling extends Page implements HasForms, HasTable
     use InteractsWithForms;
     use InteractsWithTable;
 
-    protected string $view = 'filament.app.pages.manage-billing';
+    protected static string $view = 'filament.app.pages.manage-billing';
 
-    public static function getNavigationIcon(): ?string
-    {
-        return 'heroicon-o-credit-card';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-credit-card';
 
     public static function getNavigationLabel(): string
     {
@@ -440,3 +437,4 @@ class ManageBilling extends Page implements HasForms, HasTable
         return [];
     }
 }
+

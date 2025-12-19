@@ -21,7 +21,7 @@ class ProductLimitWidget extends Widget
     /**
      * Vista del widget (non-static in v4.2)
      */
-    protected string $view = 'filament.app.widgets.product-limit-widget';
+    protected static string $view = 'filament.app.widgets.product-limit-widget';
 
     /**
      * Prioridad: Aparece primero en el dashboard (static in v4.2)
@@ -138,3 +138,4 @@ class ProductLimitWidget extends Widget
         }
     }
 }
+

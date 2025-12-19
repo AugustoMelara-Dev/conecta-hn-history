@@ -34,12 +34,9 @@ class ManageMarketing extends Page implements HasForms, HasTable
     use InteractsWithForms;
     use InteractsWithTable;
 
-    protected string $view = 'filament.app.pages.manage-marketing';
+    protected static string $view = 'filament.app.pages.manage-marketing';
 
-    public static function getNavigationIcon(): ?string
-    {
-        return 'heroicon-o-megaphone';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-megaphone';
 
     public static function getNavigationLabel(): string
     {
@@ -488,3 +485,4 @@ class ManageMarketing extends Page implements HasForms, HasTable
         return true; // Todos ven el menú, pero FREE ven paywall
     }
 }
+

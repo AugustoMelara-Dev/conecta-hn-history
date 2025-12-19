@@ -20,7 +20,7 @@ use Filament\Widgets\Widget;
  */
 class TenantStatsWidget extends Widget
 {
-    protected string $view = 'filament.app.widgets.tenant-stats-widget';
+    protected static string $view = 'filament.app.widgets.tenant-stats-widget';
 
     // ═══════════════════════════════════════════════════════════════════════
     // PROPIEDADES PÚBLICAS (Accesibles en la vista Blade)
@@ -124,3 +124,4 @@ class TenantStatsWidget extends Widget
         return round(($this->whatsappClicks / $this->views) * 100, 1);
     }
 }
+

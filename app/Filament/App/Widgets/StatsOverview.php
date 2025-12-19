@@ -51,3 +51,4 @@ class StatsOverview extends StatsOverviewWidget
         ];
     }
 }
+

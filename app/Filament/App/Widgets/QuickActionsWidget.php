@@ -73,3 +73,4 @@ class QuickActionsWidget extends Widget
         return $currentTime >= $open && $currentTime <= $close;
     }
 }
+

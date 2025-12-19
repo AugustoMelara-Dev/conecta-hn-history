@@ -43,3 +43,4 @@ class FreePlanUpsellWidget extends Widget
         return '#';
     }
 }
+

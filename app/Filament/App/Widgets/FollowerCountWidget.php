@@ -26,3 +26,4 @@ class FollowerCountWidget extends Widget
         return 10;
     }
 }
+

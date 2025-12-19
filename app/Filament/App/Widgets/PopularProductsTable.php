@@ -61,3 +61,4 @@ class PopularProductsTable extends BaseWidget
             ->paginated(false);
     }
 }
+

@@ -14,7 +14,7 @@ class Settings extends Page
 {
     // Navigation Icon removed to fix type error
 
-    protected string $view = 'filament.app.pages.settings';
+    protected static string $view = 'filament.app.pages.settings';
 
     public ?array $data = [];
 
@@ -73,3 +73,4 @@ class Settings extends Page
         ];
     }
 }
+
