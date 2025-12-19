@@ -10,6 +10,8 @@ use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\Tabs\Tab;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -20,13 +22,25 @@ use Filament\Pages\Page;
  * Página centralizada para gestionar todas las configuraciones
  * del sistema sin necesidad de modificar código.
  */
-class ManageGeneralSettings extends Page
+class ManageGeneralSettings extends Page implements HasForms
 {
-    // Navigation Icon removed to fix type error (Filament v4)
+    use InteractsWithForms;
 
-    protected string $view = 'filament.pages.manage-general-settings';
+    protected static string $view = 'filament.pages.manage-general-settings';
 
     public ?array $data = [];
+
+    protected static ?string $navigationIcon = 'heroicon-o-cog';
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Configuración General';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return 'Configuración';
+    }
 
     /**
      * Solo super_admin puede acceder
@@ -205,3 +219,4 @@ class ManageGeneralSettings extends Page
         ];
     }
 }
+

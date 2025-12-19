@@ -4,11 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Product;
-use BackedEnum;
 use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -16,10 +15,7 @@ class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
 
-    public static function getNavigationIcon(): string|BackedEnum|null
-    {
-        return 'heroicon-o-shopping-bag';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
 
     public static function getNavigationGroup(): ?string
     {
@@ -36,10 +32,10 @@ class ProductResource extends Resource
         return 'Producto';
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Forms\Components\Section::make('Información del Producto')
                     ->schema([
                         Forms\Components\TextInput::make('name')
@@ -155,3 +151,4 @@ class ProductResource extends Resource
         ];
     }
 }
+

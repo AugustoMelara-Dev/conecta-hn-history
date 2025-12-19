@@ -4,14 +4,9 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\TenantResource\Pages;
 use App\Models\Tenant;
-use BackedEnum;
-use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
@@ -22,10 +17,7 @@ class TenantResource extends Resource
 
     protected static ?string $modelPolicy = \App\Policies\TenantPolicy::class;
 
-    public static function getNavigationIcon(): string|BackedEnum|null
-    {
-        return 'heroicon-o-building-storefront';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
 
     public static function getNavigationLabel(): string
     {
@@ -42,10 +34,10 @@ class TenantResource extends Resource
         return 'Negocios';
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Forms\Components\Section::make('Informacion Principal')
                     ->schema([
                         Forms\Components\TextInput::make('name')
@@ -351,7 +343,7 @@ class TenantResource extends Resource
             // ═══════════════════════════════════════════════════════════════
             ->actions([
                 // Accion: Aprobar Negocio
-                Action::make('approve')
+                Tables\Actions\Action::make('approve')
                     ->label('Aprobar')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
@@ -372,7 +364,7 @@ class TenantResource extends Resource
                     }),
 
                 // Accion: Rechazar Negocio
-                Action::make('reject')
+                Tables\Actions\Action::make('reject')
                     ->label('Rechazar')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
@@ -398,7 +390,7 @@ class TenantResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SHADOW LOGIN - Suplantacion de Identidad
                 // ═══════════════════════════════════════════════════════════
-                Action::make('impersonate')
+                Tables\Actions\Action::make('impersonate')
                     ->label('Acceder como Cliente')
                     ->icon('heroicon-o-user-circle')
                     ->color('warning')
@@ -421,7 +413,7 @@ class TenantResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // KILL SWITCH - Suspension Inmediata
                 // ═══════════════════════════════════════════════════════════
-                Action::make('killSwitch')
+                Tables\Actions\Action::make('killSwitch')
                     ->label(fn ($record) => $record->is_active ? 'SUSPENDER' : 'REACTIVAR')
                     ->icon(fn ($record) => $record->is_active ? 'heroicon-o-no-symbol' : 'heroicon-o-bolt')
                     ->color(fn ($record) => $record->is_active ? 'danger' : 'success')
@@ -445,7 +437,7 @@ class TenantResource extends Resource
                     }),
 
                 // Accion: Forzar Upgrade a PRO
-                Action::make('forceUpgrade')
+                Tables\Actions\Action::make('forceUpgrade')
                     ->label('Forzar PRO')
                     ->icon('heroicon-o-arrow-up-circle')
                     ->color('info')
@@ -481,11 +473,11 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                EditAction::make(),
+                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
@@ -507,3 +499,4 @@ class TenantResource extends Resource
         ];
     }
 }
+

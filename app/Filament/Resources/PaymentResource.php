@@ -5,9 +5,9 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Models\Payment;
 use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,10 +28,7 @@ class PaymentResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function getNavigationIcon(): string
-    {
-        return 'heroicon-o-banknotes';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-banknotes';
 
     public static function getNavigationLabel(): string
     {
@@ -71,10 +68,10 @@ class PaymentResource extends Resource
     /**
      * Formulario de Solo-Lectura (Vista de Detalles)
      */
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Forms\Components\Section::make('Información del Pago')
                     ->schema([
                         Forms\Components\Select::make('tenant_id')
@@ -345,16 +342,8 @@ class PaymentResource extends Resource
                             ->body('Se notificó al cliente.')
                             ->send();
                     }),
-
-                // Ver detalles
-                Tables\Actions\ViewAction::make()
-                    ->iconButton(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
+            ->bulkActions([])
             ->emptyStateHeading('Sin pagos pendientes')
             ->emptyStateDescription('Los pagos reportados aparecerán aquí.')
             ->emptyStateIcon('heroicon-o-banknotes')
@@ -384,3 +373,4 @@ class PaymentResource extends Resource
             ->orderByRaw("FIELD(status, 'pending', 'approved', 'rejected')");
     }
 }
+

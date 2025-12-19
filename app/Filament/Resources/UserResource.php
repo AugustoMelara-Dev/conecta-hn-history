@@ -4,11 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
-use BackedEnum;
 use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -18,10 +17,7 @@ class UserResource extends Resource
 
     protected static ?string $modelPolicy = \App\Policies\UserPolicy::class;
 
-    public static function getNavigationIcon(): string|BackedEnum|null
-    {
-        return 'heroicon-o-users';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-users';
 
     public static function getNavigationLabel(): string
     {
@@ -43,10 +39,10 @@ class UserResource extends Resource
         return 'Gestión de Usuarios';
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Forms\Components\TextInput::make('name')
                     ->label('Nombre')
                     ->required()
@@ -190,3 +186,4 @@ class UserResource extends Resource
         ];
     }
 }
+

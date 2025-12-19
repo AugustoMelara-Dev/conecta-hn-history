@@ -3,11 +3,10 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ActivityLogResource\Pages;
-use BackedEnum;
-use Filament\Actions\ViewAction;
+use Filament\Tables\Actions\ViewAction;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Spatie\Activitylog\Models\Activity;
@@ -22,10 +21,7 @@ class ActivityLogResource extends Resource
 {
     protected static ?string $model = Activity::class;
 
-    public static function getNavigationIcon(): string|BackedEnum|null
-    {
-        return 'heroicon-o-shield-exclamation';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-shield-exclamation';
 
     public static function getNavigationLabel(): string
     {
@@ -90,10 +86,10 @@ class ActivityLogResource extends Resource
         return false;
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Section::make('Detalles del Evento')
                     ->schema([
                         // Solo lectura
@@ -196,9 +192,8 @@ class ActivityLogResource extends Resource
 
                 Tables\Filters\SelectFilter::make('causer_id')
                     ->label('Usuario')
-                    ->relationship('causer', 'name')
-                    ->searchable()
-                    ->preload(),
+                    ->options(fn () => \App\Models\User::pluck('name', 'id')->toArray())
+                    ->searchable(),
 
                 Tables\Filters\Filter::make('created_at')
                     ->form([
@@ -236,3 +231,4 @@ class ActivityLogResource extends Resource
         ];
     }
 }
+
