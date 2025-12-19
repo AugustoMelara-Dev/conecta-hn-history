@@ -8,7 +8,7 @@ use Filament\Facades\Filament;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\BulkActionGroup;
@@ -21,10 +21,7 @@ class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
 
-    public static function getNavigationIcon(): ?string
-    {
-        return 'heroicon-o-clipboard-document-list';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
 
     public static function getNavigationLabel(): string
     {
@@ -416,10 +413,10 @@ class OrderResource extends Resource
             ]);
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
         // No usamos form para edición, solo infolist para vista
-        return $schema->schema([]);
+        return $form->schema([]);
     }
 
     public static function getRelations(): array
@@ -435,3 +432,4 @@ class OrderResource extends Resource
         ];
     }
 }
+

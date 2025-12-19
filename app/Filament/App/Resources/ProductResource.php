@@ -10,7 +10,7 @@ use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
@@ -33,10 +33,7 @@ class ProductResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function getNavigationIcon(): string
-    {
-        return 'heroicon-o-shopping-bag';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
 
     public static function getNavigationLabel(): string
     {
@@ -125,10 +122,10 @@ class ProductResource extends Resource
     // FORMULARIO VISUAL OPTIMIZADO PARA MÓVIL
     // ═══════════════════════════════════════════════════════════════════════
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 1: IMAGEN INSTAGRAM-STYLE
                 // ═══════════════════════════════════════════════════════════
@@ -607,3 +604,4 @@ class ProductResource extends Resource
         ];
     }
 }
+

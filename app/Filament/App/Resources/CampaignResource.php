@@ -4,9 +4,9 @@ namespace App\Filament\App\Resources;
 
 use App\Models\Campaign;
 use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -14,10 +14,7 @@ class CampaignResource extends Resource
 {
     protected static ?string $model = Campaign::class;
 
-    public static function getNavigationIcon(): ?string
-    {
-        return 'heroicon-o-megaphone';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-megaphone';
 
     public static function getNavigationLabel(): string
     {
@@ -39,9 +36,9 @@ class CampaignResource extends Resource
         return 'Marketing PRO';
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
+        return $form
             ->schema([
                 Forms\Components\Section::make('Detalles de la Campaña')
                     ->schema([
@@ -174,3 +171,4 @@ class CampaignResource extends Resource
         ];
     }
 }
+

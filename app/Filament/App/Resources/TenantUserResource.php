@@ -7,7 +7,7 @@ use App\Models\TenantUser;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
@@ -20,10 +20,7 @@ class TenantUserResource extends Resource
 {
     protected static ?string $model = TenantUser::class;
 
-    public static function getNavigationIcon(): ?string
-    {
-        return 'heroicon-o-user-group';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
     public static function getNavigationLabel(): string
     {
@@ -50,9 +47,9 @@ class TenantUserResource extends Resource
         return 50;
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
+        return $form
             ->schema([
                 // ═══ SECCIÓN: SELECCIÓN DE USUARIO ═══
                 Forms\Components\Section::make('Información del Miembro')
@@ -277,3 +274,4 @@ class TenantUserResource extends Resource
         ];
     }
 }
+

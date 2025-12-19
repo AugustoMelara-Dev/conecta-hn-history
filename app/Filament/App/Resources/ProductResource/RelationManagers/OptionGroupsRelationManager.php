@@ -4,7 +4,7 @@ namespace App\Filament\App\Resources\ProductResource\RelationManagers;
 
 use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -18,9 +18,9 @@ class OptionGroupsRelationManager extends RelationManager
 
     protected static ?string $pluralModelLabel = 'Grupos de Opciones';
 
-    public function form(Schema $schema): Schema
+    public function form(Form $form): Form
     {
-        return $schema
+        return $form
             ->schema([
                 // ═══ SECCIÓN: INFORMACIÓN DEL GRUPO ═══
                 Forms\Components\Section::make('Configuración del Grupo')
@@ -204,3 +204,4 @@ class OptionGroupsRelationManager extends RelationManager
             ->emptyStateIcon('heroicon-o-squares-plus');
     }
 }
+

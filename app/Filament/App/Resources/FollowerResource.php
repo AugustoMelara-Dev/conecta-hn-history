@@ -8,7 +8,7 @@ use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,10 +17,7 @@ class FollowerResource extends Resource
 {
     protected static ?string $model = Follow::class;
 
-    public static function getNavigationIcon(): ?string
-    {
-        return 'heroicon-o-users';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-users';
 
     public static function getNavigationLabel(): string
     {
@@ -52,9 +49,9 @@ class FollowerResource extends Resource
         return false;
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
+        return $form
             ->schema([
                 // Read-only view
                 Forms\Components\TextInput::make('user.name')
@@ -124,3 +121,4 @@ class FollowerResource extends Resource
         ];
     }
 }
+

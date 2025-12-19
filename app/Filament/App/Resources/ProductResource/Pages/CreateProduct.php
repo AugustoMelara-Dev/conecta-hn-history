@@ -67,3 +67,4 @@ class CreateProduct extends CreateRecord
         return $this->getResource()::getUrl('index');
     }
 }
+

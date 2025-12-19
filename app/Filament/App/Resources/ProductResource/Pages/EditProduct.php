@@ -17,3 +17,4 @@ class EditProduct extends EditRecord
         ];
     }
 }
+

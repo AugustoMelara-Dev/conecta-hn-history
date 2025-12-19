@@ -5,7 +5,7 @@ namespace App\Filament\App\Resources\Leads;
 use App\Filament\App\Resources\Leads\Schemas\LeadForm;
 use App\Models\Lead;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteBulkAction;
@@ -18,14 +18,11 @@ class LeadResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'customer_name';
 
-    public static function getNavigationIcon(): ?string
-    {
-        return 'heroicon-o-rectangle-stack';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return LeadForm::configure($schema);
+        return LeadForm::configure($form);
     }
 
     public static function table(Table $table): Table
@@ -85,3 +82,4 @@ class LeadResource extends Resource
         ];
     }
 }
+
