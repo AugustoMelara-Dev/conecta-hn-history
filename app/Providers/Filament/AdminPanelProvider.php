@@ -134,15 +134,21 @@ class AdminPanelProvider extends PanelProvider
                 return;
             }
 
-            // Master admin always has access
-            if (auth()->check() && auth()->user()->email === 'admin@conectahn.com') {
+            // If not authenticated, let the login page handle it
+            if (!auth()->check()) {
                 return;
             }
 
-            // Other admins must have super_admin role
-            if (! auth()->user()?->hasRole('super_admin')) {
+            // Master admin always has access
+            if (auth()->user()->email === 'admin@conectahn.com') {
+                return;
+            }
+
+            // Other admins must have super_admin role (using role column, not Spatie)
+            if (auth()->user()->role !== 'super_admin') {
                 abort(403, 'Acceso denegado. Se requiere rol de Super Admin.');
             }
         });
     }
 }
+
