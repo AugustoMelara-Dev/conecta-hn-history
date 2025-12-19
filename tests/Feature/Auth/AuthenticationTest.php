@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Livewire\Auth\Login;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * AuthenticationTest - Tests para el flujo de login/logout
+ * AuthenticationTest - Tests para el flujo de login/logout con Livewire
  */
 class AuthenticationTest extends TestCase
 {
@@ -24,16 +26,16 @@ class AuthenticationTest extends TestCase
     }
 
     /**
-     * Test: Los usuarios pueden autenticarse
+     * Test: Los usuarios pueden autenticarse usando el formulario Livewire
      */
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
         $user = User::factory()->create();
 
-        $response = $this->post('/login', [
-            'email' => $user->email,
-            'password' => 'password',
-        ]);
+        Livewire::test(Login::class)
+            ->set('email', $user->email)
+            ->set('password', 'password')
+            ->call('authenticate');
 
         $this->assertAuthenticated();
     }
@@ -45,10 +47,11 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->post('/login', [
-            'email' => $user->email,
-            'password' => 'wrong-password',
-        ]);
+        Livewire::test(Login::class)
+            ->set('email', $user->email)
+            ->set('password', 'wrong-password')
+            ->call('authenticate')
+            ->assertHasErrors(['email']);
 
         $this->assertGuest();
     }
