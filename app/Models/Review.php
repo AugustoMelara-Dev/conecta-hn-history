@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Review extends Model
 {
+    use HasFactory;
+
     protected $fillable = ['user_id', 'product_id', 'tenant_id', 'rating', 'comment', 'is_approved'];
 
     public function user()
@@ -23,3 +26,4 @@ class Review extends Model
         return $this->belongsTo(Tenant::class);
     }
 }
+

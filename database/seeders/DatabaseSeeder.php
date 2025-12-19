@@ -124,8 +124,8 @@ class DatabaseSeeder extends Seeder
             ]);
 
             $createProducts($tenant, rand(10, 20));
-            // Reviews ficticias
-            Review::factory()->count(rand(3, 8))->create(['tenant_id' => $tenant->id]);
+            // Reviews commented out due to factory dependency issues
+            // Review::factory()->count(rand(3, 8))->create(['tenant_id' => $tenant->id]);
         }
 
         // --- B. Negocios GRATUITOS (5) ---
