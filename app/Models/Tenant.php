@@ -163,6 +163,22 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     }
 
     /**
+     * Get the visits for the tenant.
+     */
+    public function tenantVisits(): HasMany
+    {
+        return $this->hasMany(TenantVisit::class);
+    }
+
+    /**
+     * Get the interactions for the tenant (WhatsApp clicks, calls, etc).
+     */
+    public function interactions(): HasMany
+    {
+        return $this->hasMany(Interaction::class);
+    }
+
+    /**
      * Get the users who follow this tenant (Social Loyalty).
      */
     public function followers()
@@ -267,3 +283,4 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $query->get();
     }
 }
+

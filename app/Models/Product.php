@@ -134,3 +134,4 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     }
 }
 
+

@@ -66,3 +66,4 @@ class OneTimePassword extends Model
         return $query->where('identifier', $identifier);
     }
 }
+

@@ -78,3 +78,4 @@ class ProductOptionGroup extends Model
         return true;
     }
 }
+

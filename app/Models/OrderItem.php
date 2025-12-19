@@ -66,3 +66,4 @@ class OrderItem extends Model
             ->implode(', ');
     }
 }
+

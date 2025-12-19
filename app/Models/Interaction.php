@@ -79,3 +79,4 @@ class Interaction extends Model
             ->whereYear('created_at', now()->year);
     }
 }
+

@@ -104,3 +104,4 @@ class User extends Authenticatable implements FilamentUser, HasTenants, MustVeri
         return false;
     }
 }
+

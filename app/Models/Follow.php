@@ -31,3 +31,4 @@ class Follow extends Model
         return $this->belongsTo(Tenant::class);
     }
 }
+

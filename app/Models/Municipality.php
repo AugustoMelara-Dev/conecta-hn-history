@@ -28,3 +28,4 @@ class Municipality extends Model
         return $this->hasMany(City::class);
     }
 }
+

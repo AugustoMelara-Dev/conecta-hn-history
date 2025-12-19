@@ -28,3 +28,4 @@ class TenantAnalytic extends Model
         return $this->belongsTo(Tenant::class);
     }
 }
+
