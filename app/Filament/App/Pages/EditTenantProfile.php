@@ -5,7 +5,7 @@ namespace App\Filament\App\Pages;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Pages\Tenancy\EditTenantProfile as BaseEditTenantProfile;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -22,7 +22,7 @@ class EditTenantProfile extends BaseEditTenantProfile
         return 'Perfil de mi Negocio';
     }
 
-    public function form(Schema $form): Schema
+    public function form(Form $form): Form
     {
         $isPro = Filament::getTenant()?->is_pro ?? false;
         $billingUrl = '#';
@@ -34,7 +34,7 @@ class EditTenantProfile extends BaseEditTenantProfile
         }
 
         return $form
-            ->components([
+            ->schema([
                 Forms\Components\Tabs::make('ProfileSettings')
                     ->tabs([
                         // ═══════════════════════════════════════════════════════════
@@ -281,3 +281,4 @@ class EditTenantProfile extends BaseEditTenantProfile
         ];
     }
 }
+
