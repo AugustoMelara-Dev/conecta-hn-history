@@ -4,12 +4,11 @@ namespace App\Filament\Widgets;
 
 use App\Models\Tenant;
 use Filament\Widgets\ChartWidget;
-use Flowframe\Trend\Trend;
-use Flowframe\Trend\TrendValue;
+use Illuminate\Support\Carbon;
 
 class AcquisitionGrowthChart extends ChartWidget
 {
-    protected ?string $heading = 'Curva de Crecimiento de Adquisicion';
+    protected static ?string $heading = 'Curva de Crecimiento de Adquisicion';
 
     protected static ?int $sort = 2;
 
@@ -29,27 +28,28 @@ class AcquisitionGrowthChart extends ChartWidget
     protected function getData(): array
     {
         $days = (int) $this->filter;
+        $startDate = now()->subDays($days);
 
-        $data = Trend::model(Tenant::class)
-            ->between(
-                start: now()->subDays($days),
-                end: now(),
-            )
-            ->perDay()
-            ->count();
+        // Build daily counts manually without Flowframe/Trend
+        $data = collect();
+        for ($i = 0; $i < $days; $i++) {
+            $date = $startDate->copy()->addDays($i);
+            $count = Tenant::whereDate('created_at', $date->toDateString())->count();
+            $data->push(['date' => $date->format('d/m'), 'count' => $count]);
+        }
 
         return [
             'datasets' => [
                 [
                     'label' => 'Nuevos Negocios',
-                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate),
+                    'data' => $data->pluck('count'),
                     'borderColor' => '#10b981',
                     'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
                     'fill' => true,
                     'tension' => 0.4,
                 ],
             ],
-            'labels' => $data->map(fn (TrendValue $value) => $value->date),
+            'labels' => $data->pluck('date'),
         ];
     }
 
@@ -58,3 +58,4 @@ class AcquisitionGrowthChart extends ChartWidget
         return 'line';
     }
 }
+

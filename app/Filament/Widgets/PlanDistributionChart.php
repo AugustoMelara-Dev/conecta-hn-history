@@ -7,7 +7,7 @@ use Filament\Widgets\ChartWidget;
 
 class PlanDistributionChart extends ChartWidget
 {
-    protected ?string $heading = 'Distribucion de Cartera';
+    protected static ?string $heading = 'Distribucion de Cartera';
 
     protected static ?int $sort = 3;
 
@@ -56,3 +56,4 @@ class PlanDistributionChart extends ChartWidget
         ];
     }
 }
+

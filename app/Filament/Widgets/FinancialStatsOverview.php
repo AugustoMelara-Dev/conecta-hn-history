@@ -78,3 +78,4 @@ class FinancialStatsOverview extends BaseWidget
         ];
     }
 }
+

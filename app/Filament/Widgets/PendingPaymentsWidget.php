@@ -3,7 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Payment;
-use Filament\Actions\Action;
+use Filament\Tables\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ImageColumn;
@@ -150,3 +150,4 @@ class PendingPaymentsWidget extends BaseWidget
             ->poll('30s');
     }
 }
+
