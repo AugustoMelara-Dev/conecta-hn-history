@@ -7,7 +7,7 @@ use App\Models\User;
 
 /**
  * ReviewPolicy - Tenant-Aware Authorization for Reviews
- * 
+ *
  * ══════════════════════════════════════════════════════════════════════════════
  * SECURITY: Enforces tenant ownership for customer review management
  * ══════════════════════════════════════════════════════════════════════════════
@@ -32,7 +32,7 @@ class ReviewPolicy extends TenantAwarePolicy
 
     /**
      * Determine whether the user can create reviews.
-     * 
+     *
      * Note: Reviews are typically created by customers.
      */
     public function create(User $user): bool
@@ -42,7 +42,7 @@ class ReviewPolicy extends TenantAwarePolicy
 
     /**
      * Determine whether the user can update the review.
-     * 
+     *
      * Tenants can moderate reviews on their business.
      */
     public function update(User $user, Review $review): bool

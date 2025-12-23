@@ -37,4 +37,3 @@ class CreateProduct extends CreateRecord
         }
     }
 }
-

@@ -62,4 +62,3 @@ class UserPolicy
         return $user->hasRole('Super Admin');
     }
 }
-

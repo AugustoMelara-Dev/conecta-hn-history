@@ -3,36 +3,40 @@
 namespace App\Models;
 
 use App\Traits\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Order Model - Transaction Header
- * 
+ *
  * Represents a customer order with workflow status management.
  * Each order belongs to a tenant and contains multiple items.
- * 
+ *
  * WORKFLOW:
  * pending → confirmed → processing → ready → delivered
  *                                         → cancelled
- * 
+ *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class Order extends Model
 {
-    use SoftDeletes, BelongsToTenant;
+    use BelongsToTenant, SoftDeletes;
 
     // ═══════════════════════════════════════════════════════════════════════
     // STATUS CONSTANTS
     // ═══════════════════════════════════════════════════════════════════════
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_CONFIRMED = 'confirmed';
+
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_READY = 'ready';
+
     public const STATUS_DELIVERED = 'delivered';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     public const STATUSES = [
@@ -138,7 +142,7 @@ class Order extends Model
 
     public function getFormattedTotalAttribute(): string
     {
-        return 'L. ' . number_format($this->total, 2);
+        return 'L. '.number_format($this->total, 2);
     }
 
     public function getStatusLabelAttribute(): string
@@ -177,19 +181,19 @@ class Order extends Model
 
     /**
      * Generate the next order number for a tenant.
-     * 
+     *
      * CONCURRENCY SAFETY:
      * Uses pessimistic locking (FOR UPDATE) on the Tenant row to serialize
      * concurrent order creation requests. This prevents race conditions where
      * two requests read the same last order number and try to create duplicates.
-     * 
+     *
      * ARCHITECTURAL DECISION:
      * We lock the Tenant row instead of the Order table because:
      * 1. It's a single row lock (minimal contention)
      * 2. Order table could have millions of rows (scanning would be slow)
      * 3. Tenant is always loaded anyway during order creation
-     * 
-     * @param int $tenantId The tenant to generate order number for
+     *
+     * @param  int  $tenantId  The tenant to generate order number for
      * @return string The next order number (e.g., "#1001")
      */
     public static function generateOrderNumber(int $tenantId): string
@@ -197,8 +201,8 @@ class Order extends Model
         return \Illuminate\Support\Facades\DB::transaction(function () use ($tenantId) {
             // Acquire exclusive lock on tenant row to serialize order creation
             $tenant = \App\Models\Tenant::lockForUpdate()->find($tenantId);
-            
-            if (!$tenant) {
+
+            if (! $tenant) {
                 throw new \RuntimeException("Tenant {$tenantId} not found during order number generation");
             }
 
@@ -215,7 +219,7 @@ class Order extends Model
                 $nextNumber = 1001; // Start from 1001
             }
 
-            return '#' . $nextNumber;
+            return '#'.$nextNumber;
         });
     }
 
@@ -226,7 +230,7 @@ class Order extends Model
     {
         $lines = [
             "🛒 *Nuevo Pedido {$this->order_number}*",
-            "",
+            '',
             "👤 *Cliente:* {$this->customer_name}",
             "📞 *Teléfono:* {$this->customer_phone}",
         ];
@@ -235,8 +239,8 @@ class Order extends Model
             $lines[] = "📍 *Dirección:* {$this->customer_address}";
         }
 
-        $lines[] = "";
-        $lines[] = "📦 *Productos:*";
+        $lines[] = '';
+        $lines[] = '📦 *Productos:*';
 
         foreach ($this->items as $item) {
             $line = "• {$item->quantity}x {$item->product_name}";
@@ -244,15 +248,15 @@ class Order extends Model
                 $options = collect($item->options)->pluck('option')->implode(', ');
                 $line .= " ({$options})";
             }
-            $line .= " - L. " . number_format($item->line_total, 2);
+            $line .= ' - L. '.number_format($item->line_total, 2);
             $lines[] = $line;
         }
 
-        $lines[] = "";
+        $lines[] = '';
         $lines[] = "💰 *Total: {$this->formatted_total}*";
 
         if ($this->customer_notes) {
-            $lines[] = "";
+            $lines[] = '';
             $lines[] = "📝 *Notas:* {$this->customer_notes}";
         }
 
@@ -265,8 +269,8 @@ class Order extends Model
     public function getWhatsAppUrl(): ?string
     {
         $phone = $this->tenant->whatsapp_number ?? $this->tenant->phone;
-        
-        if (!$phone) {
+
+        if (! $phone) {
             return null;
         }
 
@@ -281,7 +285,7 @@ class Order extends Model
      */
     public function transitionTo(string $status): bool
     {
-        if (!in_array($status, self::STATUSES)) {
+        if (! in_array($status, self::STATUSES)) {
             return false;
         }
 

@@ -105,4 +105,3 @@ class ListProducts extends ListRecords
         return [];
     }
 }
-

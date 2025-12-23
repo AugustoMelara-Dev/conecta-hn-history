@@ -39,4 +39,3 @@ class PendingReviewAlert extends Widget
         return in_array($tenant->status, ['pending', 'rejected']) || ! $tenant->is_active;
     }
 }
-

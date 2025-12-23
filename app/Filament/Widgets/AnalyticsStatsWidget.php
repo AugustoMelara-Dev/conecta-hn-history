@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 
 /**
  * AnalyticsStatsWidget - Executive KPI Dashboard
- * 
+ *
  * Displays key metrics for the tenant owner:
  * - Total visits this month
  * - WhatsApp conversions
@@ -19,13 +19,14 @@ use Illuminate\Support\Facades\Auth;
 class AnalyticsStatsWidget extends StatsOverviewWidget
 {
     protected static ?string $pollingInterval = '30s';
+
     protected static ?int $sort = 1;
 
     protected function getStats(): array
     {
         $tenant = Auth::user()?->tenant;
 
-        if (!$tenant) {
+        if (! $tenant) {
             return [
                 Stat::make('Visitas', '-')
                     ->description('No hay negocio vinculado')
@@ -107,13 +108,13 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
 
         if ($change > 0) {
             return [
-                'description' => '+' . round($change) . '% vs mes anterior',
+                'description' => '+'.round($change).'% vs mes anterior',
                 'icon' => 'heroicon-o-arrow-trending-up',
                 'color' => 'success',
             ];
         } elseif ($change < 0) {
             return [
-                'description' => round($change) . '% vs mes anterior',
+                'description' => round($change).'% vs mes anterior',
                 'icon' => 'heroicon-o-arrow-trending-down',
                 'color' => 'danger',
             ];
@@ -131,7 +132,7 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
      */
     protected function getSparklineData(int $tenantId, string $metric): array
     {
-        $days = collect(range(6, 0))->map(fn($i) => now()->subDays($i)->toDateString());
+        $days = collect(range(6, 0))->map(fn ($i) => now()->subDays($i)->toDateString());
 
         if ($metric === 'visits') {
             $data = TenantVisit::forTenant($tenantId)
@@ -148,6 +149,6 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
                 ->pluck('count', 'date');
         }
 
-        return $days->map(fn($date) => $data[$date] ?? 0)->toArray();
+        return $days->map(fn ($date) => $data[$date] ?? 0)->toArray();
     }
 }

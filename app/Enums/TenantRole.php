@@ -4,18 +4,18 @@ namespace App\Enums;
 
 /**
  * TenantRole - Strong-Typed Role Enum
- * 
+ *
  * ARCHITECTURAL PATTERN: Strong Typing via Native PHP 8.1+ Enums
- * 
+ *
  * Eliminates "magic strings" for role comparison, preventing:
  * - Typos in role assignments ('owmer' instead of 'owner')
  * - Case sensitivity bugs ('Owner' vs 'owner')
  * - Invalid role injection attacks
- * 
+ *
  * Usage:
  *   $tenantUser->role = TenantRole::OWNER;
  *   if ($tenantUser->role === TenantRole::MANAGER) { ... }
- * 
+ *
  * Laravel automatically casts this with: 'role' => TenantRole::class
  */
 enum TenantRole: string

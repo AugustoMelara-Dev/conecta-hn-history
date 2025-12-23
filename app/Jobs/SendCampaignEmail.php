@@ -38,4 +38,3 @@ class SendCampaignEmail implements ShouldQueue
         }
     }
 }
-

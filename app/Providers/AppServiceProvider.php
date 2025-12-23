@@ -2,32 +2,30 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\Vite;
-use Illuminate\Support\ServiceProvider;
-
-// Models
 use App\Models\Campaign;
 use App\Models\Coupon;
 use App\Models\Lead;
 use App\Models\MenuSection;
+// Models
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Review;
 use App\Models\Tenant;
 use App\Models\User;
-
-// Policies
 use App\Policies\CampaignPolicy;
 use App\Policies\CouponPolicy;
 use App\Policies\LeadPolicy;
 use App\Policies\MenuSectionPolicy;
+// Policies
 use App\Policies\OrderPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\ReviewPolicy;
 use App\Policies\TenantPolicy;
 use App\Policies\UserPolicy;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {

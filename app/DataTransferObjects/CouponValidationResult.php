@@ -4,15 +4,15 @@ namespace App\DataTransferObjects;
 
 /**
  * CouponValidationResult - Strongly Typed Validation Response
- * 
+ *
  * PURPOSE: Replace magic arrays with type-safe, IDE-friendly objects.
- * 
+ *
  * ARCHITECTURAL BENEFITS:
  * - Compile-time type checking
  * - IDE autocompletion for all properties
  * - Immutable design prevents accidental mutation
  * - Factory methods enforce consistent construction
- * 
+ *
  * USAGE:
  *   $result = $coupon->validate(500.00);
  *   if ($result->isValid) {

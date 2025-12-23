@@ -3,11 +3,11 @@
 namespace App\Filament\Resources\OrderResource\Pages;
 
 use App\Filament\Resources\OrderResource;
+use App\Models\Order;
 use Filament\Actions;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
-use App\Models\Order;
+use Filament\Resources\Pages\ViewRecord;
 
 class ViewOrder extends ViewRecord
 {
@@ -24,21 +24,21 @@ class ViewOrder extends ViewRecord
                 ->requiresConfirmation()
                 ->visible(fn () => $this->record->status === 'pending')
                 ->action(fn () => $this->record->transitionTo('confirmed')),
-            
+
             Actions\Action::make('process')
                 ->label('En Preparación')
                 ->icon('heroicon-o-fire')
                 ->color('warning')
                 ->visible(fn () => in_array($this->record->status, ['pending', 'confirmed']))
                 ->action(fn () => $this->record->transitionTo('processing')),
-            
+
             Actions\Action::make('ready')
                 ->label('Listo')
                 ->icon('heroicon-o-gift')
                 ->color('success')
                 ->visible(fn () => $this->record->status === 'processing')
                 ->action(fn () => $this->record->transitionTo('ready')),
-            
+
             Actions\Action::make('deliver')
                 ->label('Entregado')
                 ->icon('heroicon-o-check')
@@ -46,14 +46,14 @@ class ViewOrder extends ViewRecord
                 ->requiresConfirmation()
                 ->visible(fn () => $this->record->status === 'ready')
                 ->action(fn () => $this->record->transitionTo('delivered')),
-            
+
             Actions\Action::make('whatsapp')
                 ->label('WhatsApp')
                 ->icon('heroicon-o-chat-bubble-left-right')
                 ->color('success')
                 ->url(fn () => $this->record->getWhatsAppUrl())
                 ->openUrlInNewTab(),
-            
+
             Actions\EditAction::make(),
         ];
     }
@@ -70,7 +70,7 @@ class ViewOrder extends ViewRecord
                             ->size('lg')
                             ->weight('bold')
                             ->color('primary'),
-                        
+
                         Infolists\Components\TextEntry::make('status')
                             ->label('Estado')
                             ->badge()
@@ -84,7 +84,7 @@ class ViewOrder extends ViewRecord
                                 default => 'gray',
                             })
                             ->formatStateUsing(fn ($state) => Order::KANBAN_STATUSES[$state] ?? ucfirst($state)),
-                        
+
                         Infolists\Components\TextEntry::make('created_at')
                             ->label('Recibido')
                             ->since(),
@@ -127,7 +127,7 @@ class ViewOrder extends ViewRecord
                                     ->color('gray'),
                                 Infolists\Components\TextEntry::make('line_total')
                                     ->label('Total')
-                                    ->formatStateUsing(fn ($state) => 'L. ' . number_format($state, 2))
+                                    ->formatStateUsing(fn ($state) => 'L. '.number_format($state, 2))
                                     ->weight('bold'),
                             ])
                             ->columns(4),
@@ -138,16 +138,16 @@ class ViewOrder extends ViewRecord
                     ->schema([
                         Infolists\Components\TextEntry::make('subtotal')
                             ->label('Subtotal')
-                            ->formatStateUsing(fn ($state) => 'L. ' . number_format($state, 2)),
+                            ->formatStateUsing(fn ($state) => 'L. '.number_format($state, 2)),
                         Infolists\Components\TextEntry::make('delivery_fee')
                             ->label('Envío')
-                            ->formatStateUsing(fn ($state) => 'L. ' . number_format($state, 2)),
+                            ->formatStateUsing(fn ($state) => 'L. '.number_format($state, 2)),
                         Infolists\Components\TextEntry::make('discount_amount')
                             ->label('Descuento')
-                            ->formatStateUsing(fn ($state) => '-L. ' . number_format($state, 2)),
+                            ->formatStateUsing(fn ($state) => '-L. '.number_format($state, 2)),
                         Infolists\Components\TextEntry::make('total')
                             ->label('Total')
-                            ->formatStateUsing(fn ($state) => 'L. ' . number_format($state, 2))
+                            ->formatStateUsing(fn ($state) => 'L. '.number_format($state, 2))
                             ->size('lg')
                             ->weight('bold')
                             ->color('success'),

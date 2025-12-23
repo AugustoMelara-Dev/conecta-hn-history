@@ -7,10 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * ModifierOption - Individual Customization Choice
- * 
+ *
  * Represents a single option within a ModifierGroup.
  * Examples: "Grande" (+L.50), "Pepperoni" (+L.25), "Sin cebolla" (+L.0)
- * 
+ *
  * PRICING:
  * - price_adjustment: Amount added/subtracted from product base price
  * - Positive = surcharge, Negative = discount, Zero = no change
@@ -60,6 +60,7 @@ class ModifierOption extends Model
         }
 
         $sign = $this->price_adjustment > 0 ? '+' : '';
-        return $sign . 'L.' . number_format(abs($this->price_adjustment), 2);
+
+        return $sign.'L.'.number_format(abs($this->price_adjustment), 2);
     }
 }

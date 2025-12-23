@@ -4,14 +4,13 @@ namespace App\Models;
 
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * TenantVisit - Page view tracking with session fingerprinting
- * 
+ *
  * Each record represents a unique daily session per visitor.
  * IP addresses are hashed with daily salt for privacy compliance.
- * 
+ *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class TenantVisit extends Model
@@ -37,15 +36,15 @@ class TenantVisit extends Model
 
     /**
      * Generate a privacy-compliant session hash.
-     * 
+     *
      * ARCHITECTURAL GOVERNANCE:
      * - Uses dedicated analytics salt (not app.key) for key rotation safety
      * - Forces UTC timezone for cross-timezone consistency
      * - Same visitor on same tenant = same hash for 24h UTC
-     * 
-     * @param string $ip Visitor IP address
-     * @param string $userAgent Browser user agent
-     * @param int $tenantId Tenant being visited
+     *
+     * @param  string  $ip  Visitor IP address
+     * @param  string  $userAgent  Browser user agent
+     * @param  int  $tenantId  Tenant being visited
      * @return string SHA-256 hash for session fingerprinting
      */
     public static function generateSessionHash(
@@ -55,13 +54,13 @@ class TenantVisit extends Model
     ): string {
         // DETERMINISM: Use UTC timezone explicitly to prevent DST/timezone issues
         $utcDate = now('UTC')->format('Y-m-d');
-        
+
         // DECOUPLED: Use dedicated analytics salt, not app.key
         // This allows app key rotation without breaking historical analytics
         $analyticsSalt = config('services.analytics.salt', env('ANALYTICS_SALT', 'conecta-analytics-default-salt'));
-        
-        $dailySalt = $utcDate . $analyticsSalt;
-        
+
+        $dailySalt = $utcDate.$analyticsSalt;
+
         $fingerprint = implode('|', [
             $ip,
             $userAgent,
@@ -95,7 +94,7 @@ class TenantVisit extends Model
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // RELATIONSHIPS  
+    // RELATIONSHIPS
     // Note: tenant() relationship is provided by BelongsToTenant trait
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -113,6 +112,6 @@ class TenantVisit extends Model
     public function scopeThisMonth($query)
     {
         return $query->whereMonth('created_at', now()->month)
-                     ->whereYear('created_at', now()->year);
+            ->whereYear('created_at', now()->year);
     }
 }

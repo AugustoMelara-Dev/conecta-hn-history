@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * ModifierGroup - Product Customization Categories
- * 
+ *
  * Represents a group of options for customizing a product.
  * Examples: "Tamaño", "Extras", "Término de cocción"
- * 
+ *
  * BUSINESS RULES:
  * - is_required: Customer MUST select at least min_selections
  * - min_selections: Minimum options required (0 = optional)

@@ -21,7 +21,7 @@ class DirectoryController extends Controller
 {
     /**
      * Display the business directory with search, filters and pagination.
-     * 
+     *
      * SECURITY HARDENING:
      * 1. Input validation before database operations
      * 2. All SQL encapsulated in Model scopes
@@ -134,6 +134,7 @@ class DirectoryController extends Controller
     public function byCity(City $city, Request $request): Response
     {
         $request->merge(['city' => $city->slug]);
+
         return $this->index($request);
     }
 
@@ -143,6 +144,7 @@ class DirectoryController extends Controller
     public function byCategory(Category $category, Request $request): Response
     {
         $request->merge(['category' => $category->slug]);
+
         return $this->index($request);
     }
 }

@@ -4,7 +4,6 @@ namespace App\Filament\Widgets;
 
 use App\Models\Tenant;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Carbon;
 
 class AcquisitionGrowthChart extends ChartWidget
 {
@@ -58,4 +57,3 @@ class AcquisitionGrowthChart extends ChartWidget
         return 'line';
     }
 }
-

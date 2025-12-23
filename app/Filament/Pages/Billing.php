@@ -4,27 +4,26 @@ namespace App\Filament\Pages;
 
 use App\Models\Tenant;
 use Filament\Pages\Page;
-use Filament\Infolists\Infolist;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Components\Section;
-use Filament\Infolists\Components\Grid;
-use Filament\Infolists\Components\Actions;
-use Filament\Infolists\Components\Actions\Action;
 use Illuminate\Support\Facades\Auth;
 
 /**
  * Billing Dashboard Page
- * 
+ *
  * Provides subscription status, plan information, and upgrade options.
  * MVP: Manual bank transfer instructions (no Stripe integration yet).
  */
 class Billing extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
+
     protected static ?string $navigationLabel = 'Facturación';
+
     protected static ?string $title = 'Mi Suscripción';
+
     protected static ?string $slug = 'billing';
+
     protected static ?int $navigationSort = 100;
+
     protected static ?string $navigationGroup = 'Mi Cuenta';
 
     protected static string $view = 'filament.pages.billing';
@@ -41,7 +40,7 @@ class Billing extends Page
      */
     public function getSubscriptionData(): array
     {
-        if (!$this->tenant) {
+        if (! $this->tenant) {
             return [
                 'plan' => 'Sin Negocio',
                 'status' => 'N/A',
@@ -113,8 +112,8 @@ class Billing extends Page
     public function getWhatsAppPaymentUrl(): string
     {
         $phone = '50499999999'; // Replace with actual support number
-        $message = urlencode("¡Hola! Quiero enviar mi comprobante de pago para Plan Pro.\n\nNegocio: " . ($this->tenant?->name ?? 'Mi Negocio'));
-        
+        $message = urlencode("¡Hola! Quiero enviar mi comprobante de pago para Plan Pro.\n\nNegocio: ".($this->tenant?->name ?? 'Mi Negocio'));
+
         return "https://wa.me/{$phone}?text={$message}";
     }
 }

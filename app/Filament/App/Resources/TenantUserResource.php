@@ -6,8 +6,8 @@ use App\Filament\App\Resources\TenantUserResource\Pages;
 use App\Models\TenantUser;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Resources\Resource;
 use Filament\Forms\Form;
+use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
@@ -274,4 +274,3 @@ class TenantUserResource extends Resource
         ];
     }
 }
-

@@ -18,14 +18,14 @@ return new class extends Migration
             if (Schema::hasColumn('tenants', 'cover_image_path') && Schema::hasColumn('tenants', 'cover_path')) {
                 $table->dropColumn('cover_path');
             }
-            
+
             // Caso 2: Solo existe 'cover_path', lo renombramos a 'cover_image_path'
-            elseif (!Schema::hasColumn('tenants', 'cover_image_path') && Schema::hasColumn('tenants', 'cover_path')) {
+            elseif (! Schema::hasColumn('tenants', 'cover_image_path') && Schema::hasColumn('tenants', 'cover_path')) {
                 $table->renameColumn('cover_path', 'cover_image_path');
             }
-            
+
             // Caso 3 (Safety): Si ninguno existe, creamos el estándar
-            elseif (!Schema::hasColumn('tenants', 'cover_image_path') && !Schema::hasColumn('tenants', 'cover_path')) {
+            elseif (! Schema::hasColumn('tenants', 'cover_image_path') && ! Schema::hasColumn('tenants', 'cover_path')) {
                 $table->string('cover_image_path', 2048)->nullable()->after('banner_path');
             }
         });

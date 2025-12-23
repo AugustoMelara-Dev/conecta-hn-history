@@ -14,11 +14,11 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 /**
  * OrderResource - Order Management in Filament Admin
- * 
+ *
  * KANBAN-STYLE WORKFLOW:
  * Orders are displayed with visual status indicators and quick actions
  * for transitioning through the workflow stages.
- * 
+ *
  * Status Flow: Pending → Confirmed → Processing → Ready → Delivered
  */
 class OrderResource extends Resource
@@ -26,15 +26,15 @@ class OrderResource extends Resource
     protected static ?string $model = Order::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
-    
+
     protected static ?string $navigationLabel = 'Pedidos';
-    
+
     protected static ?string $modelLabel = 'Pedido';
-    
+
     protected static ?string $pluralModelLabel = 'Pedidos';
 
     protected static ?string $navigationGroup = 'Ventas';
-    
+
     protected static ?int $navigationSort = 1;
 
     // Show badge with pending orders count
@@ -59,14 +59,14 @@ class OrderResource extends Resource
                             ->label('Número de Orden')
                             ->disabled()
                             ->columnSpan(1),
-                        
+
                         Forms\Components\Select::make('status')
                             ->label('Estado')
                             ->options(Order::KANBAN_STATUSES)
                             ->required()
                             ->native(false)
                             ->columnSpan(1),
-                        
+
                         Forms\Components\Select::make('delivery_type')
                             ->label('Tipo de Entrega')
                             ->options([
@@ -84,18 +84,18 @@ class OrderResource extends Resource
                             ->label('Nombre')
                             ->required()
                             ->maxLength(255),
-                        
+
                         Forms\Components\TextInput::make('customer_phone')
                             ->label('Teléfono')
                             ->required()
                             ->tel()
                             ->maxLength(20),
-                        
+
                         Forms\Components\TextInput::make('customer_email')
                             ->label('Email')
                             ->email()
                             ->maxLength(255),
-                        
+
                         Forms\Components\Select::make('payment_method')
                             ->label('Método de Pago')
                             ->options([
@@ -104,12 +104,12 @@ class OrderResource extends Resource
                                 'card' => 'Tarjeta',
                                 'transfer' => 'Transferencia',
                             ]),
-                        
+
                         Forms\Components\Textarea::make('customer_address')
                             ->label('Dirección')
                             ->rows(2)
                             ->columnSpanFull(),
-                        
+
                         Forms\Components\Textarea::make('customer_notes')
                             ->label('Notas del Cliente')
                             ->rows(2)
@@ -124,19 +124,19 @@ class OrderResource extends Resource
                             ->numeric()
                             ->prefix('L.')
                             ->disabled(),
-                        
+
                         Forms\Components\TextInput::make('delivery_fee')
                             ->label('Envío')
                             ->numeric()
                             ->prefix('L.')
                             ->default(0),
-                        
+
                         Forms\Components\TextInput::make('discount_amount')
                             ->label('Descuento')
                             ->numeric()
                             ->prefix('L.')
                             ->default(0),
-                        
+
                         Forms\Components\TextInput::make('total')
                             ->label('Total')
                             ->numeric()
@@ -156,23 +156,23 @@ class OrderResource extends Resource
                     ->sortable()
                     ->weight('bold')
                     ->color('primary'),
-                
+
                 Tables\Columns\TextColumn::make('customer_name')
                     ->label('Cliente')
                     ->searchable()
                     ->description(fn (Order $record): string => $record->customer_phone),
-                
+
                 Tables\Columns\TextColumn::make('items_summary')
                     ->label('Productos')
                     ->wrap()
                     ->limit(50),
-                
+
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total')
-                    ->formatStateUsing(fn ($state) => 'L. ' . number_format($state, 2))
+                    ->formatStateUsing(fn ($state) => 'L. '.number_format($state, 2))
                     ->sortable()
                     ->weight('bold'),
-                
+
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Estado')
                     ->colors([
@@ -192,7 +192,7 @@ class OrderResource extends Resource
                         'heroicon-o-x-circle' => 'cancelled',
                     ])
                     ->formatStateUsing(fn ($state) => Order::KANBAN_STATUSES[$state] ?? ucfirst($state)),
-                
+
                 Tables\Columns\TextColumn::make('delivery_type')
                     ->label('Entrega')
                     ->badge()
@@ -202,15 +202,20 @@ class OrderResource extends Resource
                         default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => $state === 'delivery' ? 'Domicilio' : 'Recoger'),
-                
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Recibido')
                     ->since()
                     ->sortable()
                     ->color(function (Order $record) {
                         $minutes = $record->created_at->diffInMinutes(now());
-                        if ($minutes > 60) return 'danger';
-                        if ($minutes > 30) return 'warning';
+                        if ($minutes > 60) {
+                            return 'danger';
+                        }
+                        if ($minutes > 30) {
+                            return 'warning';
+                        }
+
                         return 'success';
                     }),
             ])
@@ -219,19 +224,19 @@ class OrderResource extends Resource
                     ->label('Estado')
                     ->options(Order::KANBAN_STATUSES)
                     ->multiple(),
-                
+
                 Tables\Filters\SelectFilter::make('delivery_type')
                     ->label('Tipo de Entrega')
                     ->options([
                         'pickup' => 'Recoger',
                         'delivery' => 'Domicilio',
                     ]),
-                
+
                 Tables\Filters\Filter::make('today')
                     ->label('Solo Hoy')
                     ->query(fn (Builder $query) => $query->whereDate('created_at', today()))
                     ->toggle(),
-                
+
                 Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([
@@ -244,21 +249,21 @@ class OrderResource extends Resource
                         ->requiresConfirmation()
                         ->visible(fn (Order $record) => $record->status === 'pending')
                         ->action(fn (Order $record) => $record->transitionTo('confirmed')),
-                    
+
                     Tables\Actions\Action::make('process')
                         ->label('En Preparación')
                         ->icon('heroicon-o-fire')
                         ->color('warning')
                         ->visible(fn (Order $record) => in_array($record->status, ['pending', 'confirmed']))
                         ->action(fn (Order $record) => $record->transitionTo('processing')),
-                    
+
                     Tables\Actions\Action::make('ready')
                         ->label('Listo')
                         ->icon('heroicon-o-gift')
                         ->color('success')
                         ->visible(fn (Order $record) => $record->status === 'processing')
                         ->action(fn (Order $record) => $record->transitionTo('ready')),
-                    
+
                     Tables\Actions\Action::make('deliver')
                         ->label('Entregado')
                         ->icon('heroicon-o-check')
@@ -266,23 +271,23 @@ class OrderResource extends Resource
                         ->requiresConfirmation()
                         ->visible(fn (Order $record) => $record->status === 'ready')
                         ->action(fn (Order $record) => $record->transitionTo('delivered')),
-                    
+
                     Tables\Actions\Action::make('cancel')
                         ->label('Cancelar')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
                         ->requiresConfirmation()
-                        ->visible(fn (Order $record) => !in_array($record->status, ['delivered', 'cancelled']))
+                        ->visible(fn (Order $record) => ! in_array($record->status, ['delivered', 'cancelled']))
                         ->action(fn (Order $record) => $record->transitionTo('cancelled')),
                 ]),
-                
+
                 Tables\Actions\Action::make('whatsapp')
                     ->label('WhatsApp')
                     ->icon('heroicon-o-chat-bubble-left-right')
                     ->color('success')
                     ->url(fn (Order $record) => $record->getWhatsAppUrl())
                     ->openUrlInNewTab(),
-                
+
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
@@ -316,7 +321,7 @@ class OrderResource extends Resource
 
     /**
      * SECURITY: Redundant tenant filtering for Defense in Depth
-     * 
+     *
      * Even though BelongsToTenant trait applies TenantScope globally,
      * we explicitly filter here as a second line of defense.
      */
@@ -326,12 +331,12 @@ class OrderResource extends Resource
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
-        
+
         $tenant = \Filament\Facades\Filament::getTenant();
         if ($tenant) {
             return $query->where('tenant_id', $tenant->id);
         }
-        
+
         return $query;
     }
 }

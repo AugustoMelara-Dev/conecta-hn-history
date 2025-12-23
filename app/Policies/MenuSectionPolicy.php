@@ -4,11 +4,10 @@ namespace App\Policies;
 
 use App\Models\MenuSection;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 /**
  * MenuSectionPolicy - Tenant-Aware Authorization for Menu Sections
- * 
+ *
  * ══════════════════════════════════════════════════════════════════════════════
  * SECURITY: Enforces tenant ownership for menu organization
  * ══════════════════════════════════════════════════════════════════════════════

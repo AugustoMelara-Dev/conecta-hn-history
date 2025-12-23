@@ -28,4 +28,3 @@ class Department extends Model
         return $this->hasManyThrough(City::class, Municipality::class);
     }
 }
-

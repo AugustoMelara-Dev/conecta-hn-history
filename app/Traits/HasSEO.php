@@ -139,4 +139,3 @@ trait HasSEO
         ];
     }
 }
-

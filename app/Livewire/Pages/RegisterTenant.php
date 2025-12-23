@@ -431,10 +431,10 @@ class RegisterTenant extends Component
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->isSubmitting = false;
-            
+
             // Detectar en qué paso está el error y redirigir
             $failedFields = array_keys($e->validator->errors()->toArray());
-            
+
             if (array_intersect($failedFields, ['business_name', 'slug'])) {
                 $this->currentStep = 1;
             } elseif (array_intersect($failedFields, ['name', 'email', 'password'])) {
@@ -447,10 +447,10 @@ class RegisterTenant extends Component
 
             // Relanzar los errores al componente
             $this->validate($allRules, $this->messages());
-            
+
         } catch (\Throwable $e) { // Catch-all robusto (incluye TypeError)
             $this->isSubmitting = false;
-            
+
             // Si es un error de dominio (validación manual), lo mostramos limpio
             if ($e instanceof \InvalidArgumentException) {
                 $this->addError('slug', $e->getMessage());
@@ -477,4 +477,3 @@ class RegisterTenant extends Component
         ]);
     }
 }
-

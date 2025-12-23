@@ -21,7 +21,7 @@ return new class extends Migration
         // ═══════════════════════════════════════════════════════════════════
         // TABLE: menu_sections (Product Categories per Tenant)
         // ═══════════════════════════════════════════════════════════════════
-        if (!Schema::hasTable('menu_sections')) {
+        if (! Schema::hasTable('menu_sections')) {
             Schema::create('menu_sections', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('tenant_id')
@@ -40,7 +40,7 @@ return new class extends Migration
         // ═══════════════════════════════════════════════════════════════════
         // TABLE: product_images (Gallery - PRO Feature)
         // ═══════════════════════════════════════════════════════════════════
-        if (!Schema::hasTable('product_images')) {
+        if (! Schema::hasTable('product_images')) {
             Schema::create('product_images', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('product_id')
@@ -59,13 +59,13 @@ return new class extends Migration
         // ═══════════════════════════════════════════════════════════════════
         Schema::table('products', function (Blueprint $table) {
             // Only add columns if they don't exist
-            if (!Schema::hasColumn('products', 'stock_status')) {
+            if (! Schema::hasColumn('products', 'stock_status')) {
                 $table->string('stock_status', 20)
                     ->default('in_stock')
                     ->after('price');
             }
 
-            if (!Schema::hasColumn('products', 'is_new')) {
+            if (! Schema::hasColumn('products', 'is_new')) {
                 $table->boolean('is_new')
                     ->default(false)
                     ->after('is_featured');

@@ -9,12 +9,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Review - User reviews for products/tenants
- * 
+ *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class Review extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use BelongsToTenant, HasFactory;
 
     protected $fillable = ['user_id', 'product_id', 'rating', 'comment', 'is_approved'];
 

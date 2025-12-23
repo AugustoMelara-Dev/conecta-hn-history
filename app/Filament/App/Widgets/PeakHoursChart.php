@@ -68,4 +68,3 @@ class PeakHoursChart extends ChartWidget
         return 'bar';
     }
 }
-

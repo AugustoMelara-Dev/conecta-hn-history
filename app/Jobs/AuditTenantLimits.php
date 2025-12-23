@@ -73,4 +73,3 @@ class AuditTenantLimits implements ShouldQueue
         Log::info('AuditTenantLimits job completed.');
     }
 }
-

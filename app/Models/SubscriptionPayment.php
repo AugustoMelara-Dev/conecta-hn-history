@@ -23,11 +23,11 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $admin_notes
  * @property int|null $reviewed_by
  * @property \Carbon\Carbon|null $reviewed_at
- * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
+ *                                            SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class SubscriptionPayment extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use BelongsToTenant, HasFactory;
 
     public const STATUS_PENDING = 'pending';
 
@@ -108,18 +108,18 @@ class SubscriptionPayment extends Model
 
     /**
      * Approve payment and dispatch event for subscription extension.
-     * 
+     *
      * ARCHITECTURAL PATTERN: Event-Driven Architecture with Immutable DTO
-     * 
+     *
      * This method follows Single Responsibility Principle:
      * - Only updates the payment's own state
      * - Dispatches PaymentApproved immutable DTO for side-effects
      * - Uses primitive types (int, not models) for serialization safety
      * - The UpdateTenantSubscription listener handles subscription logic
      *   with pessimistic locking and idempotency guards
-     * 
-     * @param int $reviewerId The admin who approved the payment
-     * @param int $daysToAdd Number of subscription days to add (default: 30)
+     *
+     * @param  int  $reviewerId  The admin who approved the payment
+     * @param  int  $daysToAdd  Number of subscription days to add (default: 30)
      */
     public function approve(int $reviewerId, int $daysToAdd = 30): void
     {
@@ -167,4 +167,3 @@ class SubscriptionPayment extends Model
         return $query->where('status', self::STATUS_APPROVED);
     }
 }
-

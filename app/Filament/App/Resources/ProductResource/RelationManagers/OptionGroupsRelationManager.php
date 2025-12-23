@@ -3,8 +3,8 @@
 namespace App\Filament\App\Resources\ProductResource\RelationManagers;
 
 use Filament\Forms;
-use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Forms\Form;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -204,4 +204,3 @@ class OptionGroupsRelationManager extends RelationManager
             ->emptyStateIcon('heroicon-o-squares-plus');
     }
 }
-

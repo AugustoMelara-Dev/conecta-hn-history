@@ -117,4 +117,3 @@ class SeoFields
         return "{$count}/{$limit}";
     }
 }
-

@@ -4,27 +4,28 @@ namespace App\Models;
 
 use App\DataTransferObjects\CouponValidationResult;
 use App\Traits\BelongsToTenant;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Coupon Model - Promotional Discount Engine
- * 
+ *
  * Supports:
  * - Fixed amount discounts (L. 50 off)
  * - Percentage discounts (10% off with optional cap)
  * - Business rules (min_spend, usage_limit, date range)
  * - Atomic usage tracking
- * 
+ *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class Coupon extends Model
 {
     use BelongsToTenant;
+
     // Discount types
     public const TYPE_FIXED = 'fixed';
+
     public const TYPE_PERCENT = 'percent';
 
     protected $fillable = [
@@ -100,15 +101,15 @@ class Coupon extends Model
             ->where('is_active', true)
             ->where(function ($q) use ($now) {
                 $q->whereNull('starts_at')
-                  ->orWhere('starts_at', '<=', $now);
+                    ->orWhere('starts_at', '<=', $now);
             })
             ->where(function ($q) use ($now) {
                 $q->whereNull('expires_at')
-                  ->orWhere('expires_at', '>=', $now);
+                    ->orWhere('expires_at', '>=', $now);
             })
             ->where(function ($q) {
                 $q->whereNull('usage_limit')
-                  ->orWhereColumn('usage_count', '<', 'usage_limit');
+                    ->orWhereColumn('usage_count', '<', 'usage_limit');
             });
     }
 
@@ -119,9 +120,10 @@ class Coupon extends Model
     public function getFormattedValueAttribute(): string
     {
         if ($this->type === self::TYPE_PERCENT) {
-            return $this->value . '%';
+            return $this->value.'%';
         }
-        return 'L. ' . number_format($this->value, 2);
+
+        return 'L. '.number_format($this->value, 2);
     }
 
     public function getUsageDisplayAttribute(): string
@@ -129,12 +131,13 @@ class Coupon extends Model
         if ($this->usage_limit === null) {
             return "{$this->usage_count} / ∞";
         }
+
         return "{$this->usage_count} / {$this->usage_limit}";
     }
 
     public function getStatusAttribute(): string
     {
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return 'inactive';
         }
 
@@ -185,11 +188,11 @@ class Coupon extends Model
 
     /**
      * Validate coupon against cart subtotal.
-     * 
+     *
      * Returns a strongly-typed DTO instead of magic arrays.
      * Use toArray() for backwards compatibility with JSON responses.
-     * 
-     * @param float $cartSubtotal The cart subtotal to validate against
+     *
+     * @param  float  $cartSubtotal  The cart subtotal to validate against
      * @return CouponValidationResult Immutable validation result object
      */
     public function validate(float $cartSubtotal): CouponValidationResult
@@ -197,7 +200,7 @@ class Coupon extends Model
         $now = Carbon::now();
 
         // Check if active
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return CouponValidationResult::error(
                 'Este cupón no está activo',
                 'INACTIVE'
@@ -231,8 +234,9 @@ class Coupon extends Model
         // Check minimum spend
         if ($this->min_spend !== null && $cartSubtotal < $this->min_spend) {
             $remaining = $this->min_spend - $cartSubtotal;
+
             return CouponValidationResult::minSpendError(
-                "Agrega L. " . number_format($remaining, 2) . " más para usar este cupón",
+                'Agrega L. '.number_format($remaining, 2).' más para usar este cupón',
                 (float) $this->min_spend,
                 $remaining
             );
@@ -257,7 +261,7 @@ class Coupon extends Model
     {
         if ($this->type === self::TYPE_PERCENT) {
             $discount = $cartSubtotal * ($this->value / 100);
-            
+
             // Apply max discount cap if set
             if ($this->max_discount !== null && $discount > $this->max_discount) {
                 $discount = $this->max_discount;
@@ -273,17 +277,18 @@ class Coupon extends Model
 
     /**
      * Increment usage count atomically with pessimistic locking.
-     * 
+     *
      * CONCURRENCY SAFETY:
      * Uses lockForUpdate() to acquire exclusive lock before incrementing.
      * This implements "double-check locking" pattern:
      * 1. Lock the row exclusively
      * 2. Verify limit hasn't been reached (with fresh data)
      * 3. Increment and commit
-     * 
+     *
      * This prevents "overselling" coupons during Black Friday scenarios.
-     * 
+     *
      * @return bool True if increment succeeded, false if limit reached
+     *
      * @throws \RuntimeException If coupon not found
      */
     public function incrementUsage(): bool
@@ -291,8 +296,8 @@ class Coupon extends Model
         return \Illuminate\Support\Facades\DB::transaction(function () {
             // Acquire exclusive lock on this coupon row
             $coupon = static::lockForUpdate()->find($this->id);
-            
-            if (!$coupon) {
+
+            if (! $coupon) {
                 throw new \RuntimeException("Coupon {$this->id} not found during increment");
             }
 
@@ -303,10 +308,10 @@ class Coupon extends Model
 
             // Safe to increment - we have exclusive lock
             $coupon->increment('usage_count');
-            
+
             // Refresh local instance
             $this->usage_count = $coupon->usage_count;
-            
+
             return true;
         });
     }

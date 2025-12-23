@@ -17,4 +17,3 @@ class EditUser extends EditRecord
         ];
     }
 }
-

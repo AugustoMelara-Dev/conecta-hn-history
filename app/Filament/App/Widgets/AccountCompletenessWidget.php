@@ -118,4 +118,3 @@ class AccountCompletenessWidget extends Widget
         ];
     }
 }
-

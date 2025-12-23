@@ -11,14 +11,14 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * UpdateTenantSubscription - Transactional Listener with Zero-Tolerance Enforcement
- * 
+ *
  * ARCHITECTURAL PATTERNS:
  * - Event-Driven Architecture: Fully decoupled from Payment model
  * - ACID Transactions: All-or-nothing subscription updates
  * - Pessimistic Locking: lockForUpdate() prevents race conditions
  * - Idempotency: Guards against double-processing with explicit state checks
  * - Fail-Fast: Throws exceptions on invalid states, no silent failures
- * 
+ *
  * SECURITY: Uses row-level database locks to mathematically eliminate
  * race conditions when two admins approve payments simultaneously.
  */
@@ -36,7 +36,7 @@ class UpdateTenantSubscription implements ShouldQueue
 
     /**
      * Handle the PaymentApproved event.
-     * 
+     *
      * @throws \RuntimeException If payment state is invalid
      * @throws \Exception If transaction fails
      */
@@ -50,7 +50,7 @@ class UpdateTenantSubscription implements ShouldQueue
             $payment = SubscriptionPayment::lockForUpdate()
                 ->find($event->paymentId);
 
-            if (!$payment) {
+            if (! $payment) {
                 throw new \RuntimeException(
                     "PaymentApproved: Payment ID {$event->paymentId} not found. Event may be stale."
                 );
@@ -63,14 +63,15 @@ class UpdateTenantSubscription implements ShouldQueue
                     'tenant_id' => $event->tenantId,
                     'original_extension_at' => $payment->subscription_extended_at,
                 ]);
+
                 return; // Idempotent exit - no exception, just skip
             }
 
             // Guard: Ensure payment is in approved state
             if ($payment->status !== SubscriptionPayment::STATUS_APPROVED) {
                 throw new \RuntimeException(
-                    "PaymentApproved: Payment #{$event->paymentId} is not approved (status: {$payment->status}). " .
-                    "Event dispatch may be corrupted."
+                    "PaymentApproved: Payment #{$event->paymentId} is not approved (status: {$payment->status}). ".
+                    'Event dispatch may be corrupted.'
                 );
             }
 
@@ -81,7 +82,7 @@ class UpdateTenantSubscription implements ShouldQueue
             // ═══════════════════════════════════════════════════════════════
             $tenant = Tenant::lockForUpdate()->find($event->tenantId);
 
-            if (!$tenant) {
+            if (! $tenant) {
                 throw new \RuntimeException(
                     "PaymentApproved: Tenant ID {$event->tenantId} not found. Data integrity compromised."
                 );
@@ -92,7 +93,7 @@ class UpdateTenantSubscription implements ShouldQueue
             // Base date logic: extend from current end or start fresh from today
             // ═══════════════════════════════════════════════════════════════
             $baseDate = $tenant->subscription_ends_at ?? now();
-            
+
             // If subscription already expired, start from today
             if ($baseDate->isPast()) {
                 $baseDate = now();

@@ -82,4 +82,3 @@ class PublicVisibilityScope implements Scope
         return false;
     }
 }
-

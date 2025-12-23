@@ -10,22 +10,22 @@ use Illuminate\Queue\InteractsWithQueue;
 
 /**
  * RecordInteraction - Non-blocking Analytics Writer
- * 
+ *
  * PERFORMANCE ARCHITECTURE:
  * This job decouples the HTTP response from I/O-bound analytics writes.
  * Instead of blocking the user's request for 50-200ms while writing to DB,
  * we return immediately and process the write asynchronously.
- * 
+ *
  * SERIALIZATION OPTIMIZATION:
  * - Does NOT use SerializesModels trait (no Eloquent models in payload)
  * - Uses only primitive types (int, string, array) for minimal serialization overhead
  * - Reduces payload size and avoids Reflection API overhead
- * 
+ *
  * DISPATCH STRATEGY:
  * - Pure async dispatch: RecordInteraction::dispatch(...)
  * - Controller returns immediately, job processed by queue worker
  * - Do NOT use ->afterResponse() as it still ties up PHP-FPM worker
- * 
+ *
  * USAGE:
  *   // Fire and forget - user gets response immediately
  *   RecordInteraction::dispatch($tenantId, 'whatsapp_click', $productId);
@@ -48,15 +48,15 @@ class RecordInteraction implements ShouldQueue
 
     /**
      * Create a new job instance.
-     * 
+     *
      * PRIMITIVE-ONLY SERIALIZATION:
      * All parameters are scalar types or arrays of scalars.
      * This eliminates the need for model serialization overhead.
-     * 
-     * @param int $tenantId The tenant owning this interaction
-     * @param string $type The interaction type (whatsapp_click, page_view, etc.)
-     * @param int|null $productId Optional product context
-     * @param array $metadata Additional contextual data
+     *
+     * @param  int  $tenantId  The tenant owning this interaction
+     * @param  string  $type  The interaction type (whatsapp_click, page_view, etc.)
+     * @param  int|null  $productId  Optional product context
+     * @param  array  $metadata  Additional contextual data
      */
     public function __construct(
         public readonly int $tenantId,
@@ -67,7 +67,7 @@ class RecordInteraction implements ShouldQueue
 
     /**
      * Execute the job.
-     * 
+     *
      * Delegates to the trusted Interaction::record factory method,
      * which uses forceFill() to bypass guarded protection safely.
      */
@@ -83,7 +83,7 @@ class RecordInteraction implements ShouldQueue
 
     /**
      * Handle a job failure.
-     * 
+     *
      * Analytics failures are non-critical.
      * Log but don't escalate - we don't want to wake anyone up
      * at 3 AM because we missed a page view counter.

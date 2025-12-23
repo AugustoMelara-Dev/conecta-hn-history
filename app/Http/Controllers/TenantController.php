@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Tenant;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -15,7 +14,7 @@ use Inertia\Response;
  *
  * Responsabilidad: Renderizar micrositios con datos transformados
  * según el plan del tenant (semilla vs pro vs enterprise).
- * 
+ *
  * SECURITY: El backend actúa como guardián - no enviamos datos de features
  * por las que el tenant no ha pagado.
  */
@@ -25,7 +24,9 @@ class TenantController extends Controller
      * Plan tiers mapping
      */
     private const PLAN_SEMILLA = 'semilla';
+
     private const PLAN_PRO = 'pro';
+
     private const PLAN_ENTERPRISE = 'enterprise';
 
     /**
@@ -37,14 +38,14 @@ class TenantController extends Controller
         // GATEKEEPER: Multi-layer validation for tenant visibility
         // A tenant must pass ALL checks to be publicly visible
         // ═══════════════════════════════════════════════════════════════
-        
+
         // Layer 1: Administrative approval
-        if (!$tenant->is_active) {
+        if (! $tenant->is_active) {
             abort(404, 'Este negocio no está disponible.');
         }
 
         // Layer 2: Subscription status (no morosos in public directory)
-        if (!in_array($tenant->subscription_status, ['active', 'trial'])) {
+        if (! in_array($tenant->subscription_status, ['active', 'trial'])) {
             abort(404, 'Este negocio no está disponible.');
         }
 
@@ -70,7 +71,7 @@ class TenantController extends Controller
 
         // Calculate hidden products for Soft Gate UX
         $visibleProductsCount = count($products);
-        $hasHiddenProducts = ($tenantPlan === self::PLAN_SEMILLA) 
+        $hasHiddenProducts = ($tenantPlan === self::PLAN_SEMILLA)
             && ($totalProductsCount > self::SEMILLA_PRODUCT_LIMIT);
         $hiddenProductsCount = max(0, $totalProductsCount - $visibleProductsCount);
 
@@ -123,7 +124,7 @@ class TenantController extends Controller
 
     /**
      * Determine the tenant's subscription plan.
-     * 
+     *
      * Business Logic:
      * - is_pro = false -> 'semilla' (Free tier, stateless WhatsApp)
      * - is_pro = true  -> 'pro' (Paid tier, stateful cart)
@@ -138,7 +139,7 @@ class TenantController extends Controller
 
     /**
      * Load tenant relations based on plan tier.
-     * 
+     *
      * SECURITY: Only Pro/Enterprise load modifier data.
      * Semilla tenants get products without modifiers to prevent data leakage.
      */
@@ -153,7 +154,7 @@ class TenantController extends Controller
         // Base product query - limit for Semilla plan
         $productQuery = function ($query) use ($plan) {
             $query->where('is_visible', true)->orderBy('name');
-            
+
             // HARD LIMIT: Semilla only gets 12 products from DB
             if ($plan === self::PLAN_SEMILLA) {
                 $query->limit(self::SEMILLA_PRODUCT_LIMIT);
@@ -250,14 +251,14 @@ class TenantController extends Controller
 
     /**
      * Transform products collection with SaaS tier feature flagging.
-     * 
+     *
      * SECURITY CRITICAL:
      * - Semilla: modifiers = [] (even if data exists in DB)
      * - Pro/Enterprise: Full modifier data with nested options
      */
     private function transformProducts($products, string $plan, Tenant $tenant): array
     {
-        if (!$products) {
+        if (! $products) {
             return [];
         }
 
@@ -268,13 +269,13 @@ class TenantController extends Controller
                 'slug' => $product->slug ?? \Illuminate\Support\Str::slug($product->name),
                 'description' => $product->description ?? '',
                 'price' => (float) ($product->price ?? 0),
-                'formatted_price' => 'L. ' . number_format((float) ($product->price ?? 0), 2),
+                'formatted_price' => 'L. '.number_format((float) ($product->price ?? 0), 2),
                 'image' => $this->resolveImageUrl($product->image ?? null, 'product'),
                 'is_visible' => (bool) ($product->is_visible ?? true),
                 'is_featured' => (bool) ($product->is_featured ?? false),
                 'category_id' => $product->category_id,
                 'menu_section_id' => $product->menu_section_id,
-                
+
                 // Tenant context for WhatsApp generation
                 'tenant_whatsapp' => $tenant->whatsapp_number,
                 'tenant_name' => $tenant->name,
@@ -302,15 +303,15 @@ class TenantController extends Controller
                                 'id' => $option->id,
                                 'name' => $option->name,
                                 'price' => (float) ($option->price ?? 0),
-                                'formatted_price' => $option->price > 0 
-                                    ? '+L. ' . number_format((float) $option->price, 2) 
+                                'formatted_price' => $option->price > 0
+                                    ? '+L. '.number_format((float) $option->price, 2)
                                     : 'Gratis',
                                 'is_default' => (bool) ($option->is_default ?? false),
                             ];
                         })->toArray(),
                     ];
                 })->toArray();
-                
+
                 $baseProduct['modifiers'] = $baseProduct['modifier_groups']; // Alias
                 $baseProduct['has_modifiers'] = count($baseProduct['modifier_groups']) > 0;
             }
@@ -325,7 +326,8 @@ class TenantController extends Controller
     private function getMockedOpeningHours(): array
     {
         $days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-        return collect($days)->map(fn($day) => [
+
+        return collect($days)->map(fn ($day) => [
             'day' => $day,
             'opens_at' => '08:00',
             'closes_at' => '18:00',
@@ -359,7 +361,7 @@ class TenantController extends Controller
     private function resolveImageUrl(?string $path, string $type): string
     {
         if (empty($path)) {
-            return match($type) {
+            return match ($type) {
                 'cover' => 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop',
                 'logo' => 'https://ui-avatars.com/api/?name=ConectaHN&background=0ea5e9&color=fff&size=200',
                 'product' => 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop',

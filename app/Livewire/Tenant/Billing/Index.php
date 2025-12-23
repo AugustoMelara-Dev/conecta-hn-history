@@ -193,4 +193,3 @@ class Index extends Component
             ->title('Facturación | '.$this->tenant->name);
     }
 }
-

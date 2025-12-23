@@ -170,4 +170,3 @@ class Dashboard extends Component
             ->title($this->tenant->name.' - Dashboard | Conecta HN');
     }
 }
-

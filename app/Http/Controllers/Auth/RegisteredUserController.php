@@ -18,7 +18,7 @@ use Inertia\Response;
 
 /**
  * RegisteredUserController - Atomic Onboarding
- * 
+ *
  * Implements transactional User + Tenant creation.
  * CRITICAL: Never leaves orphan users without a tenant.
  */
@@ -46,7 +46,7 @@ class RegisteredUserController extends Controller
 
     /**
      * Handle an incoming registration request.
-     * 
+     *
      * ATOMIC OPERATION:
      * 1. Validate user + tenant data
      * 2. Begin transaction
@@ -67,7 +67,7 @@ class RegisteredUserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:users,email',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            
+
             // Tenant fields (New for atomic onboarding)
             'tenant_name' => 'required|string|max:255|min:2',
             'slug' => [
@@ -77,7 +77,7 @@ class RegisteredUserController extends Controller
                 'min:3',
                 'alpha_dash',  // Only alphanumeric, dashes, underscores
                 'unique:tenants,slug',  // Must be unique
-                'not_in:' . implode(',', self::RESERVED_SLUGS),  // Blacklist
+                'not_in:'.implode(',', self::RESERVED_SLUGS),  // Blacklist
             ],
         ], [
             // Custom error messages in Spanish
@@ -107,7 +107,7 @@ class RegisteredUserController extends Controller
                 'name' => $validated['tenant_name'],
                 'slug' => Str::lower($validated['slug']),
                 'user_id' => $user->id,
-                
+
                 // ZERO-CONFIG DEFAULTS: Ready to use immediately
                 'plan_type' => 'semilla',
                 'subscription_status' => 'active',

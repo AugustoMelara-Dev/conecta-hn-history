@@ -63,4 +63,3 @@ class Show extends Component
         ])->title($this->tenant->name.' | Conecta HN');
     }
 }
-

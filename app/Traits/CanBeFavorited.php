@@ -88,4 +88,3 @@ trait CanBeFavorited
         return true;
     }
 }
-

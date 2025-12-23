@@ -55,4 +55,3 @@ class OtpMail extends Mailable
         return [];
     }
 }
-

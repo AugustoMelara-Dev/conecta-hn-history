@@ -8,16 +8,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * BelongsToTenant - Universal Trait for Multi-Tenant Models
- * 
+ *
  * ══════════════════════════════════════════════════════════════════════════════
  * SECURITY CRITICAL - AUTOMATIC TENANT ISOLATION
  * ══════════════════════════════════════════════════════════════════════════════
- * 
+ *
  * This trait provides:
  * 1. Automatic TenantScope for all SELECT queries
  * 2. Automatic tenant_id assignment on CREATE
  * 3. Tenant relationship definition
- * 
+ *
  * USAGE:
  * ```php
  * class Product extends Model
@@ -25,13 +25,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *     use BelongsToTenant;
  * }
  * ```
- * 
+ *
  * SECURITY GUARANTEES:
  * - All queries filtered by tenant_id automatically
  * - New records assigned to current tenant
  * - No developer intervention required
  * - Fail-secure: returns empty if no tenant context
- * 
+ *
  * BYPASS (for admin super-users):
  * ```php
  * Product::withoutGlobalScope(TenantScope::class)->get();
@@ -70,7 +70,7 @@ trait BelongsToTenant
 
     /**
      * Resolve tenant ID for new model creation.
-     * 
+     *
      * PRIORITY ORDER:
      * 1. Filament Panel Context
      * 2. Authenticated User's Primary Tenant
@@ -111,7 +111,7 @@ trait BelongsToTenant
 
     /**
      * Scope a query to a specific tenant.
-     * 
+     *
      * Useful for explicit tenant filtering in controllers.
      * Example: Product::forTenant($tenantId)->get()
      */
@@ -130,15 +130,15 @@ trait BelongsToTenant
 
     /**
      * Verify ownership - throws exception if model doesn't belong to tenant.
-     * 
+     *
      * Use in controllers for explicit verification:
      * $product->verifyTenantOwnership($request->tenant_id);
-     * 
+     *
      * @throws \Illuminate\Auth\Access\AuthorizationException
      */
     public function verifyTenantOwnership(int $tenantId): void
     {
-        if (!$this->belongsToTenant($tenantId)) {
+        if (! $this->belongsToTenant($tenantId)) {
             throw new \Illuminate\Auth\Access\AuthorizationException(
                 'This resource does not belong to your organization.'
             );

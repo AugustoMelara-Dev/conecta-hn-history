@@ -8,7 +8,7 @@ use Illuminate\Auth\Access\Response;
 
 /**
  * ProductPolicy - Tenant-Aware Authorization for Products
- * 
+ *
  * ══════════════════════════════════════════════════════════════════════════════
  * SECURITY: Enforces tenant ownership for all product operations
  * ══════════════════════════════════════════════════════════════════════════════
@@ -17,7 +17,7 @@ class ProductPolicy extends TenantAwarePolicy
 {
     /**
      * Determine whether the user can view any products.
-     * 
+     *
      * ALLOWED: Tenant owners can view their product list
      */
     public function viewAny(User $user): bool
@@ -27,7 +27,7 @@ class ProductPolicy extends TenantAwarePolicy
 
     /**
      * Determine whether the user can view the product.
-     * 
+     *
      * SECURITY: Only owner tenant can view
      */
     public function view(User $user, Product $product): bool
@@ -37,16 +37,16 @@ class ProductPolicy extends TenantAwarePolicy
 
     /**
      * Determine whether the user can create products.
-     * 
+     *
      * SECURITY: User must have a tenant + respect product limits
      */
     public function create(User $user): Response
     {
         // Get user's primary tenant from Filament context or relationship
-        $tenant = \Filament\Facades\Filament::getTenant() 
+        $tenant = \Filament\Facades\Filament::getTenant()
             ?? $user->tenants()->first();
 
-        if (!$tenant) {
+        if (! $tenant) {
             return Response::deny('Debes tener un negocio para crear productos.');
         }
 
@@ -61,14 +61,14 @@ class ProductPolicy extends TenantAwarePolicy
         }
 
         return Response::deny(
-            'Has alcanzado el límite de 10 productos de tu Plan Gratuito. ' .
+            'Has alcanzado el límite de 10 productos de tu Plan Gratuito. '.
             'Actualiza a PRO para ilimitados.'
         );
     }
 
     /**
      * Determine whether the user can update the product.
-     * 
+     *
      * SECURITY: Only owner tenant can update
      */
     public function update(User $user, Product $product): bool
@@ -78,7 +78,7 @@ class ProductPolicy extends TenantAwarePolicy
 
     /**
      * Determine whether the user can delete the product.
-     * 
+     *
      * SECURITY: Only owner tenant can delete
      */
     public function delete(User $user, Product $product): bool
@@ -96,7 +96,7 @@ class ProductPolicy extends TenantAwarePolicy
 
     /**
      * Determine whether the user can permanently delete the product.
-     * 
+     *
      * CAUTION: Destructive operation - stricter check
      */
     public function forceDelete(User $user, Product $product): bool

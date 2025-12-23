@@ -67,4 +67,3 @@ class ProductImage extends Model
         return $query->orderBy('sort_order');
     }
 }
-

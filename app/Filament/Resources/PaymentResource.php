@@ -373,4 +373,3 @@ class PaymentResource extends Resource
             ->orderByRaw("FIELD(status, 'pending', 'approved', 'rejected')");
     }
 }
-

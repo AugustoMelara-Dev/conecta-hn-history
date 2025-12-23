@@ -8,21 +8,21 @@ use Illuminate\Database\Eloquent\Scope;
 
 /**
  * TenantScope - Global Scope for Multi-Tenant Isolation
- * 
+ *
  * ══════════════════════════════════════════════════════════════════════════════
  * SECURITY CRITICAL - ZERO TRUST ARCHITECTURE
  * ══════════════════════════════════════════════════════════════════════════════
- * 
+ *
  * This scope automatically injects `WHERE tenant_id = ?` on ALL queries
  * for models that use the BelongsToTenant trait.
- * 
+ *
  * ATTACK PREVENTION:
  * - IDOR (Insecure Direct Object Reference)
  * - Horizontal Privilege Escalation
  * - Cross-Tenant Data Leakage
- * 
+ *
  * USAGE: Applied automatically via BelongsToTenant trait
- * 
+ *
  * BYPASS: Only via explicit withoutGlobalScope(TenantScope::class)
  * - Required for: Admin super-user queries, system migrations
  * - Should be audited in code reviews
@@ -58,7 +58,7 @@ class TenantScope implements Scope
         }
 
         // Apply the isolation constraint
-        $builder->where($model->getTable() . '.tenant_id', $tenantId);
+        $builder->where($model->getTable().'.tenant_id', $tenantId);
     }
 
     /**
@@ -86,7 +86,7 @@ class TenantScope implements Scope
         // Method 2: Authenticated user's primary tenant
         if (auth()->check()) {
             $user = auth()->user();
-            
+
             // User->tenants() returns HasMany (user owns tenants)
             $primaryTenant = $user->tenants()->first();
             if ($primaryTenant) {
@@ -97,7 +97,7 @@ class TenantScope implements Scope
         // Method 3: Request parameter (for public API endpoints)
         // WARNING: Only use when explicitly validated in controller
         // NOT recommended for automatic scope - too risky
-        
+
         return null;
     }
 }

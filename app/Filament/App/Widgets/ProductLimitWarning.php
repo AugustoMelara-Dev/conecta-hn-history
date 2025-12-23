@@ -40,4 +40,3 @@ class ProductLimitWarning extends Widget
         return ProductResource::getProductLimitInfo();
     }
 }
-

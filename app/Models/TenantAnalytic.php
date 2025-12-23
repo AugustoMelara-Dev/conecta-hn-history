@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * TenantAnalytic - Aggregated analytics data per tenant per day
- * 
+ *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class TenantAnalytic extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use BelongsToTenant, HasFactory;
 
     protected $fillable = [
         'date',
@@ -34,8 +34,7 @@ class TenantAnalytic extends Model
     ];
 
     // ═══════════════════════════════════════════════════════════════════════
-    // RELATIONSHIPS  
+    // RELATIONSHIPS
     // Note: tenant() relationship is provided by BelongsToTenant trait
     // ═══════════════════════════════════════════════════════════════════════
 }
-

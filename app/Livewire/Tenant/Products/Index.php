@@ -157,4 +157,3 @@ class Index extends Component
             ->title('Mis Productos | '.$this->tenant->name);
     }
 }
-

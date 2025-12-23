@@ -43,11 +43,11 @@ return new class extends Migration
         // ALTER: tenants (Billing Cycle Fields)
         // ═══════════════════════════════════════════════════════════════════
         Schema::table('tenants', function (Blueprint $table) {
-            if (!Schema::hasColumn('tenants', 'next_billing_date')) {
+            if (! Schema::hasColumn('tenants', 'next_billing_date')) {
                 $table->date('next_billing_date')->nullable();
             }
 
-            if (!Schema::hasColumn('tenants', 'subscription_status')) {
+            if (! Schema::hasColumn('tenants', 'subscription_status')) {
                 $table->string('subscription_status')->default('active'); // active, past_due, cancelled
             }
         });

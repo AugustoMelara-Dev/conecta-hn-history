@@ -38,4 +38,3 @@ class PaymentRejectedMail extends Mailable implements ShouldQueue
         return [];
     }
 }
-

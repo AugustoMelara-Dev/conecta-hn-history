@@ -1,9 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\CouponController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\InteractionController;
-use App\Http\Controllers\Api\OrderController;
-use App\Http\Controllers\Api\CouponController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -37,7 +37,7 @@ Route::post('/analytics/track', [\App\Http\Controllers\Api\AnalyticsController::
 Route::prefix('coupons')->group(function () {
     // Public: Verify coupon code (tenant_id comes in request body, controller validates)
     Route::post('/verify', [CouponController::class, 'verify']);
-    
+
     // Public: List available coupons for tenant (tenant_id in query param)
     Route::get('/', [CouponController::class, 'index']);
 });
@@ -55,24 +55,24 @@ Route::post('/orders', [OrderController::class, 'store']);
 // belong to the authenticated user's tenant BEFORE reaching the controller.
 // ═══════════════════════════════════════════════════════════════════════════
 Route::middleware(['auth:sanctum', 'tenant.ownership'])->group(function () {
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // ORDERS MANAGEMENT: Admin operations on orders
     // ─────────────────────────────────────────────────────────────────────────
     Route::prefix('orders')->group(function () {
         // List tenant's orders (for dashboard/kanban)
         Route::get('/', [OrderController::class, 'index']);
-        
+
         // Get specific order details
         Route::get('/{order}', [OrderController::class, 'show']);
-        
+
         // Update order status (Kanban drag-drop)
         Route::patch('/{order}/status', [OrderController::class, 'updateStatus']);
-        
+
         // Cancel order
         Route::delete('/{order}', [OrderController::class, 'destroy']);
     });
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // Future protected endpoints can be added here:
     // - Products CRUD

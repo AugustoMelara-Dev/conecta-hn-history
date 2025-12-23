@@ -17,4 +17,3 @@ class EditLead extends EditRecord
         ];
     }
 }
-

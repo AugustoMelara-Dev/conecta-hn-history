@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * HORARIOS DE APERTURA - Conecta HN
      * Permite intervalos múltiples por día (ej. 8:00-12:00 y 14:00-18:00)
      * Reemplaza el campo JSON simple para permitir consultas SQL de "Abierto Ahora"
@@ -18,13 +18,13 @@ return new class extends Migration
         Schema::create('opening_hours', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
-            
+
             // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
-            $table->unsignedTinyInteger('day_of_week'); 
-            
+            $table->unsignedTinyInteger('day_of_week');
+
             $table->time('opening_time');
             $table->time('closing_time');
-            
+
             $table->timestamps();
 
             // Índices para consultas rápidas de "Abierto Ahora"

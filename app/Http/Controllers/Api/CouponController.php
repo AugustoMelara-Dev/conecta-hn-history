@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Validator;
 
 /**
  * CouponController - Discount Validation Engine
- * 
+ *
  * SECURITY PATTERN:
  * This controller is the "source of truth" for discount calculations.
  * Frontend displays are for UX only; final validation happens here.
- * 
+ *
  * RACE CONDITION PREVENTION:
  * Usage count is incremented atomically in OrderController::store
  * within the database transaction.
@@ -23,11 +23,11 @@ class CouponController extends Controller
 {
     /**
      * Verify a coupon code against cart subtotal.
-     * 
+     *
      * POST /api/coupons/verify
-     * 
+     *
      * Request: { tenant_id, code, cart_subtotal }
-     * 
+     *
      * Success Response 200:
      * {
      *   "valid": true,
@@ -37,7 +37,7 @@ class CouponController extends Controller
      *   "coupon_type": "fixed",
      *   "coupon_value": 50
      * }
-     * 
+     *
      * Error Response 422:
      * {
      *   "valid": false,
@@ -73,7 +73,7 @@ class CouponController extends Controller
             ->byCode($code)
             ->first();
 
-        if (!$coupon) {
+        if (! $coupon) {
             return response()->json([
                 'valid' => false,
                 'error' => 'Cupón no encontrado',
@@ -86,7 +86,7 @@ class CouponController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         $result = $coupon->validate($cartSubtotal);
 
-        if (!$result['valid']) {
+        if (! $result['valid']) {
             return response()->json($result, 422);
         }
 
@@ -99,14 +99,14 @@ class CouponController extends Controller
     /**
      * Get available coupons for a tenant (public display).
      * Only shows active, non-expired coupons without usage limits reached.
-     * 
+     *
      * GET /api/coupons?tenant_id=X
      */
     public function index(Request $request): JsonResponse
     {
         $tenantId = $request->input('tenant_id');
 
-        if (!$tenantId) {
+        if (! $tenantId) {
             return response()->json([
                 'success' => false,
                 'error' => 'tenant_id es requerido',

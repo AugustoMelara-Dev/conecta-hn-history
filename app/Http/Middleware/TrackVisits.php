@@ -106,4 +106,3 @@ class TrackVisits
         return false;
     }
 }
-

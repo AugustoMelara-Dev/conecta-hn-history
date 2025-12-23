@@ -107,4 +107,3 @@ class Home extends Component
         }
     }
 }
-

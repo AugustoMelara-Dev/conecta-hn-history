@@ -59,4 +59,3 @@ class LoginAlertMail extends Mailable
         );
     }
 }
-

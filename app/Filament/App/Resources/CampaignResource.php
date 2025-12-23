@@ -171,4 +171,3 @@ class CampaignResource extends Resource
         ];
     }
 }
-

@@ -135,7 +135,7 @@ class AdminPanelProvider extends PanelProvider
             }
 
             // If not authenticated, let the login page handle it
-            if (!auth()->check()) {
+            if (! auth()->check()) {
                 return;
             }
 
@@ -151,4 +151,3 @@ class AdminPanelProvider extends PanelProvider
         });
     }
 }
-

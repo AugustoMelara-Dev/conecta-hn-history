@@ -13,18 +13,18 @@ use Tests\TestCase;
 
 /**
  * FullSystemIsolationTest - Multi-Tenant Security Penetration Tests
- * 
+ *
  * ══════════════════════════════════════════════════════════════════════════════
  * SECURITY AUDIT FRAMEWORK - ZERO TRUST VERIFICATION
  * ══════════════════════════════════════════════════════════════════════════════
- * 
+ *
  * ZERO TRUST SECURITY MODEL:
  * The system implements "Resource Hiding" via TenantScope global scope.
  * When an attacker tries to access a victim's resource:
  * - TenantScope injects WHERE tenant_id = attacker_tenant_id
  * - The victim's resource becomes INVISIBLE to Eloquent
  * - Laravel returns 404 Not Found (ModelNotFoundException)
- * 
+ *
  * This is SUPERIOR to 403 Forbidden for preventing enumeration attacks.
  * Both 403 and 404 are valid success responses for isolation tests.
  */
@@ -33,8 +33,11 @@ class FullSystemIsolationTest extends TestCase
     use RefreshDatabase;
 
     protected User $victimUser;
+
     protected User $attackerUser;
+
     protected Tenant $victimTenant;
+
     protected Tenant $attackerTenant;
 
     /**
@@ -77,11 +80,11 @@ class FullSystemIsolationTest extends TestCase
     protected function assertSecurityBlocked($response, string $attackDescription): void
     {
         $status = $response->status();
-        
+
         $this->assertTrue(
             in_array($status, $this->validSecurityResponses),
-            "SECURITY BREACH: {$attackDescription}. " .
-            "Expected one of [" . implode(', ', $this->validSecurityResponses) . "], got {$status}"
+            "SECURITY BREACH: {$attackDescription}. ".
+            'Expected one of ['.implode(', ', $this->validSecurityResponses)."], got {$status}"
         );
     }
 
@@ -91,6 +94,7 @@ class FullSystemIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group idor
      */
@@ -112,17 +116,17 @@ class FullSystemIsolationTest extends TestCase
         try {
             Sanctum::actingAs($this->attackerUser, ['*']);
             $response = $this->getJson("/api/orders/{$victimOrder->id}");
-            
+
             // ASSERT: Access denied (404 = TenantScope hid it, 403 = Policy blocked)
             $this->assertSecurityBlocked($response, "Attacker accessed victim's order");
-            
+
             // No sensitive data leaked
             $content = $response->getContent();
             $this->assertStringNotContainsString('Cliente Secreto', $content);
         } catch (\Throwable $e) {
             // If framework throws exception, security is still intact
             // (resource inaccessible = mission accomplished)
-            $this->assertTrue(true, 'Security isolation via exception: ' . get_class($e));
+            $this->assertTrue(true, 'Security isolation via exception: '.get_class($e));
         }
     }
 
@@ -132,6 +136,7 @@ class FullSystemIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group write_protection
      */
@@ -141,7 +146,7 @@ class FullSystemIsolationTest extends TestCase
         $victimProduct = Product::withoutGlobalScopes()->create([
             'tenant_id' => $this->victimTenant->id,
             'name' => 'Pizza Especial',
-            'slug' => 'pizza-especial-victim-' . uniqid(),
+            'slug' => 'pizza-especial-victim-'.uniqid(),
             'price' => 250.00,
             'is_visible' => true,
         ]);
@@ -175,6 +180,7 @@ class FullSystemIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group information_disclosure
      */
@@ -184,7 +190,7 @@ class FullSystemIsolationTest extends TestCase
         Product::withoutGlobalScopes()->create([
             'tenant_id' => $this->victimTenant->id,
             'name' => 'VICTIM_SECRET_PRODUCT',
-            'slug' => 'victim-secret-' . uniqid(),
+            'slug' => 'victim-secret-'.uniqid(),
             'price' => 999.99,
             'is_visible' => true,
         ]);
@@ -192,7 +198,7 @@ class FullSystemIsolationTest extends TestCase
         Product::withoutGlobalScopes()->create([
             'tenant_id' => $this->attackerTenant->id,
             'name' => 'Attacker Product',
-            'slug' => 'attacker-product-' . uniqid(),
+            'slug' => 'attacker-product-'.uniqid(),
             'price' => 10.00,
             'is_visible' => true,
         ]);
@@ -203,8 +209,9 @@ class FullSystemIsolationTest extends TestCase
             $response = $this->getJson("/api/products?tenant_id={$this->attackerTenant->id}");
 
             // If API doesn't exist or is restricted
-            if (!$response->isSuccessful()) {
+            if (! $response->isSuccessful()) {
                 $this->assertTrue(true, 'API properly restricted');
+
                 return;
             }
 
@@ -213,7 +220,7 @@ class FullSystemIsolationTest extends TestCase
             $this->assertStringNotContainsString('VICTIM_SECRET_PRODUCT', $content);
         } catch (\Throwable $e) {
             // Exception = route doesn't exist or blocked
-            $this->assertTrue(true, 'API not available: ' . get_class($e));
+            $this->assertTrue(true, 'API not available: '.get_class($e));
         }
     }
 
@@ -223,6 +230,7 @@ class FullSystemIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group financial
      */
@@ -258,6 +266,7 @@ class FullSystemIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group destruction
      */
@@ -299,6 +308,7 @@ class FullSystemIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group enumeration
      */
@@ -317,19 +327,19 @@ class FullSystemIsolationTest extends TestCase
 
         try {
             Sanctum::actingAs($this->attackerUser, ['*']);
-            
+
             // Request existing resource (victim's)
             $existingResponse = $this->getJson("/api/orders/{$victimOrder->id}");
-            
+
             // Request non-existing resource
-            $nonExistingResponse = $this->getJson("/api/orders/999999");
+            $nonExistingResponse = $this->getJson('/api/orders/999999');
 
             // Both should return 4xx client error
             $this->assertTrue(
                 $existingResponse->status() >= 400 && $existingResponse->status() < 500,
                 "Existing resource: expected 4xx, got {$existingResponse->status()}"
             );
-            
+
             $this->assertTrue(
                 $nonExistingResponse->status() >= 400 && $nonExistingResponse->status() < 500,
                 "Non-existing resource: expected 4xx, got {$nonExistingResponse->status()}"
@@ -346,6 +356,7 @@ class FullSystemIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group admin_panel
      */
@@ -355,7 +366,7 @@ class FullSystemIsolationTest extends TestCase
         $victimProduct = Product::withoutGlobalScopes()->create([
             'tenant_id' => $this->victimTenant->id,
             'name' => 'Admin Panel Test Product',
-            'slug' => 'admin-test-product-' . uniqid(),
+            'slug' => 'admin-test-product-'.uniqid(),
             'price' => 150.00,
             'is_visible' => true,
         ]);

@@ -11,12 +11,12 @@ use Illuminate\Support\Str;
 
 /**
  * TenantFactory - Enterprise-Grade Factory for Multi-Tenant Testing
- * 
+ *
  * DESIGN DECISIONS:
  * - Foreign keys (city_id, category_id) are nullable in DB, so defaults to null
  * - User is always required (non-nullable FK) - uses UserFactory
  * - Optional relationships can be added via state modifiers
- * 
+ *
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Tenant>
  */
 class TenantFactory extends Factory
@@ -45,7 +45,7 @@ class TenantFactory extends Factory
 
     /**
      * Define the model's default state.
-     * 
+     *
      * CRITICAL: This method must be self-contained and not query the database
      * for existing records, as tests run with RefreshDatabase (empty tables).
      *
@@ -60,7 +60,7 @@ class TenantFactory extends Factory
         return [
             // Required FK - User always created via factory chain
             'user_id' => User::factory(),
-            
+
             // Optional FKs - Default to null (columns are nullable in migration)
             // Use state modifiers like ->withCity() or ->withCategory() when needed
             'city_id' => null,
@@ -68,7 +68,7 @@ class TenantFactory extends Factory
 
             // Core identity
             'name' => $name,
-            'slug' => Str::slug($name) . '-' . Str::random(4),
+            'slug' => Str::slug($name).'-'.Str::random(4),
             'description' => $this->faker->paragraph(),
             'address' => $this->faker->streetAddress(),
 
@@ -78,12 +78,12 @@ class TenantFactory extends Factory
             'cover_image_path' => null,
             'blur_hash' => null,
             'primary_color' => $this->faker->randomElement([
-                '#000000', '#1e40af', '#7c3aed', '#dc2626', '#059669', '#f59e0b'
+                '#000000', '#1e40af', '#7c3aed', '#dc2626', '#059669', '#f59e0b',
             ]),
             'theme_config' => null,
 
             // Contact (minimal required for testing)
-            'whatsapp_number' => '+504 ' . $this->faker->numerify('####-####'),
+            'whatsapp_number' => '+504 '.$this->faker->numerify('####-####'),
             'whatsapp_message' => null,
             'whatsapp_template' => 'Hola, me interesa conocer más sobre sus productos.',
             'social_links' => null,

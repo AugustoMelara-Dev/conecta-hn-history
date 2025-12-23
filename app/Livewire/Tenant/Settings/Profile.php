@@ -294,4 +294,3 @@ class Profile extends Component
             ->title('Configuración | '.$this->tenant->name);
     }
 }
-

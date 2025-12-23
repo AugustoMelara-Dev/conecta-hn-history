@@ -8,9 +8,9 @@ use App\Models\Product;
 use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
 use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
@@ -604,4 +604,3 @@ class ProductResource extends Resource
         ];
     }
 }
-

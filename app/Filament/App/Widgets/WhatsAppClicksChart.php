@@ -70,4 +70,3 @@ class WhatsAppClicksChart extends ChartWidget
         return 'line';
     }
 }
-

@@ -69,4 +69,3 @@ class ProductOption extends Model
         ];
     }
 }
-

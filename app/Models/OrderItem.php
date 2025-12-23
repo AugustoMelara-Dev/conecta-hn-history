@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * OrderItem Model - Line Item with Price Snapshot
- * 
+ *
  * Represents a single product in an order.
  * Stores frozen price/name data to preserve historical accuracy.
  */
@@ -54,22 +54,22 @@ class OrderItem extends Model
 
     public function getFormattedUnitPriceAttribute(): string
     {
-        return 'L. ' . number_format($this->unit_price, 2);
+        return 'L. '.number_format($this->unit_price, 2);
     }
 
     public function getFormattedLineTotalAttribute(): string
     {
-        return 'L. ' . number_format($this->line_total, 2);
+        return 'L. '.number_format($this->line_total, 2);
     }
 
     public function getOptionsDescriptionAttribute(): string
     {
-        if (!$this->options || empty($this->options)) {
+        if (! $this->options || empty($this->options)) {
             return '';
         }
 
         return collect($this->options)
-            ->map(fn($opt) => $opt['option'] ?? '')
+            ->map(fn ($opt) => $opt['option'] ?? '')
             ->filter()
             ->implode(', ');
     }
@@ -80,9 +80,8 @@ class OrderItem extends Model
 
     /**
      * Create an OrderItem from a cart item payload.
-     * 
-     * @param array $cartItem Cart item from frontend
-     * @return static
+     *
+     * @param  array  $cartItem  Cart item from frontend
      */
     public static function fromCartItem(array $cartItem): static
     {

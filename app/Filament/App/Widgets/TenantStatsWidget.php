@@ -124,4 +124,3 @@ class TenantStatsWidget extends Widget
         return round(($this->whatsappClicks / $this->views) * 100, 1);
     }
 }
-

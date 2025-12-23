@@ -4,8 +4,8 @@ namespace App\Filament\App\Pages;
 
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Pages\Tenancy\EditTenantProfile as BaseEditTenantProfile;
 use Filament\Forms\Form;
+use Filament\Pages\Tenancy\EditTenantProfile as BaseEditTenantProfile;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -330,4 +330,3 @@ class EditTenantProfile extends BaseEditTenantProfile
         ];
     }
 }
-

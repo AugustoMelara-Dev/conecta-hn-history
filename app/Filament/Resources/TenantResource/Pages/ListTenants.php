@@ -17,4 +17,3 @@ class ListTenants extends ListRecords
         ];
     }
 }
-

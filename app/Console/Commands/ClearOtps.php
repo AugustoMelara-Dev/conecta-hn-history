@@ -32,4 +32,3 @@ class ClearOtps extends Command
         $this->info("{$count} OTPs eliminados.");
     }
 }
-

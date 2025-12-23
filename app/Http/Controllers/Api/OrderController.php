@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Coupon;
 use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,14 +14,14 @@ use Illuminate\Support\Facades\Validator;
 
 /**
  * OrderController - Checkout API with Coupon Support
- * 
+ *
  * TRANSACTIONAL HANDSHAKE PATTERN:
  * The frontend cannot open WhatsApp directly. It must:
  * 1. POST cart data to this endpoint
  * 2. System validates coupon (if any) and persists order transactionally
  * 3. System returns WhatsApp URL with order ID
  * 4. Frontend redirects to WhatsApp
- * 
+ *
  * COUPON ATOMICITY:
  * Coupon usage_count is incremented INSIDE the DB transaction
  * to prevent race conditions on limited coupons.
@@ -30,11 +30,8 @@ class OrderController extends Controller
 {
     /**
      * Create a new order from cart data.
-     * 
+     *
      * POST /api/orders
-     * 
-     * @param Request $request
-     * @return JsonResponse
      */
     public function store(Request $request): JsonResponse
     {
@@ -92,9 +89,9 @@ class OrderController extends Controller
                 $couponCode = null;
                 $coupon = null;
 
-                if (!empty($data['coupon_code'])) {
+                if (! empty($data['coupon_code'])) {
                     $couponCode = strtoupper(trim($data['coupon_code']));
-                    
+
                     $coupon = Coupon::forTenant($data['tenant_id'])
                         ->byCode($couponCode)
                         ->lockForUpdate() // Row lock for race condition prevention
@@ -105,9 +102,9 @@ class OrderController extends Controller
 
                         if ($validation['valid']) {
                             $discountAmount = $validation['discount_amount'];
-                            
+
                             // Atomic increment - will fail if limit reached
-                            if (!$coupon->incrementUsage()) {
+                            if (! $coupon->incrementUsage()) {
                                 throw new \Exception('Este cupón ya alcanzó su límite de usos');
                             }
                         } else {
@@ -176,7 +173,7 @@ class OrderController extends Controller
 
         } catch (\Exception $e) {
             // Check if this is a coupon error
-            $isCouponError = str_contains($e->getMessage(), 'cupón') || 
+            $isCouponError = str_contains($e->getMessage(), 'cupón') ||
                              str_contains($e->getMessage(), 'Cupón');
 
             \Log::error('Order creation failed', [
@@ -196,14 +193,14 @@ class OrderController extends Controller
 
     /**
      * Get orders for a specific tenant (for admin panel).
-     * 
+     *
      * GET /api/orders?tenant_id=X
      */
     public function index(Request $request): JsonResponse
     {
         $tenantId = $request->input('tenant_id');
-        
-        if (!$tenantId) {
+
+        if (! $tenantId) {
             return response()->json([
                 'success' => false,
                 'message' => 'tenant_id es requerido',
@@ -223,13 +220,13 @@ class OrderController extends Controller
 
     /**
      * Update order status (for Kanban drag-drop).
-     * 
+     *
      * PATCH /api/orders/{order}/status
      */
     public function updateStatus(Request $request, Order $order): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'status' => 'required|in:' . implode(',', Order::STATUSES),
+            'status' => 'required|in:'.implode(',', Order::STATUSES),
         ]);
 
         if ($validator->fails()) {
@@ -262,9 +259,9 @@ class OrderController extends Controller
 
     /**
      * Show order details.
-     * 
+     *
      * GET /api/orders/{order}
-     * 
+     *
      * SECURITY: Rely on tenant.ownership middleware for access control.
      * If the request reaches here, the order belongs to the authenticated user's tenant.
      */
@@ -281,10 +278,10 @@ class OrderController extends Controller
 
     /**
      * Delete an order.
-     * 
+     *
      * DELETE /api/orders/{order}
-     * 
-     * SECURITY: 
+     *
+     * SECURITY:
      * 1. tenant.ownership middleware validates tenant ownership
      * 2. Policy validates business rules (cannot delete processed orders)
      */
@@ -313,4 +310,3 @@ class OrderController extends Controller
         ]);
     }
 }
-

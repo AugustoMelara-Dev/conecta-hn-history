@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Campaign - Marketing campaigns (PRO Feature)
- * 
+ *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class Campaign extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use BelongsToTenant, HasFactory;
 
     protected $fillable = [
         'subject',

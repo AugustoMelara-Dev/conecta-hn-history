@@ -12,18 +12,18 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * GenerateProductBlurhash - Memory-Efficient Cloud-Native Image Processing
- * 
+ *
  * ARCHITECTURE: Stream-to-Temp Processing
  * - Uses readStream() instead of get() to avoid loading entire file in RAM
  * - Streams bytes directly to /tmp via stream_copy_to_stream()
  * - Constant memory usage regardless of image size (KB not MB)
  * - Guaranteed cleanup via try-finally block
- * 
+ *
  * OBSERVABILITY: Tenant-Aware Logging
  * - All log entries include tenant_id for SaaS forensics
  * - Enables rapid identification of "bad actor" tenants
  * - No blind spots in incident response
- * 
+ *
  * CONCURRENCY: Optimistic Locking
  * - Stores target image path at dispatch time
  * - Auto-discards stale jobs if image changed while queued
@@ -44,7 +44,7 @@ class GenerateProductBlurhash implements ShouldQueue
 
     /**
      * Maximum seconds before SIGKILL.
-     * 
+     *
      * NETWORK HANG PROTECTION:
      * stream_copy_to_stream() can block indefinitely if S3/GCS
      * stops transmitting without closing the socket ("stalled socket").
@@ -56,8 +56,8 @@ class GenerateProductBlurhash implements ShouldQueue
     public int $timeout = 120;
 
     /**
-     * @param int $productId Product ID for fresh lookup
-     * @param string $targetImagePath Image path snapshot at dispatch time
+     * @param  int  $productId  Product ID for fresh lookup
+     * @param  string  $targetImagePath  Image path snapshot at dispatch time
      */
     public function __construct(
         public readonly int $productId,
@@ -74,11 +74,12 @@ class GenerateProductBlurhash implements ShouldQueue
         // ═══════════════════════════════════════════════════════════════════
         $product = Product::withoutGlobalScopes()->find($this->productId);
 
-        if (!$product) {
+        if (! $product) {
             Log::info('Blurhash job skipped: Product deleted', [
                 'product_id' => $this->productId,
                 'tenant_id' => null, // Product gone, no tenant context
             ]);
+
             return;
         }
 
@@ -95,6 +96,7 @@ class GenerateProductBlurhash implements ShouldQueue
                 'expected_path' => $this->targetImagePath,
                 'current_path' => $product->image_path,
             ]);
+
             return;
         }
 
@@ -103,13 +105,14 @@ class GenerateProductBlurhash implements ShouldQueue
         // ═══════════════════════════════════════════════════════════════════
         $disk = Storage::disk('public');
 
-        if (!$disk->exists($this->targetImagePath)) {
+        if (! $disk->exists($this->targetImagePath)) {
             Log::warning('Blurhash job skipped: File not found in storage', [
                 'product_id' => $this->productId,
                 'tenant_id' => $tenantId,
                 'path' => $this->targetImagePath,
                 'disk' => 'public',
             ]);
+
             return;
         }
 
@@ -123,8 +126,8 @@ class GenerateProductBlurhash implements ShouldQueue
         // (read-only filesystem in Kubernetes, /tmp disk full, etc.)
         if ($tempPath === false) {
             throw new \RuntimeException(
-                "Temp directory not writable or full. " .
-                "Check container filesystem permissions or disk space in: " . sys_get_temp_dir()
+                'Temp directory not writable or full. '.
+                'Check container filesystem permissions or disk space in: '.sys_get_temp_dir()
             );
         }
 
@@ -139,7 +142,7 @@ class GenerateProductBlurhash implements ShouldQueue
             $sourceStream = $disk->readStream($this->targetImagePath);
 
             if ($sourceStream === null || $sourceStream === false) {
-                throw new \RuntimeException("Failed to open remote stream for reading");
+                throw new \RuntimeException('Failed to open remote stream for reading');
             }
 
             // Open local temp file for writing
@@ -159,7 +162,7 @@ class GenerateProductBlurhash implements ShouldQueue
             fclose($destStream);
 
             if ($bytesCopied === false || $bytesCopied === 0) {
-                throw new \RuntimeException("Stream copy failed or file is empty");
+                throw new \RuntimeException('Stream copy failed or file is empty');
             }
 
             // ═══════════════════════════════════════════════════════════════
@@ -174,7 +177,7 @@ class GenerateProductBlurhash implements ShouldQueue
 
             if ($imageInfo === false) {
                 throw new \RuntimeException(
-                    "Unable to read image dimensions. File may be corrupted or not a valid image."
+                    'Unable to read image dimensions. File may be corrupted or not a valid image.'
                 );
             }
 
@@ -183,10 +186,10 @@ class GenerateProductBlurhash implements ShouldQueue
 
             if ($totalPixels > $maxPixels) {
                 throw new \RuntimeException(
-                    "Image dimensions exceed safety limit ({$width}x{$height} = " .
-                    number_format($totalPixels) . " pixels). " .
-                    "Maximum allowed: " . number_format($maxPixels) . " pixels. " .
-                    "Possible image bomb detected."
+                    "Image dimensions exceed safety limit ({$width}x{$height} = ".
+                    number_format($totalPixels).' pixels). '.
+                    'Maximum allowed: '.number_format($maxPixels).' pixels. '.
+                    'Possible image bomb detected.'
                 );
             }
 
@@ -196,7 +199,7 @@ class GenerateProductBlurhash implements ShouldQueue
             $imageData = file_get_contents($tempPath);
 
             if ($imageData === false) {
-                throw new \RuntimeException("Failed to read temp file");
+                throw new \RuntimeException('Failed to read temp file');
             }
 
             // ┌──────────────────────────────────────────────────────────────┐
@@ -222,8 +225,8 @@ class GenerateProductBlurhash implements ShouldQueue
 
             if ($image === false) {
                 throw new \RuntimeException(
-                    "Failed to create GD image. File corrupted or format unsupported. " .
-                    "If processing WebP/AVIF, ensure libwebp/libavif are installed in the container. " .
+                    'Failed to create GD image. File corrupted or format unsupported. '.
+                    'If processing WebP/AVIF, ensure libwebp/libavif are installed in the container. '.
                     "Run 'php -i | grep -i webp' to verify codec availability."
                 );
             }
@@ -262,7 +265,7 @@ class GenerateProductBlurhash implements ShouldQueue
             Log::debug('Blurhash generated successfully', [
                 'product_id' => $this->productId,
                 'tenant_id' => $tenantId,
-                'hash_preview' => substr($hash, 0, 10) . '...',
+                'hash_preview' => substr($hash, 0, 10).'...',
                 'file_size_bytes' => $bytesCopied,
                 'image_dimensions' => "{$width}x{$height}",
                 'duration_ms' => $durationMs,
@@ -292,7 +295,6 @@ class GenerateProductBlurhash implements ShouldQueue
 
             // Re-throw to trigger retry mechanism
             throw $e;
-
         } finally {
             // ═══════════════════════════════════════════════════════════════
             // CLEANUP GUARANTEE: Always delete temp file, even on failure

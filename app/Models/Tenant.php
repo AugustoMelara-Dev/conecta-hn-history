@@ -96,14 +96,14 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Determine if tenant has active Pro subscription.
-     * 
+     *
      * BUSINESS LOGIC (CORRECTED):
      * A tenant is Pro IF AND ONLY IF:
      * 1. plan_type is 'pro' or 'enterprise'
      * 2. subscription_status is 'active' OR 'trial' (both grant access)
      * 3. status is NOT 'past_due' or 'canceled' (explicit denial)
      * 4. subscription_ends_at is NULL (perpetual) OR in the future
-     * 
+     *
      * This accessor OVERWRITES the static is_pro column in JSON output.
      * The Frontend receives computed truth, not database value.
      */
@@ -113,7 +113,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         // STEP 1: Plan Type Validation
         // Only 'pro' and 'enterprise' plans grant premium features
         // ═══════════════════════════════════════════════════════════════
-        if (!in_array($this->plan_type, ['pro', 'enterprise'])) {
+        if (! in_array($this->plan_type, ['pro', 'enterprise'])) {
             return false;
         }
 
@@ -130,7 +130,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         // 'active' = Paid customer
         // 'trial'  = Evaluation period (MUST grant access for conversion)
         // ═══════════════════════════════════════════════════════════════
-        if (!in_array($this->subscription_status, ['active', 'trial'])) {
+        if (! in_array($this->subscription_status, ['active', 'trial'])) {
             return false;
         }
 
@@ -182,7 +182,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function isExpiringSoon(int $days = 7): bool
     {
         $remaining = $this->days_until_expiry;
-        
+
         if ($remaining === null) {
             return false; // Perpetual never expires
         }
@@ -226,7 +226,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Scope: Only tenants with active subscriptions.
-     * 
+     *
      * SECURITY: Centralizes visibility rules.
      * Use: Tenant::query()->published()
      */
@@ -239,7 +239,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Scope: Order by monetization tier (Enterprise > Pro > Semilla).
-     * 
+     *
      * SECURITY: Encapsulates raw SQL to prevent injection.
      * No external parameters accepted - SQL is static and safe.
      * Use: Tenant::query()->inPriorityOrder()
@@ -251,7 +251,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Scope: Search tenants by name or description.
-     * 
+     *
      * SECURITY: Safely binds search term to prevent SQL injection.
      * Use: Tenant::query()->search('keyword')
      */
@@ -266,13 +266,13 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
         return $query->where(function ($q) use ($term) {
             $q->where('name', 'like', "%{$term}%")
-              ->orWhere('description', 'like', "%{$term}%");
+                ->orWhere('description', 'like', "%{$term}%");
         });
     }
 
     /**
      * Scope: Filter by category slug.
-     * 
+     *
      * SECURITY: Validates slug exists via relationship.
      * Use: Tenant::query()->inCategory('restaurantes')
      */
@@ -289,7 +289,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Scope: Filter by city slug.
-     * 
+     *
      * SECURITY: Validates slug exists via relationship.
      * Use: Tenant::query()->inCity('tocoa')
      */
@@ -520,4 +520,3 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $query->get();
     }
 }
-

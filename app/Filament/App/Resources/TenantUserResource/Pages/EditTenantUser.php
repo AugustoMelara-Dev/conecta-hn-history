@@ -28,4 +28,3 @@ class EditTenantUser extends EditRecord
         return 'Editar Miembro: '.$this->record->user->name;
     }
 }
-

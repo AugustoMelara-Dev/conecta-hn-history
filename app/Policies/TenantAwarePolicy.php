@@ -8,15 +8,15 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * TenantAwarePolicy - Base Policy for Multi-Tenant Authorization
- * 
+ *
  * ══════════════════════════════════════════════════════════════════════════════
  * SECURITY CRITICAL - AUTHORIZATION FOUNDATION
  * ══════════════════════════════════════════════════════════════════════════════
- * 
+ *
  * This abstract base policy enforces tenant ownership verification as a
  * prerequisite for ALL authorization decisions. Child policies MUST call
  * parent methods or explicitly verify ownership.
- * 
+ *
  * USAGE:
  * ```php
  * class ProductPolicy extends TenantAwarePolicy
@@ -28,7 +28,7 @@ use Illuminate\Database\Eloquent\Model;
  *     }
  * }
  * ```
- * 
+ *
  * SECURITY GUARANTEES:
  * - Tenant ownership is verified BEFORE any other authorization logic
  * - Returns false (deny) if user has no tenants
@@ -41,14 +41,14 @@ abstract class TenantAwarePolicy
 
     /**
      * Check if the user owns the resource (belongs to same tenant).
-     * 
+     *
      * This is the CORE security check that must be called on all
      * modify/delete operations.
      */
     protected function ownsResource(User $user, Model $resource): bool
     {
         // Resource must have tenant_id
-        if (!isset($resource->tenant_id)) {
+        if (! isset($resource->tenant_id)) {
             return false;
         }
 
@@ -126,7 +126,7 @@ abstract class TenantAwarePolicy
      */
     protected function resourceBelongsToTenant(Model $resource, int $tenantId): bool
     {
-        if (!isset($resource->tenant_id)) {
+        if (! isset($resource->tenant_id)) {
             return false;
         }
 

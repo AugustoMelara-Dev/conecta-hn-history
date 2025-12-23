@@ -6,11 +6,11 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Analytics Tables Migration
- * 
+ *
  * Creates tables optimized for write-heavy time-series data:
  * - tenant_visits: Page view tracking with daily deduplication
  * - interactions: Conversion events (WhatsApp clicks, calls)
- * 
+ *
  * PRIVACY: IP addresses are hashed with daily salt (no PII stored)
  */
 return new class extends Migration
@@ -24,20 +24,20 @@ return new class extends Migration
         // TENANT VISITS: Page view tracking with session fingerprinting
         // ═══════════════════════════════════════════════════════════════════════
         // Note: May already exist from earlier migration - use conditional creation
-        if (!Schema::hasTable('tenant_visits')) {
+        if (! Schema::hasTable('tenant_visits')) {
             Schema::create('tenant_visits', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('tenant_id')->constrained()->onDelete('cascade');
-                
+
                 // Privacy-compliant tracking (no raw IPs)
                 // Hash = sha256(IP + User-Agent + Tenant ID + Daily Salt)
                 $table->string('session_hash', 64)->comment('Daily unique fingerprint');
                 $table->string('user_agent', 512)->nullable();
                 $table->string('referer', 512)->nullable()->comment('Traffic source');
-                
+
                 // Device classification (computed from UA)
                 $table->enum('device_type', ['mobile', 'tablet', 'desktop', 'bot'])->default('desktop');
-                
+
                 $table->timestamps();
 
                 // ═══════════════════════════════════════════════════════════════
@@ -49,13 +49,13 @@ return new class extends Migration
         } else {
             // Add missing columns to existing table if needed
             Schema::table('tenant_visits', function (Blueprint $table) {
-                if (!Schema::hasColumn('tenant_visits', 'session_hash')) {
+                if (! Schema::hasColumn('tenant_visits', 'session_hash')) {
                     $table->string('session_hash', 64)->nullable()->after('user_agent');
                 }
-                if (!Schema::hasColumn('tenant_visits', 'referer')) {
+                if (! Schema::hasColumn('tenant_visits', 'referer')) {
                     $table->string('referer', 512)->nullable()->after('session_hash');
                 }
-                if (!Schema::hasColumn('tenant_visits', 'device_type')) {
+                if (! Schema::hasColumn('tenant_visits', 'device_type')) {
                     $table->string('device_type', 20)->default('desktop')->after('referer');
                 }
             });
@@ -65,12 +65,12 @@ return new class extends Migration
         // INTERACTIONS: Conversion event tracking
         // ═══════════════════════════════════════════════════════════════════════
         // Note: May already exist from earlier migration - use conditional creation
-        if (!Schema::hasTable('interactions')) {
+        if (! Schema::hasTable('interactions')) {
             Schema::create('interactions', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('tenant_id')->constrained()->onDelete('cascade');
                 $table->foreignId('product_id')->nullable()->constrained()->onDelete('set null');
-                
+
                 // Event type (hard conversions)
                 $table->enum('type', [
                     'whatsapp_click',   // Intent to purchase
@@ -79,10 +79,10 @@ return new class extends Migration
                     'cart_add',         // Added to cart
                     'social_share',     // Shared on social media
                 ]);
-                
+
                 // Contextual data (JSON for flexibility)
                 $table->json('metadata')->nullable()->comment('Event context');
-                
+
                 $table->timestamps();
 
                 // ═══════════════════════════════════════════════════════════════

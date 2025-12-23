@@ -59,4 +59,3 @@ class LocationScope implements Scope
         return false;
     }
 }
-

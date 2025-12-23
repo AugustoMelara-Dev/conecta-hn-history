@@ -9,17 +9,17 @@ use Tests\TestCase;
 
 /**
  * CouponIsolationTest - Multi-Tenant Security Penetration Tests
- * 
+ *
  * SECURITY OBJECTIVE: Zero Trust Verification
  * These tests simulate malicious attempts to exploit cross-tenant vulnerabilities.
- * 
+ *
  * ARCHITECTURE CONTEXT:
  * Conecta HN uses a Shared Database model where multiple tenants coexist.
  * A failure in tenant isolation could lead to:
  * - Financial fraud (using another tenant's discounts)
  * - Data leakage (seeing competitor's coupon strategies)
  * - Reputation damage (loss of platform trust)
- * 
+ *
  * TEST PHILOSOPHY:
  * These tests verify NEGATIVE outcomes - attacks that MUST fail.
  */
@@ -28,6 +28,7 @@ class CouponIsolationTest extends TestCase
     use RefreshDatabase;
 
     protected Tenant $tenantA;
+
     protected Tenant $tenantB;
 
     /**
@@ -55,12 +56,13 @@ class CouponIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group isolation
-     * 
-     * ATTACK VECTOR: A malicious user from Tenant B attempts to use 
+     *
+     * ATTACK VECTOR: A malicious user from Tenant B attempts to use
      * a secret coupon code that belongs exclusively to Tenant A.
-     * 
+     *
      * EXPECTED RESULT: The system MUST reject this request with a 422 error
      * and NOT reveal any information about the coupon's existence in Tenant A.
      */
@@ -106,12 +108,13 @@ class CouponIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group isolation
-     * 
+     *
      * ATTACK VECTOR: Both tenants have a coupon with the same code.
      * Verify that each tenant ONLY resolves their own coupon, not the other's.
-     * 
+     *
      * CATASTROPHIC FAILURE: If Tenant A's request applies Tenant B's higher discount,
      * the tenant isolation is fundamentally broken.
      */
@@ -171,13 +174,14 @@ class CouponIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group isolation
-     * 
+     *
      * ATTACK VECTOR: Tenant B requests the list of available coupons.
      * The response must contain ONLY Tenant B's coupons, with zero visibility
      * into Tenant A's promotional strategies.
-     * 
+     *
      * INFORMATION DISCLOSURE: If any coupon from Tenant A appears in the response,
      * this represents a serious competitive intelligence leak.
      */
@@ -209,7 +213,7 @@ class CouponIsolationTest extends TestCase
         ]);
 
         // ACT: Request coupon list for Tenant B
-        $response = $this->getJson('/api/coupons?tenant_id=' . $this->tenantB->id);
+        $response = $this->getJson('/api/coupons?tenant_id='.$this->tenantB->id);
 
         // ASSERT: Response is successful
         $response->assertStatus(200);
@@ -236,8 +240,9 @@ class CouponIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group financial
-     * 
+     *
      * VERIFICATION: Percentage discount calculations must be mathematically precise.
      * 10% of 100 = 10, not 9.99 or 10.01
      */
@@ -271,8 +276,9 @@ class CouponIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group business_rules
-     * 
+     *
      * VERIFICATION: Coupon with min_spend MUST reject carts below threshold.
      */
     public function it_enforces_minimum_spend_restriction(): void
@@ -309,8 +315,9 @@ class CouponIsolationTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
-     * 
+     *
      * VERIFICATION: Error messages must not leak sensitive IDs or internal state.
      */
     public function it_does_not_leak_internal_ids_in_error_messages(): void

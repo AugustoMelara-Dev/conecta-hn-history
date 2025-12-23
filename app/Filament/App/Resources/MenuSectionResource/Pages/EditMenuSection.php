@@ -22,4 +22,3 @@ class EditMenuSection extends EditRecord
         return $this->getResource()::getUrl('index');
     }
 }
-

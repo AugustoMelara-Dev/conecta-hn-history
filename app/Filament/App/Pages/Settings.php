@@ -73,4 +73,3 @@ class Settings extends Page
         ];
     }
 }
-

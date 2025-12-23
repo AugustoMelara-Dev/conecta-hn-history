@@ -10,30 +10,30 @@ class ProductObserver implements ResetsStaticCache
 {
     /**
      * MEMOIZATION CACHE: Request-Level Tenant City Storage
-     * 
+     *
      * PURPOSE:
      * Stores tenant_id => city_id mappings in memory to avoid
      * redundant database queries during bulk import operations.
-     * 
+     *
      * PERFORMANCE IMPACT:
      * - Without cache: 10,000 products = 10,000 SELECT queries
      * - With cache: 10,000 products = 1 SELECT query per unique tenant
-     * 
+     *
      * MEMORY STRATEGY:
      * Stores ONLY primitive int|null values (not Eloquent models)
      * to prevent memory leaks in long-running processes.
-     * 
+     *
      * LIFECYCLE:
      * Static property persists for the entire PHP process lifecycle
      * (single HTTP request or queue job execution).
-     * 
+     *
      * @var array<int, int|null> Maps tenant_id => city_id
      */
     protected static array $tenantCityCache = [];
 
     /**
      * INFRASTRUCTURE METHOD: Deterministic Garbage Collection
-     * 
+     *
      * ╔══════════════════════════════════════════════════════════════════════╗
      * ║  ⚠️  WARNING: THIS IS NOT A BUSINESS LOGIC METHOD                    ║
      * ║                                                                      ║
@@ -45,25 +45,23 @@ class ProductObserver implements ResetsStaticCache
      * ║  It is automatically invoked by the Queue::after event listener     ║
      * ║  registered in AppServiceProvider::boot().                          ║
      * ╚══════════════════════════════════════════════════════════════════════╝
-     * 
+     *
      * DAEMON PROCESS CONTEXT:
      * Queue Workers (php artisan queue:work) are long-running daemon processes.
      * Unlike HTTP requests that die after response, workers persist in memory
      * and process thousands of jobs sequentially. Static properties survive
      * across job boundaries, causing "state pollution" where Job B reads
      * stale data cached by Job A hours earlier.
-     * 
+     *
      * This method provides an escape hatch to purge the static cache,
      * ensuring each job starts with a clean memory slate.
-     * 
+     *
      * USAGE (Infrastructure only):
      *   // In AppServiceProvider::boot()
      *   Queue::after(fn() => ProductObserver::flushStaticCache());
-     * 
+     *
      *   // In test tearDown()
      *   ProductObserver::flushStaticCache();
-     * 
-     * @return void
      */
     public static function flushStaticCache(): void
     {
@@ -75,7 +73,7 @@ class ProductObserver implements ResetsStaticCache
      *
      * SECURITY DIRECTIVE 3: Data Synchronization
      * Auto-assign city_id from tenant to prevent invisible products.
-     * 
+     *
      * PERFORMANCE OPTIMIZATION: Memoization Pattern
      * Uses static cache to eliminate N+1 queries during bulk imports.
      * Complexity: O(1) per tenant instead of O(N) per product.
@@ -99,17 +97,17 @@ class ProductObserver implements ResetsStaticCache
 
     /**
      * Resolve tenant's city_id using Cache-Aside Pattern.
-     * 
+     *
      * ALGORITHM:
      * 1. Check static memory cache (O(1) lookup)
      * 2. If cache miss, query database and store result
      * 3. Return cached/fetched value
-     * 
+     *
      * EDGE CASE HANDLING:
      * - Tenant not found: Stores NULL to prevent retry storms
      * - Tenant has no city: Stores NULL to prevent retry storms
-     * 
-     * @param int $tenantId The tenant to lookup
+     *
+     * @param  int  $tenantId  The tenant to lookup
      * @return int|null The city_id or null if not available
      */
     protected function resolveTenantCityId(int $tenantId): ?int
@@ -141,7 +139,7 @@ class ProductObserver implements ResetsStaticCache
 
     /**
      * Handle the Product "saved" event.
-     * 
+     *
      * RESPONSIBILITIES:
      * 1. Cache invalidation (sync - fast)
      * 2. Blurhash generation (async - CPU intensive)
@@ -160,14 +158,14 @@ class ProductObserver implements ResetsStaticCache
         // OPTIMISTIC CONCURRENCY: Pass current image_path as snapshot.
         // If image changes before job runs, job will detect and skip.
         // ═══════════════════════════════════════════════════════════════════
-        if ($product->isDirty('image_path') && !empty($product->image_path)) {
+        if ($product->isDirty('image_path') && ! empty($product->image_path)) {
             GenerateProductBlurhash::dispatch($product->id, $product->image_path);
         }
     }
 
     /**
      * Handle the Product "deleted" event.
-     * 
+     *
      * CACHE INVALIDATION:
      * Also flush on delete to remove stale catalog entries.
      */
@@ -178,12 +176,12 @@ class ProductObserver implements ResetsStaticCache
 
     /**
      * Invalidate all cached data for this product's tenant.
-     * 
+     *
      * TAGGED CACHING STRATEGY:
      * All cache entries for a tenant are tagged with 'tenant:{id}'.
      * This allows atomic invalidation of an entire tenant's cache
      * without affecting other tenants (cache isolation).
-     * 
+     *
      * GRACEFUL DEGRADATION:
      * Uses explicit Cache::supportsTags() check to prevent
      * BadMethodCallException on drivers that don't support tagging
@@ -193,7 +191,7 @@ class ProductObserver implements ResetsStaticCache
     private function invalidateTenantCache(Product $product): void
     {
         // Guard: Skip if no tenant context
-        if (!$product->tenant_id) {
+        if (! $product->tenant_id) {
             return;
         }
 
@@ -201,15 +199,15 @@ class ProductObserver implements ResetsStaticCache
         // GUARD CLAUSE: Explicit driver capability check
         // Prevents BadMethodCallException on file/database/array drivers
         // ═══════════════════════════════════════════════════════════════════
-        if (!\Illuminate\Support\Facades\Cache::supportsTags()) {
+        if (! \Illuminate\Support\Facades\Cache::supportsTags()) {
             // Driver doesn't support tags - gracefully skip invalidation
             // This is expected in dev environments with CACHE_DRIVER=file
             return;
         }
 
         try {
-            \Illuminate\Support\Facades\Cache::tags(['tenant:' . $product->tenant_id])->flush();
-            
+            \Illuminate\Support\Facades\Cache::tags(['tenant:'.$product->tenant_id])->flush();
+
             \Illuminate\Support\Facades\Log::debug(
                 "Cache invalidated for tenant {$product->tenant_id} due to product change",
                 ['product_id' => $product->id]
@@ -217,10 +215,9 @@ class ProductObserver implements ResetsStaticCache
         } catch (\Exception $e) {
             // Cache invalidation is non-critical - log but don't fail
             \Illuminate\Support\Facades\Log::warning(
-                "Cache invalidation failed: " . $e->getMessage(),
+                'Cache invalidation failed: '.$e->getMessage(),
                 ['tenant_id' => $product->tenant_id, 'product_id' => $product->id]
             );
         }
     }
 }
-

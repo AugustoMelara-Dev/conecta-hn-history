@@ -9,4 +9,3 @@ class EditCategory extends EditRecord
 {
     protected static string $resource = CategoryResource::class;
 }
-

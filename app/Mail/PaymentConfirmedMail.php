@@ -39,4 +39,3 @@ class PaymentConfirmedMail extends Mailable implements ShouldQueue
         return [];
     }
 }
-

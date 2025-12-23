@@ -27,4 +27,3 @@ class NewLoginDetected
         $this->time = now();
     }
 }
-

@@ -61,4 +61,3 @@ class CampaignOfferMail extends Mailable
         return [];
     }
 }
-

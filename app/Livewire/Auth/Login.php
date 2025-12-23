@@ -95,6 +95,7 @@ class Login extends Component
             if ($tenant) {
                 return redirect()->to('/app/'.$tenant->slug);
             }
+
             // Si es seller sin tenant, crear uno
             return redirect()->to('/registrar-negocio');
         }
@@ -149,4 +150,3 @@ class Login extends Component
             ->title('Iniciar Sesión | Conecta HN');
     }
 }
-

@@ -203,4 +203,3 @@ class ExpireSubscriptions extends Command
         $this->info('═══════════════════════════════════════════════════════════');
     }
 }
-

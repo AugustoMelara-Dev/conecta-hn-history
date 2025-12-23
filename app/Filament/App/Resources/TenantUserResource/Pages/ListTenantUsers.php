@@ -29,4 +29,3 @@ class ListTenantUsers extends ListRecords
         return 'Gestiona quién puede acceder a tu negocio';
     }
 }
-

@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -17,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * - tenant_id: Aislamiento Multi-Tenant con cascadeOnDelete
  * - sort_order: Motor de ordenamiento para narrativa de ventas
  * - products: Relación pre-ordenada desde DB
- * 
+ *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class MenuSection extends Model
@@ -85,4 +84,3 @@ class MenuSection extends Model
         return $query->orderBy('sort_order');
     }
 }
-

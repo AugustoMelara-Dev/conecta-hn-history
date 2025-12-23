@@ -9,19 +9,19 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * PaymentApproved - Immutable Domain Event Contract
- * 
+ *
  * ARCHITECTURAL PATTERN: Event-Driven Architecture with DTO Contracts
- * 
+ *
  * This event is an IMMUTABLE DATA TRANSFER OBJECT:
  * - All properties are public readonly (PHP 8.1+)
  * - Uses primitive types, not Eloquent models (prevents state mutation)
  * - Uses CarbonImmutable, not Carbon (prevents date mutation)
- * 
+ *
  * The listener (UpdateTenantSubscription) is responsible for:
  * - Fetching the models from the database with locks
  * - Validating state before processing
  * - Applying transactional changes
- * 
+ *
  * @property int $tenantId The tenant receiving subscription extension
  * @property int $paymentId The approved payment record
  * @property CarbonImmutable $approvedAt Immutable timestamp of approval

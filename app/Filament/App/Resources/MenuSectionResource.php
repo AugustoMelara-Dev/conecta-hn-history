@@ -6,8 +6,8 @@ use App\Filament\App\Resources\MenuSectionResource\Pages;
 use App\Models\MenuSection;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Resources\Resource;
 use Filament\Forms\Form;
+use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -239,4 +239,3 @@ class MenuSectionResource extends Resource
         ];
     }
 }
-

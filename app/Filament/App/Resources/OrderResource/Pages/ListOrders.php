@@ -24,4 +24,3 @@ class ListOrders extends ListRecords
         return 'Gestiona los pedidos de tus clientes en tiempo real';
     }
 }
-

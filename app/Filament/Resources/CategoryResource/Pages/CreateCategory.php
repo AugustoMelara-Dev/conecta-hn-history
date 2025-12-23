@@ -9,4 +9,3 @@ class CreateCategory extends CreateRecord
 {
     protected static string $resource = CategoryResource::class;
 }
-

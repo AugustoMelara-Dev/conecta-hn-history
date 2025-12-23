@@ -4,27 +4,25 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CouponResource\Pages;
 use App\Models\Coupon;
-use Filament\Forms;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\BadgeColumn;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\Filter;
 
 /**
  * CouponResource - Promotional Discount Management
- * 
+ *
  * Allows business owners to create and manage discount campaigns
  * with rules for minimum spend, usage limits, and date ranges.
  */
@@ -33,10 +31,15 @@ class CouponResource extends Resource
     protected static ?string $model = Coupon::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-tag';
+
     protected static ?string $navigationLabel = 'Cupones';
+
     protected static ?string $modelLabel = 'Cupón';
+
     protected static ?string $pluralModelLabel = 'Cupones';
+
     protected static ?string $navigationGroup = 'Ventas';
+
     protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
@@ -81,7 +84,7 @@ class CouponResource extends Resource
                                 ->numeric()
                                 ->minValue(0)
                                 ->suffix(fn ($get) => $get('type') === 'percent' ? '%' : 'L.')
-                                ->helperText(fn ($get) => $get('type') === 'percent' 
+                                ->helperText(fn ($get) => $get('type') === 'percent'
                                     ? 'Ej: 10 para 10% de descuento'
                                     : 'Ej: 50 para L. 50 de descuento'),
                         ]),
@@ -184,9 +187,8 @@ class CouponResource extends Resource
                 TextColumn::make('usage_display')
                     ->label('Usos')
                     ->badge()
-                    ->color(fn ($record) => 
-                        $record->usage_limit && $record->usage_count >= $record->usage_limit 
-                            ? 'danger' 
+                    ->color(fn ($record) => $record->usage_limit && $record->usage_count >= $record->usage_limit
+                            ? 'danger'
                             : 'gray'
                     ),
 
@@ -224,8 +226,10 @@ class CouponResource extends Resource
                         'inactive' => 'Inactivo',
                     ])
                     ->query(function (Builder $query, array $data) {
-                        if (empty($data['value'])) return $query;
-                        
+                        if (empty($data['value'])) {
+                            return $query;
+                        }
+
                         return match ($data['value']) {
                             'active' => $query->valid(),
                             'expired' => $query->where('expires_at', '<', now()),
@@ -239,19 +243,19 @@ class CouponResource extends Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
-                    
+
                     Tables\Actions\Action::make('toggle')
                         ->label(fn ($record) => $record->is_active ? 'Desactivar' : 'Activar')
                         ->icon(fn ($record) => $record->is_active ? 'heroicon-o-pause' : 'heroicon-o-play')
                         ->color(fn ($record) => $record->is_active ? 'warning' : 'success')
-                        ->action(fn ($record) => $record->update(['is_active' => !$record->is_active])),
+                        ->action(fn ($record) => $record->update(['is_active' => ! $record->is_active])),
 
                     Tables\Actions\Action::make('duplicate')
                         ->label('Duplicar')
                         ->icon('heroicon-o-document-duplicate')
                         ->action(function ($record) {
                             $new = $record->replicate();
-                            $new->code = $record->code . '_COPIA';
+                            $new->code = $record->code.'_COPIA';
                             $new->usage_count = 0;
                             $new->save();
                         }),
@@ -284,19 +288,19 @@ class CouponResource extends Resource
 
     /**
      * SECURITY: Redundant tenant filtering for Defense in Depth
-     * 
+     *
      * Even though BelongsToTenant trait applies TenantScope globally,
      * we explicitly filter here as a second line of defense.
      */
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
-        
+
         $tenant = \Filament\Facades\Filament::getTenant();
         if ($tenant) {
             return $query->where('tenant_id', $tenant->id);
         }
-        
+
         return $query;
     }
 
@@ -306,6 +310,7 @@ class CouponResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         $query = static::getEloquentQuery();
+
         return $query->valid()->count() ?: null;
     }
 

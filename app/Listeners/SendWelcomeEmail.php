@@ -24,4 +24,3 @@ class SendWelcomeEmail
         Mail::to($event->user)->send(new WelcomeUserMail($event->user));
     }
 }
-

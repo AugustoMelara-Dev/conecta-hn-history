@@ -132,4 +132,3 @@ class FavoriteButton extends Component
         return view('livewire.components.favorite-button');
     }
 }
-

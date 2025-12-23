@@ -14,4 +14,3 @@ class ListPayments extends ListRecords
         return [];
     }
 }
-

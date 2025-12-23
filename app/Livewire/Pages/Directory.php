@@ -405,4 +405,3 @@ class Directory extends Component
         $this->resetPage();
     }
 }
-

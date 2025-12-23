@@ -1,9 +1,9 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\DirectoryController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TenantController;
+use App\Http\Controllers\WelcomeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -196,4 +196,3 @@ Route::get('/{tenant:slug}', [TenantController::class, 'show'])
 
 // [DEPRECATED] Old Livewire route:
 // Route::get('/{tenant:slug}', \App\Livewire\Tenant\Shop\Show::class)->name('tenant.show');
-

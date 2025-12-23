@@ -54,7 +54,7 @@ class WelcomeController extends Controller
 
     /**
      * Get featured tenants with complete data transformation.
-     * 
+     *
      * QUALITY FILTERS (Strict):
      * 1. plan_type = 'pro' or 'enterprise' (monetization)
      * 2. subscription_status = 'active' (no morosos)
@@ -112,7 +112,7 @@ class WelcomeController extends Controller
     {
         if (empty($path)) {
             // Return placeholder based on type
-            return match($type) {
+            return match ($type) {
                 'covers' => 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop',
                 'logos' => 'https://ui-avatars.com/api/?name=ConectaHN&background=0ea5e9&color=fff&size=200',
                 default => 'https://via.placeholder.com/400',

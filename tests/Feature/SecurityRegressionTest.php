@@ -10,16 +10,16 @@ use Tests\TestCase;
 
 /**
  * SecurityRegressionTest - Mass Assignment Protection & Immutability Tests
- * 
+ *
  * ══════════════════════════════════════════════════════════════════════════════
  * SECURITY AUDIT: Verifies that tenant_id cannot be forged via request payload
  * ══════════════════════════════════════════════════════════════════════════════
- * 
+ *
  * ATTACK VECTOR:
  * An authenticated user attempts to inject a foreign tenant_id in the request
  * body when creating a resource, hoping to "plant" the resource in a victim's
  * namespace.
- * 
+ *
  * EXPECTED BEHAVIOR:
  * The BelongsToTenant trait should ALWAYS override the user-supplied tenant_id
  * with the authenticated user's actual tenant_id.
@@ -29,8 +29,11 @@ class SecurityRegressionTest extends TestCase
     use RefreshDatabase;
 
     protected User $attackerUser;
+
     protected User $victimUser;
+
     protected Tenant $attackerTenant;
+
     protected Tenant $victimTenant;
 
     protected function setUp(): void
@@ -68,12 +71,13 @@ class SecurityRegressionTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group mass_assignment
-     * 
+     *
      * ATTACK: Attacker tries to create a product in victim's namespace by
      * injecting victim's tenant_id in the creation payload.
-     * 
+     *
      * EXPECTED: The created product should belong to attacker's tenant,
      * NOT the victim's tenant specified in the payload.
      */
@@ -83,7 +87,7 @@ class SecurityRegressionTest extends TestCase
         $product = Product::withoutGlobalScopes()->create([
             'tenant_id' => $this->victimTenant->id,  // MALICIOUS PAYLOAD
             'name' => 'Trojan Horse Product',
-            'slug' => 'trojan-horse-' . uniqid(),
+            'slug' => 'trojan-horse-'.uniqid(),
             'price' => 100.00,
             'is_visible' => true,
         ]);
@@ -92,10 +96,10 @@ class SecurityRegressionTest extends TestCase
         // the BelongsToTenant trait's creating event should NOT override
         // when we use withoutGlobalScopes().
         // This test documents the EXPECTED behavior in console context.
-        
+
         // The real protection is that in web context (Filament/Controllers),
         // the trait's boot method auto-assigns tenant_id from authenticated context.
-        
+
         // For now, verify the product was created
         $this->assertNotNull($product->id);
         $this->assertDatabaseHas('products', [
@@ -106,12 +110,13 @@ class SecurityRegressionTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group mass_assignment
-     * 
+     *
      * ATTACK: Attacker tries to modify their product's tenant_id to point
      * to victim's tenant, effectively "transferring" the product.
-     * 
+     *
      * EXPECTED: tenant_id should be immutable after creation, or at least
      * not changeable to a tenant the user doesn't own.
      */
@@ -121,7 +126,7 @@ class SecurityRegressionTest extends TestCase
         $product = Product::withoutGlobalScopes()->create([
             'tenant_id' => $this->attackerTenant->id,
             'name' => 'Attacker Product',
-            'slug' => 'attacker-product-' . uniqid(),
+            'slug' => 'attacker-product-'.uniqid(),
             'price' => 50.00,
             'is_visible' => true,
         ]);
@@ -140,12 +145,13 @@ class SecurityRegressionTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group isolation
-     * 
+     *
      * VERIFICATION: tenant_id is GUARDED (immutable) to prevent mass assignment attacks.
      * The BelongsToTenant trait auto-assigns it during creation via the creating() hook.
-     * 
+     *
      * SECURITY DESIGN:
      * - tenant_id in $guarded = cannot be set via fill() or create() with user input
      * - BelongsToTenant::bootBelongsToTenant() sets it from authenticated context
@@ -153,8 +159,8 @@ class SecurityRegressionTest extends TestCase
      */
     public function it_documents_tenant_id_fillable_status(): void
     {
-        $product = new Product();
-        
+        $product = new Product;
+
         // tenant_id MUST be guarded (immutable) to prevent mass assignment attacks
         $this->assertContains(
             'tenant_id',
@@ -178,16 +184,17 @@ class SecurityRegressionTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group business_rules
-     * 
+     *
      * VERIFICATION: The OrderPolicy correctly prevents deletion of processed orders.
      */
     public function it_documents_order_deletion_business_rules(): void
     {
         // This is a policy behavior test - the actual logic is in OrderPolicy
         // We're documenting that the business rule exists
-        
+
         $this->assertTrue(
             method_exists(\App\Policies\OrderPolicy::class, 'delete'),
             'OrderPolicy must have delete method with business rules'
@@ -201,9 +208,10 @@ class SecurityRegressionTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group policies
-     * 
+     *
      * VERIFICATION: All critical models have associated policies.
      */
     public function it_verifies_all_critical_models_have_policies(): void
@@ -227,9 +235,10 @@ class SecurityRegressionTest extends TestCase
 
     /**
      * @test
+     *
      * @group security
      * @group policies
-     * 
+     *
      * VERIFICATION: All policies extend TenantAwarePolicy base class.
      */
     public function it_verifies_policies_extend_tenant_aware_policy(): void

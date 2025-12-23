@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 {
-    use HasFactory, SoftDeletes, BelongsToTenant, \Spatie\MediaLibrary\InteractsWithMedia;
+    use BelongsToTenant, HasFactory, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
 
     protected $fillable = [
         'city_id',
@@ -125,7 +125,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Modifier Groups for product customization (PRO Feature)
-     * 
+     *
      * Examples: "Tamaño", "Extras", "Toppings"
      * Each group contains ModifierOptions with price adjustments.
      */
@@ -146,5 +146,3 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->stock_status === 'in_stock';
     }
 }
-
-

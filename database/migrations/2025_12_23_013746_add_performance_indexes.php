@@ -7,20 +7,20 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Performance Indexes Migration - Zero-Downtime Strategy
- * 
+ *
  * OPTIMIZATION STRATEGY:
  * These compound indexes follow the "Leftmost Prefix Rule" for B-Tree indexes.
  * The column order matters: tenant_id comes first because almost ALL queries
  * in a multi-tenant app are scoped by tenant.
- * 
+ *
  * ZERO-DOWNTIME DDL (MySQL/MariaDB):
  * Uses ALGORITHM=INPLACE and LOCK=NONE to allow concurrent reads/writes
  * during index creation. This prevents blocking production traffic.
- * 
+ *
  * POLYMORPHIC EXECUTION:
  * - MySQL/MariaDB: Uses raw SQL with non-blocking directives
  * - SQLite (Testing): Falls back to standard Schema::table
- * 
+ *
  * EXPECTED IMPACT:
  * - Dashboard queries: ~100x faster (O(N) → O(log N))
  * - Product catalog: Index-only scans for visibility checks
@@ -75,20 +75,20 @@ return new class extends Migration
     private function createIndexMySQL(string $table, array $columns, string $name, bool $unique): void
     {
         // Check if index already exists (idempotency)
-        $exists = DB::select("
+        $exists = DB::select('
             SELECT COUNT(*) as cnt 
             FROM information_schema.STATISTICS 
             WHERE TABLE_SCHEMA = DATABASE() 
               AND TABLE_NAME = ? 
               AND INDEX_NAME = ?
-        ", [$table, $name]);
+        ', [$table, $name]);
 
         if (($exists[0]->cnt ?? 0) > 0) {
             // Index already exists - skip (idempotent)
             return;
         }
 
-        $columnList = implode(', ', array_map(fn($c) => "`{$c}`", $columns));
+        $columnList = implode(', ', array_map(fn ($c) => "`{$c}`", $columns));
         $indexType = $unique ? 'UNIQUE INDEX' : 'INDEX';
 
         // Execute zero-downtime DDL
@@ -142,13 +142,13 @@ return new class extends Migration
     private function dropIndexMySQL(string $table, string $name): void
     {
         // Check if index exists before dropping
-        $exists = DB::select("
+        $exists = DB::select('
             SELECT COUNT(*) as cnt 
             FROM information_schema.STATISTICS 
             WHERE TABLE_SCHEMA = DATABASE() 
               AND TABLE_NAME = ? 
               AND INDEX_NAME = ?
-        ", [$table, $name]);
+        ', [$table, $name]);
 
         if (($exists[0]->cnt ?? 0) > 0) {
             DB::statement("DROP INDEX `{$name}` ON `{$table}` ALGORITHM=INPLACE LOCK=NONE");

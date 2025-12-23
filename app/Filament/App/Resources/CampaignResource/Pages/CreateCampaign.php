@@ -21,4 +21,3 @@ class CreateCampaign extends CreateRecord
         return $this->getResource()::getUrl('index');
     }
 }
-

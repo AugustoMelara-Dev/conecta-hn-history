@@ -5,10 +5,10 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\OrderResource\Pages;
 use App\Models\Order;
 use Filament\Facades\Filament;
+use Filament\Forms\Form;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
-use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\BulkActionGroup;
@@ -432,4 +432,3 @@ class OrderResource extends Resource
         ];
     }
 }
-

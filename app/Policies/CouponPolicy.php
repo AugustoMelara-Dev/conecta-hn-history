@@ -8,7 +8,7 @@ use Illuminate\Auth\Access\Response;
 
 /**
  * CouponPolicy - Tenant-Aware Authorization for Coupons
- * 
+ *
  * ══════════════════════════════════════════════════════════════════════════════
  * SECURITY: Enforces tenant ownership for promotional discount management
  * ══════════════════════════════════════════════════════════════════════════════
@@ -36,17 +36,17 @@ class CouponPolicy extends TenantAwarePolicy
      */
     public function create(User $user): Response
     {
-        $tenant = \Filament\Facades\Filament::getTenant() 
+        $tenant = \Filament\Facades\Filament::getTenant()
             ?? $user->tenants()->first();
 
-        if (!$tenant) {
+        if (! $tenant) {
             return Response::deny('Debes tener un negocio para crear cupones.');
         }
 
         // Only PRO tenants can create coupons
-        if (!$tenant->is_pro) {
+        if (! $tenant->is_pro) {
             return Response::deny(
-                'Los cupones de descuento son una característica PRO. ' .
+                'Los cupones de descuento son una característica PRO. '.
                 'Actualiza tu plan para crear promociones.'
             );
         }

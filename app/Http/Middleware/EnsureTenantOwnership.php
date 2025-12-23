@@ -8,25 +8,25 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * EnsureTenantOwnership - Perimeter Guard Middleware
- * 
+ *
  * ══════════════════════════════════════════════════════════════════════════════
  * DEFENSE IN DEPTH - LAST LINE OF DEFENSE
  * ══════════════════════════════════════════════════════════════════════════════
- * 
+ *
  * This middleware intercepts all route-model-bound resources and verifies
  * that they belong to the authenticated user's tenant BEFORE the controller
  * receives the request.
- * 
+ *
  * ATTACK PREVENTION:
  * - IDOR even if developer forgets to check ownership in controller
  * - Provides uniform security across all tenant-scoped routes
  * - Logs suspicious access attempts for security auditing
- * 
+ *
  * USAGE:
  * Route::middleware('tenant.ownership')->group(function () {
  *     Route::resource('products', ProductController::class);
  * });
- * 
+ *
  * Or in Kernel.php under $middlewareAliases:
  * 'tenant.ownership' => \App\Http\Middleware\EnsureTenantOwnership::class,
  */
@@ -53,7 +53,7 @@ class EnsureTenantOwnership
     public function handle(Request $request, Closure $next): Response
     {
         // Skip if no authenticated user
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return $next($request);
         }
 
@@ -68,14 +68,14 @@ class EnsureTenantOwnership
         // Check all route parameters for tenant-bound models
         foreach ($request->route()->parameters() as $key => $value) {
             // Skip non-model values (IDs, slugs, etc.)
-            if (!is_object($value)) {
+            if (! is_object($value)) {
                 continue;
             }
 
             // Check if this is a tenant-bound model
             if ($this->isTenantBoundModel($value)) {
                 // Verify ownership
-                if (!$this->verifyOwnership($value, $allowedTenantIds)) {
+                if (! $this->verifyOwnership($value, $allowedTenantIds)) {
                     // Log the suspicious access attempt
                     $this->logSecurityViolation($request, $value);
 
@@ -106,7 +106,7 @@ class EnsureTenantOwnership
     protected function isTenantBoundModel($model): bool
     {
         // Check if model has tenant_id attribute
-        if (!isset($model->tenant_id)) {
+        if (! isset($model->tenant_id)) {
             return false;
         }
 

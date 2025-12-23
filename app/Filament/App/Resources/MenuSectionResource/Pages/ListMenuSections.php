@@ -18,4 +18,3 @@ class ListMenuSections extends ListRecords
         ];
     }
 }
-

@@ -64,4 +64,3 @@ class Security extends Component
             ->title('Seguridad | Conecta HN');
     }
 }
-

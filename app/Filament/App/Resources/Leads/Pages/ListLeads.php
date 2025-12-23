@@ -20,4 +20,3 @@ class ListLeads extends ListRecords
     // Tabs removed - getTabs() with Tab class not available in Filament v4
     // Status filtering can be done via table filters instead
 }
-

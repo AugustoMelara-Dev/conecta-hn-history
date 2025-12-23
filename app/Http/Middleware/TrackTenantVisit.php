@@ -2,24 +2,24 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\TenantVisit;
 use App\Models\Tenant;
+use App\Models\TenantVisit;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * TrackTenantVisit - First-Party Analytics Middleware
- * 
+ *
  * PRIVACY-COMPLIANT TRACKING:
  * - No persistent cookies
  * - IP addresses hashed with daily salt
  * - Same visitor = same hash for 24 hours only
- * 
+ *
  * DEDUPLICATION:
  * - Session fingerprint checked before write
  * - 5 page refreshes = 1 visit recorded
- * 
+ *
  * PERFORMANCE:
  * - Uses terminate() for async processing
  * - Doesn't block HTTP response
@@ -30,18 +30,19 @@ class TrackTenantVisit
      * Cache for tenant data during request lifecycle.
      */
     protected ?Tenant $tenant = null;
+
     protected ?Request $request = null;
 
     /**
      * Handle an incoming request.
-     * 
+     *
      * Just tag the request for tracking, actual work happens in terminate()
      */
     public function handle(Request $request, Closure $next): Response
     {
         // Store request for terminate() method
         $this->request = $request;
-        
+
         // Extract tenant from route parameter
         if ($request->route('tenant')) {
             $this->tenant = $request->route('tenant');
@@ -52,7 +53,7 @@ class TrackTenantVisit
 
     /**
      * Perform tasks after the response has been sent to the browser.
-     * 
+     *
      * This method is called AFTER the response is sent, so it doesn't
      * impact perceived page load time.
      */
@@ -64,7 +65,7 @@ class TrackTenantVisit
         }
 
         // Need a tenant to track
-        if (!$this->tenant) {
+        if (! $this->tenant) {
             return;
         }
 

@@ -56,4 +56,3 @@ class PlanDistributionChart extends ChartWidget
         ];
     }
 }
-

@@ -11,17 +11,17 @@ use Illuminate\Validation\Rule;
 
 /**
  * AnalyticsController - Conversion Event API
- * 
+ *
  * Receives tracking events from frontend components:
  * - WhatsApp button clicks
  * - Phone call initiations
  * - Cart additions
- * 
+ *
  * PERFORMANCE ARCHITECTURE:
  * Uses async job dispatch to avoid blocking HTTP responses.
  * The user receives a 202 Accepted immediately while the
  * database write happens in a background worker.
- * 
+ *
  * SECURITY:
  * - Rate limited to prevent spam (configured in routes)
  * - Validates event types against whitelist
@@ -30,9 +30,9 @@ class AnalyticsController extends Controller
 {
     /**
      * Record a conversion event asynchronously.
-     * 
+     *
      * POST /api/analytics/track
-     * 
+     *
      * PERFORMANCE:
      * Returns immediately (202 Accepted) without waiting for DB write.
      * Job processes in background, reducing TTFB by ~50-200ms.

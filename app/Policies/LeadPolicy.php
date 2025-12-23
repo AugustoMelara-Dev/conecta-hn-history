@@ -7,7 +7,7 @@ use App\Models\User;
 
 /**
  * LeadPolicy - Tenant-Aware Authorization for Leads/Inquiries
- * 
+ *
  * ══════════════════════════════════════════════════════════════════════════════
  * SECURITY: Enforces tenant ownership for customer inquiry management
  * ══════════════════════════════════════════════════════════════════════════════

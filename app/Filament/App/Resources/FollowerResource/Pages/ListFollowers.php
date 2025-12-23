@@ -17,4 +17,3 @@ class ListFollowers extends ListRecords
         ];
     }
 }
-

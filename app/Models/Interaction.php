@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Interaction - Conversion event tracking
- * 
+ *
  * Records explicit user actions that indicate purchase intent:
  * WhatsApp clicks, calls, location views, cart additions.
- * 
+ *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class Interaction extends Model
@@ -77,12 +77,12 @@ class Interaction extends Model
     public function scopeThisMonth($query)
     {
         return $query->whereMonth('created_at', now()->month)
-                     ->whereYear('created_at', now()->year);
+            ->whereYear('created_at', now()->year);
     }
 
     /**
      * Record a new interaction (trusted internal factory method).
-     * 
+     *
      * SECURITY NOTE: Uses forceFill() to bypass $guarded protection because
      * this is an internal method, not exposed to HTTP input.
      * The BelongsToTenant trait does NOT auto-inject here because we need
@@ -94,7 +94,7 @@ class Interaction extends Model
         ?int $productId = null,
         array $metadata = []
     ): self {
-        $interaction = new self();
+        $interaction = new self;
         $interaction->forceFill([
             'tenant_id' => $tenantId,
             'product_id' => $productId,
@@ -102,7 +102,7 @@ class Interaction extends Model
             'metadata' => $metadata,
         ]);
         $interaction->save();
-        
+
         return $interaction;
     }
 }
