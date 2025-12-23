@@ -6,76 +6,102 @@ use App\Models\Product;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
-class ProductPolicy
+/**
+ * ProductPolicy - Tenant-Aware Authorization for Products
+ * 
+ * ══════════════════════════════════════════════════════════════════════════════
+ * SECURITY: Enforces tenant ownership for all product operations
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+class ProductPolicy extends TenantAwarePolicy
 {
     /**
-     * Determine whether the user can view any models.
+     * Determine whether the user can view any products.
+     * 
+     * ALLOWED: Tenant owners can view their product list
      */
     public function viewAny(User $user): bool
     {
-        return false;
+        return $this->hasAnyTenant($user);
     }
 
     /**
-     * Determine whether the user can view the model.
+     * Determine whether the user can view the product.
+     * 
+     * SECURITY: Only owner tenant can view
      */
     public function view(User $user, Product $product): bool
     {
-        return false;
+        return $this->ownsResource($user, $product);
     }
 
     /**
-     * Determine whether the user can create models.
+     * Determine whether the user can create products.
+     * 
+     * SECURITY: User must have a tenant + respect product limits
      */
     public function create(User $user): Response
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        // Get user's primary tenant from Filament context or relationship
+        $tenant = \Filament\Facades\Filament::getTenant() 
+            ?? $user->tenants()->first();
 
-        if (! $tenant) {
-            return Response::allow();
+        if (!$tenant) {
+            return Response::deny('Debes tener un negocio para crear productos.');
         }
 
+        // PRO tenants have unlimited products
         if ($tenant->is_pro) {
             return Response::allow();
         }
 
+        // Free tenants limited to 10 products
         if ($tenant->products()->count() < 10) {
             return Response::allow();
         }
 
-        return Response::deny('Has alcanzado el límite de 10 productos de tu Plan Gratuito. Actualiza a Pro para ilimitados.');
+        return Response::deny(
+            'Has alcanzado el límite de 10 productos de tu Plan Gratuito. ' .
+            'Actualiza a PRO para ilimitados.'
+        );
     }
 
     /**
-     * Determine whether the user can update the model.
+     * Determine whether the user can update the product.
+     * 
+     * SECURITY: Only owner tenant can update
      */
     public function update(User $user, Product $product): bool
     {
-        return false;
+        return $this->ownsResource($user, $product);
     }
 
     /**
-     * Determine whether the user can delete the model.
+     * Determine whether the user can delete the product.
+     * 
+     * SECURITY: Only owner tenant can delete
      */
     public function delete(User $user, Product $product): bool
     {
-        return false;
+        return $this->ownsResource($user, $product);
     }
 
     /**
-     * Determine whether the user can restore the model.
+     * Determine whether the user can restore the product.
      */
     public function restore(User $user, Product $product): bool
     {
-        return false;
+        return $this->ownsResource($user, $product);
     }
 
     /**
-     * Determine whether the user can permanently delete the model.
+     * Determine whether the user can permanently delete the product.
+     * 
+     * CAUTION: Destructive operation - stricter check
      */
     public function forceDelete(User $user, Product $product): bool
     {
-        return false;
+        // Only allow if owner AND admin role
+        return $this->ownsResource($user, $product) && $this->isAdmin($user);
     }
 }
-
