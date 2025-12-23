@@ -1,51 +1,76 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Home, Search, Heart, User, PlusCircle } from 'lucide-react';
+import { Home, Search, Heart, User, PlusCircle, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/**
+ * MobileBottomNav - App-wide navigation for discovery mode
+ * 
+ * SECURITY: FAB (Publicar) only visible to authenticated tenant owners
+ * This prevents confusion for anonymous users and customers
+ */
 export default function MobileBottomNav() {
-    const { url } = usePage();
+    const { url, props } = usePage();
+    const auth = props.auth || {};
+    const user = auth.user;
 
-    // Navigation items configuration
-    const navItems = [
+    // ═══════════════════════════════════════════════════════════════════════
+    // FAB VISIBILITY LOGIC: Only show to authenticated users with tenants
+    // ═══════════════════════════════════════════════════════════════════════
+    const isAuthenticated = !!user;
+    const hasTenant = !!user?.tenant_id || !!user?.tenant;
+    const showFAB = isAuthenticated && hasTenant;
+
+    // Base navigation items (always visible)
+    const baseNavItems = [
         {
             label: 'Inicio',
             href: '/',
             icon: Home,
             active: url === '/',
-            isFab: false
         },
         {
             label: 'Explorar',
             href: '/directorio',
             icon: Search,
             active: url.startsWith('/directorio'),
-            isFab: false
         },
-        {
-            label: 'Publicar',
-            href: '/publicar',
-            icon: PlusCircle,
-            active: url === '/publicar',
-            isFab: true // Central FAB
-        },
+    ];
+
+    // FAB item (conditionally added)
+    const fabItem = {
+        label: 'Publicar',
+        href: '/admin/products/create',
+        icon: PlusCircle,
+        active: false,
+        isFab: true,
+    };
+
+    // Post-FAB items
+    const endNavItems = [
         {
             label: 'Favoritos',
             href: '/favoritos',
             icon: Heart,
             active: url === '/favoritos',
-            isFab: false
         },
         {
-            label: 'Perfil',
-            href: '/perfil',
-            icon: User,
-            active: url.startsWith('/perfil') || url.startsWith('/mi-cuenta'),
-            isFab: false
-        }
+            label: isAuthenticated ? 'Mi Tienda' : 'Perfil',
+            href: isAuthenticated ? (hasTenant ? '/admin' : '/registrar-negocio') : '/login',
+            icon: isAuthenticated ? Store : User,
+            active: url.startsWith('/perfil') || url.startsWith('/mi-cuenta') || url.startsWith('/admin'),
+        },
     ];
 
+    // Build final nav items based on auth state
+    const navItems = showFAB
+        ? [...baseNavItems, fabItem, ...endNavItems]
+        : [...baseNavItems, ...endNavItems];
+
+    // Grid columns: 5 with FAB, 4 without
+    const gridCols = showFAB ? 'grid-cols-5' : 'grid-cols-4';
+
     return (
-        <div className="grid grid-cols-5 h-16 items-center justify-items-center px-2 pb-safe">
+        <div className={cn("grid h-16 items-center justify-items-center px-2 pb-safe", gridCols)}>
             {navItems.map((item) => (
                 <Link
                     key={item.label}
@@ -84,3 +109,4 @@ export default function MobileBottomNav() {
         </div>
     );
 }
+

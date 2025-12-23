@@ -133,28 +133,48 @@ export default function DirectoryIndex({ tenants, categories, cities, activeCity
                             ))}
                         </div>
                     ) : (
-                        /* Robust Empty State */
+                        /* ═══════════════════════════════════════════════════════════
+                            EMPTY STATE: No results found
+                            Converts failed searches into acquisition opportunities
+                        ═══════════════════════════════════════════════════════════ */
                         <div className="flex flex-col items-center justify-center py-24 text-center">
                             <div className="w-24 h-24 bg-muted/30 rounded-full flex items-center justify-center mb-6">
                                 <Search className="w-10 h-10 text-muted-foreground/50" />
                             </div>
                             <h3 className="text-xl font-bold mb-2 text-foreground">
-                                No encontramos resultados
+                                {filters.search
+                                    ? `No encontramos "${filters.search}"`
+                                    : 'No hay negocios disponibles'}
                             </h3>
                             <p className="text-muted-foreground max-w-md mx-auto mb-8">
-                                No hay negocios que coincidan con tu búsqueda. Intenta limpiar los filtros para ver todo el catálogo.
+                                {filters.search
+                                    ? `No hay negocios que coincidan con tu búsqueda. ¿Conoces un negocio de "${filters.search}"? ¡Invítalos a registrarse!`
+                                    : 'No hay negocios que coincidan con tus filtros. Intenta limpiar los filtros para ver todo el catálogo.'}
                             </p>
-                            <Button
-                                variant="outline"
-                                size="lg"
-                                onClick={() => {
-                                    setSearchTerm('');
-                                    router.get(route('directory.index'));
-                                }}
-                                className="rounded-full px-8"
-                            >
-                                Limpiar todos los filtros
-                            </Button>
+
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <Button
+                                    variant="outline"
+                                    size="lg"
+                                    onClick={() => {
+                                        setSearchTerm('');
+                                        router.get(route('directory.index'));
+                                    }}
+                                    className="rounded-full px-8"
+                                >
+                                    <X className="w-4 h-4 mr-2" />
+                                    Limpiar filtros
+                                </Button>
+
+                                {/* CTA: Acquisition opportunity */}
+                                <Link
+                                    href={route('register')}
+                                    className="inline-flex items-center justify-center gap-2 px-8 h-11 rounded-full bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+                                >
+                                    <Building2 className="w-4 h-4" />
+                                    Registrar mi negocio
+                                </Link>
+                            </div>
                         </div>
                     )}
                 </main>
