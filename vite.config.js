@@ -8,10 +8,14 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',      // Livewire/Alpine (Filament)
-                'resources/js/app.jsx',     // Inertia/React (Public App)
+                'resources/js/app.jsx',     // Inertia/React (Public App + Breeze Auth)
             ],
             refresh: true,
         }),
-        react(),
+        react({
+            // Use automatic JSX runtime (React 17+)
+            // This allows JSX without explicit React import
+            jsxRuntime: 'automatic',
+        }),
     ],
 });
