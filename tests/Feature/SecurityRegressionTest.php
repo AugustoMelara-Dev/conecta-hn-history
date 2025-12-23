@@ -133,9 +133,9 @@ class SecurityRegressionTest extends TestCase
             'Product should initially belong to attacker tenant'
         );
 
-        // Document: tenant_id IS in $fillable (necessary for creation)
-        // Protection comes from Policy layer, not Mass Assignment in this case
-        $this->assertContains('tenant_id', $product->getFillable());
+        // Document: tenant_id IS in $guarded (immutable ownership)
+        // Protection comes from: $guarded + BelongsToTenant trait auto-assignment
+        $this->assertContains('tenant_id', $product->getGuarded());
     }
 
     /**
@@ -143,27 +143,37 @@ class SecurityRegressionTest extends TestCase
      * @group security
      * @group isolation
      * 
-     * VERIFICATION: When creating a product through normal flow (not bypassing scopes),
-     * the tenant_id from the authenticated context should be used.
+     * VERIFICATION: tenant_id is GUARDED (immutable) to prevent mass assignment attacks.
+     * The BelongsToTenant trait auto-assigns it during creation via the creating() hook.
      * 
-     * Note: This is a documentation test showing the expected behavior.
+     * SECURITY DESIGN:
+     * - tenant_id in $guarded = cannot be set via fill() or create() with user input
+     * - BelongsToTenant::bootBelongsToTenant() sets it from authenticated context
+     * - This prevents attackers from injecting foreign tenant_id in requests
      */
     public function it_documents_tenant_id_fillable_status(): void
     {
         $product = new Product();
         
-        // tenant_id MUST be fillable for the Trait to auto-assign it
+        // tenant_id MUST be guarded (immutable) to prevent mass assignment attacks
         $this->assertContains(
             'tenant_id',
+            $product->getGuarded(),
+            'tenant_id must be guarded for security - it should be auto-assigned by BelongsToTenant trait'
+        );
+
+        // Verify tenant_id is NOT in fillable (would be a security vulnerability)
+        $this->assertNotContains(
+            'tenant_id',
             $product->getFillable(),
-            'tenant_id must be fillable for BelongsToTenant trait to work'
+            'tenant_id should NOT be fillable - this would allow mass assignment attacks'
         );
 
         // The security comes from:
         // 1. TenantScope filtering all read queries
-        // 2. BelongsToTenant::creating() overriding tenant_id in web context
-        // 3. Policies verifying ownership before operations
-        // 4. Middleware validating route-model bindings
+        // 2. BelongsToTenant::creating() setting tenant_id from authenticated context
+        // 3. $guarded preventing mass assignment of tenant_id
+        // 4. Policies verifying ownership before operations
     }
 
     /**
