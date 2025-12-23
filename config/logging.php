@@ -127,6 +127,32 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        /*
+        |--------------------------------------------------------------------------
+        | Security Audit Channel
+        |--------------------------------------------------------------------------
+        |
+        | Dedicated channel for security events including:
+        | - Cross-tenant access attempts
+        | - Authentication failures
+        | - Authorization violations
+        | - Suspicious activity patterns
+        |
+        | This channel is separate from application logs for:
+        | - Easy ingestion by SIEM tools (Datadog, Splunk, etc.)
+        | - Fail2Ban integration for IP blocking
+        | - Compliance audit trail (90-day retention)
+        |
+        */
+
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security.log'),
+            'level' => 'warning',
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

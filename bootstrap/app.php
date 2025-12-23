@@ -26,7 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'track.tenant' => \App\Http\Middleware\TrackTenantView::class,
             'track.visits' => \App\Http\Middleware\TrackVisits::class, // Analytics con debouncing
+            'track.tenant.visit' => \App\Http\Middleware\TrackTenantVisit::class, // First-party analytics
             'maintenance' => \App\Http\Middleware\CheckMaintenanceMode::class, // Alias para uso granular
+            'tenant.ownership' => \App\Http\Middleware\EnsureTenantOwnership::class, // Security: IDOR protection
         ]);
 
         //
