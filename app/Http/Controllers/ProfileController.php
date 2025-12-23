@@ -18,10 +18,9 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
-        return Inertia::render('UserDashboard', [
+        return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
-            'user' => $request->user()->load('favorites.tenant'),
         ]);
     }
 
@@ -38,7 +37,7 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
-        return Redirect::route('mi-cuenta.edit');
+        return Redirect::route('profile.edit');
     }
 
     /**
@@ -62,4 +61,3 @@ class ProfileController extends Controller
         return Redirect::to('/');
     }
 }
-

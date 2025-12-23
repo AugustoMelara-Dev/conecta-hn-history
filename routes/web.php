@@ -1,43 +1,49 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\WelcomeController;
+use App\Http\Controllers\DirectoryController;
+use App\Http\Controllers\TenantController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
-| Public Routes - Marketplace Frontend
+| Public Routes - React/Inertia Frontend
 |--------------------------------------------------------------------------
 |
-| Rutas del frontend público usando componentes Livewire.
+| Rutas del frontend público usando Inertia.js + React.
 | Prioridad: Rutas específicas PRIMERO, wildcard (/{slug}) AL FINAL.
 |
 */
 
 // ═══════════════════════════════════════════════════════════════════════
-// 1. LANDING PAGE: Página de Ventas B2B
+// 1. LANDING PAGE: React/Inertia (Welcome.jsx)
 // ═══════════════════════════════════════════════════════════════════════
-Route::get('/', \App\Livewire\LandingPage::class)->name('home');
+Route::get('/', WelcomeController::class)->name('home');
 
-// Motor de Descubrimiento (antiguo home, ahora secundario)
-Route::get('/explorar', \App\Livewire\Pages\Home::class)->name('explore');
+// [DEPRECATED] Old Livewire route:
+// Route::get('/', \App\Livewire\LandingPage::class)->name('home');
+
+// Motor de Descubrimiento (antiguo home - DEPRECATED)
+// Route::get('/explorar', \App\Livewire\Pages\Home::class)->name('explore');
 
 // ═══════════════════════════════════════════════════════════════════════
-// 2. DIRECTORIO: Búsqueda y Filtros
+// 2. DIRECTORIO: React/Inertia (Directory/Index.jsx)
 // ═══════════════════════════════════════════════════════════════════════
-Route::get('/directorio', \App\Livewire\Pages\Directory::class)->name('directory');
+Route::get('/directorio', [DirectoryController::class, 'index'])->name('directory.index');
 
 // Ruta SEO para Ciudades (ej. /ciudad/tocoa)
-Route::get('/ciudad/{city}', \App\Livewire\Pages\Directory::class)->name('city.show');
+Route::get('/ciudad/{city:slug}', [DirectoryController::class, 'byCity'])->name('city.show');
 
-// Listado de todas las ciudades
-Route::get('/ciudades', \App\Livewire\Pages\Directory::class)->name('cities.index');
+// Listado de todas las ciudades (redirige a directorio)
+Route::get('/ciudades', [DirectoryController::class, 'index'])->name('cities.index');
 
 // Ruta SEO para Categorías (ej. /categoria/restaurantes)
-Route::get('/categoria/{category}', \App\Livewire\Pages\Directory::class)->name('category.show');
+Route::get('/categoria/{category:slug}', [DirectoryController::class, 'byCategory'])->name('category.show');
 
 // ═══════════════════════════════════════════════════════════════════════
-// 3. REGISTRO DE NEGOCIOS
+// 3. REGISTRO DE NEGOCIOS (Mantiene Livewire por ahora - Fase 2)
 // ═══════════════════════════════════════════════════════════════════════
 Route::get('/registrar-negocio', \App\Livewire\Pages\RegisterTenant::class)->name('tenant.register');
 
@@ -183,7 +189,11 @@ require __DIR__.'/auth.php';
 |
 */
 
-// ═══ TENANT MICROSITES / STOREFRONT (MUST BE LAST) ═══
-Route::get('/{tenant:slug}', \App\Livewire\Tenant\Shop\Show::class)
+// ═══ TENANT MICROSITES / STOREFRONT - React/Inertia (MUST BE LAST) ═══
+Route::get('/{tenant:slug}', [TenantController::class, 'show'])
+    ->middleware('track.tenant.visit')  // First-party analytics
     ->name('tenant.show');
+
+// [DEPRECATED] Old Livewire route:
+// Route::get('/{tenant:slug}', \App\Livewire\Tenant\Shop\Show::class)->name('tenant.show');
 

@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Events\Security\NewLoginDetected;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -27,45 +27,19 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request)
+    public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
 
         $request->session()->regenerate();
 
-        $user = Auth::user();
-
-        // Dispatch Security Alert
-        event(new NewLoginDetected($user, $request->ip()));
-
-        // Role-based redirection logic
-
-        // Seller -> Tenant App Panel
-        if ($user->role === 'seller') {
-            $tenant = $user->tenants->first();
-
-            if ($tenant) {
-                // Hard reload compatible with Filament
-                return Inertia::location("/app/{$tenant->slug}");
-            }
-
-            // Fallback: If seller has no shop, send to registration
-            return Inertia::location(route('register'));
-        }
-
-        // Admin -> Global Admin Panel
-        if ($user->role === 'admin' || $user->role === 'super_admin') {
-            return redirect()->intended(route('filament.admin.pages.dashboard'));
-        }
-
-        // Buyers / Default -> Directory
-        return redirect()->intended(route('directory'));
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 
     /**
      * Destroy an authenticated session.
      */
-    public function destroy(Request $request)
+    public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
 
@@ -76,4 +50,3 @@ class AuthenticatedSessionController extends Controller
         return redirect('/');
     }
 }
-

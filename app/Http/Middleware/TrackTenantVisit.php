@@ -2,191 +2,129 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Interaction;
+use App\Models\TenantVisit;
 use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * ═══════════════════════════════════════════════════════════════════════════
- * TRACK TENANT VISIT MIDDLEWARE - Motor de Analytics
- * ═══════════════════════════════════════════════════════════════════════════
- *
- * Este middleware rastrea visitas únicas a los micrositios de tenants.
- * Es crítico para las métricas del Plan PRO.
- *
- * THROTTLE INTELIGENTE:
- * - Usa caché para evitar registrar múltiples visitas del mismo usuario
- * - Clave única: hash(ip + tenant_id + user_agent)
- * - Expira en 1 hora
- *
- * EXCLUSIONES:
- * - Bots conocidos (Google, Bing, etc.)
- * - Assets estáticos
- * - Usuarios autenticados que son dueños del tenant
+ * TrackTenantVisit - First-Party Analytics Middleware
+ * 
+ * PRIVACY-COMPLIANT TRACKING:
+ * - No persistent cookies
+ * - IP addresses hashed with daily salt
+ * - Same visitor = same hash for 24 hours only
+ * 
+ * DEDUPLICATION:
+ * - Session fingerprint checked before write
+ * - 5 page refreshes = 1 visit recorded
+ * 
+ * PERFORMANCE:
+ * - Uses terminate() for async processing
+ * - Doesn't block HTTP response
  */
 class TrackTenantVisit
 {
     /**
-     * Patrones de User-Agent de bots a excluir
+     * Cache for tenant data during request lifecycle.
      */
-    protected array $botPatterns = [
-        'Googlebot',
-        'Bingbot',
-        'Slurp',
-        'DuckDuckBot',
-        'Baiduspider',
-        'YandexBot',
-        'facebookexternalhit',
-        'Twitterbot',
-        'LinkedInBot',
-        'WhatsApp',
-        'TelegramBot',
-        'curl',
-        'wget',
-        'python-requests',
-        'PostmanRuntime',
-    ];
+    protected ?Tenant $tenant = null;
+    protected ?Request $request = null;
 
     /**
      * Handle an incoming request.
+     * 
+     * Just tag the request for tracking, actual work happens in terminate()
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Procesar la respuesta primero
-        $response = $next($request);
-
-        // Solo rastrear en respuestas exitosas
-        if (! $response->isSuccessful()) {
-            return $response;
+        // Store request for terminate() method
+        $this->request = $request;
+        
+        // Extract tenant from route parameter
+        if ($request->route('tenant')) {
+            $this->tenant = $request->route('tenant');
         }
 
-        // Obtener el tenant de la ruta
-        $tenant = $request->route('tenant');
-
-        if (! $tenant instanceof Tenant) {
-            return $response;
-        }
-
-        // Excluir bots
-        if ($this->isBot($request)) {
-            return $response;
-        }
-
-        // Excluir al dueño del tenant
-        if ($this->isOwner($request, $tenant)) {
-            return $response;
-        }
-
-        // Registrar visita con throttle
-        $this->trackVisit($request, $tenant);
-
-        return $response;
+        return $next($request);
     }
 
     /**
-     * Verifica si el request viene de un bot conocido
+     * Perform tasks after the response has been sent to the browser.
+     * 
+     * This method is called AFTER the response is sent, so it doesn't
+     * impact perceived page load time.
      */
-    protected function isBot(Request $request): bool
+    public function terminate(Request $request, Response $response): void
     {
-        $userAgent = $request->userAgent() ?? '';
-
-        foreach ($this->botPatterns as $pattern) {
-            if (stripos($userAgent, $pattern) !== false) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Verifica si el usuario autenticado es dueño del tenant
-     */
-    protected function isOwner(Request $request, Tenant $tenant): bool
-    {
-        $user = $request->user();
-
-        if (! $user) {
-            return false;
-        }
-
-        // Verificar si el usuario es dueño del tenant
-        return $tenant->user_id === $user->id;
-    }
-
-    /**
-     * Registra la visita con throttle de 1 hora
-     */
-    protected function trackVisit(Request $request, Tenant $tenant): void
-    {
-        $ip = $request->ip();
-        $userAgent = $request->userAgent() ?? 'unknown';
-
-        // Generar clave única para el throttle
-        $cacheKey = $this->generateCacheKey($ip, $tenant->id, $userAgent);
-
-        // Verificar si ya se registró esta visita en la última hora
-        if (Cache::has($cacheKey)) {
+        // Only track successful pages
+        if ($response->getStatusCode() !== 200) {
             return;
         }
 
-        // Registrar la interacción
-        try {
-            Interaction::create([
-                'tenant_id' => $tenant->id,
-                'type' => 'visit',
-                'ip_address' => $ip,
-                'user_agent' => mb_substr($userAgent, 0, 500), // Limitar longitud
-                'referrer' => mb_substr($request->header('Referer', ''), 0, 500),
-                'url' => mb_substr($request->fullUrl(), 0, 500),
-                'metadata' => [
-                    'device' => $this->detectDevice($userAgent),
-                    'country' => null, // TODO: GeoIP
-                ],
-            ]);
+        // Need a tenant to track
+        if (!$this->tenant) {
+            return;
+        }
 
-            // Marcar como registrada por 1 hora
-            Cache::put($cacheKey, true, now()->addHour());
+        // Skip bots from visit count (but still let them through for SEO)
+        $userAgent = $request->userAgent() ?? '';
+        if ($this->isBot($userAgent)) {
+            return;
+        }
+
+        $this->recordVisit($request);
+    }
+
+    /**
+     * Record a visit with deduplication.
+     */
+    protected function recordVisit(Request $request): void
+    {
+        try {
+            $ip = $request->ip() ?? '0.0.0.0';
+            $userAgent = $request->userAgent() ?? 'Unknown';
+            $tenantId = $this->tenant->id;
+
+            // Generate session fingerprint
+            $sessionHash = TenantVisit::generateSessionHash($ip, $userAgent, $tenantId);
+
+            // ═══════════════════════════════════════════════════════════════
+            // DEDUPLICATION CHECK: Already tracked this session today?
+            // ═══════════════════════════════════════════════════════════════
+            $existsToday = TenantVisit::query()
+                ->where('tenant_id', $tenantId)
+                ->where('session_hash', $sessionHash)
+                ->whereDate('created_at', today())
+                ->exists();
+
+            if ($existsToday) {
+                return; // Skip duplicate
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // RECORD NEW VISIT
+            // ═══════════════════════════════════════════════════════════════
+            TenantVisit::create([
+                'tenant_id' => $tenantId,
+                'session_hash' => $sessionHash,
+                'user_agent' => mb_substr($userAgent, 0, 512),
+                'referer' => mb_substr($request->header('referer') ?? '', 0, 512),
+                'device_type' => TenantVisit::detectDeviceType($userAgent),
+            ]);
 
         } catch (\Exception $e) {
-            // Silenciar errores para no afectar la experiencia del usuario
-            \Log::warning('Failed to track visit', [
-                'tenant_id' => $tenant->id,
-                'error' => $e->getMessage(),
-            ]);
+            // Silently fail - analytics should never break the main app
+            report($e);
         }
     }
 
     /**
-     * Genera una clave de caché única para el throttle
+     * Check if user agent indicates a bot.
      */
-    protected function generateCacheKey(string $ip, int $tenantId, string $userAgent): string
+    protected function isBot(string $userAgent): bool
     {
-        // Hash para mantener la clave corta pero única
-        $hash = md5("{$ip}_{$tenantId}_{$userAgent}");
-
-        return "tenant_visit_{$hash}";
-    }
-
-    /**
-     * Detecta el tipo de dispositivo basado en User-Agent
-     */
-    protected function detectDevice(string $userAgent): string
-    {
-        $userAgent = strtolower($userAgent);
-
-        if (str_contains($userAgent, 'mobile') || str_contains($userAgent, 'android')) {
-            return 'mobile';
-        }
-
-        if (str_contains($userAgent, 'tablet') || str_contains($userAgent, 'ipad')) {
-            return 'tablet';
-        }
-
-        return 'desktop';
+        return preg_match('/bot|crawl|spider|slurp|googlebot|bingbot|yandex/i', $userAgent) === 1;
     }
 }
-

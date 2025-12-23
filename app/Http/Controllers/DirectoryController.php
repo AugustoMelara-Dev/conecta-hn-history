@@ -1,104 +1,148 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
+use App\Models\Category;
+use App\Models\City;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
+/**
+ * DirectoryController - Faceted Search with Data Transformation
+ *
+ * Responsabilidad: Manejar búsqueda facetada y transformar datos para
+ * que coincidan con el contrato de interfaz de Directory/Index.jsx
+ */
 class DirectoryController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Display the business directory with search, filters and pagination.
+     * 
+     * SECURITY HARDENING:
+     * 1. Input validation before database operations
+     * 2. All SQL encapsulated in Model scopes
+     * 3. No raw SQL in controller
+     */
+    public function index(Request $request): Response
     {
-        $activeCityId = session('active_city_id');
+        // ═══════════════════════════════════════════════════════════════
+        // INPUT VALIDATION: Sanitize and validate all query parameters
+        // Prevents type confusion attacks and SQL injection vectors
+        // ═══════════════════════════════════════════════════════════════
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'category' => ['nullable', 'string', 'max:100', 'exists:categories,slug'],
+            'city' => ['nullable', 'string', 'max:100', 'exists:cities,slug'],
+        ], [
+            'search.max' => 'La búsqueda no puede exceder 100 caracteres.',
+            'category.exists' => 'La categoría seleccionada no es válida.',
+            'city.exists' => 'La ciudad seleccionada no es válida.',
+        ]);
 
-        $query = Tenant::query()
-            ->select('id', 'name', 'slug', 'logo_path', 'banner_path', 'blur_hash', 'city_id', 'is_pro', 'category_id', 'description')
-            ->where('status', 'approved')
-            ->where('is_active', true);
-
-        // Location Filter (Strict)
-        // Logic: Query Param > Session > Default
-        if ($request->filled('city')) {
-            $query->whereHas('city', function ($q) use ($request) {
-                $q->where('name', $request->input('city'));
-            });
-        } elseif ($activeCityId) {
-            // Optimization: Filter directly by ID if we have it from session
-            $query->where('city_id', $activeCityId);
-        }
-
-        // Category Filter
-        if ($request->filled('category')) {
-            $query->whereHas('category', function ($q) use ($request) {
-                $q->where('slug', $request->input('category'));
-            });
-        }
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->input('category_id'));
-        }
-
-        // Search Filter
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%")
-                    ->orWhereHas('products', function ($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%")
-                            ->orWhere('description', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        // Rating Filter
-        if ($request->filled('rating')) {
-            $minRating = (int) $request->input('rating');
-            $query->whereHas('reviews')
-                ->withAvg('reviews', 'rating')
-                ->having('reviews_avg_rating', '>=', $minRating);
-        }
-
-        // Eager Load Relationships (Added city)
-        $query->with(['category', 'city', 'reviews', 'products' => function ($q) {
-            $q->select('id', 'tenant_id', 'name', 'image_path', 'blur_hash', 'price')
-                ->take(4);
-        }]);
-
-        // Prioritize PRO tenants & Pagination
-        $tenants = $query->orderByDesc('is_pro')
-            ->orderBy('name')
+        // ═══════════════════════════════════════════════════════════════
+        // QUERY BUILDER: Clean, semantic, and secure
+        // All SQL logic encapsulated in Model scopes
+        // ═══════════════════════════════════════════════════════════════
+        $tenants = Tenant::query()
+            ->published()             // Scope: is_active + subscription_status = active
+            ->search($validated['search'] ?? null)           // Scope: LIKE search
+            ->inCategory($validated['category'] ?? null)     // Scope: category filter
+            ->inCity($validated['city'] ?? null)             // Scope: city filter
+            ->inPriorityOrder()       // Scope: Enterprise > Pro > Semilla
+            ->inRandomOrder()         // Fair exposure within tier
+            ->with(['city:id,name,slug', 'category:id,name,slug,icon'])
             ->paginate(12)
             ->withQueryString();
 
-        // Get all categories for pills (Cached)
-        $categories = \Illuminate\Support\Facades\Cache::rememberForever('categories_list', function () {
-            return \App\Models\Category::where('is_active', true)
-                ->select('id', 'name', 'slug', 'icon', 'color')
-                ->orderBy('name')
-                ->get();
+        // Transform each tenant to match frontend contract
+        $tenants->through(function (Tenant $tenant) {
+            return [
+                // Core fields
+                'id' => $tenant->id,
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'description' => $tenant->description ?? 'Descubre lo que tenemos para ti.',
+
+                // Images: Use hero_image if available, fallback to banner/cover
+                'banner_path' => $tenant->hero_image ?? $tenant->banner_path ?? $tenant->cover_path,
+                'blur_hash' => $tenant->blur_hash,
+                'brand_color' => $tenant->brand_color ?? '#2563EB',
+
+                // Status: Use computed is_pro from accessor
+                'is_pro' => $tenant->is_pro,
+                'plan_type' => $tenant->plan_type ?? 'semilla',
+
+                // Relations as objects
+                'city' => $tenant->city ? [
+                    'id' => $tenant->city->id,
+                    'name' => $tenant->city->name,
+                    'slug' => $tenant->city->slug,
+                ] : ['id' => 0, 'name' => 'Honduras', 'slug' => 'honduras'],
+
+                'category' => $tenant->category ? [
+                    'id' => $tenant->category->id,
+                    'name' => $tenant->category->name,
+                    'slug' => $tenant->category->slug,
+                    'icon' => $tenant->category->icon ?? '🏪',
+                ] : ['id' => 0, 'name' => 'General', 'slug' => 'general', 'icon' => '🏪'],
+            ];
         });
 
-        // Get all cities for picker (Cached)
-        $cities = \Illuminate\Support\Facades\Cache::rememberForever('cities_list', function () {
-            return \App\Models\City::select('id', 'name', 'slug')
-                ->orderBy('name')
-                ->get();
-        });
-
-        // Get active city safely
+        // Get active city for page title
         $activeCity = null;
-        if ($activeCityId) {
-            $activeCity = \App\Models\City::find($activeCityId);
+        if ($request->filled('city')) {
+            $activeCity = City::where('slug', $request->input('city'))->first(['id', 'name', 'slug']);
         }
 
         return Inertia::render('Directory/Index', [
+            // Paginated tenants (Laravel paginator object)
             'tenants' => $tenants,
-            'categories' => $categories,
-            'cities' => $cities,
+
+            // Current filter state for input persistence
+            'filters' => $request->only(['search', 'category', 'city']),
+
+            // Active city for page title
             'activeCity' => $activeCity,
-            'filters' => $request->only(['search', 'category', 'category_id', 'rating', 'city']),
+
+            // Dropdown options
+            'categories' => Category::query()
+                ->where('is_active', true)
+                ->select(['id', 'name', 'slug', 'icon'])
+                ->orderBy('name')
+                ->get()
+                ->map(fn (Category $cat) => [
+                    'id' => $cat->id,
+                    'name' => $cat->name,
+                    'slug' => $cat->slug,
+                    'icon' => $cat->icon ?? '🏪',
+                ]),
+
+            'cities' => City::query()
+                ->select(['id', 'name', 'slug'])
+                ->orderBy('name')
+                ->get(),
         ]);
     }
-}
 
+    /**
+     * Handle SEO routes for cities (/ciudad/{city})
+     */
+    public function byCity(City $city, Request $request): Response
+    {
+        $request->merge(['city' => $city->slug]);
+        return $this->index($request);
+    }
+
+    /**
+     * Handle SEO routes for categories (/categoria/{category})
+     */
+    public function byCategory(Category $category, Request $request): Response
+    {
+        $request->merge(['category' => $category->slug]);
+        return $this->index($request);
+    }
+}
