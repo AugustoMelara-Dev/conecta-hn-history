@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Scopes\LocationScope;
 use App\Scopes\PublicVisibilityScope;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,10 +13,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 {
-    use HasFactory, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
+    use HasFactory, SoftDeletes, BelongsToTenant, \Spatie\MediaLibrary\InteractsWithMedia;
 
     protected $fillable = [
-        'tenant_id',
         'city_id',
         'category_id',
         'menu_section_id',
@@ -35,6 +35,12 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'moderation_note',
         'rejected_at',
     ];
+
+    /**
+     * SECURITY: Immutable ownership fields.
+     * tenant_id is set automatically by BelongsToTenant trait on creation.
+     */
+    protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
 
     protected $casts = [
         'price' => 'decimal:2',
@@ -70,12 +76,8 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 
     // ═══════════════════════════════════════════════════════════════════════
     // RELATIONSHIPS
+    // Note: tenant() relationship is provided by BelongsToTenant trait
     // ═══════════════════════════════════════════════════════════════════════
-
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
 
     public function menuSection(): BelongsTo
     {
@@ -119,6 +121,17 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     public function optionGroups(): HasMany
     {
         return $this->hasMany(ProductOptionGroup::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Modifier Groups for product customization (PRO Feature)
+     * 
+     * Examples: "Tamaño", "Extras", "Toppings"
+     * Each group contains ModifierOptions with price adjustments.
+     */
+    public function modifierGroups(): HasMany
+    {
+        return $this->hasMany(ModifierGroup::class)->orderBy('sort_order');
     }
 
     // ═══════════════════════════════════════════════════════════════════════

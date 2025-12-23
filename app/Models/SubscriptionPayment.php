@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,10 +23,11 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $admin_notes
  * @property int|null $reviewed_by
  * @property \Carbon\Carbon|null $reviewed_at
+ * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class SubscriptionPayment extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant;
 
     public const STATUS_PENDING = 'pending';
 
@@ -34,7 +36,6 @@ class SubscriptionPayment extends Model
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
-        'tenant_id',
         'amount',
         'bank',
         'reference_number',
@@ -45,6 +46,12 @@ class SubscriptionPayment extends Model
         'reviewed_at',
     ];
 
+    /**
+     * SECURITY: Immutable ownership fields.
+     * tenant_id is set automatically by BelongsToTenant trait on creation.
+     */
+    protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
+
     protected $casts = [
         'amount' => 'decimal:2',
         'reviewed_at' => 'datetime',
@@ -52,12 +59,8 @@ class SubscriptionPayment extends Model
 
     // ═══════════════════════════════════════════════════════════════════════
     // RELATIONSHIPS
+    // Note: tenant() relationship is provided by BelongsToTenant trait
     // ═══════════════════════════════════════════════════════════════════════
-
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
 
     public function reviewer(): BelongsTo
     {
@@ -104,25 +107,37 @@ class SubscriptionPayment extends Model
     }
 
     /**
-     * Approve payment and extend tenant subscription
+     * Approve payment and dispatch event for subscription extension.
+     * 
+     * ARCHITECTURAL PATTERN: Event-Driven Architecture with Immutable DTO
+     * 
+     * This method follows Single Responsibility Principle:
+     * - Only updates the payment's own state
+     * - Dispatches PaymentApproved immutable DTO for side-effects
+     * - Uses primitive types (int, not models) for serialization safety
+     * - The UpdateTenantSubscription listener handles subscription logic
+     *   with pessimistic locking and idempotency guards
+     * 
+     * @param int $reviewerId The admin who approved the payment
+     * @param int $daysToAdd Number of subscription days to add (default: 30)
      */
     public function approve(int $reviewerId, int $daysToAdd = 30): void
     {
+        // Only update payment's own state (SRP compliance)
         $this->update([
             'status' => self::STATUS_APPROVED,
             'reviewed_by' => $reviewerId,
             'reviewed_at' => now(),
         ]);
 
-        // Extend tenant subscription
-        $tenant = $this->tenant;
-        $baseDate = $tenant->next_billing_date ?? now();
-
-        $tenant->update([
-            'is_pro' => true,
-            'next_billing_date' => $baseDate->addDays($daysToAdd),
-            'subscription_status' => 'active',
-        ]);
+        // Dispatch IMMUTABLE DTO event for decoupled subscription extension
+        // Uses factory method with primitives, not model objects
+        \App\Events\PaymentApproved::fromPayment(
+            tenantId: $this->tenant_id,
+            paymentId: $this->id,
+            reviewerId: $reviewerId,
+            daysToAdd: $daysToAdd
+        )->dispatch();
     }
 
     /**

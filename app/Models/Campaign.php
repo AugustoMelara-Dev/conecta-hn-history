@@ -2,33 +2,39 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Campaign - Marketing campaigns (PRO Feature)
+ * 
+ * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
+ */
 class Campaign extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id',
         'subject',
         'content',
         'sent_at',
         'recipients_count',
     ];
 
+    /**
+     * SECURITY: Immutable ownership fields.
+     * tenant_id is set automatically by BelongsToTenant trait on creation.
+     */
+    protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
+
     protected $casts = [
         'sent_at' => 'datetime',
         'recipients_count' => 'integer',
     ];
 
-    /**
-     * Get the tenant that owns the campaign.
-     */
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // RELATIONSHIPS
+    // Note: tenant() relationship is provided by BelongsToTenant trait
+    // ═══════════════════════════════════════════════════════════════════════
 }
-

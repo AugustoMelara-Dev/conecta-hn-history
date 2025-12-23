@@ -2,34 +2,41 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * OrderItem Model - Line Item with Price Snapshot
+ * 
+ * Represents a single product in an order.
+ * Stores frozen price/name data to preserve historical accuracy.
+ */
 class OrderItem extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'order_id',
         'product_id',
         'product_name',
-        'product_price',
-        'quantity',
+        'product_sku',
         'unit_price',
-        'total_price',
-        'selected_options',
+        'quantity',
+        'line_total',
+        'options',
+        'options_total',
         'notes',
     ];
 
     protected $casts = [
-        'product_price' => 'decimal:2',
         'unit_price' => 'decimal:2',
-        'total_price' => 'decimal:2',
-        'selected_options' => 'array',
+        'line_total' => 'decimal:2',
+        'options_total' => 'decimal:2',
+        'quantity' => 'integer',
+        'options' => 'array',
     ];
 
-    // ═══ RELACIONES ═══
+    // ═══════════════════════════════════════════════════════════════════════
+    // RELATIONSHIPS
+    // ═══════════════════════════════════════════════════════════════════════
 
     public function order(): BelongsTo
     {
@@ -41,29 +48,60 @@ class OrderItem extends Model
         return $this->belongsTo(Product::class);
     }
 
-    // ═══ HELPERS ═══
+    // ═══════════════════════════════════════════════════════════════════════
+    // ACCESSORS
+    // ═══════════════════════════════════════════════════════════════════════
 
-    /**
-     * Calcula el precio total basado en el precio unitario y cantidad
-     */
-    public function calculateTotal(): float
+    public function getFormattedUnitPriceAttribute(): string
     {
-        return $this->unit_price * $this->quantity;
+        return 'L. ' . number_format($this->unit_price, 2);
     }
 
-    /**
-     * Obtiene una descripción legible de las opciones seleccionadas
-     */
-    public function getOptionsDescription(): string
+    public function getFormattedLineTotalAttribute(): string
     {
-        if (empty($this->selected_options)) {
+        return 'L. ' . number_format($this->line_total, 2);
+    }
+
+    public function getOptionsDescriptionAttribute(): string
+    {
+        if (!$this->options || empty($this->options)) {
             return '';
         }
 
-        return collect($this->selected_options)
-            ->map(fn ($opt) => $opt['option'] ?? '')
+        return collect($this->options)
+            ->map(fn($opt) => $opt['option'] ?? '')
             ->filter()
             ->implode(', ');
     }
-}
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // FACTORY METHOD
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Create an OrderItem from a cart item payload.
+     * 
+     * @param array $cartItem Cart item from frontend
+     * @return static
+     */
+    public static function fromCartItem(array $cartItem): static
+    {
+        $unitPrice = (float) ($cartItem['price'] ?? 0);
+        $quantity = (int) ($cartItem['quantity'] ?? 1);
+        $options = $cartItem['options'] ?? [];
+        $optionsTotal = collect($options)->sum('price');
+        $lineTotal = ($unitPrice + $optionsTotal) * $quantity;
+
+        return new static([
+            'product_id' => $cartItem['product_id'] ?? $cartItem['id'] ?? null,
+            'product_name' => $cartItem['name'] ?? 'Producto',
+            'product_sku' => $cartItem['sku'] ?? null,
+            'unit_price' => $unitPrice,
+            'quantity' => $quantity,
+            'options' => $options,
+            'options_total' => $optionsTotal,
+            'line_total' => $lineTotal,
+            'notes' => $cartItem['notes'] ?? null,
+        ]);
+    }
+}

@@ -2,16 +2,22 @@
 
 namespace App\Models;
 
+use App\Enums\TenantRole;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * TenantUser - Team member assignments
+ * 
+ * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
+ */
 class TenantUser extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id',
         'user_id',
         'role',
         'can_manage_products',
@@ -27,7 +33,14 @@ class TenantUser extends Model
         'last_access_at',
     ];
 
+    /**
+     * SECURITY: Immutable ownership fields.
+     * tenant_id is set automatically by BelongsToTenant trait on creation.
+     */
+    protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
+
     protected $casts = [
+        'role' => TenantRole::class, // Strong-typed enum casting
         'can_manage_products' => 'boolean',
         'can_manage_orders' => 'boolean',
         'can_view_analytics' => 'boolean',
@@ -39,12 +52,8 @@ class TenantUser extends Model
         'last_access_at' => 'datetime',
     ];
 
-    // ═══ RELACIONES ═══
-
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
+    // ═══ RELATIONSHIPS ═══
+    // Note: tenant() relationship is provided by BelongsToTenant trait
 
     public function user(): BelongsTo
     {
@@ -52,11 +61,6 @@ class TenantUser extends Model
     }
 
     // ═══ SCOPES ═══
-
-    public function scopeForTenant($query, int $tenantId)
-    {
-        return $query->where('tenant_id', $tenantId);
-    }
 
     public function scopeAccepted($query)
     {
@@ -68,21 +72,29 @@ class TenantUser extends Model
         return $query->whereNull('accepted_at');
     }
 
-    // ═══ ROLE HELPERS ═══
+    // ═══ ROLE HELPERS (Strong-Typed via TenantRole Enum) ═══
 
     public function isOwner(): bool
     {
-        return $this->role === 'owner';
+        return $this->role === TenantRole::OWNER;
     }
 
     public function isManager(): bool
     {
-        return $this->role === 'manager';
+        return $this->role === TenantRole::MANAGER;
     }
 
     public function isEmployee(): bool
     {
-        return $this->role === 'employee';
+        return $this->role === TenantRole::EMPLOYEE;
+    }
+
+    /**
+     * Check if user has administrative privileges.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role?->isAdmin() ?? false;
     }
 
     // ═══ PERMISSION HELPERS ═══

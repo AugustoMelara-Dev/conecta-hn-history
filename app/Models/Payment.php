@@ -2,17 +2,22 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * Payment - Subscription payment records
+ * 
+ * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
+ */
 class Payment extends Model
 {
-    use LogsActivity;
+    use LogsActivity, BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id',
         'amount',
         'proof_image_path',
         'bank_reference',
@@ -20,6 +25,12 @@ class Payment extends Model
         'reviewed_at',
         'notes',
     ];
+
+    /**
+     * SECURITY: Immutable ownership fields.
+     * tenant_id is set automatically by BelongsToTenant trait on creation.
+     */
+    protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
 
     protected $casts = [
         'amount' => 'decimal:2',
@@ -54,13 +65,14 @@ class Payment extends Model
         ]);
     }
 
-    /**
-     * Get the tenant that owns the payment.
-     */
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // RELATIONSHIPS
+    // Note: tenant() relationship is provided by BelongsToTenant trait
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SCOPES
+    // ═══════════════════════════════════════════════════════════════════════
 
     /**
      * Scope to get pending payments.
@@ -94,4 +106,3 @@ class Payment extends Model
         return $this->status === 'approved';
     }
 }
-

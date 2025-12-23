@@ -28,6 +28,11 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'banner_path',
         'blur_hash',
         'primary_color',
+        // Brand Customization (White-Label)
+        'brand_color',
+        'hero_image',
+        'slogan',
+        // Plan & Status
         'is_pro',
         'is_active',
         'plan_expires_at',
@@ -53,19 +58,251 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'tiktok_url',
         'website_url',
         'simple_schedule',
+        // Subscription Engine
+        'subscription_status',
+        'subscription_ends_at',
+        'plan_type',
     ];
 
     protected $guarded = ['id'];
 
     protected $casts = [
         'hours_data' => 'array', // Array para compatibilidad con Filament Repeater
-        'is_pro' => 'boolean',
+        // 'is_pro' removed - now computed dynamically
         'is_active' => 'boolean',
         'theme_config' => 'array',
         'social_links' => 'array',
         'plan_expires_at' => 'datetime',
         'next_billing_date' => 'date',
+        // Subscription Engine
+        'subscription_ends_at' => 'datetime',
     ];
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // JSON SERIALIZATION: Expose computed attributes to Frontend
+    // These attributes are appended to every JSON/array representation
+    // ═══════════════════════════════════════════════════════════════════════════
+    protected $appends = [
+        'is_pro',           // Computed pro status (overrides DB column)
+        'days_until_expiry',
+        'subscription_status_label',
+        'plan_type_label',
+    ];
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SUBSCRIPTION ENGINE: Computed Pro Status
+    // is_pro is NOW COMPUTED dynamically and auto-serialized to JSON
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Determine if tenant has active Pro subscription.
+     * 
+     * BUSINESS LOGIC (CORRECTED):
+     * A tenant is Pro IF AND ONLY IF:
+     * 1. plan_type is 'pro' or 'enterprise'
+     * 2. subscription_status is 'active' OR 'trial' (both grant access)
+     * 3. status is NOT 'past_due' or 'canceled' (explicit denial)
+     * 4. subscription_ends_at is NULL (perpetual) OR in the future
+     * 
+     * This accessor OVERWRITES the static is_pro column in JSON output.
+     * The Frontend receives computed truth, not database value.
+     */
+    public function getIsProAttribute(): bool
+    {
+        // ═══════════════════════════════════════════════════════════════
+        // STEP 1: Plan Type Validation
+        // Only 'pro' and 'enterprise' plans grant premium features
+        // ═══════════════════════════════════════════════════════════════
+        if (!in_array($this->plan_type, ['pro', 'enterprise'])) {
+            return false;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // STEP 2: Explicit Denial States (Security Gate)
+        // 'past_due' and 'canceled' ALWAYS deny access, regardless of dates
+        // ═══════════════════════════════════════════════════════════════
+        if (in_array($this->subscription_status, ['past_due', 'canceled'])) {
+            return false;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // STEP 3: Valid Access States
+        // 'active' = Paid customer
+        // 'trial'  = Evaluation period (MUST grant access for conversion)
+        // ═══════════════════════════════════════════════════════════════
+        if (!in_array($this->subscription_status, ['active', 'trial'])) {
+            return false;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // STEP 4: Temporal Validation
+        // NULL = perpetual access (lifetime or free tier)
+        // Future date = valid subscription window
+        // Past date = expired, deny access
+        // ═══════════════════════════════════════════════════════════════
+        if ($this->subscription_ends_at === null) {
+            return true; // Perpetual access
+        }
+
+        return $this->subscription_ends_at->isFuture();
+    }
+
+    /**
+     * Check if subscription is currently active (not expired).
+     */
+    public function isSubscriptionActive(): bool
+    {
+        if ($this->subscription_status !== 'active') {
+            return false;
+        }
+
+        if ($this->subscription_ends_at === null) {
+            return true;
+        }
+
+        return $this->subscription_ends_at->isFuture();
+    }
+
+    /**
+     * Get days remaining until subscription expires.
+     * Returns null for perpetual subscriptions.
+     */
+    public function getDaysUntilExpiryAttribute(): ?int
+    {
+        if ($this->subscription_ends_at === null) {
+            return null; // Perpetual
+        }
+
+        return max(0, now()->diffInDays($this->subscription_ends_at, false));
+    }
+
+    /**
+     * Check if subscription is expiring soon (within 7 days).
+     */
+    public function isExpiringSoon(int $days = 7): bool
+    {
+        $remaining = $this->days_until_expiry;
+        
+        if ($remaining === null) {
+            return false; // Perpetual never expires
+        }
+
+        return $remaining <= $days && $remaining > 0;
+    }
+
+    /**
+     * Human-readable subscription status.
+     */
+    public function getSubscriptionStatusLabelAttribute(): string
+    {
+        $labels = [
+            'active' => 'Activo',
+            'trial' => 'Período de Prueba',
+            'past_due' => 'Vencido',
+            'canceled' => 'Cancelado',
+        ];
+
+        return $labels[$this->subscription_status] ?? 'Desconocido';
+    }
+
+    /**
+     * Human-readable plan type.
+     */
+    public function getPlanTypeLabelAttribute(): string
+    {
+        $labels = [
+            'semilla' => 'Plan Semilla',
+            'pro' => 'Plan Pro',
+            'enterprise' => 'Plan Enterprise',
+        ];
+
+        return $labels[$this->plan_type] ?? 'Desconocido';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // QUERY SCOPES: Encapsulate SQL logic for security and reusability
+    // These scopes centralize business rules and eliminate raw SQL from controllers
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Scope: Only tenants with active subscriptions.
+     * 
+     * SECURITY: Centralizes visibility rules.
+     * Use: Tenant::query()->published()
+     */
+    public function scopePublished($query)
+    {
+        return $query
+            ->where('is_active', true)
+            ->where('subscription_status', 'active');
+    }
+
+    /**
+     * Scope: Order by monetization tier (Enterprise > Pro > Semilla).
+     * 
+     * SECURITY: Encapsulates raw SQL to prevent injection.
+     * No external parameters accepted - SQL is static and safe.
+     * Use: Tenant::query()->inPriorityOrder()
+     */
+    public function scopeInPriorityOrder($query)
+    {
+        return $query->orderByRaw("FIELD(plan_type, 'enterprise', 'pro', 'semilla')");
+    }
+
+    /**
+     * Scope: Search tenants by name or description.
+     * 
+     * SECURITY: Safely binds search term to prevent SQL injection.
+     * Use: Tenant::query()->search('keyword')
+     */
+    public function scopeSearch($query, ?string $term)
+    {
+        if (empty($term)) {
+            return $query;
+        }
+
+        // Sanitize and limit search term
+        $term = mb_substr(trim($term), 0, 100);
+
+        return $query->where(function ($q) use ($term) {
+            $q->where('name', 'like', "%{$term}%")
+              ->orWhere('description', 'like', "%{$term}%");
+        });
+    }
+
+    /**
+     * Scope: Filter by category slug.
+     * 
+     * SECURITY: Validates slug exists via relationship.
+     * Use: Tenant::query()->inCategory('restaurantes')
+     */
+    public function scopeInCategory($query, ?string $categorySlug)
+    {
+        if (empty($categorySlug)) {
+            return $query;
+        }
+
+        return $query->whereHas('category', function ($q) use ($categorySlug) {
+            $q->where('slug', $categorySlug);
+        });
+    }
+
+    /**
+     * Scope: Filter by city slug.
+     * 
+     * SECURITY: Validates slug exists via relationship.
+     * Use: Tenant::query()->inCity('tocoa')
+     */
+    public function scopeInCity($query, ?string $citySlug)
+    {
+        if (empty($citySlug)) {
+            return $query;
+        }
+
+        return $query->whereHas('city', function ($q) use ($citySlug) {
+            $q->where('slug', $citySlug);
+        });
+    }
 
     public function registerMediaConversions(?\Spatie\MediaLibrary\MediaCollections\Models\Media $media = null): void
     {

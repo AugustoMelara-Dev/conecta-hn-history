@@ -2,20 +2,30 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * TenantAnalytic - Aggregated analytics data per tenant per day
+ * 
+ * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
+ */
 class TenantAnalytic extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id',
         'date',
         'unique_visits',
         'total_visits',
     ];
+
+    /**
+     * SECURITY: Immutable ownership fields.
+     * tenant_id is set automatically by BelongsToTenant trait on creation.
+     */
+    protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
 
     protected $casts = [
         'date' => 'date',
@@ -23,9 +33,9 @@ class TenantAnalytic extends Model
         'total_visits' => 'integer',
     ];
 
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // RELATIONSHIPS  
+    // Note: tenant() relationship is provided by BelongsToTenant trait
+    // ═══════════════════════════════════════════════════════════════════════
 }
 
