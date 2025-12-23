@@ -61,10 +61,35 @@ class EditTenantProfile extends BaseEditTenantProfile
                                                 '<span class="text-warning-600">⚠️ Cambiar esto romperá enlaces compartidos.</span>'
                                             )),
 
-                                        Forms\Components\Textarea::make('description')
-                                            ->label('Sobre Nosotros')
-                                            ->rows(4)
+                                        Forms\Components\TextInput::make('slogan')
+                                            ->label('Eslogan / Frase de Marca')
+                                            ->maxLength(100)
+                                            ->placeholder('La mejor pizza de Honduras...')
+                                            ->helperText('Máximo 100 caracteres. Se muestra en la portada debajo del nombre.')
                                             ->columnSpanFull(),
+
+                                        Forms\Components\Textarea::make('description')
+                                            ->label('Descripción Corta (SEO)')
+                                            ->rows(3)
+                                            ->maxLength(255)
+                                            ->helperText('Breve descripción para buscadores. Máx 255 caracteres.')
+                                            ->columnSpanFull(),
+
+                                        Forms\Components\Textarea::make('about')
+                                            ->label('Nuestra Historia')
+                                            ->rows(5)
+                                            ->placeholder('Cuéntale a tus clientes la historia de tu negocio, tu pasión, tus valores...')
+                                            ->helperText('Texto extendido para conectar emocionalmente con tus clientes.')
+                                            ->columnSpanFull(),
+
+                                        Forms\Components\Select::make('category_id')
+                                            ->label('Categoría del Negocio')
+                                            ->relationship('category', 'name')
+                                            ->searchable()
+                                            ->preload()
+                                            ->required()
+                                            ->native(false)
+                                            ->helperText('Determina en qué sección apareces en el directorio.'),
                                     ])
                                     ->columns(2),
 
@@ -79,11 +104,34 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->directory('tenants/logos'),
                                     ]),
 
-                                Forms\Components\Section::make('Personalización Premium')
-                                    ->description($isPro ? '✨ Personaliza tu marca.' : '🔒 Funciones PRO')
+                                Forms\Components\Section::make('Personalización de Marca')
+                                    ->description($isPro ? '✨ Personaliza tu identidad visual.' : '🔒 Funciones PRO - Actualiza tu plan para desbloquear')
+                                    ->icon('heroicon-o-sparkles')
                                     ->schema([
+                                        Forms\Components\ColorPicker::make('brand_color')
+                                            ->label('Color Principal de Marca')
+                                            ->required()
+                                            ->default('#2563EB')
+                                            ->regex('/^#[0-9A-Fa-f]{6}$/')
+                                            ->helperText('Se aplica a botones, enlaces y elementos destacados de tu micrositio.'),
+
+                                        Forms\Components\FileUpload::make('hero_image')
+                                            ->label('Imagen de Portada (Hero)')
+                                            ->image()
+                                            ->imageEditor()
+                                            ->imageCropAspectRatio('16:9')
+                                            ->imageResizeMode('cover')
+                                            ->imageResizeTargetWidth('1920')
+                                            ->imageResizeTargetHeight('600')
+                                            ->directory('tenant-heroes')
+                                            ->maxSize(2048)
+                                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                                            ->disabled(! $isPro)
+                                            ->hint(! $isPro ? '🔒 PRO' : null)
+                                            ->helperText('Máx 2MB. Recomendado: 1920x600px. Se muestra en la cabecera de tu sitio.'),
+
                                         Forms\Components\FileUpload::make('banner_path')
-                                            ->label('Banner')
+                                            ->label('Banner Secundario')
                                             ->image()
                                             ->imageEditor()
                                             ->imageCropAspectRatio('16:9')
@@ -92,9 +140,10 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->hint(! $isPro ? '🔒 PRO' : null),
 
                                         Forms\Components\ColorPicker::make('primary_color')
-                                            ->label('Color de Marca')
+                                            ->label('Color Secundario')
                                             ->disabled(! $isPro)
-                                            ->hint(! $isPro ? '🔒 PRO' : null),
+                                            ->hint(! $isPro ? '🔒 PRO' : null)
+                                            ->helperText('Color alternativo para variaciones.'),
                                     ])
                                     ->columns(2),
                             ]),

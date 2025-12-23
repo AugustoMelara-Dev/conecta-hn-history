@@ -142,6 +142,37 @@ class TenantResource extends Resource
                             ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
                             ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
                     ])->columns(2),
+
+                // ═══════════════════════════════════════════════════════════════
+                // BRAND IDENTITY SECTION - White-Label Customization
+                // These fields control CSS variable injection on the frontend
+                // ═══════════════════════════════════════════════════════════════
+                Forms\Components\Section::make('Identidad de Marca')
+                    ->description('Personaliza colores y portada del micrositio. Se aplica automáticamente a botones y elementos interactivos.')
+                    ->icon('heroicon-o-paint-brush')
+                    ->schema([
+                        Forms\Components\ColorPicker::make('brand_color')
+                            ->label('Color Principal de Marca')
+                            ->default('#2563EB')
+                            ->required()
+                            ->regex('/^#[0-9A-Fa-f]{6}$/')
+                            ->helperText('Formato hexadecimal (#RRGGBB). Se aplica a botones y elementos destacados.'),
+
+                        Forms\Components\FileUpload::make('hero_image')
+                            ->label('Imagen de Portada (Hero)')
+                            ->image()
+                            ->directory('tenant-heroes')
+                            ->maxSize(2048) // 2MB max for LCP performance
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->imagePreviewHeight('200')
+                            ->helperText('Máximo 2MB. Formatos: JPG, PNG, WebP. Recomendado: 1920x600px.'),
+
+                        Forms\Components\TextInput::make('slogan')
+                            ->label('Eslogan / Frase de Marca')
+                            ->maxLength(100)
+                            ->placeholder('Tu frase comercial aquí...')
+                            ->helperText('Máximo 100 caracteres. Se muestra debajo del nombre en la portada.'),
+                    ])->columns(3),
             ]);
     }
 

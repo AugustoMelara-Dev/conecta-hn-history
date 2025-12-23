@@ -150,5 +150,23 @@ class ProductResource extends Resource
             'edit' => Pages\EditProduct::route('/{record}/edit'),
         ];
     }
+
+    /**
+     * SECURITY: Redundant tenant filtering for Defense in Depth
+     * 
+     * Even though BelongsToTenant trait applies TenantScope globally,
+     * we explicitly filter here as a second line of defense.
+     */
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = parent::getEloquentQuery();
+        
+        $tenant = \Filament\Facades\Filament::getTenant();
+        if ($tenant) {
+            return $query->where('tenant_id', $tenant->id);
+        }
+        
+        return $query;
+    }
 }
 
