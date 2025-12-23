@@ -84,7 +84,7 @@ class SecurityRegressionTest extends TestCase
     public function it_prevents_tenant_id_injection_on_product_creation(): void
     {
         // ATTEMPT: Create product with VICTIM's tenant_id in payload
-        $product = Product::withoutGlobalScopes()->create([
+        $product = Product::forceCreate([
             'tenant_id' => $this->victimTenant->id,  // MALICIOUS PAYLOAD
             'name' => 'Trojan Horse Product',
             'slug' => 'trojan-horse-'.uniqid(),
@@ -123,7 +123,7 @@ class SecurityRegressionTest extends TestCase
     public function it_verifies_tenant_id_is_in_fillable_but_protected_by_policy(): void
     {
         // Create attacker's product
-        $product = Product::withoutGlobalScopes()->create([
+        $product = Product::forceCreate([
             'tenant_id' => $this->attackerTenant->id,
             'name' => 'Attacker Product',
             'slug' => 'attacker-product-'.uniqid(),

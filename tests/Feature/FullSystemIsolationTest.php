@@ -101,7 +101,7 @@ class FullSystemIsolationTest extends TestCase
     public function it_prevents_cross_tenant_order_access(): void
     {
         // ARRANGE
-        $victimOrder = Order::withoutGlobalScopes()->create([
+        $victimOrder = Order::forceCreate([
             'tenant_id' => $this->victimTenant->id,
             'order_number' => '1001',
             'customer_name' => 'Cliente Secreto',
@@ -143,7 +143,7 @@ class FullSystemIsolationTest extends TestCase
     public function it_prevents_cross_tenant_product_modification(): void
     {
         // ARRANGE
-        $victimProduct = Product::withoutGlobalScopes()->create([
+        $victimProduct = Product::forceCreate([
             'tenant_id' => $this->victimTenant->id,
             'name' => 'Pizza Especial',
             'slug' => 'pizza-especial-victim-'.uniqid(),
@@ -187,7 +187,7 @@ class FullSystemIsolationTest extends TestCase
     public function it_prevents_product_listing_leakage(): void
     {
         // ARRANGE
-        Product::withoutGlobalScopes()->create([
+        Product::forceCreate([
             'tenant_id' => $this->victimTenant->id,
             'name' => 'VICTIM_SECRET_PRODUCT',
             'slug' => 'victim-secret-'.uniqid(),
@@ -195,7 +195,7 @@ class FullSystemIsolationTest extends TestCase
             'is_visible' => true,
         ]);
 
-        Product::withoutGlobalScopes()->create([
+        Product::forceCreate([
             'tenant_id' => $this->attackerTenant->id,
             'name' => 'Attacker Product',
             'slug' => 'attacker-product-'.uniqid(),
@@ -237,7 +237,7 @@ class FullSystemIsolationTest extends TestCase
     public function it_prevents_cross_tenant_coupon_usage(): void
     {
         // ARRANGE
-        Coupon::create([
+        Coupon::forceCreate([
             'tenant_id' => $this->victimTenant->id,
             'code' => 'VICTIM_EXCLUSIVE_50',
             'type' => 'percent',
@@ -273,7 +273,7 @@ class FullSystemIsolationTest extends TestCase
     public function it_prevents_cross_tenant_order_deletion(): void
     {
         // ARRANGE
-        $victimOrder = Order::withoutGlobalScopes()->create([
+        $victimOrder = Order::forceCreate([
             'tenant_id' => $this->victimTenant->id,
             'order_number' => '2001',
             'customer_name' => 'Important Customer',
@@ -315,7 +315,7 @@ class FullSystemIsolationTest extends TestCase
     public function it_does_not_reveal_resource_existence_through_error_responses(): void
     {
         // ARRANGE
-        $victimOrder = Order::withoutGlobalScopes()->create([
+        $victimOrder = Order::forceCreate([
             'tenant_id' => $this->victimTenant->id,
             'order_number' => '3001',
             'customer_name' => 'Secret Customer',
@@ -363,7 +363,7 @@ class FullSystemIsolationTest extends TestCase
     public function it_prevents_admin_panel_cross_tenant_access(): void
     {
         // ARRANGE
-        $victimProduct = Product::withoutGlobalScopes()->create([
+        $victimProduct = Product::forceCreate([
             'tenant_id' => $this->victimTenant->id,
             'name' => 'Admin Panel Test Product',
             'slug' => 'admin-test-product-'.uniqid(),

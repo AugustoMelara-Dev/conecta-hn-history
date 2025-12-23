@@ -178,6 +178,7 @@ class ArchitectureTest extends \Tests\TestCase
             'Filament'.DIRECTORY_SEPARATOR.'Resources',
             'Filament/Resources',
             'Observers',        // Cross-tenant for business logic (manually audited)
+            'Jobs',             // Queue workers run without session - use Product::find() directly
         ];
 
         foreach ($this->getPhpFiles($appPath) as $file) {

@@ -69,7 +69,7 @@ class CouponIsolationTest extends TestCase
     public function it_prevents_cross_tenant_coupon_theft(): void
     {
         // ARRANGE: Create a secret coupon only for Tenant A
-        $secretCoupon = Coupon::create([
+        $secretCoupon = Coupon::forceCreate([
             'tenant_id' => $this->tenantA->id,
             'code' => 'SECRET_A',
             'type' => 'fixed',
@@ -121,7 +121,7 @@ class CouponIsolationTest extends TestCase
     public function it_respects_namespace_isolation_for_same_code_coupons(): void
     {
         // ARRANGE: Same code, different values, different owners
-        Coupon::create([
+        Coupon::forceCreate([
             'tenant_id' => $this->tenantA->id,
             'code' => 'VERANO',
             'type' => 'fixed',
@@ -129,7 +129,7 @@ class CouponIsolationTest extends TestCase
             'is_active' => true,
         ]);
 
-        Coupon::create([
+        Coupon::forceCreate([
             'tenant_id' => $this->tenantB->id,
             'code' => 'VERANO',
             'type' => 'fixed',
@@ -188,7 +188,7 @@ class CouponIsolationTest extends TestCase
     public function it_prevents_coupon_list_leakage_across_tenants(): void
     {
         // ARRANGE: Create coupons for both tenants
-        Coupon::create([
+        Coupon::forceCreate([
             'tenant_id' => $this->tenantA->id,
             'code' => 'SECRETO_A',
             'type' => 'percent',
@@ -196,7 +196,7 @@ class CouponIsolationTest extends TestCase
             'is_active' => true,
         ]);
 
-        Coupon::create([
+        Coupon::forceCreate([
             'tenant_id' => $this->tenantA->id,
             'code' => 'PROMO_A',
             'type' => 'fixed',
@@ -204,7 +204,7 @@ class CouponIsolationTest extends TestCase
             'is_active' => true,
         ]);
 
-        Coupon::create([
+        Coupon::forceCreate([
             'tenant_id' => $this->tenantB->id,
             'code' => 'PUBLICO_B',
             'type' => 'fixed',
@@ -248,7 +248,7 @@ class CouponIsolationTest extends TestCase
      */
     public function it_calculates_percentage_discount_precisely(): void
     {
-        Coupon::create([
+        Coupon::forceCreate([
             'tenant_id' => $this->tenantA->id,
             'code' => 'DIEZ',
             'type' => 'percent',
@@ -283,7 +283,7 @@ class CouponIsolationTest extends TestCase
      */
     public function it_enforces_minimum_spend_restriction(): void
     {
-        Coupon::create([
+        Coupon::forceCreate([
             'tenant_id' => $this->tenantA->id,
             'code' => 'MINIMO500',
             'type' => 'fixed',
