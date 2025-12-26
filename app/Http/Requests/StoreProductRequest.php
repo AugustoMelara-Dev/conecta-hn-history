@@ -77,6 +77,13 @@ class StoreProductRequest extends FormRequest
             ],
 
             // ═══════════════════════════════════════════════════════════════════════
+            // EXPLICIT IMAGE REMOVAL (Nullification Signal)
+            // ═══════════════════════════════════════════════════════════════════════
+            // When true, removes current image without replacement.
+            // Allows users to revert to "No Image" state.
+            'remove_image' => 'nullable|boolean',
+
+            // ═══════════════════════════════════════════════════════════════════════
             // DISPLAY OPTIONS
             // ═══════════════════════════════════════════════════════════════════════
             'is_visible' => 'nullable|boolean',

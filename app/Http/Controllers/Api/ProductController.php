@@ -301,6 +301,9 @@ class ProductController extends Controller
      * GARBAGE COLLECTION:
      * When a new image is uploaded, the old image is deleted from disk
      * to prevent storage rot (orphaned files).
+     *
+     * IMAGE NULLIFICATION:
+     * The remove_image boolean flag allows explicit image removal without replacement.
      */
     public function update(\App\Http\Requests\StoreProductRequest $request, Product $product): JsonResponse
     {
@@ -317,11 +320,26 @@ class ProductController extends Controller
         $validated = $request->validated();
 
         // ═══════════════════════════════════════════════════════════════════════
-        // IMAGE GARBAGE COLLECTION
+        // PIPELINE STEP 1: EXPLICIT IMAGE REMOVAL (Nullification Signal)
         // ═══════════════════════════════════════════════════════════════════════
-        // If a new image is uploaded, delete the old one first
+        // Process remove_image FIRST to clear the slate.
+        // This allows users to explicitly remove an image without replacement.
+        if ($request->boolean('remove_image') && $product->image_path) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($product->image_path);
+            $product->image_path = null;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // PIPELINE STEP 2: IMAGE UPLOAD (Independent Operation)
+        // ═══════════════════════════════════════════════════════════════════════
+        // This is a SEPARATE if block (NOT elseif) to support "Replace" operations.
+        //
+        // SEQUENTIAL BEHAVIOR:
+        // - "Remove Only": Step 1 runs, Step 2 skipped → image_path = null
+        // - "Upload Only": Step 1 skipped, Step 2 runs → image_path = new file
+        // - "Replace":     Step 1 clears old, Step 2 uploads new → image_path = new file
         if ($request->hasFile('image')) {
-            // Delete old image if exists
+            // Garbage collection: delete any existing file (may still exist if Step 1 didn't run)
             if ($product->image_path) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($product->image_path);
             }
@@ -330,8 +348,8 @@ class ProductController extends Controller
             $validated['image_path'] = $request->file('image')->store('products', 'public');
         }
 
-        // Remove 'image' key
-        unset($validated['image']);
+        // Remove handled keys from validated
+        unset($validated['image'], $validated['remove_image']);
 
         // Update product
         $product->update($validated);
@@ -352,11 +370,22 @@ class ProductController extends Controller
     }
 
     /**
-     * Delete a product.
+     * Delete a product (Soft Delete).
      *
      * DELETE /api/products/{product}
      *
-     * CLEANUP: Also deletes the associated image file.
+     * ╔══════════════════════════════════════════════════════════════════════════╗
+     * ║  SOFT-DELETE ALIGNMENT: Filesystem preserved for restoration           ║
+     * ╚══════════════════════════════════════════════════════════════════════════╝
+     *
+     * LIFECYCLE SYNCHRONIZATION:
+     * Since Product uses SoftDeletes trait, we PRESERVE the image file.
+     * This ensures that if the product is restored via $product->restore(),
+     * the image_path still points to a valid file (no "ghost references").
+     *
+     * PHYSICAL DELETION:
+     * Image files should only be deleted during Force Delete operations,
+     * which requires explicit implementation if/when that feature is added.
      */
     public function destroy(Request $request, Product $product): JsonResponse
     {
@@ -370,12 +399,11 @@ class ProductController extends Controller
             ], 403);
         }
 
-        // Delete image file if exists
-        if ($product->image_path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($product->image_path);
-        }
-
-        // Soft delete product
+        // ═══════════════════════════════════════════════════════════════════════
+        // SOFT DELETE ONLY - NO FILESYSTEM INTERACTION
+        // ═══════════════════════════════════════════════════════════════════════
+        // Image file is PRESERVED to allow restoration without broken references.
+        // Physical file cleanup should occur during Force Delete or scheduled GC.
         $product->delete();
 
         // Invalidate tenant cache
