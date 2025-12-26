@@ -249,10 +249,16 @@ class ProductController extends Controller
      *
      * POST /api/products
      *
-     * BINARY INGESTION:
-     * - Handles multipart/form-data with image file
-     * - Stores image in products/ directory
-     * - Saves relative path to image_path column
+     * ╔══════════════════════════════════════════════════════════════════════════╗
+     * ║  SAFE-CREATION PROTOCOL: Compensating Transaction Pattern               ║
+     * ╚══════════════════════════════════════════════════════════════════════════╝
+     *
+     * ARCHITECTURE:
+     * 1. CONSTRUCT: Upload file first (safe - can be deleted)
+     * 2. TRANSACT: Create DB record with try/catch
+     * 3. COMPENSATE: On DB failure, delete uploaded file to prevent storage rot
+     *
+     * GUARANTEE: Zero orphaned files on database failure.
      */
     public function store(\App\Http\Requests\StoreProductRequest $request): JsonResponse
     {
@@ -267,16 +273,34 @@ class ProductController extends Controller
 
         $validated = $request->validated();
 
-        // Handle image upload
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 1: STATE TRACKING (for compensation on failure)
+        // ═══════════════════════════════════════════════════════════════════════
+        $uploadedImagePath = null;
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 2: CONSTRUCTIVE (Upload - reversible operation)
+        // ═══════════════════════════════════════════════════════════════════════
         if ($request->hasFile('image')) {
-            $validated['image_path'] = $request->file('image')->store('products', 'public');
+            $uploadedImagePath = $request->file('image')->store(Product::STORAGE_PATH, 'public');
+            $validated['image_path'] = $uploadedImagePath;
         }
 
-        // Remove 'image' key (we use 'image_path')
-        unset($validated['image']);
+        // Remove control flags
+        unset($validated['image'], $validated['remove_image']);
 
-        // Create product
-        $product = $tenant->products()->create($validated);
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 3: TRANSACTIONAL (DB Create with compensation on failure)
+        // ═══════════════════════════════════════════════════════════════════════
+        try {
+            $product = $tenant->products()->create($validated);
+        } catch (\Exception $e) {
+            // COMPENSATING TRANSACTION: Rollback filesystem on DB failure
+            if ($uploadedImagePath) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($uploadedImagePath);
+            }
+            throw $e; // Re-throw for proper HTTP error response
+        }
 
         // NOTE: Cache invalidation handled by ProductObserver (SRP)
 
@@ -354,7 +378,7 @@ class ProductController extends Controller
         // PHASE 3: CONSTRUCTIVE (Upload new file - reversible)
         // ═══════════════════════════════════════════════════════════════════════
         if ($hasNewUpload) {
-            $newImageUploaded = $request->file('image')->store('products', 'public');
+            $newImageUploaded = $request->file('image')->store(Product::STORAGE_PATH, 'public');
             $validated['image_path'] = $newImageUploaded;
         }
 

@@ -49,6 +49,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 {
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INFRASTRUCTURE CONSTANTS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Canonical storage directory for product images.
+     *
+     * SINGLE SOURCE OF TRUTH: All controllers must reference this constant
+     * instead of hardcoding 'products'. This enables safe refactoring of
+     * the storage structure without grep-and-replace operations.
+     */
+    public const STORAGE_PATH = 'products';
     use BelongsToTenant, HasFactory, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
 
     /**
