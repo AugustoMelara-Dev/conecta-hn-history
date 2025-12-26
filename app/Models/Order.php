@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * Order Model - Transaction Header
@@ -20,10 +22,35 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *                                         → cancelled
  *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
+ * COMPLIANCE: Uses LogsActivity trait for GDPR forensic audit trail
  */
 class Order extends Model
 {
-    use BelongsToTenant, SoftDeletes;
+    use BelongsToTenant, LogsActivity, SoftDeletes;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // AUDIT LOGGING CONFIGURATION (Spatie Activity Log)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Configure which attributes to log and how.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'status',
+                'total',
+                'subtotal',
+                'tax_amount',
+                'discount_amount',
+                'payment_method',
+                'cancel_reason',
+                'payment_transaction_id',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // STATUS CONSTANTS

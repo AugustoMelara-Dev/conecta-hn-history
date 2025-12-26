@@ -162,9 +162,13 @@ Route::middleware(['auth:sanctum', 'tenant.ownership', 'throttle:api'])->group(f
 //   -H "X-Webhook-Signature: [hmac_signature]" \
 //   -d '{"event":"payment.succeeded","data":{"order_number":"ORD-123","amount":100.00}}'
 // ═══════════════════════════════════════════════════════════════════════════
-//
-// TODO: Uncomment this route only when migrating to automated payment gateways
-//       (Stripe, PayPal, PixelPay). For Honduras manual workflow, this is dormant.
-//
-// Route::post('/webhooks/payment', [\App\Http\Controllers\Webhook\PaymentWebhookController::class, 'handle'])
-//     ->name('webhooks.payment');
+// ═══════════════════════════════════════════════════════════════════════════════
+// PAYMENT WEBHOOKS (Financial Integration)
+// ═══════════════════════════════════════════════════════════════════════════════
+// Receives asynchronous payment confirmations from gateways.
+// SECURITY: HMAC-SHA256 signature verification, no CSRF (external origin).
+// IDEMPOTENCY: Duplicate events return 200 OK without re-processing.
+// ═══════════════════════════════════════════════════════════════════════════════
+Route::post('/webhooks/payment', [\App\Http\Controllers\Webhook\PaymentWebhookController::class, 'handle'])
+    ->name('webhooks.payment')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);

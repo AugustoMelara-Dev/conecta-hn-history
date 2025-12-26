@@ -253,15 +253,6 @@ class AppServiceProvider extends ServiceProvider
                 });
         });
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // GLOBAL API BASELINE (Scraping Defense)
-        // ═══════════════════════════════════════════════════════════════════════
-        //
-        // FALLBACK: 60 requests per minute for all other API endpoints
-        //           without specific limiters. Prevents general scraping.
-        //
-        // APPLIED TO: All routes using 'throttle:api' middleware
-        // ═══════════════════════════════════════════════════════════════════════
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)
                 ->by($request->user()?->id ?: $request->ip())
@@ -270,6 +261,55 @@ class AppServiceProvider extends ServiceProvider
                         'success' => false,
                         'error_code' => 'API_RATE_LIMIT',
                         'message' => 'Demasiadas solicitudes. Por favor espera.',
+                        'retry_after_seconds' => $headers['Retry-After'] ?? 60,
+                    ], 429, $headers);
+                });
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // TIERED TRAFFIC SHAPING: Dynamic limits based on tenant subscription
+        // ═══════════════════════════════════════════════════════════════════════
+        // FREE TIER:  60 requests/minute  - Prevents "Noisy Neighbor" DoS
+        // PRO TIER:  300 requests/minute  - Business-critical operations
+        // PUBLIC:     60 requests/minute  - Safe baseline for unauthenticated
+        //
+        // APPLIED TO: Routes using 'throttle:api.tenant' middleware
+        // ═══════════════════════════════════════════════════════════════════════
+        RateLimiter::for('api.tenant', function (Request $request) {
+            $user = $request->user();
+
+            // No authenticated user: public baseline
+            if (! $user) {
+                return Limit::perMinute(60)
+                    ->by($request->ip())
+                    ->response(function (Request $request, array $headers) {
+                        return response()->json([
+                            'success' => false,
+                            'error_code' => 'RATE_LIMIT_EXCEEDED',
+                            'message' => 'Demasiadas solicitudes. Por favor espera.',
+                            'tier' => 'public',
+                            'retry_after_seconds' => $headers['Retry-After'] ?? 60,
+                        ], 429, $headers);
+                    });
+            }
+
+            // Resolve tenant subscription tier
+            $tenant = $user->tenant;
+            $isPro = $tenant?->is_pro ?? false;
+
+            // Dynamic limit based on tier
+            $limit = $isPro ? 300 : 60;
+            $tier = $isPro ? 'pro' : 'free';
+
+            return Limit::perMinute($limit)
+                ->by('tenant:' . ($tenant?->id ?? $user->id))
+                ->response(function (Request $request, array $headers) use ($tier, $limit) {
+                    return response()->json([
+                        'success' => false,
+                        'error_code' => 'TENANT_RATE_LIMIT',
+                        'message' => 'Límite de solicitudes alcanzado para tu plan.',
+                        'tier' => $tier,
+                        'limit' => $limit,
                         'retry_after_seconds' => $headers['Retry-After'] ?? 60,
                     ], 429, $headers);
                 });
