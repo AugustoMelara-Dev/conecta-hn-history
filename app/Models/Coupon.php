@@ -41,6 +41,9 @@ class Coupon extends Model
         'starts_at',
         'expires_at',
         'is_active',
+        // Scope restrictions
+        'restricted_to_categories',
+        'restricted_to_products',
     ];
 
     /**
@@ -58,6 +61,9 @@ class Coupon extends Model
         'is_active' => 'boolean',
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
+        // Scope restrictions (JSON arrays)
+        'restricted_to_categories' => 'array',
+        'restricted_to_products' => 'array',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -273,6 +279,106 @@ class Coupon extends Model
 
         // Never exceed subtotal
         return min($discount, $cartSubtotal);
+    }
+
+    /**
+     * Calculate discount with item-level context awareness.
+     *
+     * ╔══════════════════════════════════════════════════════════════════════════╗
+     * ║  CONTEXT-AWARE DISCOUNT: Only eligible items contribute to discount     ║
+     * ╚══════════════════════════════════════════════════════════════════════════╝
+     *
+     * STRATEGY:
+     * 1. Iterate through cart items
+     * 2. Check each item against coupon restrictions
+     * 3. Sum only eligible item prices (the "Discountable Base")
+     * 4. Apply discount formula to this filtered sum
+     *
+     * RESTRICTION RULES:
+     * - If both restricted_to_categories AND restricted_to_products are null: ALL items eligible
+     * - If restricted_to_products is set: ONLY those specific products are eligible
+     * - If restricted_to_categories is set: ONLY products in those categories are eligible
+     * - If BOTH are set: Product must match EITHER restriction (OR logic)
+     *
+     * @param array $cartItems Array of items with product_id, category_id (or menu_section_id), and line_total
+     * @return array ['eligible_subtotal' => float, 'discount' => float, 'ineligible_subtotal' => float]
+     */
+    public function calculateDiscountWithContext(array $cartItems): array
+    {
+        $restrictedCategories = $this->restricted_to_categories;
+        $restrictedProducts = $this->restricted_to_products;
+
+        // If no restrictions, all items are eligible
+        $hasRestrictions = ! empty($restrictedCategories) || ! empty($restrictedProducts);
+
+        $eligibleSubtotal = 0.0;
+        $ineligibleSubtotal = 0.0;
+
+        foreach ($cartItems as $item) {
+            $itemTotal = (float) ($item['line_total'] ?? ($item['unit_price'] ?? 0) * ($item['quantity'] ?? 1));
+            $productId = $item['product_id'] ?? null;
+            $categoryId = $item['category_id'] ?? $item['menu_section_id'] ?? null;
+
+            // Custom items (no product_id) are never eligible for restricted coupons
+            if ($hasRestrictions && ! $productId) {
+                $ineligibleSubtotal += $itemTotal;
+                continue;
+            }
+
+            // Check eligibility
+            $isEligible = false;
+
+            if (! $hasRestrictions) {
+                // No restrictions = all items eligible
+                $isEligible = true;
+            } else {
+                // Check product restriction
+                $productMatch = ! empty($restrictedProducts) && in_array($productId, $restrictedProducts);
+
+                // Check category restriction
+                $categoryMatch = ! empty($restrictedCategories) && in_array($categoryId, $restrictedCategories);
+
+                // OR logic: eligible if ANY restriction matches
+                $isEligible = $productMatch || $categoryMatch;
+            }
+
+            if ($isEligible) {
+                $eligibleSubtotal += $itemTotal;
+            } else {
+                $ineligibleSubtotal += $itemTotal;
+            }
+        }
+
+        // Calculate discount based ONLY on eligible items
+        $discount = 0.0;
+
+        if ($eligibleSubtotal > 0) {
+            if ($this->type === self::TYPE_PERCENT) {
+                $discount = $eligibleSubtotal * ((float) $this->value / 100);
+
+                // Apply max discount cap if set
+                if ($this->max_discount !== null && $discount > $this->max_discount) {
+                    $discount = (float) $this->max_discount;
+                }
+            } else {
+                // Fixed amount - applies fully if eligible subtotal covers it
+                $discount = min((float) $this->value, $eligibleSubtotal);
+            }
+        }
+
+        return [
+            'eligible_subtotal' => round($eligibleSubtotal, 2),
+            'ineligible_subtotal' => round($ineligibleSubtotal, 2),
+            'discount' => round($discount, 2),
+        ];
+    }
+
+    /**
+     * Check if this coupon has any product/category restrictions.
+     */
+    public function hasRestrictions(): bool
+    {
+        return ! empty($this->restricted_to_categories) || ! empty($this->restricted_to_products);
     }
 
     /**

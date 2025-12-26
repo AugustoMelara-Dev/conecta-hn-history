@@ -4,12 +4,23 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Coupon;
+use App\Services\TenantCacheManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 
 /**
  * CouponController - Discount Validation Engine
+ *
+ * ARCHITECTURE: Generational Caching with Version Rotation
+ *
+ * Uses versioned cache keys for driver-agnostic invalidation.
+ * When a coupon changes, CouponObserver rotates the tenant version,
+ * making all old cache entries unreachable.
+ *
+ * CACHE KEY STRUCTURE:
+ *   tenant_{tenantId}_v{version}_coupons_public
  *
  * SECURITY PATTERN:
  * This controller is the "source of truth" for discount calculations.
@@ -22,28 +33,32 @@ use Illuminate\Support\Facades\Validator;
 class CouponController extends Controller
 {
     /**
+     * Cache TTL for coupon listings (15 minutes).
+     *
+     * VOLATILITY ADJUSTMENT:
+     * Marketing campaigns change more frequently than product catalogs.
+     */
+    protected const CACHE_TTL_MINUTES = 15;
+
+    /**
+     * The tenant cache manager instance.
+     */
+    protected TenantCacheManager $cacheManager;
+
+    /**
+     * Create a new controller instance.
+     */
+    public function __construct(TenantCacheManager $cacheManager)
+    {
+        $this->cacheManager = $cacheManager;
+    }
+
+    /**
      * Verify a coupon code against cart subtotal.
      *
      * POST /api/coupons/verify
      *
-     * Request: { tenant_id, code, cart_subtotal }
-     *
-     * Success Response 200:
-     * {
-     *   "valid": true,
-     *   "discount_amount": 50.00,
-     *   "new_total": 450.00,
-     *   "coupon_code": "VERANO",
-     *   "coupon_type": "fixed",
-     *   "coupon_value": 50
-     * }
-     *
-     * Error Response 422:
-     * {
-     *   "valid": false,
-     *   "error": "Este cupón ha expirado",
-     *   "error_code": "EXPIRED"
-     * }
+     * NOTE: Verification is NOT cached as it requires real-time usage checks.
      */
     public function verify(Request $request): JsonResponse
     {
@@ -98,9 +113,12 @@ class CouponController extends Controller
 
     /**
      * Get available coupons for a tenant (public display).
-     * Only shows active, non-expired coupons without usage limits reached.
      *
      * GET /api/coupons?tenant_id=X
+     *
+     * GENERATIONAL CACHING:
+     * Key format: tenant_{id}_v{version}_coupons_public
+     * Version rotation invalidates all coupon caches atomically.
      */
     public function index(Request $request): JsonResponse
     {
@@ -113,10 +131,19 @@ class CouponController extends Controller
             ], 400);
         }
 
-        $coupons = Coupon::forTenant($tenantId)
-            ->valid()
-            ->select(['code', 'name', 'description', 'type', 'value', 'min_spend', 'expires_at'])
-            ->get();
+        // ═══════════════════════════════════════════════════════════════════════
+        // GENERATIONAL CACHING: Versioned key for atomic invalidation
+        // ═══════════════════════════════════════════════════════════════════════
+        $cacheKey = $this->cacheManager->makeKey((int) $tenantId, 'coupons_public');
+        $ttl = now()->addMinutes(self::CACHE_TTL_MINUTES);
+
+        $coupons = Cache::remember($cacheKey, $ttl, function () use ($tenantId) {
+            return Coupon::forTenant($tenantId)
+                ->valid()
+                ->select(['code', 'name', 'description', 'type', 'value', 'min_spend', 'expires_at'])
+                ->get()
+                ->toArray();
+        });
 
         return response()->json([
             'success' => true,
@@ -124,3 +151,5 @@ class CouponController extends Controller
         ]);
     }
 }
+
+
