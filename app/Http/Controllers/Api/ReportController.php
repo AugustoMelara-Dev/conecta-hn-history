@@ -129,9 +129,21 @@ class ReportController extends Controller
      * Generate inventory check manifest PDF.
      *
      * GET /api/reports/inventory/pdf
+     *
+     * RESOURCE ESCALATION:
+     * Large catalogs (>2000 SKUs) can exceed default memory limits.
+     * JIT escalation prevents OOM errors during DOM rendering.
      */
     public function inventoryPdf(Request $request): \Illuminate\Http\Response
     {
+        // ═══════════════════════════════════════════════════════════════════════
+        // JIT RESOURCE ESCALATION: Prevent OOM on large catalogs
+        // ═══════════════════════════════════════════════════════════════════════
+        // These settings are scoped to THIS REQUEST ONLY.
+        // They do not affect other requests or global PHP configuration.
+        ini_set('memory_limit', '512M');
+        ini_set('max_execution_time', '300');
+
         $tenant = $request->user()->tenant;
 
         if (! $tenant) {
