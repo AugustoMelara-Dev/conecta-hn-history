@@ -32,3 +32,15 @@ Schedule::job(new \App\Jobs\ReleaseStaleOrders)
     ->everyFifteenMinutes()
     ->withoutOverlapping();
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// STORAGE GARBAGE COLLECTOR - Orphaned Upload Cleanup
+// ═══════════════════════════════════════════════════════════════════════════════
+// Runs hourly to clean files uploaded but never linked to a database record.
+// Handles edge case: PHP crash between file upload and DB insert.
+// Grace period: 60 minutes (won't delete files still being processed).
+// ═══════════════════════════════════════════════════════════════════════════════
+Schedule::command('storage:cleanup-orphans --grace=60')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/orphan-cleanup.log'));
