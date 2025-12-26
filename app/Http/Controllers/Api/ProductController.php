@@ -144,7 +144,7 @@ class ProductController extends Controller
                     'formatted_price' => 'L. ' . number_format($product->price, 2),
                     'compare_at_price' => $product->compare_at_price,
                     'has_discount' => $product->compare_at_price && $product->compare_at_price > $product->price,
-                    'image_url' => $product->image_path ? asset('storage/' . $product->image_path) : null,
+                    'image_url' => $product->image_url,
                     'image_blurhash' => $product->image_blurhash,
                     'is_featured' => $product->is_featured,
                     'section' => $product->menuSection ? [
@@ -220,7 +220,7 @@ class ProductController extends Controller
             'formatted_price' => 'L. ' . number_format($product->price, 2),
             'compare_at_price' => $product->compare_at_price,
             'has_discount' => $product->compare_at_price && $product->compare_at_price > $product->price,
-            'image_url' => $product->image_path ? asset('storage/' . $product->image_path) : null,
+            'image_url' => $product->image_url,
             'image_blurhash' => $product->image_blurhash,
             'is_featured' => $product->is_featured,
             'section' => $product->menuSection ? [
