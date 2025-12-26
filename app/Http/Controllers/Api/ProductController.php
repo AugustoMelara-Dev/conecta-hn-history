@@ -278,8 +278,7 @@ class ProductController extends Controller
         // Create product
         $product = $tenant->products()->create($validated);
 
-        // Invalidate tenant cache
-        $this->cacheManager->rotateVersion($tenant->id);
+        // NOTE: Cache invalidation handled by ProductObserver (SRP)
 
         return response()->json([
             'success' => true,
@@ -298,12 +297,21 @@ class ProductController extends Controller
      *
      * PATCH /api/products/{product}
      *
-     * GARBAGE COLLECTION:
-     * When a new image is uploaded, the old image is deleted from disk
-     * to prevent storage rot (orphaned files).
+     * ╔══════════════════════════════════════════════════════════════════════════╗
+     * ║  SAFE-WRITE PROTOCOL: Constructive → Transactional → Destructive        ║
+     * ╚══════════════════════════════════════════════════════════════════════════╝
      *
-     * IMAGE NULLIFICATION:
-     * The remove_image boolean flag allows explicit image removal without replacement.
+     * ARCHITECTURE:
+     * 1. PLAN: Determine what files need deletion/upload (no I/O yet)
+     * 2. CONSTRUCT: Upload new file if needed (reversible)
+     * 3. TRANSACT: Persist to database (atomic)
+     * 4. DESTRUCT: Delete old files ONLY after successful commit
+     *
+     * COMPENSATION:
+     * If database fails, any newly uploaded file is deleted to prevent storage leaks.
+     *
+     * CACHE INVALIDATION:
+     * Handled by ProductObserver (ShouldHandleEventsAfterCommit) - NOT here.
      */
     public function update(\App\Http\Requests\StoreProductRequest $request, Product $product): JsonResponse
     {
@@ -320,45 +328,62 @@ class ProductController extends Controller
         $validated = $request->validated();
 
         // ═══════════════════════════════════════════════════════════════════════
-        // PIPELINE STEP 1: EXPLICIT IMAGE REMOVAL (Nullification Signal)
+        // PHASE 1: STATE INITIALIZATION (Planning - No I/O)
         // ═══════════════════════════════════════════════════════════════════════
-        // Process remove_image FIRST to clear the slate.
-        // ARRAY INJECTION PATTERN: We inject values into $validated, NOT the model.
-        // This ensures Eloquent's update() generates the correct SQL query.
-        if ($request->boolean('remove_image') && $product->image_path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($product->image_path);
-            // CRITICAL: Inject null into array, NOT the model object
-            // $product->image_path = null would NOT persist (Eloquent ignores dirty attrs not in array)
+        $oldImageToDelete = null;   // File to delete AFTER successful commit
+        $newImageUploaded = null;   // New file path (for rollback on DB failure)
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 2: LOGIC CONSOLIDATION (I/O Planning)
+        // ═══════════════════════════════════════════════════════════════════════
+        // Determine if old image needs removal (explicit removal OR replacement)
+        $explicitRemoval = $request->boolean('remove_image');
+        $hasNewUpload = $request->hasFile('image');
+
+        if (($explicitRemoval || $hasNewUpload) && $product->image_path) {
+            // Mark for deletion AFTER database commits
+            $oldImageToDelete = $product->image_path;
+        }
+
+        // If explicit removal requested, inject null into validated array
+        if ($explicitRemoval && ! $hasNewUpload) {
             $validated['image_path'] = null;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // PIPELINE STEP 2: IMAGE UPLOAD (Independent Operation)
+        // PHASE 3: CONSTRUCTIVE (Upload new file - reversible)
         // ═══════════════════════════════════════════════════════════════════════
-        // This is a SEPARATE if block (NOT elseif) to support "Replace" operations.
-        //
-        // SEQUENTIAL BEHAVIOR:
-        // - "Remove Only": Step 1 runs, Step 2 skipped → image_path = null
-        // - "Upload Only": Step 1 skipped, Step 2 runs → image_path = new file
-        // - "Replace":     Step 1 clears old, Step 2 uploads new → image_path = new file
-        if ($request->hasFile('image')) {
-            // Garbage collection: delete any existing file (may still exist if Step 1 didn't run)
-            if ($product->image_path) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($product->image_path);
-            }
-
-            // Store new image
-            $validated['image_path'] = $request->file('image')->store('products', 'public');
+        if ($hasNewUpload) {
+            $newImageUploaded = $request->file('image')->store('products', 'public');
+            $validated['image_path'] = $newImageUploaded;
         }
 
-        // Remove handled keys from validated
+        // Remove control flags from validated data
         unset($validated['image'], $validated['remove_image']);
 
-        // Update product
-        $product->update($validated);
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 4: TRANSACTIONAL (Persist to DB with compensation on failure)
+        // ═══════════════════════════════════════════════════════════════════════
+        try {
+            $product->update($validated);
+        } catch (\Exception $e) {
+            // COMPENSATION: Rollback filesystem changes on DB failure
+            if ($newImageUploaded) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($newImageUploaded);
+            }
+            throw $e; // Re-throw to let exception handler respond
+        }
 
-        // Invalidate tenant cache
-        $this->cacheManager->rotateVersion($tenant->id);
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 5: DESTRUCTIVE (Delete old file ONLY after successful commit)
+        // ═══════════════════════════════════════════════════════════════════════
+        // This is the ONLY safe place to delete - DB has already committed.
+        if ($oldImageToDelete) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($oldImageToDelete);
+        }
+
+        // NOTE: Cache invalidation handled by ProductObserver (SRP)
+        // DO NOT call $this->cacheManager->rotateVersion() here
 
         return response()->json([
             'success' => true,
@@ -409,8 +434,7 @@ class ProductController extends Controller
         // Physical file cleanup should occur during Force Delete or scheduled GC.
         $product->delete();
 
-        // Invalidate tenant cache
-        $this->cacheManager->rotateVersion($tenant->id);
+        // NOTE: Cache invalidation handled by ProductObserver (SRP)
 
         return response()->json([
             'success' => true,
