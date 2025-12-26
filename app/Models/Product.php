@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\StockStatus;
 use App\Scopes\LocationScope;
 use App\Scopes\PublicVisibilityScope;
 use App\Traits\BelongsToTenant;
@@ -11,9 +12,58 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Product Model - E-Commerce Catalog Entity
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  HYBRID MEDIA ARCHITECTURE: Dual-Strategy Image Management              ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * This model implements a HYBRID approach to media handling, optimizing for
+ * both performance (catalog views) and richness (detail views).
+ *
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │ STRATEGY 1: Custom Column (image_path) - PERFORMANCE OPTIMIZED         │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │ PURPOSE:    Main product thumbnail for catalog/grid views              │
+ * │ STORAGE:    products.image_path column                                 │
+ * │ ACCESS:     $product->image_url (accessor, auto-appended to JSON)      │
+ * │ LOOKUP:     O(1) - No additional queries required                      │
+ * │ USE CASE:   Category pages, search results, cart items                 │
+ * └─────────────────────────────────────────────────────────────────────────┘
+ *
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │ STRATEGY 2: Spatie Media Library - RICH GALLERY                        │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │ PURPOSE:    Multiple gallery images, conversions, responsive variants  │
+ * │ STORAGE:    media table (polymorphic relationship)                     │
+ * │ ACCESS:     $product->getMedia('gallery'), $product->getFirstMediaUrl()│
+ * │ LOOKUP:     O(n) - Requires JOIN or eager loading                      │
+ * │ USE CASE:   Product detail page carousel, admin media manager          │
+ * └─────────────────────────────────────────────────────────────────────────┘
+ *
+ * WHY HYBRID?
+ * - Catalog API responses stay lightweight (no media table JOINs)
+ * - Detail views get full gallery capabilities when needed
+ * - Falls back gracefully if either strategy has no data
+ */
 class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 {
     use BelongsToTenant, HasFactory, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
+
+    /**
+     * Attributes to automatically append to JSON/Array serialization.
+     *
+     * FRONTEND CONTRACT:
+     * The React frontend expects 'image_url' in every product object.
+     * Without this, catalog grids would be "blind" (no visual data).
+     *
+     * @var array<string>
+     */
+    protected $appends = [
+        'image_url',
+        'is_in_stock',
+    ];
 
     protected $fillable = [
         'city_id',
@@ -23,7 +73,13 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'slug',
         'description',
         'price',
+        // Inventory Management
+        'manage_stock',
+        'stock_quantity',
+        'low_stock_threshold',
+        'allow_backorders',
         'stock_status',
+        // Media & Display
         'variants',
         'image_path',
         'blur_hash',
@@ -36,15 +92,18 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'rejected_at',
     ];
 
-    /**
-     * SECURITY: Immutable ownership fields.
-     * tenant_id is set automatically by BelongsToTenant trait on creation.
-     */
-    protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
+
 
     protected $casts = [
         'price' => 'decimal:2',
         'variants' => 'array',
+        // Inventory
+        'manage_stock' => 'boolean',
+        'stock_quantity' => 'integer',
+        'low_stock_threshold' => 'integer',
+        'allow_backorders' => 'boolean',
+        'stock_status' => StockStatus::class,
+        // Display flags
         'is_visible' => 'boolean',
         'is_featured' => 'boolean',
         'is_new' => 'boolean',
@@ -139,10 +198,36 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * Check if product is in stock
+     * Check if product is in stock.
+     *
+     * TYPE SAFETY: Uses strict Enum-to-Enum comparison.
+     * Do NOT compare Enum objects to strings - it always returns false in PHP 8.1+
      */
     public function getIsInStockAttribute(): bool
     {
-        return $this->stock_status === 'in_stock';
+        return $this->stock_status === StockStatus::IN_STOCK;
+    }
+
+    /**
+     * Get the fully qualified public URL for the product image.
+     *
+     * STORAGE ARCHITECTURE:
+     * - Images stored in: storage/app/public/products/
+     * - Symlinked via: php artisan storage:link
+     * - Served from: /storage/products/filename.jpg
+     *
+     * NULL HANDLING:
+     * Returns null if no image - Frontend handles placeholder display.
+     * This keeps the Backend as a pure data provider.
+     *
+     * @return string|null Full public URL or null if no image
+     */
+    public function getImageUrlAttribute(): ?string
+    {
+        if (empty($this->image_path)) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\Storage::url($this->image_path);
     }
 }

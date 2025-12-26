@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentMethod;
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -70,6 +71,12 @@ class Order extends Model
         'discount_amount',
         'total',
         'payment_method',
+        // Payment tracking (webhook-populated)
+        'payment_transaction_id',
+        'payment_confirmed_at',
+        'refund_transaction_id',
+        'refunded_at',
+        // Delivery & Status
         'delivery_type',
         'estimated_ready_at',
         'delivered_at',
@@ -77,6 +84,9 @@ class Order extends Model
         'cancel_reason',
         'whatsapp_sent',
         'whatsapp_sent_at',
+        // Workflow timestamps
+        'confirmed_at',
+        'prepared_at',
     ];
 
     /**
@@ -95,6 +105,13 @@ class Order extends Model
         'estimated_ready_at' => 'datetime',
         'delivered_at' => 'datetime',
         'whatsapp_sent_at' => 'datetime',
+        // Payment tracking
+        'payment_method' => PaymentMethod::class,
+        'payment_confirmed_at' => 'datetime',
+        'refunded_at' => 'datetime',
+        // Workflow timestamps
+        'confirmed_at' => 'datetime',
+        'prepared_at' => 'datetime',
         // PII ENCRYPTION: GDPR/Compliance - encrypted at rest
         'customer_email' => 'encrypted',
         'customer_phone' => 'encrypted',
@@ -265,6 +282,15 @@ class Order extends Model
 
     /**
      * Get WhatsApp URL for this order.
+     *
+     * LOCALIZATION: Honduras Market Adaptation
+     * Users culturally input 8-digit local numbers (9999-9999).
+     * The wa.me API requires international format (504XXXXXXXX).
+     * This method auto-detects and normalizes local numbers.
+     *
+     * ENCODING: Uses rawurlencode() for RFC 3986 compliance.
+     * urlencode() produces '+' for spaces, but rawurlencode()
+     * produces '%20', which is required for iOS 15+ deep links.
      */
     public function getWhatsAppUrl(): ?string
     {
@@ -274,14 +300,37 @@ class Order extends Model
             return null;
         }
 
+        // ═══════════════════════════════════════════════════════════════════════
+        // STEP 1: Clean all non-numeric characters (dashes, spaces, parentheses)
+        // ═══════════════════════════════════════════════════════════════════════
         $cleanPhone = preg_replace('/\D/', '', $phone);
-        $message = urlencode($this->buildWhatsAppMessage());
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // STEP 2: HONDURAS LOCALIZATION - Auto-prepend country code
+        // ═══════════════════════════════════════════════════════════════════════
+        // Honduran mobile/landline numbers are exactly 8 digits.
+        // If user entered local format (e.g., "9999-9999" → "99999999"),
+        // we auto-prepend the country code 504 for WhatsApp compatibility.
+        //
+        // PASSTHROUGH: Numbers that are NOT 8 digits are left untouched.
+        // This preserves already-international numbers (11-12 digits) and
+        // prevents corrupting valid numbers from other countries.
+        if (strlen($cleanPhone) === 8) {
+            $cleanPhone = '504' . $cleanPhone;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // STEP 3: RFC 3986 compliant URL encoding
+        // ═══════════════════════════════════════════════════════════════════════
+        $message = rawurlencode($this->buildWhatsAppMessage());
 
         return "https://wa.me/{$cleanPhone}?text={$message}";
     }
 
     /**
      * Transition to a new status.
+     *
+     * Dispatches OrderStatusChangedNotification to customer (async).
      */
     public function transitionTo(string $status): bool
     {
@@ -289,12 +338,44 @@ class Order extends Model
             return false;
         }
 
+        // Capture previous status for notification
+        $previousStatus = $this->status;
+
         $this->status = $status;
 
         if ($status === self::STATUS_DELIVERED) {
             $this->delivered_at = now();
         }
 
-        return $this->save();
+        $saved = $this->save();
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // DISPATCH STATUS CHANGE NOTIFICATION (Async, queued)
+        // Notifies customer via email if they provided one
+        // The notification class handles defensive checks for null email
+        // ═══════════════════════════════════════════════════════════════════════
+        if ($saved && $previousStatus !== $status) {
+            // Create an anonymous notifiable for the customer email
+            $this->notifyCustomerOfStatusChange($previousStatus, $status);
+        }
+
+        return $saved;
+    }
+
+    /**
+     * Notify customer of status change via email.
+     *
+     * Uses anonymous notifiable pattern since customers aren't User models.
+     */
+    protected function notifyCustomerOfStatusChange(string $previousStatus, string $newStatus): void
+    {
+        // Defensive: Skip if no customer email
+        if (empty($this->customer_email)) {
+            return;
+        }
+
+        // Use anonymous notifiable to send to customer email
+        \Illuminate\Support\Facades\Notification::route('mail', $this->customer_email)
+            ->notify(new \App\Notifications\OrderStatusChangedNotification($this, $previousStatus, $newStatus));
     }
 }
