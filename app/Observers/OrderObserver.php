@@ -5,15 +5,17 @@ namespace App\Observers;
 use App\Models\Order;
 use App\Services\InventoryManager;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
- * OrderObserver - Event-Driven Inventory Restoration
+ * OrderObserver - Event-Driven Order Lifecycle Management
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  OBSERVER PATTERN: Decoupled inventory logic from controller            ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * RESPONSIBILITIES:
+ * - Generate cryptographic tracking UUID before persistence
  * - Listen to Order lifecycle events (updated, deleted)
  * - Trigger automatic inventory restoration on cancellation/deletion
  * - Maintain idempotency guards to prevent double-restocking
@@ -36,6 +38,20 @@ class OrderObserver
     public function __construct(InventoryManager $inventoryManager)
     {
         $this->inventoryManager = $inventoryManager;
+    }
+
+    /**
+     * Handle the Order "creating" event.
+     *
+     * SECURITY: Auto-generate cryptographic tracking UUID.
+     * This UUID serves as a bearer token for public WebSocket access.
+     */
+    public function creating(Order $order): void
+    {
+        // Generate tracking UUID if not already set
+        if (empty($order->tracking_uuid)) {
+            $order->tracking_uuid = (string) Str::uuid();
+        }
     }
 
     /**

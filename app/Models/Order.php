@@ -114,6 +114,8 @@ class Order extends Model
         // Workflow timestamps
         'confirmed_at',
         'prepared_at',
+        // Security: Cryptographic tracking token
+        'tracking_uuid',
     ];
 
     /**
@@ -143,6 +145,8 @@ class Order extends Model
         'customer_email' => 'encrypted',
         'customer_phone' => 'encrypted',
         'customer_address' => 'encrypted',
+        // Security: Cryptographic tracking token
+        'tracking_uuid' => 'string',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════
