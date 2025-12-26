@@ -174,23 +174,24 @@ class OrderStateService
     /**
      * Side-effects when order is cancelled (terminal failure).
      *
-     * CRITICAL: Restores inventory for all order items.
+     * DELEGATION: Passes entire Order aggregate to InventoryManager.
+     * The manager handles item iteration, validation, and stock restoration.
      */
     private function onCancelled(Order $order, array &$updateData): void
     {
         $updateData['cancelled_at'] = now();
 
-        // Restore inventory for all items
-        $order->loadMissing('items.product');
-
-        foreach ($order->items as $item) {
-            if ($item->product && $item->product->track_inventory) {
-                $this->inventoryManager->restock(
-                    $item->product,
-                    $item->quantity,
-                    "Order #{$order->order_number} cancelled"
-                );
-            }
+        // ═══════════════════════════════════════════════════════════════════════
+        // INVENTORY RESTORATION: Delegate to Domain Authority
+        // ═══════════════════════════════════════════════════════════════════════
+        // The InventoryManager has the atomic restock(Order) method that handles:
+        // - Item iteration
+        // - Product validation (deleted, unmanaged)
+        // - Stock increment with state recovery
+        //
+        // Guard: Only call if order has items
+        if ($order->items()->exists()) {
+            $this->inventoryManager->restock($order);
         }
     }
 
