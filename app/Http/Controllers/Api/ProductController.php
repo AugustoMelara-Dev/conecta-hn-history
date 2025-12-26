@@ -9,6 +9,7 @@ use App\Services\TenantCacheManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * ProductController - Catalog Distribution System
@@ -281,8 +282,10 @@ class ProductController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // PHASE 2: CONSTRUCTIVE (Upload - reversible operation)
         // ═══════════════════════════════════════════════════════════════════════
+        // TENANT ISOLATION: Files stored in tenants/{id}/products for GDPR compliance
         if ($request->hasFile('image')) {
-            $uploadedImagePath = $request->file('image')->store(Product::STORAGE_PATH, 'public');
+            $storagePath = "tenants/{$tenant->id}/" . Product::STORAGE_PATH;
+            $uploadedImagePath = $request->file('image')->store($storagePath, 'public');
             $validated['image_path'] = $uploadedImagePath;
         }
 
@@ -297,7 +300,7 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             // COMPENSATING TRANSACTION: Rollback filesystem on DB failure
             if ($uploadedImagePath) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($uploadedImagePath);
+                Storage::disk('public')->delete($uploadedImagePath);
             }
             throw $e; // Re-throw for proper HTTP error response
         }
@@ -377,8 +380,10 @@ class ProductController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // PHASE 3: CONSTRUCTIVE (Upload new file - reversible)
         // ═══════════════════════════════════════════════════════════════════════
+        // TENANT ISOLATION: Files stored in tenants/{id}/products for GDPR compliance
         if ($hasNewUpload) {
-            $newImageUploaded = $request->file('image')->store(Product::STORAGE_PATH, 'public');
+            $storagePath = "tenants/{$tenant->id}/" . Product::STORAGE_PATH;
+            $newImageUploaded = $request->file('image')->store($storagePath, 'public');
             $validated['image_path'] = $newImageUploaded;
         }
 
@@ -393,7 +398,7 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             // COMPENSATION: Rollback filesystem changes on DB failure
             if ($newImageUploaded) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($newImageUploaded);
+                Storage::disk('public')->delete($newImageUploaded);
             }
             throw $e; // Re-throw to let exception handler respond
         }
@@ -403,7 +408,7 @@ class ProductController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // This is the ONLY safe place to delete - DB has already committed.
         if ($oldImageToDelete) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($oldImageToDelete);
+            Storage::disk('public')->delete($oldImageToDelete);
         }
 
         // NOTE: Cache invalidation handled by ProductObserver (SRP)
