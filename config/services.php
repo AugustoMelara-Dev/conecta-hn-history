@@ -53,4 +53,17 @@ return [
         'redirect' => env('FACEBOOK_REDIRECT_URI', '/auth/facebook/callback'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Payment Gateway Configuration
+    |--------------------------------------------------------------------------
+    | Webhook signature verification for payment providers.
+    | The secret must match the value configured in your payment dashboard.
+    */
+
+    'payment' => [
+        'webhook_secret' => env('PAYMENT_WEBHOOK_SECRET'),
+        'provider' => env('PAYMENT_PROVIDER', 'generic'), // stripe, paypal, local
+    ],
+
 ];

@@ -22,8 +22,11 @@ use App\Policies\ProductPolicy;
 use App\Policies\ReviewPolicy;
 use App\Policies\TenantPolicy;
 use App\Policies\UserPolicy;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
@@ -43,6 +46,20 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // GRANULAR RATE LIMITING - TRAFFIC SHAPING ARCHITECTURE
+        // ═══════════════════════════════════════════════════════════════════════
+        //
+        // Defense-in-depth against three attack vectors:
+        // 1. SMS Pumping (OTP generation abuse)
+        // 2. Dictionary Attacks (code enumeration)
+        // 3. Resource Exhaustion (database flooding)
+        //
+        // Each limiter implements IP-based throttling with structured JSON errors.
+        // ═══════════════════════════════════════════════════════════════════════
+
+        $this->configureRateLimiters();
 
         // ═══════════════════════════════════════════════════════════════════════
         // EXPLICIT POLICY BINDING - PRODUCTION DETERMINISM
@@ -71,6 +88,41 @@ class AppServiceProvider extends ServiceProvider
         // System-Wide Models (ownership based on user relationship)
         Gate::policy(Tenant::class, TenantPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // MODEL OBSERVERS - CACHE INVALIDATION & DATA INTEGRITY
+        // ═══════════════════════════════════════════════════════════════════════
+        //
+        // Observer Pattern: Listen for model state changes and trigger side effects.
+        //
+        // CACHE INVALIDATION (Generational Versioning):
+        // - ProductObserver: Rotates tenant version on product changes
+        // - CouponObserver: Rotates tenant version on coupon changes
+        // - MenuSectionObserver: Rotates tenant version on category changes
+        //                        (Cascading Invalidation for stale relationships)
+        //
+        // DATA INTEGRITY:
+        // - ProductObserver: Auto-assigns city_id from tenant, triggers blurhash
+        //
+        // NOTE: MenuSection invalidation is critical because ProductController
+        // eager-loads 'menuSection' - category name changes would otherwise be
+        // stale in the product cache for up to 60 minutes.
+        // ═══════════════════════════════════════════════════════════════════════
+        Product::observe(\App\Observers\ProductObserver::class);
+        Coupon::observe(\App\Observers\CouponObserver::class);
+        MenuSection::observe(\App\Observers\MenuSectionObserver::class);
+        \App\Models\Order::observe(\App\Observers\OrderObserver::class);
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // EVENT LISTENERS - INVENTORY ALERTING
+        // ═══════════════════════════════════════════════════════════════════════
+        // LowStockThresholdReached: Dispatched when product stock falls below threshold.
+        // SendLowStockNotification: Rate-limited listener (max 1 alert per product/day).
+        // ═══════════════════════════════════════════════════════════════════════
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\LowStockThresholdReached::class,
+            \App\Listeners\SendLowStockNotification::class
+        );
 
         // ═══════════════════════════════════════════════════════════════════════
         // QUEUE WORKER MEMORY HYGIENE - STATE POLLUTION PREVENTION
@@ -102,6 +154,125 @@ class AppServiceProvider extends ServiceProvider
                     $class::flushStaticCache();
                 }
             }
+        });
+    }
+
+    /**
+     * Configure granular rate limiters for API security.
+     *
+     * ARCHITECTURE: Named Rate Limiters for Traffic Shaping
+     *
+     * Each limiter targets a specific attack vector with mathematically
+     * chosen thresholds based on legitimate human behavior patterns.
+     */
+    protected function configureRateLimiters(): void
+    {
+        // ═══════════════════════════════════════════════════════════════════════
+        // COMPONENT 1: FINANCIAL FIREWALL (SMS Pumping Defense)
+        // ═══════════════════════════════════════════════════════════════════════
+        //
+        // THREAT: SMS Pumping fraud drains SMS provider budget by triggering
+        //         thousands of OTP requests to premium-rate numbers.
+        //
+        // CONSTRAINT: 3 requests per 60 seconds per IP
+        //
+        // RATIONALE: No legitimate user needs >3 SMS codes in 1 minute.
+        //            Any exceeding velocity is structurally malicious.
+        //
+        // APPLIED TO: POST /api/otp/generate
+        // ═══════════════════════════════════════════════════════════════════════
+        RateLimiter::for('api.otp-generation', function (Request $request) {
+            return Limit::perMinute(3)
+                ->by($request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'success' => false,
+                        'error_code' => 'RATE_LIMIT_EXCEEDED',
+                        'message' => 'Demasiados intentos de SMS. Por favor espera.',
+                        'retry_after_seconds' => $headers['Retry-After'] ?? 60,
+                    ], 429, $headers);
+                });
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // COMPONENT 2: ANTI-ENUMERATION SHIELD (Dictionary Attack Defense)
+        // ═══════════════════════════════════════════════════════════════════════
+        //
+        // THREAT: Brute-force/dictionary attacks against verification endpoints
+        //         to enumerate valid OTPs or discount coupon codes.
+        //
+        // CONSTRAINT: 5 attempts per 60 seconds per IP
+        //
+        // RATIONALE: Based on human typing speed - legitimate users cannot
+        //            physically type, verify, and correct codes faster.
+        //            5 attempts allow for typo corrections while making
+        //            brute-force mathematically infeasible (time-to-crack → ∞)
+        //
+        // APPLIED TO:
+        //   - POST /api/otp/verify (account protection)
+        //   - POST /api/coupons/verify (discount code protection)
+        // ═══════════════════════════════════════════════════════════════════════
+        RateLimiter::for('api.verification', function (Request $request) {
+            return Limit::perMinute(5)
+                ->by($request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'success' => false,
+                        'error_code' => 'VERIFICATION_RATE_LIMIT',
+                        'message' => 'Demasiados intentos de verificación. Espera un momento.',
+                        'retry_after_seconds' => $headers['Retry-After'] ?? 60,
+                    ], 429, $headers);
+                });
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // COMPONENT 3: TRANSACTIONAL WRITE PROTECTION (Database Integrity)
+        // ═══════════════════════════════════════════════════════════════════════
+        //
+        // THREAT: Resource exhaustion attacks flooding the orders table with
+        //         garbage records, consuming database CPU/locks/disk.
+        //
+        // CONSTRAINT: 10 orders per 60 seconds per IP
+        //
+        // RATIONALE: Generous for power users (family orders, catering) but
+        //            strict enough to prevent botnet flooding. No legitimate
+        //            customer creates >10 orders per minute.
+        //
+        // APPLIED TO: POST /api/orders
+        // ═══════════════════════════════════════════════════════════════════════
+        RateLimiter::for('api.transactions', function (Request $request) {
+            return Limit::perMinute(10)
+                ->by($request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'success' => false,
+                        'error_code' => 'TRANSACTION_RATE_LIMIT',
+                        'message' => 'Demasiados pedidos. Por favor espera antes de crear otro.',
+                        'retry_after_seconds' => $headers['Retry-After'] ?? 60,
+                    ], 429, $headers);
+                });
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // GLOBAL API BASELINE (Scraping Defense)
+        // ═══════════════════════════════════════════════════════════════════════
+        //
+        // FALLBACK: 60 requests per minute for all other API endpoints
+        //           without specific limiters. Prevents general scraping.
+        //
+        // APPLIED TO: All routes using 'throttle:api' middleware
+        // ═══════════════════════════════════════════════════════════════════════
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'success' => false,
+                        'error_code' => 'API_RATE_LIMIT',
+                        'message' => 'Demasiadas solicitudes. Por favor espera.',
+                        'retry_after_seconds' => $headers['Retry-After'] ?? 60,
+                    ], 429, $headers);
+                });
         });
     }
 }
