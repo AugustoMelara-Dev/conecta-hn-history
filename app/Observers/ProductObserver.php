@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Services\TenantCacheManager;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * ProductObserver - Inventory Watchdog with Generational Cache Invalidation
@@ -67,20 +68,61 @@ class ProductObserver implements ResetsStaticCache, ShouldHandleEventsAfterCommi
     /**
      * Handle the Product "creating" event.
      *
-     * SECURITY DIRECTIVE: Data Synchronization
-     * Auto-assign city_id from tenant to prevent invisible products.
+     * RESPONSIBILITIES:
+     * 1. Auto-generate URL-friendly slug from product name (if not provided)
+     * 2. Auto-assign city_id from tenant to prevent invisible products
      */
     public function creating(Product $product): void
     {
-        if ($product->city_id !== null || $product->tenant_id === null) {
-            return;
+        // ═══════════════════════════════════════════════════════════════════════
+        // AUTO-SLUG GENERATION: SEO-Friendly URLs
+        // ═══════════════════════════════════════════════════════════════════════
+        // Generate unique slug scoped to tenant if not provided.
+        // Pattern: "pizza-pepperoni" or "pizza-pepperoni-2" on collision.
+        if (empty($product->slug) && ! empty($product->name)) {
+            $product->slug = $this->generateUniqueSlug($product);
         }
 
-        $cityId = $this->resolveTenantCityId($product->tenant_id);
+        // ═══════════════════════════════════════════════════════════════════════
+        // CITY SYNCHRONIZATION: Inherit from Tenant
+        // ═══════════════════════════════════════════════════════════════════════
+        if ($product->city_id === null && $product->tenant_id !== null) {
+            $cityId = $this->resolveTenantCityId($product->tenant_id);
 
-        if ($cityId !== null) {
-            $product->city_id = $cityId;
+            if ($cityId !== null) {
+                $product->city_id = $cityId;
+            }
         }
+    }
+
+    /**
+     * Generate a unique slug scoped to the tenant.
+     *
+     * UNIQUENESS STRATEGY:
+     * Slugs must be unique within a tenant (not globally).
+     * This allows different tenants to have "pizza-pepperoni" products.
+     *
+     * COLLISION HANDLING:
+     * If "pizza-pepperoni" exists, tries "pizza-pepperoni-2", "pizza-pepperoni-3", etc.
+     */
+    protected function generateUniqueSlug(Product $product): string
+    {
+        $baseSlug = Str::slug($product->name);
+        $slug = $baseSlug;
+        $counter = 2;
+
+        // Check for collisions within same tenant (including soft-deleted)
+        while (
+            Product::withTrashed()
+                ->where('tenant_id', $product->tenant_id)
+                ->where('slug', $slug)
+                ->exists()
+        ) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
     }
 
     /**
