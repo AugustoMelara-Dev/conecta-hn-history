@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Exceptions\InvalidOrderTransitionException;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
@@ -12,6 +13,7 @@ use App\Models\OrderItem;
 use App\Models\Tenant;
 use App\Notifications\NewOrderNotification;
 use App\Services\InventoryManager;
+use App\Services\OrderStateService;
 use App\Services\PriceCalculatorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -59,6 +61,7 @@ class OrderController extends Controller
      */
     protected InventoryManager $inventoryManager;
     protected PriceCalculatorService $priceCalculator;
+    protected OrderStateService $orderStateService;
 
     /**
      * Inject dependencies via constructor for testability.
@@ -70,10 +73,12 @@ class OrderController extends Controller
      */
     public function __construct(
         InventoryManager $inventoryManager,
-        PriceCalculatorService $priceCalculator
+        PriceCalculatorService $priceCalculator,
+        OrderStateService $orderStateService
     ) {
         $this->inventoryManager = $inventoryManager;
         $this->priceCalculator = $priceCalculator;
+        $this->orderStateService = $orderStateService;
     }
 
     /**
@@ -385,28 +390,32 @@ class OrderController extends Controller
      * Update order status (for Kanban drag-drop).
      *
      * PATCH /api/orders/{order}/status
+     *
+     * FSM DELEGATION:
+     * All transition logic delegated to OrderStateService.
+     * Controller acts only as HTTP gateway.
      */
     public function updateStatus(UpdateOrderStatusRequest $request, Order $order): JsonResponse
     {
         $validated = $request->validated();
-        $success = $order->transitionTo($validated['status']);
+        $newStatus = $validated['status'];
 
-        if ($success) {
+        try {
+            // Delegate to FSM service
+            $order = $this->orderStateService->transition($order, $newStatus);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Estado actualizado',
                 'data' => [
                     'order_id' => $order->id,
                     'status' => $order->status,
-                    'status_label' => $order->status_label,
+                    'allowed_transitions' => $this->orderStateService->getAllowedTransitions($order->status),
                 ],
             ]);
+        } catch (InvalidOrderTransitionException $e) {
+            return response()->json($e->toArray(), $e->getHttpStatusCode());
         }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Error al actualizar el estado',
-        ], 500);
     }
 
     /**

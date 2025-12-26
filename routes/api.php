@@ -140,11 +140,28 @@ Route::middleware(['auth:sanctum', 'tenant.ownership', 'throttle:api'])->group(f
     });
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Future protected endpoints can be added here:
-    // - Products CRUD
-    // - Customers management
-    // - Analytics exports
+    // BUSINESS INTELLIGENCE EXPORTS (Reports)
     // ─────────────────────────────────────────────────────────────────────────
+    // Streaming exports for accounting and operations.
+    // Memory-safe: Uses chunked processing for 100k+ records.
+    // ─────────────────────────────────────────────────────────────────────────
+    Route::prefix('reports')->group(function () {
+        // Excel export for accounting
+        Route::get('/sales/excel', [\App\Http\Controllers\Api\ReportController::class, 'salesExcel'])
+            ->name('reports.sales.excel');
+
+        // PDF export for summary
+        Route::get('/sales/pdf', [\App\Http\Controllers\Api\ReportController::class, 'salesPdf'])
+            ->name('reports.sales.pdf');
+
+        // Inventory check manifest
+        Route::get('/inventory/pdf', [\App\Http\Controllers\Api\ReportController::class, 'inventoryPdf'])
+            ->name('reports.inventory.pdf');
+
+        // Kitchen prep list
+        Route::get('/kitchen/pdf', [\App\Http\Controllers\Api\ReportController::class, 'kitchenPdf'])
+            ->name('reports.kitchen.pdf');
+    });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
