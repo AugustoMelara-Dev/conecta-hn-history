@@ -1,0 +1,103 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+/**
+ * StoreProductRequest - Validation for Product Creation
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  MULTI-TENANT SECURITY: Scoped Foreign Key Validation                   ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * SECURITY:
+ * - Category/MenuSection IDs validated to belong to the authenticated tenant
+ * - Prevents IDOR attacks where Tenant A could reference Tenant B's resources
+ * - Image files validated for type and size to prevent DoS
+ */
+class StoreProductRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        // Authorization handled by middleware (auth:sanctum + tenant.ownership)
+        return true;
+    }
+
+    public function rules(): array
+    {
+        // ═══════════════════════════════════════════════════════════════════════
+        // TENANT CONTEXT INJECTION
+        // ═══════════════════════════════════════════════════════════════════════
+        // Capture the authenticated tenant ID for scoped validation.
+        // This ensures foreign keys only reference resources owned by this tenant.
+        $tenantId = $this->user()?->tenant_id;
+
+        return [
+            // ═══════════════════════════════════════════════════════════════════════
+            // CORE PRODUCT DATA
+            // ═══════════════════════════════════════════════════════════════════════
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:2000',
+            'price' => 'required|numeric|min:0|max:999999.99',
+
+            // ═══════════════════════════════════════════════════════════════════════
+            // SCOPED FOREIGN KEYS (IDOR Prevention)
+            // ═══════════════════════════════════════════════════════════════════════
+            // These rules ensure the ID exists AND belongs to the current tenant.
+            // A malicious user cannot reference another tenant's categories.
+            'category_id' => [
+                'nullable',
+                Rule::exists('categories', 'id')->where('tenant_id', $tenantId),
+            ],
+            'menu_section_id' => [
+                'nullable',
+                Rule::exists('menu_sections', 'id')->where('tenant_id', $tenantId),
+            ],
+
+            // ═══════════════════════════════════════════════════════════════════════
+            // INVENTORY MANAGEMENT
+            // ═══════════════════════════════════════════════════════════════════════
+            'manage_stock' => 'nullable|boolean',
+            'stock_quantity' => 'nullable|integer|min:0',
+            'low_stock_threshold' => 'nullable|integer|min:0',
+            'allow_backorders' => 'nullable|boolean',
+
+            // ═══════════════════════════════════════════════════════════════════════
+            // PRODUCT IMAGE (Binary Ingestion)
+            // ═══════════════════════════════════════════════════════════════════════
+            // Maximum 2MB to prevent disk exhaustion attacks.
+            // Standard web formats only for browser compatibility.
+            'image' => [
+                'nullable',
+                'image',
+                'mimes:jpeg,png,jpg,webp',
+                'max:2048', // 2MB in KB
+            ],
+
+            // ═══════════════════════════════════════════════════════════════════════
+            // DISPLAY OPTIONS
+            // ═══════════════════════════════════════════════════════════════════════
+            'is_visible' => 'nullable|boolean',
+            'is_featured' => 'nullable|boolean',
+            'is_new' => 'nullable|boolean',
+            'variants' => 'nullable|array',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'El nombre del producto es obligatorio.',
+            'price.required' => 'El precio es obligatorio.',
+            'price.numeric' => 'El precio debe ser un número.',
+            'category_id.exists' => 'La categoría seleccionada no existe o no pertenece a su negocio.',
+            'menu_section_id.exists' => 'La sección de menú seleccionada no existe o no pertenece a su negocio.',
+            'image.image' => 'El archivo debe ser una imagen válida.',
+            'image.mimes' => 'La imagen debe ser JPEG, PNG o WebP.',
+            'image.max' => 'La imagen no puede exceder 2MB.',
+        ];
+    }
+}
+
