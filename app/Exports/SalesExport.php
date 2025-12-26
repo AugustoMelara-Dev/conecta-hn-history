@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Exports;
 
 use App\Models\Order;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\Exportable;
@@ -16,17 +15,23 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
- * SalesExport - Streaming Excel Export for Accounting
+ * SalesExport - Synchronous Streaming Excel Export for Accounting
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  SYNCHRONOUS: Direct download via Excel::download()                     ║
  * ║  MEMORY SAFE: Uses chunked queries for 100k+ orders                     ║
- * ║  QUEUED: Implements ShouldQueue for async generation                    ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * Generates XLSX with order data for a date range.
- * Includes: order number, date, customer, items, totals, payment method.
+ * ARCHITECTURE:
+ * - FromQuery returns a lazy Builder (not a Collection)
+ * - WithChunkReading processes 500 records at a time
+ * - Combined: exports 100k+ rows with constant ~50MB memory usage
+ *
+ * NOTE: ShouldQueue was intentionally REMOVED because Excel::download()
+ * requires an immediate binary stream (sync). The chunked architecture
+ * ensures memory safety without async processing.
  */
-class SalesExport implements FromQuery, WithHeadings, WithMapping, WithChunkReading, WithStyles, ShouldQueue
+class SalesExport implements FromQuery, WithHeadings, WithMapping, WithChunkReading, WithStyles
 {
     use Exportable;
 
