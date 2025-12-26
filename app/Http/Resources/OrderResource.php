@@ -51,6 +51,16 @@ class OrderResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
 
+            // ═══════════════════════════════════════════════════════════════════════
+            // REAL-TIME TRACKING (WebSocket Entry Point)
+            // ═══════════════════════════════════════════════════════════════════════
+            // tracking_uuid: Cryptographic token for unauthenticated order tracking
+            // tracking_url: Public URL customers can use to track their order
+            'tracking_uuid' => $this->tracking_uuid,
+            'tracking_url' => $this->tracking_uuid 
+                ? config('app.url') . '/track/' . $this->tracking_uuid 
+                : null,
+
             // Computed fields
             'whatsapp_url' => $this->getWhatsAppUrl(),
 

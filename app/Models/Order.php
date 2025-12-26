@@ -273,6 +273,8 @@ class Order extends Model
 
     /**
      * Build WhatsApp message for this order.
+     *
+     * Includes real-time tracking URL if tracking_uuid is available.
      */
     public function buildWhatsAppMessage(): string
     {
@@ -306,6 +308,19 @@ class Order extends Model
         if ($this->customer_notes) {
             $lines[] = '';
             $lines[] = "📝 *Notas:* {$this->customer_notes}";
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // REAL-TIME TRACKING CTA (Customer Journey Completion)
+        // ═══════════════════════════════════════════════════════════════════════
+        // tracking_uuid serves as a bearer token for unauthenticated WebSocket access.
+        // This closes the UX loop by giving customers a trackable entry point.
+        if ($this->tracking_uuid) {
+            $trackingUrl = config('app.url') . '/track/' . $this->tracking_uuid;
+            $lines[] = '';
+            $lines[] = '─────────────────────────';
+            $lines[] = "🔍 *Sigue tu pedido en vivo:*";
+            $lines[] = $trackingUrl;
         }
 
         return implode("\n", $lines);
