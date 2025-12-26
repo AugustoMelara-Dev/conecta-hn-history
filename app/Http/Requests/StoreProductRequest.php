@@ -28,11 +28,12 @@ class StoreProductRequest extends FormRequest
     public function rules(): array
     {
         // ═══════════════════════════════════════════════════════════════════════
-        // TENANT CONTEXT INJECTION
+        // TENANT CONTEXT INJECTION (Strictly Typed)
         // ═══════════════════════════════════════════════════════════════════════
         // Capture the authenticated tenant ID for scoped validation.
-        // This ensures foreign keys only reference resources owned by this tenant.
-        $tenantId = $this->user()?->tenant_id;
+        // DEFENSE IN DEPTH: Explicit (int) cast prevents type coercion issues
+        // and ensures Rule::exists receives a primitive integer for SQL generation.
+        $tenantId = (int) $this->user()->tenant_id;
 
         return [
             // ═══════════════════════════════════════════════════════════════════════

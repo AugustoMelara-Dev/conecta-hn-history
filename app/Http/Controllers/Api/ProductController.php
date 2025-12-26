@@ -323,10 +323,13 @@ class ProductController extends Controller
         // PIPELINE STEP 1: EXPLICIT IMAGE REMOVAL (Nullification Signal)
         // ═══════════════════════════════════════════════════════════════════════
         // Process remove_image FIRST to clear the slate.
-        // This allows users to explicitly remove an image without replacement.
+        // ARRAY INJECTION PATTERN: We inject values into $validated, NOT the model.
+        // This ensures Eloquent's update() generates the correct SQL query.
         if ($request->boolean('remove_image') && $product->image_path) {
             \Illuminate\Support\Facades\Storage::disk('public')->delete($product->image_path);
-            $product->image_path = null;
+            // CRITICAL: Inject null into array, NOT the model object
+            // $product->image_path = null would NOT persist (Eloquent ignores dirty attrs not in array)
+            $validated['image_path'] = null;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
