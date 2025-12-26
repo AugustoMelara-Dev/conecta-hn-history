@@ -295,14 +295,38 @@ class AppServiceProvider extends ServiceProvider
 
             // Resolve tenant subscription tier
             $tenant = $user->tenant;
-            $isPro = $tenant?->is_pro ?? false;
+
+            // ═══════════════════════════════════════════════════════════════════════
+            // SECURITY: User without tenant falls back to IP-based limiting
+            // ═══════════════════════════════════════════════════════════════════════
+            // NEVER use user->id as fallback - this allows multi-user bypass attack
+            // where a Free tenant creates 50 users to get 50x the rate limit.
+            // ═══════════════════════════════════════════════════════════════════════
+            if (! $tenant) {
+                return Limit::perMinute(60)
+                    ->by('ip:' . $request->ip())
+                    ->response(function (Request $request, array $headers) {
+                        return response()->json([
+                            'success' => false,
+                            'error_code' => 'RATE_LIMIT_EXCEEDED',
+                            'message' => 'Usuario sin tenant. Límite por IP aplicado.',
+                            'tier' => 'orphan',
+                            'retry_after_seconds' => $headers['Retry-After'] ?? 60,
+                        ], 429, $headers);
+                    });
+            }
+
+            $isPro = $tenant->is_pro ?? false;
 
             // Dynamic limit based on tier
             $limit = $isPro ? 300 : 60;
             $tier = $isPro ? 'pro' : 'free';
 
+            // ═══════════════════════════════════════════════════════════════════════
+            // KEY: Strictly by Tenant ID - prevents multi-user bypass attack
+            // ═══════════════════════════════════════════════════════════════════════
             return Limit::perMinute($limit)
-                ->by('tenant:' . ($tenant?->id ?? $user->id))
+                ->by('tenant:' . $tenant->id)
                 ->response(function (Request $request, array $headers) use ($tier, $limit) {
                     return response()->json([
                         'success' => false,
