@@ -3,6 +3,7 @@
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Log;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,7 +38,16 @@ Broadcast::channel('order.{trackingUuid}', function ($user, string $trackingUuid
     // For customer tracking, we don't require authentication
     // The UUID itself acts as the security token (unguessable)
     // Verify the order exists with this UUID
-    return Order::where('tracking_uuid', $trackingUuid)->exists();
+    $exists = Order::where('tracking_uuid', $trackingUuid)->exists();
+    
+    if (! $exists) {
+        Log::warning('WebSocket auth failed: Invalid tracking UUID', [
+            'tracking_uuid' => $trackingUuid,
+            'ip' => request()->ip(),
+        ]);
+    }
+    
+    return $exists;
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
