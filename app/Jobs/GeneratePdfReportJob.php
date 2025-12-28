@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Notifications\ReportReadyNotification;
+use App\Traits\GeneratesSignedDownloadUrls;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -39,6 +40,7 @@ use Illuminate\Support\Str;
 class GeneratePdfReportJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use GeneratesSignedDownloadUrls;
 
     /**
      * Number of times the job may be attempted.
@@ -106,12 +108,12 @@ class GeneratePdfReportJob implements ShouldQueue
             ]);
 
             // ═══════════════════════════════════════════════════════════════
-            // STEP 4: Generate temporary signed URL (valid for 24 hours)
+            // STEP 4: Generate signed download URL (valid for 24 hours)
             // ═══════════════════════════════════════════════════════════════
-            $downloadUrl = Storage::disk('local')->temporaryUrl(
-                $filename,
-                now()->addHours(24)
-            );
+            // NOTE: Storage::temporaryUrl() only works with S3/Azure.
+            // For local disk, we use Laravel's signed routes instead.
+            $expiresAt = now()->addHours(24);
+            $downloadUrl = $this->generateDownloadUrl($filename, $expiresAt);
 
             // ═══════════════════════════════════════════════════════════════
             // STEP 5: Notify requestor via database/email
@@ -120,7 +122,7 @@ class GeneratePdfReportJob implements ShouldQueue
                 reportType: $this->reportType,
                 downloadUrl: $downloadUrl,
                 tenantName: $this->tenant->name,
-                expiresAt: now()->addHours(24),
+                expiresAt: $expiresAt,
             ));
 
             Log::info('GeneratePdfReportJob: Notification sent', [

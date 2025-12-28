@@ -189,3 +189,28 @@ Route::middleware(['auth:sanctum', 'tenant.ownership', 'throttle:api'])->group(f
 Route::post('/webhooks/payment', [\App\Http\Controllers\Webhook\PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REPORT DOWNLOADS (Signed URL Pattern for Local Storage)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// WHY SIGNED ROUTES?
+// Laravel's Storage::temporaryUrl() only works with cloud drivers (S3, Azure).
+// For local disk storage, we use signed routes that:
+// 1. Validate cryptographic signature (prevents URL tampering)
+// 2. Check expiration timestamp (24 hours)
+// 3. Serve file via streaming (memory-efficient)
+//
+// SECURITY:
+// - 'signed' middleware validates URL signature
+// - ReportDownloadController validates path (prevents directory traversal)
+// - Only files in 'reports/' directory allowed
+//
+// USAGE:
+// Jobs generate file → Create signed URL → User downloads via this route
+// ═══════════════════════════════════════════════════════════════════════════════
+Route::get('/reports/download/{path}', [\App\Http\Controllers\Api\ReportDownloadController::class, 'download'])
+    ->where('path', '.*')  // Allow slashes in path parameter
+    ->name('reports.download')
+    ->middleware('signed');
+

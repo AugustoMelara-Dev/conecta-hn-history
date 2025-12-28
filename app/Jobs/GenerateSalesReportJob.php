@@ -8,6 +8,7 @@ use App\Exports\SalesExport;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Notifications\ReportReadyNotification;
+use App\Traits\GeneratesSignedDownloadUrls;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -40,6 +41,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class GenerateSalesReportJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use GeneratesSignedDownloadUrls;
 
     /**
      * Number of times the job may be attempted.
@@ -103,12 +105,12 @@ class GenerateSalesReportJob implements ShouldQueue
             ]);
 
             // ═══════════════════════════════════════════════════════════════
-            // STEP 3: Generate temporary signed URL (valid for 24 hours)
+            // STEP 3: Generate signed download URL (valid for 24 hours)
             // ═══════════════════════════════════════════════════════════════
-            $downloadUrl = Storage::temporaryUrl(
-                $filename,
-                now()->addHours(24)
-            );
+            // NOTE: Storage::temporaryUrl() only works with S3/Azure.
+            // For local disk, we use Laravel's signed routes instead.
+            $expiresAt = now()->addHours(24);
+            $downloadUrl = $this->generateDownloadUrl($filename, $expiresAt);
 
             // ═══════════════════════════════════════════════════════════════
             // STEP 4: Notify requestor via database/email
@@ -117,7 +119,7 @@ class GenerateSalesReportJob implements ShouldQueue
                 reportType: 'sales',
                 downloadUrl: $downloadUrl,
                 tenantName: $this->tenant->name,
-                expiresAt: now()->addHours(24),
+                expiresAt: $expiresAt,
             ));
 
             Log::info('GenerateSalesReportJob: Notification sent', [
