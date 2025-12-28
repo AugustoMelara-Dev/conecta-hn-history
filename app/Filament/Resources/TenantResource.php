@@ -173,6 +173,43 @@ class TenantResource extends Resource
                             ->placeholder('Tu frase comercial aquí...')
                             ->helperText('Máximo 100 caracteres. Se muestra debajo del nombre en la portada.'),
                     ])->columns(3),
+
+                // ═══════════════════════════════════════════════════════════════
+                // CHECKOUT CONFIGURATION - Operational Settings
+                // These settings control payment and delivery options
+                // ═══════════════════════════════════════════════════════════════
+                Forms\Components\Section::make('Configuración de Checkout')
+                    ->description('Controla las opciones de pago y entrega disponibles para tus clientes.')
+                    ->icon('heroicon-o-shopping-cart')
+                    ->schema([
+                        Forms\Components\CheckboxList::make('payment_methods')
+                            ->label('Métodos de Pago Habilitados')
+                            ->options([
+                                'cash' => '💵 Efectivo (Contra entrega)',
+                                'transfer' => '🏦 Transferencia Bancaria',
+                                'card' => '💳 Tarjeta de Crédito/Débito',
+                            ])
+                            ->columns(3)
+                            ->helperText('Selecciona los métodos que aceptas. Si no seleccionas ninguno, solo se mostrará efectivo.'),
+
+                        Forms\Components\Toggle::make('delivery_enabled')
+                            ->label('Habilitar Entrega a Domicilio')
+                            ->default(true)
+                            ->helperText('Permite a los clientes solicitar delivery.'),
+
+                        Forms\Components\Toggle::make('pickup_enabled')
+                            ->label('Habilitar Recoger en Tienda')
+                            ->default(true)
+                            ->helperText('Permite a los clientes recoger su pedido.'),
+
+                        Forms\Components\TextInput::make('minimum_order')
+                            ->label('Pedido Mínimo')
+                            ->numeric()
+                            ->default(0)
+                            ->prefix('L.')
+                            ->minValue(0)
+                            ->helperText('Valor mínimo para realizar un pedido. 0 = sin mínimo.'),
+                    ])->columns(2),
             ]);
     }
 
