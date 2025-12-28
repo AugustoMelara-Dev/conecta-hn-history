@@ -1,19 +1,24 @@
 /**
- * Checkout.jsx - The Transactional Terminal (HARDENED)
+ * Checkout.jsx - The Transactional Terminal (HARDENED v2)
  *
  * ARCHITECTURE:
  * - Global Store Binding (no local state for form fields)
  * - Guard clause pattern for race condition prevention
- * - Empty cart redirect protection
+ * - Empty cart redirect protection with hydration check
  * - WCAG-compliant form accessibility
  *
  * SECURITY:
  * - Prevents double-submission via guard clause
  * - Validates form before submission
  * - Protects against empty cart submission
+ * - Waits for tenant initialization before redirecting
+ *
+ * OPTIMIZATIONS:
+ * - useMemo for form validation (no IIFE)
+ * - Scroll to error on submission failure
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
@@ -37,7 +42,7 @@ import { formatCurrency } from '@/Utils/currency';
 
 /**
  * CartItemRow - Single item in order summary
- * Optimized: Removed unnecessary useMemo for simple calculation
+ * Optimized: Direct calculation without useMemo overhead
  */
 function CartItemRow({ item, primaryColor, onRemove }) {
     // Direct calculation - more efficient than useMemo for simple arithmetic
@@ -87,8 +92,11 @@ function CartItemRow({ item, primaryColor, onRemove }) {
  * Checkout - Main Checkout Page
  */
 export default function Checkout() {
-    // Use centralized tenant context hook
-    const { tenant, primaryColor } = useTenantContext();
+    // Use centralized tenant context hook - includes isInitialized
+    const { tenant, primaryColor, isInitialized } = useTenantContext();
+
+    // Error element ref for scroll behavior
+    const errorRef = useRef(null);
 
     // ═══════════════════════════════════════════════════════════════════════
     // GLOBAL STORE BINDING: No local state - everything from Zustand
@@ -121,24 +129,27 @@ export default function Checkout() {
 
     // ═══════════════════════════════════════════════════════════════════════
     // EMPTY CART DEFENSE: Redirect if cart becomes empty
+    // FIX: Now waits for tenant initialization to prevent premature redirect
     // ═══════════════════════════════════════════════════════════════════════
     useEffect(() => {
-        // Only redirect if we're not in the middle of submission
-        // and the cart is genuinely empty
-        if (items.length === 0 && !isSubmitting && tenant.slug) {
-            // Small delay to prevent flash during hydration
+        // Only redirect if:
+        // 1. Tenant is fully initialized (not during hydration)
+        // 2. Cart is genuinely empty
+        // 3. Not currently submitting an order
+        if (isInitialized && items.length === 0 && !isSubmitting && tenant.slug) {
+            // Small delay to prevent flash during state changes
             const timeout = setTimeout(() => {
                 router.visit(`/${tenant.slug}`);
             }, 100);
 
             return () => clearTimeout(timeout);
         }
-    }, [items.length, isSubmitting, tenant.slug]);
+    }, [items.length, isSubmitting, tenant.slug, isInitialized]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // FORM VALIDATION
+    // FIX: Form validation with useMemo (not IIFE)
     // ═══════════════════════════════════════════════════════════════════════
-    const isFormValid = (() => {
+    const isFormValid = useMemo(() => {
         if (items.length === 0) return false;
         if (!customerName || customerName.trim().length < 2) return false;
         if (!customerPhone || customerPhone.trim().length < 8) return false;
@@ -146,7 +157,7 @@ export default function Checkout() {
             return false;
         }
         return true;
-    })();
+    }, [items.length, customerName, customerPhone, deliveryType, customerAddress]);
 
     // ═══════════════════════════════════════════════════════════════════════
     // ORDER SUBMISSION: With Guard Clause
@@ -159,13 +170,11 @@ export default function Checkout() {
         // If already submitting, abort immediately
         // ═══════════════════════════════════════════════════════════════════
         if (isSubmitting) {
-            console.warn('[Checkout] Submission already in progress, ignoring duplicate request');
             return;
         }
 
         // Additional validation guard
         if (!isFormValid) {
-            console.warn('[Checkout] Form validation failed');
             return;
         }
 
@@ -176,6 +185,13 @@ export default function Checkout() {
         if (result.success && result.whatsappUrl) {
             // WhatsApp Handshake: Exit to messaging platform
             window.location.href = result.whatsappUrl;
+        } else if (!result.success) {
+            // ═══════════════════════════════════════════════════════════════
+            // UX IMPROVEMENT: Scroll to error message
+            // ═══════════════════════════════════════════════════════════════
+            setTimeout(() => {
+                errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
         }
     };
 
@@ -195,7 +211,7 @@ export default function Checkout() {
                         Agrega productos para continuar con tu pedido.
                     </p>
                     <Link
-                        href={`/${tenant.slug}`}
+                        href={`/${tenant.slug || ''}`}
                         className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all hover:opacity-90"
                         style={{ backgroundColor: primaryColor }}
                     >
@@ -352,7 +368,7 @@ export default function Checkout() {
                                 </div>
 
                                 {deliveryType === 'delivery' && (
-                                    <div className="animate-fade-in">
+                                    <div className="transition-all duration-200">
                                         <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
                                             Dirección de entrega *
                                         </label>
@@ -431,9 +447,10 @@ export default function Checkout() {
                                     </div>
                                 </div>
 
-                                {/* Error Message */}
+                                {/* Error Message with ref for scroll */}
                                 {submitError && (
                                     <div
+                                        ref={errorRef}
                                         role="alert"
                                         className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2"
                                     >

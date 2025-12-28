@@ -1,5 +1,5 @@
 /**
- * StoreHome.jsx - The Catalog Discovery Page (HARDENED)
+ * StoreHome.jsx - The Catalog Discovery Page (HARDENED v2)
  *
  * ARCHITECTURE:
  * - Scroll-Spy target with strict ID contract
@@ -11,11 +11,15 @@
  * - Validates stock against cart quantity before adding
  * - Prevents overselling via frontend guard
  *
+ * OPTIMIZATIONS:
+ * - Toast timeout cleanup on unmount
+ * - Lazy loading for all images
+ *
  * ID CONTRACT:
  * Each section MUST have id={`category-${section.id}`}
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { ShoppingBag, Plus, AlertCircle, X } from 'lucide-react';
 import StoreLayout from '@/Layouts/StoreLayout';
@@ -169,15 +173,37 @@ export default function StoreHome({ sections = [] }) {
     // Cart store for inventory validation
     const { items, addItem, openCart } = useCartStore();
 
-    // Toast state
+    // Toast state with timeout cleanup
     const [toast, setToast] = useState(null);
+    const toastTimeoutRef = useRef(null);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CLEANUP: Clear toast timeout on unmount to prevent memory leak
+    // ═══════════════════════════════════════════════════════════════════════
+    useEffect(() => {
+        return () => {
+            if (toastTimeoutRef.current) {
+                clearTimeout(toastTimeoutRef.current);
+            }
+        };
+    }, []);
 
     /**
-     * Show toast notification
+     * Show toast notification with proper cleanup
      */
     const showToast = (message, type = 'success') => {
+        // Clear any existing timeout
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+        }
+
         setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
+
+        // Set new timeout and store reference
+        toastTimeoutRef.current = setTimeout(() => {
+            setToast(null);
+            toastTimeoutRef.current = null;
+        }, 3000);
     };
 
     /**
@@ -224,7 +250,13 @@ export default function StoreHome({ sections = [] }) {
                 <Toast
                     message={toast.message}
                     type={toast.type}
-                    onClose={() => setToast(null)}
+                    onClose={() => {
+                        if (toastTimeoutRef.current) {
+                            clearTimeout(toastTimeoutRef.current);
+                            toastTimeoutRef.current = null;
+                        }
+                        setToast(null);
+                    }}
                     primaryColor={primaryColor}
                 />
             )}
@@ -239,6 +271,7 @@ export default function StoreHome({ sections = [] }) {
                             src={tenant.banner_url}
                             alt={`Banner de ${tenant.name}`}
                             className="w-full h-full object-cover"
+                            loading="lazy"
                         />
                     </div>
                 ) : (

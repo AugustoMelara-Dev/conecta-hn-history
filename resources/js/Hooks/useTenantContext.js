@@ -6,13 +6,17 @@
  * - Auto-initializes cart store for current tenant
  * - Returns standardized tenant data with derived values
  *
+ * OPTIMIZATIONS:
+ * - useEffect dependencies minimized to prevent unnecessary re-renders
+ * - Only re-initializes when tenant slug changes
+ *
  * USAGE:
- * const { tenant, primaryColor } = useTenantContext();
+ * const { tenant, primaryColor, isInitialized } = useTenantContext();
  *
  * @module Hooks/useTenantContext
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { usePage } from '@inertiajs/react';
 import useCartStore from '@/Stores/useCartStore';
 
@@ -41,24 +45,26 @@ export function useTenantContext() {
     // Get cart store actions
     const { initForTenant, tenantSlug: currentSlug } = useCartStore();
 
-    // Auto-initialize cart for tenant (side-effect)
+    // Use ref to store tenant data for initForTenant call
+    // This prevents re-triggering useEffect when non-critical props change
+    const tenantRef = useRef(tenant);
+    tenantRef.current = tenant;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FIX: Only depend on slug change to trigger initialization
+    // Other tenant properties are read from ref when needed
+    // ═══════════════════════════════════════════════════════════════════════
     useEffect(() => {
-        if (tenant.slug && tenant.slug !== currentSlug) {
+        const t = tenantRef.current;
+        if (t.slug && t.slug !== currentSlug) {
             initForTenant(
-                tenant.slug,
-                tenant.whatsapp_number || '',
-                tenant.name || '',
-                tenant.id || null
+                t.slug,
+                t.whatsapp_number || '',
+                t.name || '',
+                t.id || null
             );
         }
-    }, [
-        tenant.slug,
-        tenant.whatsapp_number,
-        tenant.name,
-        tenant.id,
-        currentSlug,
-        initForTenant,
-    ]);
+    }, [tenant.slug, currentSlug, initForTenant]);
 
     // Check if tenant is properly initialized
     const isInitialized = useMemo(() => {

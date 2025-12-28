@@ -1,18 +1,23 @@
 /**
- * ProductDetails.jsx - Product Configuration Engine (HARDENED)
+ * ProductDetails.jsx - Product Configuration Engine (HARDENED v2)
  *
  * ARCHITECTURE:
  * - Modifier state management with validation
  * - RadioGroup for single-select, Checkboxes for multi-select
- * - Quantity clamping with stock limits
+ * - Quantity clamping with stock limits (CONSIDERS CART QUANTITY)
  * - WCAG-compliant accessible notifications
  *
  * SECURITY:
  * - Prevents quantity exceeding stock via input clamping
  * - Validates all required modifiers before cart injection
+ * - Accounts for existing cart items when calculating max quantity
+ *
+ * OPTIMIZATIONS:
+ * - Toast timeout cleanup on unmount
+ * - Lazy loading for product image
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { RadioGroup } from '@headlessui/react';
 import {
@@ -217,19 +222,42 @@ export default function ProductDetails({ product }) {
     const [quantity, setQuantity] = useState(1);
     const [notes, setNotes] = useState('');
     const [toast, setToast] = useState(null);
+    const toastTimeoutRef = useRef(null);
 
-    // Cart store
-    const { addItem, openCart } = useCartStore();
+    // Cart store - need items to check existing quantity
+    const { items, addItem, openCart } = useCartStore();
 
     // ═══════════════════════════════════════════════════════════════════════
-    // QUANTITY LIMITS: Derived from stock or safe maximum
+    // CLEANUP: Clear toast timeout on unmount
+    // ═══════════════════════════════════════════════════════════════════════
+    useEffect(() => {
+        return () => {
+            if (toastTimeoutRef.current) {
+                clearTimeout(toastTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FIX: Calculate existing quantity in cart for this product
+    // This is used to determine the TRUE maximum quantity available
+    // ═══════════════════════════════════════════════════════════════════════
+    const existingCartQty = useMemo(() => {
+        if (!product?.id) return 0;
+        const cartItem = items.find((item) => item.productId === product.id);
+        return cartItem?.quantity || 0;
+    }, [items, product?.id]);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // QUANTITY LIMITS: Derived from stock MINUS what's already in cart
     // ═══════════════════════════════════════════════════════════════════════
     const maxQuantity = useMemo(() => {
         if (product?.manage_stock) {
-            return product.stock_quantity || 1;
+            const available = (product.stock_quantity || 0) - existingCartQty;
+            return Math.max(1, available); // At least 1, or available stock
         }
         return 99; // Safe logical limit for non-stock-managed products
-    }, [product?.manage_stock, product?.stock_quantity]);
+    }, [product?.manage_stock, product?.stock_quantity, existingCartQty]);
 
     // ═══════════════════════════════════════════════════════════════════════
     // MODIFIER HANDLERS
@@ -320,11 +348,19 @@ export default function ProductDetails({ product }) {
     }, [product, modifiers, quantity]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // TOAST HELPER
+    // TOAST HELPER with proper cleanup
     // ═══════════════════════════════════════════════════════════════════════
     const showToast = (message, type = 'success') => {
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+        }
+
         setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
+
+        toastTimeoutRef.current = setTimeout(() => {
+            setToast(null);
+            toastTimeoutRef.current = null;
+        }, 3000);
     };
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -332,6 +368,18 @@ export default function ProductDetails({ product }) {
     // ═══════════════════════════════════════════════════════════════════════
     const handleAddToCart = () => {
         if (!isSelectionComplete) return;
+
+        // Additional stock validation before adding
+        if (product?.manage_stock) {
+            const projectedTotal = existingCartQty + quantity;
+            if (projectedTotal > product.stock_quantity) {
+                showToast(
+                    `Solo puedes agregar ${maxQuantity} unidades más`,
+                    'error'
+                );
+                return;
+            }
+        }
 
         // Build selected modifiers array for cart store
         const selectedModifiers = [];
@@ -401,6 +449,9 @@ export default function ProductDetails({ product }) {
         );
     }
 
+    // Check if product is out of stock (considering cart)
+    const isOutOfStock = product.manage_stock && maxQuantity <= 0;
+
     return (
         <StoreLayout>
             <Head title={product.name} />
@@ -410,7 +461,13 @@ export default function ProductDetails({ product }) {
                 <Toast
                     message={toast.message}
                     type={toast.type}
-                    onClose={() => setToast(null)}
+                    onClose={() => {
+                        if (toastTimeoutRef.current) {
+                            clearTimeout(toastTimeoutRef.current);
+                            toastTimeoutRef.current = null;
+                        }
+                        setToast(null);
+                    }}
                     primaryColor={primaryColor}
                 />
             )}
@@ -475,12 +532,23 @@ export default function ProductDetails({ product }) {
                             <p className="text-gray-600">{product.description}</p>
                         )}
 
-                        {/* Stock indicator */}
+                        {/* Stock indicator - shows available considering cart */}
                         {product.manage_stock && (
                             <p className="text-sm text-gray-500">
-                                {product.stock_quantity > 0
-                                    ? `${product.stock_quantity} disponibles`
-                                    : 'Agotado'}
+                                {isOutOfStock ? (
+                                    <span className="text-red-500 font-medium">
+                                        Agotado{existingCartQty > 0 && ' (tienes el máximo en tu carrito)'}
+                                    </span>
+                                ) : (
+                                    <>
+                                        {maxQuantity} disponibles
+                                        {existingCartQty > 0 && (
+                                            <span className="text-gray-400">
+                                                {' '}(ya tienes {existingCartQty} en tu carrito)
+                                            </span>
+                                        )}
+                                    </>
+                                )}
                             </p>
                         )}
 
@@ -542,9 +610,9 @@ export default function ProductDetails({ product }) {
                                     <button
                                         type="button"
                                         onClick={handleDecrement}
-                                        disabled={quantity <= 1}
+                                        disabled={quantity <= 1 || isOutOfStock}
                                         className={`p-2 rounded-full border border-gray-300 transition-colors
-                                            ${quantity <= 1
+                                            ${quantity <= 1 || isOutOfStock
                                                 ? 'opacity-50 cursor-not-allowed'
                                                 : 'hover:bg-gray-100'
                                             }`}
@@ -558,9 +626,9 @@ export default function ProductDetails({ product }) {
                                     <button
                                         type="button"
                                         onClick={handleIncrement}
-                                        disabled={quantity >= maxQuantity}
+                                        disabled={quantity >= maxQuantity || isOutOfStock}
                                         className={`p-2 rounded-full border border-gray-300 transition-colors
-                                            ${quantity >= maxQuantity
+                                            ${quantity >= maxQuantity || isOutOfStock
                                                 ? 'opacity-50 cursor-not-allowed'
                                                 : 'hover:bg-gray-100'
                                             }`}
@@ -572,7 +640,7 @@ export default function ProductDetails({ product }) {
                             </div>
 
                             {/* Stock warning when at max */}
-                            {product.manage_stock && quantity >= maxQuantity && (
+                            {product.manage_stock && quantity >= maxQuantity && !isOutOfStock && (
                                 <p className="text-sm text-amber-600">
                                     Cantidad máxima disponible alcanzada.
                                 </p>
@@ -592,9 +660,9 @@ export default function ProductDetails({ product }) {
                             <button
                                 type="button"
                                 onClick={handleAddToCart}
-                                disabled={!isSelectionComplete}
+                                disabled={!isSelectionComplete || isOutOfStock}
                                 className={`w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl transition-all
-                                    ${!isSelectionComplete
+                                    ${(!isSelectionComplete || isOutOfStock)
                                         ? 'opacity-50 cursor-not-allowed grayscale'
                                         : 'hover:opacity-90 hover:scale-[1.02]'
                                     }`}
@@ -602,7 +670,7 @@ export default function ProductDetails({ product }) {
                                 aria-label="Agregar al carrito"
                             >
                                 <ShoppingCart className="h-5 w-5" />
-                                Agregar {formatCurrency(calculatedPrice)}
+                                {isOutOfStock ? 'Agotado' : `Agregar ${formatCurrency(calculatedPrice)}`}
                             </button>
 
                             {/* Go to Checkout Button */}
