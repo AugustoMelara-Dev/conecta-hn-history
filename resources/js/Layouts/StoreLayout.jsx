@@ -24,6 +24,7 @@ import {
     ArrowRight,
 } from 'lucide-react';
 import useCartStore from '@/Stores/useCartStore';
+import CategoryNav from '@/Components/Store/CategoryNav';
 
 /**
  * StoreLayout - The Persistent Store Frame
@@ -40,6 +41,9 @@ export default function StoreLayout({ children, className = '' }) {
 
     // Default brand color (Corporate Minimalist = Black)
     const primaryColor = tenant.primary_color || '#000000';
+
+    // Menu sections for category navigation
+    const menuSections = tenant.menu_sections || [];
 
     // ═══════════════════════════════════════════════════════════════════════
     // CART STATE: Bind to Zustand store
@@ -122,6 +126,14 @@ export default function StoreLayout({ children, className = '' }) {
                     </div>
                 </div>
             </header>
+
+            {/* ═══════════════════════════════════════════════════════════════
+                CATEGORY NAVIGATION (Sticky Secondary Header)
+            ═══════════════════════════════════════════════════════════════ */}
+            <CategoryNav
+                categories={menuSections}
+                primaryColor={primaryColor}
+            />
 
             {/* ═══════════════════════════════════════════════════════════════
                 MAIN CONTENT

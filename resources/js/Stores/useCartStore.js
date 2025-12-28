@@ -107,18 +107,53 @@ const useCartStore = create(
 
             /**
              * Initialize cart for a specific tenant
-             * Clears cart if switching to a different tenant
+             * 
+             * PRIVACY PROTOCOL:
+             * When switching tenants, ALL customer PII is sanitized to prevent
+             * cross-tenant data leakage on shared devices (cyber cafes, etc.)
+             * 
+             * This is a privacy-by-design decision that prioritizes security
+             * over convenience (magic autocomplete).
              */
             initForTenant: (tenantSlug, tenantPhone, tenantName, tenantId = null) => {
                 const currentSlug = get().tenantSlug;
+
                 if (currentSlug && currentSlug !== tenantSlug) {
-                    // Different tenant - clear cart items but KEEP customer data
+                    // ═══════════════════════════════════════════════════════════════
+                    // CONTEXT SWITCH DETECTED: Strict PII Sanitization
+                    // ═══════════════════════════════════════════════════════════════
+                    // Scenario: User A shops at "Pizzería" then leaves computer,
+                    // User B visits "Ferretería" - they must NOT see User A's data.
+                    // ═══════════════════════════════════════════════════════════════
+                    console.info('[Cart] Tenant switch detected - sanitizing customer data for privacy');
+
                     set({
+                        // Clear cart items (product context is different)
                         items: [],
+
+                        // Update tenant context
                         tenantSlug,
                         tenantPhone,
                         tenantName,
                         tenantId,
+
+                        // ═══════════════════════════════════════════════════════════
+                        // PII SANITIZATION: Reset ALL customer data to defaults
+                        // ═══════════════════════════════════════════════════════════
+                        customerName: '',
+                        customerPhone: '',
+                        customerEmail: '',
+                        customerAddress: '',
+                        customerNotes: '',
+                        deliveryType: 'pickup',
+                        paymentMethod: 'pending',
+
+                        // Clear any applied coupons (tenant-specific)
+                        couponCode: null,
+                        discountAmount: 0,
+                        couponType: null,
+                        couponValue: null,
+                        couponError: null,
                     });
                 } else {
                     // Same tenant or first init - just update tenant info
