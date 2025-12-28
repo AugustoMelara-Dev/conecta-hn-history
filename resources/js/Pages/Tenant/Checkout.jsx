@@ -1,19 +1,20 @@
 /**
- * Checkout.jsx - The Transactional Terminal
+ * Checkout.jsx - The Transactional Terminal (HARDENED)
  *
  * ARCHITECTURE:
  * - Global Store Binding (no local state for form fields)
- * - Two-way binding to useCartStore
- * - Async submission with loading states
- * - WhatsApp redirect on success
+ * - Guard clause pattern for race condition prevention
+ * - Empty cart redirect protection
+ * - WCAG-compliant form accessibility
  *
- * DATA PERSISTENCE:
- * All form data is stored in Zustand with localStorage persistence.
- * Refreshing the page preserves all customer input.
+ * SECURITY:
+ * - Prevents double-submission via guard clause
+ * - Validates form before submission
+ * - Protects against empty cart submission
  */
 
-import { useMemo, useEffect } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { useEffect } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
     ShoppingCart,
@@ -23,7 +24,6 @@ import {
     Phone,
     Mail,
     FileText,
-    CreditCard,
     Truck,
     Store,
     AlertCircle,
@@ -32,29 +32,20 @@ import {
 } from 'lucide-react';
 import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
-
-/**
- * Format currency to Honduran Lempiras
- */
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('es-HN', {
-        style: 'currency',
-        currency: 'HNL',
-        minimumFractionDigits: 0,
-    }).format(amount || 0);
-};
+import useTenantContext from '@/Hooks/useTenantContext';
+import { formatCurrency } from '@/Utils/currency';
 
 /**
  * CartItemRow - Single item in order summary
+ * Optimized: Removed unnecessary useMemo for simple calculation
  */
 function CartItemRow({ item, primaryColor, onRemove }) {
-    const itemTotal = useMemo(() => {
-        const modifiersTotal = (item.selectedModifiers || []).reduce(
-            (sum, m) => sum + (m.price || 0),
-            0
-        );
-        return (item.price + modifiersTotal) * item.quantity;
-    }, [item]);
+    // Direct calculation - more efficient than useMemo for simple arithmetic
+    const modifiersTotal = (item.selectedModifiers || []).reduce(
+        (sum, m) => sum + (m.price || 0),
+        0
+    );
+    const itemTotal = (item.price + modifiersTotal) * item.quantity;
 
     return (
         <div className="flex items-start gap-4 py-4 border-b border-gray-100 last:border-0">
@@ -63,6 +54,7 @@ function CartItemRow({ item, primaryColor, onRemove }) {
                     src={item.image}
                     alt={item.name}
                     className="h-16 w-16 rounded-lg object-cover"
+                    loading="lazy"
                 />
             )}
             <div className="flex-1 min-w-0">
@@ -94,10 +86,9 @@ function CartItemRow({ item, primaryColor, onRemove }) {
 /**
  * Checkout - Main Checkout Page
  */
-export default function Checkout({ tenant }) {
-    const { props } = usePage();
-    const tenantData = tenant || props.tenant || {};
-    const primaryColor = tenantData.primary_color || '#000000';
+export default function Checkout() {
+    // Use centralized tenant context hook
+    const { tenant, primaryColor } = useTenantContext();
 
     // ═══════════════════════════════════════════════════════════════════════
     // GLOBAL STORE BINDING: No local state - everything from Zustand
@@ -110,14 +101,12 @@ export default function Checkout({ tenant }) {
         customerAddress,
         customerNotes,
         deliveryType,
-        paymentMethod,
         setCustomerName,
         setCustomerPhone,
         setCustomerEmail,
         setCustomerAddress,
         setCustomerNotes,
         setDeliveryType,
-        setPaymentMethod,
         removeItem,
         getSubtotal,
         getGrandTotal,
@@ -125,28 +114,31 @@ export default function Checkout({ tenant }) {
         submitError,
         submitOrder,
         clearError,
-        initForTenant,
     } = useCartStore();
 
     const subtotal = getSubtotal();
     const grandTotal = getGrandTotal();
 
-    // Initialize cart for tenant
+    // ═══════════════════════════════════════════════════════════════════════
+    // EMPTY CART DEFENSE: Redirect if cart becomes empty
+    // ═══════════════════════════════════════════════════════════════════════
     useEffect(() => {
-        if (tenantData.slug) {
-            initForTenant(
-                tenantData.slug,
-                tenantData.whatsapp_number,
-                tenantData.name,
-                tenantData.id
-            );
+        // Only redirect if we're not in the middle of submission
+        // and the cart is genuinely empty
+        if (items.length === 0 && !isSubmitting && tenant.slug) {
+            // Small delay to prevent flash during hydration
+            const timeout = setTimeout(() => {
+                router.visit(`/${tenant.slug}`);
+            }, 100);
+
+            return () => clearTimeout(timeout);
         }
-    }, [tenantData.slug, tenantData.whatsapp_number, tenantData.name, tenantData.id, initForTenant]);
+    }, [items.length, isSubmitting, tenant.slug]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // VALIDATION
+    // FORM VALIDATION
     // ═══════════════════════════════════════════════════════════════════════
-    const isFormValid = useMemo(() => {
+    const isFormValid = (() => {
         if (items.length === 0) return false;
         if (!customerName || customerName.trim().length < 2) return false;
         if (!customerPhone || customerPhone.trim().length < 8) return false;
@@ -154,13 +146,29 @@ export default function Checkout({ tenant }) {
             return false;
         }
         return true;
-    }, [items.length, customerName, customerPhone, deliveryType, customerAddress]);
+    })();
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ORDER SUBMISSION
+    // ORDER SUBMISSION: With Guard Clause
     // ═══════════════════════════════════════════════════════════════════════
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // ═══════════════════════════════════════════════════════════════════
+        // GUARD CLAUSE: Prevent race condition
+        // If already submitting, abort immediately
+        // ═══════════════════════════════════════════════════════════════════
+        if (isSubmitting) {
+            console.warn('[Checkout] Submission already in progress, ignoring duplicate request');
+            return;
+        }
+
+        // Additional validation guard
+        if (!isFormValid) {
+            console.warn('[Checkout] Form validation failed');
+            return;
+        }
+
         clearError();
 
         const result = await submitOrder();
@@ -172,7 +180,7 @@ export default function Checkout({ tenant }) {
     };
 
     // ═══════════════════════════════════════════════════════════════════════
-    // EMPTY CART STATE
+    // EMPTY CART STATE (Fallback before redirect)
     // ═══════════════════════════════════════════════════════════════════════
     if (items.length === 0) {
         return (
@@ -187,7 +195,7 @@ export default function Checkout({ tenant }) {
                         Agrega productos para continuar con tu pedido.
                     </p>
                     <Link
-                        href={`/${tenantData.slug}`}
+                        href={`/${tenant.slug}`}
                         className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all hover:opacity-90"
                         style={{ backgroundColor: primaryColor }}
                     >
@@ -206,7 +214,7 @@ export default function Checkout({ tenant }) {
             <div className="max-w-7xl mx-auto px-4 py-6">
                 {/* Back Link */}
                 <Link
-                    href={`/${tenantData.slug}`}
+                    href={`/${tenant.slug}`}
                     className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
                 >
                     <ArrowLeft className="h-4 w-4 mr-2" />
@@ -217,7 +225,7 @@ export default function Checkout({ tenant }) {
                     Finalizar Pedido
                 </h1>
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} noValidate>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* ═══════════════════════════════════════════════════
                             LEFT: Customer Form
@@ -244,7 +252,10 @@ export default function Checkout({ tenant }) {
                                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
                                             style={{ '--tw-ring-color': primaryColor }}
                                             required
+                                            minLength={2}
+                                            aria-required="true"
                                             aria-label="Nombre completo"
+                                            autoComplete="name"
                                         />
                                     </div>
                                     <div>
@@ -262,7 +273,10 @@ export default function Checkout({ tenant }) {
                                                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
                                                 style={{ '--tw-ring-color': primaryColor }}
                                                 required
+                                                minLength={8}
+                                                aria-required="true"
                                                 aria-label="Número de teléfono"
+                                                autoComplete="tel"
                                             />
                                         </div>
                                     </div>
@@ -283,6 +297,7 @@ export default function Checkout({ tenant }) {
                                             className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
                                             style={{ '--tw-ring-color': primaryColor }}
                                             aria-label="Correo electrónico"
+                                            autoComplete="email"
                                         />
                                     </div>
                                 </div>
@@ -295,7 +310,7 @@ export default function Checkout({ tenant }) {
                                     Método de Entrega
                                 </h2>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-4" role="radiogroup" aria-label="Método de entrega">
                                     <button
                                         type="button"
                                         onClick={() => setDeliveryType('pickup')}
@@ -308,7 +323,9 @@ export default function Checkout({ tenant }) {
                                             borderColor: deliveryType === 'pickup' ? primaryColor : undefined,
                                             backgroundColor: deliveryType === 'pickup' ? `${primaryColor}10` : undefined,
                                         }}
-                                        aria-pressed={deliveryType === 'pickup'}
+                                        role="radio"
+                                        aria-checked={deliveryType === 'pickup'}
+                                        aria-label="Recoger en tienda"
                                     >
                                         <Store className="h-5 w-5" />
                                         <span className="font-medium">Recoger</span>
@@ -325,7 +342,9 @@ export default function Checkout({ tenant }) {
                                             borderColor: deliveryType === 'delivery' ? primaryColor : undefined,
                                             backgroundColor: deliveryType === 'delivery' ? `${primaryColor}10` : undefined,
                                         }}
-                                        aria-pressed={deliveryType === 'delivery'}
+                                        role="radio"
+                                        aria-checked={deliveryType === 'delivery'}
+                                        aria-label="Delivery a domicilio"
                                     >
                                         <Truck className="h-5 w-5" />
                                         <span className="font-medium">Delivery</span>
@@ -348,7 +367,10 @@ export default function Checkout({ tenant }) {
                                                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
                                                 style={{ '--tw-ring-color': primaryColor }}
                                                 required={deliveryType === 'delivery'}
+                                                minLength={5}
+                                                aria-required={deliveryType === 'delivery'}
                                                 aria-label="Dirección de entrega"
+                                                autoComplete="street-address"
                                             />
                                         </div>
                                     </div>
@@ -362,13 +384,14 @@ export default function Checkout({ tenant }) {
                                     Notas adicionales
                                 </h2>
                                 <textarea
+                                    id="checkout-notes"
                                     value={customerNotes}
                                     onChange={(e) => setCustomerNotes(e.target.value)}
                                     placeholder="Instrucciones especiales para tu pedido..."
                                     rows={3}
                                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
                                     style={{ '--tw-ring-color': primaryColor }}
-                                    aria-label="Notas adicionales"
+                                    aria-label="Notas adicionales para el pedido"
                                 />
                             </div>
                         </div>
@@ -383,7 +406,7 @@ export default function Checkout({ tenant }) {
                                 </h2>
 
                                 {/* Cart Items */}
-                                <div className="max-h-80 overflow-y-auto">
+                                <div className="max-h-80 overflow-y-auto" role="list" aria-label="Productos en el carrito">
                                     {items.map((item) => (
                                         <CartItemRow
                                             key={item.id}
@@ -410,7 +433,10 @@ export default function Checkout({ tenant }) {
 
                                 {/* Error Message */}
                                 {submitError && (
-                                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                                    <div
+                                        role="alert"
+                                        className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2"
+                                    >
                                         <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                                         <p className="text-sm text-red-700">{submitError}</p>
                                     </div>
@@ -426,7 +452,8 @@ export default function Checkout({ tenant }) {
                                             : 'hover:opacity-90'
                                         }`}
                                     style={{ backgroundColor: primaryColor }}
-                                    aria-label="Confirmar pedido"
+                                    aria-label={isSubmitting ? 'Procesando pedido' : 'Confirmar pedido'}
+                                    aria-busy={isSubmitting}
                                 >
                                     {isSubmitting ? (
                                         <>

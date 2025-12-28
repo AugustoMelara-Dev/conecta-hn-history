@@ -1,39 +1,34 @@
 /**
- * StoreHome.jsx - The Catalog Discovery Page
+ * StoreHome.jsx - The Catalog Discovery Page (HARDENED)
  *
  * ARCHITECTURE:
  * - Scroll-Spy target with strict ID contract
  * - Browser-Native scroll offset via CSS scroll-margin
- * - Smart Hero with banner fallback gradient
- * - Responsive product grid
+ * - Context-aware inventory checking
+ * - SPA-compliant navigation (no window.location)
+ *
+ * SECURITY:
+ * - Validates stock against cart quantity before adding
+ * - Prevents overselling via frontend guard
  *
  * ID CONTRACT:
  * Each section MUST have id={`category-${section.id}`}
- * This is the key that CategoryNav searches for.
  */
 
-import { Head, Link, usePage } from '@inertiajs/react';
-import { ShoppingBag, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
+import { ShoppingBag, Plus, AlertCircle, X } from 'lucide-react';
 import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
-import { useEffect } from 'react';
-
-/**
- * Format currency to Honduran Lempiras
- */
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('es-HN', {
-        style: 'currency',
-        currency: 'HNL',
-        minimumFractionDigits: 0,
-    }).format(amount || 0);
-};
+import useTenantContext from '@/Hooks/useTenantContext';
+import { formatCurrency } from '@/Utils/currency';
 
 /**
  * ProductCard - Atomic product display with separated click areas
  */
-function ProductCard({ product, tenant, onQuickAdd }) {
+function ProductCard({ product, tenant, onQuickAdd, isAddingDisabled }) {
     const productUrl = `/${tenant.slug}/product/${product.id}`;
+    const isOutOfStock = product.manage_stock && product.stock_quantity <= 0;
 
     return (
         <div className="group bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -59,7 +54,7 @@ function ProductCard({ product, tenant, onQuickAdd }) {
                 )}
 
                 {/* Out of Stock Badge */}
-                {product.manage_stock && product.stock_quantity <= 0 && (
+                {isOutOfStock && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                         <span className="bg-white text-gray-900 px-3 py-1 rounded-full text-sm font-medium">
                             Agotado
@@ -84,17 +79,27 @@ function ProductCard({ product, tenant, onQuickAdd }) {
                     </p>
                 )}
 
-                {/* Price & Add Button */}
+                {/* Price Display with Discount Support */}
                 <div className="mt-3 flex items-center justify-between">
-                    <span
-                        className="text-lg font-bold"
-                        style={{ color: tenant.primary_color }}
-                    >
-                        {formatCurrency(product.price)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        {/* Original Price (strikethrough if discounted) */}
+                        {product.price_before_discount &&
+                            product.price_before_discount > product.price && (
+                                <span className="text-sm text-gray-400 line-through">
+                                    {formatCurrency(product.price_before_discount)}
+                                </span>
+                            )}
+                        {/* Current Price */}
+                        <span
+                            className="text-lg font-bold"
+                            style={{ color: tenant.primary_color }}
+                        >
+                            {formatCurrency(product.price)}
+                        </span>
+                    </div>
 
                     {/* Quick Add Button - Separated click area */}
-                    {(!product.manage_stock || product.stock_quantity > 0) && (
+                    {!isOutOfStock && (
                         <button
                             type="button"
                             onClick={(e) => {
@@ -102,7 +107,12 @@ function ProductCard({ product, tenant, onQuickAdd }) {
                                 e.stopPropagation();
                                 onQuickAdd(product);
                             }}
-                            className="p-2 rounded-full text-white transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                            disabled={isAddingDisabled}
+                            className={`p-2 rounded-full text-white transition-all focus:outline-none focus:ring-2 focus:ring-offset-2
+                                ${isAddingDisabled
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:scale-110'
+                                }`}
                             style={{
                                 backgroundColor: tenant.primary_color,
                                 '--tw-ring-color': tenant.primary_color,
@@ -119,54 +129,115 @@ function ProductCard({ product, tenant, onQuickAdd }) {
 }
 
 /**
+ * Toast Notification Component
+ */
+function Toast({ message, type = 'success', onClose, primaryColor }) {
+    const bgColor = type === 'error' ? '#ef4444' : primaryColor;
+    const Icon = type === 'error' ? AlertCircle : ShoppingBag;
+
+    return (
+        <div
+            role="alert"
+            aria-live="polite"
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce"
+        >
+            <div
+                className="flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white"
+                style={{ backgroundColor: bgColor }}
+            >
+                <Icon className="h-5 w-5" />
+                <span className="font-medium">{message}</span>
+                <button
+                    onClick={onClose}
+                    className="ml-2 p-1 hover:bg-white/20 rounded"
+                    aria-label="Cerrar notificación"
+                >
+                    <X className="h-4 w-4" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+/**
  * StoreHome - Main Catalog Page
  */
-export default function StoreHome({ tenant, sections = [] }) {
-    const { props } = usePage();
-    const tenantData = tenant || props.tenant || {};
-    const primaryColor = tenantData.primary_color || '#000000';
+export default function StoreHome({ sections = [] }) {
+    // Use centralized tenant context hook
+    const { tenant, primaryColor } = useTenantContext();
 
-    // Initialize cart for this tenant
-    const { initForTenant, addItem, openCart } = useCartStore();
+    // Cart store for inventory validation
+    const { items, addItem, openCart } = useCartStore();
 
-    useEffect(() => {
-        if (tenantData.slug) {
-            initForTenant(
-                tenantData.slug,
-                tenantData.whatsapp_number,
-                tenantData.name,
-                tenantData.id
-            );
-        }
-    }, [tenantData.slug, tenantData.whatsapp_number, tenantData.name, tenantData.id, initForTenant]);
+    // Toast state
+    const [toast, setToast] = useState(null);
 
     /**
-     * Quick add product to cart (no modifiers)
+     * Show toast notification
+     */
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    /**
+     * Context-Aware Quick Add with Inventory Validation
      */
     const handleQuickAdd = (product) => {
-        // If product has modifiers, navigate to detail page instead
+        // If product has modifiers, navigate to detail page (SPA-compliant)
         if (product.modifier_groups?.length > 0) {
-            window.location.href = `/${tenantData.slug}/product/${product.id}`;
+            router.visit(`/${tenant.slug}/product/${product.id}`);
             return;
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // CONTEXT-AWARE INVENTORY CHECK
+        // Validates stock against current cart quantity before adding
+        // ═══════════════════════════════════════════════════════════════════
+        if (product.manage_stock) {
+            // Find current quantity of this product in cart
+            const cartItem = items.find((item) => item.productId === product.id);
+            const currentCartQty = cartItem?.quantity || 0;
+            const projectedQty = currentCartQty + 1;
+
+            if (projectedQty > product.stock_quantity) {
+                showToast(
+                    `Solo quedan ${product.stock_quantity} unidades disponibles`,
+                    'error'
+                );
+                return;
+            }
+        }
+
+        // All validations passed - add to cart
         addItem(product, 1, [], '');
         openCart();
+        showToast('Producto agregado al carrito');
     };
 
     return (
         <StoreLayout>
-            <Head title={tenantData.name || 'Tienda'} />
+            <Head title={tenant.name || 'Tienda'} />
+
+            {/* Toast Notification */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                    primaryColor={primaryColor}
+                />
+            )}
 
             {/* ═══════════════════════════════════════════════════════════════
                 HERO SECTION: Smart Banner with Gradient Fallback
             ═══════════════════════════════════════════════════════════════ */}
             <section className="relative">
-                {tenantData.banner_url ? (
+                {tenant.banner_url ? (
                     <div className="aspect-[21/9] w-full overflow-hidden">
                         <img
-                            src={tenantData.banner_url}
-                            alt={`Banner de ${tenantData.name}`}
+                            src={tenant.banner_url}
+                            alt={`Banner de ${tenant.name}`}
                             className="w-full h-full object-cover"
                         />
                     </div>
@@ -180,11 +251,11 @@ export default function StoreHome({ tenant, sections = [] }) {
                     >
                         <div className="text-center text-white">
                             <h1 className="text-3xl md:text-5xl font-bold drop-shadow-lg">
-                                {tenantData.name}
+                                {tenant.name}
                             </h1>
-                            {tenantData.tagline && (
+                            {tenant.tagline && (
                                 <p className="mt-2 text-lg md:text-xl opacity-90">
-                                    {tenantData.tagline}
+                                    {tenant.tagline}
                                 </p>
                             )}
                         </div>
@@ -209,7 +280,7 @@ export default function StoreHome({ tenant, sections = [] }) {
                             key={section.id}
                             /* ═══════════════════════════════════════════════════
                                ID CONTRACT: CategoryNav searches for this exact ID
-                               scroll-mt-40: Browser-Native offset (160px = navbar + category nav)
+                               scroll-mt-40: Browser-Native offset (160px)
                             ═══════════════════════════════════════════════════ */
                             id={`category-${section.id}`}
                             className="scroll-mt-40 mb-12"
@@ -225,8 +296,9 @@ export default function StoreHome({ tenant, sections = [] }) {
                                     <ProductCard
                                         key={product.id}
                                         product={product}
-                                        tenant={tenantData}
+                                        tenant={tenant}
                                         onQuickAdd={handleQuickAdd}
+                                        isAddingDisabled={false}
                                     />
                                 ))}
                             </div>

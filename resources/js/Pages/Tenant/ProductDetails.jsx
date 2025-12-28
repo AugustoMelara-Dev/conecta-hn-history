@@ -1,18 +1,19 @@
 /**
- * ProductDetails.jsx - Product Configuration Engine
+ * ProductDetails.jsx - Product Configuration Engine (HARDENED)
  *
  * ARCHITECTURE:
  * - Modifier state management with validation
  * - RadioGroup for single-select, Checkboxes for multi-select
- * - Price reactivity per option
- * - Gatekeeper validation before cart injection
+ * - Quantity clamping with stock limits
+ * - WCAG-compliant accessible notifications
  *
- * VALIDATION:
- * Users cannot add to cart until ALL required modifier groups are satisfied.
+ * SECURITY:
+ * - Prevents quantity exceeding stock via input clamping
+ * - Validates all required modifiers before cart injection
  */
 
-import { useState, useMemo, useEffect } from 'react';
-import { Head, Link, usePage, router } from '@inertiajs/react';
+import { useState, useMemo } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
 import { RadioGroup } from '@headlessui/react';
 import {
     ArrowLeft,
@@ -22,20 +23,12 @@ import {
     Plus,
     AlertCircle,
     CheckCircle,
+    X,
 } from 'lucide-react';
 import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
-
-/**
- * Format currency to Honduran Lempiras
- */
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('es-HN', {
-        style: 'currency',
-        currency: 'HNL',
-        minimumFractionDigits: 0,
-    }).format(amount || 0);
-};
+import useTenantContext from '@/Hooks/useTenantContext';
+import { formatCurrency } from '@/Utils/currency';
 
 /**
  * ModifierGroupRadio - Single selection modifier group
@@ -180,35 +173,63 @@ function ModifierGroupCheckbox({ group, selectedOptions = [], onToggle, primaryC
 }
 
 /**
+ * Accessible Toast Notification
+ */
+function Toast({ message, type = 'success', onClose, primaryColor }) {
+    const bgColor = type === 'error' ? '#ef4444' : primaryColor;
+    const Icon = type === 'error' ? AlertCircle : CheckCircle;
+
+    return (
+        <div
+            role="alert"
+            aria-live="polite"
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-50"
+        >
+            <div
+                className="flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white animate-bounce"
+                style={{ backgroundColor: bgColor }}
+            >
+                <Icon className="h-5 w-5" />
+                <span className="font-medium">{message}</span>
+                <button
+                    onClick={onClose}
+                    className="ml-2 p-1 hover:bg-white/20 rounded"
+                    aria-label="Cerrar notificación"
+                >
+                    <X className="h-4 w-4" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+/**
  * ProductDetails - Main Product Configuration Page
  */
-export default function ProductDetails({ tenant, product }) {
-    const { props } = usePage();
-    const tenantData = tenant || props.tenant || {};
-    const primaryColor = tenantData.primary_color || '#000000';
+export default function ProductDetails({ product }) {
+    // Use centralized tenant context hook
+    const { tenant, primaryColor } = useTenantContext();
 
     // ═══════════════════════════════════════════════════════════════════════
-    // STATE: Modifier selections
+    // STATE: Modifier selections & quantity
     // ═══════════════════════════════════════════════════════════════════════
     const [modifiers, setModifiers] = useState({});
     const [quantity, setQuantity] = useState(1);
     const [notes, setNotes] = useState('');
-    const [showToast, setShowToast] = useState(false);
+    const [toast, setToast] = useState(null);
 
     // Cart store
-    const { addItem, openCart, initForTenant } = useCartStore();
+    const { addItem, openCart } = useCartStore();
 
-    // Initialize cart for tenant
-    useEffect(() => {
-        if (tenantData.slug) {
-            initForTenant(
-                tenantData.slug,
-                tenantData.whatsapp_number,
-                tenantData.name,
-                tenantData.id
-            );
+    // ═══════════════════════════════════════════════════════════════════════
+    // QUANTITY LIMITS: Derived from stock or safe maximum
+    // ═══════════════════════════════════════════════════════════════════════
+    const maxQuantity = useMemo(() => {
+        if (product?.manage_stock) {
+            return product.stock_quantity || 1;
         }
-    }, [tenantData.slug, tenantData.whatsapp_number, tenantData.name, tenantData.id, initForTenant]);
+        return 99; // Safe logical limit for non-stock-managed products
+    }, [product?.manage_stock, product?.stock_quantity]);
 
     // ═══════════════════════════════════════════════════════════════════════
     // MODIFIER HANDLERS
@@ -241,6 +262,17 @@ export default function ProductDetails({ tenant, product }) {
     };
 
     // ═══════════════════════════════════════════════════════════════════════
+    // QUANTITY HANDLERS: With input clamping
+    // ═══════════════════════════════════════════════════════════════════════
+    const handleIncrement = () => {
+        setQuantity((q) => Math.min(maxQuantity, q + 1));
+    };
+
+    const handleDecrement = () => {
+        setQuantity((q) => Math.max(1, q - 1));
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
     // GATEKEEPER: Validation for required modifiers
     // ═══════════════════════════════════════════════════════════════════════
     const isSelectionComplete = useMemo(() => {
@@ -251,10 +283,8 @@ export default function ProductDetails({ tenant, product }) {
                 const selection = modifiers[group.id];
 
                 if (group.max_selections === 1) {
-                    // Radio: Must have a selection
                     if (!selection) return false;
                 } else {
-                    // Checkbox: Must have at least one selection
                     if (!selection || selection.length === 0) return false;
                 }
             }
@@ -263,7 +293,7 @@ export default function ProductDetails({ tenant, product }) {
     }, [product?.modifier_groups, modifiers]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // PRICE CALCULATION: Base + modifiers
+    // PRICE CALCULATION: Base + modifiers * quantity
     // ═══════════════════════════════════════════════════════════════════════
     const calculatedPrice = useMemo(() => {
         let total = product?.price || 0;
@@ -274,13 +304,11 @@ export default function ProductDetails({ tenant, product }) {
 
                 if (selection) {
                     if (Array.isArray(selection)) {
-                        // Multi-select
                         for (const optionId of selection) {
                             const option = group.options?.find((o) => o.id === optionId);
                             if (option) total += option.price || 0;
                         }
                     } else {
-                        // Single-select
                         const option = group.options?.find((o) => o.id === selection);
                         if (option) total += option.price || 0;
                     }
@@ -290,6 +318,14 @@ export default function ProductDetails({ tenant, product }) {
 
         return total * quantity;
     }, [product, modifiers, quantity]);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // TOAST HELPER
+    // ═══════════════════════════════════════════════════════════════════════
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
 
     // ═══════════════════════════════════════════════════════════════════════
     // CART INJECTION
@@ -335,30 +371,29 @@ export default function ProductDetails({ tenant, product }) {
         }
 
         addItem(product, quantity, selectedModifiers, notes);
-
-        // Show toast
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
+        showToast('Producto agregado al carrito');
     };
 
     const handleGoToCheckout = () => {
         openCart();
-        router.visit(`/${tenantData.slug}/checkout`);
+        router.visit(`/${tenant.slug}/checkout`);
     };
 
     // ═══════════════════════════════════════════════════════════════════════
-    // RENDER
+    // RENDER: Product not found state
     // ═══════════════════════════════════════════════════════════════════════
     if (!product) {
         return (
             <StoreLayout>
                 <Head title="Producto no encontrado" />
                 <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-                    <p className="text-gray-500">Producto no encontrado.</p>
+                    <AlertCircle className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                    <p className="text-gray-500 text-lg">Producto no encontrado.</p>
                     <Link
-                        href={`/${tenantData.slug}`}
-                        className="mt-4 inline-block text-blue-600 hover:underline"
+                        href={`/${tenant.slug}`}
+                        className="mt-4 inline-flex items-center gap-2 text-blue-600 hover:underline"
                     >
+                        <ArrowLeft className="h-4 w-4" />
                         Volver al catálogo
                     </Link>
                 </div>
@@ -370,23 +405,20 @@ export default function ProductDetails({ tenant, product }) {
         <StoreLayout>
             <Head title={product.name} />
 
-            {/* Toast Notification */}
-            {showToast && (
-                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce">
-                    <div
-                        className="flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white"
-                        style={{ backgroundColor: primaryColor }}
-                    >
-                        <CheckCircle className="h-5 w-5" />
-                        <span className="font-medium">Producto agregado al carrito</span>
-                    </div>
-                </div>
+            {/* Accessible Toast Notification */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                    primaryColor={primaryColor}
+                />
             )}
 
             <div className="max-w-7xl mx-auto px-4 py-6">
                 {/* Back Link */}
                 <Link
-                    href={`/${tenantData.slug}`}
+                    href={`/${tenant.slug}`}
                     className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
                 >
                     <ArrowLeft className="h-4 w-4 mr-2" />
@@ -394,13 +426,14 @@ export default function ProductDetails({ tenant, product }) {
                 </Link>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Product Image */}
+                    {/* Product Image - with lazy loading */}
                     <div className="aspect-square rounded-2xl overflow-hidden bg-gray-100">
                         {product.image ? (
                             <img
                                 src={product.image}
                                 alt={product.name}
                                 className="w-full h-full object-cover"
+                                loading="lazy"
                             />
                         ) : (
                             <div
@@ -421,16 +454,34 @@ export default function ProductDetails({ tenant, product }) {
                             <h1 className="text-3xl font-bold text-gray-900">
                                 {product.name}
                             </h1>
-                            <p
-                                className="text-2xl font-bold mt-2"
-                                style={{ color: primaryColor }}
-                            >
-                                {formatCurrency(product.price)}
-                            </p>
+                            <div className="flex items-center gap-3 mt-2">
+                                {/* Discount price display */}
+                                {product.price_before_discount &&
+                                    product.price_before_discount > product.price && (
+                                        <span className="text-lg text-gray-400 line-through">
+                                            {formatCurrency(product.price_before_discount)}
+                                        </span>
+                                    )}
+                                <p
+                                    className="text-2xl font-bold"
+                                    style={{ color: primaryColor }}
+                                >
+                                    {formatCurrency(product.price)}
+                                </p>
+                            </div>
                         </div>
 
                         {product.description && (
                             <p className="text-gray-600">{product.description}</p>
+                        )}
+
+                        {/* Stock indicator */}
+                        {product.manage_stock && (
+                            <p className="text-sm text-gray-500">
+                                {product.stock_quantity > 0
+                                    ? `${product.stock_quantity} disponibles`
+                                    : 'Agotado'}
+                            </p>
                         )}
 
                         {/* Modifier Groups */}
@@ -478,19 +529,25 @@ export default function ProductDetails({ tenant, product }) {
                                 className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-offset-2"
                                 style={{ '--tw-ring-color': primaryColor }}
                                 placeholder="Instrucciones especiales..."
+                                aria-label="Notas adicionales para el producto"
                             />
                         </div>
 
                         {/* Quantity & Add to Cart */}
                         <div className="border-t border-gray-200 pt-6 space-y-4">
-                            {/* Quantity Selector */}
+                            {/* Quantity Selector with clamping */}
                             <div className="flex items-center justify-between">
                                 <span className="font-semibold text-gray-900">Cantidad</span>
                                 <div className="flex items-center gap-4">
                                     <button
                                         type="button"
-                                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                                        className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors"
+                                        onClick={handleDecrement}
+                                        disabled={quantity <= 1}
+                                        className={`p-2 rounded-full border border-gray-300 transition-colors
+                                            ${quantity <= 1
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : 'hover:bg-gray-100'
+                                            }`}
                                         aria-label="Reducir cantidad"
                                     >
                                         <Minus className="h-4 w-4" />
@@ -500,14 +557,26 @@ export default function ProductDetails({ tenant, product }) {
                                     </span>
                                     <button
                                         type="button"
-                                        onClick={() => setQuantity((q) => q + 1)}
-                                        className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors"
+                                        onClick={handleIncrement}
+                                        disabled={quantity >= maxQuantity}
+                                        className={`p-2 rounded-full border border-gray-300 transition-colors
+                                            ${quantity >= maxQuantity
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : 'hover:bg-gray-100'
+                                            }`}
                                         aria-label="Aumentar cantidad"
                                     >
                                         <Plus className="h-4 w-4" />
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Stock warning when at max */}
+                            {product.manage_stock && quantity >= maxQuantity && (
+                                <p className="text-sm text-amber-600">
+                                    Cantidad máxima disponible alcanzada.
+                                </p>
+                            )}
 
                             {/* Validation Warning */}
                             {!isSelectionComplete && (
