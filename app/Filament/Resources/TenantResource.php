@@ -265,6 +265,15 @@ class TenantResource extends Resource
                     ->formatStateUsing(fn (bool $state): string => $state ? 'PRO' : 'FREE'),
 
                 // ═══════════════════════════════════════════════════════════
+                // COLUMNA 5.5: Color de Marca (Visual Brand Identity)
+                // ═══════════════════════════════════════════════════════════
+                Tables\Columns\ColorColumn::make('primary_color')
+                    ->label('Marca')
+                    ->copyable()
+                    ->copyMessage('Color copiado')
+                    ->tooltip(fn ($state) => $state ?? 'Sin color definido'),
+
+                // ═══════════════════════════════════════════════════════════
                 // COLUMNA 6: Algoritmo de Salud del Negocio
                 // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('updated_at')

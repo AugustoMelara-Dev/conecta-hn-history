@@ -337,11 +337,37 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Configuracion de Activity Log - Registro Forense
+     *
+     * TRACKED FIELDS:
+     * - Identity: name, status, user_id
+     * - Subscription: is_pro, is_active, plan_expires_at, plan_type, subscription_status
+     * - Branding: primary_color, brand_color
+     * - Operations: payment_methods, delivery_enabled, pickup_enabled, minimum_order
      */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'status', 'is_pro', 'is_active', 'plan_expires_at', 'user_id'])
+            ->logOnly([
+                // Identity & Status
+                'name',
+                'status',
+                'user_id',
+                // Subscription Engine
+                'is_pro',
+                'is_active',
+                'plan_expires_at',
+                'plan_type',
+                'subscription_status',
+                'subscription_ends_at',
+                // Branding (Security: track visual identity changes)
+                'primary_color',
+                'brand_color',
+                // Operational Settings (Security: track payment config changes)
+                'payment_methods',
+                'delivery_enabled',
+                'pickup_enabled',
+                'minimum_order',
+            ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn (string $eventName) => match ($eventName) {
