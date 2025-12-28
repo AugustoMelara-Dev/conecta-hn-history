@@ -58,7 +58,7 @@ class OrderResource extends JsonResource
             // tracking_url: Public URL customers can use to track their order
             'tracking_uuid' => $this->tracking_uuid,
             'tracking_url' => $this->tracking_uuid 
-                ? config('app.url') . '/track/' . $this->tracking_uuid 
+                ? url('/track/' . $this->tracking_uuid) 
                 : null,
 
             // Computed fields

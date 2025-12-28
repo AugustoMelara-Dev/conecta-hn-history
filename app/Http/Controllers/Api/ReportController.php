@@ -32,9 +32,21 @@ class ReportController extends Controller
      * Export sales data to Excel.
      *
      * GET /api/reports/sales/excel?start_date=2024-01-01&end_date=2024-12-31&status=delivered
+     *
+     * RESOURCE ESCALATION:
+     * Large tenants (100k+ orders) require extended execution time.
+     * JIT escalation prevents HTTP 504 Gateway Timeout.
      */
     public function salesExcel(Request $request): BinaryFileResponse
     {
+        // ═══════════════════════════════════════════════════════════════════════
+        // JIT RESOURCE ESCALATION: Prevent timeout on large datasets
+        // ═══════════════════════════════════════════════════════════════════════
+        // These settings are scoped to THIS REQUEST ONLY.
+        // Chunking handles memory; this handles CPU time for XML serialization.
+        ini_set('max_execution_time', '300');
+        ini_set('memory_limit', '512M');
+
         $tenant = $request->user()->tenant;
 
         if (! $tenant) {

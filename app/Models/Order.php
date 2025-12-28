@@ -316,7 +316,7 @@ class Order extends Model
         // tracking_uuid serves as a bearer token for unauthenticated WebSocket access.
         // This closes the UX loop by giving customers a trackable entry point.
         if ($this->tracking_uuid) {
-            $trackingUrl = config('app.url') . '/track/' . $this->tracking_uuid;
+            $trackingUrl = url('/track/' . $this->tracking_uuid);
             $lines[] = '';
             $lines[] = '─────────────────────────';
             $lines[] = "🔍 *Sigue tu pedido en vivo:*";
