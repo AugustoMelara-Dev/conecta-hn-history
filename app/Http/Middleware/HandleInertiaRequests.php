@@ -109,21 +109,59 @@ class HandleInertiaRequests extends Middleware
         }
 
         return [
+            // ═══════════════════════════════════════════════════════════════
+            // IDENTITY
+            // ═══════════════════════════════════════════════════════════════
             'id' => $tenant->id,
             'name' => $tenant->name,
             'slug' => $tenant->slug,
-            'logo_url' => $tenant->logo_path ? \Illuminate\Support\Facades\Storage::url($tenant->logo_path) : null,
-            // Contact info for header/footer
+            'logo_url' => $tenant->logo_path 
+                ? \Illuminate\Support\Facades\Storage::url($tenant->logo_path) 
+                : null,
+
+            // ═══════════════════════════════════════════════════════════════
+            // CONTACT INFO
+            // ═══════════════════════════════════════════════════════════════
             'whatsapp' => $tenant->whatsapp,
             'whatsapp_number' => $tenant->whatsapp_number,
             'phone' => $tenant->phone,
-            // Banking info for checkout instructions
+
+            // ═══════════════════════════════════════════════════════════════
+            // BANKING INFO (Checkout Instructions)
+            // ═══════════════════════════════════════════════════════════════
             'bank_name' => $tenant->bank_name,
             'bank_account' => $tenant->bank_account,
             'bank_account_name' => $tenant->bank_account_name,
             'bank_account_type' => $tenant->bank_account_type,
-            // Business settings
+
+            // ═══════════════════════════════════════════════════════════════
+            // SUBSCRIPTION STATUS
+            // ═══════════════════════════════════════════════════════════════
             'is_pro' => $tenant->is_pro ?? false,
+
+            // ═══════════════════════════════════════════════════════════════
+            // BRANDING (White-Label UI)
+            // ═══════════════════════════════════════════════════════════════
+            // Primary color for navbar, buttons, accents
+            // Fallback to neutral black if not configured
+            'primary_color' => $tenant->primary_color ?? '#000000',
+
+            // ═══════════════════════════════════════════════════════════════
+            // OPERATIONAL SETTINGS
+            // ═══════════════════════════════════════════════════════════════
+            // Nested config for checkout and feature flags
+            'settings' => [
+                // Payment methods enabled for this tenant
+                // Used by Checkout to conditionally render payment options
+                'payment_methods' => $tenant->payment_methods ?? [],
+                
+                // Delivery options
+                'delivery_enabled' => $tenant->delivery_enabled ?? true,
+                'pickup_enabled' => $tenant->pickup_enabled ?? true,
+                
+                // Minimum order value (if configured)
+                'minimum_order' => $tenant->minimum_order ?? 0,
+            ],
         ];
     }
 }
