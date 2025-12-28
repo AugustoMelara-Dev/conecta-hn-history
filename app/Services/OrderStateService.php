@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
+use App\Models\OrderEvent;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -96,6 +97,15 @@ class OrderStateService
 
             // Persist the state change
             $order->update($updateData);
+
+            // ═══════════════════════════════════════════════════════════════════════
+            // EVENT SOURCING: Record immutable audit trail
+            // ═══════════════════════════════════════════════════════════════════════
+            OrderEvent::record($order, 'status_changed', [
+                'from' => $currentStatus,
+                'to' => $newStatus,
+                'triggered_by' => 'fsm_transition',
+            ], auth()->id());
 
             // Dispatch real-time event (handled by OrderObserver or here)
             $this->dispatchStatusEvent($order, $currentStatus, $newStatus);

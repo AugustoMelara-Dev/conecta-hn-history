@@ -29,24 +29,18 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class ReportController extends Controller
 {
     /**
-     * Export sales data to Excel.
+     * Dispatch async sales report generation.
      *
-     * GET /api/reports/sales/excel?start_date=2024-01-01&end_date=2024-12-31&status=delivered
+     * POST /api/reports/sales/excel
      *
-     * RESOURCE ESCALATION:
-     * Large tenants (100k+ orders) require extended execution time.
-     * JIT escalation prevents HTTP 504 Gateway Timeout.
+     * ASYNC PATTERN:
+     * - Validates request
+     * - Dispatches background job
+     * - Returns HTTP 202 Accepted immediately
+     * - User receives notification when report is ready
      */
-    public function salesExcel(Request $request): BinaryFileResponse
+    public function salesExcel(Request $request): JsonResponse
     {
-        // ═══════════════════════════════════════════════════════════════════════
-        // JIT RESOURCE ESCALATION: Prevent timeout on large datasets
-        // ═══════════════════════════════════════════════════════════════════════
-        // These settings are scoped to THIS REQUEST ONLY.
-        // Chunking handles memory; this handles CPU time for XML serialization.
-        ini_set('max_execution_time', '300');
-        ini_set('memory_limit', '512M');
-
         $tenant = $request->user()->tenant;
 
         if (! $tenant) {
@@ -59,21 +53,22 @@ class ReportController extends Controller
             'status' => 'nullable|string|in:pending,confirmed,processing,ready,delivered,cancelled',
         ]);
 
-        $filename = sprintf(
-            'ventas_%s_%s.xlsx',
-            $tenant->slug ?? $tenant->id,
-            now()->format('Y-m-d_His')
-        );
+        // ═══════════════════════════════════════════════════════════════════════
+        // ASYNC DISPATCH: Fire-and-Forget Pattern
+        // ═══════════════════════════════════════════════════════════════════════
+        // Job runs in background worker, freeing this HTTP request immediately.
+        // User is notified via email/database when report is ready.
+        \App\Jobs\GenerateSalesReportJob::dispatch(
+            tenant: $tenant,
+            filters: $validated,
+            requestor: $request->user()
+        )->onQueue('reports');
 
-        return Excel::download(
-            new SalesExport(
-                tenantId: $tenant->id,
-                startDate: $validated['start_date'] ?? null,
-                endDate: $validated['end_date'] ?? null,
-                status: $validated['status'] ?? null
-            ),
-            $filename
-        );
+        return response()->json([
+            'success' => true,
+            'message' => 'Su reporte se está generando en segundo plano. Le notificaremos cuando esté listo.',
+            'estimated_time' => 'Aproximadamente 1-5 minutos dependiendo del volumen de datos.',
+        ], 202); // HTTP 202 Accepted
     }
 
     /**

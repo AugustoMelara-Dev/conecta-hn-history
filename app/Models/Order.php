@@ -29,6 +29,14 @@ class Order extends Model
     use BelongsToTenant, LogsActivity, SoftDeletes;
 
     // ═══════════════════════════════════════════════════════════════════════
+    // EAGER LOADING POLICY (N+1 Prevention)
+    // ═══════════════════════════════════════════════════════════════════════
+    // These relationships are ALWAYS loaded to ensure O(1) query complexity
+    // in the Tenant Dashboard and API responses.
+    // Note: tenant() is provided by BelongsToTenant trait
+    protected $with = ['items'];
+
+    // ═══════════════════════════════════════════════════════════════════════
     // AUDIT LOGGING CONFIGURATION (Spatie Activity Log)
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -160,6 +168,18 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Get the event history for this order (Event Sourcing).
+     *
+     * USAGE:
+     * - $order->events()->latest('occurred_at')->get()
+     * - $order->events()->where('event_type', 'status_changed')->get()
+     */
+    public function events(): HasMany
+    {
+        return $this->hasMany(OrderEvent::class)->orderBy('occurred_at');
     }
 
     // ═══════════════════════════════════════════════════════════════════════
