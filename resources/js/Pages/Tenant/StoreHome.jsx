@@ -1,11 +1,12 @@
 /**
- * StoreHome.jsx - The Catalog Discovery Page (HARDENED v2)
+ * StoreHome.jsx - The Catalog Discovery Page (ENTERPRISE v3)
  *
  * ARCHITECTURE:
  * - Scroll-Spy target with strict ID contract
  * - Browser-Native scroll offset via CSS scroll-margin
  * - Context-aware inventory checking
  * - SPA-compliant navigation (no window.location)
+ * - Self-healing images with fallback
  *
  * SECURITY:
  * - Validates stock against cart quantity before adding
@@ -14,6 +15,7 @@
  * OPTIMIZATIONS:
  * - Toast timeout cleanup on unmount
  * - Lazy loading for all images
+ * - ImageWithFallback for visual resilience
  *
  * ID CONTRACT:
  * Each section MUST have id={`category-${section.id}`}
@@ -26,6 +28,7 @@ import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
 import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
+import ImageWithFallback from '@/Components/ImageWithFallback';
 
 /**
  * ProductCard - Atomic product display with separated click areas
@@ -39,8 +42,9 @@ function ProductCard({ product, tenant, onQuickAdd, isAddingDisabled }) {
             {/* Image Area - Navigates to product details */}
             <Link href={productUrl} className="block relative aspect-square overflow-hidden">
                 {product.image ? (
-                    <img
+                    <ImageWithFallback
                         src={product.image}
+                        fallbackSrc="/images/placeholder.png"
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
@@ -267,8 +271,9 @@ export default function StoreHome({ sections = [] }) {
             <section className="relative">
                 {tenant.banner_url ? (
                     <div className="aspect-[21/9] w-full overflow-hidden">
-                        <img
+                        <ImageWithFallback
                             src={tenant.banner_url}
+                            fallbackSrc="/images/banner-placeholder.png"
                             alt={`Banner de ${tenant.name}`}
                             className="w-full h-full object-cover"
                             loading="lazy"

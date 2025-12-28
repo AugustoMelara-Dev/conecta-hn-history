@@ -1,20 +1,22 @@
 /**
- * ProductDetails.jsx - Product Configuration Engine (HARDENED v2)
+ * ProductDetails.jsx - Product Configuration Engine (ENTERPRISE v3)
  *
  * ARCHITECTURE:
  * - Modifier state management with validation
  * - RadioGroup for single-select, Checkboxes for multi-select
  * - Quantity clamping with stock limits (CONSIDERS CART QUANTITY)
  * - WCAG-compliant accessible notifications
+ * - OpenGraph meta tags for social sharing
+ * - Self-healing images with fallback
  *
  * SECURITY:
  * - Prevents quantity exceeding stock via input clamping
  * - Validates all required modifiers before cart injection
  * - Accounts for existing cart items when calculating max quantity
  *
- * OPTIMIZATIONS:
- * - Toast timeout cleanup on unmount
- * - Lazy loading for product image
+ * SEO:
+ * - Dynamic og:title, og:description, og:image
+ * - Product price metadata for commerce indexing
  */
 
 import { useState, useMemo, useRef, useEffect } from 'react';
@@ -34,6 +36,16 @@ import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
 import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
+import ImageWithFallback from '@/Components/ImageWithFallback';
+
+/**
+ * Truncate text for SEO meta descriptions (max 160 chars)
+ */
+function truncateDescription(text, maxLength = 160) {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength - 3) + '...';
+}
 
 /**
  * ModifierGroupRadio - Single selection modifier group
@@ -228,6 +240,18 @@ export default function ProductDetails({ product }) {
     const { items, addItem, openCart } = useCartStore();
 
     // ═══════════════════════════════════════════════════════════════════════
+    // SEO: Prepare OpenGraph metadata
+    // ═══════════════════════════════════════════════════════════════════════
+    const seoData = useMemo(() => {
+        const title = product?.name || 'Producto';
+        const description = truncateDescription(product?.description || `Descubre ${title} en nuestra tienda`);
+        const image = product?.image || tenant?.logo || '/images/og-default.png';
+        const price = product?.price || 0;
+
+        return { title, description, image, price };
+    }, [product?.name, product?.description, product?.image, product?.price, tenant?.logo]);
+
+    // ═══════════════════════════════════════════════════════════════════════
     // CLEANUP: Clear toast timeout on unmount
     // ═══════════════════════════════════════════════════════════════════════
     useEffect(() => {
@@ -239,8 +263,7 @@ export default function ProductDetails({ product }) {
     }, []);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // FIX: Calculate existing quantity in cart for this product
-    // This is used to determine the TRUE maximum quantity available
+    // Calculate existing quantity in cart for this product
     // ═══════════════════════════════════════════════════════════════════════
     const existingCartQty = useMemo(() => {
         if (!product?.id) return 0;
@@ -254,9 +277,9 @@ export default function ProductDetails({ product }) {
     const maxQuantity = useMemo(() => {
         if (product?.manage_stock) {
             const available = (product.stock_quantity || 0) - existingCartQty;
-            return Math.max(1, available); // At least 1, or available stock
+            return Math.max(1, available);
         }
-        return 99; // Safe logical limit for non-stock-managed products
+        return 99;
     }, [product?.manage_stock, product?.stock_quantity, existingCartQty]);
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -454,7 +477,32 @@ export default function ProductDetails({ product }) {
 
     return (
         <StoreLayout>
-            <Head title={product.name} />
+            {/* ═══════════════════════════════════════════════════════════════
+                HEAD: SEO & OpenGraph Meta Tags
+            ═══════════════════════════════════════════════════════════════ */}
+            <Head>
+                <title>{seoData.title} | {tenant.name}</title>
+
+                {/* Standard SEO Meta */}
+                <meta name="description" content={seoData.description} />
+
+                {/* OpenGraph for Facebook/WhatsApp */}
+                <meta property="og:type" content="product" />
+                <meta property="og:title" content={seoData.title} />
+                <meta property="og:description" content={seoData.description} />
+                <meta property="og:image" content={seoData.image} />
+                <meta property="og:site_name" content={tenant.name || 'Conecta HN'} />
+
+                {/* Product Price Metadata (Commerce) */}
+                <meta property="product:price:amount" content={String(seoData.price)} />
+                <meta property="product:price:currency" content="HNL" />
+
+                {/* Twitter Card */}
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content={seoData.title} />
+                <meta name="twitter:description" content={seoData.description} />
+                <meta name="twitter:image" content={seoData.image} />
+            </Head>
 
             {/* Accessible Toast Notification */}
             {toast && (
@@ -483,11 +531,12 @@ export default function ProductDetails({ product }) {
                 </Link>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Product Image - with lazy loading */}
+                    {/* Product Image - with self-healing fallback */}
                     <div className="aspect-square rounded-2xl overflow-hidden bg-gray-100">
                         {product.image ? (
-                            <img
+                            <ImageWithFallback
                                 src={product.image}
+                                fallbackSrc="/images/placeholder.png"
                                 alt={product.name}
                                 className="w-full h-full object-cover"
                                 loading="lazy"

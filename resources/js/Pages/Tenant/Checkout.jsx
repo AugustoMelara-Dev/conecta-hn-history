@@ -1,24 +1,26 @@
 /**
- * Checkout.jsx - The Transactional Terminal (HARDENED v2)
+ * Checkout.jsx - The Transactional Terminal (ENTERPRISE v3)
  *
  * ARCHITECTURE:
  * - Global Store Binding (no local state for form fields)
  * - Guard clause pattern for race condition prevention
  * - Empty cart redirect protection with hydration check
  * - WCAG-compliant form accessibility
+ * - Strict Honduras phone regex validation
+ * - Beacon API for non-blocking analytics
  *
  * SECURITY:
  * - Prevents double-submission via guard clause
- * - Validates form before submission
+ * - Validates form with strict regex before submission
  * - Protects against empty cart submission
  * - Waits for tenant initialization before redirecting
  *
- * OPTIMIZATIONS:
- * - useMemo for form validation (no IIFE)
- * - Scroll to error on submission failure
+ * ANALYTICS:
+ * - Beacon API for conversion tracking
+ * - 300ms redirect delay for pixel firing
  */
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
@@ -39,13 +41,31 @@ import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
 import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
+import ImageWithFallback from '@/Components/ImageWithFallback';
 
 /**
- * CartItemRow - Single item in order summary
- * Optimized: Direct calculation without useMemo overhead
+ * ═══════════════════════════════════════════════════════════════════════════
+ * HONDURAS PHONE VALIDATION REGEX
+ *
+ * Pattern: /^(\+504\s?)?[389]\d{3}[-\s]?\d{4}$/
+ *
+ * Breakdown:
+ * - ^(\+504\s?)? : Optional country code +504 with optional space
+ * - [389]        : Must start with 3, 8, or 9 (mobile prefixes in Honduras)
+ * - \d{3}        : Three digits
+ * - [-\s]?       : Optional dash or space separator
+ * - \d{4}$       : Four digits at the end
+ *
+ * Valid examples: "9999-1234", "88881234", "+504 3111-2222"
+ * Invalid: "2222-1234" (landline), "1234-5678", "0000-0000"
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const HONDURAS_PHONE_REGEX = /^(\+504\s?)?[389]\d{3}[-\s]?\d{4}$/;
+
+/**
+ * CartItemRow - Single item in order summary with self-healing image
  */
 function CartItemRow({ item, primaryColor, onRemove }) {
-    // Direct calculation - more efficient than useMemo for simple arithmetic
     const modifiersTotal = (item.selectedModifiers || []).reduce(
         (sum, m) => sum + (m.price || 0),
         0
@@ -55,8 +75,9 @@ function CartItemRow({ item, primaryColor, onRemove }) {
     return (
         <div className="flex items-start gap-4 py-4 border-b border-gray-100 last:border-0">
             {item.image && (
-                <img
+                <ImageWithFallback
                     src={item.image}
+                    fallbackSrc="/images/placeholder.png"
                     alt={item.name}
                     className="h-16 w-16 rounded-lg object-cover"
                     loading="lazy"
@@ -98,6 +119,9 @@ export default function Checkout() {
     // Error element ref for scroll behavior
     const errorRef = useRef(null);
 
+    // Phone validation error state
+    const [phoneError, setPhoneError] = useState('');
+
     // ═══════════════════════════════════════════════════════════════════════
     // GLOBAL STORE BINDING: No local state - everything from Zustand
     // ═══════════════════════════════════════════════════════════════════════
@@ -129,15 +153,10 @@ export default function Checkout() {
 
     // ═══════════════════════════════════════════════════════════════════════
     // EMPTY CART DEFENSE: Redirect if cart becomes empty
-    // FIX: Now waits for tenant initialization to prevent premature redirect
+    // Waits for tenant initialization to prevent premature redirect
     // ═══════════════════════════════════════════════════════════════════════
     useEffect(() => {
-        // Only redirect if:
-        // 1. Tenant is fully initialized (not during hydration)
-        // 2. Cart is genuinely empty
-        // 3. Not currently submitting an order
         if (isInitialized && items.length === 0 && !isSubmitting && tenant.slug) {
-            // Small delay to prevent flash during state changes
             const timeout = setTimeout(() => {
                 router.visit(`/${tenant.slug}`);
             }, 100);
@@ -147,12 +166,62 @@ export default function Checkout() {
     }, [items.length, isSubmitting, tenant.slug, isInitialized]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // FIX: Form validation with useMemo (not IIFE)
+    // PHONE VALIDATION: Real-time feedback on blur
+    // ═══════════════════════════════════════════════════════════════════════
+    const validatePhone = (phone) => {
+        const cleanPhone = phone.trim();
+
+        // If empty, don't show regex error yet (will fail isFormValid)
+        if (!cleanPhone) {
+            setPhoneError('');
+            return false;
+        }
+
+        // Check length first
+        if (cleanPhone.length < 8) {
+            setPhoneError('');
+            return false;
+        }
+
+        // Apply strict Honduras regex
+        if (!HONDURAS_PHONE_REGEX.test(cleanPhone)) {
+            setPhoneError('Número inválido. Debe ser celular (inicia con 3, 8 o 9).');
+            return false;
+        }
+
+        setPhoneError('');
+        return true;
+    };
+
+    // Handle phone change with validation
+    const handlePhoneChange = (e) => {
+        const value = e.target.value;
+        setCustomerPhone(value);
+
+        // Clear error while typing
+        if (phoneError) {
+            setPhoneError('');
+        }
+    };
+
+    // Handle phone blur for validation
+    const handlePhoneBlur = () => {
+        if (customerPhone && customerPhone.length >= 8) {
+            validatePhone(customerPhone);
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Form validation with useMemo and strict phone regex
     // ═══════════════════════════════════════════════════════════════════════
     const isFormValid = useMemo(() => {
         if (items.length === 0) return false;
         if (!customerName || customerName.trim().length < 2) return false;
         if (!customerPhone || customerPhone.trim().length < 8) return false;
+
+        // Strict Honduras phone validation
+        if (!HONDURAS_PHONE_REGEX.test(customerPhone.trim())) return false;
+
         if (deliveryType === 'delivery' && (!customerAddress || customerAddress.trim().length < 5)) {
             return false;
         }
@@ -160,14 +229,33 @@ export default function Checkout() {
     }, [items.length, customerName, customerPhone, deliveryType, customerAddress]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ORDER SUBMISSION: With Guard Clause
+    // BEACON TELEMETRY: Send conversion event before redirect
+    // ═══════════════════════════════════════════════════════════════════════
+    const sendConversionBeacon = (transactionId, value) => {
+        const payload = {
+            event: 'purchase',
+            transaction_id: transactionId,
+            value: value,
+            currency: 'HNL',
+            tenant_slug: tenant.slug,
+            timestamp: new Date().toISOString(),
+        };
+
+        // Feature detection for Beacon API
+        if (navigator.sendBeacon) {
+            const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+            navigator.sendBeacon('/api/analytics/conversion', blob);
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ORDER SUBMISSION: With Guard Clause & Beacon Telemetry
     // ═══════════════════════════════════════════════════════════════════════
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         // ═══════════════════════════════════════════════════════════════════
         // GUARD CLAUSE: Prevent race condition
-        // If already submitting, abort immediately
         // ═══════════════════════════════════════════════════════════════════
         if (isSubmitting) {
             return;
@@ -175,6 +263,10 @@ export default function Checkout() {
 
         // Additional validation guard
         if (!isFormValid) {
+            // Show phone error if that's the issue
+            if (customerPhone && customerPhone.length >= 8) {
+                validatePhone(customerPhone);
+            }
             return;
         }
 
@@ -183,12 +275,22 @@ export default function Checkout() {
         const result = await submitOrder();
 
         if (result.success && result.whatsappUrl) {
-            // WhatsApp Handshake: Exit to messaging platform
-            window.location.href = result.whatsappUrl;
+            // ═══════════════════════════════════════════════════════════════
+            // BEACON TELEMETRY: Fire conversion event before redirect
+            // Generate a pseudo-transaction ID from timestamp
+            // ═══════════════════════════════════════════════════════════════
+            const transactionId = `${tenant.slug}-${Date.now()}`;
+            sendConversionBeacon(transactionId, grandTotal);
+
+            // ═══════════════════════════════════════════════════════════════
+            // SAFETY NET: 300ms delay for analytics pixels to fire
+            // Allows GA4, Meta Pixel, etc. to complete execution
+            // ═══════════════════════════════════════════════════════════════
+            setTimeout(() => {
+                window.location.href = result.whatsappUrl;
+            }, 300);
         } else if (!result.success) {
-            // ═══════════════════════════════════════════════════════════════
-            // UX IMPROVEMENT: Scroll to error message
-            // ═══════════════════════════════════════════════════════════════
+            // Scroll to error message
             setTimeout(() => {
                 errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 100);
@@ -284,17 +386,35 @@ export default function Checkout() {
                                                 type="tel"
                                                 id="phone"
                                                 value={customerPhone}
-                                                onChange={(e) => setCustomerPhone(e.target.value)}
+                                                onChange={handlePhoneChange}
+                                                onBlur={handlePhoneBlur}
                                                 placeholder="+504 9999-9999"
-                                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
-                                                style={{ '--tw-ring-color': primaryColor }}
+                                                className={`w-full pl-10 pr-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-1
+                                                    ${phoneError ? 'border-red-500' : 'border-gray-300'}`}
+                                                style={{ '--tw-ring-color': phoneError ? '#ef4444' : primaryColor }}
                                                 required
                                                 minLength={8}
                                                 aria-required="true"
-                                                aria-label="Número de teléfono"
+                                                aria-label="Número de teléfono celular"
+                                                aria-invalid={phoneError ? 'true' : 'false'}
+                                                aria-describedby={phoneError ? 'phone-error' : undefined}
                                                 autoComplete="tel"
                                             />
                                         </div>
+                                        {/* ═══════════════════════════════════════════════
+                                            PHONE VALIDATION ERROR MESSAGE (ACCESSIBLE)
+                                        ═══════════════════════════════════════════════ */}
+                                        {phoneError && (
+                                            <div
+                                                id="phone-error"
+                                                role="alert"
+                                                aria-live="polite"
+                                                className="flex items-center gap-1 mt-1 text-red-500 text-sm"
+                                            >
+                                                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                                                <span>{phoneError}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
