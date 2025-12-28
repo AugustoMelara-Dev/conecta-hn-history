@@ -26,7 +26,19 @@ createInertiaApp({
         root.render(<App {...props} />);
     },
     progress: {
-        color: '#0ea5e9', // Sky-500 color
+        // Dynamic color: Use tenant's primary_color or fallback to black (Corporate Minimalist)
+        color: (() => {
+            try {
+                // Access initial page props for tenant branding
+                const initialPage = JSON.parse(
+                    document.getElementById('app')?.dataset?.page || '{}'
+                );
+                return initialPage?.props?.tenant?.primary_color || '#000000';
+            } catch {
+                return '#000000'; // Fallback: Corporate Black
+            }
+        })(),
         showSpinner: true,
     },
 });
+

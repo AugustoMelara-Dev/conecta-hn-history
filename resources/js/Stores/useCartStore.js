@@ -82,6 +82,26 @@ const useCartStore = create(
             lastOrderId: null,
 
             // ═══════════════════════════════════════════════════════════════════════
+            // STATE: Cart Drawer UI Control
+            // ═══════════════════════════════════════════════════════════════════════
+            isCartOpen: false,
+
+            /**
+             * Toggle cart drawer visibility
+             */
+            toggleCart: () => set((state) => ({ isCartOpen: !state.isCartOpen })),
+
+            /**
+             * Open cart drawer
+             */
+            openCart: () => set({ isCartOpen: true }),
+
+            /**
+             * Close cart drawer
+             */
+            closeCart: () => set({ isCartOpen: false }),
+
+            // ═══════════════════════════════════════════════════════════════════════
             // ACTIONS: Tenant Initialization
             // ═══════════════════════════════════════════════════════════════════════
 
