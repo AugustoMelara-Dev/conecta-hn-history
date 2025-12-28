@@ -165,7 +165,7 @@ class ReportController extends Controller
         // Get all active products with inventory tracking
         $products = $tenant->products()
             ->where('is_active', true)
-            ->where('track_inventory', true)
+            ->where('manage_stock', true)
             ->orderBy('name')
             ->get(['id', 'name', 'sku', 'stock_quantity', 'low_stock_threshold']);
 

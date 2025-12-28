@@ -111,8 +111,11 @@ class Order extends Model
         'cancel_reason',
         'whatsapp_sent',
         'whatsapp_sent_at',
-        // Workflow timestamps
+        // Workflow timestamps (FSM-managed)
         'confirmed_at',
+        'processing_started_at',
+        'ready_at',
+        'cancelled_at',
         'prepared_at',
         // Security: Cryptographic tracking token
         'tracking_uuid',
@@ -376,36 +379,18 @@ class Order extends Model
     /**
      * Transition to a new status.
      *
-     * Dispatches OrderStatusChangedNotification to customer (async).
+     * @deprecated Use OrderStateService::transition() instead.
+     *             This method bypasses FSM validation and is retained
+     *             only for backward compatibility during migration.
+     *
+     * @throws \RuntimeException Always throws to prevent bypass of FSM.
      */
     public function transitionTo(string $status): bool
     {
-        if (! in_array($status, self::STATUSES)) {
-            return false;
-        }
-
-        // Capture previous status for notification
-        $previousStatus = $this->status;
-
-        $this->status = $status;
-
-        if ($status === self::STATUS_DELIVERED) {
-            $this->delivered_at = now();
-        }
-
-        $saved = $this->save();
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // DISPATCH STATUS CHANGE NOTIFICATION (Async, queued)
-        // Notifies customer via email if they provided one
-        // The notification class handles defensive checks for null email
-        // ═══════════════════════════════════════════════════════════════════════
-        if ($saved && $previousStatus !== $status) {
-            // Create an anonymous notifiable for the customer email
-            $this->notifyCustomerOfStatusChange($previousStatus, $status);
-        }
-
-        return $saved;
+        throw new \RuntimeException(
+            'DEPRECATED: Use app(OrderStateService::class)->transition($order, $status) instead. '
+            . 'Direct model transitions bypass FSM validation and side-effects.'
+        );
     }
 
     /**
