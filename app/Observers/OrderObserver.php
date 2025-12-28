@@ -63,6 +63,7 @@ class OrderObserver
      * 1. Only fires if 'status' field actually changed
      * 2. Only fires if new status is 'cancelled'
      * 3. Only fires if previous status was NOT 'cancelled' (prevents double-restock)
+     * 4. Only fires if previous status was NOT a terminal state (DELIVERED)
      */
     public function updated(Order $order): void
     {
@@ -76,11 +77,16 @@ class OrderObserver
             return;
         }
 
-        // Guard 3: Prevent double-restock if already was cancelled
+        // Guard 3: Get original status for validation
         $previousStatus = $order->getOriginal('status');
-        if ($previousStatus === Order::STATUS_CANCELLED) {
-            Log::debug("OrderObserver: Skipped restock (order was already cancelled)", [
+
+        // Guard 4: CRITICAL - Block mutations from terminal states
+        $terminalStates = [Order::STATUS_DELIVERED, Order::STATUS_CANCELLED];
+        if (in_array($previousStatus, $terminalStates, true)) {
+            Log::warning("OrderObserver: Attempted invalid state mutation from terminal state", [
                 'order_id' => $order->id,
+                'from_status' => $previousStatus,
+                'to_status' => $order->status,
             ]);
             return;
         }

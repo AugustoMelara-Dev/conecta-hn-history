@@ -174,36 +174,40 @@ class OrderStateService
     /**
      * Side-effects when order is cancelled (terminal failure).
      *
-     * DELEGATION: Passes entire Order aggregate to InventoryManager.
-     * The manager handles item iteration, validation, and stock restoration.
+     * ARCHITECTURE NOTE:
+     * Inventory restoration is handled EXCLUSIVELY by OrderObserver::updated().
+     * This prevents the "Double Restock" race condition where both the Service
+     * and Observer attempt to restore stock simultaneously.
+     *
+     * This method ONLY sets the timestamp. The Observer will detect the
+     * status change to 'cancelled' and invoke InventoryManager::restock().
      */
     private function onCancelled(Order $order, array &$updateData): void
     {
         $updateData['cancelled_at'] = now();
-
+        
         // ═══════════════════════════════════════════════════════════════════════
-        // INVENTORY RESTORATION: Delegate to Domain Authority
+        // INVENTORY RESTORATION: Delegated to OrderObserver (Single Source of Truth)
         // ═══════════════════════════════════════════════════════════════════════
-        // The InventoryManager has the atomic restock(Order) method that handles:
-        // - Item iteration
-        // - Product validation (deleted, unmanaged)
-        // - Stock increment with state recovery
+        // DO NOT call inventoryManager->restock() here!
+        // The OrderObserver::updated() method will handle this when:
+        // 1. $order->update($updateData) is called
+        // 2. Observer detects status changed to 'cancelled'
+        // 3. Observer validates guards and calls restock()
         //
-        // Guard: Only call if order has items
-        if ($order->items()->exists()) {
-            $this->inventoryManager->restock($order);
-        }
+        // This eliminates the CRITICAL race condition where stock was
+        // being restored twice (once here, once in Observer).
     }
 
     /**
      * Dispatch real-time broadcasting event.
+     *
+     * Fires OrderStatusUpdated to notify:
+     * - Tenant dashboard (private-tenant.{id})
+     * - Customer tracking screen (private-order.{uuid})
      */
     private function dispatchStatusEvent(Order $order, string $oldStatus, string $newStatus): void
     {
-        // Event dispatching is handled by OrderObserver's saved event
-        // which implements ShouldHandleEventsAfterCommit for transactional safety.
-        // If you want explicit control, dispatch here:
-        //
-        // event(new \App\Events\OrderStatusUpdated($order, $oldStatus, $newStatus));
+        event(new \App\Events\OrderStatusUpdated($order, $oldStatus, $newStatus));
     }
 }
