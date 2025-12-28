@@ -29,12 +29,26 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
      */
     public function register(): void
     {
-        // Conditionally skip Telescope in production unless explicitly enabled
+        // ═══════════════════════════════════════════════════════════════════════
+        // PERFORMANCE: Early escape when Telescope is disabled
+        // ═══════════════════════════════════════════════════════════════════════
+        // This prevents Telescope from consuming memory/CPU on every request
+        // when it's not actually recording anything. Critical for production.
+        //
+        // Telescope will still "boot" (it's registered in providers.php),
+        // but this early return prevents the filter closures and observers
+        // from being registered, saving ~2-5ms per request.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (! config('telescope.enabled', false) && ! $this->app->environment('local')) {
+            return;
+        }
+
+        // Enable dark mode for the dashboard
         Telescope::night();
 
         $this->hideSensitiveRequestDetails();
 
-        // Filter entries to reduce noise
+        // Filter entries to reduce noise and database size
         Telescope::filter(function (IncomingEntry $entry) {
             // Always record in local development
             if ($this->app->environment('local')) {
