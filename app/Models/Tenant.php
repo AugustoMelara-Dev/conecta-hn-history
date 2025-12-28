@@ -62,6 +62,11 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'subscription_status',
         'subscription_ends_at',
         'plan_type',
+        // Operational Settings (Checkout Configuration)
+        'payment_methods',
+        'delivery_enabled',
+        'pickup_enabled',
+        'minimum_order',
     ];
 
     protected $guarded = ['id'];
@@ -76,6 +81,11 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'next_billing_date' => 'date',
         // Subscription Engine
         'subscription_ends_at' => 'datetime',
+        // Operational Settings
+        'payment_methods' => 'array',
+        'delivery_enabled' => 'boolean',
+        'pickup_enabled' => 'boolean',
+        'minimum_order' => 'decimal:2',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════════
