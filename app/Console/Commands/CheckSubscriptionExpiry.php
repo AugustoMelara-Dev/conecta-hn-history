@@ -90,18 +90,20 @@ class CheckSubscriptionExpiry extends Command
                 foreach ($tenants as $tenant) {
                     try {
                         // Defensive: Ensure tenant has a valid user to notify
-                        if (!$tenant->user) {
+                        if (! $tenant->user) {
                             $this->warn("⚠️  Tenant #{$tenant->id} ({$tenant->name}) has no associated user - skipping");
                             Log::warning('CheckSubscriptionExpiry: Tenant has no user', [
                                 'tenant_id' => $tenant->id,
                                 'tenant_name' => $tenant->name,
                             ]);
+
                             continue;
                         }
 
                         // Defensive: Ensure user has email
                         if (empty($tenant->user->email)) {
                             $this->warn("⚠️  Tenant #{$tenant->id} user has no email - skipping");
+
                             continue;
                         }
 
@@ -133,7 +135,7 @@ class CheckSubscriptionExpiry extends Command
 
         $this->newLine();
         $this->info('═══════════════════════════════════════════════════════════════');
-        $this->info("✅ Processing complete");
+        $this->info('✅ Processing complete');
         $this->info("   Tenants processed: {$processedCount}");
 
         if ($errorCount > 0) {

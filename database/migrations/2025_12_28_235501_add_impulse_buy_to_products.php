@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Add impulse buy flag to products for cross-selling.
- * 
+ *
  * PERFORMANCE:
  * - Composite index on [business_id, is_impulse_buy] prevents full table scan
  * - Used with ID Fetch & Shuffle pattern (NO ORDER BY RAND())
@@ -25,7 +25,7 @@ return new class extends Migration
         Schema::table('products', function (Blueprint $table) {
             $table->boolean('is_impulse_buy')->default(false)->after('is_active')
                 ->comment('Low-cost add-on for cross-selling at checkout');
-            
+
             // Composite index for performant impulse product queries
             $table->index(['tenant_id', 'is_impulse_buy'], 'idx_products_impulse');
         });

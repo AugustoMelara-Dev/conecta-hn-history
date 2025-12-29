@@ -83,16 +83,17 @@ class OrderObserver
         // Guard 4: CRITICAL - Block mutations from terminal states
         $terminalStates = [Order::STATUS_DELIVERED, Order::STATUS_CANCELLED];
         if (in_array($previousStatus, $terminalStates, true)) {
-            Log::warning("OrderObserver: Attempted invalid state mutation from terminal state", [
+            Log::warning('OrderObserver: Attempted invalid state mutation from terminal state', [
                 'order_id' => $order->id,
                 'from_status' => $previousStatus,
                 'to_status' => $order->status,
             ]);
+
             return;
         }
 
         // All guards passed - restore inventory
-        Log::info("OrderObserver: Order cancelled, restoring inventory", [
+        Log::info('OrderObserver: Order cancelled, restoring inventory', [
             'order_id' => $order->id,
             'order_number' => $order->order_number,
             'previous_status' => $previousStatus,
@@ -114,15 +115,16 @@ class OrderObserver
     {
         // Guard: If order was cancelled, stock already restored - skip
         if ($order->status === Order::STATUS_CANCELLED) {
-            Log::debug("OrderObserver: Skipped restock on delete (order was already cancelled)", [
+            Log::debug('OrderObserver: Skipped restock on delete (order was already cancelled)', [
                 'order_id' => $order->id,
             ]);
+
             return;
         }
 
         // Order was active (pending, processing, etc.) when deleted
         // Restore the inventory that was consumed
-        Log::info("OrderObserver: Active order deleted, restoring inventory", [
+        Log::info('OrderObserver: Active order deleted, restoring inventory', [
             'order_id' => $order->id,
             'order_number' => $order->order_number,
             'status_at_deletion' => $order->status,
@@ -150,14 +152,15 @@ class OrderObserver
         // If order is in a cancelled state, it should remain cancelled
         // and no inventory should be consumed
         if ($order->status === Order::STATUS_CANCELLED) {
-            Log::debug("OrderObserver: Skipped consumption on restore (order is cancelled)", [
+            Log::debug('OrderObserver: Skipped consumption on restore (order is cancelled)', [
                 'order_id' => $order->id,
             ]);
+
             return;
         }
 
         // Order was active when deleted, now restored - consume inventory again
-        Log::info("OrderObserver: Order restored, consuming inventory", [
+        Log::info('OrderObserver: Order restored, consuming inventory', [
             'order_id' => $order->id,
             'order_number' => $order->order_number,
             'status' => $order->status,
@@ -167,4 +170,3 @@ class OrderObserver
         $this->inventoryManager->consume($order);
     }
 }
-

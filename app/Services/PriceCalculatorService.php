@@ -29,9 +29,10 @@ class PriceCalculatorService
     /**
      * Calculate composite prices for all cart items in a single batch.
      *
-     * @param array $cartItems Cart items with product_id, quantity, options
-     * @param Collection $products Locked products keyed by ID
+     * @param  array  $cartItems  Cart items with product_id, quantity, options
+     * @param  Collection  $products  Locked products keyed by ID
      * @return array Calculated items with unit_price, line_total, validated_options
+     *
      * @throws ValidationException If invalid options detected
      */
     public function calculate(array $cartItems, Collection $products): array
@@ -78,6 +79,7 @@ class PriceCalculatorService
                     'validated_options' => null,
                     'notes' => $item['notes'] ?? null,
                 ];
+
                 continue;
             }
 
@@ -112,16 +114,16 @@ class PriceCalculatorService
     /**
      * Extract option IDs from various request formats.
      */
-    protected function extractOptionIds(array|null $options): array
+    protected function extractOptionIds(?array $options): array
     {
         if (empty($options) || ! is_array($options)) {
             return [];
         }
 
         return collect($options)
-            ->map(fn($opt) => is_array($opt) ? ($opt['id'] ?? $opt['option_id'] ?? null) : $opt)
+            ->map(fn ($opt) => is_array($opt) ? ($opt['id'] ?? $opt['option_id'] ?? null) : $opt)
             ->filter()
-            ->map(fn($id) => (int) $id)
+            ->map(fn ($id) => (int) $id)
             ->unique()
             ->values()
             ->toArray();

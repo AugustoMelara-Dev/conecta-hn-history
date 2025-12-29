@@ -134,6 +134,7 @@ class OrderStateService
     public function canTransition(string $from, string $to): bool
     {
         $allowedTransitions = self::TRANSITION_MAP[$from] ?? [];
+
         return in_array($to, $allowedTransitions, true);
     }
 
@@ -195,7 +196,7 @@ class OrderStateService
     private function onCancelled(Order $order, array &$updateData): void
     {
         $updateData['cancelled_at'] = now();
-        
+
         // ═══════════════════════════════════════════════════════════════════════
         // INVENTORY RESTORATION: Delegated to OrderObserver (Single Source of Truth)
         // ═══════════════════════════════════════════════════════════════════════

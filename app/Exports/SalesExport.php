@@ -6,11 +6,11 @@ namespace App\Exports;
 
 use App\Models\Order;
 use Illuminate\Database\Eloquent\Builder;
-use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\Exportable;
+use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
@@ -31,7 +31,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * requires an immediate binary stream (sync). The chunked architecture
  * ensures memory safety without async processing.
  */
-class SalesExport implements FromQuery, WithHeadings, WithMapping, WithChunkReading, WithStyles
+class SalesExport implements FromQuery, WithChunkReading, WithHeadings, WithMapping, WithStyles
 {
     use Exportable;
 

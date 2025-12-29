@@ -65,7 +65,7 @@ class SecurityHeaders
         // NONCE GENERATION: Cryptographic random per-request
         // ═══════════════════════════════════════════════════════════════════════
         $nonce = $this->generateNonce();
-        
+
         // Store nonce in container for Blade/Inertia access
         app()->instance('csp-nonce', $nonce);
 
@@ -136,24 +136,24 @@ class SecurityHeaders
     private function buildContentSecurityPolicy(string $nonce): string
     {
         $isProduction = app()->environment('production');
-        
+
         // ═══════════════════════════════════════════════════════════════════════
         // SCRIPT-SRC: Control JavaScript execution
         // ═══════════════════════════════════════════════════════════════════════
         // Production: Nonce-based (blocks all inline scripts without nonce)
         // Development: unsafe-inline (required for Vite HMR)
         $scriptPolicy = $isProduction
-            ? "'self' 'nonce-{$nonce}'" 
+            ? "'self' 'nonce-{$nonce}'"
             : "'self' 'unsafe-inline'";
-        
-        $scriptSrc = "script-src {$scriptPolicy} " . implode(' ', self::TRUSTED_SCRIPTS);
+
+        $scriptSrc = "script-src {$scriptPolicy} ".implode(' ', self::TRUSTED_SCRIPTS);
 
         // ═══════════════════════════════════════════════════════════════════════
         // STYLE-SRC: Control CSS execution
         // ═══════════════════════════════════════════════════════════════════════
         // Note: Tailwind/React inline styles require 'unsafe-inline' in both envs
         // This is a known limitation - styles are lower risk than scripts
-        $styleSrc = "style-src 'self' 'unsafe-inline' " . implode(' ', self::TRUSTED_STYLES);
+        $styleSrc = "style-src 'self' 'unsafe-inline' ".implode(' ', self::TRUSTED_STYLES);
 
         // ═══════════════════════════════════════════════════════════════════════
         // BUILD FULL CSP DIRECTIVE
@@ -164,7 +164,7 @@ class SecurityHeaders
             $styleSrc,
             "img-src 'self' data: https: blob:",
             "font-src 'self' https://fonts.gstatic.com https://fonts.bunny.net",
-            "connect-src 'self' " . implode(' ', self::TRUSTED_CONNECT) . " wss:",
+            "connect-src 'self' ".implode(' ', self::TRUSTED_CONNECT).' wss:',
             "frame-src 'self' https://js.stripe.com https://www.facebook.com",
             "frame-ancestors 'none'",
             "form-action 'self'",

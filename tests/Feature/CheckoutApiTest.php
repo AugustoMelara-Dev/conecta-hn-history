@@ -29,6 +29,7 @@ class CheckoutApiTest extends TestCase
     use RefreshDatabase;
 
     private Tenant $tenant;
+
     private string $apiEndpoint;
 
     protected function setUp(): void
@@ -54,7 +55,7 @@ class CheckoutApiTest extends TestCase
     /**
      * @test
      * Verifies the API returns correct JSON structure for valid coupons.
-     * 
+     *
      * SCENARIO: Valid coupon code submitted via POST
      * EXPECTED: HTTP 200 with structured JSON containing required keys
      */
@@ -161,10 +162,10 @@ class CheckoutApiTest extends TestCase
     /**
      * @test
      * CRITICAL SECURITY: Verifies sensitive database columns are NOT exposed.
-     * 
+     *
      * SCENARIO: Successful coupon validation
      * EXPECTED: Response must NOT contain internal database fields
-     * 
+     *
      * This test prevents accidental exposure of:
      * - Database IDs (enables enumeration attacks)
      * - Internal notes (confidential business data)
@@ -209,7 +210,7 @@ class CheckoutApiTest extends TestCase
         // Additional verification: only allowed keys present
         $allowedKeys = ['valid', 'code', 'discount_type', 'discount_amount', 'new_total', 'message'];
         $actualKeys = array_keys($response->json());
-        
+
         foreach ($actualKeys as $key) {
             $this->assertContains(
                 $key,

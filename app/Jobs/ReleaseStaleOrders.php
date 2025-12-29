@@ -76,26 +76,26 @@ class ReleaseStaleOrders implements ShouldQueue
                 // Bank Transfer: 4 hour window
                 $query->where(function ($q) use ($bankTransferThreshold) {
                     $q->where('payment_method', PaymentMethod::BankTransfer->value)
-                      ->where('created_at', '<', $bankTransferThreshold);
+                        ->where('created_at', '<', $bankTransferThreshold);
                 })
                 // Cash: 24 hour window
-                ->orWhere(function ($q) use ($cashThreshold) {
-                    $q->where('payment_method', PaymentMethod::Cash->value)
-                      ->where('created_at', '<', $cashThreshold);
-                })
+                    ->orWhere(function ($q) use ($cashThreshold) {
+                        $q->where('payment_method', PaymentMethod::Cash->value)
+                            ->where('created_at', '<', $cashThreshold);
+                    })
                 // Card/Pending/Other: 30 minute window
-                ->orWhere(function ($q) use ($digitalThreshold) {
-                    $q->whereIn('payment_method', [
-                        PaymentMethod::Card->value,
-                        PaymentMethod::Pending->value,
-                    ])
-                      ->where('created_at', '<', $digitalThreshold);
-                })
+                    ->orWhere(function ($q) use ($digitalThreshold) {
+                        $q->whereIn('payment_method', [
+                            PaymentMethod::Card->value,
+                            PaymentMethod::Pending->value,
+                        ])
+                            ->where('created_at', '<', $digitalThreshold);
+                    })
                 // Fallback for null/unknown payment methods
-                ->orWhere(function ($q) use ($digitalThreshold) {
-                    $q->whereNull('payment_method')
-                      ->where('created_at', '<', $digitalThreshold);
-                });
+                    ->orWhere(function ($q) use ($digitalThreshold) {
+                        $q->whereNull('payment_method')
+                            ->where('created_at', '<', $digitalThreshold);
+                    });
             })
             ->chunkById(self::CHUNK_SIZE, function ($orders) use (&$processedCount, &$cancelledCount) {
                 foreach ($orders as $order) {
@@ -107,7 +107,7 @@ class ReleaseStaleOrders implements ShouldQueue
                 }
             });
 
-        Log::info("ReleaseStaleOrders: Completed.", [
+        Log::info('ReleaseStaleOrders: Completed.', [
             'processed' => $processedCount,
             'cancelled' => $cancelledCount,
             'thresholds' => [
@@ -124,7 +124,7 @@ class ReleaseStaleOrders implements ShouldQueue
      * CRITICAL: Re-fetches order INSIDE transaction with lockForUpdate()
      * to prevent double-refund race conditions.
      *
-     * @param int $orderId The order ID to process (NOT the model instance)
+     * @param  int  $orderId  The order ID to process (NOT the model instance)
      * @return bool True if order was cancelled, false if skipped
      */
     protected function releaseOrderWithLock(int $orderId): bool
@@ -138,6 +138,7 @@ class ReleaseStaleOrders implements ShouldQueue
 
                 if (! $freshOrder) {
                     Log::warning("ReleaseStaleOrders: Order #{$orderId} not found (deleted?)");
+
                     return false;
                 }
 
@@ -148,6 +149,7 @@ class ReleaseStaleOrders implements ShouldQueue
                     Log::debug("ReleaseStaleOrders: Order #{$orderId} already processed", [
                         'current_status' => $freshOrder->status,
                     ]);
+
                     return false;
                 }
 
@@ -178,6 +180,7 @@ class ReleaseStaleOrders implements ShouldQueue
                 'order_id' => $orderId,
                 'exception' => $e->getTraceAsString(),
             ]);
+
             return false;
         }
     }

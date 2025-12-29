@@ -27,7 +27,9 @@ class Coupon extends Model
 
     // Discount types
     public const TYPE_FIXED = 'fixed';
+
     public const TYPE_PERCENT = 'percent';
+
     public const TYPE_FREE_SHIPPING = 'free_shipping';
 
     protected $fillable = [
@@ -276,14 +278,14 @@ class Coupon extends Model
      * - fixed: Returns $value, but never exceeds $subtotal
      * - free_shipping: Returns $shippingCost exactly
      *
-     * @param float $cartSubtotal The cart subtotal
-     * @param float $shippingCost The shipping cost (for free_shipping type)
+     * @param  float  $cartSubtotal  The cart subtotal
+     * @param  float  $shippingCost  The shipping cost (for free_shipping type)
      * @return float The calculated discount amount
      */
     public function calculateDiscount(float $cartSubtotal, float $shippingCost = 0.0): float
     {
         // Safety check: If coupon is not valid, return 0
-        if (!$this->isCurrentlyValid()) {
+        if (! $this->isCurrentlyValid()) {
             return 0.0;
         }
 
@@ -292,21 +294,21 @@ class Coupon extends Model
 
     /**
      * Check if coupon is currently valid (active + within date range).
-     * 
+     *
      * Separated from calculateDiscount for single responsibility.
      */
     public function isCurrentlyValid(): bool
     {
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return false;
         }
 
         $now = Carbon::now();
-        
+
         if ($this->starts_at && $now->lt($this->starts_at)) {
             return false;
         }
-        
+
         if ($this->expires_at && $now->gt($this->expires_at)) {
             return false;
         }
@@ -316,12 +318,12 @@ class Coupon extends Model
 
     /**
      * Calculate discount without validation checks.
-     * 
+     *
      * USE CASE: When you've already validated the coupon (e.g., in validate())
      * and need pure math calculation.
      *
-     * @param float $cartSubtotal The cart subtotal
-     * @param float $shippingCost The shipping cost (for free_shipping type)
+     * @param  float  $cartSubtotal  The cart subtotal
+     * @param  float  $shippingCost  The shipping cost (for free_shipping type)
      * @return float The calculated discount amount
      */
     public function calculateDiscountUnsafe(float $cartSubtotal, float $shippingCost = 0.0): float
@@ -381,7 +383,7 @@ class Coupon extends Model
      * - If restricted_to_categories is set: ONLY products in those categories are eligible
      * - If BOTH are set: Product must match EITHER restriction (OR logic)
      *
-     * @param array $cartItems Array of items with product_id, category_id (or menu_section_id), and line_total
+     * @param  array  $cartItems  Array of items with product_id, category_id (or menu_section_id), and line_total
      * @return array ['eligible_subtotal' => float, 'discount' => float, 'ineligible_subtotal' => float]
      */
     public function calculateDiscountWithContext(array $cartItems): array
@@ -403,6 +405,7 @@ class Coupon extends Model
             // Custom items (no product_id) are never eligible for restricted coupons
             if ($hasRestrictions && ! $productId) {
                 $ineligibleSubtotal += $itemTotal;
+
                 continue;
             }
 

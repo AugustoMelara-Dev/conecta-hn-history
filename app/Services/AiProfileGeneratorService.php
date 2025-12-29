@@ -25,8 +25,6 @@ use Illuminate\Support\Facades\Log;
  * USAGE:
  *   $service = app(AiProfileGeneratorService::class);
  *   $result = $service->generate($rawName, $rawDescription, $rawCategory);
- *
- * @package App\Services
  */
 final class AiProfileGeneratorService
 {
@@ -35,11 +33,17 @@ final class AiProfileGeneratorService
     // ═══════════════════════════════════════════════════════════════════════════════
 
     private const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
+
     private const MODEL = 'gpt-4o-mini';
+
     private const MAX_TOKENS = 2000;
+
     private const TIMEOUT_SECONDS = 30;
+
     private const RETRY_ATTEMPTS = 3;
+
     private const RETRY_DELAY_MS = 500;
+
     private const MAX_INPUT_LENGTH = 2000;
 
     /** Cache key for rate limit state */
@@ -92,10 +96,9 @@ PROMPT;
     /**
      * Generate enriched business profile from raw data.
      *
-     * @param string $rawName        Raw business name (REQUIRED - cannot be empty)
-     * @param string $rawDescription Raw description text
-     * @param string $rawCategory    Category or industry
-     *
+     * @param  string  $rawName  Raw business name (REQUIRED - cannot be empty)
+     * @param  string  $rawDescription  Raw description text
+     * @param  string  $rawCategory  Category or industry
      * @return array<string, mixed> Validated and sanitized structured data
      *
      * @throws Exception If inputs invalid, API key missing, rate limited, or response invalid
@@ -161,7 +164,7 @@ PROMPT;
 
             if ($remainingSeconds > 0) {
                 throw new Exception(
-                    "OpenAI API is rate limited. Retry in {$remainingSeconds} seconds. " .
+                    "OpenAI API is rate limited. Retry in {$remainingSeconds} seconds. ".
                     "Rate limit expires at: {$rateLimitUntil}"
                 );
             }
@@ -198,7 +201,7 @@ PROMPT;
      * - ¿ (inverted question mark) - Required in Spanish grammar
      * - á, é, í, ó, ú, ñ, ü - Spanish accented characters
      *
-     * @param string $input Raw user input
+     * @param  string  $input  Raw user input
      * @return string Sanitized input safe for LLM prompt
      */
     private function sanitizeInput(string $input): string
@@ -223,7 +226,7 @@ PROMPT;
     /**
      * Sanitize all output fields with granular XSS protection.
      *
-     * @param array<string, mixed> $parsed Raw AI response
+     * @param  array<string, mixed>  $parsed  Raw AI response
      * @return array<string, mixed> Sanitized response
      */
     private function sanitizeOutput(array $parsed): array
@@ -245,43 +248,45 @@ PROMPT;
 
     private function sanitizePlainText(mixed $value): string
     {
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return '';
         }
         $clean = strip_tags($value);
         $clean = html_entity_decode($clean, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
         return trim(preg_replace('/\s+/', ' ', $clean) ?? '');
     }
 
     private function sanitizeHtml(mixed $value): string
     {
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return '';
         }
         $clean = strip_tags($value, self::ALLOWED_HTML_TAGS);
         $clean = preg_replace('/\s*on\w+\s*=\s*["\'][^"\']*["\']/i', '', $clean) ?? '';
         $clean = preg_replace('/(javascript|data)\s*:/i', '', $clean) ?? '';
         $clean = preg_replace('/\s*style\s*=\s*["\'][^"\']*["\']/i', '', $clean) ?? '';
+
         return trim($clean);
     }
 
     /**
-     * @param mixed $keywords
      * @return array<string>
      */
     private function sanitizeKeywords(mixed $keywords): array
     {
-        if (!is_array($keywords)) {
+        if (! is_array($keywords)) {
             return [];
         }
 
         return array_values(array_filter(array_map(function ($keyword) {
-            if (!is_string($keyword)) {
+            if (! is_string($keyword)) {
                 return null;
             }
             $clean = html_entity_decode($keyword, ENT_QUOTES | ENT_HTML5, 'UTF-8');
             $clean = strip_tags($clean);
             $clean = trim(preg_replace('/\s+/', ' ', $clean) ?? '');
+
             return $clean !== '' ? mb_strtolower($clean) : null;
         }, $keywords)));
     }
@@ -310,7 +315,7 @@ PROMPT;
     {
         try {
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
+                'Authorization' => 'Bearer '.$apiKey,
                 'Content-Type' => 'application/json',
             ])
                 ->timeout(self::TIMEOUT_SECONDS)
@@ -320,8 +325,10 @@ PROMPT;
                     }
                     if ($exception instanceof RequestException) {
                         $status = $exception->response->status();
+
                         return $status >= 500 || $status === 429;
                     }
+
                     return false;
                 }, throw: false)
                 ->post(self::OPENAI_ENDPOINT, [
@@ -378,7 +385,7 @@ PROMPT;
             throw new Exception('OpenAI API quota exceeded or access denied.');
         }
 
-        throw new Exception("OpenAI API request failed with status {$statusCode}: " . mb_substr($errorBody, 0, 500));
+        throw new Exception("OpenAI API request failed with status {$statusCode}: ".mb_substr($errorBody, 0, 500));
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -416,7 +423,7 @@ PROMPT;
                 'raw_content' => mb_substr($content, 0, 500),
                 'json_error' => json_last_error_msg(),
             ]);
-            throw new Exception('Failed to parse OpenAI JSON response: ' . json_last_error_msg());
+            throw new Exception('Failed to parse OpenAI JSON response: '.json_last_error_msg());
         }
 
         return $parsed;
@@ -429,8 +436,8 @@ PROMPT;
     {
         $missingKeys = array_diff(self::REQUIRED_KEYS, array_keys($parsed));
 
-        if (!empty($missingKeys)) {
-            throw new Exception('OpenAI response missing required keys: ' . implode(', ', $missingKeys));
+        if (! empty($missingKeys)) {
+            throw new Exception('OpenAI response missing required keys: '.implode(', ', $missingKeys));
         }
     }
 
@@ -441,7 +448,7 @@ PROMPT;
      */
     private function validateStatusValue(mixed $status): void
     {
-        if (!is_string($status) || !in_array($status, self::ALLOWED_STATUSES, true)) {
+        if (! is_string($status) || ! in_array($status, self::ALLOWED_STATUSES, true)) {
             throw new Exception(
                 "Invalid AI response status: '{$status}'. Must be exactly 'success' or 'flagged'."
             );

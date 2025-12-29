@@ -110,8 +110,6 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'rejected_at',
     ];
 
-
-
     protected $casts = [
         'price' => 'decimal:2',
         'variants' => 'array',
@@ -228,15 +226,14 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      * 1. Direct use: ->impulseCandidates($excludeIds)->get() for all candidates
      * 2. With limit: Use getRandomImpulseCandidates() helper for shuffled subset
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param array<int> $excludeIds Product IDs already in cart (don't suggest)
+     * @param  array<int>  $excludeIds  Product IDs already in cart (don't suggest)
      */
     public function scopeImpulseCandidates(\Illuminate\Database\Eloquent\Builder $query, array $excludeIds = []): \Illuminate\Database\Eloquent\Builder
     {
         $query->where('is_impulse_buy', true)
             ->where('is_visible', true);
 
-        if (!empty($excludeIds)) {
+        if (! empty($excludeIds)) {
             $query->whereNotIn('id', $excludeIds);
         }
 
@@ -254,9 +251,9 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      * 3. Fetch full models only for the random subset
      * 4. Use FIELD() to preserve shuffled order from MySQL
      *
-     * @param int $businessId Tenant/Business ID for isolation
-     * @param array<int> $excludeIds IDs already in cart
-     * @param int $count Number of suggestions to return (default 3)
+     * @param  int  $businessId  Tenant/Business ID for isolation
+     * @param  array<int>  $excludeIds  IDs already in cart
+     * @param  int  $count  Number of suggestions to return (default 3)
      * @return \Illuminate\Database\Eloquent\Collection<static>
      */
     public static function getRandomImpulseCandidates(int $businessId, array $excludeIds = [], int $count = 3): \Illuminate\Database\Eloquent\Collection
@@ -269,23 +266,23 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
             ->pluck('id');
 
         if ($candidateIds->isEmpty()) {
-            return new \Illuminate\Database\Eloquent\Collection();
+            return new \Illuminate\Database\Eloquent\Collection;
         }
 
         // Step 2: Shuffle in PHP (O(k) complexity)
         $randomIds = $candidateIds->shuffle()->take($count)->values();
 
         if ($randomIds->isEmpty()) {
-            return new \Illuminate\Database\Eloquent\Collection();
+            return new \Illuminate\Database\Eloquent\Collection;
         }
 
         // Step 3: Sanitize IDs for FIELD() clause (SQL injection prevention)
-        $sanitizedIds = $randomIds->map(fn($id) => (int) $id)->implode(',');
+        $sanitizedIds = $randomIds->map(fn ($id) => (int) $id)->implode(',');
 
         // Step 4: Fetch full models with FIELD() to preserve random order
         return static::withoutGlobalScopes()
             ->whereIn('id', $randomIds)
-            ->orderByRaw('FIELD(id, ' . $sanitizedIds . ')')
+            ->orderByRaw('FIELD(id, '.$sanitizedIds.')')
             ->get();
     }
 

@@ -29,8 +29,6 @@ use Illuminate\Support\Facades\Schema;
  *   $service = app(CouponValidatorService::class);
  *   $coupon = $service->validate('SAVE10', $user, 150.00, $tenant);
  *   $service->redeem($coupon, $user, $orderId);
- *
- * @package App\Services
  */
 final class CouponValidatorService
 {
@@ -57,11 +55,10 @@ final class CouponValidatorService
      * Per-user limits are handled defensively - if a coupon requires
      * per-user tracking and user is null, validation fails with REQUIRE_LOGIN.
      *
-     * @param string      $code      Coupon code (case-insensitive)
-     * @param User|null   $user      User attempting to use the coupon (null for guests)
-     * @param float       $cartTotal Current cart subtotal
-     * @param Tenant|null $tenant    Tenant context (required if user is null)
-     *
+     * @param  string  $code  Coupon code (case-insensitive)
+     * @param  User|null  $user  User attempting to use the coupon (null for guests)
+     * @param  float  $cartTotal  Current cart subtotal
+     * @param  Tenant|null  $tenant  Tenant context (required if user is null)
      * @return Coupon Valid coupon ready for redemption
      *
      * @throws InvalidCouponException If coupon is invalid for any reason
@@ -81,7 +78,7 @@ final class CouponValidatorService
         }
 
         // STEP 2: Check active status
-        if (!$coupon->is_active) {
+        if (! $coupon->is_active) {
             throw new InvalidCouponException('Este cupón no está activo', 'INACTIVE');
         }
 
@@ -125,9 +122,9 @@ final class CouponValidatorService
      * CRITICAL: This method MUST use DB::transaction() and lockForUpdate()
      * to prevent race conditions during high-traffic checkout scenarios.
      *
-     * @param Coupon   $coupon  Previously validated coupon
-     * @param User|null $user   User redeeming the coupon (null for guests)
-     * @param int|null $orderId Order ID (null during checkout, set on payment)
+     * @param  Coupon  $coupon  Previously validated coupon
+     * @param  User|null  $user  User redeeming the coupon (null for guests)
+     * @param  int|null  $orderId  Order ID (null during checkout, set on payment)
      *
      * @throws InvalidCouponException If coupon depleted during lock acquisition
      * @throws \Throwable On transaction failure
@@ -154,7 +151,7 @@ final class CouponValidatorService
             // STEP 3: Per-user tracking (ONLY if user is authenticated)
             if ($user !== null && $this->hasCouponUserTable()) {
                 $maxUsesPerUser = $this->getMaxUsesPerUser($lockedCoupon);
-                
+
                 $userUsageCount = DB::table('coupon_user')
                     ->where('coupon_id', $lockedCoupon->id)
                     ->where('user_id', $user->id)
@@ -194,9 +191,9 @@ final class CouponValidatorService
     /**
      * Link a pending redemption to a completed order.
      *
-     * @param Coupon    $coupon  The redeemed coupon
-     * @param User|null $user    The user who redeemed it (null for guests - no-op)
-     * @param int       $orderId The completed order ID
+     * @param  Coupon  $coupon  The redeemed coupon
+     * @param  User|null  $user  The user who redeemed it (null for guests - no-op)
+     * @param  int  $orderId  The completed order ID
      */
     public function linkToOrder(Coupon $coupon, ?User $user, int $orderId): void
     {
@@ -205,7 +202,7 @@ final class CouponValidatorService
             return;
         }
 
-        if (!$this->hasCouponUserTable()) {
+        if (! $this->hasCouponUserTable()) {
             return;
         }
 
@@ -296,6 +293,7 @@ final class CouponValidatorService
         if (self::$hasCouponUserTable === null) {
             self::$hasCouponUserTable = Schema::hasTable('coupon_user');
         }
+
         return self::$hasCouponUserTable;
     }
 
@@ -307,6 +305,7 @@ final class CouponValidatorService
         if (self::$hasMaxUsesPerUserColumn === null) {
             self::$hasMaxUsesPerUserColumn = Schema::hasColumn('coupons', 'max_uses_per_user');
         }
+
         return self::$hasMaxUsesPerUserColumn;
     }
 
@@ -318,6 +317,7 @@ final class CouponValidatorService
         if ($this->hasMaxUsesPerUserColumn() && isset($coupon->max_uses_per_user)) {
             return (int) $coupon->max_uses_per_user;
         }
+
         return self::DEFAULT_MAX_USES_PER_USER;
     }
 
@@ -390,6 +390,7 @@ final class CouponValidatorService
                     'REQUIRE_LOGIN'
                 );
             }
+
             // No per-user limits, guests can proceed
             return;
         }
@@ -428,7 +429,7 @@ final class CouponValidatorService
             $remaining = (float) $coupon->min_spend - $cartTotal;
 
             throw new InvalidCouponException(
-                'Agrega L. ' . number_format($remaining, 2) . ' más para usar este cupón',
+                'Agrega L. '.number_format($remaining, 2).' más para usar este cupón',
                 'MIN_SPEND_NOT_MET',
                 [
                     'min_spend' => (float) $coupon->min_spend,

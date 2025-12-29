@@ -44,8 +44,11 @@ class Announcement extends Model
     // ═══════════════════════════════════════════════════════════════════════════════
 
     public const TYPE_INFO = 'info';
+
     public const TYPE_WARNING = 'warning';
+
     public const TYPE_PROMO = 'promo';
+
     public const TYPE_URGENT = 'urgent';
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -87,7 +90,7 @@ class Announcement extends Model
 
     /**
      * Appended attributes for JSON serialization.
-     * 
+     *
      * PERFORMANCE NOTE: These accessors are computed on every serialization.
      * For bulk operations, use ->setAppends([]) to disable.
      *
@@ -112,10 +115,6 @@ class Announcement extends Model
      * Scope to a specific business (tenant isolation).
      *
      * USAGE: Announcement::forBusiness($businessId)->active()->get()
-     *
-     * @param Builder $query
-     * @param int $businessId
-     * @return Builder
      */
     public function scopeForBusiness(Builder $query, int $businessId): Builder
     {
@@ -133,11 +132,11 @@ class Announcement extends Model
         return $query->where('is_active', true)
             ->where(function ($q) use ($nowUtc) {
                 $q->whereNull('starts_at_utc')
-                  ->orWhere('starts_at_utc', '<=', $nowUtc);
+                    ->orWhere('starts_at_utc', '<=', $nowUtc);
             })
             ->where(function ($q) use ($nowUtc) {
                 $q->whereNull('expires_at_utc')
-                  ->orWhere('expires_at_utc', '>=', $nowUtc);
+                    ->orWhere('expires_at_utc', '>=', $nowUtc);
             });
     }
 
@@ -247,7 +246,7 @@ class Announcement extends Model
      */
     public function getStatusAttribute(): string
     {
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return 'Inactivo';
         }
 
@@ -288,7 +287,7 @@ class Announcement extends Model
      */
     public function isVisible(): bool
     {
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return false;
         }
 

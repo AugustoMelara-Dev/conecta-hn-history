@@ -139,8 +139,7 @@ trait InteractsWithInertiaRoutes
     /**
      * Extract Inertia props from test response.
      *
-     * @param \Illuminate\Testing\TestResponse $response
-     * @return array
+     * @param  \Illuminate\Testing\TestResponse  $response
      */
     protected function getInertiaProps($response): array
     {

@@ -41,9 +41,10 @@ class InventoryManager
      * Calling this outside a transaction will release locks immediately
      * after this method returns, creating a race condition vulnerability.
      *
-     * @param array $cartItems Cart items with product_id and quantity
-     * @param int $tenantId Tenant context for isolation
+     * @param  array  $cartItems  Cart items with product_id and quantity
+     * @param  int  $tenantId  Tenant context for isolation
      * @return Collection<int, Product> Products keyed by ID
+     *
      * @throws ValidationException If product unavailable or deleted
      */
     public function validateAndLock(array $cartItems, int $tenantId): Collection
@@ -65,9 +66,9 @@ class InventoryManager
 
         // Build quantity map per product
         $quantityMap = collect($cartItems)
-            ->filter(fn($item) => ! empty($item['product_id']))
+            ->filter(fn ($item) => ! empty($item['product_id']))
             ->groupBy('product_id')
-            ->map(fn($items) => $items->sum('quantity'))
+            ->map(fn ($items) => $items->sum('quantity'))
             ->toArray();
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -178,7 +179,7 @@ class InventoryManager
      * - Transition stock_status back to 'in_stock' if applicable
      * - Handle products that may have been deleted since order creation
      *
-     * @param \App\Models\Order $order The order to restore inventory from
+     * @param  \App\Models\Order  $order  The order to restore inventory from
      */
     public function restock(\App\Models\Order $order): void
     {
@@ -250,7 +251,8 @@ class InventoryManager
      * - lockForUpdate() prevents "Check-Then-Act" race condition
      * - ValidationException triggers automatic ROLLBACK
      *
-     * @param \App\Models\Order $order The order being restored
+     * @param  \App\Models\Order  $order  The order being restored
+     *
      * @throws ValidationException If insufficient stock (triggers rollback)
      */
     public function consume(\App\Models\Order $order): void
@@ -274,9 +276,9 @@ class InventoryManager
 
         // Build quantity map per product (aggregate same-product items)
         $quantityMap = $order->items
-            ->filter(fn($item) => ! empty($item->product_id))
+            ->filter(fn ($item) => ! empty($item->product_id))
             ->groupBy('product_id')
-            ->map(fn($items) => $items->sum('quantity'))
+            ->map(fn ($items) => $items->sum('quantity'))
             ->toArray();
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -418,7 +420,7 @@ class InventoryManager
                 // FLUSH TELEMETRY (Observability Logs)
                 // ═══════════════════════════════════════════════════════════
                 foreach ($telemetryBuffer as $logEntry) {
-                    \Illuminate\Support\Facades\Log::debug("Inventory consumed for restored order", $logEntry);
+                    \Illuminate\Support\Facades\Log::debug('Inventory consumed for restored order', $logEntry);
                 }
             });
         });

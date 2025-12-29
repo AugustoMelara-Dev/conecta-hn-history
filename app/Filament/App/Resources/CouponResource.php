@@ -28,8 +28,6 @@ use Filament\Tables\Table;
  * - Status badges with color coding
  * - Usage tracking display
  * - Honduras timezone compliance
- *
- * @package App\Filament\App\Resources
  */
 class CouponResource extends Resource
 {
@@ -213,27 +211,24 @@ class CouponResource extends Resource
                     ->label('Descuento')
                     ->formatStateUsing(function (Coupon $record): string {
                         return match ($record->type) {
-                            Coupon::TYPE_PERCENT => $record->value . '%',
-                            Coupon::TYPE_FIXED => 'L. ' . number_format((float) $record->value, 2),
+                            Coupon::TYPE_PERCENT => $record->value.'%',
+                            Coupon::TYPE_FIXED => 'L. '.number_format((float) $record->value, 2),
                             Coupon::TYPE_FREE_SHIPPING => 'Envío Gratis',
                             default => (string) $record->value,
                         };
                     })
-                    ->description(fn (Coupon $record): ?string => 
-                        $record->max_discount ? 'Máx: L. ' . number_format((float) $record->max_discount, 2) : null
+                    ->description(fn (Coupon $record): ?string => $record->max_discount ? 'Máx: L. '.number_format((float) $record->max_discount, 2) : null
                     ),
 
                 // Usage Counter
                 TextColumn::make('usage_count')
                     ->label('Uso')
-                    ->formatStateUsing(fn (Coupon $record): string => 
-                        $record->usage_limit 
-                            ? "{$record->usage_count} / {$record->usage_limit}" 
+                    ->formatStateUsing(fn (Coupon $record): string => $record->usage_limit
+                            ? "{$record->usage_count} / {$record->usage_limit}"
                             : "{$record->usage_count} / ∞"
                     )
-                    ->color(fn (Coupon $record): string => 
-                        $record->usage_limit && $record->usage_count >= $record->usage_limit 
-                            ? 'danger' 
+                    ->color(fn (Coupon $record): string => $record->usage_limit && $record->usage_count >= $record->usage_limit
+                            ? 'danger'
                             : 'gray'
                     ),
 

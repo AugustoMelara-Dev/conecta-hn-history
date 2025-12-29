@@ -39,14 +39,14 @@ Broadcast::channel('order.{trackingUuid}', function ($user, string $trackingUuid
     // The UUID itself acts as the security token (unguessable)
     // Verify the order exists with this UUID
     $exists = Order::where('tracking_uuid', $trackingUuid)->exists();
-    
+
     if (! $exists) {
         Log::warning('WebSocket auth failed: Invalid tracking UUID', [
             'tracking_uuid' => $trackingUuid,
             'ip' => request()->ip(),
         ]);
     }
-    
+
     return $exists;
 });
 

@@ -27,8 +27,8 @@ trait GeneratesSignedDownloadUrls
     /**
      * Generate a secure download URL for a stored file.
      *
-     * @param string $filename Path to file in storage
-     * @param \DateTimeInterface $expiresAt When the URL should expire
+     * @param  string  $filename  Path to file in storage
+     * @param  \DateTimeInterface  $expiresAt  When the URL should expire
      * @return string Signed download URL
      */
     protected function generateDownloadUrl(string $filename, \DateTimeInterface $expiresAt): string

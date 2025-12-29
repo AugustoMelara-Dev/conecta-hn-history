@@ -6,7 +6,6 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\AnnouncementResource\Pages;
 use App\Models\Announcement;
-use Filament\Forms;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\RichEditor;
@@ -29,8 +28,6 @@ use Filament\Tables\Table;
  * - Type-based color preview
  * - Quick toggle for activation
  * - Honduras timezone compliance
- *
- * @package App\Filament\App\Resources
  */
 class AnnouncementResource extends Resource
 {

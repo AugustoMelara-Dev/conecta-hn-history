@@ -22,8 +22,8 @@ use Tests\Traits\InteractsWithInertiaRoutes;
  */
 class HandleInertiaRequestsTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsWithInertiaRoutes;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -210,7 +210,7 @@ class HandleInertiaRequestsTest extends TestCase
      */
     public function non_tenant_object_returns_null(): void
     {
-        app()->instance('currentTenant', new \stdClass());
+        app()->instance('currentTenant', new \stdClass);
 
         $response = $this->get('/__test/storefront');
 

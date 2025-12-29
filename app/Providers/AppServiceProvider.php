@@ -61,7 +61,6 @@ class AppServiceProvider extends ServiceProvider
             return "<?php echo app()->bound('csp-nonce') ? app('csp-nonce') : ''; ?>";
         });
 
-
         // ═══════════════════════════════════════════════════════════════════════
         // GRANULAR RATE LIMITING - TRAFFIC SHAPING ARCHITECTURE
         // ═══════════════════════════════════════════════════════════════════════
@@ -319,7 +318,7 @@ class AppServiceProvider extends ServiceProvider
             // ═══════════════════════════════════════════════════════════════════════
             if (! $tenant) {
                 return Limit::perMinute(60)
-                    ->by('ip:' . $request->ip())
+                    ->by('ip:'.$request->ip())
                     ->response(function (Request $request, array $headers) {
                         return response()->json([
                             'success' => false,
@@ -341,7 +340,7 @@ class AppServiceProvider extends ServiceProvider
             // KEY: Strictly by Tenant ID - prevents multi-user bypass attack
             // ═══════════════════════════════════════════════════════════════════════
             return Limit::perMinute($limit)
-                ->by('tenant:' . $tenant->id)
+                ->by('tenant:'.$tenant->id)
                 ->response(function (Request $request, array $headers) use ($tier, $limit) {
                     return response()->json([
                         'success' => false,

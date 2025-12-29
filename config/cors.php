@@ -74,7 +74,7 @@ return [
     */
     'allowed_origins_patterns' => [
         // Allow all subdomains of the main application domain
-        '/^https?:\/\/.*\.' . preg_quote(parse_url(env('APP_URL', 'localhost'), PHP_URL_HOST), '/') . '$/',
+        '/^https?:\/\/.*\.'.preg_quote(parse_url(env('APP_URL', 'localhost'), PHP_URL_HOST), '/').'$/',
     ],
 
     /*
@@ -121,7 +121,7 @@ return [
     |--------------------------------------------------------------------------
     | When true, Access-Control-Allow-Credentials header is sent.
     | This is REQUIRED for stateful SPA authentication with cookies/sessions.
-    | 
+    |
     | SECURITY: When true, allowed_origins CANNOT be '*'
     */
     'supports_credentials' => true,

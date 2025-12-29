@@ -249,4 +249,3 @@ Route::get('/reports/download/{path}', [\App\Http\Controllers\Api\ReportDownload
     ->where('path', '.*')  // Allow slashes in path parameter
     ->name('reports.download')
     ->middleware('signed');
-

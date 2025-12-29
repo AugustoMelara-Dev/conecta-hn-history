@@ -35,10 +35,8 @@ use Throwable;
  *
  * DISPATCH:
  *   EnhanceTenantProfileJob::dispatch($tenantId);
- *
- * @package App\Jobs
  */
-final class EnhanceTenantProfileJob implements ShouldQueue, ShouldBeUnique
+final class EnhanceTenantProfileJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -63,6 +61,7 @@ final class EnhanceTenantProfileJob implements ShouldQueue, ShouldBeUnique
 
     /** Cache keys for metrics */
     private const METRIC_BANS_TOTAL = 'ai_moderation_bans_total';
+
     private const METRIC_SUCCESS_TOTAL = 'ai_enrichment_success_total';
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -85,7 +84,7 @@ final class EnhanceTenantProfileJob implements ShouldQueue, ShouldBeUnique
      */
     public function uniqueId(): string
     {
-        return 'enhance-tenant-' . $this->tenantId;
+        return 'enhance-tenant-'.$this->tenantId;
     }
 
     /**
@@ -95,7 +94,7 @@ final class EnhanceTenantProfileJob implements ShouldQueue, ShouldBeUnique
      */
     public function tags(): array
     {
-        return ['ai-enrichment', 'tenant:' . $this->tenantId];
+        return ['ai-enrichment', 'tenant:'.$this->tenantId];
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -105,13 +104,17 @@ final class EnhanceTenantProfileJob implements ShouldQueue, ShouldBeUnique
     /**
      * Execute the job.
      *
-     * @param AiProfileGeneratorService $aiService Injected via container
+     * @param  AiProfileGeneratorService  $aiService  Injected via container
+     *
      * @throws Throwable Re-thrown to trigger retry mechanism
      */
     public function handle(AiProfileGeneratorService $aiService): void
     {
         // STEP 1: Retrieve tenant (bypass global scopes)
         $tenant = Tenant::withoutGlobalScopes()->find($this->tenantId);
+        if ($tenant) {
+            dump("DEBUG: Found tenant logic", ['id' => $tenant->id]);
+        }
 
         if ($tenant === null) {
             Log::info('EnhanceTenantProfileJob: Tenant not found', [
@@ -119,6 +122,7 @@ final class EnhanceTenantProfileJob implements ShouldQueue, ShouldBeUnique
                 'tenant_id' => $this->tenantId,
                 'reason' => 'not_found',
             ]);
+
             return;
         }
 
@@ -126,12 +130,13 @@ final class EnhanceTenantProfileJob implements ShouldQueue, ShouldBeUnique
         $tenant->loadMissing('category');
 
         // STEP 3: Idempotency check
-        if ($tenant->is_ai_enhanced === true) {
+        if ((bool) $tenant->is_ai_enhanced === true) {
             Log::info('EnhanceTenantProfileJob: Already enriched', [
                 'context' => 'ai_job_skip',
                 'tenant_id' => $this->tenantId,
                 'reason' => 'already_enriched',
             ]);
+
             return;
         }
 
@@ -178,7 +183,7 @@ final class EnhanceTenantProfileJob implements ShouldQueue, ShouldBeUnique
                 $tenant->update([
                     'admin_notes' => $this->appendToNotes(
                         $tenant->admin_notes,
-                        '[' . now()->toIso8601String() . '] AI ENRICHMENT FAILED: ' . mb_substr($exception->getMessage(), 0, 200)
+                        '['.now()->toIso8601String().'] AI ENRICHMENT FAILED: '.mb_substr($exception->getMessage(), 0, 200)
                     ),
                 ]);
             });
@@ -274,6 +279,7 @@ final class EnhanceTenantProfileJob implements ShouldQueue, ShouldBeUnique
         if (empty($existing)) {
             return $new;
         }
-        return $existing . "\n\n---\n\n" . $new;
+
+        return $existing."\n\n---\n\n".$new;
     }
 }

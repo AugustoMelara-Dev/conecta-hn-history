@@ -72,7 +72,7 @@ class SubscriptionExpiringNotification extends Notification implements ShouldQue
 
         return (new MailMessage)
             ->subject("⚠️ Tu suscripción {$planLabel} expira en 72 horas")
-            ->greeting("Hola!")
+            ->greeting('Hola!')
             ->line("Tu suscripción **{$planLabel}** para **{$tenantName}** expira el **{$expiryDate}**.")
             ->line('Para evitar la interrupción de tus servicios PRO, te recomendamos renovar ahora.')
             ->line('**Beneficios que perderás:**')

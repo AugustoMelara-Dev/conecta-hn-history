@@ -143,7 +143,7 @@ class CouponFactory extends Factory
     /**
      * Indicate that the coupon has per-user limits (requires login).
      *
-     * @param int $limit Maximum uses per user (default 1)
+     * @param  int  $limit  Maximum uses per user (default 1)
      */
     public function perUserLimited(int $limit = 1): static
     {

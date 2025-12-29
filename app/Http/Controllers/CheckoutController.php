@@ -23,8 +23,6 @@ use Illuminate\Support\Facades\Log;
  * - Structured JSON responses for React frontend
  * - Error handling with user-friendly messages
  * - Data hiding (no raw Eloquent models in responses)
- *
- * @package App\Http\Controllers
  */
 class CheckoutController extends Controller
 {
@@ -38,9 +36,6 @@ class CheckoutController extends Controller
      * 3. TENANT CONTEXT: Resolved from app container (set by TenantMiddleware)
      * 4. ERROR HANDLING: Returns structured 422 for validation failures
      *
-     * @param Request $request
-     * @param CouponValidatorService $couponValidator
-     * @return JsonResponse
      *
      * @example Success Response (HTTP 200):
      * {
@@ -51,7 +46,6 @@ class CheckoutController extends Controller
      *   "new_total": 135.00,
      *   "message": "Cupón aplicado correctamente"
      * }
-     *
      * @example Error Response (HTTP 422):
      * {
      *   "valid": false,
@@ -140,15 +134,12 @@ class CheckoutController extends Controller
 
     /**
      * Generate a user-friendly success message based on coupon type.
-     *
-     * @param Coupon $coupon
-     * @return string
      */
     private function getSuccessMessage(Coupon $coupon): string
     {
         return match ($coupon->type) {
             Coupon::TYPE_PERCENT => "¡Cupón aplicado! {$coupon->value}% de descuento",
-            Coupon::TYPE_FIXED => '¡Cupón aplicado! L. ' . number_format((float) $coupon->value, 2) . ' de descuento',
+            Coupon::TYPE_FIXED => '¡Cupón aplicado! L. '.number_format((float) $coupon->value, 2).' de descuento',
             Coupon::TYPE_FREE_SHIPPING => '¡Cupón aplicado! Envío gratis',
             default => 'Cupón aplicado correctamente',
         };
@@ -159,9 +150,6 @@ class CheckoutController extends Controller
      *
      * This endpoint is used by the frontend to refresh the cart display
      * after applying or removing a coupon.
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function getCartSummary(Request $request): JsonResponse
     {
@@ -184,7 +172,7 @@ class CheckoutController extends Controller
             try {
                 $tenant = app()->has('currentTenant') ? app('currentTenant') : null;
                 $couponValidator = app(CouponValidatorService::class);
-                
+
                 $coupon = $couponValidator->validate(
                     code: $couponCode,
                     user: $request->user(),
@@ -216,9 +204,6 @@ class CheckoutController extends Controller
      * Remove applied coupon from cart.
      *
      * Simple endpoint that just returns the cart without any coupon applied.
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function removeCoupon(Request $request): JsonResponse
     {

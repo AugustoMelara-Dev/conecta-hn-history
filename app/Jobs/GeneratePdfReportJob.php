@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\Order;
-use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Notifications\ReportReadyNotification;
@@ -181,7 +180,7 @@ class GeneratePdfReportJob implements ShouldQueue
             'total_revenue' => $orders->sum('total'),
             'avg_order_value' => $orders->avg('total') ?? 0,
             'by_status' => $orders->groupBy('status')->map->count(),
-            'by_payment' => $orders->groupBy(fn($o) => $o->payment_method?->value ?? 'unknown')->map->count(),
+            'by_payment' => $orders->groupBy(fn ($o) => $o->payment_method?->value ?? 'unknown')->map->count(),
         ];
 
         return Pdf::loadView('reports.sales-summary', [
@@ -208,8 +207,8 @@ class GeneratePdfReportJob implements ShouldQueue
         $pdf = Pdf::loadView('reports.inventory-manifest', [
             'tenant' => $this->tenant,
             'products' => $products,
-            'low_stock_count' => $products->filter(fn($p) => $p->stock_quantity <= $p->low_stock_threshold)->count(),
-            'out_of_stock_count' => $products->filter(fn($p) => $p->stock_quantity <= 0)->count(),
+            'low_stock_count' => $products->filter(fn ($p) => $p->stock_quantity <= $p->low_stock_threshold)->count(),
+            'out_of_stock_count' => $products->filter(fn ($p) => $p->stock_quantity <= 0)->count(),
             'generated_at' => now(),
         ]);
 

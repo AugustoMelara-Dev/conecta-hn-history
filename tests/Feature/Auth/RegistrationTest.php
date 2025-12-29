@@ -23,9 +23,11 @@ class RegistrationTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'tenant_name' => 'Test Business',
+            'slug' => 'test-business',
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertRedirect(route('filament.admin.pages.dashboard', absolute: false));
     }
 }

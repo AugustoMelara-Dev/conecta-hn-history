@@ -60,7 +60,7 @@ class CleanOrphanedUploads extends Command
 
         $this->info('🔍 Scanning for orphaned files...');
         $this->info("   Grace period: {$graceMinutes} minutes");
-        $this->info("   Mode: " . ($dryRun ? 'DRY RUN (no deletions)' : 'LIVE'));
+        $this->info('   Mode: '.($dryRun ? 'DRY RUN (no deletions)' : 'LIVE'));
         $this->newLine();
 
         $disk = Storage::disk('public');
@@ -73,7 +73,7 @@ class CleanOrphanedUploads extends Command
         $tenantDirs = $disk->directories('tenants');
 
         foreach ($tenantDirs as $tenantDir) {
-            $productDir = $tenantDir . '/products';
+            $productDir = $tenantDir.'/products';
 
             if (! $disk->exists($productDir)) {
                 continue;
@@ -107,11 +107,12 @@ class CleanOrphanedUploads extends Command
         // ═══════════════════════════════════════════════════════════════════════
         if (empty($orphanedFiles)) {
             $this->info('✅ No orphaned files found. Storage is clean!');
+
             return self::SUCCESS;
         }
 
-        $this->warn("⚠️  Found " . count($orphanedFiles) . " orphaned file(s)");
-        $this->info("   Total size: " . $this->formatBytes($totalSize));
+        $this->warn('⚠️  Found '.count($orphanedFiles).' orphaned file(s)');
+        $this->info('   Total size: '.$this->formatBytes($totalSize));
         $this->newLine();
 
         // Display table of orphaned files
@@ -134,6 +135,7 @@ class CleanOrphanedUploads extends Command
             $this->newLine();
             $this->info('🔒 Dry run complete. No files were deleted.');
             $this->info('   Run without --dry-run to delete orphaned files.');
+
             return self::SUCCESS;
         }
 
@@ -141,6 +143,7 @@ class CleanOrphanedUploads extends Command
         $this->newLine();
         if (! $this->confirm('Delete these orphaned files?', true)) {
             $this->info('Operation cancelled.');
+
             return self::SUCCESS;
         }
 
@@ -168,14 +171,14 @@ class CleanOrphanedUploads extends Command
         }
 
         $this->newLine();
-        $this->info("✅ Cleanup complete!");
+        $this->info('✅ Cleanup complete!');
         $this->info("   Deleted: {$deleted} file(s)");
 
         if ($failed > 0) {
             $this->warn("   Failed: {$failed} file(s)");
         }
 
-        $this->info("   Freed: " . $this->formatBytes($totalSize));
+        $this->info('   Freed: '.$this->formatBytes($totalSize));
 
         return self::SUCCESS;
     }
@@ -193,6 +196,6 @@ class CleanOrphanedUploads extends Command
             $i++;
         }
 
-        return round($bytes, 2) . ' ' . $units[$i];
+        return round($bytes, 2).' '.$units[$i];
     }
 }

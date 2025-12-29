@@ -33,7 +33,7 @@ function createTestTenant(array $overrides = []): Tenant
     return Tenant::forceCreate(array_merge([
         'user_id' => $user->id,
         'name' => 'Test Tenant',
-        'slug' => 'test-tenant-' . uniqid(),
+        'slug' => 'test-tenant-'.uniqid(),
         'is_active' => true,
         'is_ai_enhanced' => false,
         'subscription_status' => 'active',
@@ -76,7 +76,7 @@ function fakeSuccessfulOpenAiResponse(array $overrides = []): void
 test('service throws exception when API key is not configured', function () {
     config(['services.openai.key' => null]);
 
-    $service = new AiProfileGeneratorService();
+    $service = new AiProfileGeneratorService;
 
     expect(fn () => $service->generate('Test', 'Description', 'Category'))
         ->toThrow(Exception::class, 'OpenAI API key is not configured');
@@ -105,7 +105,7 @@ test('service sanitizes XSS from HTML output', function () {
         ], 200),
     ]);
 
-    $service = new AiProfileGeneratorService();
+    $service = new AiProfileGeneratorService;
     $result = $service->generate('Test', 'Desc', 'Cat');
 
     // Verify XSS is stripped
@@ -126,7 +126,7 @@ test('service handles rate limit response correctly', function () {
         ], 429, ['Retry-After' => '60']),
     ]);
 
-    $service = new AiProfileGeneratorService();
+    $service = new AiProfileGeneratorService;
 
     expect(fn () => $service->generate('Test', 'Desc', 'Cat'))
         ->toThrow(Exception::class, 'rate limited');
@@ -150,7 +150,7 @@ test('service validates required keys in response', function () {
         ], 200),
     ]);
 
-    $service = new AiProfileGeneratorService();
+    $service = new AiProfileGeneratorService;
 
     expect(fn () => $service->generate('Test', 'Desc', 'Cat'))
         ->toThrow(Exception::class, 'missing required keys');
@@ -160,7 +160,7 @@ test('service returns valid response on success', function () {
     config(['services.openai.key' => 'test-api-key']);
     fakeSuccessfulOpenAiResponse();
 
-    $service = new AiProfileGeneratorService();
+    $service = new AiProfileGeneratorService;
     $result = $service->generate('pulperia don mario', 'tienda local', 'Comercio');
 
     expect($result['status'])->toBe('success');
@@ -192,7 +192,7 @@ test('service handles flagged content response', function () {
         ], 200),
     ]);
 
-    $service = new AiProfileGeneratorService();
+    $service = new AiProfileGeneratorService;
     $result = $service->generate('Suspicious', 'drugs available', 'Unknown');
 
     expect($result['status'])->toBe('flagged');
@@ -210,6 +210,7 @@ test('job skips processing when tenant not found', function () {
 
     $job->handle($mockService);
     // Test passes if no exception thrown - tenant not found is handled gracefully
+    expect(true)->toBeTrue();
 });
 
 test('job skips already enriched tenants (idempotency)', function () {
@@ -232,7 +233,7 @@ test('job can be dispatched to queue', function () {
     EnhanceTenantProfileJob::dispatch($tenant->id);
 
     Queue::assertPushed(EnhanceTenantProfileJob::class, function ($job) use ($tenant) {
-        return $job->uniqueId() === 'enhance-tenant-' . $tenant->id;
+        return $job->uniqueId() === 'enhance-tenant-'.$tenant->id;
     });
 });
 
@@ -245,4 +246,3 @@ test('job has correct queue configuration', function () {
     expect($job->timeout)->toBe(120);
     expect($job->tenantId)->toBe(1);
 });
-

@@ -22,7 +22,7 @@ class AnnouncementFactory extends Factory
             'business_id' => Tenant::factory(),
             // ADR-002: Type from PHP 8.1 enum
             'type' => $this->faker->randomElement(AnnouncementType::values()),
-            'content' => '<p>' . $this->faker->sentence() . '</p>',
+            'content' => '<p>'.$this->faker->sentence().'</p>',
             'is_active' => true,
             // ADR-001: Nullable for "always visible" announcements
             'starts_at_utc' => null,

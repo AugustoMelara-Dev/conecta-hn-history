@@ -72,7 +72,7 @@ class NewOrderNotification extends Notification implements ShouldQueue
 
         return (new MailMessage)
             ->subject("🛒 Nuevo Pedido {$orderNumber} - {$tenantName}")
-            ->greeting("¡Nuevo pedido recibido!")
+            ->greeting('¡Nuevo pedido recibido!')
             ->line("**Cliente:** {$customerName}")
             ->line("**Pedido:** {$orderNumber}")
             ->line("**Productos:** {$itemsCount} artículo(s)")

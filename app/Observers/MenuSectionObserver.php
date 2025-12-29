@@ -84,6 +84,7 @@ class MenuSectionObserver implements ShouldHandleEventsAfterCommit
                 'menu_section_id' => $menuSection->id,
                 'menu_section_name' => $menuSection->name,
             ]);
+
             return;
         }
 
@@ -96,6 +97,7 @@ class MenuSectionObserver implements ShouldHandleEventsAfterCommit
                 'menu_section_id' => $menuSection->id,
                 'changed_attributes' => array_keys($menuSection->getChanges()),
             ]);
+
             return;
         }
 
@@ -203,11 +205,10 @@ class MenuSectionObserver implements ShouldHandleEventsAfterCommit
             ], $context));
 
         } catch (\Exception $e) {
-            Log::warning('Tenant version rotation failed: ' . $e->getMessage(), [
+            Log::warning('Tenant version rotation failed: '.$e->getMessage(), [
                 'tenant_id' => $tenantId,
                 'trigger' => $trigger,
             ]);
         }
     }
 }
-

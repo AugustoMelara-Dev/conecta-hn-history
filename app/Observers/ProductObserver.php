@@ -118,7 +118,7 @@ class ProductObserver implements ResetsStaticCache, ShouldHandleEventsAfterCommi
                 ->where('slug', $slug)
                 ->exists()
         ) {
-            $slug = $baseSlug . '-' . $counter;
+            $slug = $baseSlug.'-'.$counter;
             $counter++;
         }
 
@@ -213,7 +213,7 @@ class ProductObserver implements ResetsStaticCache, ShouldHandleEventsAfterCommi
 
         } catch (\Exception $e) {
             // Cache invalidation is non-critical - log but don't fail
-            Log::warning('Tenant version rotation failed: ' . $e->getMessage(), [
+            Log::warning('Tenant version rotation failed: '.$e->getMessage(), [
                 'tenant_id' => $product->tenant_id,
                 'product_id' => $product->id,
             ]);

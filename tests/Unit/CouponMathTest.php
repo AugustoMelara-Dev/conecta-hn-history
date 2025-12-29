@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Models\Coupon;
-use Carbon\Carbon;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -32,8 +31,8 @@ class CouponMathTest extends TestCase
     /**
      * @test
      * Verifies that percentage discounts are rounded to exactly 2 decimal places.
-     * 
-     * SCENARIO: 33.333% of $100 = $33.333... 
+     *
+     * SCENARIO: 33.333% of $100 = $33.333...
      * EXPECTED: Must return 33.33, not 33.33300001 (which breaks payment gateways)
      */
     public function it_rounds_percentage_discounts_to_two_decimals(): void
@@ -52,7 +51,7 @@ class CouponMathTest extends TestCase
         // Strict type comparison - must be exactly 33.33
         $this->assertSame(33.33, $discount);
         $this->assertIsFloat($discount);
-        
+
         // Verify string representation matches (no hidden precision errors)
         $this->assertSame('33.33', number_format($discount, 2, '.', ''));
     }
@@ -60,7 +59,7 @@ class CouponMathTest extends TestCase
     /**
      * @test
      * Additional precision test with repeating decimal.
-     * 
+     *
      * SCENARIO: 10% of $333.33 = $33.333...
      * EXPECTED: Must return 33.33
      */
@@ -83,7 +82,7 @@ class CouponMathTest extends TestCase
     /**
      * @test
      * Verifies percentage discount respects max_discount cap.
-     * 
+     *
      * SCENARIO: 50% of $200 = $100, but max_discount = $50
      * EXPECTED: Must return 50.00 (capped)
      */
@@ -110,10 +109,10 @@ class CouponMathTest extends TestCase
     /**
      * @test
      * CRITICAL: Verifies that fixed discounts cannot exceed cart subtotal.
-     * 
+     *
      * SCENARIO: L.500 coupon on L.100 cart
      * EXPECTED: Must return 100.00 (not 500.00 which would cause -400 total)
-     * 
+     *
      * This test prevents the catastrophic business rule violation of
      * negative transaction totals.
      */
@@ -179,7 +178,7 @@ class CouponMathTest extends TestCase
     /**
      * @test
      * Verifies free_shipping returns the exact shipping cost passed.
-     * 
+     *
      * SCENARIO: Free shipping coupon, $55.50 shipping cost
      * EXPECTED: Must return 55.50 exactly (ignore coupon's nominal value)
      */
@@ -247,13 +246,12 @@ class CouponMathTest extends TestCase
     /**
      * Create a Coupon model instance in memory (no database).
      *
-     * @param array<string, mixed> $attributes
-     * @return Coupon
+     * @param  array<string, mixed>  $attributes
      */
     private function createCouponInstance(array $attributes): Coupon
     {
-        $coupon = new Coupon();
-        
+        $coupon = new Coupon;
+
         foreach ($attributes as $key => $value) {
             $coupon->{$key} = $value;
         }

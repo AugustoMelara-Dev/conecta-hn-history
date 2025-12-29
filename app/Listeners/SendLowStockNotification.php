@@ -39,14 +39,15 @@ class SendLowStockNotification implements ShouldQueue
         // Cache::add() is atomic: write-if-not-exists in a single operation.
         // If key exists → returns false (another process already sent alert today)
         // If key doesn't exist → writes and returns true (we have the lock)
-        $cacheKey = "low_stock_alert_sent_{$product->id}_" . now()->format('Y-m-d');
+        $cacheKey = "low_stock_alert_sent_{$product->id}_".now()->format('Y-m-d');
         $secondsUntilMidnight = now()->endOfDay()->diffInSeconds(now());
 
         // Try to acquire atomic lock - ABORT if already sent today
         if (! Cache::add($cacheKey, true, $secondsUntilMidnight)) {
-            Log::debug("LowStockNotification: Skipped (already sent today via atomic check)", [
+            Log::debug('LowStockNotification: Skipped (already sent today via atomic check)', [
                 'product_id' => $product->id,
             ]);
+
             return;
         }
 
@@ -57,6 +58,7 @@ class SendLowStockNotification implements ShouldQueue
 
         if (! $tenant || ! $tenant->user) {
             Log::warning("LowStockNotification: No owner found for product #{$product->id}");
+
             return;
         }
 
@@ -72,10 +74,9 @@ class SendLowStockNotification implements ShouldQueue
             'owner_email' => $owner->email,
         ]);
 
-        Log::debug("LowStockNotification: Alert sent with atomic lock", [
+        Log::debug('LowStockNotification: Alert sent with atomic lock', [
             'product_id' => $product->id,
             'expires_in_seconds' => $secondsUntilMidnight,
         ]);
     }
 }
-

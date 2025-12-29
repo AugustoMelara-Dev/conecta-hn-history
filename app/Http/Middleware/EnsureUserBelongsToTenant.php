@@ -41,14 +41,14 @@ class EnsureUserBelongsToTenant
         }
 
         // No tenant context: skip validation
-        if (!app()->has('currentTenant')) {
+        if (! app()->has('currentTenant')) {
             return $next($request);
         }
 
         $tenant = app('currentTenant');
 
         // SECURITY: Validate user belongs to resolved tenant
-        if (!$this->userBelongsToTenant($user, $tenant)) {
+        if (! $this->userBelongsToTenant($user, $tenant)) {
             abort(403, 'You do not have access to this tenant.');
         }
 

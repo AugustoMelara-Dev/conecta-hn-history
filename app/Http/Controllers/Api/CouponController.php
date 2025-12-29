@@ -151,5 +151,3 @@ class CouponController extends Controller
         ]);
     }
 }
-
-

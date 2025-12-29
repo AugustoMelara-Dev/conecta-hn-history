@@ -38,7 +38,7 @@ class AiEnrichmentIntegrationTest extends TestCase
         return Tenant::forceCreate(array_merge([
             'user_id' => $this->user->id,
             'name' => 'Test Tenant',
-            'slug' => 'test-tenant-' . uniqid(),
+            'slug' => 'test-tenant-'.uniqid(),
             'is_active' => true,
             'is_ai_enhanced' => false,
             'subscription_status' => 'active',
@@ -156,7 +156,7 @@ class AiEnrichmentIntegrationTest extends TestCase
         EnhanceTenantProfileJob::dispatch($tenant->id);
 
         Queue::assertPushed(EnhanceTenantProfileJob::class, function ($job) use ($tenant) {
-            return $job->uniqueId() === 'enhance-tenant-' . $tenant->id;
+            return $job->uniqueId() === 'enhance-tenant-'.$tenant->id;
         });
     }
 

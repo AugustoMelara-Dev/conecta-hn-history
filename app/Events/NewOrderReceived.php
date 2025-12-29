@@ -41,7 +41,7 @@ class NewOrderReceived implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('tenant.' . $this->order->tenant_id),
+            new PrivateChannel('tenant.'.$this->order->tenant_id),
         ];
     }
 

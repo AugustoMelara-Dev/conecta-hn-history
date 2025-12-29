@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Exceptions\InvalidOrderTransitionException;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
@@ -60,7 +60,9 @@ class OrderController extends Controller
      * Domain Services (Constructor Injection)
      */
     protected InventoryManager $inventoryManager;
+
     protected PriceCalculatorService $priceCalculator;
+
     protected OrderStateService $orderStateService;
 
     /**
@@ -169,7 +171,6 @@ class OrderController extends Controller
             // should bubble up to Laravel's ExceptionHandler for proper 422
             // response with structured errors array for frontend form binding.
             throw $e;
-
         } catch (\Exception $e) {
             // ═══════════════════════════════════════════════════════════════════
             // SYSTEM FAILURE: Log and return 500

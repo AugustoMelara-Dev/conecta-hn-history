@@ -19,15 +19,13 @@ use Exception;
  *   } catch (InvalidCouponException $e) {
  *       return response()->json($e->toArray(), 422);
  *   }
- *
- * @package App\Exceptions
  */
 class InvalidCouponException extends Exception
 {
     /**
-     * @param string $message   Human-readable error message (Spanish for Honduras)
-     * @param string $errorCode Machine-readable error code for frontend handling
-     * @param array  $context   Additional context data (min_spend, remaining, etc.)
+     * @param  string  $message  Human-readable error message (Spanish for Honduras)
+     * @param  string  $errorCode  Machine-readable error code for frontend handling
+     * @param  array  $context  Additional context data (min_spend, remaining, etc.)
      */
     public function __construct(
         string $message,
@@ -82,4 +80,3 @@ class InvalidCouponException extends Exception
         };
     }
 }
-

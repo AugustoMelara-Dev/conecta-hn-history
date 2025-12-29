@@ -53,10 +53,10 @@ class OrderEvent extends Model
     /**
      * Record a new event in the order's history.
      *
-     * @param Order $order The order this event belongs to
-     * @param string $eventType Event category (e.g., 'status_changed')
-     * @param array $payload Flexible metadata for the event
-     * @param User|int|null $actor User who triggered the event (null = system)
+     * @param  Order  $order  The order this event belongs to
+     * @param  string  $eventType  Event category (e.g., 'status_changed')
+     * @param  array  $payload  Flexible metadata for the event
+     * @param  User|int|null  $actor  User who triggered the event (null = system)
      * @return static The created event
      */
     public static function record(

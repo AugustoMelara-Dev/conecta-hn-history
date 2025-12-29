@@ -101,14 +101,14 @@ class AnalyticsController extends Controller
             $event = $data['event'] ?? 'purchase';
             $timestamp = $data['timestamp'] ?? now()->toISOString();
 
-            if (!$tenantSlug) {
+            if (! $tenantSlug) {
                 return response()->json(['status' => 'skipped', 'reason' => 'no_tenant']);
             }
 
             // Find tenant by slug
             $tenant = Tenant::where('slug', $tenantSlug)->first();
 
-            if (!$tenant) {
+            if (! $tenant) {
                 return response()->json(['status' => 'skipped', 'reason' => 'tenant_not_found']);
             }
 

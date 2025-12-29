@@ -19,12 +19,12 @@ class InvalidOrderTransitionException extends Exception
         public readonly string $attemptedStatus,
         public readonly array $allowedTransitions = []
     ) {
-        $allowed = empty($allowedTransitions) 
-            ? 'none' 
+        $allowed = empty($allowedTransitions)
+            ? 'none'
             : implode(', ', $allowedTransitions);
 
         parent::__construct(
-            "Invalid order transition: Cannot move from '{$currentStatus}' to '{$attemptedStatus}'. " .
+            "Invalid order transition: Cannot move from '{$currentStatus}' to '{$attemptedStatus}'. ".
             "Allowed transitions from '{$currentStatus}': [{$allowed}]"
         );
     }

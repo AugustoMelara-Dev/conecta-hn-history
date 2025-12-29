@@ -17,7 +17,6 @@ uses(RefreshDatabase::class);
  * SECURITY AUDIT FRAMEWORK - ZERO TRUST VERIFICATION
  * ══════════════════════════════════════════════════════════════════════════════
  */
-
 beforeEach(function () {
     // VICTIM ENVIRONMENT
     $this->victimUser = User::factory()->create([
@@ -47,11 +46,12 @@ beforeEach(function () {
 });
 
 // Helper function equivalent
-function assertSecurityBlocked($response, $description) {
+function assertSecurityBlocked($response, $description)
+{
     if ($response instanceof \Illuminate\Testing\TestResponse) {
         $status = $response->status();
         $validResponses = [401, 403, 404, 405];
-        
+
         expect(in_array($status, $validResponses))->toBeTrue(
             "SECURITY BREACH: {$description}. Expected one of [401, 403, 404, 405], got {$status}"
         );
@@ -96,7 +96,7 @@ test('it prevents cross tenant product modification', function () {
     $victimProduct = Product::forceCreate([
         'tenant_id' => $this->victimTenant->id,
         'name' => 'Pizza Especial',
-        'slug' => 'pizza-especial-victim-' . uniqid(),
+        'slug' => 'pizza-especial-victim-'.uniqid(),
         'price' => 250.00,
         'is_visible' => true,
     ]);
@@ -129,7 +129,7 @@ test('it prevents product listing leakage', function () {
     Product::forceCreate([
         'tenant_id' => $this->victimTenant->id,
         'name' => 'VICTIM_SECRET_PRODUCT',
-        'slug' => 'victim-secret-' . uniqid(),
+        'slug' => 'victim-secret-'.uniqid(),
         'price' => 999.99,
         'is_visible' => true,
     ]);
@@ -137,7 +137,7 @@ test('it prevents product listing leakage', function () {
     Product::forceCreate([
         'tenant_id' => $this->attackerTenant->id,
         'name' => 'Attacker Product',
-        'slug' => 'attacker-product-' . uniqid(),
+        'slug' => 'attacker-product-'.uniqid(),
         'price' => 10.00,
         'is_visible' => true,
     ]);
@@ -146,8 +146,9 @@ test('it prevents product listing leakage', function () {
         Sanctum::actingAs($this->attackerUser, ['*']);
         $response = $this->getJson("/api/products?tenant_id={$this->attackerTenant->id}");
 
-        if (!$response->isSuccessful()) {
+        if (! $response->isSuccessful()) {
             expect(true)->toBeTrue();
+
             return;
         }
 
@@ -239,10 +240,10 @@ test('it does not reveal resource existence through error responses', function (
 
         expect($existingResponse->status())->toBeGreaterThanOrEqual(400)
             ->toBeLessThan(500);
-            
+
         expect($nonExistingResponse->status())->toBeGreaterThanOrEqual(400)
             ->toBeLessThan(500);
-            
+
     } catch (\Throwable $e) {
         expect(true)->toBeTrue();
     }
@@ -256,7 +257,7 @@ test('it prevents admin panel cross tenant access', function () {
     $victimProduct = Product::forceCreate([
         'tenant_id' => $this->victimTenant->id,
         'name' => 'Admin Panel Test Product',
-        'slug' => 'admin-test-product-' . uniqid(),
+        'slug' => 'admin-test-product-'.uniqid(),
         'price' => 150.00,
         'is_visible' => true,
     ]);

@@ -37,10 +37,8 @@ use Throwable;
  *   EnhanceBusinessProfileJob::dispatch($businessId);
  *
  * NOTE: Uses Tenant model internally (Business = Tenant in database schema)
- *
- * @package App\Jobs
  */
-final class EnhanceBusinessProfileJob implements ShouldQueue, ShouldBeUnique
+final class EnhanceBusinessProfileJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -65,6 +63,7 @@ final class EnhanceBusinessProfileJob implements ShouldQueue, ShouldBeUnique
 
     /** Cache keys for metrics */
     private const METRIC_BANS_TOTAL = 'ai_moderation_bans_total';
+
     private const METRIC_SUCCESS_TOTAL = 'ai_enrichment_success_total';
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -87,7 +86,7 @@ final class EnhanceBusinessProfileJob implements ShouldQueue, ShouldBeUnique
      */
     public function uniqueId(): string
     {
-        return 'enhance-business-' . $this->businessId;
+        return 'enhance-business-'.$this->businessId;
     }
 
     /**
@@ -97,7 +96,7 @@ final class EnhanceBusinessProfileJob implements ShouldQueue, ShouldBeUnique
      */
     public function tags(): array
     {
-        return ['ai-enrichment', 'business:' . $this->businessId];
+        return ['ai-enrichment', 'business:'.$this->businessId];
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -107,7 +106,8 @@ final class EnhanceBusinessProfileJob implements ShouldQueue, ShouldBeUnique
     /**
      * Execute the job.
      *
-     * @param AiProfileGeneratorService $aiService Injected via container
+     * @param  AiProfileGeneratorService  $aiService  Injected via container
+     *
      * @throws Throwable Re-thrown to trigger retry mechanism
      */
     public function handle(AiProfileGeneratorService $aiService): void
@@ -122,6 +122,7 @@ final class EnhanceBusinessProfileJob implements ShouldQueue, ShouldBeUnique
                 'business_id' => $this->businessId,
                 'reason' => 'not_found',
             ]);
+
             return;
         }
 
@@ -135,6 +136,7 @@ final class EnhanceBusinessProfileJob implements ShouldQueue, ShouldBeUnique
                 'business_id' => $this->businessId,
                 'reason' => 'already_enriched',
             ]);
+
             return;
         }
 
@@ -181,7 +183,7 @@ final class EnhanceBusinessProfileJob implements ShouldQueue, ShouldBeUnique
                 $business->update([
                     'admin_notes' => $this->appendToNotes(
                         $business->admin_notes,
-                        '[' . now()->toIso8601String() . '] AI ENRICHMENT FAILED: ' . mb_substr($exception->getMessage(), 0, 200)
+                        '['.now()->toIso8601String().'] AI ENRICHMENT FAILED: '.mb_substr($exception->getMessage(), 0, 200)
                     ),
                 ]);
             });
@@ -279,6 +281,7 @@ final class EnhanceBusinessProfileJob implements ShouldQueue, ShouldBeUnique
         if (empty($existing)) {
             return $new;
         }
-        return $existing . "\n\n---\n\n" . $new;
+
+        return $existing."\n\n---\n\n".$new;
     }
 }

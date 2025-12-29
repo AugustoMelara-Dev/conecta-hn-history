@@ -36,7 +36,7 @@ class Interaction extends Model
 
     /**
      * Available interaction types.
-     * 
+     *
      * IMPORTANT: Keep in sync with AnalyticsController event types.
      * - Standard actions: whatsapp, call, location, cart, share
      * - Conversion events: conversion (generic), purchase (specific)

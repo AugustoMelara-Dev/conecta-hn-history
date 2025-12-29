@@ -45,12 +45,12 @@ class OrderStatusUpdated implements ShouldBroadcast
     {
         $channels = [
             // Tenant dashboard channel
-            new PrivateChannel('tenant.' . $this->order->tenant_id),
+            new PrivateChannel('tenant.'.$this->order->tenant_id),
         ];
 
         // Customer tracking channel (using order UUID for security)
         if ($this->order->tracking_uuid) {
-            $channels[] = new PrivateChannel('order.' . $this->order->tracking_uuid);
+            $channels[] = new PrivateChannel('order.'.$this->order->tracking_uuid);
         }
 
         return $channels;
@@ -77,7 +77,7 @@ class OrderStatusUpdated implements ShouldBroadcast
             'previous_status' => $this->previousStatus,
             'new_status' => $this->newStatus,
             'updated_at' => now()->toIso8601String(),
-            
+
             // Status metadata for UI
             'status_label' => $this->getStatusLabel($this->newStatus),
             'is_terminal' => in_array($this->newStatus, [

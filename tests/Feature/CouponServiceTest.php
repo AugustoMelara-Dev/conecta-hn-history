@@ -29,6 +29,7 @@ class CouponServiceTest extends TestCase
     use RefreshDatabase;
 
     private CouponValidatorService $service;
+
     private Tenant $tenant;
 
     protected function setUp(): void
@@ -36,7 +37,7 @@ class CouponServiceTest extends TestCase
         parent::setUp();
 
         $this->service = app(CouponValidatorService::class);
-        
+
         // Create a tenant for all tests
         $this->tenant = Tenant::factory()->create([
             'name' => 'Test Business',
@@ -61,7 +62,7 @@ class CouponServiceTest extends TestCase
     /**
      * @test
      * Verifies that guests can use coupons without per-user restrictions.
-     * 
+     *
      * SCENARIO: Anonymous user validates an unrestricted coupon
      * EXPECTED: Validation succeeds, returns Coupon model
      */
@@ -128,16 +129,16 @@ class CouponServiceTest extends TestCase
     /**
      * @test
      * CRITICAL: Verifies that guests cannot use per-user-limited coupons.
-     * 
+     *
      * SCENARIO: Anonymous user tries to validate a coupon with max_uses_per_user
      * EXPECTED: InvalidCouponException with code REQUIRE_LOGIN
-     * 
+     *
      * This test ensures guests cannot bypass per-user tracking by staying anonymous.
      */
     public function it_throws_exception_for_guests_using_restricted_coupons(): void
     {
         // Skip if coupon_user table doesn't exist
-        if (!\Illuminate\Support\Facades\Schema::hasTable('coupon_user')) {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('coupon_user')) {
             $this->markTestSkipped('coupon_user table does not exist');
         }
 
@@ -175,7 +176,7 @@ class CouponServiceTest extends TestCase
     /**
      * @test
      * Verifies that validation fails when global usage limit is reached.
-     * 
+     *
      * SCENARIO: Coupon with usage_limit = 5, usage_count = 5
      * EXPECTED: InvalidCouponException with code DEPLETED
      */

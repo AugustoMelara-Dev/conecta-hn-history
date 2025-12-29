@@ -339,10 +339,10 @@ class Order extends Model
         // tracking_uuid serves as a bearer token for unauthenticated WebSocket access.
         // This closes the UX loop by giving customers a trackable entry point.
         if ($this->tracking_uuid) {
-            $trackingUrl = url('/track/' . $this->tracking_uuid);
+            $trackingUrl = url('/track/'.$this->tracking_uuid);
             $lines[] = '';
             $lines[] = '─────────────────────────';
-            $lines[] = "🔍 *Sigue tu pedido en vivo:*";
+            $lines[] = '🔍 *Sigue tu pedido en vivo:*';
             $lines[] = $trackingUrl;
         }
 
@@ -385,7 +385,7 @@ class Order extends Model
         // This preserves already-international numbers (11-12 digits) and
         // prevents corrupting valid numbers from other countries.
         if (strlen($cleanPhone) === 8) {
-            $cleanPhone = '504' . $cleanPhone;
+            $cleanPhone = '504'.$cleanPhone;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -409,7 +409,7 @@ class Order extends Model
     {
         throw new \RuntimeException(
             'DEPRECATED: Use app(OrderStateService::class)->transition($order, $status) instead. '
-            . 'Direct model transitions bypass FSM validation and side-effects.'
+            .'Direct model transitions bypass FSM validation and side-effects.'
         );
     }
 

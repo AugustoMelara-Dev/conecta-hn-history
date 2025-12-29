@@ -100,11 +100,10 @@ class CouponObserver implements ShouldHandleEventsAfterCommit
 
         } catch (\Exception $e) {
             // Cache invalidation is non-critical - log but don't fail
-            Log::warning('Tenant version rotation failed: ' . $e->getMessage(), [
+            Log::warning('Tenant version rotation failed: '.$e->getMessage(), [
                 'tenant_id' => $coupon->tenant_id,
                 'coupon_id' => $coupon->id,
             ]);
         }
     }
 }
-

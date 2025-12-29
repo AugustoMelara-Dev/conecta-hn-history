@@ -143,7 +143,7 @@ class ProductController extends Controller
                     'name' => $product->name,
                     'description' => $product->description,
                     'price' => $product->price,
-                    'formatted_price' => 'L. ' . number_format($product->price, 2),
+                    'formatted_price' => 'L. '.number_format($product->price, 2),
                     'compare_at_price' => $product->compare_at_price,
                     'has_discount' => $product->compare_at_price && $product->compare_at_price > $product->price,
                     'image_url' => $product->image_url,
@@ -183,7 +183,7 @@ class ProductController extends Controller
         $cacheKey = $this->cacheManager->makeKey((int) $tenantId, $context);
         $ttl = now()->addMinutes(self::CACHE_TTL_MINUTES);
 
-        $product = Cache::remember($cacheKey, $ttl, fn() => $this->fetchSingleProduct((int) $tenantId, $id));
+        $product = Cache::remember($cacheKey, $ttl, fn () => $this->fetchSingleProduct((int) $tenantId, $id));
 
         if (! $product) {
             return response()->json([
@@ -219,7 +219,7 @@ class ProductController extends Controller
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price,
-            'formatted_price' => 'L. ' . number_format($product->price, 2),
+            'formatted_price' => 'L. '.number_format($product->price, 2),
             'compare_at_price' => $product->compare_at_price,
             'has_discount' => $product->compare_at_price && $product->compare_at_price > $product->price,
             'image_url' => $product->image_url,
@@ -229,11 +229,11 @@ class ProductController extends Controller
                 'id' => $product->menuSection->id,
                 'name' => $product->menuSection->name,
             ] : null,
-            'option_groups' => $product->optionGroups->map(fn($group) => [
+            'option_groups' => $product->optionGroups->map(fn ($group) => [
                 'id' => $group->id,
                 'name' => $group->name,
                 'is_required' => $group->is_required,
-                'options' => $group->options->map(fn($opt) => [
+                'options' => $group->options->map(fn ($opt) => [
                     'id' => $opt->id,
                     'name' => $opt->name,
                     'price' => $opt->price,
@@ -285,7 +285,7 @@ class ProductController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // TENANT ISOLATION: Files stored in tenants/{id}/products for GDPR compliance
         if ($request->hasFile('image')) {
-            $storagePath = "tenants/{$tenant->id}/" . Product::STORAGE_PATH;
+            $storagePath = "tenants/{$tenant->id}/".Product::STORAGE_PATH;
             $uploadedImagePath = $request->file('image')->store($storagePath, 'public');
             $validated['image_path'] = $uploadedImagePath;
         }
@@ -370,7 +370,7 @@ class ProductController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // TENANT ISOLATION: Files stored in tenants/{id}/products for GDPR compliance
         if ($hasNewUpload) {
-            $storagePath = "tenants/{$tenant->id}/" . Product::STORAGE_PATH;
+            $storagePath = "tenants/{$tenant->id}/".Product::STORAGE_PATH;
             $newImageUploaded = $request->file('image')->store($storagePath, 'public');
             $validated['image_path'] = $newImageUploaded;
         }
@@ -482,4 +482,3 @@ class ProductController extends Controller
         ]);
     }
 }
-

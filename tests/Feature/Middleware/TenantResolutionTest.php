@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Middleware;
 
-use App\Http\Middleware\ResolveTenantFromRequest;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,8 +24,8 @@ use Tests\Traits\InteractsWithInertiaRoutes;
  */
 class TenantResolutionTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsWithInertiaRoutes;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

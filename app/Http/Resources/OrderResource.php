@@ -57,8 +57,8 @@ class OrderResource extends JsonResource
             // tracking_uuid: Cryptographic token for unauthenticated order tracking
             // tracking_url: Public URL customers can use to track their order
             'tracking_uuid' => $this->tracking_uuid,
-            'tracking_url' => $this->tracking_uuid 
-                ? url('/track/' . $this->tracking_uuid) 
+            'tracking_url' => $this->tracking_uuid
+                ? url('/track/'.$this->tracking_uuid)
                 : null,
 
             // Computed fields
@@ -95,8 +95,6 @@ class OrderResource extends JsonResource
      * - No hardcoded bank numbers in React (security)
      * - Easy to update without frontend deploy
      * - Per-tenant customization possible in future
-     *
-     * @return array|null
      */
     protected function getPaymentInstructions(): ?array
     {
@@ -132,7 +130,7 @@ class OrderResource extends JsonResource
                 'title' => 'Pago en Efectivo',
                 'instruction' => 'Por favor ten el cambio exacto listo para el repartidor.',
                 'amount_due' => $this->total,
-                'formatted_amount' => 'L. ' . number_format($this->total, 2),
+                'formatted_amount' => 'L. '.number_format($this->total, 2),
             ],
 
             PaymentMethod::Card => null, // Card payments handled by gateway redirect

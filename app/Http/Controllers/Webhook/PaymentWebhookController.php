@@ -50,8 +50,7 @@ class PaymentWebhookController extends Controller
     /**
      * Handle incoming payment webhook.
      *
-     * @param Request $request The raw webhook request
-     * @return JsonResponse
+     * @param  Request  $request  The raw webhook request
      */
     public function handle(Request $request): JsonResponse
     {
@@ -101,7 +100,6 @@ class PaymentWebhookController extends Controller
      * SECURITY: Uses hash_equals() to prevent timing attacks.
      * A timing attack could deduce the secret by measuring response times.
      *
-     * @param Request $request
      * @return bool True if signature is valid
      */
     protected function verifySignature(Request $request): bool
@@ -131,8 +129,7 @@ class PaymentWebhookController extends Controller
      * RACE CONDITION PREVENTION: Uses lockForUpdate() to ensure
      * only one process can update the order at a time.
      *
-     * @param array $data Event payload data
-     * @return JsonResponse
+     * @param  array  $data  Event payload data
      */
     protected function handlePaymentSucceeded(array $data): JsonResponse
     {
@@ -143,6 +140,7 @@ class PaymentWebhookController extends Controller
 
         if (! $orderNumber) {
             Log::warning('PaymentWebhook: Missing order_number in payload');
+
             return response()->json(['status' => 'error', 'message' => 'Missing order_number'], 200);
         }
 
@@ -164,6 +162,7 @@ class PaymentWebhookController extends Controller
                         'order_number' => $orderNumber,
                         'transaction_id' => $transactionId,
                     ]);
+
                     return ['status' => 'ignored', 'reason' => 'order_not_found'];
                 }
 
@@ -184,6 +183,7 @@ class PaymentWebhookController extends Controller
                         'current_status' => $order->status,
                         'transaction_id' => $transactionId,
                     ]);
+
                     return ['status' => 'ignored', 'reason' => 'already_processed'];
                 }
 
@@ -195,6 +195,7 @@ class PaymentWebhookController extends Controller
                         'transaction_id' => $transactionId,
                         'action' => 'REQUIRES_MANUAL_REFUND',
                     ]);
+
                     return ['status' => 'ignored', 'reason' => 'order_cancelled'];
                 }
 
@@ -213,6 +214,7 @@ class PaymentWebhookController extends Controller
                         'difference' => abs($amountPaid - $expectedAmount),
                         'transaction_id' => $transactionId,
                     ]);
+
                     return ['status' => 'error', 'reason' => 'amount_mismatch'];
                 }
 
@@ -259,8 +261,7 @@ class PaymentWebhookController extends Controller
      *
      * Order remains in PENDING status, awaiting retry or cancellation.
      *
-     * @param array $data Event payload data
-     * @return JsonResponse
+     * @param  array  $data  Event payload data
      */
     protected function handlePaymentFailed(array $data): JsonResponse
     {
@@ -288,8 +289,7 @@ class PaymentWebhookController extends Controller
      *
      * Marks order as refunded and triggers inventory restoration.
      *
-     * @param array $data Event payload data
-     * @return JsonResponse
+     * @param  array  $data  Event payload data
      */
     protected function handlePaymentRefunded(array $data): JsonResponse
     {
@@ -349,9 +349,6 @@ class PaymentWebhookController extends Controller
 
     /**
      * Handle unknown event types gracefully.
-     *
-     * @param string|null $eventType
-     * @return JsonResponse
      */
     protected function handleUnknownEvent(?string $eventType): JsonResponse
     {

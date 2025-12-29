@@ -113,10 +113,10 @@ class ResolveTenantFromRequest
         $baseDomain = config('tenancy.resolution.base_domain', 'localhost');
 
         // Construct the full suffix to match
-        $suffix = '.' . $baseDomain;
+        $suffix = '.'.$baseDomain;
 
         // SECURITY: Must end with EXACTLY the suffix (not just contain it)
-        if (!str_ends_with($host, $suffix)) {
+        if (! str_ends_with($host, $suffix)) {
             return null;
         }
 
