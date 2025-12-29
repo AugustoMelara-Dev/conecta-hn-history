@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import useCartStore from '@/Stores/useCartStore';
 import CategoryNav from '@/Components/Store/CategoryNav';
+import { formatCurrency } from '@/Utils/currency';
 
 /**
  * StoreLayout - The Persistent Store Frame
@@ -37,7 +38,7 @@ export default function StoreLayout({ children, className = '' }) {
     // CONTEXT: Consume tenant data from Inertia props
     // ═══════════════════════════════════════════════════════════════════════
     const { props } = usePage();
-    const tenant = props.tenant || {};
+    const tenant = props.tenant ?? {};
 
     // Default brand color (Corporate Minimalist = Black)
     const primaryColor = tenant.primary_color || '#000000';
@@ -61,15 +62,6 @@ export default function StoreLayout({ children, className = '' }) {
 
     const totalItems = getTotalItems();
     const subtotal = getSubtotal();
-
-    // Format currency (Lempiras)
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('es-HN', {
-            style: 'currency',
-            currency: 'HNL',
-            minimumFractionDigits: 0,
-        }).format(amount);
-    };
 
     return (
         <div
