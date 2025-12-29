@@ -148,8 +148,8 @@ class CouponIsolationTest extends TestCase
         $responseA->assertStatus(200);
         $responseA->assertJson([
             'valid' => true,
-            'discount_amount' => 100.00,
-            'new_total' => 900.00,
+            'discount_amount' => 100,
+            'new_total' => 900,
         ]);
 
         // ACT: Request verification in Tenant B's context
