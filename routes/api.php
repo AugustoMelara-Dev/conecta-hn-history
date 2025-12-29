@@ -44,6 +44,10 @@ Route::post('/interactions', [InteractionController::class, 'store'])
 Route::post('/analytics/track', [\App\Http\Controllers\Api\AnalyticsController::class, 'track'])
     ->middleware('throttle:api');  // Uses global API limiter (60/min)
 
+// Beacon API endpoint for conversion tracking (always returns 200)
+Route::post('/analytics/conversion', [\App\Http\Controllers\Api\AnalyticsController::class, 'conversion'])
+    ->middleware('throttle:api');
+
 // ═══════════════════════════════════════════════════════════════════════════
 // PUBLIC CATALOG: Product listings with Cache-Aside optimization
 // ═══════════════════════════════════════════════════════════════════════════
@@ -57,11 +61,11 @@ Route::post('/analytics/track', [\App\Http\Controllers\Api\AnalyticsController::
 Route::prefix('products')->group(function () {
     // Public: Get product catalog for tenant
     Route::get('/', [ProductController::class, 'index'])
-        ->middleware('throttle:api');
+        ->middleware(['throttle:api', 'cacheResponse:600']);
 
     // Public: Get single product details
     Route::get('/{id}', [ProductController::class, 'show'])
-        ->middleware('throttle:api');
+        ->middleware(['throttle:api', 'cacheResponse:600']);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -98,6 +102,38 @@ Route::prefix('coupons')->group(function () {
 // ═══════════════════════════════════════════════════════════════════════════
 Route::post('/orders', [OrderController::class, 'store'])
     ->middleware('throttle:api.transactions');
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PUBLIC CHECKOUT API: Coupon validation and cart summary (Guest Compatible)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// GUEST SUPPORT: These endpoints work for both authenticated and anonymous users.
+// $request->user() returns null for guests, which is handled gracefully.
+//
+// SECURITY ARCHITECTURE:
+// - /checkout/validate-coupon: Uses 'api.verification' limiter (5/min per IP)
+//   Prevents coupon code enumeration attacks
+// - /checkout/cart-summary: Uses global 'api' limiter (60/min per IP)
+// - /checkout/remove-coupon: Uses global 'api' limiter (60/min per IP)
+//
+// DATA HIDING: Responses never expose raw Eloquent models or internal fields.
+// ═══════════════════════════════════════════════════════════════════════════
+Route::prefix('checkout')->group(function () {
+    // ANTI-ENUMERATION: Strict rate limit for coupon validation
+    Route::post('/validate-coupon', [\App\Http\Controllers\CheckoutController::class, 'validateCoupon'])
+        ->middleware('throttle:api.verification')
+        ->name('checkout.validate-coupon');
+
+    // Cart summary with optional coupon applied
+    Route::post('/cart-summary', [\App\Http\Controllers\CheckoutController::class, 'getCartSummary'])
+        ->middleware('throttle:api')
+        ->name('checkout.cart-summary');
+
+    // Remove applied coupon
+    Route::post('/remove-coupon', [\App\Http\Controllers\CheckoutController::class, 'removeCoupon'])
+        ->middleware('throttle:api')
+        ->name('checkout.remove-coupon');
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ⚠️ PROTECTED TENANT ROUTES: Require auth + tenant ownership verification
