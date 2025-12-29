@@ -101,14 +101,14 @@ class CouponController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         $result = $coupon->validate($cartSubtotal);
 
-        if (! $result['valid']) {
-            return response()->json($result, 422);
+        if (! $result->isValid) {
+            return response()->json($result->toArray(), 422);
         }
 
         // ═══════════════════════════════════════════════════════════════════════
         // STEP 3: Return success with calculated discount
         // ═══════════════════════════════════════════════════════════════════════
-        return response()->json($result, 200);
+        return response()->json($result->toArray(), 200);
     }
 
     /**
