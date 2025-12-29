@@ -48,6 +48,21 @@ class AppServiceProvider extends ServiceProvider
         Vite::prefetch(concurrency: 3);
 
         // ═══════════════════════════════════════════════════════════════════════
+        // CSP NONCE: Configure Vite to use nonce for script tags
+        // ═══════════════════════════════════════════════════════════════════════
+        // This allows Vite-generated scripts to work with CSP nonce policy
+        Vite::useCspNonce();
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // BLADE DIRECTIVE: @cspnonce - Easy access to CSP nonce in views
+        // ═══════════════════════════════════════════════════════════════════════
+        // Usage: <script nonce="@cspnonce">...</script>
+        \Illuminate\Support\Facades\Blade::directive('cspnonce', function () {
+            return "<?php echo app()->bound('csp-nonce') ? app('csp-nonce') : ''; ?>";
+        });
+
+
+        // ═══════════════════════════════════════════════════════════════════════
         // GRANULAR RATE LIMITING - TRAFFIC SHAPING ARCHITECTURE
         // ═══════════════════════════════════════════════════════════════════════
         //
