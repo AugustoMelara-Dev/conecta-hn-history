@@ -293,6 +293,16 @@ class ProductResource extends Resource
                             ->default(false)
                             ->visible(fn () => Filament::getTenant()?->is_pro)
                             ->helperText('Aparecerá primero en tu catálogo'),
+
+                        // ═══════════════════════════════════════════════════
+                        // CROSS-SELLING: Producto de Impulso (PRO Feature)
+                        // ═══════════════════════════════════════════════════
+                        Forms\Components\Toggle::make('is_impulse_buy')
+                            ->label('Producto de Impulso (Cross-Selling)')
+                            ->default(false)
+                            ->onColor('success')
+                            ->visible(fn () => Filament::getTenant()?->is_pro)
+                            ->helperText('Activar esta opción sugerirá este producto en el checkout para aumentar el ticket promedio.'),
                     ])
                     ->columns(2)
                     ->collapsed(),
