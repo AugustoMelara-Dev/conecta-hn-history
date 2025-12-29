@@ -1,0 +1,11 @@
+<svg width="1200" height="520" viewBox="0 0 1200 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="banner-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a8a"/>
+      <stop offset="100%" style="stop-color:#3b82f6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="520" fill="url(#banner-bg)"/>
+  <text x="600" y="240" text-anchor="middle" font-family="system-ui, sans-serif" font-size="42" font-weight="bold" fill="white">Bienvenido a nuestra tienda</text>
+  <text x="600" y="300" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" fill="rgba(255,255,255,0.7)">Descubre nuestros productos</text>
+</svg>

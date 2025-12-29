@@ -1,0 +1,7 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="400" fill="#f3f4f6"/>
+  <rect x="100" y="120" width="200" height="160" rx="8" fill="#e5e7eb" stroke="#d1d5db" stroke-width="2"/>
+  <circle cx="160" cy="180" r="25" fill="#d1d5db"/>
+  <path d="M130 250 L170 210 L210 240 L250 180 L290 230 L290 270 L110 270 L110 250 Z" fill="#d1d5db"/>
+  <text x="200" y="320" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" fill="#9ca3af">Imagen no disponible</text>
+</svg>
