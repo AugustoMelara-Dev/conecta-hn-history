@@ -21,6 +21,11 @@ use Inertia\Response;
 class TenantController extends Controller
 {
     /**
+     * The tenant cache manager instance.
+     */
+    protected TenantCacheManager $cacheManager;
+
+    /**
      * Plan tiers mapping
      */
     private const PLAN_SEMILLA = 'semilla';

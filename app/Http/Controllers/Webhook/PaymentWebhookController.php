@@ -44,7 +44,7 @@ class PaymentWebhookController extends Controller
 
     public function __construct()
     {
-        $this->webhookSecret = config('services.payment.webhook_secret', 'test_webhook_secret_change_in_production');
+        $this->webhookSecret = (string) config('services.payment.webhook_secret', 'test_webhook_secret_change_in_production');
     }
 
     /**
