@@ -30,7 +30,6 @@ class User extends Authenticatable implements FilamentUser, HasTenants, MustVeri
         'password',
         'role',
         'banned_at',
-        'tenant_name',
     ];
 
     /**

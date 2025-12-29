@@ -67,6 +67,10 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'delivery_enabled',
         'pickup_enabled',
         'minimum_order',
+        // AI Enrichment
+        'is_ai_enhanced',
+        'original_name',
+        'admin_notes',
     ];
 
     protected $guarded = ['id'];
@@ -86,6 +90,8 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'delivery_enabled' => 'boolean',
         'pickup_enabled' => 'boolean',
         'minimum_order' => 'decimal:2',
+        // AI Enrichment
+        'is_ai_enhanced' => 'boolean',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════════

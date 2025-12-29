@@ -65,13 +65,22 @@ class TenantScope implements Scope
      * Resolve the current tenant ID from multiple possible contexts.
      *
      * PRIORITY ORDER:
-     * 1. Filament Panel Context (admin panel)
-     * 2. Request Parameter (API with tenant_id in request)
+     * 1. App Container Binding (currentTenant) - set by TenantMiddleware/tests
+     * 2. Filament Panel Context (admin panel)
      * 3. Authenticated User's Primary Tenant (fallback)
      */
     protected function resolveTenantId(): ?int
     {
-        // Method 1: Filament Panel Context (most explicit)
+        // Method 1: Container binding (set by TenantMiddleware or tests)
+        // This is the most explicit and reliable method
+        if (app()->has('currentTenant')) {
+            $tenant = app('currentTenant');
+            if ($tenant !== null) {
+                return (int) $tenant->id;
+            }
+        }
+
+        // Method 2: Filament Panel Context (admin panel)
         if (class_exists(\Filament\Facades\Filament::class)) {
             try {
                 $tenant = \Filament\Facades\Filament::getTenant();
@@ -83,7 +92,7 @@ class TenantScope implements Scope
             }
         }
 
-        // Method 2: Authenticated user's primary tenant
+        // Method 3: Authenticated user's primary tenant
         if (auth()->check()) {
             $user = auth()->user();
 
@@ -94,7 +103,7 @@ class TenantScope implements Scope
             }
         }
 
-        // Method 3: Request parameter (for public API endpoints)
+        // Method 4: Request parameter (for public API endpoints)
         // WARNING: Only use when explicitly validated in controller
         // NOT recommended for automatic scope - too risky
 
