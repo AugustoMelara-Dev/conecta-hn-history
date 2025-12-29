@@ -16,12 +16,14 @@
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^11.0",
         "laravel/sanctum": "^4.0",
+        "laravel/scout": "^10.23",
         "laravel/socialite": "^5.0",
         "laravel/tinker": "^2.9",
         "spatie/laravel-activitylog": "^4.8",
         "spatie/laravel-health": "^1.29",
         "spatie/laravel-medialibrary": "^11.0",
         "spatie/laravel-permission": "^6.0",
+        "spatie/laravel-responsecache": "^7.7",
         "spatie/laravel-settings": "^3.3",
         "spatie/laravel-sitemap": "^7.2",
         "spatie/opening-hours": "^4.0",
@@ -36,6 +38,8 @@
         "laravel/telescope": "^5.16",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.1",
+        "pestphp/pest": "^2.36",
+        "pestphp/pest-plugin-laravel": "^2.4",
         "phpunit/phpunit": "^10.5"
     },
     "autoload": {
