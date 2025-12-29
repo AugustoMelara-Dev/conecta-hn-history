@@ -36,6 +36,10 @@ class Interaction extends Model
 
     /**
      * Available interaction types.
+     * 
+     * IMPORTANT: Keep in sync with AnalyticsController event types.
+     * - Standard actions: whatsapp, call, location, cart, share
+     * - Conversion events: conversion (generic), purchase (specific)
      */
     public const TYPES = [
         'whatsapp_click' => 'WhatsApp Click',
@@ -43,6 +47,8 @@ class Interaction extends Model
         'location_view' => 'Location View',
         'cart_add' => 'Add to Cart',
         'social_share' => 'Social Share',
+        'conversion' => 'Conversion',
+        'purchase' => 'Purchase',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════

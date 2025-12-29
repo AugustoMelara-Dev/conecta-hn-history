@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 /**
  * Product Model - E-Commerce Catalog Entity
@@ -61,7 +62,11 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      * the storage structure without grep-and-replace operations.
      */
     public const STORAGE_PATH = 'products';
-    use BelongsToTenant, HasFactory, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
+
+    /** @var int Maximum impulse candidates to fetch before shuffling */
+    public const IMPULSE_CANDIDATES_LIMIT = 50;
+
+    use BelongsToTenant, HasFactory, Searchable, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
 
     /**
      * Attributes to automatically append to JSON/Array serialization.
@@ -99,6 +104,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'is_featured',
         'is_new',
         'is_locked',
+        'is_impulse_buy',
         'status',
         'moderation_note',
         'rejected_at',
@@ -120,6 +126,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'is_featured' => 'boolean',
         'is_new' => 'boolean',
         'is_locked' => 'boolean',
+        'is_impulse_buy' => 'boolean',
         'rejected_at' => 'datetime',
     ];
 
@@ -206,6 +213,83 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // CROSS-SELLING SCOPES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Scope for impulse buy candidates (cross-selling at checkout).
+     *
+     * PERFORMANCE PATTERN: ID Fetch & Shuffle
+     * ════════════════════════════════════════════════════════════════════════
+     * FORBIDDEN: ORDER BY RAND() - O(N log N) complexity, full table sort
+     * REQUIRED:  Fetch IDs first, shuffle in PHP - O(N) read, O(k) shuffle
+     *
+     * This scope returns a Builder that can be used in two ways:
+     * 1. Direct use: ->impulseCandidates($excludeIds)->get() for all candidates
+     * 2. With limit: Use getRandomImpulseCandidates() helper for shuffled subset
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param array<int> $excludeIds Product IDs already in cart (don't suggest)
+     */
+    public function scopeImpulseCandidates(\Illuminate\Database\Eloquent\Builder $query, array $excludeIds = []): \Illuminate\Database\Eloquent\Builder
+    {
+        $query->where('is_impulse_buy', true)
+            ->where('is_visible', true);
+
+        if (!empty($excludeIds)) {
+            $query->whereNotIn('id', $excludeIds);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Get random impulse candidates using performant ID Fetch & Shuffle pattern.
+     *
+     * USE THIS instead of ->impulseCandidates()->inRandomOrder()->limit(3)->get()
+     *
+     * ALGORITHM:
+     * 1. Fetch only IDs from DB (lightweight query, no full rows)
+     * 2. Shuffle IDs in PHP memory (O(k) where k = desired count)
+     * 3. Fetch full models only for the random subset
+     * 4. Use FIELD() to preserve shuffled order from MySQL
+     *
+     * @param int $businessId Tenant/Business ID for isolation
+     * @param array<int> $excludeIds IDs already in cart
+     * @param int $count Number of suggestions to return (default 3)
+     * @return \Illuminate\Database\Eloquent\Collection<static>
+     */
+    public static function getRandomImpulseCandidates(int $businessId, array $excludeIds = [], int $count = 3): \Illuminate\Database\Eloquent\Collection
+    {
+        // Step 1: Fetch only IDs (uses idx_products_impulse index)
+        $candidateIds = static::withoutGlobalScopes()
+            ->where('tenant_id', $businessId)
+            ->impulseCandidates($excludeIds)
+            ->limit(self::IMPULSE_CANDIDATES_LIMIT)
+            ->pluck('id');
+
+        if ($candidateIds->isEmpty()) {
+            return new \Illuminate\Database\Eloquent\Collection();
+        }
+
+        // Step 2: Shuffle in PHP (O(k) complexity)
+        $randomIds = $candidateIds->shuffle()->take($count)->values();
+
+        if ($randomIds->isEmpty()) {
+            return new \Illuminate\Database\Eloquent\Collection();
+        }
+
+        // Step 3: Sanitize IDs for FIELD() clause (SQL injection prevention)
+        $sanitizedIds = $randomIds->map(fn($id) => (int) $id)->implode(',');
+
+        // Step 4: Fetch full models with FIELD() to preserve random order
+        return static::withoutGlobalScopes()
+            ->whereIn('id', $randomIds)
+            ->orderByRaw('FIELD(id, ' . $sanitizedIds . ')')
+            ->get();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // ACCESSORS
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -241,5 +325,38 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         }
 
         return \Illuminate\Support\Facades\Storage::url($this->image_path);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SCOUT SEARCH CONFIGURATION
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Get the indexable data array for the model.
+     *
+     * OPTIMIZATION STRATEGY:
+     * - Include 'tenant_id' for isolation filters
+     * - Denormalize 'city', 'category', 'section' for instant faceted search
+     * - Strip HTML from description to reduce index size
+     *
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'tenant_id' => $this->tenant_id, // CRITICAL: For multi-tenant isolation
+            'name' => $this->name,
+            'slug' => $this->slug,
+            'description' => strip_tags($this->description ?? ''),
+            'price' => (float) $this->price,
+            'is_visible' => (bool) $this->is_visible,
+            'stock_status' => $this->stock_status->value,
+            'created_at' => $this->created_at->timestamp,
+            // Denormalized Relations for Filtering
+            'city_id' => $this->city_id,
+            'category_id' => $this->category_id,
+            'menu_section_id' => $this->menu_section_id,
+        ];
     }
 }

@@ -6,6 +6,7 @@ use App\DataTransferObjects\CouponValidationResult;
 use App\Traits\BelongsToTenant;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -22,11 +23,12 @@ use Illuminate\Database\Eloquent\Model;
 class Coupon extends Model
 {
     use BelongsToTenant;
+    use HasFactory;
 
     // Discount types
     public const TYPE_FIXED = 'fixed';
-
     public const TYPE_PERCENT = 'percent';
+    public const TYPE_FREE_SHIPPING = 'free_shipping';
 
     protected $fillable = [
         'code',
@@ -261,24 +263,103 @@ class Coupon extends Model
     }
 
     /**
-     * Calculate the discount amount
+     * Calculate the discount amount based on coupon type.
+     *
+     * PRECISION: All calculations use round() with 2 decimal places
+     * to prevent floating-point rounding errors.
+     *
+     * NOTE: Includes safety checks. For pure math without validation,
+     * use calculateDiscountUnsafe() instead.
+     *
+     * TYPES:
+     * - percent: ($subtotal * $value) / 100, capped by max_discount
+     * - fixed: Returns $value, but never exceeds $subtotal
+     * - free_shipping: Returns $shippingCost exactly
+     *
+     * @param float $cartSubtotal The cart subtotal
+     * @param float $shippingCost The shipping cost (for free_shipping type)
+     * @return float The calculated discount amount
      */
-    public function calculateDiscount(float $cartSubtotal): float
+    public function calculateDiscount(float $cartSubtotal, float $shippingCost = 0.0): float
     {
-        if ($this->type === self::TYPE_PERCENT) {
-            $discount = $cartSubtotal * ($this->value / 100);
+        // Safety check: If coupon is not valid, return 0
+        if (!$this->isCurrentlyValid()) {
+            return 0.0;
+        }
 
-            // Apply max discount cap if set
-            if ($this->max_discount !== null && $discount > $this->max_discount) {
-                $discount = $this->max_discount;
-            }
-        } else {
-            // Fixed amount
-            $discount = $this->value;
+        return $this->calculateDiscountUnsafe($cartSubtotal, $shippingCost);
+    }
+
+    /**
+     * Check if coupon is currently valid (active + within date range).
+     * 
+     * Separated from calculateDiscount for single responsibility.
+     */
+    public function isCurrentlyValid(): bool
+    {
+        if (!$this->is_active) {
+            return false;
+        }
+
+        $now = Carbon::now();
+        
+        if ($this->starts_at && $now->lt($this->starts_at)) {
+            return false;
+        }
+        
+        if ($this->expires_at && $now->gt($this->expires_at)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Calculate discount without validation checks.
+     * 
+     * USE CASE: When you've already validated the coupon (e.g., in validate())
+     * and need pure math calculation.
+     *
+     * @param float $cartSubtotal The cart subtotal
+     * @param float $shippingCost The shipping cost (for free_shipping type)
+     * @return float The calculated discount amount
+     */
+    public function calculateDiscountUnsafe(float $cartSubtotal, float $shippingCost = 0.0): float
+    {
+        $discount = match ($this->type) {
+            self::TYPE_PERCENT => $this->calculatePercentDiscount($cartSubtotal),
+            self::TYPE_FIXED => $this->calculateFixedDiscount($cartSubtotal),
+            self::TYPE_FREE_SHIPPING => round((float) $shippingCost, 2),
+            default => 0.0,
+        };
+
+        return round($discount, 2);
+    }
+
+    /**
+     * Calculate percentage discount with optional cap.
+     */
+    private function calculatePercentDiscount(float $cartSubtotal): float
+    {
+        $discount = ($cartSubtotal * (float) $this->value) / 100;
+        $discount = round($discount, 2);
+
+        // Apply max discount cap if set
+        if ($this->max_discount !== null && $discount > (float) $this->max_discount) {
+            $discount = (float) $this->max_discount;
         }
 
         // Never exceed subtotal
         return min($discount, $cartSubtotal);
+    }
+
+    /**
+     * Calculate fixed amount discount.
+     * CRITICAL: Never exceed the subtotal to prevent negative totals.
+     */
+    private function calculateFixedDiscount(float $cartSubtotal): float
+    {
+        return min((float) $this->value, $cartSubtotal);
     }
 
     /**
