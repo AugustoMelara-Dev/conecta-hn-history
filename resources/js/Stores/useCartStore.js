@@ -20,6 +20,11 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import axios from 'axios';
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CROSS-TAB SYNC CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+const STORAGE_KEY = 'conecta-cart';
+
 /**
  * Generate a unique key for cart item deduplication
  * Based on product ID + sorted modifier selection
@@ -608,5 +613,41 @@ const useCartStore = create(
         }
     )
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CROSS-TAB SYNC: Listen for storage changes from other tabs
+// When user adds to cart in Tab A, Tab B sees the update immediately
+// ═══════════════════════════════════════════════════════════════════════════
+if (typeof window !== 'undefined') {
+    const handleStorageChange = (event) => {
+        // Only react to our cart storage key
+        if (event.key !== STORAGE_KEY) return;
+
+        // Parse the new value and update state
+        try {
+            const newState = JSON.parse(event.newValue);
+            if (newState?.state) {
+                // Merge the persisted state into current store
+                useCartStore.setState({
+                    items: newState.state.items || [],
+                    tenantPhone: newState.state.tenantPhone,
+                    tenantName: newState.state.tenantName,
+                    tenantSlug: newState.state.tenantSlug,
+                    tenantId: newState.state.tenantId,
+                    customerName: newState.state.customerName || '',
+                    customerPhone: newState.state.customerPhone || '',
+                    customerEmail: newState.state.customerEmail || '',
+                    customerAddress: newState.state.customerAddress || '',
+                    deliveryType: newState.state.deliveryType || 'pickup',
+                });
+            }
+        } catch (e) {
+            // Silently fail on parse errors - localStorage might be corrupted
+            console.warn('[CartStore] Cross-tab sync parse error:', e);
+        }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+}
 
 export default useCartStore;
