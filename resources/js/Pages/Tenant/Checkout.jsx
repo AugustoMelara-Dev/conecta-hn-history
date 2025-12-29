@@ -1,23 +1,24 @@
 /**
- * Checkout.jsx - The Transactional Terminal (ENTERPRISE v3)
+ * Checkout.jsx - The Transactional Terminal (ENTERPRISE v4)
  *
  * ARCHITECTURE:
  * - Global Store Binding (no local state for form fields)
  * - Guard clause pattern for race condition prevention
  * - Empty cart redirect protection with hydration check
  * - WCAG-compliant form accessibility
- * - Strict Honduras phone regex validation
- * - Beacon API for non-blocking analytics
+ * - Centralized Honduras phone validation from Utils/validators
+ * - Graceful Beacon API for non-blocking analytics
  *
  * SECURITY:
  * - Prevents double-submission via guard clause
- * - Validates form with strict regex before submission
+ * - Validates form with centralized regex before submission
  * - Protects against empty cart submission
  * - Waits for tenant initialization before redirecting
  *
  * ANALYTICS:
- * - Beacon API for conversion tracking
+ * - Beacon API for conversion tracking (graceful degradation)
  * - 300ms redirect delay for pixel firing
+ * - GTM/fbq integration for conversion pixels
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -41,26 +42,9 @@ import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
 import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
+import { validateHondurasPhone } from '@/Utils/validators';
 import ImageWithFallback from '@/Components/ImageWithFallback';
-
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- * HONDURAS PHONE VALIDATION REGEX
- *
- * Pattern: /^(\+504\s?)?[389]\d{3}[-\s]?\d{4}$/
- *
- * Breakdown:
- * - ^(\+504\s?)? : Optional country code +504 with optional space
- * - [389]        : Must start with 3, 8, or 9 (mobile prefixes in Honduras)
- * - \d{3}        : Three digits
- * - [-\s]?       : Optional dash or space separator
- * - \d{4}$       : Four digits at the end
- *
- * Valid examples: "9999-1234", "88881234", "+504 3111-2222"
- * Invalid: "2222-1234" (landline), "1234-5678", "0000-0000"
- * ═══════════════════════════════════════════════════════════════════════════
- */
-const HONDURAS_PHONE_REGEX = /^(\+504\s?)?[389]\d{3}[-\s]?\d{4}$/;
+import Toast from '@/Components/Toast';
 
 /**
  * CartItemRow - Single item in order summary with self-healing image
@@ -74,15 +58,15 @@ function CartItemRow({ item, primaryColor, onRemove }) {
 
     return (
         <div className="flex items-start gap-4 py-4 border-b border-gray-100 last:border-0">
-            {item.image && (
-                <ImageWithFallback
-                    src={item.image}
-                    fallbackSrc="/images/placeholder.png"
-                    alt={item.name}
-                    className="h-16 w-16 rounded-lg object-cover"
-                    loading="lazy"
-                />
-            )}
+            {/* Always show image - fallback to icon if no image */}
+            <ImageWithFallback
+                src={item.image || ''}
+                fallbackIcon
+                fallbackColor={`${primaryColor}15`}
+                alt={item.name}
+                className="h-16 w-16 rounded-lg object-cover"
+                loading="lazy"
+            />
             <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-gray-900">{item.name}</h4>
                 <p className="text-sm text-gray-500">Cantidad: {item.quantity}</p>
@@ -102,7 +86,7 @@ function CartItemRow({ item, primaryColor, onRemove }) {
                     className="text-gray-400 hover:text-red-500 transition-colors mt-1"
                     aria-label={`Eliminar ${item.name}`}
                 >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </button>
             </div>
         </div>
@@ -121,6 +105,23 @@ export default function Checkout() {
 
     // Phone validation error state
     const [phoneError, setPhoneError] = useState('');
+    // Phone validation success state (for positive feedback)
+    const [isPhoneValid, setIsPhoneValid] = useState(false);
+
+    // Toast state with timeout ref for cleanup
+    const [toast, setToast] = useState(null);
+    const toastTimeoutRef = useRef(null);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CLEANUP: Clear toast timeout on unmount
+    // ═══════════════════════════════════════════════════════════════════════
+    useEffect(() => {
+        return () => {
+            if (toastTimeoutRef.current) {
+                clearTimeout(toastTimeoutRef.current);
+            }
+        };
+    }, []);
 
     // ═══════════════════════════════════════════════════════════════════════
     // GLOBAL STORE BINDING: No local state - everything from Zustand
@@ -166,31 +167,28 @@ export default function Checkout() {
     }, [items.length, isSubmitting, tenant.slug, isInitialized]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // PHONE VALIDATION: Real-time feedback on blur
+    // PHONE VALIDATION: Using centralized validator from Utils/validators
     // ═══════════════════════════════════════════════════════════════════════
-    const validatePhone = (phone) => {
-        const cleanPhone = phone.trim();
+    const handlePhoneValidation = (phone) => {
+        const result = validateHondurasPhone(phone);
 
-        // If empty, don't show regex error yet (will fail isFormValid)
-        if (!cleanPhone) {
+        if (result.isValid) {
             setPhoneError('');
-            return false;
+            setIsPhoneValid(true);
+            return true;
         }
 
-        // Check length first
-        if (cleanPhone.length < 8) {
+        // Don't show error for empty or short inputs (handled by isFormValid)
+        if (!phone || phone.trim().length < 8) {
             setPhoneError('');
+            setIsPhoneValid(false);
             return false;
         }
 
-        // Apply strict Honduras regex
-        if (!HONDURAS_PHONE_REGEX.test(cleanPhone)) {
-            setPhoneError('Número inválido. Debe ser celular (inicia con 3, 8 o 9).');
-            return false;
-        }
-
-        setPhoneError('');
-        return true;
+        // Show specific error from centralized validator
+        setPhoneError(result.error);
+        setIsPhoneValid(false);
+        return false;
     };
 
     // Handle phone change with validation
@@ -198,29 +196,33 @@ export default function Checkout() {
         const value = e.target.value;
         setCustomerPhone(value);
 
-        // Clear error while typing
+        // Clear states while typing
         if (phoneError) {
             setPhoneError('');
+        }
+        if (isPhoneValid) {
+            setIsPhoneValid(false);
         }
     };
 
     // Handle phone blur for validation
     const handlePhoneBlur = () => {
-        if (customerPhone && customerPhone.length >= 8) {
-            validatePhone(customerPhone);
+        if (customerPhone && customerPhone.trim().length >= 8) {
+            handlePhoneValidation(customerPhone);
         }
     };
 
     // ═══════════════════════════════════════════════════════════════════════
-    // Form validation with useMemo and strict phone regex
+    // Form validation with useMemo - uses centralized validator
     // ═══════════════════════════════════════════════════════════════════════
     const isFormValid = useMemo(() => {
         if (items.length === 0) return false;
         if (!customerName || customerName.trim().length < 2) return false;
         if (!customerPhone || customerPhone.trim().length < 8) return false;
 
-        // Strict Honduras phone validation
-        if (!HONDURAS_PHONE_REGEX.test(customerPhone.trim())) return false;
+        // Use centralized Honduras phone validation
+        const phoneResult = validateHondurasPhone(customerPhone);
+        if (!phoneResult.isValid) return false;
 
         if (deliveryType === 'delivery' && (!customerAddress || customerAddress.trim().length < 5)) {
             return false;
@@ -229,7 +231,7 @@ export default function Checkout() {
     }, [items.length, customerName, customerPhone, deliveryType, customerAddress]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // BEACON TELEMETRY: Send conversion event before redirect
+    // BEACON TELEMETRY: Send conversion event with graceful degradation
     // ═══════════════════════════════════════════════════════════════════════
     const sendConversionBeacon = (transactionId, value) => {
         const payload = {
@@ -242,10 +244,60 @@ export default function Checkout() {
         };
 
         // Feature detection for Beacon API
-        if (navigator.sendBeacon) {
-            const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-            navigator.sendBeacon('/api/analytics/conversion', blob);
+        if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+            try {
+                const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+                // Send to analytics endpoint - graceful failure if not configured
+                navigator.sendBeacon('/api/analytics/conversion', blob);
+            } catch (e) {
+                // Silently fail in production, log in development
+                if (process.env.NODE_ENV === 'development') {
+                    console.log('[Analytics] Beacon failed:', e);
+                }
+            }
         }
+
+        // Also emit to dataLayer for GTM/GA4 if available
+        if (typeof window !== 'undefined' && window.dataLayer) {
+            window.dataLayer.push({
+                event: 'purchase',
+                ecommerce: {
+                    transaction_id: transactionId,
+                    value: value,
+                    currency: 'HNL',
+                },
+            });
+        }
+
+        // Emit to fbq if Meta Pixel is loaded
+        if (typeof window !== 'undefined' && window.fbq) {
+            window.fbq('track', 'Purchase', {
+                value: value,
+                currency: 'HNL',
+            });
+        }
+    };
+
+    // Toast helpers with timeout cleanup
+    const showToast = (message, type = 'success') => {
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+        }
+
+        setToast({ message, type });
+
+        toastTimeoutRef.current = setTimeout(() => {
+            setToast(null);
+            toastTimeoutRef.current = null;
+        }, 4000);
+    };
+
+    const hideToast = () => {
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+            toastTimeoutRef.current = null;
+        }
+        setToast(null);
     };
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -264,8 +316,8 @@ export default function Checkout() {
         // Additional validation guard
         if (!isFormValid) {
             // Show phone error if that's the issue
-            if (customerPhone && customerPhone.length >= 8) {
-                validatePhone(customerPhone);
+            if (customerPhone && customerPhone.trim().length >= 8) {
+                handlePhoneValidation(customerPhone);
             }
             return;
         }
@@ -276,11 +328,14 @@ export default function Checkout() {
 
         if (result.success && result.whatsappUrl) {
             // ═══════════════════════════════════════════════════════════════
-            // BEACON TELEMETRY: Fire conversion event before redirect
+            // BEACON TELEMETRY: Fire conversion events before redirect
             // Generate a pseudo-transaction ID from timestamp
             // ═══════════════════════════════════════════════════════════════
             const transactionId = `${tenant.slug}-${Date.now()}`;
             sendConversionBeacon(transactionId, grandTotal);
+
+            // Show success toast briefly
+            showToast('¡Pedido enviado! Redirigiendo a WhatsApp...', 'success');
 
             // ═══════════════════════════════════════════════════════════════
             // SAFETY NET: 300ms delay for analytics pixels to fire
@@ -305,7 +360,7 @@ export default function Checkout() {
             <StoreLayout>
                 <Head title="Checkout" />
                 <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-                    <ShoppingCart className="h-20 w-20 mx-auto text-gray-300 mb-4" />
+                    <ShoppingCart className="h-20 w-20 mx-auto text-gray-300 mb-4" aria-hidden="true" />
                     <h1 className="text-2xl font-bold text-gray-900 mb-2">
                         Tu carrito está vacío
                     </h1>
@@ -317,7 +372,7 @@ export default function Checkout() {
                         className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all hover:opacity-90"
                         style={{ backgroundColor: primaryColor }}
                     >
-                        <ArrowLeft className="h-4 w-4" />
+                        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                         Ver catálogo
                     </Link>
                 </div>
@@ -329,13 +384,23 @@ export default function Checkout() {
         <StoreLayout>
             <Head title="Finalizar Pedido" />
 
+            {/* Toast Notification - Centralized component */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={hideToast}
+                    primaryColor={primaryColor}
+                />
+            )}
+
             <div className="max-w-7xl mx-auto px-4 py-6">
                 {/* Back Link */}
                 <Link
                     href={`/${tenant.slug}`}
                     className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
                 >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    <ArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" />
                     Seguir comprando
                 </Link>
 
@@ -352,7 +417,7 @@ export default function Checkout() {
                             {/* Customer Information */}
                             <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
                                 <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                    <User className="h-5 w-5" style={{ color: primaryColor }} />
+                                    <User className="h-5 w-5" style={{ color: primaryColor }} aria-hidden="true" />
                                     Información de Contacto
                                 </h2>
 
@@ -366,11 +431,13 @@ export default function Checkout() {
                                             id="name"
                                             value={customerName}
                                             onChange={(e) => setCustomerName(e.target.value)}
+                                            onBlur={(e) => setCustomerName(e.target.value.trim())}
                                             placeholder="Tu nombre"
                                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
                                             style={{ '--tw-ring-color': primaryColor }}
                                             required
                                             minLength={2}
+                                            maxLength={100}
                                             aria-required="true"
                                             aria-label="Nombre completo"
                                             autoComplete="name"
@@ -381,25 +448,33 @@ export default function Checkout() {
                                             Teléfono *
                                         </label>
                                         <div className="relative">
-                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" aria-hidden="true" />
                                             <input
                                                 type="tel"
                                                 id="phone"
                                                 value={customerPhone}
                                                 onChange={handlePhoneChange}
                                                 onBlur={handlePhoneBlur}
-                                                placeholder="+504 9999-9999"
+                                                placeholder="9999-1234"
                                                 className={`w-full pl-10 pr-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-1
                                                     ${phoneError ? 'border-red-500' : 'border-gray-300'}`}
                                                 style={{ '--tw-ring-color': phoneError ? '#ef4444' : primaryColor }}
                                                 required
                                                 minLength={8}
+                                                maxLength={15}
                                                 aria-required="true"
                                                 aria-label="Número de teléfono celular"
                                                 aria-invalid={phoneError ? 'true' : 'false'}
                                                 aria-describedby={phoneError ? 'phone-error' : undefined}
                                                 autoComplete="tel"
                                             />
+                                            {/* Positive feedback icon when valid */}
+                                            {isPhoneValid && !phoneError && (
+                                                <CheckCircle
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500"
+                                                    aria-hidden="true"
+                                                />
+                                            )}
                                         </div>
                                         {/* ═══════════════════════════════════════════════
                                             PHONE VALIDATION ERROR MESSAGE (ACCESSIBLE)
@@ -411,10 +486,13 @@ export default function Checkout() {
                                                 aria-live="polite"
                                                 className="flex items-center gap-1 mt-1 text-red-500 text-sm"
                                             >
-                                                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                                                <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
                                                 <span>{phoneError}</span>
                                             </div>
                                         )}
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            Ejemplo: 9999-1234, +504 8888-1234
+                                        </p>
                                     </div>
                                 </div>
 
@@ -423,15 +501,17 @@ export default function Checkout() {
                                         Email (opcional)
                                     </label>
                                     <div className="relative">
-                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" aria-hidden="true" />
                                         <input
                                             type="email"
                                             id="email"
                                             value={customerEmail}
                                             onChange={(e) => setCustomerEmail(e.target.value)}
+                                            onBlur={(e) => setCustomerEmail(e.target.value.trim())}
                                             placeholder="tu@email.com"
                                             className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
                                             style={{ '--tw-ring-color': primaryColor }}
+                                            maxLength={100}
                                             aria-label="Correo electrónico"
                                             autoComplete="email"
                                         />
@@ -442,7 +522,7 @@ export default function Checkout() {
                             {/* Delivery Options */}
                             <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
                                 <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                    <Truck className="h-5 w-5" style={{ color: primaryColor }} />
+                                    <Truck className="h-5 w-5" style={{ color: primaryColor }} aria-hidden="true" />
                                     Método de Entrega
                                 </h2>
 
@@ -463,7 +543,7 @@ export default function Checkout() {
                                         aria-checked={deliveryType === 'pickup'}
                                         aria-label="Recoger en tienda"
                                     >
-                                        <Store className="h-5 w-5" />
+                                        <Store className="h-5 w-5" aria-hidden="true" />
                                         <span className="font-medium">Recoger</span>
                                     </button>
                                     <button
@@ -482,7 +562,7 @@ export default function Checkout() {
                                         aria-checked={deliveryType === 'delivery'}
                                         aria-label="Delivery a domicilio"
                                     >
-                                        <Truck className="h-5 w-5" />
+                                        <Truck className="h-5 w-5" aria-hidden="true" />
                                         <span className="font-medium">Delivery</span>
                                     </button>
                                 </div>
@@ -493,18 +573,20 @@ export default function Checkout() {
                                             Dirección de entrega *
                                         </label>
                                         <div className="relative">
-                                            <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                                            <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" aria-hidden="true" />
                                             <textarea
                                                 id="address"
                                                 value={customerAddress}
                                                 onChange={(e) => setCustomerAddress(e.target.value)}
+                                                onBlur={(e) => setCustomerAddress(e.target.value.trim())}
                                                 placeholder="Colonia, calle, número de casa, referencias..."
                                                 rows={3}
                                                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
                                                 style={{ '--tw-ring-color': primaryColor }}
                                                 required={deliveryType === 'delivery'}
                                                 minLength={5}
-                                                aria-required={deliveryType === 'delivery'}
+                                                maxLength={300}
+                                                aria-required="true"
                                                 aria-label="Dirección de entrega"
                                                 autoComplete="street-address"
                                             />
@@ -516,15 +598,17 @@ export default function Checkout() {
                             {/* Notes */}
                             <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
                                 <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                    <FileText className="h-5 w-5" style={{ color: primaryColor }} />
+                                    <FileText className="h-5 w-5" style={{ color: primaryColor }} aria-hidden="true" />
                                     Notas adicionales
                                 </h2>
                                 <textarea
                                     id="checkout-notes"
                                     value={customerNotes}
                                     onChange={(e) => setCustomerNotes(e.target.value)}
+                                    onBlur={(e) => setCustomerNotes(e.target.value.trim())}
                                     placeholder="Instrucciones especiales para tu pedido..."
                                     rows={3}
+                                    maxLength={500}
                                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
                                     style={{ '--tw-ring-color': primaryColor }}
                                     aria-label="Notas adicionales para el pedido"
@@ -574,7 +658,7 @@ export default function Checkout() {
                                         role="alert"
                                         className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2"
                                     >
-                                        <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                                        <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
                                         <p className="text-sm text-red-700">{submitError}</p>
                                     </div>
                                 )}
@@ -594,12 +678,12 @@ export default function Checkout() {
                                 >
                                     {isSubmitting ? (
                                         <>
-                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                            <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
                                             Procesando...
                                         </>
                                     ) : (
                                         <>
-                                            <CheckCircle className="h-5 w-5" />
+                                            <CheckCircle className="h-5 w-5" aria-hidden="true" />
                                             Confirmar Pedido
                                         </>
                                     )}

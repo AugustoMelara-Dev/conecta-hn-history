@@ -1,5 +1,5 @@
 /**
- * StoreHome.jsx - The Catalog Discovery Page (ENTERPRISE v3)
+ * StoreHome.jsx - The Catalog Discovery Page (ENTERPRISE v4)
  *
  * ARCHITECTURE:
  * - Scroll-Spy target with strict ID contract
@@ -7,33 +7,36 @@
  * - Context-aware inventory checking
  * - SPA-compliant navigation (no window.location)
  * - Self-healing images with fallback
+ * - Full OpenGraph meta for social sharing
  *
  * SECURITY:
  * - Validates stock against cart quantity before adding
  * - Prevents overselling via frontend guard
  *
  * OPTIMIZATIONS:
- * - Toast timeout cleanup on unmount
+ * - Centralized Toast component
  * - Lazy loading for all images
- * - ImageWithFallback for visual resilience
+ * - Memoized product cards for large catalogs
  *
  * ID CONTRACT:
  * Each section MUST have id={`category-${section.id}`}
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import { ShoppingBag, Plus, AlertCircle, X } from 'lucide-react';
+import { ShoppingBag, Plus } from 'lucide-react';
 import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
 import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
 import ImageWithFallback from '@/Components/ImageWithFallback';
+import Toast from '@/Components/Toast';
 
 /**
  * ProductCard - Atomic product display with separated click areas
+ * Memoized to prevent unnecessary re-renders in large catalogs
  */
-function ProductCard({ product, tenant, onQuickAdd, isAddingDisabled }) {
+const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isAddingDisabled }) {
     const productUrl = `/${tenant.slug}/product/${product.id}`;
     const isOutOfStock = product.manage_stock && product.stock_quantity <= 0;
 
@@ -44,10 +47,10 @@ function ProductCard({ product, tenant, onQuickAdd, isAddingDisabled }) {
                 {product.image ? (
                     <ImageWithFallback
                         src={product.image}
-                        fallbackSrc="/images/placeholder.png"
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
+                        fadeIn
                     />
                 ) : (
                     <div
@@ -57,6 +60,7 @@ function ProductCard({ product, tenant, onQuickAdd, isAddingDisabled }) {
                         <ShoppingBag
                             className="h-12 w-12 opacity-30"
                             style={{ color: tenant.primary_color }}
+                            aria-hidden="true"
                         />
                     </div>
                 )}
@@ -127,45 +131,14 @@ function ProductCard({ product, tenant, onQuickAdd, isAddingDisabled }) {
                             }}
                             aria-label={`Agregar ${product.name} al carrito`}
                         >
-                            <Plus className="h-5 w-5" />
+                            <Plus className="h-5 w-5" aria-hidden="true" />
                         </button>
                     )}
                 </div>
             </div>
         </div>
     );
-}
-
-/**
- * Toast Notification Component
- */
-function Toast({ message, type = 'success', onClose, primaryColor }) {
-    const bgColor = type === 'error' ? '#ef4444' : primaryColor;
-    const Icon = type === 'error' ? AlertCircle : ShoppingBag;
-
-    return (
-        <div
-            role="alert"
-            aria-live="polite"
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce"
-        >
-            <div
-                className="flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white"
-                style={{ backgroundColor: bgColor }}
-            >
-                <Icon className="h-5 w-5" />
-                <span className="font-medium">{message}</span>
-                <button
-                    onClick={onClose}
-                    className="ml-2 p-1 hover:bg-white/20 rounded"
-                    aria-label="Cerrar notificación"
-                >
-                    <X className="h-4 w-4" />
-                </button>
-            </div>
-        </div>
-    );
-}
+});
 
 /**
  * StoreHome - Main Catalog Page
@@ -177,9 +150,31 @@ export default function StoreHome({ sections = [] }) {
     // Cart store for inventory validation
     const { items, addItem, openCart } = useCartStore();
 
-    // Toast state with timeout cleanup
+    // Toast state with timeout cleanup and accumulator for rapid adds
     const [toast, setToast] = useState(null);
     const toastTimeoutRef = useRef(null);
+    const toastCountRef = useRef(0); // Accumulator for rapid adds
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SEO: Prepare OpenGraph metadata for home page
+    // SSR-safe: Uses tenant slug to build canonical URL
+    // ═══════════════════════════════════════════════════════════════════════
+    const seoData = useMemo(() => {
+        const title = tenant.name || 'Tienda';
+        const description = tenant.tagline || `Descubre los mejores productos en ${title}`;
+
+        // Build base URL - SSR-safe with fallback
+        const baseUrl = typeof window !== 'undefined'
+            ? window.location.origin
+            : (process.env.APP_URL || '');
+
+        // Use banner or logo for og:image, with absolute URL
+        const imageRaw = tenant.banner_url || tenant.logo || '/images/og-default.svg';
+        const image = imageRaw.startsWith('http') ? imageRaw : `${baseUrl}${imageRaw}`;
+        const pageUrl = `${baseUrl}/${tenant.slug || ''}`;
+
+        return { title, description, image, pageUrl };
+    }, [tenant.name, tenant.tagline, tenant.banner_url, tenant.logo, tenant.slug]);
 
     // ═══════════════════════════════════════════════════════════════════════
     // CLEANUP: Clear toast timeout on unmount to prevent memory leak
@@ -193,21 +188,47 @@ export default function StoreHome({ sections = [] }) {
     }, []);
 
     /**
-     * Show toast notification with proper cleanup
+     * Show toast notification with accumulator for rapid adds
+     * If user clicks quickly, shows "Producto agregado x3" instead of resetting
      */
-    const showToast = (message, type = 'success') => {
+    const showToast = (message, type = 'success', isAddAction = false) => {
         // Clear any existing timeout
         if (toastTimeoutRef.current) {
             clearTimeout(toastTimeoutRef.current);
         }
 
-        setToast({ message, type });
+        // Accumulate count for add actions
+        if (isAddAction) {
+            toastCountRef.current += 1;
+            const count = toastCountRef.current;
+            const displayMessage = count > 1
+                ? `Producto agregado ×${count}`
+                : message;
+            setToast({ message: displayMessage, type });
+        } else {
+            // Reset counter for non-add toasts
+            toastCountRef.current = 0;
+            setToast({ message, type });
+        }
 
         // Set new timeout and store reference
         toastTimeoutRef.current = setTimeout(() => {
             setToast(null);
             toastTimeoutRef.current = null;
+            toastCountRef.current = 0; // Reset counter when toast hides
         }, 3000);
+    };
+
+    /**
+     * Hide toast manually
+     */
+    const hideToast = () => {
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+            toastTimeoutRef.current = null;
+        }
+        toastCountRef.current = 0;
+        setToast(null);
     };
 
     /**
@@ -242,25 +263,41 @@ export default function StoreHome({ sections = [] }) {
         // All validations passed - add to cart
         addItem(product, 1, [], '');
         openCart();
-        showToast('Producto agregado al carrito');
+        showToast('Producto agregado al carrito', 'success', true); // isAddAction = true
     };
 
     return (
         <StoreLayout>
-            <Head title={tenant.name || 'Tienda'} />
+            {/* ═══════════════════════════════════════════════════════════════
+                HEAD: SEO & OpenGraph Meta Tags for Catalog
+            ═══════════════════════════════════════════════════════════════ */}
+            <Head>
+                <title>{seoData.title}</title>
 
-            {/* Toast Notification */}
+                {/* Standard SEO Meta */}
+                <meta name="description" content={seoData.description} />
+
+                {/* OpenGraph for Facebook/WhatsApp */}
+                <meta property="og:type" content="website" />
+                <meta property="og:title" content={seoData.title} />
+                <meta property="og:description" content={seoData.description} />
+                <meta property="og:image" content={seoData.image} />
+                <meta property="og:url" content={seoData.pageUrl} />
+                <meta property="og:site_name" content={seoData.title} />
+
+                {/* Twitter Card */}
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content={seoData.title} />
+                <meta name="twitter:description" content={seoData.description} />
+                <meta name="twitter:image" content={seoData.image} />
+            </Head>
+
+            {/* Toast Notification - Centralized component */}
             {toast && (
                 <Toast
                     message={toast.message}
                     type={toast.type}
-                    onClose={() => {
-                        if (toastTimeoutRef.current) {
-                            clearTimeout(toastTimeoutRef.current);
-                            toastTimeoutRef.current = null;
-                        }
-                        setToast(null);
-                    }}
+                    onClose={hideToast}
                     primaryColor={primaryColor}
                 />
             )}
@@ -273,10 +310,10 @@ export default function StoreHome({ sections = [] }) {
                     <div className="aspect-[21/9] w-full overflow-hidden">
                         <ImageWithFallback
                             src={tenant.banner_url}
-                            fallbackSrc="/images/banner-placeholder.png"
                             alt={`Banner de ${tenant.name}`}
                             className="w-full h-full object-cover"
-                            loading="lazy"
+                            loading="eager"
+                            fadeIn
                         />
                     </div>
                 ) : (
@@ -307,7 +344,7 @@ export default function StoreHome({ sections = [] }) {
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {sections.length === 0 ? (
                     <div className="text-center py-16">
-                        <ShoppingBag className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                        <ShoppingBag className="h-16 w-16 mx-auto text-gray-300 mb-4" aria-hidden="true" />
                         <p className="text-gray-500 text-lg">
                             No hay productos disponibles en este momento.
                         </p>

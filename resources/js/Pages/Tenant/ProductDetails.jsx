@@ -1,12 +1,12 @@
 /**
- * ProductDetails.jsx - Product Configuration Engine (ENTERPRISE v3)
+ * ProductDetails.jsx - Product Configuration Engine (ENTERPRISE v4)
  *
  * ARCHITECTURE:
  * - Modifier state management with validation
  * - RadioGroup for single-select, Checkboxes for multi-select
  * - Quantity clamping with stock limits (CONSIDERS CART QUANTITY)
  * - WCAG-compliant accessible notifications
- * - OpenGraph meta tags for social sharing
+ * - OpenGraph meta tags with ABSOLUTE URLs for social sharing
  * - Self-healing images with fallback
  *
  * SECURITY:
@@ -15,11 +15,12 @@
  * - Accounts for existing cart items when calculating max quantity
  *
  * SEO:
- * - Dynamic og:title, og:description, og:image
+ * - Dynamic og:title, og:description, og:image (ABSOLUTE URLS)
+ * - og:url canonical for correct sharing
  * - Product price metadata for commerce indexing
  */
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, memo } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { RadioGroup } from '@headlessui/react';
 import {
@@ -29,14 +30,13 @@ import {
     Minus,
     Plus,
     AlertCircle,
-    CheckCircle,
-    X,
 } from 'lucide-react';
 import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
 import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
 import ImageWithFallback from '@/Components/ImageWithFallback';
+import Toast from '@/Components/Toast';
 
 /**
  * Truncate text for SEO meta descriptions (max 160 chars)
@@ -49,8 +49,14 @@ function truncateDescription(text, maxLength = 160) {
 
 /**
  * ModifierGroupRadio - Single selection modifier group
+ * Memoized for performance with many options
  */
-function ModifierGroupRadio({ group, selectedOption, onSelect, primaryColor }) {
+const ModifierGroupRadio = memo(function ModifierGroupRadio({
+    group,
+    selectedOption,
+    onSelect,
+    primaryColor,
+}) {
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -71,13 +77,12 @@ function ModifierGroupRadio({ group, selectedOption, onSelect, primaryColor }) {
                         <RadioGroup.Option
                             key={option.id}
                             value={option.id}
-                            className={({ active, checked }) =>
-                                `relative flex cursor-pointer rounded-lg border p-4 transition-all focus:outline-none
+                            className={({ checked }) =>
+                                `relative flex cursor-pointer rounded-lg border p-4 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2
                                 ${checked
                                     ? 'border-2 bg-opacity-10'
                                     : 'border-gray-200 hover:border-gray-300'
-                                }
-                                ${active ? 'ring-2 ring-offset-2' : ''}`
+                                }`
                             }
                             style={{
                                 borderColor: selectedOption === option.id ? primaryColor : undefined,
@@ -95,7 +100,7 @@ function ModifierGroupRadio({ group, selectedOption, onSelect, primaryColor }) {
                                                 backgroundColor: checked ? primaryColor : 'transparent',
                                             }}
                                         >
-                                            {checked && <Check className="h-3 w-3 text-white" />}
+                                            {checked && <Check className="h-3 w-3 text-white" aria-hidden="true" />}
                                         </div>
                                         <span className="text-gray-900 font-medium">
                                             {option.name}
@@ -114,12 +119,18 @@ function ModifierGroupRadio({ group, selectedOption, onSelect, primaryColor }) {
             </RadioGroup>
         </div>
     );
-}
+});
 
 /**
  * ModifierGroupCheckbox - Multi-selection modifier group
+ * Memoized for performance
  */
-function ModifierGroupCheckbox({ group, selectedOptions = [], onToggle, primaryColor }) {
+const ModifierGroupCheckbox = memo(function ModifierGroupCheckbox({
+    group,
+    selectedOptions = [],
+    onToggle,
+    primaryColor,
+}) {
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -136,7 +147,7 @@ function ModifierGroupCheckbox({ group, selectedOptions = [], onToggle, primaryC
                 </span>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2" role="group" aria-label={group.name}>
                 {group.options?.map((option) => {
                     const isSelected = selectedOptions.includes(option.id);
                     const isDisabled =
@@ -170,7 +181,7 @@ function ModifierGroupCheckbox({ group, selectedOptions = [], onToggle, primaryC
                                         backgroundColor: isSelected ? primaryColor : 'transparent',
                                     }}
                                 >
-                                    {isSelected && <Check className="h-3 w-3 text-white" />}
+                                    {isSelected && <Check className="h-3 w-3 text-white" aria-hidden="true" />}
                                 </div>
                                 <span className="text-gray-900 font-medium">
                                     {option.name}
@@ -187,38 +198,7 @@ function ModifierGroupCheckbox({ group, selectedOptions = [], onToggle, primaryC
             </div>
         </div>
     );
-}
-
-/**
- * Accessible Toast Notification
- */
-function Toast({ message, type = 'success', onClose, primaryColor }) {
-    const bgColor = type === 'error' ? '#ef4444' : primaryColor;
-    const Icon = type === 'error' ? AlertCircle : CheckCircle;
-
-    return (
-        <div
-            role="alert"
-            aria-live="polite"
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-50"
-        >
-            <div
-                className="flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white animate-bounce"
-                style={{ backgroundColor: bgColor }}
-            >
-                <Icon className="h-5 w-5" />
-                <span className="font-medium">{message}</span>
-                <button
-                    onClick={onClose}
-                    className="ml-2 p-1 hover:bg-white/20 rounded"
-                    aria-label="Cerrar notificación"
-                >
-                    <X className="h-4 w-4" />
-                </button>
-            </div>
-        </div>
-    );
-}
+});
 
 /**
  * ProductDetails - Main Product Configuration Page
@@ -240,16 +220,28 @@ export default function ProductDetails({ product }) {
     const { items, addItem, openCart } = useCartStore();
 
     // ═══════════════════════════════════════════════════════════════════════
-    // SEO: Prepare OpenGraph metadata
+    // SEO: Prepare OpenGraph metadata with ABSOLUTE URLs
     // ═══════════════════════════════════════════════════════════════════════
     const seoData = useMemo(() => {
         const title = product?.name || 'Producto';
-        const description = truncateDescription(product?.description || `Descubre ${title} en nuestra tienda`);
-        const image = product?.image || tenant?.logo || '/images/og-default.png';
+        const description = truncateDescription(
+            product?.description || `Descubre ${title} en nuestra tienda`
+        );
+
+        // Build absolute URLs for og:image and og:url
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
+        // Image: prefer product image, then tenant logo, then default
+        const imageRaw = product?.image || tenant?.logo || '/images/og-default.svg';
+        const image = imageRaw.startsWith('http') ? imageRaw : `${baseUrl}${imageRaw}`;
+
+        // Canonical URL for the product
+        const url = `${baseUrl}/${tenant?.slug}/product/${product?.id}`;
+
         const price = product?.price || 0;
 
-        return { title, description, image, price };
-    }, [product?.name, product?.description, product?.image, product?.price, tenant?.logo]);
+        return { title, description, image, url, price };
+    }, [product?.name, product?.description, product?.image, product?.price, product?.id, tenant?.logo, tenant?.slug]);
 
     // ═══════════════════════════════════════════════════════════════════════
     // CLEANUP: Clear toast timeout on unmount
@@ -272,14 +264,38 @@ export default function ProductDetails({ product }) {
     }, [items, product?.id]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // QUANTITY LIMITS: Derived from stock MINUS what's already in cart
+    // STOCK LOGIC: Separated from UI quantity selector
+    // 
+    // CRITICAL FIX: Previously maxQuantity used Math.max(1, available) which
+    // masked the real stock state, causing "availability illusion" where
+    // the button stayed enabled even when stock was exhausted.
+    // 
+    // Now we have:
+    // - realAvailable: Actual units available (can be 0 or negative)
+    // - isStockLimitReached: True when user has max possible in cart
+    // - maxQuantityForSelector: Min 1 for UI, but button uses isStockLimitReached
     // ═══════════════════════════════════════════════════════════════════════
-    const maxQuantity = useMemo(() => {
-        if (product?.manage_stock) {
-            const available = (product.stock_quantity || 0) - existingCartQty;
-            return Math.max(1, available);
+    const stockInfo = useMemo(() => {
+        if (!product?.manage_stock) {
+            return {
+                realAvailable: 99,
+                isStockLimitReached: false,
+                maxQuantityForSelector: 99,
+                isOutOfStock: false,
+            };
         }
-        return 99;
+
+        const totalStock = product.stock_quantity || 0;
+        const realAvailable = totalStock - existingCartQty;
+
+        return {
+            realAvailable,
+            isStockLimitReached: realAvailable <= 0,
+            // UI selector needs min 1 to function, but we disable button separately
+            maxQuantityForSelector: Math.max(1, realAvailable),
+            // Product is completely out of stock (not just limit reached for this user)
+            isOutOfStock: totalStock <= 0,
+        };
     }, [product?.manage_stock, product?.stock_quantity, existingCartQty]);
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -313,10 +329,10 @@ export default function ProductDetails({ product }) {
     };
 
     // ═══════════════════════════════════════════════════════════════════════
-    // QUANTITY HANDLERS: With input clamping
+    // QUANTITY HANDLERS: With input clamping using stockInfo
     // ═══════════════════════════════════════════════════════════════════════
     const handleIncrement = () => {
-        setQuantity((q) => Math.min(maxQuantity, q + 1));
+        setQuantity((q) => Math.min(stockInfo.maxQuantityForSelector, q + 1));
     };
 
     const handleDecrement = () => {
@@ -386,18 +402,32 @@ export default function ProductDetails({ product }) {
         }, 3000);
     };
 
+    const hideToast = () => {
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+            toastTimeoutRef.current = null;
+        }
+        setToast(null);
+    };
+
     // ═══════════════════════════════════════════════════════════════════════
     // CART INJECTION
     // ═══════════════════════════════════════════════════════════════════════
     const handleAddToCart = () => {
         if (!isSelectionComplete) return;
 
+        // Guard: Stock limit already reached
+        if (stockInfo.isStockLimitReached) {
+            showToast('Has alcanzado el límite de unidades disponibles', 'error');
+            return;
+        }
+
         // Additional stock validation before adding
         if (product?.manage_stock) {
             const projectedTotal = existingCartQty + quantity;
             if (projectedTotal > product.stock_quantity) {
                 showToast(
-                    `Solo puedes agregar ${maxQuantity} unidades más`,
+                    `Solo puedes agregar ${stockInfo.realAvailable} unidades más`,
                     'error'
                 );
                 return;
@@ -442,7 +472,7 @@ export default function ProductDetails({ product }) {
         }
 
         addItem(product, quantity, selectedModifiers, notes);
-        showToast('Producto agregado al carrito');
+        showToast('Producto agregado al carrito', 'success');
     };
 
     const handleGoToCheckout = () => {
@@ -458,13 +488,13 @@ export default function ProductDetails({ product }) {
             <StoreLayout>
                 <Head title="Producto no encontrado" />
                 <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-                    <AlertCircle className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                    <AlertCircle className="h-16 w-16 mx-auto text-gray-300 mb-4" aria-hidden="true" />
                     <p className="text-gray-500 text-lg">Producto no encontrado.</p>
                     <Link
                         href={`/${tenant.slug}`}
                         className="mt-4 inline-flex items-center gap-2 text-blue-600 hover:underline"
                     >
-                        <ArrowLeft className="h-4 w-4" />
+                        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                         Volver al catálogo
                     </Link>
                 </div>
@@ -472,13 +502,13 @@ export default function ProductDetails({ product }) {
         );
     }
 
-    // Check if product is out of stock (considering cart)
-    const isOutOfStock = product.manage_stock && maxQuantity <= 0;
+    // Destructure stockInfo for cleaner render logic
+    const { isOutOfStock, isStockLimitReached, maxQuantityForSelector, realAvailable } = stockInfo;
 
     return (
         <StoreLayout>
             {/* ═══════════════════════════════════════════════════════════════
-                HEAD: SEO & OpenGraph Meta Tags
+                HEAD: SEO & OpenGraph Meta Tags with ABSOLUTE URLs
             ═══════════════════════════════════════════════════════════════ */}
             <Head>
                 <title>{seoData.title} | {tenant.name}</title>
@@ -491,6 +521,7 @@ export default function ProductDetails({ product }) {
                 <meta property="og:title" content={seoData.title} />
                 <meta property="og:description" content={seoData.description} />
                 <meta property="og:image" content={seoData.image} />
+                <meta property="og:url" content={seoData.url} />
                 <meta property="og:site_name" content={tenant.name || 'Conecta HN'} />
 
                 {/* Product Price Metadata (Commerce) */}
@@ -504,18 +535,12 @@ export default function ProductDetails({ product }) {
                 <meta name="twitter:image" content={seoData.image} />
             </Head>
 
-            {/* Accessible Toast Notification */}
+            {/* Accessible Toast Notification - Centralized component */}
             {toast && (
                 <Toast
                     message={toast.message}
                     type={toast.type}
-                    onClose={() => {
-                        if (toastTimeoutRef.current) {
-                            clearTimeout(toastTimeoutRef.current);
-                            toastTimeoutRef.current = null;
-                        }
-                        setToast(null);
-                    }}
+                    onClose={hideToast}
                     primaryColor={primaryColor}
                 />
             )}
@@ -526,7 +551,7 @@ export default function ProductDetails({ product }) {
                     href={`/${tenant.slug}`}
                     className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
                 >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    <ArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" />
                     Volver al catálogo
                 </Link>
 
@@ -536,10 +561,10 @@ export default function ProductDetails({ product }) {
                         {product.image ? (
                             <ImageWithFallback
                                 src={product.image}
-                                fallbackSrc="/images/placeholder.png"
                                 alt={product.name}
                                 className="w-full h-full object-cover"
-                                loading="lazy"
+                                loading="eager"
+                                fadeIn
                             />
                         ) : (
                             <div
@@ -549,6 +574,7 @@ export default function ProductDetails({ product }) {
                                 <ShoppingCart
                                     className="h-20 w-20 opacity-30"
                                     style={{ color: primaryColor }}
+                                    aria-hidden="true"
                                 />
                             </div>
                         )}
@@ -588,9 +614,13 @@ export default function ProductDetails({ product }) {
                                     <span className="text-red-500 font-medium">
                                         Agotado{existingCartQty > 0 && ' (tienes el máximo en tu carrito)'}
                                     </span>
+                                ) : isStockLimitReached ? (
+                                    <span className="text-amber-500 font-medium">
+                                        Límite alcanzado (tienes {existingCartQty} en tu carrito)
+                                    </span>
                                 ) : (
                                     <>
-                                        {maxQuantity} disponibles
+                                        {realAvailable} disponibles
                                         {existingCartQty > 0 && (
                                             <span className="text-gray-400">
                                                 {' '}(ya tienes {existingCartQty} en tu carrito)
@@ -667,7 +697,7 @@ export default function ProductDetails({ product }) {
                                             }`}
                                         aria-label="Reducir cantidad"
                                     >
-                                        <Minus className="h-4 w-4" />
+                                        <Minus className="h-4 w-4" aria-hidden="true" />
                                     </button>
                                     <span className="text-xl font-bold w-8 text-center">
                                         {quantity}
@@ -675,21 +705,21 @@ export default function ProductDetails({ product }) {
                                     <button
                                         type="button"
                                         onClick={handleIncrement}
-                                        disabled={quantity >= maxQuantity || isOutOfStock}
+                                        disabled={quantity >= maxQuantityForSelector || isOutOfStock || isStockLimitReached}
                                         className={`p-2 rounded-full border border-gray-300 transition-colors
-                                            ${quantity >= maxQuantity || isOutOfStock
+                                            ${quantity >= maxQuantityForSelector || isOutOfStock || isStockLimitReached
                                                 ? 'opacity-50 cursor-not-allowed'
                                                 : 'hover:bg-gray-100'
                                             }`}
                                         aria-label="Aumentar cantidad"
                                     >
-                                        <Plus className="h-4 w-4" />
+                                        <Plus className="h-4 w-4" aria-hidden="true" />
                                     </button>
                                 </div>
                             </div>
 
                             {/* Stock warning when at max */}
-                            {product.manage_stock && quantity >= maxQuantity && !isOutOfStock && (
+                            {product.manage_stock && quantity >= maxQuantityForSelector && !isOutOfStock && !isStockLimitReached && (
                                 <p className="text-sm text-amber-600">
                                     Cantidad máxima disponible alcanzada.
                                 </p>
@@ -698,28 +728,33 @@ export default function ProductDetails({ product }) {
                             {/* Validation Warning */}
                             {!isSelectionComplete && (
                                 <div className="flex items-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg">
-                                    <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                                    <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
                                     <p className="text-sm">
                                         Selecciona las opciones requeridas para continuar.
                                     </p>
                                 </div>
                             )}
 
-                            {/* Add to Cart Button */}
+                            {/* Add to Cart Button - CRITICAL: Uses isStockLimitReached to prevent availability illusion */}
                             <button
                                 type="button"
                                 onClick={handleAddToCart}
-                                disabled={!isSelectionComplete || isOutOfStock}
+                                disabled={!isSelectionComplete || isOutOfStock || isStockLimitReached}
                                 className={`w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl transition-all
-                                    ${(!isSelectionComplete || isOutOfStock)
+                                    ${(!isSelectionComplete || isOutOfStock || isStockLimitReached)
                                         ? 'opacity-50 cursor-not-allowed grayscale'
                                         : 'hover:opacity-90 hover:scale-[1.02]'
                                     }`}
                                 style={{ backgroundColor: primaryColor }}
                                 aria-label="Agregar al carrito"
                             >
-                                <ShoppingCart className="h-5 w-5" />
-                                {isOutOfStock ? 'Agotado' : `Agregar ${formatCurrency(calculatedPrice)}`}
+                                <ShoppingCart className="h-5 w-5" aria-hidden="true" />
+                                {isOutOfStock
+                                    ? 'Agotado'
+                                    : isStockLimitReached
+                                        ? 'Límite alcanzado'
+                                        : `Agregar ${formatCurrency(calculatedPrice)}`
+                                }
                             </button>
 
                             {/* Go to Checkout Button */}
