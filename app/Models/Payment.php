@@ -17,9 +17,12 @@ class Payment extends Model
     use BelongsToTenant, LogsActivity;
 
     protected $fillable = [
+        'tenant_id',
         'amount',
         'proof_image_path',
+        'bank',
         'bank_reference',
+        'reference_number',
         'status',
         'reviewed_at',
         'notes',
@@ -27,9 +30,10 @@ class Payment extends Model
 
     /**
      * SECURITY: Immutable ownership fields.
-     * tenant_id is set automatically by BelongsToTenant trait on creation.
+     * Note: tenant_id is in $fillable for explicit mass assignment,
+     * but BelongsToTenant trait auto-sets it on creation as well.
      */
-    protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
+    protected $guarded = ['id', 'created_at', 'updated_at'];
 
     protected $casts = [
         'amount' => 'decimal:2',
@@ -38,11 +42,25 @@ class Payment extends Model
 
     /**
      * Configuracion de Activity Log - Registro Forense
+     *
+     * DIRECTIVE 3 COMPLIANCE: Full financial observability.
+     * All monetary fields must generate audit trail entries.
      */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['tenant_id', 'amount', 'status', 'bank_reference', 'reviewed_at', 'notes'])
+            // AUDIT TRAIL: All financial fields explicitly logged
+            ->logOnly([
+                'tenant_id',
+                'amount',
+                'status',
+                'bank',              // Financial institution
+                'bank_reference',
+                'reference_number',  // Transaction reference
+                'proof_image_path',  // FORENSIC: Payment proof evidence
+                'reviewed_at',
+                'notes',             // Administrative notes
+            ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn (string $eventName) => match ($eventName) {
