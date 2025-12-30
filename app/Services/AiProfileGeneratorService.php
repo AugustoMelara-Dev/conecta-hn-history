@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Log;
  *   $service = app(AiProfileGeneratorService::class);
  *   $result = $service->generate($rawName, $rawDescription, $rawCategory);
  */
-final class AiProfileGeneratorService
+class AiProfileGeneratorService
 {
     // ═══════════════════════════════════════════════════════════════════════════════
     // CONFIGURATION CONSTANTS
