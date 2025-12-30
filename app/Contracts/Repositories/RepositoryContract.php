@@ -6,50 +6,33 @@ namespace App\Contracts\Repositories;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\LazyCollection;
 
 /**
- * RepositoryContract - Persistence Layer Abstraction
+ * RepositoryContract - Memory-Safe Persistence Layer Abstraction
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ARCHITECTURAL RATIONALE: Decoupling Business Logic from Eloquent       ║
+ * ║  ARCHITECTURAL RATIONALE: Big Data Resilience                           ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║                                                                          ║
- * ║  THE PROBLEM WITH DIRECT ELOQUENT USAGE:                                 ║
- * ║  ┌──────────────────┐                                                   ║
- * ║  │ ProductService   │──────────────► Product::where(...)                ║
- * ║  └──────────────────┘                     │                             ║
- * ║                                           ├── Eloquent-specific         ║
- * ║                                           ├── Hard to test (needs DB)   ║
- * ║                                           └── Tenant scope leakage      ║
+ * ║  PROBLEM: Unbounded retrieval methods cause Out-Of-Memory (OOM) errors  ║
+ * ║    $repo->all() on 2 million orders → 2M Eloquent models → OOM crash   ║
  * ║                                                                          ║
- * ║  ─────────────────────────────────────────────────────────────────────── ║
+ * ║  SOLUTION: Enforce lazy loading at the CONTRACT level.                  ║
+ * ║    - REMOVED: all(): Collection (anti-pattern for scalable systems)    ║
+ * ║    - ADDED: cursor(): LazyCollection (constant RAM usage)              ║
  * ║                                                                          ║
- * ║  THE SOLUTION WITH REPOSITORY PATTERN:                                   ║
- * ║  ┌──────────────────┐       ┌───────────────────────┐                   ║
- * ║  │ ProductService   │──────►│  ProductRepository    │ (Contract)        ║
- * ║  └──────────────────┘       └───────────────────────┘                   ║
- * ║                                      ▲                                   ║
- * ║                    ┌─────────────────┼─────────────────┐                ║
- * ║                    │                 │                 │                ║
- * ║          ┌─────────┴──────┐  ┌───────┴───────┐  ┌──────┴──────┐         ║
- * ║          │EloquentProduct │  │ CachedProduct │  │ MockProduct │         ║
- * ║          │   Repository   │  │  Repository   │  │ Repository  │         ║
- * ║          └────────────────┘  └───────────────┘  └─────────────┘         ║
+ * ║  WHY LazyCollection?                                                    ║
+ * ║    - Uses PHP Generators internally                                     ║
+ * ║    - Only 1 model in memory at a time                                  ║
+ * ║    - Database cursor stays open, fetching rows on-demand               ║
+ * ║    - 2 million rows = same RAM as 100 rows                             ║
  * ║                                                                          ║
- * ║  TENANT SCOPING GUARANTEE:                                              ║
+ * ║  TENANT SCOPING:                                                        ║
  * ║    All implementations MUST automatically scope to CurrentTenant.       ║
- * ║    The consuming code NEVER needs to add ->where('tenant_id', ...).     ║
  * ║                                                                          ║
  * ║  CONSTRAINT: Methods return Domain Objects/DTOs, NEVER Query Builders.  ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * USAGE:
- *   class ProductService {
- *       public function __construct(private ProductRepository $products) {}
- *       public function getFeatured(): Collection {
- *           return $this->products->findByCriteria(['is_featured' => true]);
- *       }
- *   }
  *
  * @template TModel
  * @template TId
@@ -74,18 +57,38 @@ interface RepositoryContract
     public function findOrFail(mixed $id): mixed;
 
     /**
-     * Get all entities (use with caution on large datasets).
+     * Stream ALL entities using a database cursor.
      *
-     * @return Collection<int, TModel>
+     * ╔════════════════════════════════════════════════════════════════════════╗
+     * ║  @notice MEMORY SAFETY: This method uses LazyCollection (Generators)  ║
+     * ╠════════════════════════════════════════════════════════════════════════╣
+     * ║  WHY NOT return Collection?                                            ║
+     * ║    Collection loads EVERYTHING into RAM before returning.              ║
+     * ║    2 million rows × 5KB/model = 10GB RAM = INSTANT CRASH              ║
+     * ║                                                                        ║
+     * ║  LazyCollection uses database cursors:                                ║
+     * ║    - Only 1 row fetched from DB at a time                             ║
+     * ║    - Process → GC → Next row                                          ║
+     * ║    - RAM stays flat at ~10MB regardless of table size                 ║
+     * ║                                                                        ║
+     * ║  USAGE:                                                               ║
+     * ║    foreach ($repo->cursor() as $model) {                             ║
+     * ║        process($model); // Only 1 model in memory                    ║
+     * ║    }                                                                  ║
+     * ╚════════════════════════════════════════════════════════════════════════╝
+     *
+     * @return LazyCollection<int, TModel>
      */
-    public function all(): Collection;
+    public function cursor(): LazyCollection;
 
     /**
      * Find entities matching criteria.
      *
+     * @notice For large result sets, use cursorByCriteria() instead.
+     *
      * @param array<string, mixed> $criteria [column => value] pairs
-     * @param array<string> $orderBy ['column' => 'asc|desc']
-     * @param int|null $limit
+     * @param array<string, string> $orderBy ['column' => 'asc|desc']
+     * @param int|null $limit REQUIRED for unbounded queries (prevents OOM)
      * @return Collection<int, TModel>
      */
     public function findByCriteria(
@@ -93,6 +96,20 @@ interface RepositoryContract
         array $orderBy = [],
         ?int $limit = null
     ): Collection;
+
+    /**
+     * Stream entities matching criteria using database cursor.
+     *
+     * @notice Use this instead of findByCriteria() when result set may be large.
+     *
+     * @param array<string, mixed> $criteria [column => value] pairs
+     * @param array<string, string> $orderBy ['column' => 'asc|desc']
+     * @return LazyCollection<int, TModel>
+     */
+    public function cursorByCriteria(
+        array $criteria = [],
+        array $orderBy = []
+    ): LazyCollection;
 
     /**
      * Find a single entity by criteria.
@@ -103,11 +120,11 @@ interface RepositoryContract
     public function findOneByCriteria(array $criteria): mixed;
 
     /**
-     * Paginate entities.
+     * Paginate entities (memory-safe by design due to LIMIT).
      *
      * @param int $perPage
      * @param array<string, mixed> $criteria Optional filter criteria
-     * @param array<string> $orderBy
+     * @param array<string, string> $orderBy
      * @return LengthAwarePaginator
      */
     public function paginate(
@@ -142,7 +159,7 @@ interface RepositoryContract
     public function delete(mixed $id): bool;
 
     /**
-     * Check if an entity exists by criteria.
+     * Check if an entity exists by criteria (uses COUNT, no model loading).
      *
      * @param array<string, mixed> $criteria
      * @return bool
@@ -150,7 +167,7 @@ interface RepositoryContract
     public function exists(array $criteria): bool;
 
     /**
-     * Count entities matching criteria.
+     * Count entities matching criteria (uses COUNT, no model loading).
      *
      * @param array<string, mixed> $criteria
      * @return int
@@ -160,14 +177,24 @@ interface RepositoryContract
     /**
      * Get entities by their IDs.
      *
+     * @notice Only use when you KNOW the ID list is bounded (e.g., cart items).
+     *         For unbounded ID lists, use cursorByIds().
+     *
      * @param array<TId> $ids
      * @return Collection<int, TModel>
      */
     public function findByIds(array $ids): Collection;
 
     /**
+     * Stream entities by IDs using cursor.
+     *
+     * @param array<TId> $ids
+     * @return LazyCollection<int, TModel>
+     */
+    public function cursorByIds(array $ids): LazyCollection;
+
+    /**
      * Begin a database transaction.
-     * (Useful for multi-step operations)
      */
     public function beginTransaction(): void;
 
