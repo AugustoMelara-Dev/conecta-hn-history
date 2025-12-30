@@ -41,10 +41,21 @@ class PaymentWebhookController extends Controller
      * In production, this comes from .env: PAYMENT_WEBHOOK_SECRET
      */
     protected string $webhookSecret;
+    protected \App\Services\WebhookService $webhookService;
 
-    public function __construct()
+    public function __construct(\App\Services\WebhookService $webhookService)
     {
-        $this->webhookSecret = (string) config('services.payment.webhook_secret', 'test_webhook_secret_change_in_production');
+        // Zero Trust: Fail immediately if webhook secret is not configured
+        $secret = config('services.payment.webhook_secret');
+
+        throw_if(
+            empty($secret),
+            \RuntimeException::class,
+            'PAYMENT_WEBHOOK_SECRET is not configured. Refusing to process webhooks without explicit secret.'
+        );
+
+        $this->webhookSecret = (string) $secret;
+        $this->webhookService = $webhookService;
     }
 
     /**
@@ -58,24 +69,12 @@ class PaymentWebhookController extends Controller
         // PHASE 1: ZERO-TRUST SIGNATURE VERIFICATION
         // ═══════════════════════════════════════════════════════════════════════
         // The gatekeeper pattern: verify origin before parsing payload.
-        // If signature fails, we reject immediately - no further processing.
-
         if (! $this->verifySignature($request)) {
-            Log::warning('PaymentWebhook: SECURITY ALERT - Invalid signature detected', [
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'timestamp' => now()->toIso8601String(),
-            ]);
+            Log::warning('PaymentWebhook: Invalid signature', ['ip' => $request->ip()]);
 
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Invalid signature',
-            ], 403);
+            return response()->json(['message' => 'Invalid signature'], 403);
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // PHASE 2: PARSE PAYLOAD & EXTRACT EVENT DATA
-        // ═══════════════════════════════════════════════════════════════════════
         $payload = $request->json()->all();
         $eventType = $payload['event'] ?? null;
         $eventData = $payload['data'] ?? [];
@@ -122,137 +121,17 @@ class PaymentWebhookController extends Controller
 
     /**
      * Handle successful payment event.
-     *
-     * IDEMPOTENCY: If order is already CONFIRMED/PROCESSING/DELIVERED,
-     * we skip silently and return 200 OK.
-     *
-     * RACE CONDITION PREVENTION: Uses lockForUpdate() to ensure
-     * only one process can update the order at a time.
-     *
-     * @param  array  $data  Event payload data
+     * Delegated to WebhookService.
      */
     protected function handlePaymentSucceeded(array $data): JsonResponse
     {
-        $orderNumber = $data['order_number'] ?? null;
-        $transactionId = $data['transaction_id'] ?? null;
-        $amountPaid = (float) ($data['amount'] ?? 0);
-        $currency = $data['currency'] ?? 'HNL';
-
-        if (! $orderNumber) {
-            Log::warning('PaymentWebhook: Missing order_number in payload');
-
-            return response()->json(['status' => 'error', 'message' => 'Missing order_number'], 200);
-        }
-
         try {
-            $result = DB::transaction(function () use ($orderNumber, $transactionId, $amountPaid, $currency) {
-
-                // ═══════════════════════════════════════════════════════════════
-                // PESSIMISTIC LOCK: Acquire exclusive row lock
-                // ═══════════════════════════════════════════════════════════════
-                // lockForUpdate() blocks any other transaction from reading/writing
-                // this row until we commit. This prevents race conditions.
-                $order = Order::withoutGlobalScopes()
-                    ->where('order_number', $orderNumber)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $order) {
-                    Log::warning('PaymentWebhook: Order not found', [
-                        'order_number' => $orderNumber,
-                        'transaction_id' => $transactionId,
-                    ]);
-
-                    return ['status' => 'ignored', 'reason' => 'order_not_found'];
-                }
-
-                // ═══════════════════════════════════════════════════════════════
-                // IDEMPOTENCY GUARD: Check if already processed
-                // ═══════════════════════════════════════════════════════════════
-                $processedStatuses = [
-                    Order::STATUS_CONFIRMED,
-                    Order::STATUS_PROCESSING,
-                    Order::STATUS_READY,
-                    Order::STATUS_DELIVERED,
-                ];
-
-                if (in_array($order->status, $processedStatuses)) {
-                    Log::info('PaymentWebhook: Idempotent skip - already processed', [
-                        'order_id' => $order->id,
-                        'order_number' => $orderNumber,
-                        'current_status' => $order->status,
-                        'transaction_id' => $transactionId,
-                    ]);
-
-                    return ['status' => 'ignored', 'reason' => 'already_processed'];
-                }
-
-                // Handle late payment for cancelled order
-                if ($order->status === Order::STATUS_CANCELLED) {
-                    Log::warning('PaymentWebhook: Late payment for cancelled order', [
-                        'order_id' => $order->id,
-                        'order_number' => $orderNumber,
-                        'transaction_id' => $transactionId,
-                        'action' => 'REQUIRES_MANUAL_REFUND',
-                    ]);
-
-                    return ['status' => 'ignored', 'reason' => 'order_cancelled'];
-                }
-
-                // ═══════════════════════════════════════════════════════════════
-                // AMOUNT VALIDATION: Verify paid amount matches order total
-                // ═══════════════════════════════════════════════════════════════
-                $expectedAmount = (float) $order->total;
-                $tolerance = 0.01; // 1 centavo tolerance for rounding
-
-                if (abs($amountPaid - $expectedAmount) > $tolerance) {
-                    Log::error('PaymentWebhook: Amount mismatch', [
-                        'order_id' => $order->id,
-                        'order_number' => $orderNumber,
-                        'expected' => $expectedAmount,
-                        'received' => $amountPaid,
-                        'difference' => abs($amountPaid - $expectedAmount),
-                        'transaction_id' => $transactionId,
-                    ]);
-
-                    return ['status' => 'error', 'reason' => 'amount_mismatch'];
-                }
-
-                // ═══════════════════════════════════════════════════════════════
-                // STATE TRANSITION: Mark as CONFIRMED
-                // ═══════════════════════════════════════════════════════════════
-                $order->update([
-                    'status' => Order::STATUS_CONFIRMED,
-                    'payment_transaction_id' => $transactionId,
-                    'payment_confirmed_at' => now(),
-                ]);
-
-                Log::info('PaymentWebhook: Payment confirmed successfully', [
-                    'order_id' => $order->id,
-                    'order_number' => $orderNumber,
-                    'amount' => $amountPaid,
-                    'currency' => $currency,
-                    'transaction_id' => $transactionId,
-                ]);
-
-                return ['status' => 'success', 'order_id' => $order->id];
-            });
-
-            return response()->json($result, 200);
-
+            $result = $this->webhookService->handlePaymentSucceeded($data);
+            $status = ($result['status'] === 'success' || $result['status'] === 'ignored') ? 200 : 500;
+            
+            return response()->json($result, $status);
         } catch (\Exception $e) {
-            Log::error('PaymentWebhook: Server error during payment processing', [
-                'order_number' => $orderNumber,
-                'transaction_id' => $transactionId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            // Return 500 to trigger gateway retry
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Internal server error',
-            ], 500);
+            return response()->json(['status' => 'error'], 500);
         }
     }
 
@@ -288,61 +167,17 @@ class PaymentWebhookController extends Controller
      * Handle refund event.
      *
      * Marks order as refunded and triggers inventory restoration.
-     *
-     * @param  array  $data  Event payload data
+     * Delegated to WebhookService for Architecture Compliance.
      */
     protected function handlePaymentRefunded(array $data): JsonResponse
     {
-        $orderNumber = $data['order_number'] ?? null;
-        $transactionId = $data['transaction_id'] ?? null;
-        $refundAmount = (float) ($data['amount'] ?? 0);
-
-        if (! $orderNumber) {
-            return response()->json(['status' => 'error', 'message' => 'Missing order_number'], 200);
-        }
-
         try {
-            $result = DB::transaction(function () use ($orderNumber, $transactionId, $refundAmount) {
-                $order = Order::withoutGlobalScopes()
-                    ->where('order_number', $orderNumber)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $order) {
-                    return ['status' => 'ignored', 'reason' => 'order_not_found'];
-                }
-
-                // Already cancelled/refunded - skip
-                if ($order->status === Order::STATUS_CANCELLED) {
-                    return ['status' => 'ignored', 'reason' => 'already_cancelled'];
-                }
-
-                // Transition to CANCELLED (triggers OrderObserver → restock)
-                $order->update([
-                    'status' => Order::STATUS_CANCELLED,
-                    'cancel_reason' => 'refunded',
-                    'refund_transaction_id' => $transactionId,
-                    'refunded_at' => now(),
-                ]);
-
-                Log::info('PaymentWebhook: Order refunded and inventory restored', [
-                    'order_id' => $order->id,
-                    'order_number' => $orderNumber,
-                    'refund_amount' => $refundAmount,
-                    'transaction_id' => $transactionId,
-                ]);
-
-                return ['status' => 'success', 'order_id' => $order->id];
-            });
-
-            return response()->json($result, 200);
-
+            $result = $this->webhookService->handlePaymentRefunded($data);
+            $status = ($result['status'] === 'success' || $result['status'] === 'ignored') ? 200 : 500;
+            
+            return response()->json($result, $status);
         } catch (\Exception $e) {
-            Log::error('PaymentWebhook: Server error during refund processing', [
-                'order_number' => $orderNumber,
-                'error' => $e->getMessage(),
-            ]);
-
+            // Logged in Service
             return response()->json(['status' => 'error'], 500);
         }
     }
