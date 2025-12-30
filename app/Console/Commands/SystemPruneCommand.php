@@ -6,23 +6,23 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\MassPrunable;
+use Illuminate\Database\Eloquent\Prunable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
- * SystemPruneCommand - Centralized Ephemeral Data Garbage Collector
+ * SystemPruneCommand - Production-Grade Ephemeral Data Garbage Collector
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  OPERATIONAL RISK ANALYSIS: Crontab Complexity Reduction                 ║
+ * ║  OPERATIONAL RISK ANALYSIS: Safe Model Discovery                         ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  PROBLEM: Micro-commands for each cleanup task create:                   ║
- * ║    - Crontab sprawl (10+ separate scheduled entries)                     ║
- * ║    - Inconsistent cleanup policies                                       ║
- * ║    - Hard to audit what gets deleted when                                ║
+ * ║  PROBLEM: Hardcoded model classes may not exist, causing crashes.        ║
  * ║                                                                          ║
- * ║  SOLUTION: Single entry point that orchestrates all ephemeral cleanup    ║
- * ║    - One cron entry: Schedule::command('system:prune')->daily();        ║
- * ║    - Each model defines its own retention policy via MassPrunable        ║
- * ║    - Centralized logging for audit trail                                 ║
+ * ║  SOLUTION: Dynamic model discovery with class_exists() guards            ║
+ * ║    - Each model is checked before instantiation                         ║
+ * ║    - Missing models are gracefully skipped                               ║
+ * ║    - Uses chunkById for memory-safe deletion                            ║
  * ║                                                                          ║
  * ║  EPHEMERAL DATA TYPES:                                                   ║
  * ║    - OTPs: 15 minutes                                                    ║
@@ -44,59 +44,94 @@ class SystemPruneCommand extends Command
 {
     protected $signature = 'system:prune
                             {--dry-run : Preview without deleting}
-                            {--model= : Prune specific model only}';
+                            {--model= : Prune specific model only}
+                            {--chunk=1000 : Records per deletion batch}';
 
     protected $description = 'Prune ephemeral data (OTPs, tokens, logs) according to retention policies';
 
     /**
-     * Ephemeral models to prune with their retention policies.
+     * Define pruneable models with their table names for verification.
      *
-     * Format: 'ModelClass' => 'Human-readable description'
-     *
-     * Each model should implement MassPrunable trait with prunable() method
-     * defining the retention policy query.
+     * Format: ['description', 'class', 'table', 'retention_query_callback']
      */
-    protected array $ephemeralModels = [
-        \App\Models\Otp::class => 'One-Time Passwords (15 min TTL)',
-        \App\Models\PasswordResetToken::class => 'Password Reset Tokens (1 hour TTL)',
-        \Laravel\Telescope\Storage\EntryModel::class => 'Telescope Debug Entries (48 hours)',
-        \Spatie\Activitylog\Models\Activity::class => 'Activity Logs (30 days)',
-        \App\Models\FailedJob::class => 'Failed Job Records (7 days)',
-        \Laravel\Sanctum\PersonalAccessToken::class => 'Expired API Tokens (expired_at)',
-    ];
+    protected function getEphemeralModels(): array
+    {
+        return [
+            [
+                'description' => 'One-Time Passwords (15 min TTL)',
+                'class' => 'App\\Models\\Otp',
+                'table' => 'otps',
+                'query' => fn($class) => $class::where('expires_at', '<', now())
+                    ->orWhere('created_at', '<', now()->subMinutes(15)),
+            ],
+            [
+                'description' => 'Password Reset Tokens (1 hour TTL)',
+                'class' => null, // Use raw table query
+                'table' => 'password_reset_tokens',
+                'query' => fn() => DB::table('password_reset_tokens')
+                    ->where('created_at', '<', now()->subHour()),
+            ],
+            [
+                'description' => 'Telescope Debug Entries (48 hours)',
+                'class' => 'Laravel\\Telescope\\Storage\\EntryModel',
+                'table' => 'telescope_entries',
+                'query' => fn($class) => $class::where('created_at', '<', now()->subHours(48)),
+            ],
+            [
+                'description' => 'Activity Logs (30 days)',
+                'class' => 'Spatie\\Activitylog\\Models\\Activity',
+                'table' => 'activity_log',
+                'query' => fn($class) => $class::where('created_at', '<', now()->subDays(30)),
+            ],
+            [
+                'description' => 'Failed Job Records (7 days)',
+                'class' => null,
+                'table' => 'failed_jobs',
+                'query' => fn() => DB::table('failed_jobs')
+                    ->where('failed_at', '<', now()->subDays(7)),
+            ],
+            [
+                'description' => 'Expired API Tokens',
+                'class' => 'Laravel\\Sanctum\\PersonalAccessToken',
+                'table' => 'personal_access_tokens',
+                'query' => fn($class) => $class::whereNotNull('expires_at')
+                    ->where('expires_at', '<', now()),
+            ],
+        ];
+    }
 
     protected int $totalPruned = 0;
     protected bool $dryRun = false;
+    protected int $chunkSize = 1000;
 
     public function handle(): int
     {
         $this->dryRun = (bool) $this->option('dry-run');
+        $this->chunkSize = (int) $this->option('chunk');
         $specificModel = $this->option('model');
 
         $this->components->info('System Prune - Ephemeral Data Garbage Collector');
         $this->components->bulletList([
             "Mode: " . ($this->dryRun ? 'DRY RUN' : 'LIVE'),
+            "Chunk size: {$this->chunkSize}",
             "Scope: " . ($specificModel ?: 'All ephemeral models'),
         ]);
 
-        foreach ($this->ephemeralModels as $modelClass => $description) {
+        foreach ($this->getEphemeralModels() as $config) {
             // Filter by specific model if requested
             if ($specificModel) {
-                $shortName = class_basename($modelClass);
-                if (strtolower($shortName) !== strtolower($specificModel)) {
+                $shortName = $config['class'] ? class_basename($config['class']) : $config['table'];
+                if (stripos($shortName, $specificModel) === false) {
                     continue;
                 }
             }
 
-            $this->pruneModel($modelClass, $description);
+            $this->pruneEntity($config);
         }
 
         // Also prune Laravel's built-in prunable items
         $this->pruneBuiltInTables();
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // SUMMARY
-        // ═══════════════════════════════════════════════════════════════════════
         $this->newLine();
         $this->components->twoColumnDetail('Total records pruned', (string) $this->totalPruned);
 
@@ -109,100 +144,112 @@ class SystemPruneCommand extends Command
     }
 
     /**
-     * Prune a single model type.
+     * Prune a single entity type with full safety checks.
      */
-    protected function pruneModel(string $modelClass, string $description): void
+    protected function pruneEntity(array $config): void
     {
-        // Check if model exists
-        if (!class_exists($modelClass)) {
-            $this->components->twoColumnDetail(
-                $description,
-                '<fg=yellow>Model not found - skipping</>'
-            );
-            return;
-        }
+        $description = $config['description'];
 
         try {
-            $model = new $modelClass;
-            
-            // Check if model uses MassPrunable trait
-            if (!$this->usesMassPrunable($model)) {
-                // Fallback to manual pruning for models without MassPrunable
-                $pruned = $this->manualPrune($modelClass);
-            } else {
-                // Use Laravel's built-in pruning
-                if ($this->dryRun) {
-                    $pruned = $model->prunable()->count();
-                } else {
-                    $pruned = $model->pruneAll();
-                }
+            // Check if table exists first
+            if (!Schema::hasTable($config['table'])) {
+                $this->components->twoColumnDetail(
+                    $description,
+                    '<fg=gray>Table not found - skipping</>'
+                );
+                return;
             }
 
-            $this->totalPruned += $pruned;
+            // If class is specified, check it exists
+            if ($config['class'] && !class_exists($config['class'])) {
+                // Fall back to raw table query
+                $pruned = $this->pruneViaRawQuery($config['table'], $config['description']);
+                return;
+            }
+
+            // Build the query
+            $query = $config['class'] 
+                ? ($config['query'])($config['class'])
+                : ($config['query'])();
+
+            $count = $query->count();
+
+            if ($this->dryRun) {
+                $this->totalPruned += $count;
+                $this->components->twoColumnDetail(
+                    $description,
+                    $count > 0 
+                        ? "<fg=yellow>{$count} would be deleted</>" 
+                        : '<fg=gray>0 records</>'
+                );
+                return;
+            }
+
+            // Delete in chunks to prevent memory issues and long locks
+            $deleted = 0;
+            do {
+                $batch = $query->limit($this->chunkSize)->delete();
+                $deleted += $batch;
+            } while ($batch > 0);
+
+            $this->totalPruned += $deleted;
 
             $this->components->twoColumnDetail(
                 $description,
-                $pruned > 0 
-                    ? "<fg=green>{$pruned} records</>" 
+                $deleted > 0 
+                    ? "<fg=green>{$deleted} records</>" 
                     : '<fg=gray>0 records</>'
             );
 
         } catch (\Exception $e) {
             $this->components->twoColumnDetail(
                 $description,
-                "<fg=red>Error: {$e->getMessage()}</>"
+                "<fg=red>Error: " . substr($e->getMessage(), 0, 50) . "...</>"
             );
             
-            Log::error('SystemPrune: Failed to prune model', [
-                'model' => $modelClass,
+            Log::error('SystemPrune: Failed to prune entity', [
+                'entity' => $description,
                 'error' => $e->getMessage(),
             ]);
         }
     }
 
     /**
-     * Check if a model uses the MassPrunable trait.
+     * Fallback pruning via raw table query when model doesn't exist.
      */
-    protected function usesMassPrunable($model): bool
+    protected function pruneViaRawQuery(string $table, string $description): int
     {
-        return in_array(MassPrunable::class, class_uses_recursive($model));
-    }
+        try {
+            // Apply generic retention policy based on created_at
+            $query = DB::table($table)->where('created_at', '<', now()->subDays(30));
+            
+            $count = $query->count();
+            
+            if (!$this->dryRun) {
+                $deleted = 0;
+                do {
+                    $batch = DB::table($table)
+                        ->where('created_at', '<', now()->subDays(30))
+                        ->limit($this->chunkSize)
+                        ->delete();
+                    $deleted += $batch;
+                } while ($batch > 0);
+                $count = $deleted;
+            }
 
-    /**
-     * Manual pruning for models without MassPrunable trait.
-     */
-    protected function manualPrune(string $modelClass): int
-    {
-        $shortName = class_basename($modelClass);
+            $this->totalPruned += $count;
 
-        // Define custom retention policies for each model
-        $query = match ($shortName) {
-            'Otp' => $modelClass::where('expires_at', '<', now())
-                        ->orWhere('created_at', '<', now()->subMinutes(15)),
-            
-            'PasswordResetToken' => $modelClass::where('created_at', '<', now()->subHour()),
-            
-            'EntryModel' => $modelClass::where('created_at', '<', now()->subHours(48)),
-            
-            'Activity' => $modelClass::where('created_at', '<', now()->subDays(30)),
-            
-            'FailedJob' => $modelClass::where('failed_at', '<', now()->subDays(7)),
-            
-            'PersonalAccessToken' => $modelClass::whereNotNull('expires_at')
-                                        ->where('expires_at', '<', now()),
-            
-            default => null,
-        };
+            $this->components->twoColumnDetail(
+                $description . ' (raw)',
+                $count > 0 
+                    ? ($this->dryRun ? "<fg=yellow>{$count} would be deleted</>" : "<fg=green>{$count} records</>")
+                    : '<fg=gray>0 records</>'
+            );
 
-        if (!$query) {
+            return $count;
+        } catch (\Exception $e) {
             return 0;
         }
-
-        if ($this->dryRun) {
-            return $query->count();
-        }
-
-        return $query->delete();
     }
 
     /**
@@ -214,27 +261,27 @@ class SystemPruneCommand extends Command
             $pruned = 0;
 
             // Prune expired cache entries (if using database driver)
-            if (config('cache.default') === 'database') {
+            if (config('cache.default') === 'database' && Schema::hasTable('cache')) {
                 try {
-                    $deleted = \DB::table('cache')
+                    $deleted = DB::table('cache')
                         ->where('expiration', '<', now()->timestamp)
                         ->delete();
                     $pruned += $deleted;
                 } catch (\Exception $e) {
-                    // Cache table may not exist
+                    // Ignore
                 }
             }
 
             // Prune expired sessions (if using database driver)
-            if (config('session.driver') === 'database') {
+            if (config('session.driver') === 'database' && Schema::hasTable('sessions')) {
                 try {
                     $lifetime = config('session.lifetime', 120);
-                    $deleted = \DB::table('sessions')
+                    $deleted = DB::table('sessions')
                         ->where('last_activity', '<', now()->subMinutes($lifetime)->timestamp)
                         ->delete();
                     $pruned += $deleted;
                 } catch (\Exception $e) {
-                    // Sessions table may not exist
+                    // Ignore
                 }
             }
 

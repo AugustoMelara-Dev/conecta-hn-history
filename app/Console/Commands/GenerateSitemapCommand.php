@@ -149,56 +149,64 @@ class GenerateSitemapCommand extends Command
         $this->currentUrlCount = 0;
 
         $baseUrl = $this->getTenantBaseUrl($tenant);
-        $sitemapFiles = [];
 
-        if (!$this->dryRun) {
-            $this->startNewSitemapFile($tenant->slug);
-        }
+        try {
+            if (!$this->dryRun) {
+                $this->startNewSitemapFile($tenant->slug);
+            }
 
-        // Add homepage
-        $this->writeUrlToSitemap($baseUrl, $tenant->updated_at, 'daily', 1.0);
+            // Add homepage
+            $this->writeUrlToSitemap($baseUrl, $tenant->updated_at, 'daily', 1.0);
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // STREAM PRODUCTS - Memory safe with chunkById + direct file write
-        // ═══════════════════════════════════════════════════════════════════════
-        Product::query()
-            ->where('tenant_id', $tenant->id)
-            ->where('is_visible', true)
-            ->where('is_active', true)
-            ->select(['id', 'slug', 'updated_at'])
-            ->chunkById(100, function ($products) use ($baseUrl) {
-                foreach ($products as $product) {
-                    $this->writeUrlToSitemap(
-                        "{$baseUrl}/productos/{$product->slug}",
-                        $product->updated_at,
-                        'weekly',
-                        0.8
-                    );
-                }
-            });
-
-        // Stream categories
-        if (class_exists(Category::class)) {
-            Category::query()
+            // ═══════════════════════════════════════════════════════════════════════
+            // STREAM PRODUCTS - Memory safe with chunkById + direct file write
+            // ═══════════════════════════════════════════════════════════════════════
+            Product::query()
                 ->where('tenant_id', $tenant->id)
+                ->where('is_visible', true)
                 ->where('is_active', true)
                 ->select(['id', 'slug', 'updated_at'])
-                ->chunkById(100, function ($categories) use ($baseUrl) {
-                    foreach ($categories as $category) {
+                ->chunkById(100, function ($products) use ($baseUrl) {
+                    foreach ($products as $product) {
                         $this->writeUrlToSitemap(
-                            "{$baseUrl}/categorias/{$category->slug}",
-                            $category->updated_at,
+                            "{$baseUrl}/productos/{$product->slug}",
+                            $product->updated_at,
                             'weekly',
-                            0.7
+                            0.8
                         );
                     }
                 });
-        }
 
-        // Finalize current sitemap
-        if (!$this->dryRun) {
-            $this->closeSitemapFile();
-            $sitemapFiles[] = $this->getSitemapFilename($tenant->slug, $this->currentSitemapIndex);
+            // Stream categories
+            if (class_exists(Category::class)) {
+                Category::query()
+                    ->where('tenant_id', $tenant->id)
+                    ->where('is_active', true)
+                    ->select(['id', 'slug', 'updated_at'])
+                    ->chunkById(100, function ($categories) use ($baseUrl) {
+                        foreach ($categories as $category) {
+                            $this->writeUrlToSitemap(
+                                "{$baseUrl}/categorias/{$category->slug}",
+                                $category->updated_at,
+                                'weekly',
+                                0.7
+                            );
+                        }
+                    });
+            }
+
+        } finally {
+            // ═══════════════════════════════════════════════════════════════════════
+            // CRITICAL: Always close file handle, even on exception
+            // ═══════════════════════════════════════════════════════════════════════
+            // Without this, file handles leak on exception, causing:
+            // - "Too many open files" errors after many tenants
+            // - Corrupted/truncated XML files
+            // - Resource exhaustion
+            // ═══════════════════════════════════════════════════════════════════════
+            if (!$this->dryRun) {
+                $this->closeSitemapFile();
+            }
         }
 
         // Generate sitemap index if multiple files
