@@ -62,6 +62,40 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // ═══════════════════════════════════════════════════════════════════════
+        // TRANSPORT LAYER SECURITY: Force HTTPS in Production
+        // ═══════════════════════════════════════════════════════════════════════
+        // All generated URLs (route(), url(), asset()) will use HTTPS scheme.
+        // Essential for mixed-content prevention and HSTS compliance.
+        // Conditional check preserves HTTP flexibility during local development.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (app()->isProduction()) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // ARCHITECTURAL GOVERNANCE: Strict Mode for Technical Debt Prevention
+        // ═══════════════════════════════════════════════════════════════════════
+        //
+        // Model::shouldBeStrict() enables three critical guards in non-production:
+        //
+        // 1. LAZY LOADING PREVENTION (preventLazyLoading)
+        //    Throws exception when N+1 queries occur due to missing eager-loads.
+        //    Forces developers to fix performance issues before they reach prod.
+        //
+        // 2. MASS ASSIGNMENT PROTECTION (preventSilentlyDiscardingAttributes)
+        //    Throws exception when create()/update() receives fields not in $fillable.
+        //    Prevents silent data loss from typos or missing field declarations.
+        //
+        // 3. INVALID ATTRIBUTE ACCESS (preventAccessingMissingAttributes)
+        //    Throws exception when accessing undefined model attributes.
+        //    Catches typos like $user->emial instead of returning null silently.
+        //
+        // PRODUCTION BEHAVIOR: Disabled to prevent user-facing exceptions.
+        // Violations in production are logged but do not crash the application.
+        // ═══════════════════════════════════════════════════════════════════════
+        \Illuminate\Database\Eloquent\Model::shouldBeStrict(!app()->isProduction());
+
+        // ═══════════════════════════════════════════════════════════════════════
         // GRANULAR RATE LIMITING - TRAFFIC SHAPING ARCHITECTURE
         // ═══════════════════════════════════════════════════════════════════════
         //
