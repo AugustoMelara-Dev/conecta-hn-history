@@ -9,36 +9,50 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 
 /**
- * RepositoryContract - Memory-Safe Persistence Layer Abstraction
+ * RepositoryContract - Production-Grade Persistence Layer Abstraction
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ARCHITECTURAL RATIONALE: Big Data Resilience                           ║
+ * ║  ARCHITECTURAL PRINCIPLES                                                ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║                                                                          ║
- * ║  PROBLEM: Unbounded retrieval methods cause Out-Of-Memory (OOM) errors  ║
- * ║    $repo->all() on 2 million orders → 2M Eloquent models → OOM crash   ║
+ * ║  1. SINGLE RESPONSIBILITY (SRP):                                         ║
+ * ║     This repository handles PERSISTENCE only - no transaction control.  ║
+ * ║     Transactions belong to the Service Layer (DB::transaction) or a     ║
+ * ║     UnitOfWork pattern. Repositories don't orchestrate multi-repo ops.  ║
  * ║                                                                          ║
- * ║  SOLUTION: Enforce lazy loading at the CONTRACT level.                  ║
- * ║    - REMOVED: all(): Collection (anti-pattern for scalable systems)    ║
- * ║    - ADDED: cursor(): LazyCollection (constant RAM usage)              ║
+ * ║  2. MEMORY SAFETY:                                                       ║
+ * ║     NO unbounded methods (all() is BANNED). Use cursor() or paginate(). ║
+ * ║     LazyCollection uses PHP Generators = constant RAM usage.            ║
  * ║                                                                          ║
- * ║  WHY LazyCollection?                                                    ║
- * ║    - Uses PHP Generators internally                                     ║
- * ║    - Only 1 model in memory at a time                                  ║
- * ║    - Database cursor stays open, fetching rows on-demand               ║
- * ║    - 2 million rows = same RAM as 100 rows                             ║
+ * ║  3. BATCH PERFORMANCE:                                                   ║
+ * ║     insert() and upsert() enable single-query bulk operations.          ║
+ * ║     5000 products from Excel = 1 query, not 5000 queries.              ║
  * ║                                                                          ║
- * ║  TENANT SCOPING:                                                        ║
- * ║    All implementations MUST automatically scope to CurrentTenant.       ║
- * ║                                                                          ║
- * ║  CONSTRAINT: Methods return Domain Objects/DTOs, NEVER Query Builders.  ║
+ * ║  4. TENANT SCOPING (Implicit):                                          ║
+ * ║     All implementations MUST automatically scope to CurrentTenant.       ║
+ * ║     Consuming code should NEVER manually add tenant_id filters.         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * TRANSACTION MANAGEMENT (Delegated to Service Layer):
+ *   class OrderService {
+ *       public function place(Cart $cart): Order {
+ *           return DB::transaction(function () use ($cart) {
+ *               $order = $this->orders->create([...]);
+ *               $this->inventory->decrementStock($cart->items);
+ *               return $order;
+ *           });
+ *       }
+ *   }
  *
  * @template TModel
  * @template TId
  */
 interface RepositoryContract
 {
+    // ═══════════════════════════════════════════════════════════════════════
+    // SINGLE RECORD RETRIEVAL
+    // ═══════════════════════════════════════════════════════════════════════
+
     /**
      * Find a single entity by its primary key.
      *
@@ -57,24 +71,38 @@ interface RepositoryContract
     public function findOrFail(mixed $id): mixed;
 
     /**
+     * Find a single entity by criteria.
+     *
+     * @param array<string, mixed> $criteria
+     * @return TModel|null
+     */
+    public function findOneByCriteria(array $criteria): mixed;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MEMORY-SAFE BULK RETRIEVAL (LazyCollection = Constant RAM)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
      * Stream ALL entities using a database cursor.
      *
      * ╔════════════════════════════════════════════════════════════════════════╗
-     * ║  @notice MEMORY SAFETY: This method uses LazyCollection (Generators)  ║
+     * ║  @notice MEMORY SAFETY: Returns LazyCollection (PHP Generator)        ║
      * ╠════════════════════════════════════════════════════════════════════════╣
-     * ║  WHY NOT return Collection?                                            ║
-     * ║    Collection loads EVERYTHING into RAM before returning.              ║
-     * ║    2 million rows × 5KB/model = 10GB RAM = INSTANT CRASH              ║
+     * ║  This method keeps RAM usage CONSTANT regardless of table size.       ║
      * ║                                                                        ║
-     * ║  LazyCollection uses database cursors:                                ║
-     * ║    - Only 1 row fetched from DB at a time                             ║
-     * ║    - Process → GC → Next row                                          ║
-     * ║    - RAM stays flat at ~10MB regardless of table size                 ║
+     * ║  HOW IT WORKS:                                                        ║
+     * ║    - Opens a database cursor (not SELECT *)                           ║
+     * ║    - Fetches 1 row at a time from MySQL/PostgreSQL                   ║
+     * ║    - Yields model, then allows PHP GC to free memory                 ║
+     * ║    - 2 million rows = same RAM as 100 rows                           ║
      * ║                                                                        ║
-     * ║  USAGE:                                                               ║
-     * ║    foreach ($repo->cursor() as $model) {                             ║
-     * ║        process($model); // Only 1 model in memory                    ║
-     * ║    }                                                                  ║
+     * ║  WHEN TO USE:                                                         ║
+     * ║    - Data exports, reports, migrations, background jobs              ║
+     * ║    - Any operation that touches "all" records                        ║
+     * ║                                                                        ║
+     * ║  CAUTION:                                                             ║
+     * ║    - Cannot be serialized (don't pass to queue jobs directly)        ║
+     * ║    - Keeps DB connection open until fully iterated                   ║
      * ╚════════════════════════════════════════════════════════════════════════╝
      *
      * @return LazyCollection<int, TModel>
@@ -82,25 +110,7 @@ interface RepositoryContract
     public function cursor(): LazyCollection;
 
     /**
-     * Find entities matching criteria.
-     *
-     * @notice For large result sets, use cursorByCriteria() instead.
-     *
-     * @param array<string, mixed> $criteria [column => value] pairs
-     * @param array<string, string> $orderBy ['column' => 'asc|desc']
-     * @param int|null $limit REQUIRED for unbounded queries (prevents OOM)
-     * @return Collection<int, TModel>
-     */
-    public function findByCriteria(
-        array $criteria = [],
-        array $orderBy = [],
-        ?int $limit = null
-    ): Collection;
-
-    /**
      * Stream entities matching criteria using database cursor.
-     *
-     * @notice Use this instead of findByCriteria() when result set may be large.
      *
      * @param array<string, mixed> $criteria [column => value] pairs
      * @param array<string, string> $orderBy ['column' => 'asc|desc']
@@ -112,12 +122,30 @@ interface RepositoryContract
     ): LazyCollection;
 
     /**
-     * Find a single entity by criteria.
+     * Find entities matching criteria (for bounded result sets).
      *
-     * @param array<string, mixed> $criteria
-     * @return TModel|null
+     * @notice For large/unbounded results, use cursorByCriteria() instead.
+     *
+     * @param array<string, mixed> $criteria [column => value] pairs
+     * @param array<string, string> $orderBy ['column' => 'asc|desc']
+     * @param int|null $limit STRONGLY RECOMMENDED for unbounded queries
+     * @return Collection<int, TModel>
      */
-    public function findOneByCriteria(array $criteria): mixed;
+    public function findByCriteria(
+        array $criteria = [],
+        array $orderBy = [],
+        ?int $limit = null
+    ): Collection;
+
+    /**
+     * Get entities by their IDs (for bounded ID lists only).
+     *
+     * @notice Only use when ID count is bounded (e.g., cart items max 50).
+     *
+     * @param array<TId> $ids
+     * @return Collection<int, TModel>
+     */
+    public function findByIds(array $ids): Collection;
 
     /**
      * Paginate entities (memory-safe by design due to LIMIT).
@@ -133,11 +161,15 @@ interface RepositoryContract
         array $orderBy = []
     ): LengthAwarePaginator;
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // SINGLE RECORD MUTATIONS
+    // ═══════════════════════════════════════════════════════════════════════
+
     /**
      * Create a new entity.
      *
      * @param array<string, mixed> $data
-     * @return TModel
+     * @return TModel The created entity
      */
     public function create(array $data): mixed;
 
@@ -146,7 +178,7 @@ interface RepositoryContract
      *
      * @param TId $id
      * @param array<string, mixed> $data
-     * @return TModel
+     * @return TModel The updated entity
      */
     public function update(mixed $id, array $data): mixed;
 
@@ -158,8 +190,76 @@ interface RepositoryContract
      */
     public function delete(mixed $id): bool;
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // BATCH OPERATIONS (Critical for Import/Export Performance)
+    // ═══════════════════════════════════════════════════════════════════════
+
     /**
-     * Check if an entity exists by criteria (uses COUNT, no model loading).
+     * Insert multiple records in a single query.
+     *
+     * ╔════════════════════════════════════════════════════════════════════════╗
+     * ║  @notice PERFORMANCE: Executes ONE INSERT query, not N queries.       ║
+     * ╠════════════════════════════════════════════════════════════════════════╣
+     * ║  5000 products from Excel:                                            ║
+     * ║    - create() loop: 5000 queries × 5ms = 25 seconds                  ║
+     * ║    - insert(): 1 query × 50ms = 0.05 seconds (500x faster)           ║
+     * ║                                                                        ║
+     * ║  LIMITATIONS:                                                         ║
+     * ║    - Does NOT fire Eloquent events (creating, created)               ║
+     * ║    - Does NOT auto-fill timestamps (add manually)                    ║
+     * ║    - Does NOT return inserted models (returns bool)                  ║
+     * ╚════════════════════════════════════════════════════════════════════════╝
+     *
+     * @param array<int, array<string, mixed>> $rows Array of row data
+     * @return bool Whether the insert succeeded
+     */
+    public function insert(array $rows): bool;
+
+    /**
+     * Insert or update records based on unique key.
+     *
+     * ╔════════════════════════════════════════════════════════════════════════╗
+     * ║  @notice UPSERT: Insert if new, update if exists (single query).      ║
+     * ╠════════════════════════════════════════════════════════════════════════╣
+     * ║  USAGE: Sync external data (e.g., import products by SKU)            ║
+     * ║                                                                        ║
+     * ║  $repo->upsert(                                                       ║
+     * ║      $productsFromApi,           // Rows to insert/update            ║
+     * ║      ['sku'],                    // Unique key(s)                    ║
+     * ║      ['name', 'price', 'stock']  // Columns to update if exists      ║
+     * ║  );                                                                   ║
+     * ╚════════════════════════════════════════════════════════════════════════╝
+     *
+     * @param array<int, array<string, mixed>> $rows Data to insert/update
+     * @param array<string>|string $uniqueBy Unique column(s) for matching
+     * @param array<string>|null $update Columns to update (null = all except uniqueBy)
+     * @return int Number of affected rows
+     */
+    public function upsert(array $rows, array|string $uniqueBy, ?array $update = null): int;
+
+    /**
+     * Delete multiple entities by criteria (single query).
+     *
+     * @param array<string, mixed> $criteria
+     * @return int Number of deleted rows
+     */
+    public function deleteByCriteria(array $criteria): int;
+
+    /**
+     * Update multiple entities by criteria (single query).
+     *
+     * @param array<string, mixed> $criteria Filter criteria
+     * @param array<string, mixed> $data Data to update
+     * @return int Number of affected rows
+     */
+    public function updateByCriteria(array $criteria, array $data): int;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // AGGREGATE OPERATIONS (No Model Loading)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Check if an entity exists by criteria (uses EXISTS, no model loading).
      *
      * @param array<string, mixed> $criteria
      * @return bool
@@ -173,38 +273,4 @@ interface RepositoryContract
      * @return int
      */
     public function count(array $criteria = []): int;
-
-    /**
-     * Get entities by their IDs.
-     *
-     * @notice Only use when you KNOW the ID list is bounded (e.g., cart items).
-     *         For unbounded ID lists, use cursorByIds().
-     *
-     * @param array<TId> $ids
-     * @return Collection<int, TModel>
-     */
-    public function findByIds(array $ids): Collection;
-
-    /**
-     * Stream entities by IDs using cursor.
-     *
-     * @param array<TId> $ids
-     * @return LazyCollection<int, TModel>
-     */
-    public function cursorByIds(array $ids): LazyCollection;
-
-    /**
-     * Begin a database transaction.
-     */
-    public function beginTransaction(): void;
-
-    /**
-     * Commit the current transaction.
-     */
-    public function commit(): void;
-
-    /**
-     * Rollback the current transaction.
-     */
-    public function rollback(): void;
 }
