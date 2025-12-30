@@ -4,43 +4,54 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Order;
 
+use App\Exceptions\InvalidBusinessRuleException;
+use App\Exceptions\MissingRequiredDataException;
+use App\Exceptions\PayloadTooLargeException;
 use App\ValueObjects\Money;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 /**
- * OrderData - Composite DTO for Checkout Payload
+ * OrderData - Fail-Fast Composite DTO for Checkout Payloads
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  HYDRATION STRATEGY: Converting Request Arrays to Typed Collections     ║
+ * ║  FIRST LINE OF DEFENSE: Data Integrity Before Business Logic            ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║                                                                          ║
- * ║  HTTP Request (raw):                                                    ║
- * ║    POST /checkout {                                                     ║
- * ║      "customer_email": "user@example.com",                              ║
- * ║      "items": [                                                         ║
- * ║        {"product_id": 1, "quantity": 2, "price": 5000},                 ║
- * ║        {"product_id": 5, "quantity": 1, "price": 15000}                 ║
- * ║      ]                                                                  ║
- * ║    }                                                                    ║
+ * ║  This DTO acts as a FIREWALL between untrusted HTTP input and your      ║
+ * ║  Service Layer. It guarantees that by the time data reaches the         ║
+ * ║  OrderService, it is:                                                   ║
  * ║                                                                          ║
- * ║  After Hydration (OrderData):                                           ║
- * ║    - items: Collection<OrderItemData> (typed, not raw arrays)           ║
- * ║    - subtotal: Money (calculated from items)                            ║
- * ║    - tax: Money (calculated from taxRate)                               ║
- * ║    - total: Money (subtotal + tax + shipping)                           ║
+ * ║    ✓ Complete (no missing required fields)                              ║
+ * ║    ✓ Valid (passes business rule checks)                                ║
+ * ║    ✓ Typed (Money objects, not raw integers)                            ║
+ * ║    ✓ Bounded (payload size within safe limits)                          ║
  * ║                                                                          ║
- * ║  INVARIANT ENFORCEMENT:                                                 ║
- * ║    - items cannot be empty (throws InvalidArgumentException)            ║
- * ║    - All Money fields use integer cents (no float errors)               ║
- * ║    - Financial totals are calculated, not trusted from input            ║
+ * ║  FAIL-FAST PRINCIPLE:                                                   ║
+ * ║    A 422 Unprocessable Entity response is infinitely better than        ║
+ * ║    silently processing an order with $0.00 price or -5 quantity.        ║
+ * ║    In financial systems: CRASH > CORRUPTION.                            ║
+ * ║                                                                          ║
+ * ║  SECURITY:                                                              ║
+ * ║    - Max 2000 items (DoS protection)                                   ║
+ * ║    - Server-side total calculation (never trust client math)           ║
+ * ║    - All monetary values are Money objects (no float errors)           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * @implements Arrayable<string, mixed>
+ * @throws MissingRequiredDataException When required fields are missing
+ * @throws InvalidBusinessRuleException When values violate business rules
+ * @throws PayloadTooLargeException When items array exceeds safe limits
  */
 final readonly class OrderData implements Arrayable, \JsonSerializable
 {
+    /**
+     * Maximum number of line items allowed.
+     * Protects against memory exhaustion DoS attacks.
+     */
+    private const MAX_ITEMS = 2000;
+
     /**
      * @param Collection<int, OrderItemData> $items
      */
@@ -61,65 +72,108 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
         public ?string $notes = null,
         public ?string $couponCode = null,
         public ?string $paymentMethodToken = null,
-    ) {
-        if ($this->items->isEmpty()) {
-            throw new \InvalidArgumentException('OrderData: items cannot be empty');
-        }
-    }
+    ) {}
 
     /**
-     * Hydrate from HTTP Request.
+     * Hydrate from HTTP Request with STRICT validation.
      *
-     * Converts nested arrays into strongly-typed DTO collections.
+     * @throws MissingRequiredDataException When required fields are missing
+     * @throws InvalidBusinessRuleException When values violate business rules
+     * @throws PayloadTooLargeException When items exceed MAX_ITEMS limit
      */
     public static function fromRequest(Request $request): self
     {
-        $validated = $request->validated();
-        return self::fromArray($validated);
+        // Use validated() if available (from FormRequest), else raw input
+        $data = method_exists($request, 'validated') 
+            ? $request->validated() 
+            : $request->all();
+            
+        return self::fromArray($data);
     }
 
     /**
-     * Hydrate from array (database or API payload).
+     * Hydrate from array with STRICT validation.
      *
      * @param array<string, mixed> $data
+     * @throws MissingRequiredDataException When required fields are missing
+     * @throws InvalidBusinessRuleException When values violate business rules
+     * @throws PayloadTooLargeException When items exceed MAX_ITEMS limit
      */
     public static function fromArray(array $data): self
     {
         // ═══════════════════════════════════════════════════════════════════════
-        // HYDRATE NESTED ITEMS: array<array> → Collection<OrderItemData>
+        // PHASE 1: Payload Size Validation (DoS Protection)
         // ═══════════════════════════════════════════════════════════════════════
-        $rawItems = $data['items'] ?? [];
-        if (empty($rawItems)) {
-            throw new \InvalidArgumentException('OrderData: items array is required');
+        $rawItems = $data['items'] ?? null;
+        
+        if ($rawItems === null || !is_array($rawItems)) {
+            throw MissingRequiredDataException::forField('items', 'OrderData');
         }
 
-        $items = collect($rawItems)->map(fn(array $item) => OrderItemData::fromArray($item));
+        $itemCount = count($rawItems);
+        
+        if ($itemCount === 0) {
+            throw InvalidBusinessRuleException::emptyItems();
+        }
+
+        if ($itemCount > self::MAX_ITEMS) {
+            throw PayloadTooLargeException::itemsExceeded($itemCount, self::MAX_ITEMS);
+        }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // CALCULATE TOTALS: Never trust client-side calculations
+        // PHASE 2: Customer Data Validation
+        // ═══════════════════════════════════════════════════════════════════════
+        $customerEmail = $data['customer_email'] ?? $data['email'] ?? null;
+        if (empty($customerEmail)) {
+            throw MissingRequiredDataException::forField('customer_email', 'OrderData');
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 3: Hydrate Items (Fail-Fast on each item)
+        // ═══════════════════════════════════════════════════════════════════════
+        // Using array_map for performance (no query inside loop)
+        $items = collect(array_map(
+            static fn(array $item): OrderItemData => OrderItemData::fromArray($item),
+            $rawItems
+        ));
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 4: Calculate Totals (NEVER trust client-side calculations)
         // ═══════════════════════════════════════════════════════════════════════
         $calculatedSubtotal = $items->reduce(
-            fn(Money $carry, OrderItemData $item) => $carry->add($item->subtotal),
+            static fn(Money $carry, OrderItemData $item): Money => $carry->add($item->subtotal),
             Money::zero()
         );
 
-        $taxRate = (float) ($data['tax_rate'] ?? 15.0);
+        $taxRate = isset($data['tax_rate']) ? (float) $data['tax_rate'] : 15.0;
+        
+        if ($taxRate < 0 || $taxRate > 100) {
+            throw InvalidBusinessRuleException::custom(
+                "Invalid tax rate: {$taxRate}%. Must be between 0 and 100.",
+                ['tax_rate' => $taxRate]
+            );
+        }
+
         $taxAmount = $calculatedSubtotal->multiply($taxRate / 100);
 
-        $shipping = isset($data['shipping']) && $data['shipping'] instanceof Money
-            ? $data['shipping']
-            : Money::fromCents((int) ($data['shipping_cents'] ?? $data['shipping'] ?? 0));
+        $shipping = self::extractMoney($data, 'shipping', 'shipping_cents', 0);
+        $discount = self::extractMoney($data, 'discount', 'discount_cents', 0);
 
-        $discount = isset($data['discount']) && $data['discount'] instanceof Money
-            ? $data['discount']
-            : Money::fromCents((int) ($data['discount_cents'] ?? $data['discount'] ?? 0));
+        // Validate discount doesn't exceed subtotal
+        if ($discount->cents() > $calculatedSubtotal->cents()) {
+            throw InvalidBusinessRuleException::custom(
+                "Discount cannot exceed subtotal.",
+                ['discount' => $discount->cents(), 'subtotal' => $calculatedSubtotal->cents()]
+            );
+        }
 
         $total = $calculatedSubtotal->add($taxAmount)->add($shipping)->subtract($discount);
 
         return new self(
-            customerEmail: $data['customer_email'] ?? $data['email'],
-            customerName: $data['customer_name'] ?? $data['name'] ?? 'Guest',
-            customerPhone: $data['customer_phone'] ?? $data['phone'] ?? null,
+            customerEmail: (string) $customerEmail,
+            customerName: (string) ($data['customer_name'] ?? $data['name'] ?? 'Guest'),
+            customerPhone: isset($data['customer_phone']) ? (string) $data['customer_phone'] : 
+                          (isset($data['phone']) ? (string) $data['phone'] : null),
             items: $items,
             subtotal: $calculatedSubtotal,
             tax: $taxAmount,
@@ -127,11 +181,11 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
             discount: $discount,
             total: $total,
             taxRate: $taxRate,
-            shippingMethod: $data['shipping_method'] ?? null,
-            shippingAddress: $data['shipping_address'] ?? null,
-            billingAddress: $data['billing_address'] ?? null,
-            notes: $data['notes'] ?? null,
-            couponCode: $data['coupon_code'] ?? null,
+            shippingMethod: isset($data['shipping_method']) ? (string) $data['shipping_method'] : null,
+            shippingAddress: isset($data['shipping_address']) ? (string) $data['shipping_address'] : null,
+            billingAddress: isset($data['billing_address']) ? (string) $data['billing_address'] : null,
+            notes: isset($data['notes']) ? (string) $data['notes'] : null,
+            couponCode: isset($data['coupon_code']) ? (string) $data['coupon_code'] : null,
             paymentMethodToken: $data['payment_method_token'] ?? $data['token'] ?? null,
         );
     }
@@ -198,5 +252,19 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
     public function getTotalQuantity(): int
     {
         return $this->items->sum(fn(OrderItemData $item) => $item->quantity);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIVATE HELPERS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static function extractMoney(array $data, string $key, string $centsFallback, int $default): Money
+    {
+        if (isset($data[$key]) && $data[$key] instanceof Money) {
+            return $data[$key];
+        }
+
+        $cents = $data[$centsFallback] ?? $data[$key] ?? $default;
+        return Money::fromCents((int) $cents);
     }
 }
