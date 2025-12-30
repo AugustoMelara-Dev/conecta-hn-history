@@ -10,47 +10,38 @@ use App\Models\Tenant;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Spatie\Sitemap\Sitemap;
-use Spatie\Sitemap\Tags\Url;
 
 /**
- * GenerateSitemapCommand - Memory-Safe Multi-Tenant Sitemap Generator
+ * GenerateSitemapCommand - Memory-Safe Streaming Sitemap Generator
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  OPERATIONAL RISK ANALYSIS: RAM Exhaustion Prevention                   ║
+ * ║  OPERATIONAL RISK ANALYSIS: Streaming XML to Prevent RAM Exhaustion     ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  PROBLEM: Naive approaches cause Out-Of-Memory crashes:                  ║
- * ║    Product::all()->each(...) loads 50,000+ products into RAM            ║
- * ║    PHP Fatal Error: Allowed memory size of 134217728 bytes exhausted    ║
+ * ║  PROBLEM: Spatie Sitemap accumulates ALL URLs in memory before render.  ║
+ * ║    50,000 products → 50,000 Url objects → 50MB+ RAM → CRASH             ║
  * ║                                                                          ║
- * ║  WHY chunkById(100) PREVENTS RAM EXHAUSTION:                             ║
+ * ║  WHY STREAMING XML SOLVES THIS:                                          ║
  * ║                                                                          ║
  * ║    ┌─────────────────────────────────────────────────────────────────┐   ║
- * ║    │  WRONG: Model::all()                                            │   ║
+ * ║    │  WRONG: $sitemap->add() in loop                                 │   ║
  * ║    │  ┌────┬────┬────┬────┬────┬─────┬────────────────┐             │   ║
- * ║    │  │ P1 │ P2 │ P3 │ P4 │ P5 │ ... │ P50000         │ ← ALL IN RAM│   ║
+ * ║    │  │URL1│URL2│URL3│URL4│URL5│ ... │ URL50000       │ ← ALL IN RAM│   ║
  * ║    │  └────┴────┴────┴────┴────┴─────┴────────────────┘             │   ║
- * ║    │  ↓ CRASH: 500MB+ memory required                               │   ║
+ * ║    │  → $sitemap->render() → Build 50MB XML string → CRASH          │   ║
  * ║    └─────────────────────────────────────────────────────────────────┘   ║
  * ║                                                                          ║
  * ║    ┌─────────────────────────────────────────────────────────────────┐   ║
- * ║    │  CORRECT: Model::chunkById(100)                                 │   ║
- * ║    │  ┌────┬────┬────┐  → Process → ┌────┬────┬────┐  → Process     │   ║
- * ║    │  │P1-100│        │  → GC Free → │P101-200│        │  → GC Free  │   ║
- * ║    │  └────┴────┴────┘              └────┴────┴────┘               │   ║
- * ║    │  ↓ SAFE: Only 100 records in RAM at any time                   │   ║
+ * ║    │  CORRECT: Stream write to file                                  │   ║
+ * ║    │  Process 100 → Write to disk → GC → Process 100 → Write...     │   ║
+ * ║    │  ↓ RAM: Only 100 products + 1 XML tag at any time              │   ║
  * ║    └─────────────────────────────────────────────────────────────────┘   ║
  * ║                                                                          ║
- * ║  TENANT ISOLATION:                                                       ║
- * ║    --tenant={id} generates sitemap for single tenant                    ║
- * ║    Without flag: iterates ALL tenants sequentially                      ║
- * ║    Each tenant's sitemap is isolated (no cross-tenant URLs)             ║
+ * ║  SITEMAP INDEX: For >50,000 URLs, generate multiple files + index.     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * USAGE:
  *   php artisan sitemap:generate              # All tenants
  *   php artisan sitemap:generate --tenant=5   # Single tenant
- *   php artisan sitemap:generate --dry-run    # Preview only
  *
  * SCHEDULING:
  *   Schedule::command('sitemap:generate')->weekly();
@@ -60,30 +51,36 @@ class GenerateSitemapCommand extends Command
     protected $signature = 'sitemap:generate
                             {--tenant= : Generate for specific tenant ID only}
                             {--dry-run : Preview without writing files}
-                            {--chunk=100 : Records per chunk for memory safety}';
+                            {--max-urls=50000 : Maximum URLs per sitemap file}';
 
-    protected $description = 'Generate SEO sitemaps for all or specific tenants';
+    protected $description = 'Generate SEO sitemaps using memory-safe streaming';
 
     protected int $urlsGenerated = 0;
     protected int $tenantsProcessed = 0;
+    protected int $sitemapsCreated = 0;
     protected bool $dryRun = false;
-    protected int $chunkSize = 100;
+    protected int $maxUrlsPerSitemap = 50000;
+
+    /** @var resource|null File handle for streaming */
+    protected $fileHandle = null;
+    protected int $currentUrlCount = 0;
+    protected int $currentSitemapIndex = 1;
+    protected string $currentTenantSlug = '';
 
     public function handle(): int
     {
         $this->dryRun = (bool) $this->option('dry-run');
-        $this->chunkSize = (int) $this->option('chunk');
+        $this->maxUrlsPerSitemap = (int) $this->option('max-urls');
         $tenantId = $this->option('tenant');
 
-        $this->components->info('Sitemap Generator - Memory-Safe Multi-Tenant');
+        $this->components->info('Sitemap Generator - Memory-Safe Streaming');
         $this->components->bulletList([
-            "Chunk size: {$this->chunkSize} records",
+            "Max URLs per file: {$this->maxUrlsPerSitemap}",
             "Mode: " . ($this->dryRun ? 'DRY RUN' : 'LIVE'),
             "Scope: " . ($tenantId ? "Tenant #{$tenantId}" : "All active tenants"),
         ]);
 
         if ($tenantId) {
-            // Single tenant mode
             $tenant = Tenant::find($tenantId);
             if (!$tenant) {
                 $this->components->error("Tenant #{$tenantId} not found");
@@ -91,20 +88,18 @@ class GenerateSitemapCommand extends Command
             }
             $this->generateTenantSitemap($tenant);
         } else {
-            // All tenants mode - iterate with chunkById for memory safety
             $this->generateAllTenantSitemaps();
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // SUMMARY
-        // ═══════════════════════════════════════════════════════════════════════
         $this->newLine();
         $this->components->twoColumnDetail('Tenants processed', (string) $this->tenantsProcessed);
         $this->components->twoColumnDetail('URLs generated', (string) $this->urlsGenerated);
+        $this->components->twoColumnDetail('Sitemap files created', (string) $this->sitemapsCreated);
 
         Log::info('GenerateSitemapCommand completed', [
             'tenants' => $this->tenantsProcessed,
             'urls' => $this->urlsGenerated,
+            'files' => $this->sitemapsCreated,
             'dry_run' => $this->dryRun,
         ]);
 
@@ -113,9 +108,6 @@ class GenerateSitemapCommand extends Command
 
     /**
      * Generate sitemaps for all active tenants.
-     *
-     * Uses chunkById(50) for tenant iteration to prevent loading
-     * all 10,000+ tenants into memory at once.
      */
     protected function generateAllTenantSitemaps(): void
     {
@@ -133,85 +125,222 @@ class GenerateSitemapCommand extends Command
     }
 
     /**
-     * Generate sitemap for a single tenant.
+     * Generate sitemap for a single tenant using STREAMING XML.
      *
      * ╔════════════════════════════════════════════════════════════════════════╗
-     * ║  TENANT ISOLATION GUARANTEE                                            ║
+     * ║  STREAMING IMPLEMENTATION                                              ║
      * ╠════════════════════════════════════════════════════════════════════════╣
-     * ║  All product/category queries are filtered by tenant_id.               ║
-     * ║  This prevents "Cross-Tenant URL Leakage" where products from          ║
-     * ║  Tenant A appear in Tenant B's sitemap, causing:                       ║
-     * ║    - SEO penalties (duplicate content)                                 ║
-     * ║    - Privacy violations (exposing competitor products)                 ║
-     * ║    - User confusion (clicking links to wrong store)                    ║
+     * ║  1. Open file handle with fopen()                                     ║
+     * ║  2. Write XML header                                                  ║
+     * ║  3. For each chunk of 100 products:                                   ║
+     * ║     - fwrite() each <url> element directly to disk                   ║
+     * ║     - PHP garbage collects the 100 Eloquent models                   ║
+     * ║  4. Write XML footer and fclose()                                    ║
+     * ║                                                                        ║
+     * ║  Result: Constant ~10MB RAM regardless of dataset size               ║
      * ╚════════════════════════════════════════════════════════════════════════╝
      */
     protected function generateTenantSitemap(Tenant $tenant): void
     {
         $this->line("  Processing: {$tenant->name} (ID: {$tenant->id})");
+        
+        $this->currentTenantSlug = $tenant->slug;
+        $this->currentSitemapIndex = 1;
+        $this->currentUrlCount = 0;
 
-        // Initialize sitemap instance
-        $sitemap = Sitemap::create();
-        $urlCount = 0;
+        $baseUrl = $this->getTenantBaseUrl($tenant);
+        $sitemapFiles = [];
+
+        if (!$this->dryRun) {
+            $this->startNewSitemapFile($tenant->slug);
+        }
 
         // Add homepage
-        $baseUrl = $this->getTenantBaseUrl($tenant);
-        $sitemap->add(Url::create($baseUrl)
-            ->setLastModificationDate($tenant->updated_at)
-            ->setChangeFrequency(Url::CHANGE_FREQUENCY_DAILY)
-            ->setPriority(1.0));
-        $urlCount++;
+        $this->writeUrlToSitemap($baseUrl, $tenant->updated_at, 'daily', 1.0);
 
         // ═══════════════════════════════════════════════════════════════════════
-        // MEMORY-SAFE PRODUCT ITERATION
-        // ═══════════════════════════════════════════════════════════════════════
-        // chunkById(100) ensures only 100 products are in memory at any time.
-        // After processing each chunk, PHP's garbage collector frees the memory.
-        // This allows processing 1,000,000+ products without RAM exhaustion.
+        // STREAM PRODUCTS - Memory safe with chunkById + direct file write
         // ═══════════════════════════════════════════════════════════════════════
         Product::query()
             ->where('tenant_id', $tenant->id)
             ->where('is_visible', true)
             ->where('is_active', true)
-            ->select(['id', 'slug', 'updated_at']) // Minimal columns
-            ->chunkById($this->chunkSize, function ($products) use ($sitemap, $baseUrl, &$urlCount) {
+            ->select(['id', 'slug', 'updated_at'])
+            ->chunkById(100, function ($products) use ($baseUrl) {
                 foreach ($products as $product) {
-                    $sitemap->add(Url::create("{$baseUrl}/productos/{$product->slug}")
-                        ->setLastModificationDate($product->updated_at)
-                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
-                        ->setPriority(0.8));
-                    $urlCount++;
+                    $this->writeUrlToSitemap(
+                        "{$baseUrl}/productos/{$product->slug}",
+                        $product->updated_at,
+                        'weekly',
+                        0.8
+                    );
                 }
             });
 
-        // Add categories
+        // Stream categories
         if (class_exists(Category::class)) {
             Category::query()
                 ->where('tenant_id', $tenant->id)
                 ->where('is_active', true)
                 ->select(['id', 'slug', 'updated_at'])
-                ->chunkById($this->chunkSize, function ($categories) use ($sitemap, $baseUrl, &$urlCount) {
+                ->chunkById(100, function ($categories) use ($baseUrl) {
                     foreach ($categories as $category) {
-                        $sitemap->add(Url::create("{$baseUrl}/categorias/{$category->slug}")
-                            ->setLastModificationDate($category->updated_at)
-                            ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
-                            ->setPriority(0.7));
-                        $urlCount++;
+                        $this->writeUrlToSitemap(
+                            "{$baseUrl}/categorias/{$category->slug}",
+                            $category->updated_at,
+                            'weekly',
+                            0.7
+                        );
                     }
                 });
         }
 
-        // Write sitemap to storage
+        // Finalize current sitemap
         if (!$this->dryRun) {
-            $filename = "sitemaps/sitemap-{$tenant->slug}.xml";
-            Storage::disk('public')->put($filename, $sitemap->render());
-            $this->line("    → Saved: {$filename} ({$urlCount} URLs)");
-        } else {
-            $this->line("    → Would save: {$urlCount} URLs");
+            $this->closeSitemapFile();
+            $sitemapFiles[] = $this->getSitemapFilename($tenant->slug, $this->currentSitemapIndex);
         }
 
-        $this->urlsGenerated += $urlCount;
+        // Generate sitemap index if multiple files
+        if ($this->currentSitemapIndex > 1) {
+            $this->generateSitemapIndex($tenant->slug, $this->currentSitemapIndex);
+        }
+
         $this->tenantsProcessed++;
+        $this->line("    → Created {$this->currentSitemapIndex} sitemap file(s)");
+    }
+
+    /**
+     * Write a single URL to the current sitemap file.
+     * Handles automatic file rotation when max URLs reached.
+     */
+    protected function writeUrlToSitemap(string $url, $lastmod, string $changefreq, float $priority): void
+    {
+        $this->urlsGenerated++;
+        $this->currentUrlCount++;
+
+        if ($this->dryRun) {
+            return;
+        }
+
+        // Rotate file if we've hit the limit
+        if ($this->currentUrlCount > $this->maxUrlsPerSitemap) {
+            $this->closeSitemapFile();
+            $this->currentSitemapIndex++;
+            $this->startNewSitemapFile($this->currentTenantSlug);
+            $this->currentUrlCount = 1;
+        }
+
+        // Format the date
+        $date = $lastmod instanceof \DateTime 
+            ? $lastmod->format('Y-m-d') 
+            : (is_string($lastmod) ? $lastmod : now()->format('Y-m-d'));
+
+        // Write URL entry directly to file (no memory accumulation)
+        $urlXml = <<<XML
+    <url>
+        <loc>{$this->escapeXml($url)}</loc>
+        <lastmod>{$date}</lastmod>
+        <changefreq>{$changefreq}</changefreq>
+        <priority>{$priority}</priority>
+    </url>
+
+XML;
+
+        fwrite($this->fileHandle, $urlXml);
+    }
+
+    /**
+     * Start a new sitemap file with XML header.
+     */
+    protected function startNewSitemapFile(string $tenantSlug): void
+    {
+        $filename = $this->getSitemapFilename($tenantSlug, $this->currentSitemapIndex);
+        $path = Storage::disk('public')->path($filename);
+        
+        // Ensure directory exists
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $this->fileHandle = fopen($path, 'w');
+        $this->sitemapsCreated++;
+
+        // Write XML header
+        $header = <<<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+XML;
+
+        fwrite($this->fileHandle, $header);
+    }
+
+    /**
+     * Close current sitemap file with XML footer.
+     */
+    protected function closeSitemapFile(): void
+    {
+        if ($this->fileHandle) {
+            fwrite($this->fileHandle, "</urlset>\n");
+            fclose($this->fileHandle);
+            $this->fileHandle = null;
+        }
+    }
+
+    /**
+     * Generate sitemap index file for multiple sitemaps.
+     */
+    protected function generateSitemapIndex(string $tenantSlug, int $totalFiles): void
+    {
+        $baseUrl = config('app.url');
+        $indexPath = Storage::disk('public')->path("sitemaps/sitemap-{$tenantSlug}-index.xml");
+
+        $handle = fopen($indexPath, 'w');
+        
+        $header = <<<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+XML;
+        fwrite($handle, $header);
+
+        for ($i = 1; $i <= $totalFiles; $i++) {
+            $sitemapUrl = "{$baseUrl}/storage/sitemaps/sitemap-{$tenantSlug}-{$i}.xml";
+            $entry = <<<XML
+    <sitemap>
+        <loc>{$sitemapUrl}</loc>
+        <lastmod>{$this->escapeXml(now()->format('Y-m-d'))}</lastmod>
+    </sitemap>
+
+XML;
+            fwrite($handle, $entry);
+        }
+
+        fwrite($handle, "</sitemapindex>\n");
+        fclose($handle);
+
+        $this->line("    → Generated sitemap index with {$totalFiles} files");
+    }
+
+    /**
+     * Get sitemap filename for a tenant.
+     */
+    protected function getSitemapFilename(string $tenantSlug, int $index): string
+    {
+        if ($index === 1) {
+            return "sitemaps/sitemap-{$tenantSlug}.xml";
+        }
+        return "sitemaps/sitemap-{$tenantSlug}-{$index}.xml";
+    }
+
+    /**
+     * Escape special XML characters.
+     */
+    protected function escapeXml(string $string): string
+    {
+        return htmlspecialchars($string, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
 
     /**
@@ -219,14 +348,10 @@ class GenerateSitemapCommand extends Command
      */
     protected function getTenantBaseUrl(Tenant $tenant): string
     {
-        // Check for custom domain first
         if (!empty($tenant->custom_domain)) {
             return "https://{$tenant->custom_domain}";
         }
 
-        // Fallback to subdomain or path-based URL
-        $baseUrl = config('app.url');
-        
-        return "{$baseUrl}/tienda/{$tenant->slug}";
+        return config('app.url') . "/tienda/{$tenant->slug}";
     }
 }

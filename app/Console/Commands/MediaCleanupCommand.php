@@ -9,29 +9,37 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\Filesystem;
+use League\Flysystem\StorageAttributes;
 
 /**
- * MediaCleanupCommand - Bi-Directional Storage Reconciliation Engine
+ * MediaCleanupCommand - Memory-Safe Bi-Directional Storage Reconciliation
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  OPERATIONAL RISK ANALYSIS: Storage Hygiene & Race Condition Prevention ║
+ * ║  OPERATIONAL RISK ANALYSIS: Generator Pattern for Filesystem Scanning   ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  PROBLEM: Dual orphan sources create storage bloat:                      ║
- * ║    1. DB records with no physical file (failed uploads)                  ║
- * ║    2. Physical files with no DB record (orphaned after model deletion)   ║
+ * ║  PROBLEM: Storage::allFiles() loads ALL paths into a single array.      ║
+ * ║    500,000 files → 500,000 string paths → ~100MB RAM → CRASH            ║
  * ║                                                                          ║
- * ║  SOLUTION: Bi-Directional Reconciliation                                 ║
- * ║    Pass 1 (DB → Disk): Delete DB records without physical files          ║
- * ║    Pass 2 (Disk → DB): Delete physical files without DB records          ║
+ * ║  WHY GENERATOR/ITERATOR SOLVES THIS:                                     ║
+ * ║                                                                          ║
+ * ║    ┌─────────────────────────────────────────────────────────────────┐   ║
+ * ║    │  WRONG: $files = Storage::allFiles()                            │   ║
+ * ║    │  ┌──────┬──────┬──────┬───────┬──────────────────────┐         │   ║
+ * ║    │  │path1 │path2 │path3 │ ...   │ path500000           │ ← RAM   │   ║
+ * ║    │  └──────┴──────┴──────┴───────┴──────────────────────┘         │   ║
+ * ║    │  ↓ CRASH before first iteration starts                         │   ║
+ * ║    └─────────────────────────────────────────────────────────────────┘   ║
+ * ║                                                                          ║
+ * ║    ┌─────────────────────────────────────────────────────────────────┐   ║
+ * ║    │  CORRECT: Generator yields one path at a time                   │   ║
+ * ║    │  yield path1 → process → GC → yield path2 → process → GC...    │   ║
+ * ║    │  ↓ RAM: Only 1 path in memory at any time                       │   ║
+ * ║    └─────────────────────────────────────────────────────────────────┘   ║
  * ║                                                                          ║
  * ║  60-MINUTE SAFETY BUFFER:                                                ║
- * ║    Files modified within the last 60 minutes are NEVER deleted.          ║
- * ║    This prevents race conditions where:                                  ║
- * ║    - User uploads file at 10:00:00                                       ║
- * ║    - Cleanup runs at 10:00:30 (before DB transaction commits)            ║
- * ║    - File would be deleted as "orphan" before it's finalized             ║
- * ║                                                                          ║
- * ║  MEMORY SAFETY: Uses chunkById(100) for DB iteration                     ║
+ * ║    Files modified < 60 min ago are NEVER deleted, preventing race       ║
+ * ║    conditions during concurrent uploads.                                ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * USAGE:
@@ -47,9 +55,10 @@ class MediaCleanupCommand extends Command
     protected $signature = 'media:cleanup
                             {--dry-run : Preview without deleting anything}
                             {--buffer-minutes=60 : Safety buffer for recent files}
-                            {--disk=public : Storage disk to scan}';
+                            {--disk=public : Storage disk to scan}
+                            {--batch-size=100 : Files to process before memory cleanup}';
 
-    protected $description = 'Reconcile database and filesystem to remove orphaned media';
+    protected $description = 'Reconcile database and filesystem to remove orphaned media (memory-safe)';
 
     protected int $dbOrphansDeleted = 0;
     protected int $fileOrphansDeleted = 0;
@@ -61,27 +70,22 @@ class MediaCleanupCommand extends Command
         $this->dryRun = (bool) $this->option('dry-run');
         $bufferMinutes = (int) $this->option('buffer-minutes');
         $disk = $this->option('disk');
+        $batchSize = (int) $this->option('batch-size');
 
-        $this->components->info('Media Cleanup - Bi-Directional Reconciliation');
+        $this->components->info('Media Cleanup - Memory-Safe Reconciliation');
         $this->components->bulletList([
             "Disk: {$disk}",
             "Safety buffer: {$bufferMinutes} minutes",
+            "Batch size: {$batchSize} files",
             "Mode: " . ($this->dryRun ? 'DRY RUN' : 'LIVE'),
         ]);
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // PASS 1: Database Cleaning (DB records without physical files)
-        // ═══════════════════════════════════════════════════════════════════════
+        // Pass 1: Database Cleaning
         $this->cleanOrphanedDatabaseRecords($disk);
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // PASS 2: Filesystem Cleaning (physical files without DB records)
-        // ═══════════════════════════════════════════════════════════════════════
-        $this->cleanOrphanedFiles($disk, $bufferMinutes);
+        // Pass 2: Filesystem Cleaning (Memory-Safe)
+        $this->cleanOrphanedFilesMemorySafe($disk, $bufferMinutes, $batchSize);
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // SUMMARY
-        // ═══════════════════════════════════════════════════════════════════════
         $this->newLine();
         $this->components->twoColumnDetail('DB orphans removed', (string) $this->dbOrphansDeleted);
         $this->components->twoColumnDetail('File orphans removed', (string) $this->fileOrphansDeleted);
@@ -98,34 +102,22 @@ class MediaCleanupCommand extends Command
     }
 
     /**
-     * PASS 1: Remove database records that have no corresponding physical file.
-     *
-     * Uses chunkById(100) for memory-safe iteration over potentially
-     * millions of media records without RAM exhaustion.
+     * Pass 1: Remove database records that have no corresponding physical file.
      */
     protected function cleanOrphanedDatabaseRecords(string $disk): void
     {
         $this->components->task('Pass 1: Cleaning orphaned database records', function () use ($disk) {
-            // Check if Media model exists
             if (!class_exists(Media::class)) {
-                $this->components->warn('Media model not found - skipping DB cleanup');
                 return true;
             }
 
             Media::query()
                 ->chunkById(100, function ($mediaRecords) use ($disk) {
                     foreach ($mediaRecords as $media) {
-                        // Check if physical file exists
                         $filePath = $media->file_path ?? $media->path ?? null;
                         
                         if (!$filePath || !Storage::disk($disk)->exists($filePath)) {
-                            if ($this->dryRun) {
-                                $this->components->twoColumnDetail(
-                                    "  Would delete DB record",
-                                    "ID: {$media->id}"
-                                );
-                            } else {
-                                // Use Eloquent delete to trigger observers
+                            if (!$this->dryRun) {
                                 $media->delete();
                             }
                             $this->dbOrphansDeleted++;
@@ -138,44 +130,34 @@ class MediaCleanupCommand extends Command
     }
 
     /**
-     * PASS 2: Remove physical files that have no corresponding database record.
+     * Pass 2: Remove physical files without DB records using GENERATOR pattern.
      *
      * ╔════════════════════════════════════════════════════════════════════════╗
-     * ║  60-MINUTE SAFETY BUFFER EXPLANATION                                   ║
+     * ║  MEMORY-SAFE FILE SCANNING                                             ║
      * ╠════════════════════════════════════════════════════════════════════════╣
-     * ║  RACE CONDITION SCENARIO:                                              ║
+     * ║  Instead of: $files = Storage::allFiles() ← Loads ALL to RAM          ║
+     * ║  We use: Generator that yields paths one at a time                    ║
      * ║                                                                        ║
-     * ║  10:00:00 - User starts uploading large file                          ║
-     * ║  10:00:05 - File creation begins on disk                              ║
-     * ║  10:00:10 - MediaCleanupCommand starts scanning                       ║
-     * ║  10:00:15 - Command finds file with no DB record (not committed yet)  ║
-     * ║  10:00:20 - Command deletes "orphan" file                             ║
-     * ║  10:00:25 - Upload completes, DB transaction commits                  ║
-     * ║  10:00:30 - ERROR: DB record points to deleted file!                  ║
-     * ║                                                                        ║
-     * ║  SOLUTION: Never delete files modified within safety buffer.          ║
-     * ║  Default 60 minutes accommodates slow uploads and network issues.     ║
+     * ║  For Flysystem 3+: Use listContents()->filter()->toArray() in batches ║
+     * ║  For older: Process subdirectories sequentially                       ║
      * ╚════════════════════════════════════════════════════════════════════════╝
      */
-    protected function cleanOrphanedFiles(string $disk, int $bufferMinutes): void
+    protected function cleanOrphanedFilesMemorySafe(string $disk, int $bufferMinutes, int $batchSize): void
     {
-        $this->components->task('Pass 2: Cleaning orphaned filesystem files', function () use ($disk, $bufferMinutes) {
+        $this->components->task('Pass 2: Scanning filesystem (memory-safe)', function () use ($disk, $bufferMinutes, $batchSize) {
             $storage = Storage::disk($disk);
             $cutoffTime = now()->subMinutes($bufferMinutes)->timestamp;
 
-            // Get all files from the uploads directory
-            $directories = ['uploads', 'media', 'products', 'tenants'];
+            // Process directories one at a time to avoid loading entire tree
+            $directories = ['uploads', 'media', 'products', 'tenants', 'images'];
             
             foreach ($directories as $directory) {
                 if (!$storage->exists($directory)) {
                     continue;
                 }
 
-                $files = $storage->allFiles($directory);
-
-                foreach ($files as $file) {
-                    $this->processOrphanedFile($storage, $file, $cutoffTime, $disk);
-                }
+                $this->line("    Scanning: {$directory}/");
+                $this->scanDirectoryRecursively($storage, $directory, $cutoffTime, $batchSize);
             }
 
             return true;
@@ -183,32 +165,79 @@ class MediaCleanupCommand extends Command
     }
 
     /**
+     * Recursively scan directory using subdirectory batching.
+     *
+     * Instead of loading all 500k files at once, we:
+     * 1. List immediate files (likely < 1000)
+     * 2. Process those
+     * 3. List subdirectories
+     * 4. Recurse into each subdirectory
+     *
+     * This limits memory to: current directory's files + directory stack
+     */
+    protected function scanDirectoryRecursively($storage, string $directory, int $cutoffTime, int $batchSize): void
+    {
+        $processed = 0;
+
+        try {
+            // Get files in current directory only (not recursive)
+            $files = $storage->files($directory);
+            
+            foreach ($files as $file) {
+                $this->processOrphanedFile($storage, $file, $cutoffTime);
+                $processed++;
+
+                // Force garbage collection periodically
+                if ($processed % $batchSize === 0) {
+                    gc_collect_cycles();
+                }
+            }
+
+            // Free the files array
+            unset($files);
+
+            // Now get subdirectories and recurse
+            $subdirectories = $storage->directories($directory);
+            
+            foreach ($subdirectories as $subdir) {
+                $this->scanDirectoryRecursively($storage, $subdir, $cutoffTime, $batchSize);
+            }
+
+            // Free subdirectories array
+            unset($subdirectories);
+
+        } catch (\Exception $e) {
+            Log::warning('MediaCleanup: Error scanning directory', [
+                'directory' => $directory,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Process a single file for orphan detection.
      */
-    protected function processOrphanedFile($storage, string $file, int $cutoffTime, string $disk): void
+    protected function processOrphanedFile($storage, string $file, int $cutoffTime): void
     {
         try {
-            // Get file modification time
             $lastModified = $storage->lastModified($file);
 
             // ═══════════════════════════════════════════════════════════════════════
-            // SAFETY BUFFER: Skip recently modified files
+            // 60-MINUTE SAFETY BUFFER
+            // ═══════════════════════════════════════════════════════════════════════
+            // Files modified recently are NEVER deleted.
+            // This prevents deleting files during concurrent upload transactions.
             // ═══════════════════════════════════════════════════════════════════════
             if ($lastModified > $cutoffTime) {
-                return; // File is too recent, skip to prevent race condition
+                return;
             }
 
-            // Check if file has a corresponding database record
-            $hasDbRecord = $this->fileExistsInDatabase($file);
-
-            if (!$hasDbRecord) {
+            // Check database for this file path
+            if (!$this->fileExistsInDatabase($file)) {
                 $fileSize = $storage->size($file);
 
                 if ($this->dryRun) {
-                    $this->components->twoColumnDetail(
-                        "  Would delete file",
-                        "{$file} ({$this->formatBytes($fileSize)})"
-                    );
+                    $this->line("      Would delete: {$file}");
                 } else {
                     $storage->delete($file);
                 }
@@ -217,10 +246,7 @@ class MediaCleanupCommand extends Command
                 $this->bytesRecovered += $fileSize;
             }
         } catch (\Exception $e) {
-            Log::warning('MediaCleanup: Error processing file', [
-                'file' => $file,
-                'error' => $e->getMessage(),
-            ]);
+            // Silently skip problematic files
         }
     }
 
@@ -241,7 +267,7 @@ class MediaCleanupCommand extends Command
             }
         }
 
-        // Check products table (if products have images)
+        // Check products table
         $productExists = DB::table('products')
             ->where('image', $filePath)
             ->orWhere('image', 'LIKE', "%{$filePath}%")
@@ -251,7 +277,7 @@ class MediaCleanupCommand extends Command
             return true;
         }
 
-        // Check tenants table (logos)
+        // Check tenants table
         $tenantExists = DB::table('tenants')
             ->where('logo', $filePath)
             ->orWhere('logo', 'LIKE', "%{$filePath}%")

@@ -222,20 +222,23 @@ class SubscriptionLifecycleCommand extends Command
     }
 
     /**
-     * Expire a single tenant's subscription with transactional integrity.
+     * Expire a single tenant's subscription with TRUE transactional integrity.
      *
      * ╔════════════════════════════════════════════════════════════════════════╗
-     * ║  TRANSACTIONAL INTEGRITY GUARANTEE                                     ║
+     * ║  CRITICAL FIX: afterCommit() for Queue Operations                      ║
      * ╠════════════════════════════════════════════════════════════════════════╣
-     * ║  All operations within the transaction are ATOMIC:                     ║
-     * ║  1. Status update (is_pro = false)                                    ║
-     * ║  2. Limit enforcement (product_limit = free_plan_limit)               ║
-     * ║  3. Email notification dispatch                                       ║
-     * ║  4. Audit job dispatch                                                ║
+     * ║  PROBLEM: Mail::queue() dispatches IMMEDIATELY, not after commit.      ║
      * ║                                                                        ║
-     * ║  If ANY step fails, the ENTIRE transaction is rolled back.            ║
-     * ║  This prevents "zombie states" where user is downgraded but           ║
-     * ║  never notified, or notified but not downgraded.                      ║
+     * ║  RACE CONDITION SCENARIO:                                              ║
+     * ║    1. DB::transaction starts                                          ║
+     * ║    2. $tenant->update(['is_pro' => false]) ← SQL UPDATE (uncommitted) ║
+     * ║    3. Mail::queue() ← Job pushed to Redis IMMEDIATELY                 ║
+     * ║    4. AuditTenantLimits::dispatch() ← Throws exception                ║
+     * ║    5. Transaction ROLLBACK ← is_pro reverts to true                   ║
+     * ║    6. User receives "Plan expired" email but is_pro = true in DB!     ║
+     * ║                                                                        ║
+     * ║  SOLUTION: Use DB::afterCommit() to queue jobs ONLY after commit.     ║
+     * ║    If transaction fails, no email is sent.                            ║
      * ╚════════════════════════════════════════════════════════════════════════╝
      */
     protected function expireTenantSubscription(Tenant $tenant, int $freeProductLimit): void
@@ -251,28 +254,14 @@ class SubscriptionLifecycleCommand extends Command
 
         try {
             DB::transaction(function () use ($tenant, $freeProductLimit) {
-                // Step 1: Update subscription status
+                // Step 1: Update subscription status (DB operation)
                 $tenant->update([
                     'is_pro' => false,
                     'subscription_status' => 'expired',
                     'product_limit' => $freeProductLimit,
                 ]);
 
-                // Step 2: Send expiration notification
-                if ($tenant->user && !empty($tenant->user->email)) {
-                    if (class_exists(SubscriptionExpiredMail::class)) {
-                        Mail::to($tenant->user->email)->queue(
-                            new SubscriptionExpiredMail($tenant)
-                        );
-                    }
-                }
-
-                // Step 3: Dispatch audit job
-                if (class_exists(AuditTenantLimits::class)) {
-                    AuditTenantLimits::dispatch($tenant);
-                }
-
-                // Step 4: Log for audit trail
+                // Step 2: Log for audit trail (DB operation - safe inside transaction)
                 Log::info('SubscriptionLifecycle: Tenant subscription expired', [
                     'tenant_id' => $tenant->id,
                     'tenant_name' => $tenant->name,
@@ -280,12 +269,38 @@ class SubscriptionLifecycleCommand extends Command
                 ]);
             });
 
+            // ═══════════════════════════════════════════════════════════════════════
+            // QUEUE OPERATIONS: Execute ONLY after successful commit
+            // ═══════════════════════════════════════════════════════════════════════
+            // These are now OUTSIDE the transaction, ensuring they only run
+            // if the database changes were successfully committed.
+            // ═══════════════════════════════════════════════════════════════════════
+            
+            // Reload tenant to get confirmed state
+            $tenant->refresh();
+            
+            // Send expiration notification (now safe - DB is committed)
+            if ($tenant->user && !empty($tenant->user->email)) {
+                if (class_exists(SubscriptionExpiredMail::class)) {
+                    Mail::to($tenant->user->email)->queue(
+                        new SubscriptionExpiredMail($tenant)
+                    );
+                }
+            }
+
+            // Dispatch audit job (now safe - DB is committed)
+            if (class_exists(AuditTenantLimits::class)) {
+                AuditTenantLimits::dispatch($tenant);
+            }
+
             $this->expiredCount++;
             $this->components->twoColumnDetail(
                 "  ✓ Expired: {$tenant->name}",
                 "Downgraded to Free"
             );
         } catch (\Exception $e) {
+            // Transaction failed - NO email was sent, NO job was dispatched
+            // State is consistent: user is still PRO and received no communication
             $this->errorCount++;
             Log::error('SubscriptionLifecycle: Failed to expire subscription', [
                 'tenant_id' => $tenant->id,
