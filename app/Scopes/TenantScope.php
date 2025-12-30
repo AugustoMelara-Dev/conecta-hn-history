@@ -71,16 +71,50 @@ class TenantScope implements Scope
         $tenantId = $this->resolveTenantId();
 
         // ═══════════════════════════════════════════════════════════════════════
-        // GUARD 4: Fail-Secure Default (No Tenant = Empty Resultset)
+        // GUARD 4: FAIL-SECURE ENFORCEMENT (CRITICAL SECURITY INVARIANT)
         // ═══════════════════════════════════════════════════════════════════════
-        // This is a SECURITY FEATURE, not a bug. If we cannot determine the
-        // tenant context, returning nothing is safer than exposing all data.
+        //
+        // ╔══════════════════════════════════════════════════════════════════════╗
+        // ║  SECURITY ANALYSIS: Fail-Open vs Fail-Secure                        ║
+        // ╠══════════════════════════════════════════════════════════════════════╣
+        // ║  PREVIOUS (VULNERABLE):                                              ║
+        // ║    if ($tenantId === null) { return; }                              ║
+        // ║    ↳ Returns without modifying query = SELECT * FROM table          ║
+        // ║    ↳ EXPOSES ALL TENANT DATA TO UNAUTHENTICATED USERS               ║
+        // ║                                                                      ║
+        // ║  CURRENT (SECURE):                                                   ║
+        // ║    if ($tenantId === null) { $builder->whereRaw('1 = 0'); return; } ║
+        // ║    ↳ Actively sabotages query with impossible condition             ║
+        // ║    ↳ GUARANTEES ZERO RECORDS RETURNED                               ║
+        // ╚══════════════════════════════════════════════════════════════════════╝
+        //
+        // This is a MANDATORY security constraint. If we cannot determine tenant
+        // context and the user is NOT a Super Admin, we MUST prevent data access.
+        // Simply returning is STRICTLY PROHIBITED as it results in data leakage.
         // ═══════════════════════════════════════════════════════════════════════
         if ($tenantId === null) {
+            // FAIL-SECURE: Sabotage query to return zero records
+            $builder->whereRaw('1 = 0');
+            
+            // Log this security event for forensic analysis
+            \Illuminate\Support\Facades\Log::warning(
+                'TenantScope: Fail-Secure triggered - no tenant context',
+                [
+                    'url' => request()->fullUrl(),
+                    'ip' => request()->ip(),
+                    'user_id' => auth()->id(),
+                    'model' => get_class($model),
+                ]
+            );
+            
             return;
         }
 
-        // Apply the isolation constraint (fully qualified column name)
+        // ═══════════════════════════════════════════════════════════════════════
+        // APPLY TENANT ISOLATION CONSTRAINT
+        // ═══════════════════════════════════════════════════════════════════════
+        // Fully qualified column name prevents ambiguity in JOINs
+        // ═══════════════════════════════════════════════════════════════════════
         $builder->where($model->getTable().'.tenant_id', $tenantId);
     }
 
