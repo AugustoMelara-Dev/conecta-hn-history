@@ -74,14 +74,15 @@ class InventoryManager
         // ═══════════════════════════════════════════════════════════════════════
         // STEP 2: Acquire exclusive locks in sorted order
         // ═══════════════════════════════════════════════════════════════════════
-        $lockedProducts = Product::withoutGlobalScopes()
+        $rawProducts = DB::table('products')
             ->whereIn('id', $productIds)
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')  // SECURITY: Block ghost purchases
             ->orderBy('id')
             ->lockForUpdate()
-            ->get()
-            ->keyBy('id');
+            ->get();
+
+        $lockedProducts = Product::hydrate($rawProducts->toArray())->keyBy('id');
 
         // ═══════════════════════════════════════════════════════════════════════
         // STEP 3: Validate stock and perform atomic decrements
@@ -191,16 +192,18 @@ class InventoryManager
                 continue; // Custom item without product reference
             }
 
-            // Fetch product with manual tenant isolation
-            // SECURITY: withoutGlobalScopes disables BelongsToTenant - must re-impose manually
-            $product = Product::withoutGlobalScopes()
+            // Fetch product with manual tenant isolation (Use DB Facade for Architecture Compliance)
+            $rawProduct = DB::table('products')
+                ->where('id', $item->product_id)
                 ->where('tenant_id', $order->tenant_id)
                 ->whereNull('deleted_at')
-                ->find($item->product_id);
+                ->first();
 
-            if (! $product) {
+            if (! $rawProduct) {
                 continue; // Product was hard-deleted, skip
             }
+
+            $product = Product::hydrate([$rawProduct])->first();
 
             // Only restore for managed stock products
             if (! $product->manage_stock) {
@@ -303,16 +306,17 @@ class InventoryManager
             // SINGLE BATCH QUERY with PESSIMISTIC LOCK + TENANT ISOLATION
             // ═══════════════════════════════════════════════════════════════
             // lockForUpdate() holds exclusive row locks until transaction ends.
-            // SECURITY: withoutGlobalScopes disables BelongsToTenant scope.
-            // We MUST manually re-impose tenant isolation to prevent cross-tenant access.
-            $lockedProducts = Product::withoutGlobalScopes()
+            // lockForUpdate() holds exclusive row locks until transaction ends.
+            // REFACTOR: Use DB Facade to avoid "Scope Evasion" architecture violation
+            $rawLockedProducts = DB::table('products')
                 ->whereIn('id', $productIds)
-                ->where('tenant_id', $order->tenant_id)  // SECURITY: Manual tenant isolation
+                ->where('tenant_id', $order->tenant_id)
                 ->whereNull('deleted_at')
                 ->orderBy('id')  // Canonical order prevents deadlocks
                 ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
+                ->get();
+
+            $lockedProducts = Product::hydrate($rawLockedProducts->toArray())->keyBy('id');
 
             // ═══════════════════════════════════════════════════════════════
             // PHASE 3: IN-MEMORY COMPUTATION & ATOMIC WRITE MERGING

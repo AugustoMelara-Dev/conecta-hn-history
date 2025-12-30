@@ -71,6 +71,8 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'is_ai_enhanced',
         'original_name',
         'admin_notes',
+        // Landing Page Builder (PRO)
+        'landing_page_data',
     ];
 
     protected $guarded = ['id'];
@@ -92,15 +94,19 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'minimum_order' => 'decimal:2',
         // AI Enrichment
         'is_ai_enhanced' => 'boolean',
+        // Landing Page Builder - CRITICAL: Cast to array for React Frontend
+        'landing_page_data' => 'array',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════════
     // JSON SERIALIZATION: Expose computed attributes to Frontend
-    // These attributes are appended to every JSON/array representation
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PERFORMANCE NOTE: is_pro and days_until_expiry REMOVED from global $appends
+    // These involve date calculations executed on every toArray()/toJson() call.
+    // Use runtime appending in controllers that specifically need them:
+    //   $tenant->append(['is_pro', 'days_until_expiry']);
     // ═══════════════════════════════════════════════════════════════════════════
     protected $appends = [
-        'is_pro',           // Computed pro status (overrides DB column)
-        'days_until_expiry',
         'subscription_status_label',
         'plan_type_label',
     ];
@@ -472,6 +478,15 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function campaigns(): HasMany
     {
         return $this->hasMany(Campaign::class);
+    }
+
+    /**
+     * Get the coupons created by this tenant.
+     * REQUIRED BY: Marketing Module (Pages/Tenant/Marketing/Index.jsx)
+     */
+    public function coupons(): HasMany
+    {
+        return $this->hasMany(Coupon::class);
     }
 
     /**
