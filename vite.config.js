@@ -18,4 +18,13 @@ export default defineConfig({
             jsxRuntime: 'automatic',
         }),
     ],
+    // Force Vite to bind to localhost to avoid IPv6 [::1] CSP issues
+    server: {
+        host: 'localhost',
+        port: 5173,
+        strictPort: true,
+        cors: {
+            origin: ['http://localhost:8000', 'http://127.0.0.1:8000'],
+        },
+    },
 });
