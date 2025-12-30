@@ -42,7 +42,16 @@ class ReleaseStaleOrders implements ShouldQueue
     /**
      * Batch size for memory-efficient processing.
      */
+    /**
+     * Batch size for memory-efficient processing.
+     */
     protected const CHUNK_SIZE = 100;
+
+    /**
+     * Tenant Context Marker for Static Analysis.
+     * Use when dispatching for specific tenant if needed.
+     */
+    public $tenant_id;
 
     /**
      * Execute the job with context-aware timeout logic.

@@ -79,8 +79,8 @@ class GeneratePdfReportJob implements ShouldQueue
             // ═══════════════════════════════════════════════════════════════
             $uuid = (string) Str::uuid();
             $filename = sprintf(
-                'reports/%s/%s_%s.pdf',
-                $this->tenant->slug ?? $this->tenant->id,
+                'tenants/%s/reports/%s_%s.pdf',
+                $this->tenant->id,
                 $this->reportType,
                 $uuid
             );

@@ -113,7 +113,7 @@ final class EnhanceTenantProfileJob implements ShouldBeUnique, ShouldQueue
         // STEP 1: Retrieve tenant (bypass global scopes)
         $tenant = Tenant::withoutGlobalScopes()->find($this->tenantId);
         if ($tenant) {
-            dump("DEBUG: Found tenant logic", ['id' => $tenant->id]);
+            // Log::info("DEBUG: Found tenant logic", ['id' => $tenant->id]);
         }
 
         if ($tenant === null) {
