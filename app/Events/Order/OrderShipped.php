@@ -13,34 +13,40 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * OrderStatusUpdated - Transaction-Safe Status Change Event
+ * OrderShipped - Semantic Event for Fulfillment Completion
  *
- * Dispatched when an order transitions between statuses:
- * pending → confirmed → preparing → ready → delivered
- *
- * Implements ShouldDispatchAfterCommit to prevent race conditions.
+ * LISTENERS:
+ *   - SendTrackingEmailListener
+ *   - SendShipmentSmsListener
+ *   - UpdateDeliveryEstimateListener
+ *   - SyncToShippingCarrierListener
  */
-class OrderStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCommit
+class OrderShipped implements ShouldBroadcast, ShouldDispatchAfterCommit
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    public readonly int $tenantId;
+
     public function __construct(
         public readonly Order $order,
-        public readonly string $previousStatus,
-        public readonly string $newStatus,
-    ) {}
+        public readonly string $trackingNumber,
+        public readonly string $carrier,
+        public readonly ?\DateTimeInterface $estimatedDelivery = null,
+    ) {
+        $this->tenantId = $order->tenant_id;
+    }
 
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('tenant.' . $this->order->tenant_id),
+            new PrivateChannel('tenant.' . $this->tenantId),
             new PrivateChannel('order.' . $this->order->id),
         ];
     }
 
     public function broadcastAs(): string
     {
-        return 'order.status_updated';
+        return 'order.shipped';
     }
 
     public function broadcastWith(): array
@@ -48,9 +54,11 @@ class OrderStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCommit
         return [
             'order_id' => $this->order->id,
             'order_number' => $this->order->order_number,
-            'previous_status' => $this->previousStatus,
-            'new_status' => $this->newStatus,
-            'updated_at' => $this->order->updated_at->toIso8601String(),
+            'tracking_number' => $this->trackingNumber,
+            'carrier' => $this->carrier,
+            'estimated_delivery' => $this->estimatedDelivery?->format('Y-m-d'),
+            'shipped_at' => now()->toIso8601String(),
+            'tenant_id' => $this->tenantId,
         ];
     }
 }

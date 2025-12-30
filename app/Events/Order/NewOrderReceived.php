@@ -13,38 +13,38 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * NewOrderReceived - Transaction-Safe Order Event with Real-Time Broadcast
+ * NewOrderReceived - Tenant-Aware Order Event with Secure Broadcast
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  DUAL-PURPOSE EVENT: Backend Trigger + Frontend Notification            ║
+ * ║  DUAL-PURPOSE: Backend Trigger + Real-Time Frontend Notification        ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║                                                                          ║
  * ║  BACKEND (Queued Listeners):                                            ║
  * ║    - SendOrderConfirmationEmail                                         ║
  * ║    - NotifyTenantOwnerViaSms                                            ║
- * ║    - UpdateInventoryReservations                                        ║
  * ║    - SyncToExternalERPSystem                                            ║
  * ║                                                                          ║
- * ║  FRONTEND (WebSocket Broadcast):                                        ║
- * ║    - Real-time dashboard notification                                   ║
- * ║    - Kitchen display "New Order!" alert                                 ║
- * ║    - Mobile app push via private channel                                ║
+ * ║  FRONTEND (WebSocket):                                                  ║
+ * ║    - Dashboard "New Order!" notification                                ║
+ * ║    - Kitchen display alert                                              ║
  * ║                                                                          ║
- * ║  ─────────────────────────────────────────────────────────────────────── ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║  TENANT CONTEXT PRESERVATION                                            ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║                                                                          ║
- * ║  TRANSACTION SAFETY (ShouldDispatchAfterCommit):                        ║
+ * ║  PROBLEM: Queue Workers lose tenant context during deserialization      ║
+ * ║    1. Event dispatched with Order in Tenant A environment               ║
+ * ║    2. Serialized to Redis/SQS                                          ║
+ * ║    3. Worker deserializes Order, but app is in "global" context         ║
+ * ║    4. Mail config, filesystem, etc. point to wrong tenant!             ║
  * ║                                                                          ║
- * ║    PROBLEM without it:                                                  ║
- * ║      1. Controller saves order: $order->save();                         ║
- * ║      2. Event dispatched: event(new NewOrderReceived($order));          ║
- * ║      3. Queue Worker picks up job BEFORE transaction commits           ║
- * ║      4. Listener queries: Order::find($orderId) → NULL                  ║
- * ║      5. CRASH: ModelNotFoundException                                   ║
+ * ║  SOLUTION: Explicit $tenantId property enables Queue Middleware to      ║
+ * ║    restore tenant context BEFORE listener execution.                   ║
  * ║                                                                          ║
- * ║    SOLUTION:                                                            ║
- * ║      ShouldDispatchAfterCommit ensures the event is held in memory     ║
- * ║      until DB::commit() succeeds. Queue Worker only sees already-      ║
- * ║      committed data.                                                    ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║  @warning DO NOT ADD SENSITIVE CUSTOMER PII TO BROADCAST PAYLOAD!       ║
+ * ║           Email, phone, address MUST NOT appear in broadcastWith().    ║
+ * ║           Full details should be fetched via authenticated API.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * CHANNEL: private-tenant.{tenant_id}
@@ -54,19 +54,27 @@ class NewOrderReceived implements ShouldBroadcast, ShouldDispatchAfterCommit
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    /**
+     * Tenant ID for Queue Middleware context restoration.
+     * This is NOT redundant with $order->tenant_id because the Order
+     * might not be loaded when the Queue Worker inspects the payload.
+     */
+    public readonly int $tenantId;
+
     public function __construct(
         public readonly Order $order
-    ) {}
+    ) {
+        // Capture tenant context at dispatch time
+        $this->tenantId = $order->tenant_id;
+    }
 
     /**
      * Get the channels the event should broadcast on.
-     *
-     * SECURITY: Private channel ensures only authenticated tenant users receive.
      */
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('tenant.' . $this->order->tenant_id),
+            new PrivateChannel('tenant.' . $this->tenantId),
         ];
     }
 
@@ -81,25 +89,19 @@ class NewOrderReceived implements ShouldBroadcast, ShouldDispatchAfterCommit
     /**
      * Get the data to broadcast.
      *
-     * SECURITY: Lightweight payload - no sensitive customer data over WebSockets.
-     * Full order details should be fetched via authenticated API call.
+     * @warning SECURITY: Only expose essential UI data.
+     *          NO customer email, phone, address, or payment tokens!
      */
     public function broadcastWith(): array
     {
-        $total = $this->order->total ?? 0;
-        
         return [
-            'order_id' => $this->order->id,
-            'order_number' => $this->order->order_number ?? 'N/A',
-            'status' => $this->order->status ?? 'pending',
-            'total' => $total,
-            'total_formatted' => 'L ' . number_format($total / 100, 2),
-            'item_count' => $this->order->items_count ?? $this->order->relationLoaded('items') 
-                ? $this->order->items->count() 
-                : 0,
-            'customer_name' => $this->order->customer_name ?? 'Cliente',
-            'payment_method' => $this->order->payment_method?->value ?? $this->order->payment_method ?? 'cash',
-            'created_at' => $this->order->created_at?->toIso8601String() ?? now()->toIso8601String(),
+            'id' => $this->order->id,
+            'order_number' => $this->order->order_number ?? 'ORD-' . $this->order->id,
+            'amount_cents' => $this->order->total ?? 0,
+            'amount_formatted' => 'L ' . number_format(($this->order->total ?? 0) / 100, 2),
+            'item_count' => $this->order->items_count ?? 0,
+            'created_at_human' => $this->order->created_at?->diffForHumans() ?? 'ahora',
+            'tenant_id' => $this->tenantId,
         ];
     }
 
@@ -108,7 +110,6 @@ class NewOrderReceived implements ShouldBroadcast, ShouldDispatchAfterCommit
      */
     public function broadcastWhen(): bool
     {
-        // Only broadcast if order was successfully created
         return $this->order->exists && $this->order->id !== null;
     }
 }
