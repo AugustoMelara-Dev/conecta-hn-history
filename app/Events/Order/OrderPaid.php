@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Events\Order;
 
 use App\Models\Order;
+use App\Traits\TenantAwareEvent;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -16,34 +17,29 @@ use Illuminate\Queue\SerializesModels;
  * OrderPaid - Semantic Event for Payment Confirmation
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  SEMANTIC EVENT: Single-Purpose, Single-Responsibility                  ║
+ * ║  SEMANTIC VS GENERIC EVENTS                                             ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║                                                                          ║
- * ║  WHY NOT "OrderStatusUpdated"?                                          ║
- * ║    Generic events create "God Listeners" with complex conditionals:     ║
+ * ║  ANTI-PATTERN (Generic):                                                ║
+ * ║    OrderStatusUpdated → God Listener with 10 if-else branches           ║
  * ║                                                                          ║
- * ║    // BAD: God Listener                                                 ║
- * ║    if ($event->status === 'paid') { sendInvoice(); }                   ║
- * ║    elseif ($event->status === 'shipped') { sendTracking(); }           ║
- * ║    elseif ($event->status === 'cancelled') { issueRefund(); }          ║
+ * ║  CORRECT (Semantic):                                                    ║
+ * ║    OrderPaid      → SendInvoiceListener (single responsibility)         ║
+ * ║    OrderShipped   → SendTrackingListener                                ║
+ * ║    OrderCancelled → IssueRefundListener                                 ║
  * ║                                                                          ║
- * ║    // GOOD: Single-Purpose Listeners                                    ║
- * ║    OrderPaid -> SendInvoiceListener                                     ║
- * ║    OrderShipped -> SendTrackingListener                                 ║
- * ║    OrderCancelled -> IssueRefundListener                                ║
- * ║                                                                          ║
- * ║  LISTENERS FOR THIS EVENT:                                              ║
- * ║    - GenerateInvoicePdfListener                                         ║
- * ║    - SendPaymentReceiptEmailListener                                    ║
- * ║    - UpdateRevenueAnalyticsListener                                     ║
- * ║    - NotifyFulfillmentTeamListener                                      ║
+ * ║  @notice $tenantId is required for Queue Middleware context switching.  ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * LISTENERS:
+ *   - GenerateInvoicePdfListener
+ *   - SendPaymentReceiptEmailListener
+ *   - UpdateRevenueAnalyticsListener
+ *   - NotifyFulfillmentTeamListener
  */
 class OrderPaid implements ShouldBroadcast, ShouldDispatchAfterCommit
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
-    public readonly int $tenantId;
+    use Dispatchable, InteractsWithSockets, SerializesModels, TenantAwareEvent;
 
     public function __construct(
         public readonly Order $order,
@@ -51,7 +47,7 @@ class OrderPaid implements ShouldBroadcast, ShouldDispatchAfterCommit
         public readonly string $paymentMethod,
         public readonly int $amountPaidCents,
     ) {
-        $this->tenantId = $order->tenant_id;
+        $this->setTenantContext($order->tenant_id);
     }
 
     public function broadcastOn(): array
@@ -66,6 +62,9 @@ class OrderPaid implements ShouldBroadcast, ShouldDispatchAfterCommit
         return 'order.paid';
     }
 
+    /**
+     * @warning NO PII in broadcast payload.
+     */
     public function broadcastWith(): array
     {
         return [

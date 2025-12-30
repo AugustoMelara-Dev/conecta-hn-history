@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Events\Order;
 
 use App\Models\Order;
+use App\Traits\TenantAwareEvent;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -13,38 +14,34 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * NewOrderReceived - Tenant-Aware Order Event with Secure Broadcast
+ * NewOrderReceived - Queue-Safe, Tenant-Aware Order Event
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  DUAL-PURPOSE: Backend Trigger + Real-Time Frontend Notification        ║
+ * ║  MULTI-TENANT QUEUE SAFETY                                              ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║                                                                          ║
- * ║  BACKEND (Queued Listeners):                                            ║
- * ║    - SendOrderConfirmationEmail                                         ║
- * ║    - NotifyTenantOwnerViaSms                                            ║
- * ║    - SyncToExternalERPSystem                                            ║
+ * ║  @notice The $tenantId property is CRITICAL for queue processing.       ║
+ * ║          It MUST be set in constructor as a PRIMITIVE (int), not model. ║
  * ║                                                                          ║
- * ║  FRONTEND (WebSocket):                                                  ║
- * ║    - Dashboard "New Order!" notification                                ║
- * ║    - Kitchen display alert                                              ║
+ * ║  WHY: SerializesModels stores the Order as {"order_id": 5}.             ║
+ * ║       When Queue Worker deserializes, it calls Order::find(5).          ║
+ * ║       BUT: Worker doesn't know which tenant database to use!            ║
  * ║                                                                          ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  TENANT CONTEXT PRESERVATION                                            ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║                                                                          ║
- * ║  PROBLEM: Queue Workers lose tenant context during deserialization      ║
- * ║    1. Event dispatched with Order in Tenant A environment               ║
- * ║    2. Serialized to Redis/SQS                                          ║
- * ║    3. Worker deserializes Order, but app is in "global" context         ║
- * ║    4. Mail config, filesystem, etc. point to wrong tenant!             ║
- * ║                                                                          ║
- * ║  SOLUTION: Explicit $tenantId property enables Queue Middleware to      ║
- * ║    restore tenant context BEFORE listener execution.                   ║
+ * ║  SOLUTION FLOW:                                                         ║
+ * ║    1. Event is dispatched with $tenantId = $order->tenant_id            ║
+ * ║    2. Serialized to queue: {"tenantId": 3, "order": {"id": 5}}          ║
+ * ║    3. TenantQueueMiddleware reads tenantId from payload                 ║
+ * ║    4. Middleware switches DB context to Tenant 3                        ║
+ * ║    5. NOW SerializesModels can safely deserialize Order 5               ║
  * ║                                                                          ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  @warning DO NOT ADD SENSITIVE CUSTOMER PII TO BROADCAST PAYLOAD!       ║
- * ║           Email, phone, address MUST NOT appear in broadcastWith().    ║
- * ║           Full details should be fetched via authenticated API.        ║
+ * ║  BROADCAST SECURITY                                                     ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║                                                                          ║
+ * ║  @warning DO NOT EXPOSE PII IN WEBSOCKET BROADCAST!                     ║
+ * ║           broadcastWith() returns ONLY safe UI data.                    ║
+ * ║           NO: customer_email, customer_phone, shipping_address          ║
+ * ║           Full order details must be fetched via authenticated API.     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * CHANNEL: private-tenant.{tenant_id}
@@ -52,20 +49,14 @@ use Illuminate\Queue\SerializesModels;
  */
 class NewOrderReceived implements ShouldBroadcast, ShouldDispatchAfterCommit
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
-    /**
-     * Tenant ID for Queue Middleware context restoration.
-     * This is NOT redundant with $order->tenant_id because the Order
-     * might not be loaded when the Queue Worker inspects the payload.
-     */
-    public readonly int $tenantId;
+    use Dispatchable, InteractsWithSockets, SerializesModels, TenantAwareEvent;
 
     public function __construct(
         public readonly Order $order
     ) {
-        // Capture tenant context at dispatch time
-        $this->tenantId = $order->tenant_id;
+        // CRITICAL: Capture tenant context BEFORE serialization
+        // This primitive value is readable by Queue Middleware
+        $this->setTenantContext($order->tenant_id);
     }
 
     /**
@@ -89,8 +80,9 @@ class NewOrderReceived implements ShouldBroadcast, ShouldDispatchAfterCommit
     /**
      * Get the data to broadcast.
      *
-     * @warning SECURITY: Only expose essential UI data.
-     *          NO customer email, phone, address, or payment tokens!
+     * @warning SECURITY: Only expose essential UI notification data.
+     *          NO customer email, phone, address, or payment details!
+     *          Client must fetch full order via authenticated /api/orders/{id}.
      */
     public function broadcastWith(): array
     {
@@ -100,6 +92,7 @@ class NewOrderReceived implements ShouldBroadcast, ShouldDispatchAfterCommit
             'amount_cents' => $this->order->total ?? 0,
             'amount_formatted' => 'L ' . number_format(($this->order->total ?? 0) / 100, 2),
             'item_count' => $this->order->items_count ?? 0,
+            'customer_name' => $this->order->customer_name ?? 'Cliente', // Safe: just name
             'created_at_human' => $this->order->created_at?->diffForHumans() ?? 'ahora',
             'tenant_id' => $this->tenantId,
         ];
