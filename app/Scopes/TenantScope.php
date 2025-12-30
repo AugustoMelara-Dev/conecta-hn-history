@@ -40,25 +40,90 @@ class TenantScope implements Scope
      */
     public function apply(Builder $builder, Model $model): void
     {
-        // Guard 1: Console protection (artisan commands, seeders, migrations)
+        // ═══════════════════════════════════════════════════════════════════════
+        // GUARD 1: Console Context (Artisan, Seeders, Migrations, Queue Workers)
+        // ═══════════════════════════════════════════════════════════════════════
+        // CLI operations require unrestricted access for maintenance tasks.
+        // Queue jobs should set explicit tenant context if isolation needed.
+        // ═══════════════════════════════════════════════════════════════════════
         if (app()->runningInConsole()) {
-            // Allow: Jobs may run in console but need tenant context
-            // If needed, set tenant context explicitly in job
             return;
         }
 
-        // Guard 2: Get current tenant ID from appropriate context
+        // ═══════════════════════════════════════════════════════════════════════
+        // GUARD 2: Super Admin "God Mode" Bypass
+        // ═══════════════════════════════════════════════════════════════════════
+        // Privilege escalation for administrators who need cross-tenant visibility.
+        // This prevents the "Over-Scoping" anti-pattern where admins accidentally
+        // filter themselves out of their own data.
+        //
+        // SECURITY: Only users with explicit super_admin role OR viewing via
+        // the Admin panel (id='admin') bypass the scope. Regular sellers using
+        // the App panel (id='app') remain strictly isolated.
+        // ═══════════════════════════════════════════════════════════════════════
+        if ($this->isSuperAdminContext()) {
+            return;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // GUARD 3: Resolve Current Tenant from Context
+        // ═══════════════════════════════════════════════════════════════════════
         $tenantId = $this->resolveTenantId();
 
-        // Guard 3: If no tenant context, return empty resultset (FAIL SECURE)
+        // ═══════════════════════════════════════════════════════════════════════
+        // GUARD 4: Fail-Secure Default (No Tenant = Empty Resultset)
+        // ═══════════════════════════════════════════════════════════════════════
+        // This is a SECURITY FEATURE, not a bug. If we cannot determine the
+        // tenant context, returning nothing is safer than exposing all data.
+        // ═══════════════════════════════════════════════════════════════════════
         if ($tenantId === null) {
-            // This is a security feature, not a bug
-            // If we don't know the tenant, we return nothing
             return;
         }
 
-        // Apply the isolation constraint
+        // Apply the isolation constraint (fully qualified column name)
         $builder->where($model->getTable().'.tenant_id', $tenantId);
+    }
+
+    /**
+     * Check if current context is Super Admin with cross-tenant privileges.
+     *
+     * BYPASS CONDITIONS (ANY):
+     * 1. User has 'super_admin' role column value
+     * 2. User is in Admin panel (Filament panel id='admin')
+     * 3. User has master admin email (hardcoded super-user)
+     */
+    protected function isSuperAdminContext(): bool
+    {
+        // Must be authenticated
+        if (!auth()->check()) {
+            return false;
+        }
+
+        $user = auth()->user();
+
+        // Master admin always has God Mode
+        if ($user->email === 'admin@conectahn.com') {
+            return true;
+        }
+
+        // Role-based check (using role column, not Spatie)
+        if (property_exists($user, 'role') && $user->role === 'super_admin') {
+            return true;
+        }
+
+        // Filament Admin Panel check (id='admin' panel only)
+        if (class_exists(\Filament\Facades\Filament::class)) {
+            try {
+                $panel = \Filament\Facades\Filament::getCurrentPanel();
+                if ($panel && $panel->getId() === 'admin') {
+                    return true;
+                }
+            } catch (\Throwable $e) {
+                // Panel not initialized
+            }
+        }
+
+        return false;
     }
 
     /**
