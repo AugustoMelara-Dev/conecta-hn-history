@@ -53,7 +53,6 @@ class Show extends Component
     {
         // Eager load products - filter active only
         $products = $this->tenant->products()
-            ->withoutGlobalScopes()
             ->where('is_visible', true)
             ->orderByDesc('created_at')
             ->get();

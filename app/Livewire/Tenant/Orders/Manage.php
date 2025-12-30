@@ -100,12 +100,8 @@ class Manage extends Component
     #[Computed]
     public function availableProducts()
     {
-        return Product::withoutGlobalScopes()
-            ->where('tenant_id', $this->tenant->id)
-            ->where('is_visible', true)
-            ->when($this->productSearch, fn ($q) => $q->where('name', 'like', "%{$this->productSearch}%"))
-            ->limit(10)
-            ->get(['id', 'name', 'price', 'image_path']);
+        // Use Model Helper to avoid Architecture Violation
+        return Product::searchForPos($this->tenant->id, $this->productSearch);
     }
 
     /**
@@ -126,7 +122,7 @@ class Manage extends Component
      */
     public function addToCart(int $productId): void
     {
-        $product = Product::withoutGlobalScopes()->find($productId);
+        $product = Product::findInTenant($productId, $this->tenant->id);
 
         if (! $product || $product->tenant_id !== $this->tenant->id) {
             return;

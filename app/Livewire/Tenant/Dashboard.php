@@ -102,14 +102,14 @@ class Dashboard extends Component
     {
         // 1. Raw Queries
         $visitsRaw = $this->tenant->tenantVisits()
-            ->select(DB::raw('DATE(visited_at) as date'), DB::raw('count(*) as count'))
+            ->selectRaw('DATE(visited_at) as date, count(*) as count')
             ->where('visited_at', '>=', now()->subDays(29)->startOfDay())
             ->groupBy('date')
             ->pluck('count', 'date')
             ->toArray();
 
         $clicksRaw = $this->tenant->interactions()
-            ->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as count'))
+            ->selectRaw('DATE(created_at) as date, count(*) as count')
             ->where('type', 'whatsapp')
             ->where('created_at', '>=', now()->subDays(29)->startOfDay())
             ->groupBy('date')

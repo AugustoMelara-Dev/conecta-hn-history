@@ -67,13 +67,8 @@ class Index extends Component
     #[Computed]
     public function products()
     {
-        return Product::withoutGlobalScopes()
-            ->where('tenant_id', $this->tenant->id)
-            ->when($this->search, function ($query) {
-                $query->where('name', 'like', "%{$this->search}%");
-            })
-            ->orderByDesc('created_at')
-            ->paginate(12);
+        // Use Model Helper to avoid Architecture Violation (withoutGlobalScopes)
+        return Product::getAdminList($this->tenant->id, $this->search);
     }
 
     /**
@@ -82,9 +77,8 @@ class Index extends Component
     #[Computed]
     public function limits(): array
     {
-        $currentCount = Product::withoutGlobalScopes()
-            ->where('tenant_id', $this->tenant->id)
-            ->count();
+        // Use Model Helper to avoid Architecture Violation
+        $currentCount = Product::countAllForTenant($this->tenant->id);
 
         $limit = $this->tenant->is_pro ? self::LIMIT_PRO : self::LIMIT_FREE;
 

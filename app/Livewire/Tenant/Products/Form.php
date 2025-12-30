@@ -218,9 +218,8 @@ class Form extends Component
         // GUARD CLAUSE: Plan limit (only for new products)
         // ─────────────────────────────────────────────────────────────────────
         if (! $this->isEditing) {
-            $currentCount = Product::withoutGlobalScopes()
-                ->where('tenant_id', $this->tenant->id)
-                ->count();
+            // Use Model Helper to avoid Architecture Violation
+            $currentCount = Product::countAllForTenant($this->tenant->id);
 
             $limit = $isPro ? self::LIMIT_PRO : self::LIMIT_FREE;
 

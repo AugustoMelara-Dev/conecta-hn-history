@@ -140,11 +140,7 @@ class Index extends Component
         $rawData = Order::where('tenant_id', $tenantId)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->whereNotIn('status', ['cancelled'])
-            ->select(
-                DB::raw('DATE(created_at) as date'),
-                DB::raw('SUM(total) as revenue'),
-                DB::raw('COUNT(*) as orders')
-            )
+            ->selectRaw('DATE(created_at) as date, SUM(total) as revenue, COUNT(*) as orders')
             ->groupBy('date')
             ->orderBy('date')
             ->get()
