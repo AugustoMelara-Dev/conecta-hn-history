@@ -1,0 +1,72 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\DataTransferObjects\Payment;
+
+use App\ValueObjects\Money;
+
+/**
+ * PaymentData - Immutable DTO for Payment Request Information
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  ARCHITECTURAL RATIONALE: Vendor-Agnostic Payment Request               ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║  This DTO encapsulates all information needed to initiate a payment,    ║
+ * ║  regardless of whether we're using Stripe, PayPal, or PixelPay.         ║
+ * ║                                                                          ║
+ * ║  The PaymentGateway contract accepts this DTO, not raw arrays or        ║
+ * ║  vendor-specific parameters. This ensures:                              ║
+ * ║    - Type safety at compile time                                        ║
+ * ║    - IDE autocomplete for all fields                                    ║
+ * ║    - Validation happens once at DTO construction                        ║
+ * ║    - Gateway implementations map DTO fields to vendor-specific formats  ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ */
+final readonly class PaymentData
+{
+    public function __construct(
+        /** Amount to charge (in Money Value Object) */
+        public Money $amount,
+        
+        /** Payment method token (from frontend SDK) */
+        public string $paymentMethodToken,
+        
+        /** Customer email for receipts */
+        public string $customerEmail,
+        
+        /** Customer name for the transaction */
+        public string $customerName,
+        
+        /** Order reference (for reconciliation) */
+        public string $orderId,
+        
+        /** Description shown on statement */
+        public string $statementDescriptor = 'CONECTAHN',
+        
+        /** Additional metadata (idempotency keys, etc.) */
+        public array $metadata = [],
+        
+        /** Billing address (optional) */
+        public ?array $billingAddress = null,
+    ) {}
+
+    /**
+     * Create from array (useful for request validation).
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            amount: $data['amount'] instanceof Money 
+                ? $data['amount'] 
+                : Money::fromCents((int) $data['amount']),
+            paymentMethodToken: $data['payment_method_token'] ?? $data['token'],
+            customerEmail: $data['customer_email'] ?? $data['email'],
+            customerName: $data['customer_name'] ?? $data['name'],
+            orderId: $data['order_id'],
+            statementDescriptor: $data['statement_descriptor'] ?? 'CONECTAHN',
+            metadata: $data['metadata'] ?? [],
+            billingAddress: $data['billing_address'] ?? null,
+        );
+    }
+}
