@@ -128,6 +128,15 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Order::observe(\App\Observers\OrderObserver::class);
 
         // ═══════════════════════════════════════════════════════════════════════
+        // DIRECTIVE 1: EVENT-DRIVEN CACHE CONSISTENCY
+        // ═══════════════════════════════════════════════════════════════════════
+        // Decoupled cache invalidation for registration form dropdowns.
+        // Any modification via API, Seeders, or Artisan triggers cache refresh.
+        // ═══════════════════════════════════════════════════════════════════════
+        \App\Models\Category::observe(\App\Observers\CategoryObserver::class);
+        \App\Models\City::observe(\App\Observers\CityObserver::class);
+
+        // ═══════════════════════════════════════════════════════════════════════
         // EVENT LISTENERS - INVENTORY ALERTING
         // ═══════════════════════════════════════════════════════════════════════
         // LowStockThresholdReached: Dispatched when product stock falls below threshold.
