@@ -146,14 +146,22 @@ class SecurityHeaders
             ? "'self' 'nonce-{$nonce}'"
             : "'self' 'unsafe-inline'";
 
-        $scriptSrc = "script-src {$scriptPolicy} ".implode(' ', self::TRUSTED_SCRIPTS);
+        // ═══════════════════════════════════════════════════════════════════════
+        // VITE DEV SERVER (Local/Staging only)
+        // ═══════════════════════════════════════════════════════════════════════
+        // NOTE: IPv6 literals like [::1] are rejected by some CSP parsers.
+        // We force 'localhost' + '127.0.0.1' which cover most dev setups.
+        $viteDevSrc = $isProduction ? '' : ' http://localhost:5173 http://127.0.0.1:5173';
+        $viteDevWs = $isProduction ? '' : ' ws://localhost:5173 ws://127.0.0.1:5173';
+
+        $scriptSrc = "script-src {$scriptPolicy} ".implode(' ', self::TRUSTED_SCRIPTS).$viteDevSrc;
 
         // ═══════════════════════════════════════════════════════════════════════
         // STYLE-SRC: Control CSS execution
         // ═══════════════════════════════════════════════════════════════════════
         // Note: Tailwind/React inline styles require 'unsafe-inline' in both envs
         // This is a known limitation - styles are lower risk than scripts
-        $styleSrc = "style-src 'self' 'unsafe-inline' ".implode(' ', self::TRUSTED_STYLES);
+        $styleSrc = "style-src 'self' 'unsafe-inline' ".implode(' ', self::TRUSTED_STYLES).$viteDevSrc;
 
         // ═══════════════════════════════════════════════════════════════════════
         // BUILD FULL CSP DIRECTIVE
@@ -162,9 +170,9 @@ class SecurityHeaders
             "default-src 'self'",
             $scriptSrc,
             $styleSrc,
-            "img-src 'self' data: https: blob:",
+            "img-src 'self' data: https: blob:".$viteDevSrc,
             "font-src 'self' https://fonts.gstatic.com https://fonts.bunny.net",
-            "connect-src 'self' ".implode(' ', self::TRUSTED_CONNECT).' wss:',
+            "connect-src 'self' ".implode(' ', self::TRUSTED_CONNECT).' wss:'.$viteDevSrc.$viteDevWs,
             "frame-src 'self' https://js.stripe.com https://www.facebook.com",
             "frame-ancestors 'none'",
             "form-action 'self'",

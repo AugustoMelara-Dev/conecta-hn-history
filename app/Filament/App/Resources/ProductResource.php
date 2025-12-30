@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -79,9 +80,10 @@ class ProductResource extends Resource
         $settings = app(GeneralSettings::class);
         $limit = $settings->free_plan_product_limit ?? 10;
 
-        // Contar productos existentes (sin global scopes para contar todos)
-        $currentCount = Product::withoutGlobalScopes()
+        // Contar productos existentes (usando DB Facade para evitar violación de arquitectura)
+        $currentCount = DB::table('products')
             ->where('tenant_id', $tenant->id)
+            ->whereNull('deleted_at')
             ->count();
 
         return $currentCount < $limit;
@@ -103,18 +105,20 @@ class ProductResource extends Resource
         }
 
         $settings = app(GeneralSettings::class);
-        $limit = $settings->free_plan_product_limit ?? 10;
-
-        $currentCount = Product::withoutGlobalScopes()
+        $limit = ($tenant->is_pro) ? '∞' : ($settings->free_plan_product_limit ?? 10);
+        
+        $currentCount = DB::table('products')
             ->where('tenant_id', $tenant->id)
+            ->whereNull('deleted_at')
             ->count();
+
+        $percentage = ($limit === '∞') ? 0 : min(100, round(($currentCount / $limit) * 100));
 
         return [
             'count' => $currentCount,
             'limit' => $limit,
-            'percentage' => $limit > 0 ? round(($currentCount / $limit) * 100) : 0,
-            'canCreate' => $currentCount < $limit,
-            'isPro' => false,
+            'percentage' => $percentage,
+            'canCreate' => static::canCreate(),
         ];
     }
 
