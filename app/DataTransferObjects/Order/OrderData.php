@@ -131,11 +131,17 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
         // ═══════════════════════════════════════════════════════════════════════
         // PHASE 3: Hydrate Items (Fail-Fast on each item)
         // ═══════════════════════════════════════════════════════════════════════
-        // Using array_map for performance (no query inside loop)
-        $items = collect(array_map(
-            static fn(array $item): OrderItemData => OrderItemData::fromArray($item),
-            $rawItems
-        ));
+        // Validate each item is an array before processing
+        $items = collect();
+        foreach ($rawItems as $index => $item) {
+            if (!is_array($item)) {
+                throw InvalidBusinessRuleException::custom(
+                    "Item at index {$index} is not a valid array",
+                    ['index' => $index, 'type' => gettype($item)]
+                );
+            }
+            $items->push(OrderItemData::fromArray($item));
+        }
 
         // ═══════════════════════════════════════════════════════════════════════
         // PHASE 4: Calculate Totals (NEVER trust client-side calculations)
@@ -154,7 +160,8 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
             );
         }
 
-        $taxAmount = $calculatedSubtotal->multiply($taxRate / 100);
+        // CRITICAL: Use multiplyByPercentage, NOT multiply() which truncates floats!
+        $taxAmount = $calculatedSubtotal->multiplyByPercentage($taxRate);
 
         $shipping = self::extractMoney($data, 'shipping', 'shipping_cents', 0);
         $discount = self::extractMoney($data, 'discount', 'discount_cents', 0);

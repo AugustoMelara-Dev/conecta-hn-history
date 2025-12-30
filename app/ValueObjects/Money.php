@@ -139,11 +139,40 @@ final readonly class Money
     }
 
     /**
-     * Multiply by a factor (for quantity calculations).
+     * Multiply by an integer factor (for quantity calculations).
      */
     public function multiply(int $factor): self
     {
         return new self($this->cents * $factor, $this->currency);
+    }
+
+    /**
+     * Multiply by a percentage/decimal factor (for tax/discount calculations).
+     *
+     * ╔════════════════════════════════════════════════════════════════════════╗
+     * ║  CRITICAL: Use this for percentages, NOT multiply()!                  ║
+     * ║                                                                        ║
+     * ║  WRONG:  $subtotal->multiply($taxRate / 100)  // 15/100=0.15→0 (int!) ║
+     * ║  RIGHT:  $subtotal->multiplyByPercentage(15)  // Correct calculation  ║
+     * ╚════════════════════════════════════════════════════════════════════════╝
+     *
+     * @param float $percentage The percentage (e.g., 15 for 15%)
+     */
+    public function multiplyByPercentage(float $percentage): self
+    {
+        $result = (int) round($this->cents * ($percentage / 100));
+        return new self($result, $this->currency);
+    }
+
+    /**
+     * Multiply by a decimal factor (for arbitrary multiplications).
+     *
+     * @param float $factor The multiplication factor (e.g., 0.15 for 15%)
+     */
+    public function multiplyByFloat(float $factor): self
+    {
+        $result = (int) round($this->cents * $factor);
+        return new self($result, $this->currency);
     }
 
     /**

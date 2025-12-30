@@ -101,22 +101,22 @@ final readonly class CouponResult implements Arrayable, \JsonSerializable
             return [
                 'valid' => true,
                 'discount' => [
-                    'cents' => $this->discount->cents(),
-                    'formatted' => $this->discount->formatted(),
+                    'cents' => $this->discount?->cents() ?? 0,
+                    'formatted' => $this->discount?->formatted() ?? 'L. 0.00',
                 ],
                 'new_total' => [
-                    'cents' => $this->newTotal->cents(),
-                    'formatted' => $this->newTotal->formatted(),
+                    'cents' => $this->newTotal?->cents() ?? 0,
+                    'formatted' => $this->newTotal?->formatted() ?? 'L. 0.00',
                 ],
                 'coupon_code' => $this->couponCode,
-                'coupon_type' => $this->couponType->value,
+                'coupon_type' => $this->couponType?->value,
                 'coupon_value' => $this->couponValue,
             ];
         }
 
         $result = [
             'valid' => false,
-            'error_code' => $this->rejection->value,
+            'error_code' => $this->rejection?->value,
             'message' => $this->message,
         ];
 
