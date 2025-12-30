@@ -50,10 +50,13 @@ class AdminPanelProvider extends PanelProvider
             ->favicon(asset('favicon.ico'))
 
             // ═══════════════════════════════════════════════════════════════
-            // PALETA DE COLORES: Azul Profesional
+            // PALETA DE COLORES: Corporate Minimalist (Monochrome)
+            // ═══════════════════════════════════════════════════════════════
+            // Professional monochrome palette conveys trust and sophistication.
+            // Slate as primary provides neutral, business-appropriate interface.
             // ═══════════════════════════════════════════════════════════════
             ->colors([
-                'primary' => Color::Blue,
+                'primary' => Color::Slate,
                 'gray' => Color::Slate,
                 'success' => Color::Emerald,
                 'warning' => Color::Amber,
@@ -67,11 +70,33 @@ class AdminPanelProvider extends PanelProvider
             ->font('Outfit')
 
             // ═══════════════════════════════════════════════════════════════
+            // NAVIGATION TOPOLOGY: Deterministic Sidebar Ordering
+            // ═══════════════════════════════════════════════════════════════
+            // Explicit groups ensure consistent menu structure as app grows.
+            // Resources are auto-sorted into these groups by navigationGroup().
+            // ═══════════════════════════════════════════════════════════════
+            ->navigationGroups([
+                'Dashboard',
+                'Gerencia',
+                'Negocios',
+                'Finanzas',
+                'Configuración',
+            ])
+
+            // ═══════════════════════════════════════════════════════════════
             // ERGONOMÍA DE NAVEGACIÓN
             // ═══════════════════════════════════════════════════════════════
             ->sidebarCollapsibleOnDesktop()
             ->collapsibleNavigationGroups(false)
             ->maxContentWidth('full')
+
+            // ═══════════════════════════════════════════════════════════════
+            // SPA MODE: Turbo/Livewire Navigation
+            // ═══════════════════════════════════════════════════════════════
+            // Prevents full browser reloads between views.
+            // Dramatically improves perceived performance and UX fluidity.
+            // ═══════════════════════════════════════════════════════════════
+            ->spa()
 
             // ═══════════════════════════════════════════════════════════════
             // MODO OSCURO
