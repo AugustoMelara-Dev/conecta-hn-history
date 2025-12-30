@@ -79,6 +79,43 @@ Route::prefix('track')->group(function () {
 });
 
 // ═══════════════════════════════════════════════════════════════════════
+// PAYMENT STATUS - React/Inertia
+// ═══════════════════════════════════════════════════════════════════════
+Route::get('/payment-pending/{payment}', function ($paymentId) {
+    // Fetch payment from database (simplified, adjust to your Payment model)
+    return \Inertia\Inertia::render('Public/PaymentPending', [
+        'payment' => [
+            'id' => $paymentId,
+            'status' => 'pending',
+            'amount' => 499,
+            'method' => 'Transferencia',
+        ],
+        'tenant' => null,
+        'checkUrl' => "/api/payments/{$paymentId}/status",
+    ]);
+})->name('payment.pending');
+
+// ═══════════════════════════════════════════════════════════════════════
+// TENANT REGISTRATION - Atomic Transactional Controller
+// FIX #16: Rate limiting for security - prevents DoS/spam attacks
+// Principle: Defense in Depth - 5 attempts per minute per IP
+// ═══════════════════════════════════════════════════════════════════════
+Route::controller(\App\Http\Controllers\Auth\RegisterTenantController::class)->group(function () {
+    Route::get('/registrar-negocio', 'create')->name('tenant.register');
+    Route::post('/registrar-negocio', 'store')
+        ->middleware('throttle:5,1')  // 5 attempts per minute
+        ->name('tenant.register.store');
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// FAVORITES - Inertia-Compatible Toggle Controller
+// ═══════════════════════════════════════════════════════════════════════
+Route::middleware('auth')->group(function () {
+    Route::post('/favorites/toggle', \App\Http\Controllers\Public\ToggleFavoriteController::class)
+        ->name('favorites.toggle');
+});
+
+// ═══════════════════════════════════════════════════════════════════════
 // Auth Routes (Dashboard, Mi Cuenta)
 // ═══════════════════════════════════════════════════════════════════════
 Route::get('/dashboard', function () {
@@ -189,10 +226,10 @@ require __DIR__.'/auth.php';
 |
 */
 
-// ═══ TENANT MICROSITES / STOREFRONT - React/Inertia (MUST BE LAST) ═══
-Route::get('/{tenant:slug}', [TenantController::class, 'show'])
-    ->middleware('track.tenant.visit')  // First-party analytics
-    ->name('tenant.show');
+// ═══════════════════════════════════════════════════════════════════════════
+// FIX #5: REMOVED DUPLICATE tenant.show route
+// Principle: DRY (Don't Repeat Yourself) - Route defined in routes/public.php
+// The public.php version includes full product/schedule data for React frontend
+// ═══════════════════════════════════════════════════════════════════════════
 
-// [DEPRECATED] Old Livewire route:
-// Route::get('/{tenant:slug}', \App\Livewire\Tenant\Shop\Show::class)->name('tenant.show');
+require __DIR__.'/tenant.php';
