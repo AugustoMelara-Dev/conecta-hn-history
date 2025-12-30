@@ -53,16 +53,50 @@ final readonly class PaymentData
 
     /**
      * Create from array (useful for request validation).
+     *
+     * @param array $data Payment data array
+     * @throws \InvalidArgumentException When required fields are missing
      */
     public static function fromArray(array $data): self
     {
+        // ═══════════════════════════════════════════════════════════════════════
+        // VALIDATION: Fail fast with clear error messages
+        // ═══════════════════════════════════════════════════════════════════════
+        $requiredFields = ['order_id'];
+        foreach ($requiredFields as $field) {
+            if (!isset($data[$field]) || $data[$field] === '') {
+                throw new \InvalidArgumentException("PaymentData: Required field '{$field}' is missing");
+            }
+        }
+
+        // Amount can be Money object, int (cents), or missing (throws)
+        if (!isset($data['amount'])) {
+            throw new \InvalidArgumentException("PaymentData: 'amount' is required");
+        }
+        $amount = $data['amount'] instanceof Money 
+            ? $data['amount'] 
+            : Money::fromCents((int) $data['amount']);
+
+        // Payment token with fallback keys
+        $token = $data['payment_method_token'] ?? $data['token'] ?? null;
+        if (empty($token)) {
+            throw new \InvalidArgumentException("PaymentData: 'payment_method_token' or 'token' is required");
+        }
+
+        // Email with fallback (required for receipts)
+        $email = $data['customer_email'] ?? $data['email'] ?? null;
+        if (empty($email)) {
+            throw new \InvalidArgumentException("PaymentData: 'customer_email' or 'email' is required");
+        }
+
+        // Name with fallback (required for transaction)
+        $name = $data['customer_name'] ?? $data['name'] ?? 'Customer';
+
         return new self(
-            amount: $data['amount'] instanceof Money 
-                ? $data['amount'] 
-                : Money::fromCents((int) $data['amount']),
-            paymentMethodToken: $data['payment_method_token'] ?? $data['token'],
-            customerEmail: $data['customer_email'] ?? $data['email'],
-            customerName: $data['customer_name'] ?? $data['name'],
+            amount: $amount,
+            paymentMethodToken: $token,
+            customerEmail: $email,
+            customerName: $name,
             orderId: $data['order_id'],
             statementDescriptor: $data['statement_descriptor'] ?? 'CONECTAHN',
             metadata: $data['metadata'] ?? [],
@@ -70,3 +104,4 @@ final readonly class PaymentData
         );
     }
 }
+
