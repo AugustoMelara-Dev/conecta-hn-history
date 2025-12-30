@@ -62,13 +62,14 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // ═══════════════════════════════════════════════════════════════════════
-        // TRANSPORT LAYER SECURITY: Force HTTPS in Production
+        // TRANSPORT LAYER SECURITY: Force HTTPS in Production & Staging
         // ═══════════════════════════════════════════════════════════════════════
         // All generated URLs (route(), url(), asset()) will use HTTPS scheme.
         // Essential for mixed-content prevention and HSTS compliance.
-        // Conditional check preserves HTTP flexibility during local development.
+        // Applied to both production AND staging to catch SSL issues pre-launch.
+        // Only local development uses HTTP for debugging flexibility.
         // ═══════════════════════════════════════════════════════════════════════
-        if (app()->isProduction()) {
+        if (app()->environment('production', 'staging')) {
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
@@ -91,9 +92,44 @@ class AppServiceProvider extends ServiceProvider
         //    Catches typos like $user->emial instead of returning null silently.
         //
         // PRODUCTION BEHAVIOR: Disabled to prevent user-facing exceptions.
-        // Violations in production are logged but do not crash the application.
+        // Instead, violations are logged for post-mortem analysis.
         // ═══════════════════════════════════════════════════════════════════════
-        \Illuminate\Database\Eloquent\Model::shouldBeStrict(!app()->isProduction());
+        if (app()->isProduction()) {
+            // ─────────────────────────────────────────────────────────────────────
+            // PRODUCTION: Log violations without crashing (observability)
+            // ─────────────────────────────────────────────────────────────────────
+            \Illuminate\Database\Eloquent\Model::handleLazyLoadingViolationUsing(
+                function ($model, $relation) {
+                    \Illuminate\Support\Facades\Log::warning(
+                        'N+1 Lazy Loading detected in production',
+                        [
+                            'model' => get_class($model),
+                            'model_id' => $model->getKey(),
+                            'relation' => $relation,
+                            'url' => request()->fullUrl(),
+                        ]
+                    );
+                }
+            );
+            
+            \Illuminate\Database\Eloquent\Model::handleDiscardedAttributeViolationUsing(
+                function ($model, $keys) {
+                    \Illuminate\Support\Facades\Log::warning(
+                        'Mass assignment violation in production',
+                        [
+                            'model' => get_class($model),
+                            'discarded_keys' => $keys,
+                            'url' => request()->fullUrl(),
+                        ]
+                    );
+                }
+            );
+        } else {
+            // ─────────────────────────────────────────────────────────────────────
+            // DEV/STAGING: Throw exceptions to fail fast and fix immediately
+            // ─────────────────────────────────────────────────────────────────────
+            \Illuminate\Database\Eloquent\Model::shouldBeStrict();
+        }
 
         // ═══════════════════════════════════════════════════════════════════════
         // GRANULAR RATE LIMITING - TRAFFIC SHAPING ARCHITECTURE

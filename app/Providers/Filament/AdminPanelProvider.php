@@ -21,11 +21,16 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 /**
  * AdminPanelProvider - Centro de Comando Super Admin
  *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  ARCHITECTURAL RATIONALE: Enterprise Admin Panel Configuration          ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
  * Configuración del panel administrativo con:
- * - Paleta de colores azul profesional
+ * - Paleta de colores Corporate Minimalist (Zinc primary, Slate gray)
  * - Tipografía Outfit (moderna y tecnológica)
  * - Logo vectorial de marca
- * - Navegación optimizada para productividad
+ * - Navegación optimizada con grupos determinísticos
+ * - SPA Mode para UX fluido sin recargas
  */
 class AdminPanelProvider extends PanelProvider
 {
@@ -50,14 +55,16 @@ class AdminPanelProvider extends PanelProvider
             ->favicon(asset('favicon.ico'))
 
             // ═══════════════════════════════════════════════════════════════
-            // PALETA DE COLORES: Corporate Minimalist (Monochrome)
+            // PALETA DE COLORES: Corporate Minimalist (Zinc + Slate)
             // ═══════════════════════════════════════════════════════════════
-            // Professional monochrome palette conveys trust and sophistication.
-            // Slate as primary provides neutral, business-appropriate interface.
+            // DESIGN DECISION: Zinc for primary (interactive elements) provides
+            // subtle visual distinction from Slate (structural gray elements).
+            // This prevents the "gray-on-gray" accessibility issue where buttons
+            // become indistinguishable from backgrounds.
             // ═══════════════════════════════════════════════════════════════
             ->colors([
-                'primary' => Color::Slate,
-                'gray' => Color::Slate,
+                'primary' => Color::Zinc,   // Interactive: buttons, links, focus states
+                'gray' => Color::Slate,     // Structural: backgrounds, borders, text
                 'success' => Color::Emerald,
                 'warning' => Color::Amber,
                 'danger' => Color::Rose,
@@ -73,14 +80,21 @@ class AdminPanelProvider extends PanelProvider
             // NAVIGATION TOPOLOGY: Deterministic Sidebar Ordering
             // ═══════════════════════════════════════════════════════════════
             // Explicit groups ensure consistent menu structure as app grows.
-            // Resources are auto-sorted into these groups by navigationGroup().
+            // Using NavigationGroup objects for icons and collapsible control.
+            // Resources must use ->navigationGroup('GroupName') to match.
             // ═══════════════════════════════════════════════════════════════
             ->navigationGroups([
-                'Dashboard',
-                'Gerencia',
-                'Negocios',
-                'Finanzas',
-                'Configuración',
+                \Filament\Navigation\NavigationGroup::make('Dashboard')
+                    ->icon('heroicon-o-home'),
+                \Filament\Navigation\NavigationGroup::make('Gerencia')
+                    ->icon('heroicon-o-briefcase'),
+                \Filament\Navigation\NavigationGroup::make('Negocios')
+                    ->icon('heroicon-o-building-storefront'),
+                \Filament\Navigation\NavigationGroup::make('Finanzas')
+                    ->icon('heroicon-o-banknotes'),
+                \Filament\Navigation\NavigationGroup::make('Configuración')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->collapsed(),
             ])
 
             // ═══════════════════════════════════════════════════════════════
