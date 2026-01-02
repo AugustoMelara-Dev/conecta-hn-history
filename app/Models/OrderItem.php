@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * Represents a single product in an order.
  * Stores frozen price/name data to preserve historical accuracy.
+ *
+ * ALIGNED WITH: 2025_01_02_000002_create_order_items_table.php
  */
 class OrderItem extends Model
 {
@@ -17,21 +19,20 @@ class OrderItem extends Model
         'order_id',
         'product_id',
         'product_name',
-        'product_sku',
-        'unit_price',
+        'product_price', // Snapshot price at order time
         'quantity',
-        'line_total',
-        'options',
-        'options_total',
+        'unit_price',    // Price with modifiers applied
+        'total_price',   // unit_price * quantity
+        'selected_options', // JSON with variant/addon selections
         'notes',
     ];
 
     protected $casts = [
+        'product_price' => 'decimal:2',
         'unit_price' => 'decimal:2',
-        'line_total' => 'decimal:2',
-        'options_total' => 'decimal:2',
+        'total_price' => 'decimal:2',
         'quantity' => 'integer',
-        'options' => 'array',
+        'selected_options' => 'array',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -57,18 +58,18 @@ class OrderItem extends Model
         return 'L. '.number_format($this->unit_price, 2);
     }
 
-    public function getFormattedLineTotalAttribute(): string
+    public function getFormattedTotalPriceAttribute(): string
     {
-        return 'L. '.number_format($this->line_total, 2);
+        return 'L. '.number_format($this->total_price, 2);
     }
 
     public function getOptionsDescriptionAttribute(): string
     {
-        if (! $this->options || empty($this->options)) {
+        if (! $this->selected_options || empty($this->selected_options)) {
             return '';
         }
 
-        return collect($this->options)
+        return collect($this->selected_options)
             ->map(fn ($opt) => $opt['option'] ?? '')
             ->filter()
             ->implode(', ');
@@ -85,21 +86,21 @@ class OrderItem extends Model
      */
     public static function fromCartItem(array $cartItem): static
     {
-        $unitPrice = (float) ($cartItem['price'] ?? 0);
+        $productPrice = (float) ($cartItem['price'] ?? 0);
         $quantity = (int) ($cartItem['quantity'] ?? 1);
         $options = $cartItem['options'] ?? [];
         $optionsTotal = collect($options)->sum('price');
-        $lineTotal = ($unitPrice + $optionsTotal) * $quantity;
+        $unitPrice = $productPrice + $optionsTotal;
+        $totalPrice = $unitPrice * $quantity;
 
         return new static([
             'product_id' => $cartItem['product_id'] ?? $cartItem['id'] ?? null,
             'product_name' => $cartItem['name'] ?? 'Producto',
-            'product_sku' => $cartItem['sku'] ?? null,
+            'product_price' => $productPrice,
             'unit_price' => $unitPrice,
             'quantity' => $quantity,
-            'options' => $options,
-            'options_total' => $optionsTotal,
-            'line_total' => $lineTotal,
+            'selected_options' => $options,
+            'total_price' => $totalPrice,
             'notes' => $cartItem['notes'] ?? null,
         ]);
     }
