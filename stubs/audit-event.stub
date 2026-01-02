@@ -1,0 +1,102 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Events\{{ boundedContext }};
+
+use App\Contracts\Events\AuditEvent;
+use App\Enums\Severity;
+use App\Traits\HasDomainMetadata;
+use App\ValueObjects\AuditContext;
+use App\ValueObjects\TenantId;
+use DateTimeImmutable;
+
+/**
+ * {{ class }} - Audit Event for Compliance Logging
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  AUDIT EVENT: Security & Compliance Logging                             ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║                                                                          ║
+ * ║  SECURITY REQUIREMENTS (ADR-002):                                       ║
+ * ║    - ❌ NO Eloquent models                                              ║
+ * ║    - ❌ NO SerializesModels trait                                       ║
+ * ║    - ❌ NO ShouldBroadcast (security risk)                              ║
+ * ║    - ✅ IP addresses MUST be anonymized                                 ║
+ * ║    - ✅ GDPR-compliant data handling                                    ║
+ * ║    - ✅ toAuditLog() for safe logging                                   ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * LISTENERS:
+ *   - TODO: Add listeners here
+ *
+ * DISPATCH POINT: TODO: Document where this event is dispatched
+ */
+final readonly class {{ class }} implements AuditEvent
+{
+    use HasDomainMetadata;
+
+    /**
+     * @param TenantId|null $tenantId Tenant context (null for platform-level)
+     * @param AuditContext $context Standardized audit metadata (IP anonymized)
+     */
+    public function __construct(
+        private ?TenantId $tenantId,
+        private AuditContext $context,
+        // TODO: Add your event-specific properties here
+    ) {
+        $this->initMetadata();
+    }
+
+    /**
+     * Factory: Create from audit data.
+     */
+    public static function create(
+        ?int $tenantId,
+        AuditContext $context,
+        // TODO: Add factory parameters
+    ): self {
+        return new self(
+            tenantId: $tenantId ? TenantId::fromInt($tenantId) : null,
+            context: $context->withAnonymizedIp(),
+        );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // AuditEvent Interface Implementation
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Convert to a flat array for secure logging.
+     * SECURITY: IP is ALWAYS anonymized.
+     */
+    public function toAuditLog(): array
+    {
+        $safeContext = $this->context->withAnonymizedIp();
+
+        return [
+            'event' => '{{ aggregateNameLower }}_event',
+            'event_id' => $this->eventId,
+            'tenant_id' => $this->tenantId?->toInt(),
+            ...$safeContext->toArray(anonymize: true),
+            'occurred_at' => $this->occurredAt->format(DATE_ATOM),
+            // TODO: Add your event-specific fields
+        ];
+    }
+
+    /**
+     * Get the PSR-3 severity level.
+     */
+    public function severity(): Severity
+    {
+        return Severity::INFO;
+    }
+
+    /**
+     * Get the standardized audit context.
+     */
+    public function context(): AuditContext
+    {
+        return $this->context;
+    }
+}
