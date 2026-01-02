@@ -4,61 +4,107 @@ declare(strict_types=1);
 
 namespace App\Events\Order;
 
-use App\Models\Order;
-use App\Models\User;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use App\Contracts\Events\DomainEvent;
+use App\Traits\HasDomainMetadata;
+use App\ValueObjects\OrderNumber;
+use App\ValueObjects\TenantId;
+use DateTimeImmutable;
 
 /**
- * OrderCancelled - Semantic Event for Order Voiding
+ * OrderCancelled - Pure Domain Event for Order Voiding
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  PURE DOMAIN EVENT: Business Fact Only                                  ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║                                                                          ║
+ * ║  INVARIANTS GUARANTEED:                                                 ║
+ * ║    - The order was in a cancellable state (not delivered)              ║
+ * ║    - Inventory restoration is triggered                                 ║
+ * ║    - Refund is initiated if payment was received                       ║
+ * ║    - This event is only dispatched AFTER the transaction commits       ║
+ * ║                                                                          ║
+ * ║  PURITY RULES:                                                          ║
+ * ║    - ❌ NO Eloquent models                                              ║
+ * ║    - ❌ NO ShouldBroadcast (moved to OrderCancelledBroadcast)          ║
+ * ║    - ❌ NO Dispatchable trait (use DomainEventBus)                     ║
+ * ║    - ✅ Only primitives and Value Objects                               ║
+ * ║    - ✅ toPrimitives() for safe queue serialization                     ║
+ * ║    - ✅ eventId() for idempotency                                       ║
+ * ║                                                                          ║
+ * ║  CANCELLATION SOURCES:                                                  ║
+ * ║    - Customer request                                                   ║
+ * ║    - Merchant decision (out of stock)                                  ║
+ * ║    - System (payment timeout via ReleaseStaleOrders job)               ║
+ * ║    - Fraud detection                                                    ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * LISTENERS:
  *   - SendCancellationEmailListener
  *   - RestoreInventoryListener
  *   - InitiateRefundListener
  *   - UpdateAnalyticsListener
+ *   - → OrderCancelledBroadcastListener (fires UI event)
+ *
+ * DISPATCH POINT: OrderStateService::onCancelled() via DomainEventBus
  */
-class OrderCancelled implements ShouldBroadcast, ShouldDispatchAfterCommit
+final readonly class OrderCancelled implements DomainEvent
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use HasDomainMetadata;
 
-    public readonly int $tenantId;
-
+    /**
+     * @param TenantId $tenantId Tenant context for queue middleware
+     * @param int $orderId The order aggregate root ID
+     * @param OrderNumber $orderNumber Human-readable order reference
+     * @param string $reason Machine or human-readable cancellation reason
+     * @param int|null $cancelledById User ID who initiated cancellation (null for system)
+     * @param bool $wasPaid Whether the order was paid (affects refund logic)
+     */
     public function __construct(
-        public readonly Order $order,
-        public readonly string $reason,
-        public readonly ?User $cancelledBy = null,
-        public readonly bool $autoRefund = false,
+        private TenantId $tenantId,
+        private int $orderId,
+        public OrderNumber $orderNumber,
+        public string $reason,
+        public ?int $cancelledById,
+        public bool $wasPaid,
+        // Restoration parameters for fromPrimitives()
+        ?string $restoredEventId = null,
+        ?string $restoredOccurredAt = null,
+        ?string $restoredCorrelationId = null,
     ) {
-        $this->tenantId = $order->tenant_id;
+        $this->initMetadata(
+            correlationId: $restoredCorrelationId,
+            restoredEventId: $restoredEventId,
+            restoredOccurredAt: $restoredOccurredAt,
+        );
     }
 
-    public function broadcastOn(): array
-    {
-        return [
-            new PrivateChannel('tenant.' . $this->tenantId),
-        ];
+    /**
+     * Factory: Create from order data (snapshotted at creation time).
+     */
+    public static function create(
+        int $tenantId,
+        int $orderId,
+        string $orderNumber,
+        string $reason,
+        ?int $cancelledById = null,
+        bool $wasPaid = false
+    ): self {
+        return new self(
+            tenantId: TenantId::fromInt($tenantId),
+            orderId: $orderId,
+            orderNumber: OrderNumber::fromString($orderNumber),
+            reason: $reason,
+            cancelledById: $cancelledById,
+            wasPaid: $wasPaid,
+        );
     }
 
-    public function broadcastAs(): string
+    /**
+     * Check if this was a system-initiated cancellation.
+     */
+    public function isSystemCancellation(): bool
     {
-        return 'order.cancelled';
-    }
-
-    public function broadcastWith(): array
-    {
-        return [
-            'order_id' => $this->order->id,
-            'order_number' => $this->order->order_number,
-            'reason' => $this->reason,
-            'auto_refund' => $this->autoRefund,
-            'cancelled_at' => now()->toIso8601String(),
-            'tenant_id' => $this->tenantId,
-        ];
+        return $this->cancelledById === null;
     }
 
     /**
@@ -66,6 +112,59 @@ class OrderCancelled implements ShouldBroadcast, ShouldDispatchAfterCommit
      */
     public function shouldAutoRefund(): bool
     {
-        return $this->autoRefund && $this->order->isPaid();
+        return $this->wasPaid;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DomainEvent Interface Implementation
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public function tenantId(): TenantId
+    {
+        return $this->tenantId;
+    }
+
+    public function aggregateId(): int
+    {
+        return $this->orderId;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Safe Serialization (Queue-Safe, Refactor-Proof)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public function toPrimitives(): array
+    {
+        return [
+            'event_id' => $this->eventId,
+            'tenant_id' => $this->tenantId->toInt(),
+            'order_id' => $this->orderId,
+            'order_number' => $this->orderNumber->toString(),
+            'reason' => $this->reason,
+            'cancelled_by_id' => $this->cancelledById,
+            'was_paid' => $this->wasPaid,
+            'occurred_at' => $this->occurredAt->format(DATE_ATOM),
+        ];
+    }
+
+    public static function fromPrimitives(array $primitives): self
+    {
+        // Defensive deserialization: fail fast on missing tenant_id
+        $tenantId = $primitives['tenant_id'] ?? null;
+        if ($tenantId === null) {
+            throw new \InvalidArgumentException('Missing required key: tenant_id');
+        }
+
+        return new self(
+            tenantId: TenantId::fromInt($tenantId),
+            orderId: $primitives['order_id'] ?? 0,
+            orderNumber: OrderNumber::fromString($primitives['order_number'] ?? 'UNKNOWN'),
+            reason: $primitives['reason'] ?? 'unknown',
+            cancelledById: $primitives['cancelled_by_id'] ?? null,
+            wasPaid: $primitives['was_paid'] ?? false,
+            restoredEventId: $primitives['event_id'] ?? null,
+            restoredOccurredAt: $primitives['occurred_at'] ?? null,
+            restoredCorrelationId: $primitives['correlation_id'] ?? null,
+        );
     }
 }
