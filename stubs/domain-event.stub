@@ -1,0 +1,109 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Events\{{ boundedContext }};
+
+use App\Contracts\Events\DomainEvent;
+use App\Traits\HasDomainMetadata;
+use App\ValueObjects\TenantId;
+use DateTimeImmutable;
+
+/**
+ * {{ class }} - Pure Domain Event
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  PURE DOMAIN EVENT: Business Fact Only                                  ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║                                                                          ║
+ * ║  PURITY RULES (ADR-002):                                                ║
+ * ║    - ❌ NO Eloquent models                                              ║
+ * ║    - ❌ NO SerializesModels trait                                       ║
+ * ║    - ❌ NO ShouldBroadcast (use separate Broadcast event)              ║
+ * ║    - ✅ Only primitives and Value Objects                               ║
+ * ║    - ✅ toPrimitives() for safe queue serialization                     ║
+ * ║    - ✅ eventId() for idempotency                                       ║
+ * ║    - ✅ correlationId() for distributed tracing                        ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * LISTENERS:
+ *   - TODO: Add listeners here
+ *
+ * DISPATCH POINT: TODO: Document where this event is dispatched
+ */
+final readonly class {{ class }} implements DomainEvent
+{
+    use HasDomainMetadata;
+
+    /**
+     * @param TenantId $tenantId Tenant context for queue middleware
+     * @param int ${{ aggregateNameLower }}Id The aggregate root ID
+     */
+    public function __construct(
+        private TenantId $tenantId,
+        private int ${{ aggregateNameLower }}Id,
+        // TODO: Add your event-specific properties here
+    ) {
+        $this->initMetadata();
+    }
+
+    /**
+     * Factory: Create from data (snapshotted at creation time).
+     */
+    public static function create(
+        int $tenantId,
+        int ${{ aggregateNameLower }}Id,
+        // TODO: Add factory parameters
+    ): self {
+        return new self(
+            tenantId: TenantId::fromInt($tenantId),
+            {{ aggregateNameLower }}Id: ${{ aggregateNameLower }}Id,
+        );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DomainEvent Interface Implementation
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public function tenantId(): TenantId
+    {
+        return $this->tenantId;
+    }
+
+    public function aggregateId(): int
+    {
+        return $this->{{ aggregateNameLower }}Id;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Safe Serialization (Queue-Safe, Refactor-Proof)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public function toPrimitives(): array
+    {
+        return [
+            'event_id' => $this->eventId,
+            'correlation_id' => $this->correlationId,
+            'tenant_id' => $this->tenantId->toInt(),
+            '{{ aggregateNameLower }}_id' => $this->{{ aggregateNameLower }}Id,
+            'occurred_at' => $this->occurredAt->format(DATE_ATOM),
+            // TODO: Add your event-specific fields here
+        ];
+    }
+
+    public static function fromPrimitives(array $primitives): self
+    {
+        $event = new self(
+            tenantId: TenantId::fromInt($primitives['tenant_id']),
+            {{ aggregateNameLower }}Id: $primitives['{{ aggregateNameLower }}_id'],
+        );
+
+        $event->initMetadataFrom(
+            $primitives['event_id'],
+            $primitives['occurred_at'],
+            $primitives['correlation_id'] ?? null
+        );
+
+        return $event;
+    }
+}
