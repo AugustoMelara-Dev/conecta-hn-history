@@ -32,7 +32,7 @@ use InvalidArgumentException;
  *   $price->formatted(); // "L. 100.50"
  *   $total = $price->add(Money::fromCents(500, 'HNL')); // New Money object
  */
-final readonly class Money
+final readonly class Money implements \JsonSerializable
 {
     /**
      * @param int $cents The monetary amount in smallest currency unit (centavos)
@@ -298,5 +298,40 @@ final readonly class Money
                 "Cannot operate on Money with different currencies: {$this->currency} vs {$other->currency}"
             );
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // JsonSerializable Implementation (Queue-Safe)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Serialize to JSON-safe array.
+     * CRITICAL: cents must remain int, not float, for precision safety.
+     */
+    public function jsonSerialize(): array
+    {
+        return [
+            'cents' => $this->cents,
+            'currency' => $this->currency,
+        ];
+    }
+
+    /**
+     * Reconstruct from serialized array.
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            (int) $data['cents'],
+            $data['currency'] ?? 'HNL'
+        );
+    }
+
+    /**
+     * Alias for interface consistency with other events.
+     */
+    public function amount(): int
+    {
+        return $this->cents;
     }
 }
