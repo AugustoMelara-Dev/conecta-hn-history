@@ -4,69 +4,82 @@ declare(strict_types=1);
 
 namespace App\Events\Inventory;
 
-use App\Models\Product;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use App\Contracts\Events\DomainEvent;
+use App\Traits\HasDomainMetadata;
+use App\ValueObjects\TenantId;
+use DateTimeImmutable;
 
 /**
- * LowStockThresholdReached - Transaction-Safe Inventory Alert
+ * LowStockThresholdReached - Pure Domain Event for Inventory Alert
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  PROACTIVE INVENTORY MANAGEMENT                                         ║
+ * ║  DOMAIN EVENT: Inventory Threshold Breach                               ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║                                                                          ║
  * ║  TRIGGERED WHEN:                                                        ║
  * ║    Product stock_quantity falls at or below low_stock_threshold         ║
  * ║    after an order is placed.                                            ║
  * ║                                                                          ║
- * ║  LISTENERS CAN:                                                         ║
- * ║    - Send email notification to tenant owner                           ║
- * ║    - Push notification to mobile app                                   ║
- * ║    - Create database alert for dashboard                               ║
- * ║    - Trigger webhook to external inventory system                      ║
- * ║                                                                          ║
- * ║  TRANSACTION SAFETY:                                                    ║
- * ║    Implements ShouldDispatchAfterCommit because this event is          ║
- * ║    dispatched inside the order creation transaction. We must           ║
- * ║    ensure the stock decrement is COMMITTED before listeners query.     ║
+ * ║  PURITY RULES:                                                          ║
+ * ║    - ❌ NO Product model (was using SerializesModels)                   ║
+ * ║    - ❌ NO ShouldBroadcast (moved to LowStockBroadcast)                 ║
+ * ║    - ✅ Only primitives and Value Objects                               ║
+ * ║    - ✅ toPrimitives() for safe queue serialization                     ║
+ * ║    - ✅ eventId() for idempotency                                       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * DISPATCH POINT: InventoryManager::decrementStock() via DomainEventBus
  */
-class LowStockThresholdReached implements ShouldBroadcast, ShouldDispatchAfterCommit
+final readonly class LowStockThresholdReached implements DomainEvent
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use HasDomainMetadata;
 
+    /**
+     * @param TenantId $tenantId Tenant context for queue middleware
+     * @param int $productId The product aggregate root ID
+     * @param string $productName Human-readable product name (snapshotted)
+     * @param string|null $productSku Product SKU if available (snapshotted)
+     * @param int $currentStock Stock level after decrement
+     * @param int $threshold The low stock threshold configured for this product
+     */
     public function __construct(
-        public readonly Product $product,
-        public readonly int $currentStock,
-        public readonly int $threshold,
-    ) {}
-
-    public function broadcastOn(): array
-    {
-        return [
-            new PrivateChannel('tenant.' . $this->product->tenant_id),
-        ];
+        private TenantId $tenantId,
+        private int $productId,
+        public string $productName,
+        public ?string $productSku,
+        public int $currentStock,
+        public int $threshold,
+        // Restoration parameters for fromPrimitives()
+        ?string $restoredEventId = null,
+        ?string $restoredOccurredAt = null,
+        ?string $restoredCorrelationId = null,
+    ) {
+        $this->initMetadata(
+            correlationId: $restoredCorrelationId,
+            restoredEventId: $restoredEventId,
+            restoredOccurredAt: $restoredOccurredAt,
+        );
     }
 
-    public function broadcastAs(): string
-    {
-        return 'inventory.low_stock';
-    }
-
-    public function broadcastWith(): array
-    {
-        return [
-            'product_id' => $this->product->id,
-            'product_name' => $this->product->name,
-            'product_sku' => $this->product->sku,
-            'current_stock' => $this->currentStock,
-            'threshold' => $this->threshold,
-            'is_critical' => $this->currentStock === 0,
-        ];
+    /**
+     * Factory: Create from product data (snapshotted at creation time).
+     */
+    public static function create(
+        int $tenantId,
+        int $productId,
+        string $productName,
+        ?string $productSku,
+        int $currentStock,
+        int $threshold
+    ): self {
+        return new self(
+            tenantId: TenantId::fromInt($tenantId),
+            productId: $productId,
+            productName: $productName,
+            productSku: $productSku,
+            currentStock: $currentStock,
+            threshold: $threshold,
+        );
     }
 
     /**
@@ -80,7 +93,7 @@ class LowStockThresholdReached implements ShouldBroadcast, ShouldDispatchAfterCo
     /**
      * Get the severity level for alerting.
      */
-    public function getSeverity(): string
+    public function severity(): string
     {
         if ($this->currentStock === 0) {
             return 'critical';
@@ -91,5 +104,58 @@ class LowStockThresholdReached implements ShouldBroadcast, ShouldDispatchAfterCo
         }
 
         return 'info';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DomainEvent Interface Implementation
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public function tenantId(): TenantId
+    {
+        return $this->tenantId;
+    }
+
+    public function aggregateId(): int
+    {
+        return $this->productId;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Safe Serialization (Queue-Safe, Refactor-Proof)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public function toPrimitives(): array
+    {
+        return [
+            'event_id' => $this->eventId,
+            'tenant_id' => $this->tenantId->toInt(),
+            'product_id' => $this->productId,
+            'product_name' => $this->productName,
+            'product_sku' => $this->productSku,
+            'current_stock' => $this->currentStock,
+            'threshold' => $this->threshold,
+            'occurred_at' => $this->occurredAt->format(DATE_ATOM),
+        ];
+    }
+
+    public static function fromPrimitives(array $primitives): self
+    {
+        // Defensive deserialization: fail fast on missing tenant_id
+        $tenantId = $primitives['tenant_id'] ?? null;
+        if ($tenantId === null) {
+            throw new \InvalidArgumentException('Missing required key: tenant_id');
+        }
+
+        return new self(
+            tenantId: TenantId::fromInt($tenantId),
+            productId: $primitives['product_id'] ?? 0,
+            productName: $primitives['product_name'] ?? 'Unknown Product',
+            productSku: $primitives['product_sku'] ?? null,
+            currentStock: $primitives['current_stock'] ?? 0,
+            threshold: $primitives['threshold'] ?? 0,
+            restoredEventId: $primitives['event_id'] ?? null,
+            restoredOccurredAt: $primitives['occurred_at'] ?? null,
+            restoredCorrelationId: $primitives['correlation_id'] ?? null,
+        );
     }
 }
