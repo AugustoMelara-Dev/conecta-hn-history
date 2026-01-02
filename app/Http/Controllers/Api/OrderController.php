@@ -106,6 +106,7 @@ class OrderController extends Controller
         // This allows the same customer to place DIFFERENT orders sequentially,
         // but blocks IDENTICAL carts from being processed in parallel.
         // ═══════════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════════
         $lockKey = $this->generateLockKey($data);
 
         $lock = Cache::lock($lockKey, self::LOCK_DURATION_SECONDS);
@@ -171,26 +172,30 @@ class OrderController extends Controller
             // should bubble up to Laravel's ExceptionHandler for proper 422
             // response with structured errors array for frontend form binding.
             throw $e;
+        } catch (\App\Exceptions\InvalidCouponException $e) {
+             \Log::warning('Coupon validation failed', [
+                'error' => $e->getMessage(),
+                'code' => $e->getErrorCode(),
+                'data' => $e->getData(),
+            ]);
+
+            return response()->json($e->toArray(), $e->getHttpStatusCode());
+
         } catch (\Exception $e) {
             // ═══════════════════════════════════════════════════════════════════
             // SYSTEM FAILURE: Log and return 500
             // ═══════════════════════════════════════════════════════════════════
-            // Check if this is a coupon error
-            $isCouponError = str_contains($e->getMessage(), 'cupón') ||
-                             str_contains($e->getMessage(), 'Cupón');
-
             \Log::error('Order creation failed', [
                 'error' => $e->getMessage(),
-                'is_coupon_error' => $isCouponError,
                 'data' => $data,
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => $isCouponError ? $e->getMessage() : 'Error al crear el pedido. Por favor intente de nuevo.',
-                'error_code' => $isCouponError ? 'COUPON_ERROR' : 'ORDER_ERROR',
+                'message' => 'Error al crear el pedido. Por favor intente de nuevo.',
+                'error_code' => 'ORDER_ERROR',
                 'error' => app()->isLocal() ? $e->getMessage() : null,
-            ], $isCouponError ? 422 : 500);
+            ], 500);
         } finally {
             // ALWAYS release lock, even if exception occurred
             $lock->release();
@@ -213,7 +218,14 @@ class OrderController extends Controller
     {
         $tenantId = $data['tenant_id'];
         $customerFingerprint = md5($data['customer_phone']);
-        $cartHash = md5(json_encode($data['items']));
+
+        // Sort items by product_id to ensure key matches regardless of order
+        $items = collect($data['items'])
+            ->sortBy('product_id')
+            ->values()
+            ->all();
+
+        $cartHash = md5(json_encode($items));
 
         return "order_creation_lock_{$tenantId}_{$customerFingerprint}_{$cartHash}";
     }
@@ -378,6 +390,13 @@ class OrderController extends Controller
             ], 400);
         }
 
+        // SECURITY: Prevent cross-tenant data access
+        // If user is bound to a tenant, they can ONLY access their own orders.
+        $user = auth()->user();
+        if ($user && $user->tenant_id && (int) $tenantId !== $user->tenant_id) {
+            abort(403, 'Unauthorized access to tenant data');
+        }
+
         $orders = Order::with(['items', 'tenant'])
             ->forTenant($tenantId)
             ->orderBy('created_at', 'desc')
@@ -400,6 +419,11 @@ class OrderController extends Controller
     {
         $validated = $request->validated();
         $newStatus = $validated['status'];
+
+        // SECURITY: Defense in Depth - Explicitly verify tenant ownership
+        if ($order->tenant_id !== auth()->user()?->tenant_id) {
+            abort(403);
+        }
 
         try {
             // Delegate to FSM service
