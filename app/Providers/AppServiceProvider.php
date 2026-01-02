@@ -30,6 +30,10 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
+// Event Bus Infrastructure
+use App\Contracts\Events\DomainEventBus;
+use App\Infrastructure\Events\LaravelEventBus;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -37,7 +41,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // ═══════════════════════════════════════════════════════════════════════
+        // DOMAIN EVENT BUS: Decouples Domain Layer from Laravel Event System
+        // ═══════════════════════════════════════════════════════════════════════
         //
+        // Why this binding matters:
+        // - Domain Services inject DomainEventBus (interface), not Laravel's Dispatcher
+        // - In tests, swap with InMemoryEventBus for pure unit tests without database
+        // - Future: Can swap to KafkaEventBus without changing domain code
+        //
+        // CRITICAL: Without this binding, OrderStateService will fail on instantiation
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(DomainEventBus::class, LaravelEventBus::class);
     }
 
     /**
@@ -207,14 +222,41 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\City::observe(\App\Observers\CityObserver::class);
 
         // ═══════════════════════════════════════════════════════════════════════
-        // EVENT LISTENERS - INVENTORY ALERTING
+        // EVENT LISTENERS - DOMAIN EVENTS (DDD Architecture)
         // ═══════════════════════════════════════════════════════════════════════
-        // LowStockThresholdReached: Dispatched when product stock falls below threshold.
-        // SendLowStockNotification: Rate-limited listener (max 1 alert per product/day).
+        // Each Domain Event has dedicated Listeners that:
+        // 1. Execute business logic (refund, inventory restore)
+        // 2. Fire Broadcast Events for UI updates (via WebSocket)
+        // 3. Use TenantQueueMiddleware for tenant context isolation
         // ═══════════════════════════════════════════════════════════════════════
+
+        // Order Domain Events
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\Order\OrderCancelled::class,
+            \App\Listeners\OrderCancelledListener::class
+        );
+
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\Order\OrderPaid::class,
+            \App\Listeners\OrderPaidListener::class
+        );
+
+        // Inventory Domain Events
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\Inventory\LowStockThresholdReached::class,
+            \App\Listeners\LowStockListener::class
+        );
+
+        // Legacy listener (TODO: migrate to new LowStockListener)
         \Illuminate\Support\Facades\Event::listen(
             \App\Events\LowStockThresholdReached::class,
             \App\Listeners\SendLowStockNotification::class
+        );
+
+        // Audit Events - GDPR/SOC2 Compliance
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\Audit\SalesExportCreated::class,
+            \App\Listeners\Audit\LogSalesExportActivity::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
