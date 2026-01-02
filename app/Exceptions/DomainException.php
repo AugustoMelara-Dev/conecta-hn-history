@@ -156,6 +156,14 @@ abstract class DomainException extends \Exception implements HttpDomainException
                         );
                     }
                 }
+            } elseif (is_object($value)) {
+                // SECURITY: Prevent object serialization (Eloquent models, etc.)
+                // Context must contain only primitive values (scalars or arrays).
+                $type = get_class($value);
+                throw new \LogicException(
+                    "Exception context value for '{$key}' is an object ({$type}). " .
+                    "Only primitives (int, string, bool, array) are allowed to prevent data leakage."
+                );
             }
         }
     }
