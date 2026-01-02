@@ -127,7 +127,13 @@ class CheckoutController extends Controller
                 'valid' => false,
                 'code' => $e->getErrorCode(),
                 'message' => $e->getMessage(),
-                'data' => $e->getData(), // Contains min_spend, remaining, etc.
+                // SECURITY: Whitelist only safe context data to prevent leakage
+                'data' => array_intersect_key($e->getData(), array_flip([
+                    'min_spend', 
+                    'required_quantity',
+                    'current_total',
+                    'missing_amount'
+                ])),
             ], 422);
         }
     }

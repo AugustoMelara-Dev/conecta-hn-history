@@ -429,6 +429,9 @@ class OrderController extends Controller
      */
     public function show(Order $order): JsonResponse
     {
+        if ($order->tenant_id !== auth()->user()?->tenant_id) {
+            abort(403);
+        }
         // Load relationships for complete data
         $order->load('items', 'tenant');
 
@@ -446,6 +449,11 @@ class OrderController extends Controller
      */
     public function destroy(Order $order): JsonResponse
     {
+        // SECURITY: Defense in Depth - Explicitly verify tenant ownership
+        // even if middleware usually handles it.
+        if ($order->tenant_id !== auth()->user()?->tenant_id) {
+            abort(403, 'Unauthorized access to this order');
+        }
         // Business rule: Cannot delete orders in protected states
         $protectedStates = [
             Order::STATUS_PROCESSING,

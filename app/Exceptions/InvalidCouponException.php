@@ -51,4 +51,9 @@ final class InvalidCouponException extends DomainException
     {
         return $this->errorCodeValue;
     }
+
+    public function getData(): array
+    {
+        return $this->contextData;
+    }
 }
