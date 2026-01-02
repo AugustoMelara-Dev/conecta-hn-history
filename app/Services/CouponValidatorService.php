@@ -74,12 +74,12 @@ final class CouponValidatorService
             ->first();
 
         if ($coupon === null) {
-            throw new InvalidCouponException('El código de cupón no existe', 'NOT_FOUND');
+            throw InvalidCouponException::notFound($code);
         }
 
         // STEP 2: Check active status
         if (! $coupon->is_active) {
-            throw new InvalidCouponException('Este cupón no está activo', 'INACTIVE');
+            throw InvalidCouponException::inactive($coupon->code);
         }
 
         // STEP 3: Timezone-aware date validation
@@ -136,16 +136,13 @@ final class CouponValidatorService
             $lockedCoupon = Coupon::lockForUpdate()->find($coupon->id);
 
             if ($lockedCoupon === null) {
-                throw new InvalidCouponException('Cupón no encontrado', 'NOT_FOUND');
+                throw InvalidCouponException::notFound($coupon->code);
             }
 
             // STEP 2: Re-validate global limit with locked fresh data
             if ($lockedCoupon->usage_limit !== null &&
                 $lockedCoupon->usage_count >= $lockedCoupon->usage_limit) {
-                throw new InvalidCouponException(
-                    'Este cupón ya alcanzó su límite de usos',
-                    'DEPLETED'
-                );
+                throw InvalidCouponException::depleted($lockedCoupon->code);
             }
 
             // STEP 3: Per-user tracking (ONLY if user is authenticated)
@@ -158,10 +155,7 @@ final class CouponValidatorService
                     ->count();
 
                 if ($userUsageCount >= $maxUsesPerUser) {
-                    throw new InvalidCouponException(
-                        'Ya utilizaste este cupón el máximo de veces permitidas',
-                        'USER_LIMIT_REACHED'
-                    );
+                    throw InvalidCouponException::userLimitReached($lockedCoupon->code);
                 }
 
                 // Record per-user redemption in pivot table
@@ -275,10 +269,7 @@ final class CouponValidatorService
             }
         }
 
-        throw new InvalidCouponException(
-            'No se pudo determinar el contexto del negocio',
-            'NO_TENANT_CONTEXT'
-        );
+        throw InvalidCouponException::noTenantContext();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -335,17 +326,11 @@ final class CouponValidatorService
         $now = CarbonImmutable::now(self::TIMEZONE);
 
         if ($coupon->starts_at !== null && $now->isBefore($coupon->starts_at)) {
-            throw new InvalidCouponException(
-                'Este cupón aún no está disponible',
-                'NOT_STARTED'
-            );
+            throw InvalidCouponException::notStarted($coupon->code);
         }
 
         if ($coupon->expires_at !== null && $now->isAfter($coupon->expires_at)) {
-            throw new InvalidCouponException(
-                'Este cupón ha expirado',
-                'EXPIRED'
-            );
+            throw InvalidCouponException::expired($coupon->code);
         }
     }
 
@@ -361,10 +346,7 @@ final class CouponValidatorService
         }
 
         if ($coupon->usage_count >= $coupon->usage_limit) {
-            throw new InvalidCouponException(
-                'Este cupón ya alcanzó su límite de usos',
-                'DEPLETED'
-            );
+            throw InvalidCouponException::depleted($coupon->code);
         }
     }
 
@@ -385,10 +367,7 @@ final class CouponValidatorService
         if ($user === null) {
             // Check if this coupon actually has per-user restrictions
             if ($maxUsesPerUser > 0) {
-                throw new InvalidCouponException(
-                    'Debes iniciar sesión para usar este cupón limitado',
-                    'REQUIRE_LOGIN'
-                );
+                throw InvalidCouponException::requireLogin();
             }
 
             // No per-user limits, guests can proceed
@@ -407,10 +386,7 @@ final class CouponValidatorService
             ->count();
 
         if ($userUsageCount >= $maxUsesPerUser) {
-            throw new InvalidCouponException(
-                'Ya utilizaste este cupón el máximo de veces permitidas',
-                'USER_LIMIT_REACHED'
-            );
+            throw InvalidCouponException::userLimitReached($coupon->code);
         }
     }
 
@@ -426,17 +402,7 @@ final class CouponValidatorService
         }
 
         if ($cartTotal < (float) $coupon->min_spend) {
-            $remaining = (float) $coupon->min_spend - $cartTotal;
-
-            throw new InvalidCouponException(
-                'Agrega L. '.number_format($remaining, 2).' más para usar este cupón',
-                'MIN_SPEND_NOT_MET',
-                [
-                    'min_spend' => (float) $coupon->min_spend,
-                    'cart_total' => $cartTotal,
-                    'remaining' => $remaining,
-                ]
-            );
+            throw InvalidCouponException::minSpendNotMet((float) $coupon->min_spend, $cartTotal);
         }
     }
 
