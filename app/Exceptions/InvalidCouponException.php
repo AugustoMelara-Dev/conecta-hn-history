@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
-use Exception;
-
 /**
  * InvalidCouponException - Custom exception for coupon validation failures.
  *
@@ -17,66 +15,40 @@ use Exception;
  *   try {
  *       $coupon = $service->validate($code, $user, $total);
  *   } catch (InvalidCouponException $e) {
- *       return response()->json($e->toArray(), 422);
+ *       return response()->json($e->toArray(), $e->getHttpStatusCode());
  *   }
  */
-class InvalidCouponException extends Exception
+final class InvalidCouponException extends DomainException
 {
-    /**
-     * @param  string  $message  Human-readable error message (Spanish for Honduras)
-     * @param  string  $errorCode  Machine-readable error code for frontend handling
-     * @param  array  $context  Additional context data (min_spend, remaining, etc.)
-     */
     public function __construct(
         string $message,
-        public readonly string $errorCode,
-        public readonly array $context = []
+        private readonly string $errorCodeValue = 'INVALID_COUPON',
+        private readonly array $contextData = [],
+        ?\Throwable $previous = null,
     ) {
-        parent::__construct($message);
+        parent::__construct($message, 0, $previous);
+        $this->validateContextSafety($contextData);
     }
 
-    /**
-     * Get the machine-readable error code.
-     */
-    public function getErrorCode(): string
-    {
-        return $this->errorCode;
-    }
-
-    /**
-     * Get additional context data.
-     *
-     * @return array<string, mixed>
-     */
-    public function getData(): array
-    {
-        return $this->context;
-    }
-
-    /**
-     * Convert exception to API-friendly array.
-     *
-     * @return array<string, mixed>
-     */
-    public function toArray(): array
+    public function context(): array
     {
         return [
-            'valid' => false,
-            'error_code' => $this->errorCode,
-            'message' => $this->getMessage(),
-            'context' => $this->context,
+            'coupon_error' => $this->errorCodeValue,
+            ...$this->contextData,
         ];
     }
 
-    /**
-     * Get HTTP status code for this exception type.
-     */
-    public function getStatusCode(): int
+    public function getHttpStatusCode(): int
     {
-        return match ($this->errorCode) {
+        return match ($this->errorCodeValue) {
             'NOT_FOUND' => 404,
             'DEPLETED', 'EXPIRED', 'INACTIVE' => 410, // Gone
             default => 422, // Unprocessable Entity
         };
+    }
+
+    public function getErrorCode(): string
+    {
+        return $this->errorCodeValue;
     }
 }
