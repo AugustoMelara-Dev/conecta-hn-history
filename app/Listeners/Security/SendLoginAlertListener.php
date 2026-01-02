@@ -1,9 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Listeners\Security;
 
+use App\Events\Broadcast\NewLoginDetectedBroadcast;
 use App\Events\Security\NewLoginDetected;
 use App\Mail\Security\LoginAlertMail;
+use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Mail;
@@ -17,8 +21,26 @@ class SendLoginAlertListener implements ShouldQueue
      */
     public function handle(NewLoginDetected $event): void
     {
-        Mail::to($event->user->email)->send(
-            new LoginAlertMail($event->user, $event->ipAddress, $event->time)
-        );
+        // 1. Resolve User Model (needed for Mail)
+        $user = User::find($event->userId());
+
+        if ($user) {
+            // Send Email Alert
+            Mail::to($user->email)->send(
+                new LoginAlertMail($user, $event->ipAddress()->toString(), $event->occurredAt())
+            );
+        }
+
+        // 2. Dispatch Real-Time Broadcast (Only if Tenant Context Exists)
+        if ($tenantId = $event->tenantId()) {
+            NewLoginDetectedBroadcast::fromDomainData(
+                userId: $event->userId(),
+                tenantId: $tenantId->toInt(),
+                userEmail: $event->userEmail(),
+                ipAddress: $event->ipAddress()->toString(),
+                userAgent: $event->userAgent(),
+                loginAt: $event->occurredAt() // Mapped from occurredAt -> loginAt
+            )->dispatch();
+        }
     }
 }
