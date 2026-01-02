@@ -83,7 +83,7 @@ final readonly class SalesExportCriteria
     {
         if ($days <= 0 || $days > self::MAX_DATE_RANGE_DAYS) {
             throw InvalidBusinessRuleException::custom(
-                "Date range must be between 1 and " . self::MAX_DATE_RANGE_DAYS . " days"
+                "El rango de fechas debe estar entre 1 y " . self::MAX_DATE_RANGE_DAYS . " días"
             );
         }
 
@@ -184,7 +184,7 @@ final readonly class SalesExportCriteria
         // Start must be before End
         if ($this->startDate > $this->endDate) {
             throw InvalidBusinessRuleException::custom(
-                'Start date must be before or equal to end date'
+                'La fecha de inicio debe ser anterior o igual a la fecha de fin'
             );
         }
 
@@ -192,7 +192,7 @@ final readonly class SalesExportCriteria
         $diff = $this->startDate->diff($this->endDate);
         if ($diff->days > self::MAX_DATE_RANGE_DAYS) {
             throw InvalidBusinessRuleException::custom(
-                "Date range cannot exceed " . self::MAX_DATE_RANGE_DAYS . " days to prevent system overload"
+                "El rango de fechas no puede exceder " . self::MAX_DATE_RANGE_DAYS . " días para prevenir sobrecarga del sistema"
             );
         }
     }
@@ -206,7 +206,7 @@ final readonly class SalesExportCriteria
         // Use Order::STATUSES as single source of truth
         if (!in_array($this->status, Order::STATUSES, true)) {
             throw InvalidBusinessRuleException::custom(
-                "Invalid status: {$this->status}. Valid: " . implode(', ', Order::STATUSES)
+                "Estado inválido: {$this->status}. Válidos: " . implode(', ', Order::STATUSES)
             );
         }
     }
