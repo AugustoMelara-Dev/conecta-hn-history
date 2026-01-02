@@ -1,0 +1,329 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit\Exports;
+
+use App\Exceptions\InvalidBusinessRuleException;
+use App\Exports\Concerns\SanitizesOutput;
+use App\Exports\Criteria\SalesExportCriteria;
+use App\Exports\SalesExport;
+use App\ValueObjects\TenantId;
+use Tests\TestCase;
+
+/**
+ * SalesExportUnitTest - Architecture, Security and Compliance Verification
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  These tests verify the ARCHITECTURE without database dependencies      ║
+ * ║  Coverage:                                                               ║
+ * ║    - Type safety (TenantId, SalesExportCriteria)                        ║
+ * ║    - Security (SanitizesOutput, CSV injection prevention)               ║
+ * ║    - DoS prevention (date range limits)                                 ║
+ * ║    - Input validation (status values)                                   ║
+ * ║    - Factory pattern (no event dispatch in constructor)                 ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ */
+class SalesExportUnitTest extends TestCase
+{
+    // ═══════════════════════════════════════════════════════════════════════
+    // Constructor Type Safety Tests
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * @test
+     * TenantId Value Object is required (not primitive int)
+     */
+    public function constructor_requires_tenant_id_value_object(): void
+    {
+        $reflection = new \ReflectionClass(SalesExport::class);
+        $constructor = $reflection->getConstructor();
+        $parameters = $constructor->getParameters();
+
+        $tenantIdParam = $parameters[0];
+
+        $this->assertEquals('tenantId', $tenantIdParam->getName());
+        $this->assertEquals(TenantId::class, $tenantIdParam->getType()->getName());
+    }
+
+    /**
+     * @test
+     * SalesExportCriteria is required (not loose arrays)
+     */
+    public function constructor_requires_criteria_object(): void
+    {
+        $reflection = new \ReflectionClass(SalesExport::class);
+        $constructor = $reflection->getConstructor();
+        $parameters = $constructor->getParameters();
+
+        $criteriaParam = $parameters[1];
+
+        $this->assertEquals('criteria', $criteriaParam->getName());
+        $this->assertEquals(SalesExportCriteria::class, $criteriaParam->getType()->getName());
+    }
+
+    /**
+     * @test
+     * Constructor is private - must use factory method
+     */
+    public function constructor_is_private_enforcing_factory_pattern(): void
+    {
+        $reflection = new \ReflectionClass(SalesExport::class);
+        $constructor = $reflection->getConstructor();
+
+        $this->assertTrue(
+            $constructor->isPrivate(),
+            'Constructor must be private to enforce factory pattern (event dispatch AFTER construction)'
+        );
+    }
+
+    /**
+     * @test
+     * SalesExport has static create() factory method
+     */
+    public function class_has_create_factory_method(): void
+    {
+        $this->assertTrue(
+            method_exists(SalesExport::class, 'create'),
+            'SalesExport must have static create() factory method'
+        );
+
+        $reflection = new \ReflectionMethod(SalesExport::class, 'create');
+        $this->assertTrue($reflection->isStatic(), 'create() must be static');
+        $this->assertTrue($reflection->isPublic(), 'create() must be public');
+    }
+
+    /**
+     * @test
+     * SalesExport uses SanitizesOutput trait for CSV injection prevention
+     */
+    public function class_uses_sanitizes_output_trait(): void
+    {
+        $traits = class_uses(SalesExport::class);
+
+        $this->assertArrayHasKey(
+            SanitizesOutput::class,
+            $traits,
+            'SalesExport must use SanitizesOutput trait for CSV injection prevention'
+        );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DoS Prevention Tests (Date Range Validation)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * @test
+     * SalesExportCriteria validates date range does not exceed 365 days
+     */
+    public function criteria_rejects_date_range_exceeding_365_days(): void
+    {
+        $this->expectException(InvalidBusinessRuleException::class);
+        $this->expectExceptionMessage('cannot exceed 365 days');
+
+        SalesExportCriteria::create(
+            startDate: '2023-01-01',
+            endDate: '2025-01-01', // 731 days - exceeds limit
+        );
+    }
+
+    /**
+     * @test
+     * SalesExportCriteria accepts valid date range
+     */
+    public function criteria_accepts_valid_date_range(): void
+    {
+        $criteria = SalesExportCriteria::create(
+            startDate: '2025-01-01',
+            endDate: '2025-06-01', // ~150 days - within limit
+        );
+
+        $this->assertInstanceOf(SalesExportCriteria::class, $criteria);
+        $this->assertNotEmpty($criteria->toHash());
+    }
+
+    /**
+     * @test
+     * SalesExportCriteria always has dates (DoS prevention)
+     */
+    public function criteria_always_has_dates_when_created_without_parameters(): void
+    {
+        $criteria = SalesExportCriteria::create();
+
+        // Should have default 30-day range
+        $this->assertNotNull($criteria->startDate());
+        $this->assertNotNull($criteria->endDate());
+        $this->assertLessThanOrEqual(31, $criteria->dateRangeInDays()); // 30 days + 1 for inclusive
+    }
+
+    /**
+     * @test
+     * SalesExportCriteria::forLastDays rejects invalid days
+     */
+    public function criteria_rejects_invalid_day_count(): void
+    {
+        $this->expectException(InvalidBusinessRuleException::class);
+
+        SalesExportCriteria::forLastDays(0);
+    }
+
+    /**
+     * @test
+     * SalesExportCriteria::forLastDays rejects days over 365
+     */
+    public function criteria_rejects_days_over_365(): void
+    {
+        $this->expectException(InvalidBusinessRuleException::class);
+
+        SalesExportCriteria::forLastDays(400);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Status Validation Tests
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * @test
+     * SalesExportCriteria rejects invalid status values
+     */
+    public function criteria_rejects_invalid_status(): void
+    {
+        $this->expectException(InvalidBusinessRuleException::class);
+        $this->expectExceptionMessage('Invalid status');
+
+        SalesExportCriteria::create(
+            startDate: '2025-01-01',
+            endDate: '2025-01-31',
+            status: 'INVALID_STATUS_THAT_DOES_NOT_EXIST'
+        );
+    }
+
+    /**
+     * @test
+     * SalesExportCriteria accepts all valid status values
+     */
+    public function criteria_accepts_valid_statuses(): void
+    {
+        $validStatuses = ['pending', 'confirmed', 'processing', 'ready', 'delivered', 'cancelled'];
+
+        foreach ($validStatuses as $status) {
+            $criteria = SalesExportCriteria::create(
+                startDate: '2025-01-01',
+                endDate: '2025-01-31',
+                status: $status
+            );
+            $this->assertEquals($status, $criteria->status());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CSV Injection Prevention Tests
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * @test
+     * SanitizesOutput trait escapes formula injection characters
+     */
+    public function sanitizes_output_escapes_formula_characters(): void
+    {
+        $export = new class {
+            use SanitizesOutput;
+
+            public function testSanitize(mixed $input): mixed
+            {
+                return $this->sanitize($input);
+            }
+        };
+
+        // Test dangerous prefixes that always get escaped
+        $this->assertEquals("'=CMD|'/C calc'!A1", $export->testSanitize("=CMD|'/C calc'!A1"));
+        $this->assertEquals("'@{malicious}", $export->testSanitize('@{malicious}'));
+
+        // Test that formulas starting with - are escaped
+        $this->assertEquals("'-SUM(A1:A10)", $export->testSanitize('-SUM(A1:A10)'));
+
+        // Test safe strings pass through unchanged
+        $this->assertEquals('Normal text', $export->testSanitize('Normal text'));
+        $this->assertEquals('100.00', $export->testSanitize('100.00'));
+    }
+
+    /**
+     * @test
+     * SanitizesOutput preserves legitimate negative numbers
+     */
+    public function sanitizes_output_preserves_negative_numbers(): void
+    {
+        $export = new class {
+            use SanitizesOutput;
+
+            public function testSanitize(mixed $input): mixed
+            {
+                return $this->sanitize($input);
+            }
+        };
+
+        // CRITICAL: Negative numbers must NOT be escaped
+        $this->assertEquals('-150.00', $export->testSanitize('-150.00'));
+        $this->assertEquals('-1234567890', $export->testSanitize('-1234567890'));
+        $this->assertEquals('+42', $export->testSanitize('+42'));
+        $this->assertEquals('-0.50', $export->testSanitize('-0.50'));
+
+        // Currency-like negative numbers should also be preserved
+        $this->assertEquals('-$150.00', $export->testSanitize('-$150.00'));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // TenantId Validation Tests
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * @test
+     * TenantId rejects zero or negative values
+     */
+    public function tenant_id_rejects_invalid_values(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new TenantId(0);
+    }
+
+    /**
+     * @test
+     * TenantId rejects negative values
+     */
+    public function tenant_id_rejects_negative_values(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new TenantId(-1);
+    }
+
+    /**
+     * @test
+     * TenantId accepts positive values
+     */
+    public function tenant_id_accepts_positive_values(): void
+    {
+        $tenantId = new TenantId(123);
+
+        $this->assertEquals(123, $tenantId->toInt());
+        $this->assertEquals(123, $tenantId->value);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Date Range Order Validation
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * @test
+     * SalesExportCriteria rejects start date after end date
+     */
+    public function criteria_rejects_start_after_end(): void
+    {
+        $this->expectException(InvalidBusinessRuleException::class);
+        $this->expectExceptionMessage('Start date must be before');
+
+        SalesExportCriteria::create(
+            startDate: '2025-12-31',
+            endDate: '2025-01-01', // End before start
+        );
+    }
+}
