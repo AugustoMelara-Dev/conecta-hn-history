@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Exceptions\InvalidOrderTransitionException;
+use App\Exceptions\TenantMismatchException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
@@ -176,7 +177,7 @@ class OrderController extends Controller
              \Log::warning('Coupon validation failed', [
                 'error' => $e->getMessage(),
                 'code' => $e->getErrorCode(),
-                'data' => $e->getData(),
+                'context' => $e->context(),
             ]);
 
             return response()->json($e->toArray(), $e->getHttpStatusCode());
@@ -394,7 +395,12 @@ class OrderController extends Controller
         // If user is bound to a tenant, they can ONLY access their own orders.
         $user = auth()->user();
         if ($user && $user->tenant_id && (int) $tenantId !== $user->tenant_id) {
-            abort(403, 'Unauthorized access to tenant data');
+            throw TenantMismatchException::crossTenantAccess(
+                $user->tenant_id,
+                (int) $tenantId,
+                'TenantOrders',
+                0
+            );
         }
 
         $orders = Order::with(['items', 'tenant'])
@@ -422,7 +428,11 @@ class OrderController extends Controller
 
         // SECURITY: Defense in Depth - Explicitly verify tenant ownership
         if ($order->tenant_id !== auth()->user()?->tenant_id) {
-            abort(403);
+            throw TenantMismatchException::forOrder(
+                $order->id,
+                $order->tenant_id,
+                auth()->user()?->tenant_id
+            );
         }
 
         try {
@@ -454,7 +464,11 @@ class OrderController extends Controller
     public function show(Order $order): JsonResponse
     {
         if ($order->tenant_id !== auth()->user()?->tenant_id) {
-            abort(403);
+            throw TenantMismatchException::forOrder(
+                $order->id,
+                $order->tenant_id,
+                auth()->user()?->tenant_id
+            );
         }
         // Load relationships for complete data
         $order->load('items', 'tenant');
@@ -476,7 +490,11 @@ class OrderController extends Controller
         // SECURITY: Defense in Depth - Explicitly verify tenant ownership
         // even if middleware usually handles it.
         if ($order->tenant_id !== auth()->user()?->tenant_id) {
-            abort(403, 'Unauthorized access to this order');
+            throw TenantMismatchException::forOrder(
+                $order->id,
+                $order->tenant_id,
+                auth()->user()?->tenant_id
+            );
         }
         // Business rule: Cannot delete orders in protected states
         $protectedStates = [
