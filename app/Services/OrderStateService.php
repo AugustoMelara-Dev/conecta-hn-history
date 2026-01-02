@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Contracts\Events\DomainEventBus;
+use App\Events\Order\OrderCancelled;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
 use App\Models\OrderEvent;
@@ -61,9 +63,13 @@ class OrderStateService
 
     /**
      * Inject dependencies via constructor.
+     *
+     * DECOUPLING: DomainEventBus abstracts Laravel's event dispatcher.
+     * This allows pure domain unit tests with InMemoryEventBus.
      */
     public function __construct(
-        private readonly InventoryManager $inventoryManager
+        private readonly InventoryManager $inventoryManager,
+        private readonly DomainEventBus $eventBus,
     ) {}
 
     /**
@@ -211,14 +217,44 @@ class OrderStateService
     }
 
     /**
-     * Dispatch real-time broadcasting event.
+     * Dispatch semantic domain events based on the new status.
      *
-     * Fires OrderStatusUpdated to notify:
-     * - Tenant dashboard (private-tenant.{id})
-     * - Customer tracking screen (private-order.{uuid})
+     * ╔══════════════════════════════════════════════════════════════════════════╗
+     * ║  SEMANTIC EVENTS: Replace Generic OrderStatusUpdated                    ║
+     * ╠══════════════════════════════════════════════════════════════════════════╣
+     * ║                                                                          ║
+     * ║  BEFORE (Anti-Pattern):                                                 ║
+     * ║    event(new OrderStatusUpdated($order, $old, $new));                   ║
+     * ║    → God Listener with 10 if-else branches                              ║
+     * ║                                                                          ║
+     * ║  AFTER (Semantic):                                                      ║
+     * ║    OrderConfirmed → ConfirmationEmailListener                           ║
+     * ║    OrderCancelled → RestoreInventoryListener                            ║
+     * ║    OrderDelivered → RequestReviewListener                               ║
+     * ║                                                                          ║
+     * ║  Each event has single-responsibility listeners.                       ║
+     * ╚══════════════════════════════════════════════════════════════════════════╝
      */
     private function dispatchStatusEvent(Order $order, string $oldStatus, string $newStatus): void
     {
-        event(new \App\Events\OrderStatusUpdated($order, $oldStatus, $newStatus));
+        $event = match ($newStatus) {
+            Order::STATUS_CANCELLED => OrderCancelled::create(
+                tenantId: $order->tenant_id,
+                orderId: $order->id,
+                orderNumber: $order->order_number,
+                reason: 'status_transition',
+                cancelledById: auth()->id(),
+                wasPaid: $order->isPaid(),
+            ),
+            // NOTE: OrderPaid is dispatched from PaymentService, not here
+            // NOTE: OrderShipped is dispatched from ShippingService, not here
+            default => null,
+        };
+
+        if ($event !== null) {
+            $this->eventBus->publish($event);
+        }
     }
 }
+
+
