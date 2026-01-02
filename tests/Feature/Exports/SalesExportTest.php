@@ -9,37 +9,69 @@ use App\Exports\Criteria\SalesExportCriteria;
 use App\Exports\SalesExport;
 use App\Models\Order;
 use App\Models\Tenant;
+use App\Models\User;
 use App\ValueObjects\TenantId;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 /**
- * SalesExportTest - Multi-Tenant Isolation Verification
+ * SalesExportTest - Verificación de Aislamiento Multi-Tenant (MySQL Engine)
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  HOSTILE MULTI-TENANCY TEST                                             ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║  This test mathematically proves that Tenant A CANNOT see Tenant B data ║
- * ║  under any circumstances. It creates a "hostile" scenario where both    ║
- * ║  tenants have data, then exports under one tenant context and verifies  ║
- * ║  complete isolation.                                                    ║
+ * ║  under any circumstances.                                                ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * Ejecutándose sobre MySQL para garantizar paridad Dev/Prod y manejo
+ * correcto de transacciones anidadas, Foreign Keys y Commits.
  */
 class SalesExportTest extends TestCase
 {
+    // RefreshDatabase: En MySQL envuelve el test en transacción + ROLLBACK
     use RefreshDatabase;
-
-    private Tenant $tenantA;
-    private Tenant $tenantB;
 
     protected function setUp(): void
     {
         parent::setUp();
+        // Aislamiento de eventos para evitar efectos secundarios (Emails, Logs, etc)
+        Event::fake([SalesExportCreated::class]);
+    }
 
-        // Create two hostile tenants
-        $this->tenantA = Tenant::factory()->create(['name' => 'Tenant A - Legitimate']);
-        $this->tenantB = Tenant::factory()->create(['name' => 'Tenant B - Hostile']);
+    /**
+     * Helper: Crear datos de prueba ignorando eventos del modelo para velocidad.
+     */
+    private function createTestData(): array
+    {
+        return Model::withoutEvents(function () {
+            $userA = User::factory()->create(['email' => 'owner-a@test.com']);
+            $userB = User::factory()->create(['email' => 'owner-b@test.com']);
+
+            $tenantA = Tenant::factory()->create([
+                'name' => 'Tenant A - Legitimate',
+                'user_id' => $userA->id,
+            ]);
+
+            $tenantB = Tenant::factory()->create([
+                'name' => 'Tenant B - Hostile',
+                'user_id' => $userB->id,
+            ]);
+
+            return compact('tenantA', 'tenantB', 'userA', 'userB');
+        });
+    }
+
+    /**
+     * Helper: Create orders without events.
+     */
+    private function createOrdersWithoutEvents(int $count, array $attributes = []): \Illuminate\Database\Eloquent\Collection
+    {
+        return Model::withoutEvents(function () use ($count, $attributes) {
+            return Order::factory()->count($count)->create($attributes);
+        });
     }
 
     /**
@@ -48,49 +80,31 @@ class SalesExportTest extends TestCase
      */
     public function export_contains_only_data_from_requesting_tenant(): void
     {
-        // Arrange: Create orders for both tenants
-        $tenantAOrders = Order::factory()
-            ->count(5)
-            ->create(['tenant_id' => $this->tenantA->id]);
+        $data = $this->createTestData();
+        $this->createOrdersWithoutEvents(5, ['tenant_id' => $data['tenantA']->id]);
+        $this->createOrdersWithoutEvents(3, ['tenant_id' => $data['tenantB']->id]);
 
-        $tenantBOrders = Order::factory()
-            ->count(3)
-            ->create(['tenant_id' => $this->tenantB->id]);
-
-        // Act: Export under Tenant A context
-        $export = new SalesExport(
-            tenantId: new TenantId($this->tenantA->id),
-            criteria: SalesExportCriteria::unbounded(),
+        // Ejecución bajo el contexto del Tenant A
+        $export = SalesExport::create(
+            tenantId: new TenantId($data['tenantA']->id),
+            criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
             ipAddress: '127.0.0.1',
             userAgent: 'Test Agent',
         );
 
-        // Get query results
         $results = $export->query()->get();
 
-        // Assert: Only Tenant A orders are returned
+        // Verificación Estricta: Solo deben venir 5 órdenes
         $this->assertCount(5, $results);
 
+        // Verificación de Integridad: Todas las órdenes deben ser del Tenant A
         foreach ($results as $order) {
-            $this->assertEquals(
-                $this->tenantA->id,
-                $order->tenant_id,
-                "SECURITY VIOLATION: Found order from wrong tenant!"
-            );
+            $this->assertEquals($data['tenantA']->id, $order->tenant_id);
         }
 
-        // Verify NO Tenant B order IDs in results
-        $resultIds = $results->pluck('id')->toArray();
-        $tenantBIds = $tenantBOrders->pluck('id')->toArray();
-
-        foreach ($tenantBIds as $hostileId) {
-            $this->assertNotContains(
-                $hostileId,
-                $resultIds,
-                "CRITICAL: Hostile tenant data leaked into export!"
-            );
-        }
+        // Verificación de Contrato: El evento de auditoría se intentó disparar
+        Event::assertDispatched(SalesExportCreated::class);
     }
 
     /**
@@ -99,23 +113,19 @@ class SalesExportTest extends TestCase
      */
     public function export_dispatches_audit_event(): void
     {
-        Event::fake([SalesExportCreated::class]);
+        $data = $this->createTestData();
+        $this->createOrdersWithoutEvents(2, ['tenant_id' => $data['tenantA']->id]);
 
-        // Arrange
-        Order::factory()->count(2)->create(['tenant_id' => $this->tenantA->id]);
-
-        // Act
-        new SalesExport(
-            tenantId: new TenantId($this->tenantA->id),
+        SalesExport::create(
+            tenantId: new TenantId($data['tenantA']->id),
             criteria: SalesExportCriteria::create('2025-01-01', '2025-12-31'),
             userId: 42,
             ipAddress: '192.168.1.100',
             userAgent: 'Mozilla/5.0',
         );
 
-        // Assert
-        Event::assertDispatched(SalesExportCreated::class, function ($event) {
-            return $event->tenantId->toInt() === $this->tenantA->id
+        Event::assertDispatched(SalesExportCreated::class, function ($event) use ($data) {
+            return $event->tenantId->toInt() === $data['tenantA']->id
                 && $event->userId === 42
                 && $event->format === 'xlsx'
                 && !empty($event->criteriaHash);
@@ -128,9 +138,6 @@ class SalesExportTest extends TestCase
      */
     public function constructor_requires_tenant_id_value_object(): void
     {
-        // This test verifies at compile time that TenantId VO is required
-        // If someone changes the signature to accept int, this will fail
-
         $reflection = new \ReflectionClass(SalesExport::class);
         $constructor = $reflection->getConstructor();
         $parameters = $constructor->getParameters();
@@ -147,33 +154,35 @@ class SalesExportTest extends TestCase
      */
     public function date_filter_works_within_tenant_context(): void
     {
-        // Create orders with different dates
-        Order::factory()->create([
-            'tenant_id' => $this->tenantA->id,
-            'created_at' => now()->subDays(5),
-        ]);
+        $data = $this->createTestData();
 
-        Order::factory()->create([
-            'tenant_id' => $this->tenantA->id,
-            'created_at' => now()->subDays(30),
-        ]);
+        Model::withoutEvents(function () use ($data) {
+            Order::factory()->create([
+                'tenant_id' => $data['tenantA']->id,
+                'created_at' => now()->subDays(5),
+            ]);
 
-        Order::factory()->create([
-            'tenant_id' => $this->tenantA->id,
-            'created_at' => now()->subDays(60), // Outside range
-        ]);
+            Order::factory()->create([
+                'tenant_id' => $data['tenantA']->id,
+                'created_at' => now()->subDays(30),
+            ]);
 
-        // Export last 45 days
-        $export = new SalesExport(
-            tenantId: new TenantId($this->tenantA->id),
+            Order::factory()->create([
+                'tenant_id' => $data['tenantA']->id,
+                'created_at' => now()->subDays(60), // Outside range
+            ]);
+        });
+
+        $export = SalesExport::create(
+            tenantId: new TenantId($data['tenantA']->id),
             criteria: SalesExportCriteria::forLastDays(45),
             userId: 1,
         );
 
         $results = $export->query()->get();
 
-        // Should only get 2 orders (within 45 days)
         $this->assertCount(2, $results);
+        Event::assertDispatched(SalesExportCreated::class);
     }
 
     /**
@@ -182,23 +191,27 @@ class SalesExportTest extends TestCase
      */
     public function status_filter_works_within_tenant_context(): void
     {
-        Order::factory()->create([
-            'tenant_id' => $this->tenantA->id,
-            'status' => Order::STATUS_PENDING,
-        ]);
+        $data = $this->createTestData();
 
-        Order::factory()->create([
-            'tenant_id' => $this->tenantA->id,
-            'status' => Order::STATUS_DELIVERED,
-        ]);
+        Model::withoutEvents(function () use ($data) {
+            Order::factory()->create([
+                'tenant_id' => $data['tenantA']->id,
+                'status' => Order::STATUS_PENDING,
+            ]);
 
-        Order::factory()->create([
-            'tenant_id' => $this->tenantA->id,
-            'status' => Order::STATUS_DELIVERED,
-        ]);
+            Order::factory()->create([
+                'tenant_id' => $data['tenantA']->id,
+                'status' => Order::STATUS_DELIVERED,
+            ]);
 
-        $export = new SalesExport(
-            tenantId: new TenantId($this->tenantA->id),
+            Order::factory()->create([
+                'tenant_id' => $data['tenantA']->id,
+                'status' => Order::STATUS_DELIVERED,
+            ]);
+        });
+
+        $export = SalesExport::create(
+            tenantId: new TenantId($data['tenantA']->id),
             criteria: SalesExportCriteria::create(status: Order::STATUS_DELIVERED),
             userId: 1,
         );
@@ -217,13 +230,13 @@ class SalesExportTest extends TestCase
      */
     public function empty_tenant_returns_no_orders(): void
     {
-        // Create orders for Tenant A only
-        Order::factory()->count(5)->create(['tenant_id' => $this->tenantA->id]);
+        $data = $this->createTestData();
+        $this->createOrdersWithoutEvents(5, ['tenant_id' => $data['tenantA']->id]);
 
         // Export for Tenant B (which has no orders)
-        $export = new SalesExport(
-            tenantId: new TenantId($this->tenantB->id),
-            criteria: SalesExportCriteria::unbounded(),
+        $export = SalesExport::create(
+            tenantId: new TenantId($data['tenantB']->id),
+            criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
         );
 
@@ -239,18 +252,21 @@ class SalesExportTest extends TestCase
      */
     public function export_generates_unique_id(): void
     {
-        $export1 = new SalesExport(
-            tenantId: new TenantId($this->tenantA->id),
-            criteria: SalesExportCriteria::unbounded(),
+        $data = $this->createTestData();
+
+        $export1 = SalesExport::create(
+            tenantId: new TenantId($data['tenantA']->id),
+            criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
         );
 
-        $export2 = new SalesExport(
-            tenantId: new TenantId($this->tenantA->id),
-            criteria: SalesExportCriteria::unbounded(),
+        $export2 = SalesExport::create(
+            tenantId: new TenantId($data['tenantA']->id),
+            criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
         );
 
         $this->assertNotEquals($export1->getExportId(), $export2->getExportId());
+        Event::assertDispatchedTimes(SalesExportCreated::class, 2);
     }
 }
