@@ -7,16 +7,17 @@ namespace App\Exceptions;
 /**
  * MissingRequiredDataException - Thrown when critical DTO fields are missing.
  */
-final class MissingRequiredDataException extends DataIntegrityException
+final class MissingRequiredDataException extends DomainException
 {
     public function __construct(
         string $message,
-        array $contextData = [],
+        private readonly array $contextData = [],
         private readonly ?string $entityName = null,
         private readonly array $missingFields = [],
         ?\Throwable $previous = null,
     ) {
-        parent::__construct($message, $contextData, $entityName ?? '', [], $previous);
+        parent::__construct($message, 0, $previous);
+        $this->validateContextSafety($contextData);
     }
 
     public function context(): array
@@ -24,7 +25,7 @@ final class MissingRequiredDataException extends DataIntegrityException
         return [
             'entity' => $this->entityName,
             'missing_fields' => $this->missingFields,
-            ...parent::context(),
+            ...$this->contextData,
         ];
     }
 

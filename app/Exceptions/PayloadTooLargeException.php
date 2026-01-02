@@ -9,16 +9,17 @@ namespace App\Exceptions;
  *
  * Protects against memory exhaustion DoS attacks via massive JSON payloads.
  */
-final class PayloadTooLargeException extends DataIntegrityException
+final class PayloadTooLargeException extends DomainException
 {
     public function __construct(
         string $message,
-        array $contextData = [],
+        private readonly array $contextData = [],
         private readonly int $maxSize = 0,
         private readonly int $actualSize = 0,
         ?\Throwable $previous = null,
     ) {
-        parent::__construct($message, $contextData, '', [], $previous);
+        parent::__construct($message, 0, $previous);
+        $this->validateContextSafety($contextData);
     }
 
     public function context(): array
@@ -26,7 +27,7 @@ final class PayloadTooLargeException extends DataIntegrityException
         return [
             'max_size' => $this->maxSize,
             'actual_size' => $this->actualSize,
-            ...parent::context(),
+            ...$this->contextData,
         ];
     }
 
