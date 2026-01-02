@@ -19,12 +19,12 @@ final class InvalidOrderTransitionException extends DomainException
         ?\Throwable $previous = null,
     ) {
         $allowed = empty($allowedTransitions)
-            ? 'none'
+            ? 'ninguna'
             : implode(', ', $allowedTransitions);
 
         parent::__construct(
-            "Invalid order transition: Cannot move from '{$currentStatus}' to '{$attemptedStatus}'. " .
-            "Allowed transitions from '{$currentStatus}': [{$allowed}]",
+            "Transición de estado inválida: No se puede pasar de '{$currentStatus}' a '{$attemptedStatus}'. " .
+            "Transiciones permitidas desde '{$currentStatus}': [{$allowed}]",
             0,
             $previous,
         );
