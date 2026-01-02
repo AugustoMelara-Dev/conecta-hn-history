@@ -231,8 +231,62 @@ class ExceptionsArchitectureTest extends TestCase
     }
 
     /**
-     * Helper to create exception instances for testing.
+     * @test
+     * Security: Exceptions must throw LogicException if context contains forbidden PII keys
      */
+    public function it_prohibits_sensitive_keys_in_context(): void
+    {
+        $forbiddenKeys = [
+            'password', 'api_key', 'token', 'secret', 'credit_card', 'ssn', 'authorization'
+        ];
+
+        foreach ($forbiddenKeys as $key) {
+            try {
+                // Create a concrete implementation of abstract DomainException for testing
+                new class("Security Breach Test", [$key => 'leak']) extends DomainException {
+                    public function __construct(string $message, array $context) {
+                        parent::__construct($message);
+                        $this->validateContextSafety($context);
+                    }
+                    public function context(): array { return []; }
+                    public function getErrorCode(): string { return 'TEST'; }
+                };
+                $this->fail("Should have thrown LogicException for forbidden key: {$key}");
+            } catch (\LogicException $e) {
+                $this->assertStringContainsString("Exception context cannot contain '{$key}'", $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * @test
+     * Security: Exceptions must throw LogicException if context values contain sensitive patterns
+     */
+    public function it_prohibits_sensitive_values_in_context(): void
+    {
+        $sensitiveValues = [
+            'password=secret',
+            'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+            'api_key: 12345',
+        ];
+
+        foreach ($sensitiveValues as $value) {
+            try {
+                new class("Security Pattern Test", ['safe_key' => $value]) extends DomainException {
+                    public function __construct(string $message, array $context) {
+                        parent::__construct($message);
+                        $this->validateContextSafety($context);
+                    }
+                    public function context(): array { return []; }
+                    public function getErrorCode(): string { return 'TEST'; }
+                };
+                $this->fail("Should have thrown LogicException for sensitive value: {$value}");
+            } catch (\LogicException $e) {
+                $this->assertStringContainsString('sensitive data pattern', $e->getMessage());
+            }
+        }
+    }
+
     private function createExceptionInstance(string $class): DomainException
     {
         return match ($class) {
