@@ -4,31 +4,33 @@ declare(strict_types=1);
 
 namespace App\Events\Order;
 
-use App\Models\Order;
-use App\Traits\TenantAwareEvent;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use App\Contracts\Events\DomainEvent;
+use App\Traits\HasDomainMetadata;
+use App\ValueObjects\Money;
+use App\ValueObjects\OrderNumber;
+use App\ValueObjects\TenantId;
+use DateTimeImmutable;
 
 /**
- * OrderPaid - Semantic Event for Payment Confirmation
+ * OrderPaid - Pure Domain Event for Payment Confirmation
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  SEMANTIC VS GENERIC EVENTS                                             ║
+ * ║  PURE DOMAIN EVENT: Business Fact Only                                  ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║                                                                          ║
- * ║  ANTI-PATTERN (Generic):                                                ║
- * ║    OrderStatusUpdated → God Listener with 10 if-else branches           ║
+ * ║  INVARIANTS GUARANTEED:                                                 ║
+ * ║    - The order exists and is in a valid state for payment              ║
+ * ║    - The payment amount matches the order total                        ║
+ * ║    - This event is only dispatched AFTER the transaction commits       ║
  * ║                                                                          ║
- * ║  CORRECT (Semantic):                                                    ║
- * ║    OrderPaid      → SendInvoiceListener (single responsibility)         ║
- * ║    OrderShipped   → SendTrackingListener                                ║
- * ║    OrderCancelled → IssueRefundListener                                 ║
- * ║                                                                          ║
- * ║  @notice $tenantId is required for Queue Middleware context switching.  ║
+ * ║  PURITY RULES:                                                          ║
+ * ║    - ❌ NO Eloquent models                                              ║
+ * ║    - ❌ NO SerializesModels trait                                       ║
+ * ║    - ❌ NO ShouldBroadcast (moved to OrderPaidBroadcast)               ║
+ * ║    - ❌ NO Dispatchable trait (use DomainEventBus)                     ║
+ * ║    - ✅ Only primitives and Value Objects                               ║
+ * ║    - ✅ toPrimitives() for safe queue serialization                     ║
+ * ║    - ✅ eventId() for idempotency                                       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * LISTENERS:
@@ -36,44 +38,117 @@ use Illuminate\Queue\SerializesModels;
  *   - SendPaymentReceiptEmailListener
  *   - UpdateRevenueAnalyticsListener
  *   - NotifyFulfillmentTeamListener
+ *   - → OrderPaidBroadcastListener (fires UI event)
+ *
+ * DISPATCH POINT: PaymentService::confirmPayment() via DomainEventBus
  */
-class OrderPaid implements ShouldBroadcast, ShouldDispatchAfterCommit
+final readonly class OrderPaid implements DomainEvent
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels, TenantAwareEvent;
+    use HasDomainMetadata;
 
+    /**
+     * @param TenantId $tenantId Tenant context for queue middleware
+     * @param int $orderId The order aggregate root ID
+     * @param OrderNumber $orderNumber Human-readable order reference
+     * @param string $transactionId Payment gateway transaction ID
+     * @param string $paymentMethod Payment method used (e.g., 'card', 'transfer')
+     * @param Money $amountPaid The exact amount paid (Value Object)
+     */
     public function __construct(
-        public readonly Order $order,
-        public readonly string $transactionId,
-        public readonly string $paymentMethod,
-        public readonly int $amountPaidCents,
+        private TenantId $tenantId,
+        private int $orderId,
+        public OrderNumber $orderNumber,
+        public string $transactionId,
+        public string $paymentMethod,
+        public Money $amountPaid,
+        // Restoration parameters for fromPrimitives()
+        ?string $restoredEventId = null,
+        ?string $restoredOccurredAt = null,
+        ?string $restoredCorrelationId = null,
     ) {
-        $this->setTenantContext($order->tenant_id);
-    }
-
-    public function broadcastOn(): array
-    {
-        return [
-            new PrivateChannel('tenant.' . $this->tenantId),
-        ];
-    }
-
-    public function broadcastAs(): string
-    {
-        return 'order.paid';
+        $this->initMetadata(
+            correlationId: $restoredCorrelationId,
+            restoredEventId: $restoredEventId,
+            restoredOccurredAt: $restoredOccurredAt,
+        );
     }
 
     /**
-     * @warning NO PII in broadcast payload.
+     * Factory: Create from order data (snapshotted at creation time).
      */
-    public function broadcastWith(): array
+    public static function create(
+        int $tenantId,
+        int $orderId,
+        string $orderNumber,
+        string $transactionId,
+        string $paymentMethod,
+        int $amountCents,
+        string $currency = 'HNL'
+    ): self {
+        return new self(
+            tenantId: TenantId::fromInt($tenantId),
+            orderId: $orderId,
+            orderNumber: OrderNumber::fromString($orderNumber),
+            transactionId: $transactionId,
+            paymentMethod: $paymentMethod,
+            amountPaid: Money::fromCents($amountCents, $currency),
+        );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DomainEvent Interface Implementation
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public function tenantId(): TenantId
+    {
+        return $this->tenantId;
+    }
+
+    public function aggregateId(): int
+    {
+        return $this->orderId;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Safe Serialization (Queue-Safe, Refactor-Proof)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public function toPrimitives(): array
     {
         return [
-            'order_id' => $this->order->id,
-            'order_number' => $this->order->order_number,
-            'amount_formatted' => 'L ' . number_format($this->amountPaidCents / 100, 2),
+            'event_id' => $this->eventId,
+            'tenant_id' => $this->tenantId->toInt(),
+            'order_id' => $this->orderId,
+            'order_number' => $this->orderNumber->toString(),
+            'transaction_id' => $this->transactionId,
             'payment_method' => $this->paymentMethod,
-            'paid_at' => now()->toIso8601String(),
-            'tenant_id' => $this->tenantId,
+            'amount_cents' => $this->amountPaid->amount(),
+            'currency' => $this->amountPaid->currency(),
+            'occurred_at' => $this->occurredAt->format(DATE_ATOM),
         ];
+    }
+
+    public static function fromPrimitives(array $primitives): self
+    {
+        // Defensive deserialization: fail fast on missing tenant_id
+        $tenantId = $primitives['tenant_id'] ?? null;
+        if ($tenantId === null) {
+            throw new \InvalidArgumentException('Missing required key: tenant_id');
+        }
+
+        return new self(
+            tenantId: TenantId::fromInt($tenantId),
+            orderId: $primitives['order_id'] ?? 0,
+            orderNumber: OrderNumber::fromString($primitives['order_number'] ?? 'UNKNOWN'),
+            transactionId: $primitives['transaction_id'] ?? '',
+            paymentMethod: $primitives['payment_method'] ?? 'unknown',
+            amountPaid: Money::fromCents(
+                $primitives['amount_cents'] ?? 0,
+                $primitives['currency'] ?? 'HNL'
+            ),
+            restoredEventId: $primitives['event_id'] ?? null,
+            restoredOccurredAt: $primitives['occurred_at'] ?? null,
+            restoredCorrelationId: $primitives['correlation_id'] ?? null,
+        );
     }
 }
