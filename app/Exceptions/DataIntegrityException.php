@@ -9,7 +9,7 @@ namespace App\Exceptions;
  *
  * Covers: duplicate entries, FK violations, constraint failures.
  */
-class DataIntegrityException extends DomainException
+final class DataIntegrityException extends DomainException
 {
     public function __construct(
         string $message,
