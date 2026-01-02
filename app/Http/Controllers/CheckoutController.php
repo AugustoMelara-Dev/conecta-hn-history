@@ -128,7 +128,7 @@ class CheckoutController extends Controller
                 'code' => $e->getErrorCode(),
                 'message' => $e->getMessage(),
                 // SECURITY: Whitelist only safe context data to prevent leakage
-                'data' => array_intersect_key($e->getData(), array_flip([
+                'data' => array_intersect_key($e->context(), array_flip([
                     'min_spend', 
                     'required_quantity',
                     'current_total',
