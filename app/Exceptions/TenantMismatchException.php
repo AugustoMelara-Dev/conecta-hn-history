@@ -24,7 +24,7 @@ namespace App\Exceptions;
 final class TenantMismatchException extends DomainException
 {
     public function __construct(
-        string $message = 'Tenant context mismatch detected',
+        string $message = 'Conflicto de contexto de acceso a datos detectado',
         private readonly ?int $expectedTenantId = null,
         private readonly ?int $actualTenantId = null,
         private readonly array $contextData = [],
@@ -73,10 +73,10 @@ final class TenantMismatchException extends DomainException
      */
     public static function forOrder(int $orderId, int $expectedTenantId, ?int $actualTenantId = null): self
     {
-        $actual = $actualTenantId !== null ? "actual: {$actualTenantId}" : 'not found';
+        $actual = $actualTenantId !== null ? "actual: {$actualTenantId}" : 'no encontrado';
 
         return new self(
-            message: "Order {$orderId} tenant mismatch. Expected: {$expectedTenantId}, {$actual}",
+            message: "Conflicto de acceso: La Orden {$orderId} no pertenece al contexto esperado ({$expectedTenantId}). Contexto actual: {$actual}",
             expectedTenantId: $expectedTenantId,
             actualTenantId: $actualTenantId,
             contextData: ['order_id' => $orderId, 'resource_type' => 'Order'],
@@ -89,7 +89,7 @@ final class TenantMismatchException extends DomainException
     public static function forResource(string $resource, int $resourceId, int $expectedTenantId, ?int $actualTenantId = null): self
     {
         return new self(
-            message: "{$resource} {$resourceId} not found for tenant {$expectedTenantId}",
+            message: "Recurso {$resource} {$resourceId} no encontrado para el negocio {$expectedTenantId}",
             expectedTenantId: $expectedTenantId,
             actualTenantId: $actualTenantId,
             contextData: ['resource_type' => $resource, 'resource_id' => $resourceId],
@@ -102,7 +102,7 @@ final class TenantMismatchException extends DomainException
     public static function crossTenantAccess(int $requestingTenantId, int $resourceTenantId, string $resourceType, int $resourceId): self
     {
         return new self(
-            message: "Cross-tenant access denied: Tenant {$requestingTenantId} attempted to access {$resourceType} {$resourceId} owned by Tenant {$resourceTenantId}",
+            message: "Acceso cruzado denegado: Negocio {$requestingTenantId} intentó acceder a {$resourceType} {$resourceId} propiedad de {$resourceTenantId}",
             expectedTenantId: $resourceTenantId,
             actualTenantId: $requestingTenantId,
             contextData: [
