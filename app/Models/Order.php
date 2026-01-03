@@ -51,11 +51,11 @@ class Order extends Model
                 'status',
                 'total',
                 'subtotal',
-                'tax_amount',
-                'discount_amount',
+                'discount',
+                'delivery_fee',
                 'payment_method',
-                'cancel_reason',
-                'payment_transaction_id',
+                'payment_status',
+                'cancellation_reason',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
@@ -95,39 +95,38 @@ class Order extends Model
     ];
 
     protected $fillable = [
+        // ═══════════════════════════════════════════════════════════════════════
+        // FOREIGN KEYS (user_id is nullable, set by authenticated orders)
+        // ═══════════════════════════════════════════════════════════════════════
+        'user_id',
         'order_number',
+        'tracking_uuid', // Real-time tracking token (UUID v4)
+        // PII fields
         'customer_name',
         'customer_phone',
         'customer_email',
-        'customer_address',
+        'delivery_address',
         'customer_notes',
+        // Monetary (matching migration)
         'subtotal',
-        'tax_amount',
+        'discount',
         'delivery_fee',
-        'discount_amount',
         'total',
+        // Payment (matching migration)
         'payment_method',
-        // Payment tracking (webhook-populated)
-        'payment_transaction_id',
-        'payment_confirmed_at',
-        'refund_transaction_id',
-        'refunded_at',
-        // Delivery & Status
-        'delivery_type',
-        'estimated_ready_at',
-        'delivered_at',
+        'payment_status',
+        'payment_reference',
+        'paid_at',
+        // Source & Status
+        'source',
         'status',
-        'cancel_reason',
-        'whatsapp_sent',
-        'whatsapp_sent_at',
-        // Workflow timestamps (FSM-managed)
+        'internal_notes',
+        'cancellation_reason',
+        // Workflow timestamps
         'confirmed_at',
-        'processing_started_at',
-        'ready_at',
-        'cancelled_at',
         'prepared_at',
-        // Security: Cryptographic tracking token
-        'tracking_uuid',
+        'delivered_at',
+        'cancelled_at',
     ];
 
     /**
@@ -137,28 +136,20 @@ class Order extends Model
     protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
 
     protected $casts = [
+        // Monetary
         'subtotal' => 'decimal:2',
-        'tax_amount' => 'decimal:2',
+        'discount' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
         'total' => 'decimal:2',
-        'whatsapp_sent' => 'boolean',
-        'estimated_ready_at' => 'datetime',
-        'delivered_at' => 'datetime',
-        'whatsapp_sent_at' => 'datetime',
-        // Payment tracking
-        'payment_method' => PaymentMethod::class,
-        'payment_confirmed_at' => 'datetime',
-        'refunded_at' => 'datetime',
         // Workflow timestamps
         'confirmed_at' => 'datetime',
         'prepared_at' => 'datetime',
-        // PII ENCRYPTION: GDPR/Compliance - encrypted at rest
-        'customer_email' => 'encrypted',
-        'customer_phone' => 'encrypted',
-        'customer_address' => 'encrypted',
-        // Security: Cryptographic tracking token
-        'tracking_uuid' => 'string',
+        'delivered_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        'paid_at' => 'datetime',
+        // NOTE: Encryption removed - column VARCHAR sizes in migration
+        // are too small for encrypted values. To enable encryption,
+        // first run migration to change columns to TEXT type.
     ];
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -169,6 +160,15 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * The user who placed this order (for authenticated orders).
+     * Nullable - guest orders have no user.
+     */
+    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**

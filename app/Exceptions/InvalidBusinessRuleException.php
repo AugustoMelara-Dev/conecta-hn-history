@@ -56,7 +56,7 @@ final class InvalidBusinessRuleException extends DomainException
     public static function invalidQuantity(int $quantity): self
     {
         return new self(
-            message: "Invalid quantity: {$quantity}. Must be greater than 0.",
+            message: "Cantidad inválida: {$quantity}. Debe ser mayor a 0.",
             rule: 'quantity > 0',
             violationData: ['quantity' => $quantity],
         );
@@ -65,7 +65,7 @@ final class InvalidBusinessRuleException extends DomainException
     public static function invalidPrice(int $priceCents): self
     {
         return new self(
-            message: "Invalid price: {$priceCents} cents. Must be greater than or equal to 0.",
+            message: "Precio inválido: {$priceCents} centavos. Debe ser mayor o igual a 0.",
             rule: 'price >= 0',
             violationData: ['price_cents' => $priceCents],
         );
@@ -74,7 +74,7 @@ final class InvalidBusinessRuleException extends DomainException
     public static function emptyItems(): self
     {
         return new self(
-            message: "Order must contain at least one item.",
+            message: "La orden debe contener al menos un producto.",
             rule: 'items.count >= 1',
             violationData: [],
         );

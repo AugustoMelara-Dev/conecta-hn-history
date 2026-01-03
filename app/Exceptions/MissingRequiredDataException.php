@@ -7,16 +7,17 @@ namespace App\Exceptions;
 /**
  * MissingRequiredDataException - Thrown when critical DTO fields are missing.
  */
-final class MissingRequiredDataException extends DataIntegrityException
+final class MissingRequiredDataException extends DomainException
 {
     public function __construct(
         string $message,
-        array $contextData = [],
+        private readonly array $contextData = [],
         private readonly ?string $entityName = null,
         private readonly array $missingFields = [],
         ?\Throwable $previous = null,
     ) {
-        parent::__construct($message, $contextData, $entityName ?? '', [], $previous);
+        parent::__construct($message, 0, $previous);
+        $this->validateContextSafety($contextData);
     }
 
     public function context(): array
@@ -24,7 +25,7 @@ final class MissingRequiredDataException extends DataIntegrityException
         return [
             'entity' => $this->entityName,
             'missing_fields' => $this->missingFields,
-            ...parent::context(),
+            ...$this->contextData,
         ];
     }
 
@@ -55,7 +56,7 @@ final class MissingRequiredDataException extends DataIntegrityException
     public static function forField(string $field, string $dto): self
     {
         return new self(
-            message: "Missing required field '{$field}' for {$dto}",
+            message: "Falta el dato requerido: '{$field}' en {$dto}",
             contextData: ['field' => $field, 'dto' => $dto],
             entityName: $dto,
             missingFields: [$field],
@@ -65,7 +66,7 @@ final class MissingRequiredDataException extends DataIntegrityException
     public static function forFields(array $fields, string $dto): self
     {
         return new self(
-            message: "Missing required fields: " . implode(', ', $fields) . " for {$dto}",
+            message: "Faltan los datos requeridos: " . implode(', ', $fields) . " en {$dto}",
             contextData: ['fields' => $fields, 'dto' => $dto],
             entityName: $dto,
             missingFields: $fields,

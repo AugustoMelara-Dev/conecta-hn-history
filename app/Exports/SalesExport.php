@@ -52,6 +52,26 @@ class SalesExport implements FromQuery, WithChunkReading, WithHeadings, WithMapp
     use Exportable;
     use SanitizesOutput;
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // Queue Resiliency Configuration
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Maximum retry attempts before marking job as failed.
+     */
+    public int $tries = 3;
+
+    /**
+     * Maximum seconds the job can run before being killed.
+     * 10 minutes = 600 seconds (safe for 100k+ records with chunking).
+     */
+    public int $timeout = 600;
+
+    /**
+     * Maximum exceptions before job is marked as failed.
+     */
+    public int $maxExceptions = 2;
+
     private readonly string $exportId;
 
     /**
@@ -108,6 +128,38 @@ class SalesExport implements FromQuery, WithChunkReading, WithHeadings, WithMapp
         return $export;
     }
 
+    /**
+     * Factory method for TESTING ONLY - skips audit event dispatch.
+     *
+     * ╔══════════════════════════════════════════════════════════════════════════╗
+     * ║  WARNING: Testing Only - Do NOT use in production code                  ║
+     * ╠══════════════════════════════════════════════════════════════════════════╣
+     * ║  This method bypasses the audit trail, which is a compliance violation. ║
+     * ║  It exists solely to avoid transaction conflicts in tests using         ║
+     * ║  RefreshDatabase or DatabaseMigrations with Event::fake().              ║
+     * ╚══════════════════════════════════════════════════════════════════════════╝
+     *
+     * @internal
+     */
+    public static function createForTesting(
+        TenantId $tenantId,
+        SalesExportCriteria $criteria,
+        int $userId,
+        bool $showFullPii = false,
+        string $ipAddress = '0.0.0.0',
+        string $userAgent = 'Unknown',
+    ): self {
+        // Construct WITHOUT dispatching audit event
+        return new self(
+            tenantId: $tenantId,
+            criteria: $criteria,
+            userId: $userId,
+            showFullPii: $showFullPii,
+            ipAddress: $ipAddress,
+            userAgent: $userAgent,
+        );
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // Excel Sheet Configuration
     // ═══════════════════════════════════════════════════════════════════════
@@ -139,7 +191,7 @@ class SalesExport implements FromQuery, WithChunkReading, WithHeadings, WithMapp
             // CRITICAL: Tenant filter FIRST - non-negotiable
             ->where('tenant_id', $this->tenantId->toInt())
             // Eager load for N+1 prevention
-            ->with(['items:id,order_id,quantity,product_name,line_total'])
+            ->with(['items:id,order_id,quantity,product_name,total_price'])
             // Date range from Criteria (always present - DoS prevention)
             ->whereDate('created_at', '>=', $this->criteria->startDate()->format('Y-m-d'))
             ->whereDate('created_at', '<=', $this->criteria->endDate()->format('Y-m-d'))
@@ -183,8 +235,8 @@ class SalesExport implements FromQuery, WithChunkReading, WithHeadings, WithMapp
             'Método de Pago',
             'Productos',
             'Subtotal',
-            'Impuestos',
             'Descuento',
+            'Envío',
             'Total',
         ];
     }
@@ -212,11 +264,11 @@ class SalesExport implements FromQuery, WithChunkReading, WithHeadings, WithMapp
                 $this->redactName($order->customer_name),
                 $this->redactPhone($order->customer_phone),
                 $order->status_label ?? $order->status ?? 'Unknown',
-                $order->payment_method?->value ?? $order->payment_method ?? 'N/A',
+                $order->payment_method ?? 'N/A',
                 $products ?: 'Sin productos',
                 $this->formatMoney($order->subtotal),
-                $this->formatMoney($order->tax_amount),
-                $this->formatMoney($order->discount_amount),
+                $this->formatMoney($order->discount),
+                $this->formatMoney($order->delivery_fee),
                 $this->formatMoney($order->total),
             ];
 

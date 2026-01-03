@@ -270,7 +270,7 @@ class CouponServiceTest extends TestCase
             );
         } catch (InvalidCouponException $e) {
             $this->assertSame('MIN_SPEND_NOT_MET', $e->getErrorCode());
-            $this->assertArrayHasKey('remaining', $e->getData());
+            $this->assertArrayHasKey('remaining', $e->context());
             throw $e;
         }
     }
