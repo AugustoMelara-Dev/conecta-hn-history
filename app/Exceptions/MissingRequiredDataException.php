@@ -6,6 +6,10 @@ namespace App\Exceptions;
 
 /**
  * MissingRequiredDataException - Thrown when critical DTO fields are missing.
+ *
+ * ⚠️ ARCHITECTURAL WARNING:
+ * This exception is for INTERNAL DOMAIN INTEGRITY only (e.g., malformed DTOs, corrupted events).
+ * DO NOT USE for HTTP Input Validation. Use Laravel's Request Validation ($request->validate()) instead.
  */
 final class MissingRequiredDataException extends DomainException
 {
