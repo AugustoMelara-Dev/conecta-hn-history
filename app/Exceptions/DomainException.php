@@ -124,11 +124,21 @@ abstract class DomainException extends \Exception implements HttpDomainException
     /**
      * Validate that context doesn't contain forbidden keys or sensitive values.
      * Throws LogicException if security risk detected.
+     * 
+     * STABILITY PATCH (2026-01-04): Added recursion depth check to prevent Stack Overflow.
      *
-     * @throws \LogicException If forbidden key or sensitive value is found
+     * @throws \LogicException If forbidden key, sensitive value, or recursion depth exceeded.
      */
-    protected function validateContextSafety(array $context): void
+    protected function validateContextSafety(array $context, int $depth = 0): void
     {
+        // DOS PROTECTION: Max recursion depth
+        if ($depth > 3) {
+            throw new \LogicException(
+                "Exception context exceeds maximum recursion depth (3). " .
+                "Simplify context data to prevent Stack Overflow DoS."
+            );
+        }
+
         $keys = array_map('strtolower', array_keys($context));
 
         // Check forbidden keys
@@ -144,8 +154,8 @@ abstract class DomainException extends \Exception implements HttpDomainException
         // Check values
         foreach ($context as $key => $value) {
             if (is_array($value)) {
-                // Recursive check for nested arrays
-                $this->validateContextSafety($value);
+                // Recursive check for nested arrays with incremented depth
+                $this->validateContextSafety($value, $depth + 1);
             } elseif (is_string($value)) {
                 // Check for sensitive patterns in string values
                 foreach (self::SENSITIVE_VALUE_PATTERNS as $pattern) {
