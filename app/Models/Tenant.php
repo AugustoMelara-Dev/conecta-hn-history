@@ -18,85 +18,92 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 {
     use CanBeFavorited, HasFactory, LogsActivity, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECURITY: Mass Assignment Protection
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CRITICAL: Only cosmetic/contact fields are fillable. 
+    // Plan, Status, and Subscription fields are STRICTLY GUARDED.
     protected $fillable = [
         'name',
         'slug',
-        'category',
+        'description',
+        'address',
+        'city_id',
         'category_id',
-        'logo_path',
-        'cover_path',
-        'banner_path',
-        'blur_hash',
-        'primary_color',
-        // Brand Customization (White-Label)
-        'brand_color',
-        'hero_image',
-        'slogan',
-        // Plan & Status
-        'is_pro',
-        'is_active',
-        'plan_expires_at',
-        'status',
-        'email',
-        'phone',
         'whatsapp_number',
         'whatsapp_message',
-        'whatsapp_template',
-        'address',
-        'city',
-        'city_id',
-        'latitude',
-        'longitude',
-        'description',
-        'about',
-        'user_id',
-        'hours_data',
-        'theme_config',
-        'product_limit',
+        'primary_color',
+        'phone',
+        'email',
+        'website_url',
         'facebook_url',
         'instagram_url',
         'tiktok_url',
-        'website_url',
         'simple_schedule',
-        // Subscription Engine
-        'subscription_status',
-        'subscription_ends_at',
-        'plan_type',
-        // Operational Settings (Checkout Configuration)
+        // White-label Branding
+        'brand_color',
+        'slogan',
+        // SEO
+        'seo_title',
+        'seo_description',
+        'tags',
+        // Operational (User Controlled)
         'payment_methods',
         'delivery_enabled',
         'pickup_enabled',
         'minimum_order',
-        // AI Enrichment
-        'is_ai_enhanced',
-        'original_name',
-        'admin_notes',
-        // Landing Page Builder (PRO)
-        'landing_page_data',
     ];
 
-    protected $guarded = ['id'];
+    protected $guarded = [
+        'id',
+        'user_id',
+        'status',          // Admin controlled
+        'is_active',       // Admin/Killswitch controlled
+        'plan_type',       // Billing Engine controlled
+        'subscription_status', 
+        'subscription_ends_at',
+        'plan_expires_at',
+        'product_limit',   // Billing Engine controlled
+        'is_pro',          // Computed
+    ];
 
     protected $casts = [
-        'hours_data' => 'array', // Array para compatibilidad con Filament Repeater
-        // 'is_pro' removed - now computed dynamically
+        'hours_data' => 'array', 
         'is_active' => 'boolean',
         'theme_config' => 'array',
         'social_links' => 'array',
+        'tags' => 'array',
         'plan_expires_at' => 'datetime',
         'next_billing_date' => 'date',
-        // Subscription Engine
         'subscription_ends_at' => 'datetime',
-        // Operational Settings
         'payment_methods' => 'array',
         'delivery_enabled' => 'boolean',
         'pickup_enabled' => 'boolean',
         'minimum_order' => 'decimal:2',
-        // AI Enrichment
         'is_ai_enhanced' => 'boolean',
-        // Landing Page Builder - CRITICAL: Cast to array for React Frontend
         'landing_page_data' => 'array',
     ];
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ASSET MANAGEMENT (Spatie Media Library)
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    public function registerMediaCollections(): void
+    {
+        // Identity Assets: Single File Enforcement
+        $this->addMediaCollection('logo')
+            ->singleFile() // Auto-delete old file on upload
+            ->useDisk('public');
+
+        $this->addMediaCollection('cover')
+            ->singleFile()
+            ->useDisk('public');
+            
+        // Hero Image for White-Label
+        $this->addMediaCollection('hero')
+            ->singleFile()
+            ->useDisk('public');
+    }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // JSON SERIALIZATION: Expose computed attributes to Frontend
@@ -272,9 +279,10 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     }
 
     /**
-     * Scope: Search tenants by name or description.
+     * Scope: Search tenants by name, description, or tags.
      *
      * SECURITY: Safely binds search term to prevent SQL injection.
+     * ARCHITECTURE: Uses proper grouping to maintain filter precedence.
      * Use: Tenant::query()->search('keyword')
      */
     public function scopeSearch($query, ?string $term)
@@ -286,9 +294,12 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         // Sanitize and limit search term
         $term = mb_substr(trim($term), 0, 100);
 
+        // Grouped OR conditions ensure city/category filters aren't overridden
+        // SQL: WHERE (city = X) AND (name LIKE %Y% OR description LIKE %Y% OR tags LIKE %Y%)
         return $query->where(function ($q) use ($term) {
             $q->where('name', 'like', "%{$term}%")
-                ->orWhere('description', 'like', "%{$term}%");
+                ->orWhere('description', 'like', "%{$term}%")
+                ->orWhere('tags', 'like', "%{$term}%"); // JSON column - partial match
         });
     }
 
@@ -518,9 +529,9 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $theme;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
     // FEATURE GATING: Métodos de Acceso Protegido por Plan
-    // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
 
     /**
      * Obtiene la estructura de menú pública (Feature Gating)
