@@ -19,6 +19,12 @@ use Illuminate\Support\Str;
 
 class CityResource extends Resource
 {
+    // Strict Governance: Cities can only be managed by Super Admin
+    public static function canCreate(): bool { return auth()->user()?->isSuperAdmin() ?? false; }
+    public static function canEdit($record): bool { return auth()->user()?->isSuperAdmin() ?? false; }
+    public static function canDelete($record): bool { return auth()->user()?->isSuperAdmin() ?? false; }
+    public static function canDeleteAny(): bool { return auth()->user()?->isSuperAdmin() ?? false; }
+
     protected static ?string $model = City::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-map-pin';
