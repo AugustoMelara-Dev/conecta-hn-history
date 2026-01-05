@@ -217,18 +217,12 @@ class TenantResource extends Resource
     {
         return $table
             ->columns([
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA 1: Logo con identificacion visual inmediata
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\ImageColumn::make('logo_path')
                     ->label('')
                     ->circular()
                     ->size(45)
                     ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&background=random'),
 
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA 2: Nombre del negocio con link al micrositio
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('name')
                     ->label('Negocio')
                     ->searchable()
@@ -236,27 +230,18 @@ class TenantResource extends Resource
                     ->weight('bold')
                     ->description(fn (Tenant $record): string => $record->slug),
 
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA 3: Propietario con email
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Propietario')
                     ->searchable()
                     ->sortable()
                     ->description(fn (Tenant $record): string => $record->user->email ?? ''),
 
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA 4: Ciudad y Categoria
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('city.name')
                     ->label('Ubicacion')
                     ->searchable()
                     ->sortable()
                     ->description(fn (Tenant $record): string => $record->category->name ?? ''),
 
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA 5: Badge de Plan (PRO/FREE) con colores
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('is_pro')
                     ->label('Plan')
                     ->badge()
@@ -264,18 +249,12 @@ class TenantResource extends Resource
                     ->icon(fn (bool $state): string => $state ? 'heroicon-o-star' : 'heroicon-o-user')
                     ->formatStateUsing(fn (bool $state): string => $state ? 'PRO' : 'FREE'),
 
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA 5.5: Color de Marca (Visual Brand Identity)
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\ColorColumn::make('primary_color')
                     ->label('Marca')
                     ->copyable()
                     ->copyMessage('Color copiado')
                     ->tooltip(fn ($state) => $state ?? 'Sin color definido'),
 
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA 6: Algoritmo de Salud del Negocio
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Salud')
                     ->badge()
@@ -321,9 +300,6 @@ class TenantResource extends Resource
                     })
                     ->tooltip(fn (Tenant $record): string => 'Ultima actividad: '.$record->updated_at->diffForHumans()),
 
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA 7: Estado de Aprobacion
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
@@ -340,9 +316,6 @@ class TenantResource extends Resource
                         default => ucfirst($state),
                     }),
 
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA 8: Kill Switch - Estado Operativo
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Operativo')
                     ->boolean()
@@ -352,9 +325,6 @@ class TenantResource extends Resource
                     ->falseColor('danger')
                     ->tooltip(fn ($record): string => $record->is_active ? 'Negocio operando normalmente' : 'SUSPENDIDO - Kill Switch activado'),
 
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA 9: Conteo de productos
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('products_count')
                     ->label('Productos')
                     ->counts('products')
@@ -362,18 +332,12 @@ class TenantResource extends Resource
                     ->badge()
                     ->color('gray'),
 
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA 10: Fecha de registro
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Registro')
                     ->dateTime('d/m/Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            // ═══════════════════════════════════════════════════════════════
-            // MOTOR DE SEGMENTACION GRANULAR - Filtros Avanzados
-            // ═══════════════════════════════════════════════════════════════
             ->filters([
                 Tables\Filters\SelectFilter::make('city_id')
                     ->label('Ciudad')
@@ -415,11 +379,7 @@ class TenantResource extends Resource
                     ->toggle(),
             ])
             ->filtersFormColumns(3)
-            // ═══════════════════════════════════════════════════════════════
-            // ACCIONES DE FILA
-            // ═══════════════════════════════════════════════════════════════
             ->actions([
-                // Accion: Aprobar Negocio
                 Tables\Actions\Action::make('approve')
                     ->label('Aprobar')
                     ->icon('heroicon-o-check-badge')
@@ -440,7 +400,6 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                // Accion: Rechazar Negocio
                 Tables\Actions\Action::make('reject')
                     ->label('Rechazar')
                     ->icon('heroicon-o-x-circle')
@@ -464,9 +423,6 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                // ═══════════════════════════════════════════════════════════
-                // SHADOW LOGIN - Suplantacion de Identidad
-                // ═══════════════════════════════════════════════════════════
                 Tables\Actions\Action::make('impersonate')
                     ->label('Acceder como Cliente')
                     ->icon('heroicon-o-user-circle')
@@ -476,20 +432,12 @@ class TenantResource extends Resource
                     ->modalDescription(fn ($record) => "Seras autenticado como '{$record->user->name}' ({$record->user->email}). Podras ver su panel exactamente como el lo ve. Usa el banner superior para regresar.")
                     ->modalSubmitActionLabel('Iniciar Sesion como Cliente')
                     ->action(function ($record) {
-                        // Guardar ID del admin original en sesion
                         session(['impersonator_id' => auth()->id()]);
                         session(['impersonator_name' => auth()->user()->name]);
-
-                        // Autenticar como el usuario del tenant
                         \Illuminate\Support\Facades\Auth::login($record->user);
-
-                        // Redirigir al panel del tenant
                         return redirect('/app');
                     }),
 
-                // ═══════════════════════════════════════════════════════════
-                // KILL SWITCH - Suspension Inmediata
-                // ═══════════════════════════════════════════════════════════
                 Tables\Actions\Action::make('killSwitch')
                     ->label(fn ($record) => $record->is_active ? 'SUSPENDER' : 'REACTIVAR')
                     ->icon(fn ($record) => $record->is_active ? 'heroicon-o-no-symbol' : 'heroicon-o-bolt')
@@ -513,7 +461,6 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                // Accion: Forzar Upgrade a PRO
                 Tables\Actions\Action::make('forceUpgrade')
                     ->label('Forzar PRO')
                     ->icon('heroicon-o-arrow-up-circle')
