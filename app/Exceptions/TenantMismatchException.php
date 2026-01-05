@@ -36,10 +36,12 @@ final class TenantMismatchException extends DomainException
 
     public function context(): array
     {
+        // SECURITY PATCH (2026-01-04): Blind 403 Compliance
+        // Removed 'expected_tenant_id' and 'actual_tenant_id' to prevent ID Enumeration / Leakage.
+        // These values constitute private infrastructure details.
         return [
-            'expected_tenant_id' => $this->expectedTenantId,
-            'actual_tenant_id' => $this->actualTenantId,
             'severity' => 'CRITICAL',
+            // 'access_violation' flag may be present in $contextData
             ...$this->contextData,
         ];
     }
