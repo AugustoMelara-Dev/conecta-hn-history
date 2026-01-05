@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\DataTransferObjects\CouponValidationResult;
-use App\Traits\BelongsToTenant;
+use App\Models\Traits\BelongsToTenant;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
