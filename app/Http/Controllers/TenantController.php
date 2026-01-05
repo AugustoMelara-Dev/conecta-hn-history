@@ -54,6 +54,16 @@ class TenantController extends Controller
             abort(404, 'Este negocio no está disponible.');
         }
 
+        // ═══════════════════════════════════════════════════════════════
+        // VIEW COUNTING: Deferred execution (non-blocking)
+        // CRITICAL: Never use $tenant->increment() synchronously - it blocks response
+        // TODO: Move to dedicated Job (IncrementTenantVisit) for better reliability
+        // ═══════════════════════════════════════════════════════════════
+        defer(function () use ($tenant) {
+            $tenant->increment('views');
+            // Future: Log IP/UserAgent for analytics, use Redis for deduplication
+        });
+
         // Determine tenant plan based on is_pro flag
         $tenantPlan = $this->determineTenantPlan($tenant);
 
@@ -76,8 +86,10 @@ class TenantController extends Controller
 
         // Calculate hidden products for Soft Gate UX
         $visibleProductsCount = count($products);
+        $semillaLimit = $tenant->product_limit ?? 12;
+
         $hasHiddenProducts = ($tenantPlan === self::PLAN_SEMILLA)
-            && ($totalProductsCount > self::SEMILLA_PRODUCT_LIMIT);
+            && ($totalProductsCount > $semillaLimit);
         $hiddenProductsCount = max(0, $totalProductsCount - $visibleProductsCount);
 
         // ═══════════════════════════════════════════════════════════════
@@ -124,6 +136,9 @@ class TenantController extends Controller
 
             // SEO Structured Data for Google
             'seoStructuredData' => $this->buildStructuredData($tenant),
+
+            // SEO: Canonical URL for SSR (Fixes meta property="og:url")
+            'canonicalUrl' => route('tenant.show', $tenant),
         ]);
     }
 
@@ -160,9 +175,11 @@ class TenantController extends Controller
         $productQuery = function ($query) use ($plan) {
             $query->where('is_visible', true)->orderBy('name');
 
-            // HARD LIMIT: Semilla only gets 12 products from DB
+            // HARD LIMIT: Semilla uses dynamic limit from DB (default 12)
             if ($plan === self::PLAN_SEMILLA) {
-                $query->limit(self::SEMILLA_PRODUCT_LIMIT);
+                // Use limit from tenant config, fallback to 12
+                $limit = $tenant->product_limit ?? 12;
+                $query->limit($limit);
             }
         };
 
@@ -328,18 +345,23 @@ class TenantController extends Controller
     /**
      * Get mocked opening hours (since table doesn't exist).
      */
+    /**
+     * @deprecated Technical Debt: This data is currently hardcoded and should be moved to a
+     * dedicated `opening_hours` table or a JSON column in the `tenants` table.
+     * Use this only as a fallback.
+     */
     private function getMockedOpeningHours(): array
     {
-        $days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-
-        return collect($days)->map(fn ($day) => [
-            'day' => $day,
-            'opens_at' => '08:00',
-            'closes_at' => '18:00',
-            'is_closed' => ($day === 'Domingo'),
-        ])->toArray();
+        return [
+            'mon' => ['open' => '08:00', 'close' => '17:00'],
+            'tue' => ['open' => '08:00', 'close' => '17:00'],
+            'wed' => ['open' => '08:00', 'close' => '17:00'],
+            'thu' => ['open' => '08:00', 'close' => '17:00'],
+            'fri' => ['open' => '08:00', 'close' => '17:00'],
+            'sat' => ['open' => '09:00', 'close' => '13:00'],
+            'sun' => null, // Closed
+        ];
     }
-
     /**
      * Build SEO structured data for Google.
      */
