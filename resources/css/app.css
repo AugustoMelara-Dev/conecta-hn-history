@@ -65,3 +65,20 @@
 .animate-shake {
     animation: shake 0.5s ease-in-out;
 }
+
+/* Scale in from zero - used for FloatingCart FAB */
+@keyframes scale-in {
+    0% {
+        opacity: 0;
+        transform: scale(0);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.animate-scale-in {
+    animation: scale-in 0.2s ease-out forwards;
+}
