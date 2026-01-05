@@ -20,18 +20,7 @@ class FinancialStatsOverview extends BaseWidget
      */
     public static function canView(): bool
     {
-        $user = auth()->user();
-        if (! $user) {
-            return false;
-        }
-
-        // Soporte no puede ver widgets financieros
-        if ($user->hasRole('soporte')) {
-            return false;
-        }
-
-        // super_admin, auditor, o admin@conectahn.com pueden ver
-        return $user->hasRole(['super_admin', 'auditor']) || $user->email === 'admin@conectahn.com';
+        return auth()->user()?->isSuperAdmin() ?? false;
     }
 
     protected function getStats(): array
