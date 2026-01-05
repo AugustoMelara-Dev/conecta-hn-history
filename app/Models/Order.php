@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PaymentMethod;
-use App\Traits\BelongsToTenant;
+use App\Models\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
