@@ -97,14 +97,17 @@ export default function TenantShow({
 
     // ═══════════════════════════════════════════════════════════════════════
     // SEO METADATA: Guaranteed safe strings (never null/undefined)
+    // Title Format: "Nombre | Categoría en Ciudad | Conecta HN"
     // ═══════════════════════════════════════════════════════════════════════
-    const pageTitle = String(tenant.name || 'Tienda Conecta HN');
+    const categoryName = tenant.category?.name || 'Negocios';
+    const pageTitle = `${tenant.name || 'Tienda'} | ${categoryName} en ${cityName} | Conecta HN`;
     const pageDescription = String(
         tenant.description ||
         tenant.slogan ||
-        `Descubre ${pageTitle} en Conecta HN. Tu marketplace local de Honduras.`
-    );
-    const pageImage = tenant.hero_image || tenant.cover || tenant.banner_path || null;
+        `Descubre ${tenant.name} en Conecta HN. Tu marketplace local de Honduras.`
+    ).substring(0, 160);
+    // og:image MUST never be null - use system fallback
+    const pageImage = tenant.hero_image || tenant.cover || tenant.banner_path || 'https://conecta-hn.com/og-default.jpg';
 
     return (
         <div
@@ -118,14 +121,14 @@ export default function TenantShow({
             {/* ═══════════════════════════════════════════════════════════════
                 SEO HEAD: Defensive rendering with guaranteed string values
                 - All content attributes are pre-sanitized
-                - og:image only renders if image exists
+                - og:image ALWAYS rendered (never null - fallback provided)
             ═══════════════════════════════════════════════════════════════ */}
-            <Head title={`${pageTitle} - Conecta HN`}>
+            <Head title={pageTitle}>
                 <meta name="description" content={pageDescription} />
-                <meta property="og:title" content={`${pageTitle} - Conecta HN`} />
+                <meta property="og:title" content={pageTitle} />
                 <meta property="og:description" content={pageDescription} />
                 <meta property="og:type" content="business.business" />
-                {pageImage && <meta property="og:image" content={pageImage} />}
+                <meta property="og:image" content={pageImage} />
             </Head>
 
             {/* Fixed Navigation */}
@@ -153,16 +156,20 @@ export default function TenantShow({
                 HERO SECTION - Adaptive based on plan
             ═══════════════════════════════════════════════════════════════ */}
             <header className="relative">
-                {/* Cover Image */}
+                {/* Cover Image - min-h prevents CLS */}
                 <div className={cn(
                     "relative overflow-hidden bg-slate-900",
-                    isPro ? "h-[40vh] md:h-[50vh]" : "h-48"
+                    isPro ? "min-h-[40vh] md:min-h-[50vh]" : "min-h-[12rem]"
                 )}>
                     {tenant.cover ? (
                         <img
                             src={tenant.cover}
                             alt={tenant.name}
                             className="w-full h-full object-cover opacity-70"
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop';
+                            }}
                         />
                     ) : (
                         <div
@@ -200,7 +207,16 @@ export default function TenantShow({
                             isPro ? "w-24 h-24 md:w-32 md:h-32" : "w-24 h-24"
                         )}>
                             {tenant.logo ? (
-                                <img src={tenant.logo} alt="Logo" className="w-full h-full object-cover" />
+                                <img
+                                    src={tenant.logo}
+                                    alt="Logo"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.style.display = 'none';
+                                        e.target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center" style="background-color: ${primaryColor}"><span class="text-3xl font-bold text-white">${tenant.name?.substring(0, 2).toUpperCase() || 'CN'}</span></div>`;
+                                    }}
+                                />
                             ) : (
                                 <div
                                     className="w-full h-full flex items-center justify-center"
@@ -553,6 +569,10 @@ function ProductGridSection({
                             alt={product.name}
                             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
                             loading="lazy"
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop';
+                            }}
                         />
 
                         {/* Price Badge */}
