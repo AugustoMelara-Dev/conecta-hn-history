@@ -80,6 +80,10 @@ final class InvalidBusinessRuleException extends DomainException
         );
     }
 
+    /**
+     * @deprecated Anti-Pattern: Do not use generic exceptions for new business rules. 
+     * Create a specific DomainException class instead to ensure "Screaming Architecture".
+     */
     public static function custom(string $message, string $rule = '', array $context = []): self
     {
         return new self($message, $rule, $context);
