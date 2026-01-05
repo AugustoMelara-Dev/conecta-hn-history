@@ -27,7 +27,13 @@ const ICON_MAP = {
     'logistica': 'Truck',
 };
 
-export default function CategoryRail({ categories }) {
+/**
+ * CategoryRail - Horizontal scrollable category filter
+ * 
+ * @param {Array} categories - List of category objects
+ * @param {string} activeCategory - Currently active category slug (from props, not URL)
+ */
+export default function CategoryRail({ categories, activeCategory }) {
     const scrollContainerRef = useRef(null);
     const [showLeftArrow, setShowLeftArrow] = useState(false);
     const [showRightArrow, setShowRightArrow] = useState(true);
@@ -98,12 +104,22 @@ export default function CategoryRail({ categories }) {
                 >
                     {categories.map((category) => {
                         const IconComponent = Icons[ICON_MAP[category.slug]] || Icons.Store;
-                        const isActive = route().current('directory.index') && new URLSearchParams(window.location.search).get('category') === category.slug;
+
+                        // SSR-Safe: Use prop instead of window.location
+                        // Empty slug means "Ver Todos" - active when no category is selected
+                        const isActive = category.slug
+                            ? activeCategory === category.slug
+                            : !activeCategory;
+
+                        // Clean URL: Don't pass category param if slug is empty
+                        const href = category.slug
+                            ? route('directory.index', { category: category.slug })
+                            : route('directory.index');
 
                         return (
                             <Link
                                 key={category.id}
-                                href={route('directory.index', { category: category.slug })}
+                                href={href}
                                 className={cn(
                                     "flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium whitespace-nowrap transition-all duration-200 snap-start select-none",
                                     isActive
@@ -121,3 +137,4 @@ export default function CategoryRail({ categories }) {
         </div>
     );
 }
+
