@@ -5,7 +5,7 @@ namespace App\Models;
 use App\Enums\StockStatus;
 use App\Scopes\LocationScope;
 use App\Scopes\PublicVisibilityScope;
-use App\Traits\BelongsToTenant;
+use App\Models\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -142,19 +142,29 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     {
         static::addGlobalScope(new LocationScope);
         static::addGlobalScope(new PublicVisibilityScope);
+
+        static::creating(function ($product) {
+            if (empty($product->slug)) {
+                $product->slug = \Illuminate\Support\Str::slug($product->name);
+            }
+        });
     }
 
     public function registerMediaConversions(?\Spatie\MediaLibrary\MediaCollections\Models\Media $media = null): void
     {
+        // 1. Minuatura cuadrada para Tablas/Grid (400x400)
         $this->addMediaConversion('thumb')
             ->width(400)
             ->height(400)
-            ->sharpen(10);
+            ->sharpen(10)
+            ->nonQueued(); // Procesamiento síncrono para desarrollo (cambiar en prod)
 
+        // 2. Versión WebP optimizada para Detalle (LCP)
         $this->addMediaConversion('optimized')
             ->width(800)
             ->format('webp')
-            ->quality(80);
+            ->quality(80)
+            ->nonQueued();
     }
 
     // ═══════════════════════════════════════════════════════════════════════
