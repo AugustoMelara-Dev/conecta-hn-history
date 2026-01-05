@@ -16,6 +16,7 @@
  */
 
 import { useState } from 'react';
+import SeoHead from '@/Components/Seo/SeoHead';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
 
@@ -285,16 +286,52 @@ function WhatsAppFAB({ tenant }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════════════
-export default function TenantShow({ tenant, products = [], isOpen = false, todaySchedule = null }) {
+export default function TenantShow({ tenant, products = [], isOpen = false, todaySchedule = null, canonicalUrl }) {
+    // ═══════════════════════════════════════════════════════════════════════
+    // SEO LOGIC: AI Data > Raw Data > Defaults
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // 1. Title Strategy
+    const seoTitle = tenant.seo_title || `${tenant.name} - ConectaHN`;
+
+    // 2. Description Strategy (with truncation)
+    const rawDescription = tenant.description || `${tenant.name} en Honduras. ${tenant.category || ''}`;
+    const seoDescription = tenant.seo_description || (
+        rawDescription.length > 160 ? rawDescription.substring(0, 157) + '...' : rawDescription
+    );
+
+    // 3. Image Strategy (Logo preferred for Sharing, Cover for context)
+    // Using logo for "square" sharing often better, prompt requested logo or cover.
+    const seoImage = tenant.logo_url || tenant.cover_url;
+
+    // 4. URL Strategy (SSR Safe)
+    // Backend 'canonicalUrl' is preferred (SSR compatible). Fallback to window for client-side nav.
+    const currentUrl = canonicalUrl || (typeof window !== 'undefined' ? window.location.href : '');
+
+    // 5. Schema.org Definition (LocalBusiness)
+    const jsonLd = {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": tenant.name,
+        "image": seoImage ? [seoImage] : [],
+        "description": seoDescription,
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": tenant.city || 'Honduras',
+            "addressCountry": "HN"
+        },
+        "url": currentUrl
+    };
+
     return (
         <PublicLayout>
-            <Head>
-                <title>{tenant.name} - ConectaHN</title>
-                <meta name="description" content={tenant.description || `${tenant.name} en Honduras. ${tenant.category || ''} ${tenant.city || ''}`} />
-                <meta property="og:title" content={tenant.name} />
-                <meta property="og:description" content={tenant.description || ''} />
-                {tenant.cover_url && <meta property="og:image" content={tenant.cover_url} />}
-            </Head>
+            <SeoHead
+                title={seoTitle}
+                description={seoDescription}
+                image={seoImage}
+                url={currentUrl}
+                schema={jsonLd}
+            />
 
             <div className="min-h-screen bg-gray-50">
                 <HeroSection tenant={tenant} isOpen={isOpen} todaySchedule={todaySchedule} />
