@@ -123,6 +123,23 @@ final readonly class SalesExportCriteria
         return self::withDefaultRange();
     }
 
+    /**
+     * Reconstruct criteria from an array (for Job deserialization).
+     *
+     * Used by GenerateSalesExport Job to reconstruct criteria from
+     * primitive array after queue serialization.
+     *
+     * @param array{start_date: ?string, end_date: ?string, status: ?string} $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return self::create(
+            startDate: $data['start_date'] ?? null,
+            endDate: $data['end_date'] ?? null,
+            status: $data['status'] ?? null,
+        );
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // Getters (Strictly Typed)
     // ═══════════════════════════════════════════════════════════════════════
