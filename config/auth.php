@@ -13,6 +13,8 @@ return [
     |
     */
 
+    'super_admin_email' => env('SUPER_ADMIN_EMAIL', 'admin@conectahn.com'),
+
     'defaults' => [
         'guard' => env('AUTH_GUARD', 'web'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
