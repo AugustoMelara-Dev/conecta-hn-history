@@ -50,7 +50,7 @@ class StoreOrderRequest extends FormRequest
             'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
             'coupon_code' => 'nullable|string|max:50',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'nullable|exists:products,id',
+            'items.*.product_id' => 'required|exists:products,id',
             'items.*.name' => 'required|string|max:255',
             'items.*.price' => 'required|numeric|min:0',
             'items.*.quantity' => 'required|integer|min:1',
