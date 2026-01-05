@@ -23,6 +23,13 @@ import { useState, useEffect } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
 
 // ═══════════════════════════════════════════════════════════════════════════
+// REAL-TIME NOTIFICATIONS (WebSocket)
+// ═══════════════════════════════════════════════════════════════════════════
+import { useWebSocketNotifications } from '@/Hooks/useWebSocketNotifications';
+import { ToastContainer } from '@/Components/Toast/ToastContainer';
+import { NotificationBell } from '@/Components/NotificationBell';
+
+// ═══════════════════════════════════════════════════════════════════════════
 // NAVIGATION CONFIGURATION (HARDENED)
 // All modules with strict route patterns
 // ═══════════════════════════════════════════════════════════════════════════
@@ -199,6 +206,11 @@ export default function TenantLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const isPro = tenant?.is_pro || false;
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // WEBSOCKET NOTIFICATIONS (Real-time export alerts)
+    // ═══════════════════════════════════════════════════════════════════════
+    const { toasts, removeToast } = useWebSocketNotifications(auth?.user);
+
     return (
         <div className="antialiased bg-gray-50 flex h-screen overflow-hidden">
             {/* ═══════════════════════════════════════════════════════════════ */}
@@ -344,6 +356,32 @@ export default function TenantLayout({ children }) {
             {/* MAIN CONTENT AREA */}
             {/* ═══════════════════════════════════════════════════════════════ */}
             <div className="flex-1 flex flex-col overflow-hidden">
+                {/* ═══════════════════════════════════════════════════════════════ */}
+                {/* DESKTOP HEADER (Hardened UX) */}
+                {/* ═══════════════════════════════════════════════════════════════ */}
+                <header className="hidden md:flex bg-white h-16 border-b border-gray-200 items-center justify-between px-8 shadow-sm z-30">
+                    <div className="flex-1">
+                        {/* Placeholder for Breadcrumbs or Page Title */}
+                    </div>
+                    <div className="flex items-center gap-4">
+                        {/* Notification Center (Real-time & Persistent) */}
+                        <NotificationBell />
+
+                        {/* User Profile Context */}
+                        <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
+                            <div className="text-right hidden lg:block">
+                                <div className="text-sm font-medium text-gray-900">{auth?.user?.name}</div>
+                                <div className="text-xs text-gray-500">{tenant?.name}</div>
+                            </div>
+                            <img
+                                src={auth?.user?.profile_photo_url || `https://ui-avatars.com/api/?name=${auth?.user?.name}&background=random`}
+                                alt={auth?.user?.name}
+                                className="h-8 w-8 rounded-full object-cover border border-gray-200"
+                            />
+                        </div>
+                    </div>
+                </header>
+
                 {/* Mobile Top Bar */}
                 <header className="bg-white shadow-sm md:hidden p-4 flex justify-between items-center border-b">
                     <div className="flex items-center gap-2">
@@ -370,10 +408,13 @@ export default function TenantLayout({ children }) {
                 </main>
             </div>
 
-            {/* Flash Toast Notifications */}
+            {/* Flash Toast Notifications (HTTP response messages) */}
             {flash?.message && <Toast message={flash.message} type={flash.type} />}
             {flash?.success && <Toast message={flash.success} type="success" />}
             {flash?.error && <Toast message={flash.error} type="error" />}
+
+            {/* WebSocket Toast Notifications (Real-time events) */}
+            <ToastContainer toasts={toasts} onDismiss={removeToast} />
         </div>
     );
 }
