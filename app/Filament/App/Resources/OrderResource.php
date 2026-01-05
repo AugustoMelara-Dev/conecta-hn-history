@@ -177,29 +177,63 @@ class OrderResource extends Resource
                     ->color('info')
                     ->requiresConfirmation()
                     ->visible(fn (Order $record): bool => $record->status === 'pending')
-                    ->action(fn (Order $record) => $record->update([
-                        'status' => 'confirmed',
-                        'confirmed_at' => now(),
-                    ])),
+                    ->action(function (Order $record) {
+                        try {
+                            app(\App\Services\OrderStateService::class)->transition($record, 'confirmed');
+                            \Filament\Notifications\Notification::make()
+                                ->title('Pedido Confirmado')
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Error')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
 
                 Action::make('prepare')
                     ->label('A Cocina')
                     ->icon('heroicon-o-fire')
                     ->color('primary')
                     ->visible(fn (Order $record): bool => $record->status === 'confirmed')
-                    ->action(fn (Order $record) => $record->update([
-                        'status' => 'preparing',
-                    ])),
+                    ->action(function (Order $record) {
+                        try {
+                            app(\App\Services\OrderStateService::class)->transition($record, 'processing');
+                            \Filament\Notifications\Notification::make()
+                                ->title('En Cocina')
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Error')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
 
                 Action::make('ready')
                     ->label('Listo')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn (Order $record): bool => $record->status === 'preparing')
-                    ->action(fn (Order $record) => $record->update([
-                        'status' => 'ready',
-                        'prepared_at' => now(),
-                    ])),
+                    ->visible(fn (Order $record): bool => $record->status === 'processing')
+                    ->action(function (Order $record) {
+                        try {
+                            app(\App\Services\OrderStateService::class)->transition($record, 'ready');
+                            \Filament\Notifications\Notification::make()
+                                ->title('Pedido Listo')
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Error')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
 
                 Action::make('deliver')
                     ->label('Entregar')
@@ -207,10 +241,21 @@ class OrderResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->visible(fn (Order $record): bool => $record->status === 'ready')
-                    ->action(fn (Order $record) => $record->update([
-                        'status' => 'delivered',
-                        'delivered_at' => now(),
-                    ])),
+                    ->action(function (Order $record) {
+                        try {
+                            app(\App\Services\OrderStateService::class)->transition($record, 'delivered');
+                            \Filament\Notifications\Notification::make()
+                                ->title('Pedido Entregado')
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Error')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
 
                 ViewAction::make()
                     ->iconButton(),
