@@ -246,6 +246,11 @@ class OrderStateService
                 cancelledById: auth()->id(),
                 wasPaid: $order->isPaid(),
             ),
+            Order::STATUS_DELIVERED => \App\Events\Order\OrderDelivered::create(
+                tenantId: $order->tenant_id,
+                orderId: $order->id,
+                orderNumber: $order->order_number,
+            ),
             // NOTE: OrderPaid is dispatched from PaymentService, not here
             // NOTE: OrderShipped is dispatched from ShippingService, not here
             default => null,
