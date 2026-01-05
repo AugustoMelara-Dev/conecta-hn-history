@@ -198,6 +198,18 @@ Route::middleware(['auth:sanctum', 'tenant.ownership', 'throttle:api'])->group(f
         Route::get('/kitchen/pdf', [\App\Http\Controllers\Api\ReportController::class, 'kitchenPdf'])
             ->name('reports.kitchen.pdf');
     });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ASYNC EXPORTS (Deferred Execution Pattern)
+    // ─────────────────────────────────────────────────────────────────────────
+    // Background-processed exports for large datasets.
+    // Controller returns 202 Accepted; user notified via WebSocket when ready.
+    // ─────────────────────────────────────────────────────────────────────────
+    Route::prefix('exports')->group(function () {
+        // Request async sales export (dispatches to queue)
+        Route::post('/sales', [\App\Http\Controllers\Api\SalesExportController::class, 'store'])
+            ->name('api.exports.sales');
+    });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -249,3 +261,50 @@ Route::get('/reports/download/{path}', [\App\Http\Controllers\Api\ReportDownload
     ->where('path', '.*')  // Allow slashes in path parameter
     ->name('reports.download')
     ->middleware('signed');
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EXPORT DOWNLOADS (Async Export Pattern - Double Security Layer)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// SECURITY ARCHITECTURE:
+// 1. 'auth:sanctum' - User must be authenticated
+// 2. 'signed' - URL has valid cryptographic signature
+// 3. Controller validates tenant ownership before serving
+//
+// FLOW:
+// GenerateSalesExport Job → ExportReadyNotification → Signed URL → This route
+// ═══════════════════════════════════════════════════════════════════════════════
+Route::get('/exports/download', [\App\Http\Controllers\Api\SalesExportController::class, 'download'])
+    ->name('api.exports.download')
+    ->middleware(['auth:sanctum', 'signed']);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NOTIFICATION CENTER API (Authenticated Users Only)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// ARCHITECTURE:
+// - Syncs with database notifications (Laravel's Notifiable trait)
+// - Real-time updates via WebSocket complement this API
+// - Used by NotificationBell component in frontend
+// ═══════════════════════════════════════════════════════════════════════════════
+Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('notifications')->group(function () {
+    // GET /api/notifications - List user's notifications
+    Route::get('/', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
+    
+    // GET /api/notifications/count - Get unread count only (lightweight)
+    Route::get('/count', [\App\Http\Controllers\Api\NotificationController::class, 'count']);
+    
+    // PATCH /api/notifications/read-all - Mark all as read
+    Route::patch('/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
+    
+    // PATCH /api/notifications/{id}/read - Mark single as read
+    Route::patch('/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// AI TOOLS (GPT-4o)
+// ═══════════════════════════════════════════════════════════════════════
+Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('ai')->group(function () {
+    // Non-blocking generation with Rate Limiting (5/hr enforced in controller)
+    Route::post('/generate', [\App\Http\Controllers\Api\AiController::class, 'generate']);
+});
