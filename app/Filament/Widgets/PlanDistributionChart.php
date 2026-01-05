@@ -11,6 +11,11 @@ class PlanDistributionChart extends ChartWidget
 
     protected static ?int $sort = 3;
 
+    public static function canView(): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
+
     protected int|string|array $columnSpan = 1;
 
     protected function getData(): array
