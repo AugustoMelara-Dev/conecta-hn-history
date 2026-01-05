@@ -28,9 +28,13 @@ const STORAGE_KEY = 'conecta-cart';
 /**
  * Generate a unique key for cart item deduplication
  * Based on product ID + sorted modifier selection
+ * SAFETY: Guards against undefined groupId/optionId
  */
 const generateItemKey = (productId, selectedModifiers = []) => {
+    if (!selectedModifiers?.length) return `${productId}-`;
+
     const modifierIds = selectedModifiers
+        .filter(m => m?.groupId != null && m?.optionId != null)
         .map(m => `${m.groupId}:${m.optionId}`)
         .sort()
         .join('|');
@@ -39,10 +43,11 @@ const generateItemKey = (productId, selectedModifiers = []) => {
 
 /**
  * Calculate total price for a cart item (base + modifiers)
+ * SAFETY: Guards against undefined/null prices
  */
-const calculateItemTotal = (basePrice, quantity, selectedModifiers = []) => {
-    const modifiersTotal = selectedModifiers.reduce((sum, m) => sum + (m.price || 0), 0);
-    return (basePrice + modifiersTotal) * quantity;
+export const calculateItemTotal = (basePrice, quantity, selectedModifiers = []) => {
+    const modifiersTotal = (selectedModifiers || []).reduce((sum, m) => sum + (Number(m?.price) || 0), 0);
+    return ((Number(basePrice) || 0) + modifiersTotal) * (Number(quantity) || 1);
 };
 
 const useCartStore = create(
@@ -77,6 +82,7 @@ const useCartStore = create(
             couponValue: null,     // The raw value (e.g., 10 for 10%)
             couponError: null,
             isApplyingCoupon: false,
+            revalidateController: null, // For canceling pending requests
 
             // ═══════════════════════════════════════════════════════════════════════
             // STATE: Order Submission
@@ -230,6 +236,9 @@ const useCartStore = create(
                     };
                     set({ items: [...items, newItem] });
                 }
+
+                // Revalidate coupon if items changed (minimum subtotal may have changed)
+                get().revalidateCoupon();
             },
 
             /**
@@ -239,6 +248,8 @@ const useCartStore = create(
                 set({
                     items: get().items.filter(item => item.id !== cartItemId),
                 });
+                // Revalidate coupon after removal (minimum subtotal may have changed)
+                get().revalidateCoupon();
             },
 
             /**
@@ -257,6 +268,8 @@ const useCartStore = create(
                             : item
                     ),
                 });
+                // Revalidate coupon after quantity change
+                get().revalidateCoupon();
             },
 
             /**
@@ -383,11 +396,23 @@ const useCartStore = create(
             /**
              * Revalidate coupon after cart changes
              * Called internally when items change
+             * 
+             * OPTIMIZATION: Uses AbortController to cancel pending requests
+             * This prevents race conditions when user clicks +/- rapidly
              */
             revalidateCoupon: async () => {
-                const { couponCode, tenantId } = get();
+                const { couponCode, tenantId, revalidateController } = get();
+
+                // Cancel previous request if it exists
+                if (revalidateController) {
+                    revalidateController.abort();
+                }
 
                 if (!couponCode || !tenantId) return;
+
+                // Create new controller for this request
+                const controller = new AbortController();
+                set({ revalidateController: controller });
 
                 const subtotal = get().getSubtotal();
 
@@ -396,12 +421,15 @@ const useCartStore = create(
                         tenant_id: tenantId,
                         code: couponCode,
                         cart_subtotal: subtotal,
+                    }, {
+                        signal: controller.signal // Bind signal to axios
                     });
 
                     if (response.data.valid) {
                         set({
                             discountAmount: response.data.discount_amount,
                             couponError: null,
+                            revalidateController: null // Cleanup
                         });
                     } else {
                         // Coupon no longer valid - remove it
@@ -411,9 +439,15 @@ const useCartStore = create(
                             couponType: null,
                             couponValue: null,
                             couponError: response.data.error,
+                            revalidateController: null
                         });
                     }
                 } catch (error) {
+                    // Ignore abort errors
+                    if (axios.isCancel(error)) {
+                        return;
+                    }
+
                     // Silent failure - just remove coupon
                     set({
                         couponCode: null,
@@ -421,6 +455,7 @@ const useCartStore = create(
                         couponType: null,
                         couponValue: null,
                         couponError: null,
+                        revalidateController: null
                     });
                 }
             },
@@ -450,6 +485,109 @@ const useCartStore = create(
                 const subtotal = get().getSubtotal();
                 const discount = get().discountAmount || 0;
                 return Math.max(0, subtotal - discount);
+            },
+
+            // ═══════════════════════════════════════════════════════════════════════
+            // WHATSAPP COMPILER: The Serializer
+            // Transforms cart state into human-readable WhatsApp message
+            // USAGE: For Semilla tier direct-to-WhatsApp flow (no API persistence)
+            // ═══════════════════════════════════════════════════════════════════════
+
+            /**
+             * Compile cart state into formatted WhatsApp message text
+             * @param {string} customerNotes - Optional notes from customer
+             * @returns {string} - Formatted message ready for encodeURIComponent
+             */
+            getWhatsappMessage: (customerNotes = '') => {
+                const state = get();
+                const { items, tenantName, discountAmount, couponCode } = state;
+
+                if (items.length === 0) return '';
+
+                const lines = [];
+
+                // Header
+                lines.push(`Hola *${tenantName || 'Tienda'}*, quiero hacer un pedido:`);
+                lines.push('');
+
+                // Items with modifiers
+                items.forEach(item => {
+                    const modifiersTotal = (item.selectedModifiers || []).reduce((s, m) => s + (m.price || 0), 0);
+                    const itemTotal = (item.price + modifiersTotal) * item.quantity;
+
+                    // Item line: "2x *Hamburguesa* (L. 150.00)"
+                    lines.push(`${item.quantity}x *${item.name}* (L. ${itemTotal.toFixed(2)})`);
+
+                    // Modifiers (indented)
+                    if (item.selectedModifiers?.length > 0) {
+                        item.selectedModifiers.forEach(mod => {
+                            if (mod.price > 0) {
+                                lines.push(`   + ${mod.name} (L. ${mod.price.toFixed(2)})`);
+                            } else {
+                                lines.push(`   + ${mod.name}`);
+                            }
+                        });
+                    }
+
+                    // Item notes
+                    if (item.notes) {
+                        lines.push(`   📝 ${item.notes}`);
+                    }
+
+                    lines.push(''); // Spacer between items
+                });
+
+                // Divider
+                lines.push('--------------------------------');
+
+                // Discount (if applied)
+                if (discountAmount > 0 && couponCode) {
+                    const subtotal = state.getSubtotal();
+                    lines.push(`Subtotal: L. ${subtotal.toFixed(2)}`);
+                    lines.push(`Descuento (${couponCode}): -L. ${discountAmount.toFixed(2)}`);
+                }
+
+                // Total
+                const grandTotal = state.getGrandTotal();
+                lines.push(`*Total: L. ${grandTotal.toFixed(2)}*`);
+                lines.push('--------------------------------');
+
+                // Customer notes
+                if (customerNotes) {
+                    lines.push('');
+                    lines.push(`Notas: ${customerNotes}`);
+                }
+
+                return lines.join('\n');
+            },
+
+            /**
+             * Generate complete WhatsApp API link with sanitized phone
+             * @param {string} customerNotes - Optional notes from customer
+             * @returns {string} - Full wa.me URL ready for window.open()
+             */
+            getWhatsappLink: (customerNotes = '') => {
+                const state = get();
+                const { tenantPhone } = state;
+
+                if (!tenantPhone) {
+                    console.warn('[Cart] getWhatsappLink called without tenantPhone');
+                    return '';
+                }
+
+                // SECURITY: Sanitize phone - remove ALL non-numeric characters
+                // Handles formats like: +504 9999-1234, (504) 99991234, etc.
+                const sanitizedPhone = tenantPhone.replace(/\D/g, '');
+
+                if (!sanitizedPhone) {
+                    console.warn('[Cart] Phone sanitization resulted in empty string');
+                    return '';
+                }
+
+                const message = state.getWhatsappMessage(customerNotes);
+                const encodedMessage = encodeURIComponent(message);
+
+                return `https://wa.me/${sanitizedPhone}?text=${encodedMessage}`;
             },
 
             /**
