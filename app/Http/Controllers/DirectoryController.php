@@ -48,6 +48,13 @@ class DirectoryController extends Controller
         // All SQL logic encapsulated in Model scopes
         // ═══════════════════════════════════════════════════════════════
         $tenants = Tenant::query()
+            // PROJECTION: Only fields needed for card rendering (Memory Economy)
+            ->select([
+                'id', 'name', 'slug', 'description', 'tags', 'is_active',
+                'hero_image', 'banner_path', 'cover_path', 'blur_hash',
+                'brand_color', 'plan_type', 'subscription_status', 'subscription_ends_at',
+                'city_id', 'category_id'
+            ])
             ->published()             // Scope: is_active + subscription_status = active
             ->search($validated['search'] ?? null)           // Scope: LIKE search
             ->inCategory($validated['category'] ?? null)     // Scope: category filter
@@ -66,6 +73,9 @@ class DirectoryController extends Controller
                 'name' => $tenant->name,
                 'slug' => $tenant->slug,
                 'description' => $tenant->description ?? 'Descubre lo que tenemos para ti.',
+                
+                // AI-Generated Tags (limit to 3 for visual consistency)
+                'tags' => array_slice($tenant->tags ?? [], 0, 3),
 
                 // Images: Use hero_image if available, fallback to banner/cover
                 'banner_path' => $tenant->hero_image ?? $tenant->banner_path ?? $tenant->cover_path,
