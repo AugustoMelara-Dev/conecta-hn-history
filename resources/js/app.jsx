@@ -9,6 +9,9 @@ import { createRoot } from 'react-dom/client';
 import { Ziggy } from './ziggy';
 import { route } from 'ziggy-js';
 
+// Global Toast System
+import { ToastProvider } from '@/Components/Toast/ToastProvider';
+
 // Make route() globally available
 window.route = (name, params, absolute) => route(name, params, absolute, Ziggy);
 
@@ -23,7 +26,12 @@ createInertiaApp({
         ),
     setup({ el, App, props }) {
         const root = createRoot(el);
-        root.render(<App {...props} />);
+        root.render(
+            <>
+                <App {...props} />
+                <ToastProvider />
+            </>
+        );
     },
     progress: {
         // Dynamic color: Use tenant's primary_color or fallback to black (Corporate Minimalist)
