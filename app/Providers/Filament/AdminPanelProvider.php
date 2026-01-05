@@ -45,8 +45,19 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->authGuard('web')
-
+            
             // ═══════════════════════════════════════════════════════════════
+            // MULTI-TENANCY ARCHITECTURE
+            // ═══════════════════════════════════════════════════════════════
+            // Registering the Tenant model with slug support.
+            // Registration is DISABLED here because onboarding happens on the
+            // public frontend, not inside the admin panel.
+            // ═══════════════════════════════════════════════════════════════
+            // ═══════════════════════════════════════════════════════════════
+            ->tenant(\App\Models\Tenant::class, slugAttribute: 'slug')
+            ->registration(false)
+            ->tenantMenu(false) // 1:1 Architecture: No need to switch tenants
+            ->profile()         // User Self-Management enabled
             // BRANDING: Logo y Nombre
             // ═══════════════════════════════════════════════════════════════
             ->brandName('Conecta HN Admin')
