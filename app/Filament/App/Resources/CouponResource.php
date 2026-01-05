@@ -58,7 +58,18 @@ class CouponResource extends Resource
                                 TextInput::make('code')
                                     ->label('Código del Cupón')
                                     ->required()
-                                    ->unique(ignoreRecord: true)
+                                    ->unique(
+                                        table: 'coupons',
+                                        column: 'code',
+                                        ignoreRecord: true,
+                                        modifyRuleUsing: function (\Illuminate\Validation\Rules\Unique $rule) {
+                                            $tenant = \Filament\Facades\Filament::getTenant();
+                                            if ($tenant) {
+                                                return $rule->where('tenant_id', $tenant->id);
+                                            }
+                                            return $rule;
+                                        }
+                                    )
                                     ->maxLength(50)
                                     ->placeholder('Ej: VERANO2024')
                                     ->extraInputAttributes(['style' => 'text-transform: uppercase'])
