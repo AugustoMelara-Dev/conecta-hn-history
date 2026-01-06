@@ -28,7 +28,7 @@ Schedule::command('subscriptions:check-expiry')
 // Cancels PENDING orders older than 30 minutes and restores stock_quantity.
 // Prevents "Inventory Hoarding" from zombie orders.
 // ═══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new \App\Jobs\ReleaseStaleOrders)
+Schedule::job(new \App\Application\Jobs\Governance\ReleaseStaleOrders)
     ->everyFifteenMinutes()
     ->withoutOverlapping();
 

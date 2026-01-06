@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\App\Resources\Leads;
 
 use App\Filament\App\Resources\Leads\Schemas\LeadForm;

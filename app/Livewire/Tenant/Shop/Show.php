@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Tenant\Shop;
 
 use App\Models\Tenant;

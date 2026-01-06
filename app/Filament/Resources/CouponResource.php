@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CouponResource\Pages;
@@ -59,7 +61,19 @@ class CouponResource extends Resource
                                 ->maxLength(50)
                                 ->placeholder('VERANO2024')
                                 ->helperText('Se convertirá a mayúsculas automáticamente')
-                                ->extraInputAttributes(['style' => 'text-transform: uppercase']),
+                                ->extraInputAttributes(['style' => 'text-transform: uppercase'])
+                                ->unique(
+                                    table: 'coupons',
+                                    column: 'code',
+                                    ignoreRecord: true,
+                                    modifyRuleUsing: function (\Illuminate\Validation\Rules\Unique $rule) {
+                                        $tenant = \Filament\Facades\Filament::getTenant();
+                                        if ($tenant) {
+                                            return $rule->where('tenant_id', $tenant->id);
+                                        }
+                                        return $rule;
+                                    }
+                                ),
 
                             TextInput::make('name')
                                 ->label('Nombre interno')
@@ -272,6 +286,8 @@ class CouponResource extends Resource
             ->poll('60s');
     }
 
+    use \App\Filament\Traits\ScopesToTenant;
+
     public static function getRelations(): array
     {
         return [];
@@ -286,23 +302,6 @@ class CouponResource extends Resource
         ];
     }
 
-    /**
-     * SECURITY: Redundant tenant filtering for Defense in Depth
-     *
-     * Even though BelongsToTenant trait applies TenantScope globally,
-     * we explicitly filter here as a second line of defense.
-     */
-    public static function getEloquentQuery(): Builder
-    {
-        $query = parent::getEloquentQuery();
-
-        $tenant = \Filament\Facades\Filament::getTenant();
-        if ($tenant) {
-            return $query->where('tenant_id', $tenant->id);
-        }
-
-        return $query;
-    }
 
     /**
      * Navigation badge: Active coupons count

@@ -53,11 +53,13 @@ class ReportController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // Job runs in background worker, freeing this HTTP request immediately.
         // User is notified via email/database when report is ready.
-        \App\Jobs\GenerateSalesReportJob::dispatch(
-            tenant: $tenant,
-            filters: $validated,
-            requestor: $request->user()
-        )->onQueue('reports');
+        \App\Domain\ReportingAndExports\Jobs\GenerateSalesExport::dispatch(
+            userId: $request->user()->id,
+            tenantId: $tenant->id,
+            criteriaData: $validated,
+            ipAddress: $request->ip() ?? '127.0.0.1',
+            userAgent: $request->userAgent() ?? 'Unknown'
+        )->onQueue('exports');
 
         return response()->json([
             'success' => true,
@@ -93,11 +95,11 @@ class ReportController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // ASYNC DISPATCH: Fire-and-Forget Pattern
         // ═══════════════════════════════════════════════════════════════════════
-        \App\Jobs\GeneratePdfReportJob::dispatch(
-            tenant: $tenant,
+        \App\Domain\ReportingAndExports\Jobs\GeneratePdfReportJob::dispatch(
+            tenantId: $tenant->id,
             reportType: 'sales',
             filters: $validated,
-            requestor: $request->user()
+            requestorId: $request->user()->id
         )->onQueue('reports');
 
         return response()->json([
@@ -126,11 +128,11 @@ class ReportController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // ASYNC DISPATCH: Fire-and-Forget Pattern
         // ═══════════════════════════════════════════════════════════════════════
-        \App\Jobs\GeneratePdfReportJob::dispatch(
-            tenant: $tenant,
+        \App\Domain\ReportingAndExports\Jobs\GeneratePdfReportJob::dispatch(
+            tenantId: $tenant->id,
             reportType: 'inventory',
             filters: [],
-            requestor: $request->user()
+            requestorId: $request->user()->id
         )->onQueue('reports');
 
         return response()->json([
@@ -159,11 +161,11 @@ class ReportController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // ASYNC DISPATCH: Fire-and-Forget Pattern
         // ═══════════════════════════════════════════════════════════════════════
-        \App\Jobs\GeneratePdfReportJob::dispatch(
-            tenant: $tenant,
+        \App\Domain\ReportingAndExports\Jobs\GeneratePdfReportJob::dispatch(
+            tenantId: $tenant->id,
             reportType: 'kitchen',
             filters: [],
-            requestor: $request->user()
+            requestorId: $request->user()->id
         )->onQueue('reports');
 
         return response()->json([

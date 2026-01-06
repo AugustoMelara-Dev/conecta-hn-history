@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\App\Resources;
 
 use App\Models\Campaign;
@@ -132,8 +134,8 @@ class CampaignResource extends Resource
                             return;
                         }
 
-                        // Dispatch the job to send emails
-                        \App\Jobs\SendCampaignEmail::dispatch($record);
+                        // Dispatch the job to send emails (with tenant ID for security)
+                        \App\Domain\Marketing\Jobs\SendCampaignEmail::dispatch($record->id, $tenant->id);
 
                         // Update campaign status
                         $record->update([

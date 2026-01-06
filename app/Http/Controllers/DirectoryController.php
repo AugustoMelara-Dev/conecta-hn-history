@@ -8,30 +8,38 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * DirectoryController - Faceted Search with Data Transformation
+ * DirectoryController - Faceted Search with Layered Caching
  *
- * Responsabilidad: Manejar búsqueda facetada y transformar datos para
- * que coincidan con el contrato de interfaz de Directory/Index.jsx
+ * Performance Architecture:
+ * 1. Cache-Aside Pattern: Query results cached for 10 minutes
+ * 2. Deterministic Keys: Composite keys prevent cache collisions
+ * 3. Eager Loading: Single query for tenants with relations
  */
 class DirectoryController extends Controller
 {
     /**
+     * Cache TTL in minutes for directory listings.
+     */
+    private const CACHE_TTL_MINUTES = 10;
+
+    /**
      * Display the business directory with search, filters and pagination.
      *
-     * SECURITY HARDENING:
-     * 1. Input validation before database operations
-     * 2. All SQL encapsulated in Model scopes
-     * 3. No raw SQL in controller
+     * PERFORMANCE ARCHITECTURE:
+     * 1. Input validation (Security)
+     * 2. Cache-Aside Pattern (Performance)
+     * 3. Eager Loading (N+1 Prevention)
+     * 4. Data Transformation (Contract Compliance)
      */
     public function index(Request $request): Response
     {
         // ═══════════════════════════════════════════════════════════════
         // INPUT VALIDATION: Sanitize and validate all query parameters
-        // Prevents type confusion attacks and SQL injection vectors
         // ═══════════════════════════════════════════════════════════════
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
@@ -44,55 +52,83 @@ class DirectoryController extends Controller
         ]);
 
         // ═══════════════════════════════════════════════════════════════
-        // QUERY BUILDER: Clean, semantic, and secure
-        // All SQL logic encapsulated in Model scopes
+        // CACHE-ASIDE PATTERN: Wrap expensive query in cache layer
+        //
+        // DESIGN DECISION (Trade-off Documentation):
+        // The cache key does NOT include individual tenant versions.
+        // This is intentional for a global directory listing:
+        // - Including versions would cause excessive cache fragmentation
+        // - 10-minute TTL provides acceptable freshness for discovery
+        // - New tenants appear within 10 minutes (acceptable delay)
+        //
+        // Key Format: directory_page_{N}_cat_{slug}_city_{slug}_search_{term}
         // ═══════════════════════════════════════════════════════════════
-        $tenants = Tenant::query()
-            // PROJECTION: Only fields needed for card rendering (Memory Economy)
-            ->select([
-                'id', 'name', 'slug', 'description', 'tags', 'is_active',
-                'hero_image', 'banner_path', 'cover_path', 'blur_hash',
-                'brand_color', 'plan_type', 'subscription_status', 'subscription_ends_at',
-                'city_id', 'category_id'
-            ])
-            ->published()             // Scope: is_active + subscription_status = active
-            ->search($validated['search'] ?? null)           // Scope: LIKE search
-            ->inCategory($validated['category'] ?? null)     // Scope: category filter
-            ->inCity($validated['city'] ?? null)             // Scope: city filter
-            ->inPriorityOrder()       // Scope: Enterprise > Pro > Semilla
-            ->inRandomOrder()         // Fair exposure within tier
-            ->with(['city:id,name,slug', 'category:id,name,slug,icon'])
-            ->paginate(12)
-            ->withQueryString();
+        $page = (int) $request->input('page', 1);
+        $searchTerm = $validated['search'] ?? '';
+        $categorySlug = $validated['category'] ?? 'all';
+        $citySlug = $validated['city'] ?? 'all';
 
-        // Transform each tenant to match frontend contract
+        // Deterministic cache key (includes search hash for uniqueness)
+        $cacheKey = sprintf(
+            'directory_page_%d_cat_%s_city_%s_search_%s',
+            $page,
+            $categorySlug,
+            $citySlug,
+            md5($searchTerm) // Hash search term to avoid key length issues
+        );
+
+        $tenants = Cache::remember(
+            $cacheKey,
+            now()->addMinutes(self::CACHE_TTL_MINUTES),
+            function () use ($validated) {
+                return Tenant::query()
+                    // PROJECTION: Only fields needed for card rendering
+                    ->select([
+                        'id', 'name', 'slug', 'description', 'tags', 'is_active',
+                        'hero_image', 'banner_path', 'cover_path', 'blur_hash',
+                        'brand_color', 'plan_type', 'subscription_status', 'subscription_ends_at',
+                        'city_id', 'category_id', 'created_at'
+                    ])
+                    ->published()
+                    ->search($validated['search'] ?? null)
+                    ->inCategory($validated['category'] ?? null)
+                    ->inCity($validated['city'] ?? null)
+                    ->inPriorityOrder()
+                    // DETERMINISTIC ORDERING: Enterprise > Pro > Semilla, then by newest
+                    // NOTE: inRandomOrder() was REMOVED because caching random order
+                    // defeats the purpose of randomization (users see same "random" order for 10 mins)
+                    ->latest('created_at')
+                    // EAGER LOADING: Strict column selection for memory economy
+                    ->with([
+                        'city:id,name,slug',
+                        'category:id,name,slug,icon'
+                    ])
+                    ->paginate(12)
+                    ->withQueryString();
+            }
+        );
+
+        // ═══════════════════════════════════════════════════════════════
+        // DATA TRANSFORMATION: Map to frontend contract
+        // This runs on cached data, so it's cheap
+        // ═══════════════════════════════════════════════════════════════
         $tenants->through(function (Tenant $tenant) {
             return [
-                // Core fields
                 'id' => $tenant->id,
                 'name' => $tenant->name,
                 'slug' => $tenant->slug,
                 'description' => $tenant->description ?? 'Descubre lo que tenemos para ti.',
-                
-                // AI-Generated Tags (limit to 3 for visual consistency)
                 'tags' => array_slice($tenant->tags ?? [], 0, 3),
-
-                // Images: Use hero_image if available, fallback to banner/cover
                 'banner_path' => $tenant->hero_image ?? $tenant->banner_path ?? $tenant->cover_path,
                 'blur_hash' => $tenant->blur_hash,
                 'brand_color' => $tenant->brand_color ?? '#2563EB',
-
-                // Status: Use computed is_pro from accessor
                 'is_pro' => $tenant->is_pro,
                 'plan_type' => $tenant->plan_type ?? 'semilla',
-
-                // Relations as objects
                 'city' => $tenant->city ? [
                     'id' => $tenant->city->id,
                     'name' => $tenant->city->name,
                     'slug' => $tenant->city->slug,
                 ] : ['id' => 0, 'name' => 'Honduras', 'slug' => 'honduras'],
-
                 'category' => $tenant->category ? [
                     'id' => $tenant->category->id,
                     'name' => $tenant->category->name,
@@ -102,24 +138,17 @@ class DirectoryController extends Controller
             ];
         });
 
-        // Get active city for page title
+        // Get active city for page title (cheap query, no caching needed)
         $activeCity = null;
         if ($request->filled('city')) {
             $activeCity = City::where('slug', $request->input('city'))->first(['id', 'name', 'slug']);
         }
 
-        return Inertia::render('Directory/Index', [
-            // Paginated tenants (Laravel paginator object)
-            'tenants' => $tenants,
-
-            // Current filter state for input persistence
-            'filters' => $request->only(['search', 'category', 'city']),
-
-            // Active city for page title
-            'activeCity' => $activeCity,
-
-            // Dropdown options
-            'categories' => Category::query()
+        // ═══════════════════════════════════════════════════════════════
+        // DROPDOWN OPTIONS: Cached separately (long TTL, rarely changes)
+        // ═══════════════════════════════════════════════════════════════
+        $categories = Cache::remember('directory_categories', now()->addHours(1), function () {
+            return Category::query()
                 ->where('is_active', true)
                 ->select(['id', 'name', 'slug', 'icon'])
                 ->orderBy('name')
@@ -129,12 +158,22 @@ class DirectoryController extends Controller
                     'name' => $cat->name,
                     'slug' => $cat->slug,
                     'icon' => $cat->icon ?? '🏪',
-                ]),
+                ]);
+        });
 
-            'cities' => City::query()
+        $cities = Cache::remember('directory_cities', now()->addHours(1), function () {
+            return City::query()
                 ->select(['id', 'name', 'slug'])
                 ->orderBy('name')
-                ->get(),
+                ->get();
+        });
+
+        return Inertia::render('Directory/Index', [
+            'tenants' => $tenants,
+            'filters' => $request->only(['search', 'category', 'city']),
+            'activeCity' => $activeCity,
+            'categories' => $categories,
+            'cities' => $cities,
         ]);
     }
 

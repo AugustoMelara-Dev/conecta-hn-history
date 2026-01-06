@@ -1,25 +1,36 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Support\Enums\FontFamily;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\Section;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\Grid;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Notifications\Notification;
+use App\Services\OrderStateService;
 
 /**
- * OrderResource - Order Management in Filament Admin
+ * OrderResource - Forensic Immutable Viewer & Workflow Command Center
  *
- * KANBAN-STYLE WORKFLOW:
- * Orders are displayed with visual status indicators and quick actions
- * for transitioning through the workflow stages.
+ * CONTEXT: FASE 3 - ADMINISTRATIVE SAAS
+ * ROLE: Immutable Transaction Viewer
  *
- * Status Flow: Pending → Confirmed → Processing → Ready → Delivered
+ * DESIGN DECISIONS:
+ * 1. IMMUTABILITY: Edit/Delete actions are strictly prohibited to preserve audit trails.
+ * 2. CLARITY: Monospaced fonts for IDs, semantic colors for status.
+ * 3. SECURITY: Anti-XSS rendering for user-generated content (modifiers).
+ * 4. WORKFLOW: Simplified "Pending -> Completed" flow for rapid processing.
  */
 class OrderResource extends Resource
 {
@@ -37,306 +48,234 @@ class OrderResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    // Show badge with pending orders count
-    public static function getNavigationBadge(): ?string
+    // ═══════════════════════════════════════════════════════════════════════
+    // PAGE REGISTRATION (Restricted to Index & View)
+    // ═══════════════════════════════════════════════════════════════════════
+    public static function getPages(): array
     {
-        return static::getModel()::where('status', 'pending')->count() ?: null;
+        return [
+            'index' => Pages\ListOrders::route('/'),
+            // 'create' => Pages\CreateOrder::route('/create'), // OMITTED: Orders originate from Frontend
+            'view' => Pages\ViewOrder::route('/{record}'),
+            // 'edit' => Pages\EditOrder::route('/{record}/edit'), // OMITTED: Immutability Enforcement
+        ];
     }
 
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'warning';
-    }
-
+    /**
+     * FORM DEFINITION
+     * Note: Even though we don't allow editing, this definition is kept distinct
+     * from the Infolist for potential future use or read-only forms.
+     * However, the primary detail view is handled by infolist().
+     */
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Información del Pedido')
-                    ->columns(3)
-                    ->schema([
-                        Forms\Components\TextInput::make('order_number')
-                            ->label('Número de Orden')
-                            ->disabled()
-                            ->columnSpan(1),
-
-                        Forms\Components\Select::make('status')
-                            ->label('Estado')
-                            ->options(Order::KANBAN_STATUSES)
-                            ->required()
-                            ->native(false)
-                            ->columnSpan(1),
-
-                        Forms\Components\Select::make('delivery_type')
-                            ->label('Tipo de Entrega')
-                            ->options([
-                                'pickup' => 'Recoger en tienda',
-                                'delivery' => 'Entrega a domicilio',
-                            ])
-                            ->required()
-                            ->columnSpan(1),
-                    ]),
-
-                Forms\Components\Section::make('Datos del Cliente')
-                    ->columns(2)
-                    ->schema([
-                        Forms\Components\TextInput::make('customer_name')
-                            ->label('Nombre')
-                            ->required()
-                            ->maxLength(255),
-
-                        Forms\Components\TextInput::make('customer_phone')
-                            ->label('Teléfono')
-                            ->required()
-                            ->tel()
-                            ->maxLength(20),
-
-                        Forms\Components\TextInput::make('customer_email')
-                            ->label('Email')
-                            ->email()
-                            ->maxLength(255),
-
-                        Forms\Components\Select::make('payment_method')
-                            ->label('Método de Pago')
-                            ->options([
-                                'pending' => 'Pendiente',
-                                'cash' => 'Efectivo',
-                                'card' => 'Tarjeta',
-                                'transfer' => 'Transferencia',
-                            ]),
-
-                        Forms\Components\Textarea::make('customer_address')
-                            ->label('Dirección')
-                            ->rows(2)
-                            ->columnSpanFull(),
-
-                        Forms\Components\Textarea::make('customer_notes')
-                            ->label('Notas del Cliente')
-                            ->rows(2)
-                            ->columnSpanFull(),
-                    ]),
-
-                Forms\Components\Section::make('Totales')
-                    ->columns(4)
-                    ->schema([
-                        Forms\Components\TextInput::make('subtotal')
-                            ->label('Subtotal')
-                            ->numeric()
-                            ->prefix('L.')
-                            ->disabled(),
-
-                        Forms\Components\TextInput::make('delivery_fee')
-                            ->label('Envío')
-                            ->numeric()
-                            ->prefix('L.')
-                            ->default(0),
-
-                        Forms\Components\TextInput::make('discount_amount')
-                            ->label('Descuento')
-                            ->numeric()
-                            ->prefix('L.')
-                            ->default(0),
-
-                        Forms\Components\TextInput::make('total')
-                            ->label('Total')
-                            ->numeric()
-                            ->prefix('L.')
-                            ->disabled(),
-                    ]),
-            ]);
+        return $form->schema([]); // Empty form as editing is disabled
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // TABLE: COMMAND CENTER
+    // ═══════════════════════════════════════════════════════════════════════
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
+                // IDENTIFIER: Monospaced for technical legibility
                 Tables\Columns\TextColumn::make('order_number')
-                    ->label('Orden')
+                    ->label('N° Orden')
+                    ->fontFamily(FontFamily::Mono)
                     ->searchable()
                     ->sortable()
                     ->weight('bold')
-                    ->color('primary'),
+                    ->color('primary')
+                    ->copyable(),
 
+                // CLIENT: Name + Phone (Metadata)
                 Tables\Columns\TextColumn::make('customer_name')
                     ->label('Cliente')
-                    ->searchable()
-                    ->description(fn (Order $record): string => $record->customer_phone),
+                    ->description(fn (Order $record): string => $record->customer_phone ?? '')
+                    ->searchable(['customer_name', 'customer_phone'], isIndividual: true)
+                    ->weight('medium'),
 
-                Tables\Columns\TextColumn::make('items_summary')
-                    ->label('Productos')
-                    ->wrap()
-                    ->limit(50),
+                // STATUS: Semantic Badge Logic
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Estado')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
+                    ->colors([
+                        'warning' => 'pending',   // Advertencia (Requiere atención)
+                        'success' => 'delivered', // Éxito (Completado)     - Mapped from 'completed' requirement
+                        'danger'  => 'cancelled', // Peligro (Fallido)
+                        'primary' => 'processing',
+                        'info'    => 'confirmed',
+                        'gray'    => 'ready',
+                    ]),
 
+                // TOTAL: Right-aligned monetary format
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total')
-                    ->formatStateUsing(fn ($state) => 'L. '.number_format($state, 2))
-                    ->sortable()
+                    ->money('HNL')
+                    ->alignEnd()
                     ->weight('bold'),
-
-                Tables\Columns\BadgeColumn::make('status')
-                    ->label('Estado')
-                    ->colors([
-                        'warning' => 'pending',
-                        'info' => 'confirmed',
-                        'primary' => 'processing',
-                        'success' => 'ready',
-                        'gray' => 'delivered',
-                        'danger' => 'cancelled',
-                    ])
-                    ->icons([
-                        'heroicon-o-clock' => 'pending',
-                        'heroicon-o-check-circle' => 'confirmed',
-                        'heroicon-o-fire' => 'processing',
-                        'heroicon-o-gift' => 'ready',
-                        'heroicon-o-check' => 'delivered',
-                        'heroicon-o-x-circle' => 'cancelled',
-                    ])
-                    ->formatStateUsing(fn ($state) => Order::KANBAN_STATUSES[$state] ?? ucfirst($state)),
-
-                Tables\Columns\TextColumn::make('delivery_type')
-                    ->label('Entrega')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'pickup' => 'gray',
-                        'delivery' => 'info',
-                        default => 'gray',
-                    })
-                    ->formatStateUsing(fn ($state) => $state === 'delivery' ? 'Domicilio' : 'Recoger'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Recibido')
                     ->since()
                     ->sortable()
-                    ->color(function (Order $record) {
-                        $minutes = $record->created_at->diffInMinutes(now());
-                        if ($minutes > 60) {
-                            return 'danger';
-                        }
-                        if ($minutes > 30) {
-                            return 'warning';
-                        }
-
-                        return 'success';
-                    }),
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                // Default filters can remain or be customized.
+                // Keeping it simple for the "Command Center" feel.
                 Tables\Filters\SelectFilter::make('status')
-                    ->label('Estado')
-                    ->options(Order::KANBAN_STATUSES)
-                    ->multiple(),
-
-                Tables\Filters\SelectFilter::make('delivery_type')
-                    ->label('Tipo de Entrega')
-                    ->options([
-                        'pickup' => 'Recoger',
-                        'delivery' => 'Domicilio',
-                    ]),
-
-                Tables\Filters\Filter::make('today')
-                    ->label('Solo Hoy')
-                    ->query(fn (Builder $query) => $query->whereDate('created_at', today()))
-                    ->toggle(),
-
-                Tables\Filters\TrashedFilter::make(),
+                    ->options(Order::KANBAN_STATUSES) // Reuse existing constants
+                    ->label('Estado'),
             ])
             ->actions([
-                // Quick status transitions
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\Action::make('confirm')
-                        ->label('Confirmar')
-                        ->icon('heroicon-o-check-circle')
-                        ->color('info')
-                        ->requiresConfirmation()
-                        ->visible(fn (Order $record) => $record->status === 'pending')
-                        ->action(fn (Order $record) => $record->transitionTo('confirmed')),
+                // ═══════════════════════════════════════════════════════════════
+                // ACTION: VIEW
+                // ═══════════════════════════════════════════════════════════════
+                Tables\Actions\ViewAction::make(),
 
-                    Tables\Actions\Action::make('process')
-                        ->label('En Preparación')
-                        ->icon('heroicon-o-fire')
-                        ->color('warning')
-                        ->visible(fn (Order $record) => in_array($record->status, ['pending', 'confirmed']))
-                        ->action(fn (Order $record) => $record->transitionTo('processing')),
-
-                    Tables\Actions\Action::make('ready')
-                        ->label('Listo')
-                        ->icon('heroicon-o-gift')
-                        ->color('success')
-                        ->visible(fn (Order $record) => $record->status === 'processing')
-                        ->action(fn (Order $record) => $record->transitionTo('ready')),
-
-                    Tables\Actions\Action::make('deliver')
-                        ->label('Entregado')
-                        ->icon('heroicon-o-check')
-                        ->color('gray')
-                        ->requiresConfirmation()
-                        ->visible(fn (Order $record) => $record->status === 'ready')
-                        ->action(fn (Order $record) => $record->transitionTo('delivered')),
-
-                    Tables\Actions\Action::make('cancel')
-                        ->label('Cancelar')
-                        ->icon('heroicon-o-x-circle')
-                        ->color('danger')
-                        ->requiresConfirmation()
-                        ->visible(fn (Order $record) => ! in_array($record->status, ['delivered', 'cancelled']))
-                        ->action(fn (Order $record) => $record->transitionTo('cancelled')),
-                ]),
-
+                // ═══════════════════════════════════════════════════════════════
+                // ACTION: WHATSAPP CONTACT (Deep Link with Sanitization)
+                // ═══════════════════════════════════════════════════════════════
                 Tables\Actions\Action::make('whatsapp')
                     ->label('WhatsApp')
                     ->icon('heroicon-o-chat-bubble-left-right')
                     ->color('success')
-                    ->url(fn (Order $record) => $record->getWhatsAppUrl())
+                    ->url(function (Order $record) {
+                        // SANITIZATION: Remove all non-digits
+                        $phone = preg_replace('/\D/', '', $record->customer_phone);
+                        
+                        // Honduras Localization: Ensure 504 prefix entry
+                        if (strlen($phone) === 8) {
+                           $phone = '504' . $phone; 
+                        }
+
+                        return "https://wa.me/{$phone}";
+                    })
+                    ->visible(fn (Order $record) => !empty($record->customer_phone))
                     ->openUrlInNewTab(),
 
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                // ═══════════════════════════════════════════════════════════════
+                // ACTION: COMPLETE (Workflow Transition)
+                // ═══════════════════════════════════════════════════════════════
+                Tables\Actions\Action::make('complete')
+                    ->label('Completar')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    // VISIBILITY: Only for pending items
+                    ->visible(fn (Order $record) => $record->status === 'pending')
+                    ->requiresConfirmation()
+                    ->modalHeading('¿Completar Pedido?')
+                    ->modalDescription('El pedido pasará a estado completado/entregado. Esta acción registrará el cambio en el historial.')
+                    ->action(function (Order $record) {
+                        // LOGIC: Delegate to Service for side-effects (inventory, logs)
+                        try {
+                            // Mapping 'Complete' requirement to 'delivered' status to maintain system integrity.
+                            // If strict 'completed' status is needed, Order::STATUS_COMPLETED must be defined.
+                            // Assuming 'delivered' is the logical equivalent in current architecture.
+                            app(OrderStateService::class)->transition($record, 'delivered');
+
+                            Notification::make()
+                                ->title('Pedido Completado')
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Error al completar')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
-                ]),
-            ])
-            ->defaultSort('created_at', 'desc')
-            ->poll('30s'); // Auto-refresh every 30 seconds
+            // IMMUTABILITY: NO BULK ACTIONS
+            ->bulkActions([]); 
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // INFOLIST: FORENSIC DECODER
+    // ═══════════════════════════════════════════════════════════════════════
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Section::make('Detalle del Pedido')
+                    ->schema([
+                        // REPEATABLE ENTRY: Decodes 'items' relationship/JSON
+                        RepeatableEntry::make('items')
+                            ->label('Productos')
+                            ->schema([
+                                Grid::make(4)->schema([
+                                    // COLUMN 1: Quantity
+                                    TextEntry::make('quantity')
+                                        ->label('Cant.')
+                                        ->weight('bold'),
+
+                                    // COLUMN 2 & 3: Product + Modifiers (HTML)
+                                    TextEntry::make('product_name') // Using name from OrderItem
+                                        ->label('Producto')
+                                        ->formatStateUsing(function ($state, $record) {
+                                            $baseName = e($state);
+                                            $options = $record->options ?? []; // Nested JSON 'options'
+
+                                            if (empty($options)) {
+                                                return $baseName;
+                                            }
+
+                                            // ALGORITHM: Anti-XSS Render Loop
+                                            $badges = collect($options)->map(function ($opt) {
+                                                // SECURITY CRITICAL: Escape user input
+                                                $safeOption = e($opt['option'] ?? 'N/A');
+                                                $safePrice = isset($opt['price']) && $opt['price'] > 0 
+                                                    ? ' (+L.'.number_format($opt['price'], 2).')' 
+                                                    : '';
+                                                
+                                                return "<span class='inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 ml-1'>{$safeOption}{$safePrice}</span>";
+                                            })->join(' ');
+
+                                            return $baseName . "<br>" . $badges;
+                                        })
+                                        ->html() // Enable HTML rendering for badges
+                                        ->columnSpan(2),
+
+                                    // COLUMN 4: Unit Price
+                                    TextEntry::make('price')
+                                        ->label('Precio Unit.')
+                                        ->money('HNL')
+                                        ->alignEnd(),
+                                ]),
+                            ])
+                            ->columnSpanFull()
+                            ->grid(1), // Display as a list
+                    ]),
+
+                // Totals Section
+                Section::make('Resumen Financiero')
+                    ->columns(3)
+                    ->schema([
+                        TextEntry::make('subtotal')->money('HNL'),
+                        TextEntry::make('delivery_fee')->label('Envío')->money('HNL'),
+                        TextEntry::make('total')->money('HNL')->weight('bold')->size(TextEntry\TextEntrySize::Large),
+                    ]),
+                
+                // Customer Section
+                Section::make('Datos del Cliente')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('customer_name')->label('Nombre'),
+                        TextEntry::make('customer_phone')->label('Teléfono'),
+                        TextEntry::make('customer_address')->label('Dirección')->columnSpanFull(),
+                        TextEntry::make('customer_notes')->label('Notas')->columnSpanFull(),
+                    ]),
+            ]);
+    }
+
+    use \App\Filament\Traits\ScopesToTenant;
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\ListOrders::route('/'),
-            'create' => Pages\CreateOrder::route('/create'),
-            'view' => Pages\ViewOrder::route('/{record}'),
-            'edit' => Pages\EditOrder::route('/{record}/edit'),
-        ];
-    }
-
-    /**
-     * SECURITY: Redundant tenant filtering for Defense in Depth
-     *
-     * Even though BelongsToTenant trait applies TenantScope globally,
-     * we explicitly filter here as a second line of defense.
-     */
-    public static function getEloquentQuery(): Builder
-    {
-        $query = parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-
-        $tenant = \Filament\Facades\Filament::getTenant();
-        if ($tenant) {
-            return $query->where('tenant_id', $tenant->id);
-        }
-
-        return $query;
+        return [];
     }
 }

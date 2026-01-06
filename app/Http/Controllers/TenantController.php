@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Tenant;
+use App\Services\TenantCacheManager;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -33,6 +34,15 @@ class TenantController extends Controller
     private const PLAN_PRO = 'pro';
 
     private const PLAN_ENTERPRISE = 'enterprise';
+
+    /**
+     * Create a new controller instance.
+     */
+    public function __construct(TenantCacheManager $cacheManager)
+    {
+        $this->cacheManager = $cacheManager;
+    }
+
 
     /**
      * Display the tenant microsite / digital storefront.
@@ -126,13 +136,14 @@ class TenantController extends Controller
             // ═══════════════════════════════════════════════════════════════
             'isOwner' => $isOwner,
 
-            // Social features (mock for now since tables may not exist)
+            // Social features
+            // TODO: Implement Follows table integration
             'isFollowing' => false,
-            'followersCount' => rand(50, 500), // Mock
+            'followersCount' => 0, // Static value until Follows feature is implemented
 
-            // Business hours (hardcoded since table doesn't exist)
-            'isOpen' => true, // Always open to prevent cart blocking
-            'openingHours' => $this->getMockedOpeningHours(),
+            // Business hours (Real data from DB)
+            'isOpen' => $this->isCurrentlyOpen($tenant),
+            'openingHours' => $this->transformOpeningHours($tenant->openingHours),
 
             // SEO Structured Data for Google
             'seoStructuredData' => $this->buildStructuredData($tenant),
@@ -186,6 +197,7 @@ class TenantController extends Controller
         $relations = [
             'city:id,name,slug',
             'category:id,name,slug,icon',
+            'openingHours', // Relies on model's orderBy('day_of_week') - DRY
             'products' => $productQuery,
             'menuSections' => function ($query) {
                 $query->where('is_active', true)->orderBy('name');
@@ -343,24 +355,91 @@ class TenantController extends Controller
     }
 
     /**
-     * Get mocked opening hours (since table doesn't exist).
+     * Transform opening hours collection to frontend contract.
+     *
+     * PRODUCTION HARDENING:
+     * 1. BACKFILLING: Iterates master array [1,2,3,4,5,6,0] (Mon→Sun cultural order)
+     * 2. VIRTUAL OBJECTS: Fabricates "Cerrado" for missing days (Ghost Days fix)
+     * 3. TIMEZONE: Uses business timezone for isOpenAt() calculation
+     *
+     * CONTRACT: Frontend ALWAYS receives exactly 7 elements in Lunes→Domingo order.
+     *
+     * @param \Illuminate\Database\Eloquent\Collection $hours
+     * @return array
      */
-    /**
-     * @deprecated Technical Debt: This data is currently hardcoded and should be moved to a
-     * dedicated `opening_hours` table or a JSON column in the `tenants` table.
-     * Use this only as a fallback.
-     */
-    private function getMockedOpeningHours(): array
+    private function transformOpeningHours($hours): array
     {
-        return [
-            'mon' => ['open' => '08:00', 'close' => '17:00'],
-            'tue' => ['open' => '08:00', 'close' => '17:00'],
-            'wed' => ['open' => '08:00', 'close' => '17:00'],
-            'thu' => ['open' => '08:00', 'close' => '17:00'],
-            'fri' => ['open' => '08:00', 'close' => '17:00'],
-            'sat' => ['open' => '09:00', 'close' => '13:00'],
-            'sun' => null, // Closed
-        ];
+        // Cultural day order for Honduras: Lunes (1) to Domingo (0)
+        $culturalDayOrder = [1, 2, 3, 4, 5, 6, 0];
+
+        // Create a lookup map: day_of_week => OpeningHour record
+        $hoursMap = [];
+        if ($hours !== null && !$hours->isEmpty()) {
+            foreach ($hours as $hour) {
+                $hoursMap[$hour->day_of_week] = $hour;
+            }
+        }
+
+        $result = [];
+
+        // Current time in business timezone (Honduras UTC-6)
+        $currentTime = now(\App\Models\OpeningHour::BUSINESS_TIMEZONE);
+
+        // Iterate in CULTURAL order (Lunes → Domingo)
+        foreach ($culturalDayOrder as $day) {
+            if (isset($hoursMap[$day])) {
+                // ═══════════════════════════════════════════════════════
+                // SCENARIO A: Real record exists - business is OPEN
+                // ═══════════════════════════════════════════════════════
+                $hour = $hoursMap[$day];
+                $result[] = [
+                    'day_name' => $hour->day_name,
+                    'formatted' => $hour->formatted_hours,
+                    'is_open_now' => $hour->isOpenAt($currentTime),
+                    'day_of_week' => $day,
+                    'is_closed' => false,
+                ];
+            } else {
+                // ═══════════════════════════════════════════════════════
+                // SCENARIO B: No record = CLOSED (Virtual Object Pattern)
+                // ═══════════════════════════════════════════════════════
+                $result[] = [
+                    'day_name' => \App\Models\OpeningHour::DAY_LABELS[$day] ?? 'Desconocido',
+                    'formatted' => 'Cerrado',
+                    'is_open_now' => false,
+                    'day_of_week' => $day,
+                    'is_closed' => true,
+                ];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Determine if the business is currently open.
+     *
+     * Uses business timezone (America/Tegucigalpa) for accurate calculation.
+     *
+     * @param Tenant $tenant
+     * @return bool
+     */
+    private function isCurrentlyOpen(Tenant $tenant): bool
+    {
+        // Current time in business timezone
+        $now = now(\App\Models\OpeningHour::BUSINESS_TIMEZONE);
+        $today = $now->dayOfWeek;
+
+        // Find today's schedule entry
+        $todaySchedule = $tenant->openingHours
+            ->firstWhere('day_of_week', $today);
+
+        // No schedule defined = assume closed
+        if ($todaySchedule === null) {
+            return false;
+        }
+
+        return $todaySchedule->isOpenAt($now);
     }
     /**
      * Build SEO structured data for Google.
