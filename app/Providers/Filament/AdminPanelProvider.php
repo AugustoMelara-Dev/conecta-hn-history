@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers\Filament;
 
 use Filament\Facades\Filament;
@@ -55,7 +57,7 @@ class AdminPanelProvider extends PanelProvider
             // ═══════════════════════════════════════════════════════════════
             // ═══════════════════════════════════════════════════════════════
             ->tenant(\App\Models\Tenant::class, slugAttribute: 'slug')
-            ->registration(false)
+            // ->registration() // Disabled: Onboarding is handled via public frontend
             ->tenantMenu(false) // 1:1 Architecture: No need to switch tenants
             ->profile()         // User Self-Management enabled
             // BRANDING: Logo y Nombre

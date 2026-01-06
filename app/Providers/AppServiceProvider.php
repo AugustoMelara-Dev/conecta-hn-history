@@ -1,33 +1,28 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
+// Models
 use App\Models\Campaign;
 use App\Models\Coupon;
 use App\Models\Lead;
 use App\Models\MenuSection;
-// Models
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Review;
-use App\Models\Tenant;
-use App\Models\User;
+// Policies
 use App\Policies\CampaignPolicy;
 use App\Policies\CouponPolicy;
 use App\Policies\LeadPolicy;
 use App\Policies\MenuSectionPolicy;
-// Policies
 use App\Policies\OrderPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\ReviewPolicy;
 use App\Policies\TenantPolicy;
 use App\Policies\UserPolicy;
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
 // Event Bus Infrastructure
@@ -44,15 +39,23 @@ class AppServiceProvider extends ServiceProvider
         // ═══════════════════════════════════════════════════════════════════════
         // DOMAIN EVENT BUS: Decouples Domain Layer from Laravel Event System
         // ═══════════════════════════════════════════════════════════════════════
-        //
-        // Why this binding matters:
-        // - Domain Services inject DomainEventBus (interface), not Laravel's Dispatcher
-        // - In tests, swap with InMemoryEventBus for pure unit tests without database
-        // - Future: Can swap to KafkaEventBus without changing domain code
-        //
-        // CRITICAL: Without this binding, OrderStateService will fail on instantiation
-        // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(DomainEventBus::class, LaravelEventBus::class);
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // SERVICES & CONTRACTS BINDINGS
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Contracts\ReportGenerationInterface::class,
+            \App\Services\ReportGenerationService::class
+        );
+        $this->app->bind(
+            \App\Contracts\LoggerInterface::class,
+            \App\Services\LaravelLoggerAdapter::class
+        );
+        $this->app->bind(
+            \App\Contracts\DataExportInterface::class,
+            \App\Services\ExcelExportService::class
+        );
     }
 
     /**
@@ -60,418 +63,140 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Vite::prefetch(concurrency: 3);
+        // ═══════════════════════════════════════════════════════════════════════
+        // POLYMORPHIC INTEGRITY: Morph Map for Domain Migration
+        // ═══════════════════════════════════════════════════════════════════════
+        // CRITICAL: This mapping MUST be registered BEFORE moving model files.
+        // It decouples the database's model_type column from the PHP namespace.
+        // Without this, activity_log, media, comments and other polymorphic
+        // tables would have orphaned records pointing to non-existent classes.
+        // ═══════════════════════════════════════════════════════════════════════
+        \Illuminate\Database\Eloquent\Relations\Relation::enforceMorphMap([
+            'user' => \App\Domain\Identity\Models\User::class,
+            'tenant' => \App\Domain\TenantGovernance\Models\Tenant::class,
+            'product' => \App\Models\Product::class,
+            'order' => \App\Models\Order::class,
+            'coupon' => \App\Models\Coupon::class,
+        ]);
 
         // ═══════════════════════════════════════════════════════════════════════
-        // CSP NONCE: Configure Vite to use nonce for script tags
+        // DOMAIN MIGRATION: Model Aliases for Gradual Transition
         // ═══════════════════════════════════════════════════════════════════════
-        // This allows Vite-generated scripts to work with CSP nonce policy
-        Vite::useCspNonce();
+        // 80+ files still reference App\Models\User and App\Models\Tenant.
+        // These aliases maintain backward compatibility during gradual transition.
+        // REMOVE AFTER: 2026-03-05 (60 days post-migration)
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->registerModelAliases();
 
         // ═══════════════════════════════════════════════════════════════════════
-        // BLADE DIRECTIVE: @cspnonce - Easy access to CSP nonce in views
+        // DEPLOYMENT SAFETY: Class Aliases for Migrated Jobs
         // ═══════════════════════════════════════════════════════════════════════
-        // Usage: <script nonce="@cspnonce">...</script>
-        \Illuminate\Support\Facades\Blade::directive('cspnonce', function () {
-            return "<?php echo app()->bound('csp-nonce') ? app('csp-nonce') : ''; ?>";
-        });
+        // Jobs in Redis queue may reference old App\Jobs\* namespace.
+        // These aliases ensure pending jobs are correctly resolved during deploy.
+        // REMOVE AFTER: 2026-02-05 (30 days post-migration)
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->registerJobAliases();
 
         // ═══════════════════════════════════════════════════════════════════════
-        // TRANSPORT LAYER SECURITY: Force HTTPS in Production & Staging
+        // DATA GOVERNANCE: Observers & Global Policies
         // ═══════════════════════════════════════════════════════════════════════
-        // All generated URLs (route(), url(), asset()) will use HTTPS scheme.
-        // Essential for mixed-content prevention and HSTS compliance.
-        // Applied to both production AND staging to catch SSL issues pre-launch.
-        // Only local development uses HTTP for debugging flexibility.
-        // ═══════════════════════════════════════════════════════════════════════
-        if (app()->environment('production', 'staging')) {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // ARCHITECTURAL GOVERNANCE: Strict Mode for Technical Debt Prevention
-        // ═══════════════════════════════════════════════════════════════════════
-        //
-        // Model::shouldBeStrict() enables three critical guards in non-production:
-        //
-        // 1. LAZY LOADING PREVENTION (preventLazyLoading)
-        //    Throws exception when N+1 queries occur due to missing eager-loads.
-        //    Forces developers to fix performance issues before they reach prod.
-        //
-        // 2. MASS ASSIGNMENT PROTECTION (preventSilentlyDiscardingAttributes)
-        //    Throws exception when create()/update() receives fields not in $fillable.
-        //    Prevents silent data loss from typos or missing field declarations.
-        //
-        // 3. INVALID ATTRIBUTE ACCESS (preventAccessingMissingAttributes)
-        //    Throws exception when accessing undefined model attributes.
-        //    Catches typos like $user->emial instead of returning null silently.
-        //
-        // PRODUCTION BEHAVIOR: Disabled to prevent user-facing exceptions.
-        // Instead, violations are logged for post-mortem analysis.
-        // ═══════════════════════════════════════════════════════════════════════
-        if (app()->isProduction()) {
-            // ─────────────────────────────────────────────────────────────────────
-            // PRODUCTION: Log violations without crashing (observability)
-            // ─────────────────────────────────────────────────────────────────────
-            \Illuminate\Database\Eloquent\Model::handleLazyLoadingViolationUsing(
-                function ($model, $relation) {
-                    \Illuminate\Support\Facades\Log::warning(
-                        'N+1 Lazy Loading detected in production',
-                        [
-                            'model' => get_class($model),
-                            'model_id' => $model->getKey(),
-                            'relation' => $relation,
-                            'url' => request()->fullUrl(),
-                        ]
-                    );
-                }
-            );
-            
-            \Illuminate\Database\Eloquent\Model::handleDiscardedAttributeViolationUsing(
-                function ($model, $keys) {
-                    \Illuminate\Support\Facades\Log::warning(
-                        'Mass assignment violation in production',
-                        [
-                            'model' => get_class($model),
-                            'discarded_keys' => $keys,
-                            'url' => request()->fullUrl(),
-                        ]
-                    );
-                }
-            );
-        } else {
-            // ─────────────────────────────────────────────────────────────────────
-            // DEV/STAGING: Throw exceptions to fail fast and fix immediately
-            // ─────────────────────────────────────────────────────────────────────
-            \Illuminate\Database\Eloquent\Model::shouldBeStrict();
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // GRANULAR RATE LIMITING - TRAFFIC SHAPING ARCHITECTURE
-        // ═══════════════════════════════════════════════════════════════════════
-        //
-        // Defense-in-depth against three attack vectors:
-        // 1. SMS Pumping (OTP generation abuse)
-        // 2. Dictionary Attacks (code enumeration)
-        // 3. Resource Exhaustion (database flooding)
-        //
-        // Each limiter implements IP-based throttling with structured JSON errors.
+        // We register policies here explicitly to avoid auto-discovery overhead
+        // and enforce architectural boundaries.
         // ═══════════════════════════════════════════════════════════════════════
 
-        $this->configureRateLimiters();
+        // Policies for User and Tenant are auto-discovered via Domain structure
+        // or explicitly bound here if needed.
+        Gate::policy(\App\Domain\Identity\Models\User::class, UserPolicy::class);
+        Gate::policy(\App\Domain\TenantGovernance\Models\Tenant::class, TenantPolicy::class);
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // EXPLICIT POLICY BINDING - PRODUCTION DETERMINISM
-        // ═══════════════════════════════════════════════════════════════════════
-        //
-        // Explicitly bind Model-Policy pairs instead of relying on Laravel's
-        // auto-discovery magic. Benefits:
-        // - Zero overhead from class reflection on each request
-        // - Works correctly even with config:cache in production
-        // - Deterministic behavior regardless of naming conventions
-        // - Easier debugging when authorization fails
-        //
-        // SECURITY: All tenant-aware policies extend TenantAwarePolicy
-        // which enforces tenant ownership checks.
-        // ═══════════════════════════════════════════════════════════════════════
-
-        // Tenant-Aware Models (have tenant_id, use TenantAwarePolicy)
-        Gate::policy(Order::class, OrderPolicy::class);
+        // Core Models Policies
         Gate::policy(Product::class, ProductPolicy::class);
+        Gate::policy(Order::class, OrderPolicy::class);
+        Gate::policy(Review::class, ReviewPolicy::class);
+        Gate::policy(Campaign::class, CampaignPolicy::class);
         Gate::policy(Coupon::class, CouponPolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);
-        Gate::policy(Review::class, ReviewPolicy::class);
         Gate::policy(MenuSection::class, MenuSectionPolicy::class);
-        Gate::policy(Campaign::class, CampaignPolicy::class);
 
-        // System-Wide Models (ownership based on user relationship)
-        Gate::policy(Tenant::class, TenantPolicy::class);
-        Gate::policy(User::class, UserPolicy::class);
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // MODEL OBSERVERS - CACHE INVALIDATION & DATA INTEGRITY
-        // ═══════════════════════════════════════════════════════════════════════
-        //
-        // Observer Pattern: Listen for model state changes and trigger side effects.
-        //
-        // CACHE INVALIDATION (Generational Versioning):
-        // - ProductObserver: Rotates tenant version on product changes
-        // - CouponObserver: Rotates tenant version on coupon changes
-        // - MenuSectionObserver: Rotates tenant version on category changes
-        //                        (Cascading Invalidation for stale relationships)
-        //
-        // DATA INTEGRITY:
-        // - ProductObserver: Auto-assigns city_id from tenant, triggers blurhash
-        //
-        // NOTE: MenuSection invalidation is critical because ProductController
-        // eager-loads 'menuSection' - category name changes would otherwise be
-        // stale in the product cache for up to 60 minutes.
-        // ═══════════════════════════════════════════════════════════════════════
+        // Observers
         Product::observe(\App\Observers\ProductObserver::class);
-        Coupon::observe(\App\Observers\CouponObserver::class);
-        MenuSection::observe(\App\Observers\MenuSectionObserver::class);
-        \App\Models\Order::observe(\App\Observers\OrderObserver::class);
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // DIRECTIVE 1: EVENT-DRIVEN CACHE CONSISTENCY
-        // ═══════════════════════════════════════════════════════════════════════
-        // Decoupled cache invalidation for registration form dropdowns.
-        // Any modification via API, Seeders, or Artisan triggers cache refresh.
-        // ═══════════════════════════════════════════════════════════════════════
-        \App\Models\Category::observe(\App\Observers\CategoryObserver::class);
-        \App\Models\City::observe(\App\Observers\CityObserver::class);
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // EVENT LISTENERS - DOMAIN EVENTS (DDD Architecture)
-        // ═══════════════════════════════════════════════════════════════════════
-        // Each Domain Event has dedicated Listeners that:
-        // 1. Execute business logic (refund, inventory restore)
-        // 2. Fire Broadcast Events for UI updates (via WebSocket)
-        // 3. Use TenantQueueMiddleware for tenant context isolation
-        // ═══════════════════════════════════════════════════════════════════════
-
-        // Order Domain Events
-        \Illuminate\Support\Facades\Event::listen(
-            \App\Events\Order\OrderCancelled::class,
-            \App\Listeners\OrderCancelledListener::class
-        );
-
-        \Illuminate\Support\Facades\Event::listen(
-            \App\Events\Order\OrderPaid::class,
-            \App\Listeners\OrderPaidListener::class
-        );
-
-        // Inventory Domain Events
-        \Illuminate\Support\Facades\Event::listen(
-            \App\Events\Inventory\LowStockThresholdReached::class,
-            \App\Listeners\LowStockListener::class
-        );
-
-        // Legacy listener (TODO: migrate to new LowStockListener)
-        \Illuminate\Support\Facades\Event::listen(
-            \App\Events\LowStockThresholdReached::class,
-            \App\Listeners\SendLowStockNotification::class
-        );
-
-        // Audit Events - GDPR/SOC2 Compliance
-        \Illuminate\Support\Facades\Event::listen(
-            \App\Events\Audit\SalesExportCreated::class,
-            \App\Listeners\Audit\LogSalesExportActivity::class
-        );
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // QUEUE WORKER MEMORY HYGIENE - STATE POLLUTION PREVENTION
-        // ═══════════════════════════════════════════════════════════════════════
-        //
-        // Queue Workers (php artisan queue:work) are long-running daemon processes.
-        // Static properties in Observers persist across job executions, causing
-        // "state pollution" where Job B reads stale data cached by Job A.
-        //
-        // DESIGN PATTERN: Interface Segregation + Open/Closed Principle
-        // Instead of hardcoding Observer class names, we iterate over classes
-        // that implement ResetsStaticCache interface. Adding new Observers
-        // requires only adding them to this array - no code changes needed.
-        //
-        // PERFORMANCE IMPACT: Negligible (~0.01ms per job per class)
-        // ═══════════════════════════════════════════════════════════════════════
-
-        // Registry of all classes with static state that needs cleanup
-        // Add new classes here when they implement ResetsStaticCache
-        $resettableClasses = [
-            \App\Observers\ProductObserver::class,
-            // Future: Add other observers with static caches here
-        ];
-
-        Queue::after(function ($event) use ($resettableClasses) {
-            // Polymorphic cleanup: iterate over all resettable classes
-            foreach ($resettableClasses as $class) {
-                if (is_a($class, \App\Contracts\ResetsStaticCache::class, true)) {
-                    $class::flushStaticCache();
-                }
-            }
-        });
+        \App\Domain\TenantGovernance\Models\Tenant::observe(\App\Observers\TenantObserver::class);
     }
 
     /**
-     * Configure granular rate limiters for API security.
+     * Register class aliases for migrated Jobs.
      *
-     * ARCHITECTURE: Named Rate Limiters for Traffic Shaping
+     * DEPLOYMENT SAFETY:
+     * Jobs serialized in Redis before migration use old App\Jobs\* namespace.
+     * These aliases redirect to new App\Domain\*\Jobs\* locations.
      *
-     * Each limiter targets a specific attack vector with mathematically
-     * chosen thresholds based on legitimate human behavior patterns.
+     * @deprecated Remove after 2026-02-05 (30 days post-migration)
      */
-    protected function configureRateLimiters(): void
+    /**
+     * Register class aliases for migrated Jobs.
+     *
+     * @deprecated Remove entire method after 2026-03-05 (60 days post-migration).
+     *             Once Redis is clear of old payloads, this mapping is tech debt.
+     */
+    protected function registerJobAliases(): void
     {
-        // ═══════════════════════════════════════════════════════════════════════
-        // COMPONENT 1: FINANCIAL FIREWALL (SMS Pumping Defense)
-        // ═══════════════════════════════════════════════════════════════════════
-        //
-        // THREAT: SMS Pumping fraud drains SMS provider budget by triggering
-        //         thousands of OTP requests to premium-rate numbers.
-        //
-        // CONSTRAINT: 3 requests per 60 seconds per IP
-        //
-        // RATIONALE: No legitimate user needs >3 SMS codes in 1 minute.
-        //            Any exceeding velocity is structurally malicious.
-        //
-        // APPLIED TO: POST /api/otp/generate
-        // ═══════════════════════════════════════════════════════════════════════
-        RateLimiter::for('api.otp-generation', function (Request $request) {
-            return Limit::perMinute(3)
-                ->by($request->ip())
-                ->response(function (Request $request, array $headers) {
-                    return response()->json([
-                        'success' => false,
-                        'error_code' => 'RATE_LIMIT_EXCEEDED',
-                        'message' => 'Demasiados intentos de SMS. Por favor espera.',
-                        'retry_after_seconds' => $headers['Retry-After'] ?? 60,
-                    ], 429, $headers);
-                });
-        });
+        $aliases = [
+            'App\\Jobs\\GeneratePdfReportJob' => \App\Application\Jobs\Reporting\GeneratePdfReportJob::class,
+            'App\\Jobs\\GenerateSalesExport' => \App\Application\Jobs\Exports\GenerateSalesExport::class,
+            'App\\Jobs\\GenerateSalesReportJob' => \App\Domain\ReportingAndExports\Jobs\GenerateSalesReportJob::class,
+            // Legacy Root to Application (Double Jump Protection)
+            'App\\Jobs\\SendCampaignEmail' => \App\Application\Jobs\Marketing\SendCampaignEmail::class,
+            'App\\Jobs\\GenerateProductBlurhash' => \App\Application\Jobs\Media\GenerateProductBlurhash::class,
+            'App\\Jobs\\EnhanceTenantProfileJob' => \App\Application\Jobs\AI\EnhanceTenantProfileJob::class,
+            'App\\Jobs\\GenerateBusinessProfile' => \App\Application\Jobs\AI\GenerateBusinessProfile::class,
+            'App\\Jobs\\RecordInteraction' => \App\Application\Jobs\Analytics\RecordInteraction::class,
+            'App\\Jobs\\SyncAnalyticsJob' => \App\Application\Jobs\Analytics\SyncAnalyticsJob::class,
+            'App\\Jobs\\ReleaseStaleOrders' => \App\Application\Jobs\Governance\ReleaseStaleOrders::class,
+            'App\\Jobs\\AuditTenantLimits' => \App\Application\Jobs\Governance\AuditTenantLimits::class,
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // COMPONENT 2: ANTI-ENUMERATION SHIELD (Dictionary Attack Defense)
-        // ═══════════════════════════════════════════════════════════════════════
-        //
-        // THREAT: Brute-force/dictionary attacks against verification endpoints
-        //         to enumerate valid OTPs or discount coupon codes.
-        //
-        // CONSTRAINT: 5 attempts per 60 seconds per IP
-        //
-        // RATIONALE: Based on human typing speed - legitimate users cannot
-        //            physically type, verify, and correct codes faster.
-        //            5 attempts allow for typo corrections while making
-        //            brute-force mathematically infeasible (time-to-crack → ∞)
-        //
-        // APPLIED TO:
-        //   - POST /api/otp/verify (account protection)
-        //   - POST /api/coupons/verify (discount code protection)
-        // ═══════════════════════════════════════════════════════════════════════
-        RateLimiter::for('api.verification', function (Request $request) {
-            return Limit::perMinute(5)
-                ->by($request->ip())
-                ->response(function (Request $request, array $headers) {
-                    return response()->json([
-                        'success' => false,
-                        'error_code' => 'VERIFICATION_RATE_LIMIT',
-                        'message' => 'Demasiados intentos de verificación. Espera un momento.',
-                        'retry_after_seconds' => $headers['Retry-After'] ?? 60,
-                    ], 429, $headers);
-                });
-        });
+            // Domain to Application (The Great Migration)
+            'App\\Domain\\Marketing\\Jobs\\SendCampaignEmail' => \App\Application\Jobs\Marketing\SendCampaignEmail::class,
+            'App\\Domain\\Analytics\\Jobs\\RecordInteraction' => \App\Application\Jobs\Analytics\RecordInteraction::class,
+            'App\\Domain\\Analytics\\Jobs\\SyncAnalyticsJob' => \App\Application\Jobs\Analytics\SyncAnalyticsJob::class,
+            'App\\Domain\\Analytics\\Jobs\\SyncTenantAnalytics' => \App\Application\Jobs\Analytics\SyncTenantAnalytics::class,
+            'App\\Domain\\TenantGovernance\\Jobs\\AuditTenantLimits' => \App\Application\Jobs\Governance\AuditTenantLimits::class,
+            'App\\Domain\\TenantGovernance\\Jobs\\ReleaseStaleOrders' => \App\Application\Jobs\Governance\ReleaseStaleOrders::class,
+            'App\\Domain\\AIEnrichment\\Jobs\\EnhanceTenantProfileJob' => \App\Application\Jobs\AI\EnhanceTenantProfileJob::class,
+            'App\\Domain\\AIEnrichment\\Jobs\\GenerateBusinessProfile' => \App\Application\Jobs\AI\GenerateBusinessProfile::class,
+            'App\\Domain\\MediaProcessing\\Jobs\\GenerateProductBlurhash' => \App\Application\Jobs\Media\GenerateProductBlurhash::class,
+            'App\\Domain\\ReportingAndExports\\Jobs\\GeneratePdfReportJob' => \App\Application\Jobs\Reporting\GeneratePdfReportJob::class,
+            'App\\Domain\\ReportingAndExports\\Jobs\\GenerateSalesExport' => \App\Application\Jobs\Exports\GenerateSalesExport::class,
+        ];
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // COMPONENT 3: TRANSACTIONAL WRITE PROTECTION (Database Integrity)
-        // ═══════════════════════════════════════════════════════════════════════
-        //
-        // THREAT: Resource exhaustion attacks flooding the orders table with
-        //         garbage records, consuming database CPU/locks/disk.
-        //
-        // CONSTRAINT: 10 orders per 60 seconds per IP
-        //
-        // RATIONALE: Generous for power users (family orders, catering) but
-        //            strict enough to prevent botnet flooding. No legitimate
-        //            customer creates >10 orders per minute.
-        //
-        // APPLIED TO: POST /api/orders
-        // ═══════════════════════════════════════════════════════════════════════
-        RateLimiter::for('api.transactions', function (Request $request) {
-            return Limit::perMinute(10)
-                ->by($request->ip())
-                ->response(function (Request $request, array $headers) {
-                    return response()->json([
-                        'success' => false,
-                        'error_code' => 'TRANSACTION_RATE_LIMIT',
-                        'message' => 'Demasiados pedidos. Por favor espera antes de crear otro.',
-                        'retry_after_seconds' => $headers['Retry-After'] ?? 60,
-                    ], 429, $headers);
-                });
-        });
-
-        RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)
-                ->by($request->user()?->id ?: $request->ip())
-                ->response(function (Request $request, array $headers) {
-                    return response()->json([
-                        'success' => false,
-                        'error_code' => 'API_RATE_LIMIT',
-                        'message' => 'Demasiadas solicitudes. Por favor espera.',
-                        'retry_after_seconds' => $headers['Retry-After'] ?? 60,
-                    ], 429, $headers);
-                });
-        });
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // TIERED TRAFFIC SHAPING: Dynamic limits based on tenant subscription
-        // ═══════════════════════════════════════════════════════════════════════
-        // FREE TIER:  60 requests/minute  - Prevents "Noisy Neighbor" DoS
-        // PRO TIER:  300 requests/minute  - Business-critical operations
-        // PUBLIC:     60 requests/minute  - Safe baseline for unauthenticated
-        //
-        // APPLIED TO: Routes using 'throttle:api.tenant' middleware
-        // ═══════════════════════════════════════════════════════════════════════
-        RateLimiter::for('api.tenant', function (Request $request) {
-            $user = $request->user();
-
-            // No authenticated user: public baseline
-            if (! $user) {
-                return Limit::perMinute(60)
-                    ->by($request->ip())
-                    ->response(function (Request $request, array $headers) {
-                        return response()->json([
-                            'success' => false,
-                            'error_code' => 'RATE_LIMIT_EXCEEDED',
-                            'message' => 'Demasiadas solicitudes. Por favor espera.',
-                            'tier' => 'public',
-                            'retry_after_seconds' => $headers['Retry-After'] ?? 60,
-                        ], 429, $headers);
-                    });
+        foreach ($aliases as $oldClass => $newClass) {
+            if (!class_exists($oldClass)) {
+                class_alias($newClass, $oldClass);
             }
+        }
+    }
 
-            // Resolve tenant subscription tier
-            $tenant = $user->tenant;
+    /**
+     * Register class aliases for migrated Models.
+     *
+     * DOMAIN MIGRATION SAFETY:
+     * These aliases maintain backward compatibility during gradual transition.
+     *
+     * @deprecated Remove after 2026-03-05 (60 days post-migration)
+     */
+    protected function registerModelAliases(): void
+    {
+        $aliases = [
+            // Identity Domain
+            'App\\Models\\User' => \App\Domain\Identity\Models\User::class,
 
-            // ═══════════════════════════════════════════════════════════════════════
-            // SECURITY: User without tenant falls back to IP-based limiting
-            // ═══════════════════════════════════════════════════════════════════════
-            // NEVER use user->id as fallback - this allows multi-user bypass attack
-            // where a Free tenant creates 50 users to get 50x the rate limit.
-            // ═══════════════════════════════════════════════════════════════════════
-            if (! $tenant) {
-                return Limit::perMinute(60)
-                    ->by('ip:'.$request->ip())
-                    ->response(function (Request $request, array $headers) {
-                        return response()->json([
-                            'success' => false,
-                            'error_code' => 'RATE_LIMIT_EXCEEDED',
-                            'message' => 'Usuario sin tenant. Límite por IP aplicado.',
-                            'tier' => 'orphan',
-                            'retry_after_seconds' => $headers['Retry-After'] ?? 60,
-                        ], 429, $headers);
-                    });
+            // TenantGovernance Domain
+            'App\\Models\\Tenant' => \App\Domain\TenantGovernance\Models\Tenant::class,
+        ];
+
+        foreach ($aliases as $oldClass => $newClass) {
+            if (!class_exists($oldClass)) {
+                class_alias($newClass, $oldClass);
             }
-
-            $isPro = $tenant->is_pro ?? false;
-
-            // Dynamic limit based on tier
-            $limit = $isPro ? 300 : 60;
-            $tier = $isPro ? 'pro' : 'free';
-
-            // ═══════════════════════════════════════════════════════════════════════
-            // KEY: Strictly by Tenant ID - prevents multi-user bypass attack
-            // ═══════════════════════════════════════════════════════════════════════
-            return Limit::perMinute($limit)
-                ->by('tenant:'.$tenant->id)
-                ->response(function (Request $request, array $headers) use ($tier, $limit) {
-                    return response()->json([
-                        'success' => false,
-                        'error_code' => 'TENANT_RATE_LIMIT',
-                        'message' => 'Límite de solicitudes alcanzado para tu plan.',
-                        'tier' => $tier,
-                        'limit' => $limit,
-                        'retry_after_seconds' => $headers['Retry-After'] ?? 60,
-                    ], 429, $headers);
-                });
-        });
+        }
     }
 }

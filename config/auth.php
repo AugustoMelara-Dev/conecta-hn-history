@@ -45,7 +45,7 @@ return [
         ],
         'admin' => [
             'driver' => 'session',
-            'provider' => 'users', // Using users provider for now, as they share the model
+            'provider' => 'admins', // Segregated provider for Filament
             'expire' => 60,
         ],
     ],
@@ -70,13 +70,12 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\User::class),
+            'model' => env('AUTH_MODEL', App\Domain\Identity\Models\User::class),
         ],
-
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'admins' => [
+            'driver' => 'eloquent',
+            'model' => App\Infrastructure\Identity\Models\FilamentUser::class,
+        ],
     ],
 
     /*

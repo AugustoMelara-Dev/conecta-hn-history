@@ -1,0 +1,140 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Providers;
+
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\ServiceProvider;
+
+class InfrastructureServiceProvider extends ServiceProvider
+{
+    /**
+     * Register services.
+     */
+    public function register(): void
+    {
+        //
+    }
+
+    /**
+     * Bootstrap services.
+     */
+    public function boot(): void
+    {
+        $this->configureStrictModels();
+        $this->configureSecurity();
+        $this->configureVite();
+        $this->configureRateLimiters();
+    }
+
+    /**
+     * Configure Eloquent Strict Mode.
+     * Checks for:
+     * - Lazy Loading (N+1 queries)
+     * - Mass Assignment protection
+     * - Accessing missing attributes
+     */
+    protected function configureStrictModels(): void
+    {
+        Model::shouldBeStrict(! $this->app->isProduction());
+
+        // Exception handling for Lazy Loading in Production (log instead of crash)
+        if ($this->app->isProduction()) {
+            Model::handleLazyLoadingViolationUsing(function ($model, $relation) {
+                $class = get_class($model);
+                Log::warning("N+1 Query detected in production: {$class}::{$relation}");
+            });
+        }
+    }
+
+    /**
+     * Configure Transport Security and CSP.
+     */
+    protected function configureSecurity(): void
+    {
+        if ($this->app->isProduction()) {
+            URL::forceScheme('https');
+        }
+    }
+
+    /**
+     * Configure Vite settings.
+     */
+    protected function configureVite(): void
+    {
+        Vite::prefetch(concurrency: 3);
+        
+        // Use CSP Nonce for scripts if requested
+        Vite::useCspNonce();
+        
+        // Blade directive for simpler usage
+        Blade::directive('cspnonce', function () {
+            return "<?php echo Vite::cspNonce(); ?>";
+        });
+    }
+
+    /**
+     * Configure granular rate limiters for API security.
+     * 
+     * ARCHITECTURE: Named Rate Limiters for Traffic Shaping
+     * Each limiter targets a specific attack vector with mathematically
+     * chosen thresholds based on legitimate human behavior patterns.
+     */
+    protected function configureRateLimiters(): void
+    {
+        // 1. GLOBAL API LIMIT: 60 requests/minute per user/IP
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // 2. AUTH LIMIT: Prevent Brute Force
+        // 5 attempts per minute (Standard Login)
+        RateLimiter::for('login', function (Request $request) {
+            return Limit::perMinute(5)->by($request->email.$request->ip());
+        });
+
+        // 3. OTP LIMIT: Prevent SMS Bombing / Cost overflow
+        // 3 attempts per minute per IP (Requesting OTP)
+        RateLimiter::for('otp-request', function (Request $request) {
+            return Limit::perMinute(3)->by($request->ip());
+        });
+
+        // 4. VERIFICATION LIMIT: Prevent Code Guessing
+        // 5 attempts per minute per User (Verifying Code)
+        RateLimiter::for('otp-verify', function (Request $request) {
+            return Limit::perMinute(5)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // 5. REGISTRATION LIMIT: Prevent Bot Spam Accounts
+        // 3 registrations per hour per IP
+        RateLimiter::for('registration', function (Request $request) {
+            return Limit::perHour(3)->by($request->ip());
+        });
+
+        // 6. SEARCH LIMIT: Prevent Database DoS
+        // 30 searches per minute
+        RateLimiter::for('search', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
+        });
+
+        // 7. UPLOAD LIMIT: Prevent Storage DoS
+        // 10 uploads per minute
+        RateLimiter::for('uploads', function (Request $request) {
+            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // 8. NOTIFICATION POLLING
+        RateLimiter::for('notifications', function (Request $request) {
+            return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
+        });
+    }
+}
