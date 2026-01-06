@@ -6,7 +6,6 @@ namespace App\Contracts\Events;
 
 use App\ValueObjects\TenantId;
 use DateTimeImmutable;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * DomainEvent - Contract for Business Facts (Enterprise-Grade)
@@ -17,7 +16,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
  * ║                                                                          ║
  * ║  1. IMMUTABILITY: final readonly classes only                            ║
  * ║  2. ORM-AGNOSTIC: No Eloquent models, only primitives + VOs             ║
- * ║  3. TRANSACTION SAFETY: Dispatched after commit                         ║
+ * ║  3. TRANSACTION SAFETY: Use $afterCommit = true in dispatching Jobs     ║
  * ║  4. MULTI-TENANT: TenantId required for queue context                   ║
  * ║  5. IDEMPOTENCY: eventId for deduplication                              ║
  * ║  6. SERIALIZATION: toPrimitives() for queue safety                      ║
@@ -32,7 +31,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
  * ║    can cause duplicate invoices, double charges, spam emails.          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-interface DomainEvent extends ShouldDispatchAfterCommit
+interface DomainEvent
 {
     /**
      * Unique identifier for this specific event instance.
