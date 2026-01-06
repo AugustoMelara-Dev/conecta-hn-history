@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Jobs\EnhanceTenantProfileJob;
+use App\Domain\AIEnrichment\Jobs\EnhanceTenantProfileJob;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;

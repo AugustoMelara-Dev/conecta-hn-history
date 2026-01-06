@@ -1,69 +1,105 @@
 <?php
 
+namespace Database\Seeders;
+
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class MinimalSeeder extends Seeder
 {
-    public function run()
+    /**
+     * Run the database seeds.
+     *
+     * USES DOMAIN FACTORIES FOR INTEGRITY.
+     */
+    public function run(): void
     {
-        // Admin
-        DB::table('users')->insert([
+        // 1. Create Super Admin
+        // Using Identity Domain Factory
+        \App\Domain\Identity\Models\User::factory()->create([
             'name' => 'Super Admin',
             'email' => 'admin@conectahn.com',
-            'password' => bcrypt('password'),
             'role' => 'super_admin',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'password' => 'password', // Model has 'hashed' cast, will autopassword
         ]);
 
-        // Seller
-        DB::table('users')->insert([
+        // 2. Create a Seller User
+        $seller = \App\Domain\Identity\Models\User::factory()->create([
             'name' => 'Carlos Martinez',
             'email' => 'seller@test.com',
-            'password' => bcrypt('password'),
             'role' => 'seller',
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
-        // Categories
-        DB::table('categories')->insert([
-            ['name' => 'Restaurantes', 'slug' => 'restaurantes', 'icon' => 'utensils', 'color' => '#ef4444', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Tecnología', 'slug' => 'tecnologia', 'icon' => 'laptop', 'color' => '#3b82f6', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Salud', 'slug' => 'salud', 'icon' => 'heart', 'color' => '#10b981', 'created_at' => now(), 'updated_at' => now()],
-        ]);
-
-        // 8 Businesses
-        $businesses = [
-            ['name' => 'Café El Indio', 'category_id' => 1, 'city' => 'Tegucigalpa', 'is_pro' => 1],
-            ['name' => 'TechStore SPS', 'category_id' => 2, 'city' => 'San Pedro Sula', 'is_pro' => 1],
-            ['name' => 'Farmacia Salud', 'category_id' => 3, 'city' => 'La Ceiba', 'is_pro' => 1],
-            ['name' => 'Restaurante Don Pepe', 'category_id' => 1, 'city' => 'Tegucigalpa', 'is_pro' => 1],
-            ['name' => 'Inversiones La Paz', 'category_id' => 2, 'city' => 'San Pedro Sula', 'is_pro' => 1],
-            ['name' => 'Comedor Suyapa', 'category_id' => 1, 'city' => 'Tegucigalpa', 'is_pro' => 0],
-            ['name' => 'Tienda La Esquina', 'category_id' => 2, 'city' => 'La Ceiba', 'is_pro' => 0],
-            ['name' => 'Barbería El Corte', 'category_id' => 3, 'city' => 'San Pedro Sula', 'is_pro' => 0],
+        // 3. Create Categories (Infra/Core Models)
+        $categories = [
+            ['name' => 'Restaurantes', 'slug' => 'restaurantes', 'icon' => 'utensils', 'color' => '#ef4444'],
+            ['name' => 'Tecnología', 'slug' => 'tecnologia', 'icon' => 'laptop', 'color' => '#3b82f6'],
+            ['name' => 'Salud', 'slug' => 'salud', 'icon' => 'heart', 'color' => '#10b981'],
         ];
 
-        foreach ($businesses as $idx => $biz) {
-            DB::table('tenants')->insert([
-                'user_id' => 2,
-                'name' => $biz['name'],
-                'slug' => str_replace(' ', '-', strtolower($biz['name'])),
-                'category_id' => $biz['category_id'],
-                'description' => 'Negocio profesional en '.$biz['city'],
-                'city' => $biz['city'],
-                'status' => 'approved',
-                'is_pro' => $biz['is_pro'],
-                'logo_path' => 'https://images.unsplash.com/photo-150000000'.($idx + 1).'000?w=400&q=80',
-                'primary_color' => ['#7c3aed', '#dc2626', '#059669'][($idx % 3)],
-                'whatsapp_number' => '+504 9999-999'.$idx,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        foreach ($categories as $cat) {
+            \App\Models\Category::firstOrCreate(['slug' => $cat['slug']], $cat);
         }
 
-        echo "✅ Minimal seed complete: 2 users, 3 categories, 8 businesses\n";
+        // 4. Create Tenants for the Seller
+        // Using TenantGovernance Domain Factory
+        $businesses = [
+            ['name' => 'Café El Indio', 'city' => 'Tegucigalpa', 'is_pro' => true],
+            ['name' => 'TechStore SPS', 'city' => 'San Pedro Sula', 'is_pro' => true],
+            ['name' => 'Farmacia Salud', 'city' => 'La Ceiba', 'is_pro' => true],
+            ['name' => 'Restaurante Don Pepe', 'city' => 'Tegucigalpa', 'is_pro' => true],
+            ['name' => 'Inversiones La Paz', 'city' => 'San Pedro Sula', 'is_pro' => true],
+            ['name' => 'Comedor Suyapa', 'city' => 'Tegucigalpa', 'is_pro' => false],
+            ['name' => 'Tienda La Esquina', 'city' => 'La Ceiba', 'is_pro' => false],
+            ['name' => 'Barbería El Corte', 'city' => 'San Pedro Sula', 'is_pro' => false],
+        ];
+
+        // Retrieve category IDs
+        $restaurantes = \App\Models\Category::where('slug', 'restaurantes')->first()->id;
+        $tecnologia = \App\Models\Category::where('slug', 'tecnologia')->first()->id;
+        $salud = \App\Models\Category::where('slug', 'salud')->first()->id;
+
+        // Retrieve Cities (Mock or create if not exist for minimal seed)
+        // In a real scenario, use CitySeeder. Here ensuring they exist.
+        $cities = ['Tegucigalpa', 'San Pedro Sula', 'La Ceiba'];
+        foreach ($cities as $cityName) {
+            \App\Models\City::firstOrCreate(
+                ['slug' => Str::slug($cityName)],
+                ['name' => $cityName, 'department_id' => 1] // Assuming dept 1 exists or is optional
+            );
+        }
+
+        foreach ($businesses as $idx => $biz) {
+            $categoryId = match ($idx % 3) {
+                0 => $restaurantes,
+                1 => $tecnologia,
+                2 => $salud,
+            };
+            
+            $cityId = \App\Models\City::where('name', $biz['city'])->first()->id;
+
+            $factory = \App\Domain\TenantGovernance\Models\Tenant::factory()
+                ->state([
+                    'user_id' => $seller->id,
+                    'name' => $biz['name'],
+                    'slug' => Str::slug($biz['name']),
+                    'category_id' => $categoryId,
+                    'city_id' => $cityId,
+                    'description' => 'Negocio profesional en ' . $biz['city'],
+                    'is_active' => true,
+                    'primary_color' => ['#7c3aed', '#dc2626', '#059669'][$idx % 3],
+                    'whatsapp_number' => '+504 9999-999' . $idx,
+                ]);
+
+            if ($biz['is_pro']) {
+                $factory = $factory->pro();
+            } else {
+                $factory = $factory->state(['plan_type' => 'semilla']);
+            }
+            
+            $factory->create();
+        }
+
+        $this->command->info("✅ Minimal seed complete: Domain Factories utilized.");
     }
 }

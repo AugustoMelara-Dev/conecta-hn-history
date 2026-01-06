@@ -7,7 +7,7 @@ namespace App\Listeners;
 use App\Events\Broadcast\OrderCancelledBroadcast;
 use App\Events\Order\OrderCancelled;
 use App\Exceptions\TenantMismatchException;
-use App\Jobs\Middleware\TenantQueueMiddleware;
+use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use App\Models\Order;
 use Illuminate\Contracts\Queue\ShouldQueue;
 

@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Observers;
 
 use App\Contracts\ResetsStaticCache;
-use App\Jobs\GenerateProductBlurhash;
+use App\Domain\MediaProcessing\Jobs\GenerateProductBlurhash;
 use App\Models\Product;
 use App\Services\TenantCacheManager;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
@@ -162,7 +164,11 @@ class ProductObserver implements ResetsStaticCache, ShouldHandleEventsAfterCommi
         // ASYNC BLURHASH: Offload CPU-intensive image processing to queue
         // ═══════════════════════════════════════════════════════════════════════
         if ($product->isDirty('image_path') && ! empty($product->image_path)) {
-            GenerateProductBlurhash::dispatch($product->id, $product->image_path);
+            GenerateProductBlurhash::dispatch(
+                $product->id,
+                $product->image_path,
+                $product->tenant_id
+            );
         }
     }
 

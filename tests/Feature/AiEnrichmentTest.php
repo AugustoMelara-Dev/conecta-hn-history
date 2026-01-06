@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Jobs\EnhanceTenantProfileJob;
+use App\Domain\AIEnrichment\Jobs\EnhanceTenantProfileJob;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AiProfileGeneratorService;

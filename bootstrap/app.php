@@ -1,6 +1,6 @@
 <?php
 
-use App\Jobs\AuditTenantLimits;
+use App\Application\Jobs\Governance\AuditTenantLimits;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -49,7 +49,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('media:clean-orphans')->weekly()->sundays()->at('03:00');
 
         // Pilar 8: Analytics Sync (Daily at 00:05 AM)
-        $schedule->job(new \App\Jobs\SyncAnalyticsJob)->dailyAt('00:05');
+        $schedule->job(new \App\Application\Jobs\Analytics\SyncAnalyticsJob)->dailyAt('00:05');
 
         // ═══════════════════════════════════════════════════════════════════
         // PILAR SEO: Generación automática de sitemap (Diario a medianoche)

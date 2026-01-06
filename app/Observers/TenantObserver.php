@@ -1,59 +1,80 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Observers;
 
+use App\Enums\UserRole;
 use App\Models\Tenant;
+use App\Services\TenantCacheManager;
+use Illuminate\Support\Facades\Log;
 
+/**
+ * TenantObserver - Lifecycle Management & Cache Orchestration
+ *
+ * Responsibilities:
+ * 1. Role assignment on tenant creation (using UserRole Enum)
+ * 2. Reactive cache invalidation on updates
+ * 3. Blurhash generation for images
+ */
 class TenantObserver
 {
     /**
      * Handle the Tenant "created" event.
+     *
+     * Assigns the TENANT_OWNER role to the tenant owner upon business creation.
+     * Uses strict Enum comparison for type safety.
      */
     public function created(Tenant $tenant): void
     {
-        // Note: Categories are global and assigned via category_id
-        // Tenants belong to ONE category (Restaurantes, Tecnología, etc.)
-        // They don't create their own categories
-
-        // 1. Asignar Rol de Dueño de Negocio
         $user = $tenant->user;
-        if ($user && $user->role !== 'seller') {
-            $user->update(['role' => 'seller']);
+
+        // Type-safe comparison using Enum
+        if ($user && $user->role !== UserRole::TENANT_OWNER) {
+            // Use Enum value for DB compatibility
+            $user->update(['role' => UserRole::TENANT_OWNER]);
         }
     }
 
     /**
      * Handle the Tenant "updated" event.
+     *
+     * CACHE INVALIDATION: Critical for data consistency.
+     * When a tenant updates their profile, we immediately rotate
+     * their cache version, invalidating all downstream cached views.
+     *
+     * Performance: O(1) invalidation via version rotation.
      */
     public function updated(Tenant $tenant): void
     {
-        //
+        try {
+            $this->getCacheManager()->rotateTenantVersion($tenant->id);
+        } catch (\Exception $e) {
+            Log::warning("Cache invalidation failed for tenant {$tenant->id}: " . $e->getMessage());
+        }
     }
 
     /**
      * Handle the Tenant "saved" event.
+     *
+     * Auto-generates Blurhash when logo changes for progressive image loading.
      */
     public function saved(Tenant $tenant): void
     {
-        // Pilar 7: Auto-generate Blurhash when logo changes
         if ($tenant->isDirty('logo_path') && ! empty($tenant->logo_path)) {
-            $fullPath = storage_path('app/public/'.$tenant->logo_path);
+            $fullPath = storage_path('app/public/' . $tenant->logo_path);
 
             if (file_exists($fullPath)) {
                 try {
-                    // Generate blurhash using kornrunner/blurhash
                     $image = imagecreatefromstring(file_get_contents($fullPath));
-                    if ($image !== false) {
-                        $width = imagesx($image);
-                        $height = imagesy($image);
 
+                    if ($image !== false) {
                         $hash = \kornrunner\Blurhash\Blurhash::encode($image, 4, 3);
                         $tenant->updateQuietly(['blur_hash' => $hash]);
-
                         imagedestroy($image);
                     }
                 } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error("Blurhash generation failed for tenant {$tenant->id}: ".$e->getMessage());
+                    Log::error("Blurhash generation failed for tenant {$tenant->id}: " . $e->getMessage());
                 }
             }
         }
@@ -61,10 +82,16 @@ class TenantObserver
 
     /**
      * Handle the Tenant "deleted" event.
+     *
+     * Invalidate cache to prevent stale data from being served.
      */
     public function deleted(Tenant $tenant): void
     {
-        //
+        try {
+            $this->getCacheManager()->forgetVersion($tenant->id);
+        } catch (\Exception $e) {
+            Log::warning("Cache cleanup failed for deleted tenant {$tenant->id}: " . $e->getMessage());
+        }
     }
 
     /**
@@ -72,7 +99,11 @@ class TenantObserver
      */
     public function restored(Tenant $tenant): void
     {
-        //
+        try {
+            $this->getCacheManager()->rotateTenantVersion($tenant->id);
+        } catch (\Exception $e) {
+            Log::warning("Cache rotation failed for restored tenant {$tenant->id}: " . $e->getMessage());
+        }
     }
 
     /**
@@ -80,6 +111,21 @@ class TenantObserver
      */
     public function forceDeleted(Tenant $tenant): void
     {
-        //
+        try {
+            $this->getCacheManager()->forgetVersion($tenant->id);
+        } catch (\Exception $e) {
+            Log::warning("Cache cleanup failed for force-deleted tenant {$tenant->id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Resolve the TenantCacheManager from the service container.
+     *
+     * DRY PATTERN: Centralizes dependency resolution.
+     * Observers don't support constructor DI, so we use the container.
+     */
+    private function getCacheManager(): TenantCacheManager
+    {
+        return app(TenantCacheManager::class);
     }
 }
