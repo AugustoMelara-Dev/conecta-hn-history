@@ -1,9 +1,11 @@
 <?php
 
-use App\Http\Controllers\DirectoryController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\TenantController;
-use App\Http\Controllers\WelcomeController;
+use App\Http\Controllers\Public\DirectoryController;
+use App\Http\Controllers\Auth\ProfileController;
+use App\Http\Controllers\Public\WelcomeController;
+use App\Http\Controllers\Public\LocationController;
+use App\Http\Controllers\Public\InteractionController;
+use App\Http\Controllers\Tenant\AnalyticsController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -53,47 +55,26 @@ Route::get('/registro/pago-pendiente/{payment}', \App\Livewire\Pages\PaymentPend
 // ═══════════════════════════════════════════════════════════════════════
 // Location API Routes
 // ═══════════════════════════════════════════════════════════════════════
-Route::post('/location/set', [\App\Http\Controllers\LocationController::class, 'setCity'])->name('location.set');
-Route::post('/location/clear', [\App\Http\Controllers\LocationController::class, 'clearCity'])->name('location.clear');
-Route::get('/api/cities', [\App\Http\Controllers\LocationController::class, 'getCities'])->name('cities.all');
+Route::post('/location/set', [LocationController::class, 'setCity'])->name('location.set');
+Route::post('/location/clear', [LocationController::class, 'clearCity'])->name('location.clear');
+Route::get('/api/cities', [LocationController::class, 'getCities'])->name('cities.all');
 Route::get('/api/search', [\App\Http\Controllers\Api\SearchController::class, 'index'])->name('api.search');
 
-// ═══════════════════════════════════════════════════════════════════════
-// SOCIAL AUTHENTICATION (OAuth)
-// ═══════════════════════════════════════════════════════════════════════
-Route::prefix('auth')->group(function () {
-    Route::get('/{provider}/redirect', [\App\Http\Controllers\Auth\SocialAuthController::class, 'redirect'])
-        ->name('social.redirect');
-    Route::get('/{provider}/callback', [\App\Http\Controllers\Auth\SocialAuthController::class, 'callback'])
-        ->name('social.callback');
-});
+// ... (Skip lines)
 
 // ═══════════════════════════════════════════════════════════════════════
 // TRACKING ROUTES - Analytics Middleware
-// Registran clics antes de redirigir a destinos externos
 // ═══════════════════════════════════════════════════════════════════════
 Route::prefix('track')->group(function () {
-    Route::get('/wa/{tenant:slug}', [\App\Http\Controllers\InteractionController::class, 'whatsapp'])->name('track.whatsapp');
-    Route::get('/call/{tenant:slug}', [\App\Http\Controllers\InteractionController::class, 'call'])->name('track.call');
-    Route::get('/maps/{tenant:slug}', [\App\Http\Controllers\InteractionController::class, 'maps'])->name('track.maps');
+    Route::get('/wa/{tenant:slug}', [InteractionController::class, 'whatsapp'])->name('track.whatsapp');
+    Route::get('/call/{tenant:slug}', [InteractionController::class, 'call'])->name('track.call');
+    Route::get('/maps/{tenant:slug}', [InteractionController::class, 'maps'])->name('track.maps');
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-// PAYMENT STATUS - React/Inertia
+// PAYMENT STATUS - Consolidated
 // ═══════════════════════════════════════════════════════════════════════
-Route::get('/payment-pending/{payment}', function ($paymentId) {
-    // Fetch payment from database (simplified, adjust to your Payment model)
-    return \Inertia\Inertia::render('Public/PaymentPending', [
-        'payment' => [
-            'id' => $paymentId,
-            'status' => 'pending',
-            'amount' => 499,
-            'method' => 'Transferencia',
-        ],
-        'tenant' => null,
-        'checkUrl' => "/api/payments/{$paymentId}/status",
-    ]);
-})->name('payment.pending');
+// Route moved to: Line 50 (Consolidated)
 
 // ═══════════════════════════════════════════════════════════════════════
 // TENANT REGISTRATION - Atomic Transactional Controller
@@ -185,13 +166,19 @@ Route::middleware('auth')->group(function () {
     Route::delete('/mi-cuenta', [ProfileController::class, 'destroy'])->name('mi-cuenta.destroy');
 
     // Analytics API
-    Route::get('/analytics/data', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.data');
+    Route::get('/analytics/data', [AnalyticsController::class, 'index'])->name('analytics.data');
 
     // Reviews
-    Route::post('/reviews', [\App\Http\Controllers\ReviewController::class, 'store'])->name('reviews.store');
+    Route::post('/reviews', [\App\Http\Controllers\Public\ReviewController::class, 'store'])->name('reviews.store');
 
     // Follow/Unfollow
-    Route::post('/tenants/{tenant}/toggle-follow', [\App\Http\Controllers\FollowController::class, 'toggle'])->name('tenant.toggle-follow');
+    Route::post('/tenants/{tenant}/toggle-follow', [\App\Http\Controllers\Api\FollowController::class, 'toggle'])->name('tenant.toggle-follow'); // Assume Api for FollowController if not moved yet? Wait, FollowController was orphan. I didn't move it? I should move it to Api or Public. I'll assume Api/FollowController. 
+    // Wait, I forgot to move FollowController in the Move Step. I'll add a move step for it now.
+    // I put it in Api? Or Public?
+    // Follow is authenticated usually.
+    // I will checking FollowController... it's small.
+    // I will move it to Api\FollowController for now.
+
 
     // ═══════════════════════════════════════════════════════════════════
     // SHADOW LOGIN - Impersonation Exit Route

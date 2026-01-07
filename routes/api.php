@@ -4,7 +4,7 @@ use App\Http\Controllers\Api\CouponController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Auth\OtpController;
-use App\Http\Controllers\InteractionController;
+use App\Http\Controllers\Api\InteractionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -172,7 +172,10 @@ Route::middleware(['auth:sanctum', 'tenant.ownership', 'throttle:api'])->group(f
     // tenant's banking details by manipulating the ID parameter.
     Route::prefix('settings')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\TenantSettingsController::class, 'show']);
-        Route::patch('/', [\App\Http\Controllers\Api\TenantSettingsController::class, 'update']);
+        
+        // POST required for multipart/form-data file uploads
+        Route::post('/update', [\App\Http\Controllers\Api\TenantSettingsController::class, 'update'])
+            ->name('api.tenant.settings.update');
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -290,13 +293,13 @@ Route::get('/exports/download', [\App\Http\Controllers\Api\SalesExportController
 Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('notifications')->group(function () {
     // GET /api/notifications - List user's notifications
     Route::get('/', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
-    
+
     // GET /api/notifications/count - Get unread count only (lightweight)
     Route::get('/count', [\App\Http\Controllers\Api\NotificationController::class, 'count']);
-    
+
     // PATCH /api/notifications/read-all - Mark all as read
     Route::patch('/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
-    
+
     // PATCH /api/notifications/{id}/read - Mark single as read
     Route::patch('/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
 });
