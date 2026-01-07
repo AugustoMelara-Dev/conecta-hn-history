@@ -24,9 +24,6 @@ final class AiOptimizationController extends Controller
 
     /**
      * Optimizes a business profile (SEO, Tags, Description) using GPT-4o.
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function optimizeProfile(Request $request): JsonResponse
     {
@@ -36,7 +33,7 @@ final class AiOptimizationController extends Controller
         ]);
 
         $user = Auth::user();
-        if (!$user->tenant_id) {
+        if (! $user->tenant_id) {
             return response()->json(['message' => 'No tienes un negocio asociado.'], 403);
         }
 
@@ -50,29 +47,31 @@ final class AiOptimizationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $optimizedData
+                'data' => $optimizedData,
             ]);
 
         } catch (\App\Exceptions\Ai\AiProviderUnavailableException $e) {
             // Semantic: "Service Unavailable" (503)
             return response()->json([
                 'success' => false,
-                'message' => 'El servicio de IA está temporalmente saturado. Por favor intenta en unos minutos.'
+                'message' => 'El servicio de IA está temporalmente saturado. Por favor intenta en unos minutos.',
             ], 503);
 
         } catch (\App\Exceptions\Ai\AiMalformedResponseException $e) {
             // Semantic: "Unprocessable Entity" (422) - Data Integrity Fail
             Log::error('[AiController] Malformed Response', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'No pudimos generar un perfil válido. Por favor mejora la descripción e intenta de nuevo.'
+                'message' => 'No pudimos generar un perfil válido. Por favor mejora la descripción e intenta de nuevo.',
             ], 422);
-            
+
         } catch (\Throwable $e) {
             Log::error('[AiController] Unexpected Error', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error interno procesando la solicitud.'
+                'message' => 'Error interno procesando la solicitud.',
             ], 500);
         }
     }

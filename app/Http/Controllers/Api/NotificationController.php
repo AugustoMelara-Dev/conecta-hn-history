@@ -25,14 +25,11 @@ final class NotificationController extends Controller
 {
     /**
      * Get hydrated list of notifications.
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         $limit = min((int) $request->query('limit', 10), 50);
 
         // 1. Retrieval (Raw Data)
@@ -45,14 +42,14 @@ final class NotificationController extends Controller
         // 2. Transformation & Hydration (JIT)
         $hydrated = $notifications->map(function (DatabaseNotification $notification) use ($user) {
             $data = $notification->data;
-            
+
             // Virtual Property: action_url
             // Default to whatever was stored (if any), but override for exports
             $actionUrl = $data['action_url'] ?? null;
-            
+
             // DETECTION: Is this an export that needs hydration?
             // checking internal flag 'type' inside data JSON
-            if (($data['type'] ?? '') === 'export_ready' && !empty($data['file_path'])) {
+            if (($data['type'] ?? '') === 'export_ready' && ! empty($data['file_path'])) {
                 try {
                     // MINTING: Generate Cryptographically Signed URL (TTL 30 min)
                     $actionUrl = URL::temporarySignedRoute(
@@ -89,10 +86,6 @@ final class NotificationController extends Controller
 
     /**
      * Mark a specific notification as read.
-     *
-     * @param Request $request
-     * @param string $id
-     * @return JsonResponse
      */
     public function markAsRead(Request $request, string $id): JsonResponse
     {
@@ -113,9 +106,6 @@ final class NotificationController extends Controller
 
     /**
      * Mark all notifications as read.
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function markAllAsRead(Request $request): JsonResponse
     {

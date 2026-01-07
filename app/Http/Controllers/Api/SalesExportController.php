@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Exports\Criteria\SalesExportCriteria;
-use App\Http\Controllers\Controller;
 use App\Domain\ReportingAndExports\Jobs\GenerateSalesExport;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -37,7 +36,6 @@ final class SalesExportController extends Controller
      * Validates input, dispatches background job, and returns immediately.
      * The user will receive a WebSocket notification when the export is ready.
      *
-     * @param Request $request
      * @return JsonResponse (202 Accepted)
      *
      * @throws ValidationException
@@ -56,7 +54,7 @@ final class SalesExportController extends Controller
         $user = Auth::user();
         $tenant = $user->tenant ?? $user->currentTenant;
 
-        if (!$tenant) {
+        if (! $tenant) {
             return response()->json([
                 'success' => false,
                 'message' => 'No tienes un negocio asociado.',
@@ -108,9 +106,6 @@ final class SalesExportController extends Controller
      * 1. `auth:sanctum` middleware - User must be authenticated
      * 2. `signed` middleware - URL must have valid cryptographic signature
      * 3. Tenant ownership check - User must belong to the file's tenant
-     *
-     * @param Request $request
-     * @return StreamedResponse|JsonResponse
      */
     public function download(Request $request): StreamedResponse|JsonResponse
     {
@@ -121,7 +116,7 @@ final class SalesExportController extends Controller
         $encodedPath = $request->query('path');
         $requestedTenantId = (int) $request->query('tenant');
 
-        if (!$encodedPath || !$requestedTenantId) {
+        if (! $encodedPath || ! $requestedTenantId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Parámetros de descarga inválidos.',
@@ -161,7 +156,7 @@ final class SalesExportController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // STEP 3: Validate File Exists
         // ═══════════════════════════════════════════════════════════════════════
-        if (!Storage::disk('local')->exists($filePath)) {
+        if (! Storage::disk('local')->exists($filePath)) {
             return response()->json([
                 'success' => false,
                 'message' => 'El archivo ya no está disponible. Los reportes expiran después de 24 horas.',

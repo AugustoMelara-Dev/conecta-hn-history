@@ -8,7 +8,6 @@ use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -43,6 +42,7 @@ class PaymentWebhookController extends Controller
      * In production, this comes from .env: PAYMENT_WEBHOOK_SECRET
      */
     protected string $webhookSecret;
+
     protected \App\Services\WebhookService $webhookService;
 
     public function __construct(\App\Services\WebhookService $webhookService)
@@ -130,7 +130,7 @@ class PaymentWebhookController extends Controller
         try {
             $result = $this->webhookService->handlePaymentSucceeded($data);
             $status = ($result['status'] === 'success' || $result['status'] === 'ignored') ? 200 : 500;
-            
+
             return response()->json($result, $status);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error'], 500);
@@ -176,7 +176,7 @@ class PaymentWebhookController extends Controller
         try {
             $result = $this->webhookService->handlePaymentRefunded($data);
             $status = ($result['status'] === 'success' || $result['status'] === 'ignored') ? 200 : 500;
-            
+
             return response()->json($result, $status);
         } catch (\Exception $e) {
             // Logged in Service

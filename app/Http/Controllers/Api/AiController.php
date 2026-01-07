@@ -4,24 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Domain\AIEnrichment\Jobs\GenerateBusinessProfile;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * AiController - The Guardian of Resources
- * 
+ *
  * Implements Non-Blocking Pipeline Pattern + Token Bucket Rate Limiting.
  */
 final class AiController extends Controller
 {
     /**
      * Dispatch AI generation asynchronously.
-     * 
-     * @param Request $request
-     * @return JsonResponse
      */
     public function generate(Request $request): JsonResponse
     {
@@ -35,21 +32,21 @@ final class AiController extends Controller
         ]);
 
         $user = $request->user();
-        
-        if (!$user->tenant_id) {
+
+        if (! $user->tenant_id) {
             return response()->json(['message' => 'No business associated.'], 403);
         }
 
         // 2. Wallet Protection (Rate Limiting: Token Bucket)
         // Key: ai-gen:{user_id}
         // Policy: 5 requests per hour.
-        $key = 'ai-gen:' . $user->id;
-        
+        $key = 'ai-gen:'.$user->id;
+
         $executed = RateLimiter::attempt(
             $key,
             $maxAttempts = 5,
-            function() {
-                // Determine logic executability 
+            function () {
+                // Determine logic executability
                 // We return true to count the attempt only if we proceed?
                 // RateLimiter::attempt executes the callback if attempts remain.
                 return true;
@@ -57,18 +54,19 @@ final class AiController extends Controller
             $decaySeconds = 3600 // 1 Hour
         );
 
-        if (!$executed) {
+        if (! $executed) {
             $seconds = RateLimiter::availableIn($key);
+
             return response()->json([
-                'message' => "Límite de generación excedido. Por favor intenta de nuevo en " . gmdate("i:s", $seconds) . " minutos."
+                'message' => 'Límite de generación excedido. Por favor intenta de nuevo en '.gmdate('i:s', $seconds).' minutos.',
             ], 429);
         }
 
         // 3. Payload Construction
         // We compose a structured description from the rigid inputs to guide the AI
         $description = "Negocio de {$validated['activity']} ubicado en {$validated['location']}.";
-        if (!empty($validated['extra_details'])) {
-            $description .= " Detalles adicionales: " . $validated['extra_details'];
+        if (! empty($validated['extra_details'])) {
+            $description .= ' Detalles adicionales: '.$validated['extra_details'];
         }
 
         // 4. Non-Blocking Dispatch

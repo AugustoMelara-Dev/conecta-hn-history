@@ -95,10 +95,22 @@ class ReportController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // ASYNC DISPATCH: Fire-and-Forget Pattern
         // ═══════════════════════════════════════════════════════════════════════
+        // Create DTO from validated request
+        // Note: For 'sales' report, start/end date are optional in validation, 
+        // but DTO requires them. We map nulls to sensible defaults or handle validation earlier.
+        // Assuming validation ensures dates if strictness is required.
+        // For DTO strictness, we'll default to today/now if null, or handle business rule.
+        // IMPORTANT: The DTO expects DateTimeImmutable, validation sends strings.
+        
+        $dto = \App\Application\DTOs\ReportRequestData::fromArray([
+            'tenant_id' => $tenant->id,
+            'report_type' => 'sales',
+            'start_date' => $validated['start_date'] ?? now()->subMonth()->toDateTimeString(),
+            'end_date' => $validated['end_date'] ?? now()->toDateTimeString(),
+        ]);
+
         \App\Domain\ReportingAndExports\Jobs\GeneratePdfReportJob::dispatch(
-            tenantId: $tenant->id,
-            reportType: 'sales',
-            filters: $validated,
+            data: $dto,
             requestorId: $request->user()->id
         )->onQueue('reports');
 
@@ -128,10 +140,15 @@ class ReportController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // ASYNC DISPATCH: Fire-and-Forget Pattern
         // ═══════════════════════════════════════════════════════════════════════
+        $dto = \App\Application\DTOs\ReportRequestData::fromArray([
+            'tenant_id' => $tenant->id,
+            'report_type' => 'inventory',
+            'start_date' => now()->toDateTimeString(), // Unused by inventory, but required by DTO contract
+            'end_date' => now()->toDateTimeString(),   // Unused by inventory
+        ]);
+
         \App\Domain\ReportingAndExports\Jobs\GeneratePdfReportJob::dispatch(
-            tenantId: $tenant->id,
-            reportType: 'inventory',
-            filters: [],
+            data: $dto,
             requestorId: $request->user()->id
         )->onQueue('reports');
 
@@ -161,10 +178,15 @@ class ReportController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // ASYNC DISPATCH: Fire-and-Forget Pattern
         // ═══════════════════════════════════════════════════════════════════════
+        $dto = \App\Application\DTOs\ReportRequestData::fromArray([
+            'tenant_id' => $tenant->id,
+            'report_type' => 'kitchen',
+            'start_date' => now()->toDateTimeString(),
+            'end_date' => now()->toDateTimeString(),
+        ]);
+
         \App\Domain\ReportingAndExports\Jobs\GeneratePdfReportJob::dispatch(
-            tenantId: $tenant->id,
-            reportType: 'kitchen',
-            filters: [],
+            data: $dto,
             requestorId: $request->user()->id
         )->onQueue('reports');
 

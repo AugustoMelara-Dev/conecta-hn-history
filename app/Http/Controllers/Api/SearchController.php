@@ -5,40 +5,53 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
-use App\Models\Tenant;
+use App\Domain\Contracts\SearchRepository;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
+/**
+ * SearchController - Unified Search API
+ *
+ * ARCHITECTURE:
+ * - Decoupled from Eloquent (uses SearchRepository)
+ * - Pure HTTP responsibility (Validation, Transformation, Response)
+ */
 class SearchController extends Controller
 {
-    public function index(Request $request)
+    public function __construct(
+        private readonly SearchRepository $searchRepository
+    ) {}
+
+    public function index(Request $request): JsonResponse
     {
         $query = $request->input('query');
 
-        if (! $query || strlen($query) < 2) {
-            return response()->json(['tenants' => [], 'products' => []]);
+        // Validation
+        if (! $query || ! is_string($query) || strlen($query) < 3) {
+            return response()->json(['tenants' => []], 200); // Return empty successfully
         }
 
-        $tenants = Tenant::where('name', 'like', "%{$query}%")
-            ->orWhere('description', 'like', "%{$query}%")
-            ->orWhereHas('category', function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%");
-            })
-            ->take(5)
-            ->get(['id', 'name', 'slug', 'logo_path', 'category_id']);
+        // Execution
+        $results = $this->searchRepository->searchTenants(
+            query: $query,
+            citySlug: $request->input('city'),
+            categorySlug: $request->input('category'),
+            limit: 20
+        );
 
-        // Load category name for display
-        $tenants->load('category:id,name');
-
-        $products = Product::where('name', 'like', "%{$query}%")
-            ->where('is_visible', true)
-            ->take(5)
-            ->with('tenant:id,name,slug')
-            ->get(['id', 'tenant_id', 'name', 'image_path', 'price']);
+        // Transformation
+        $tenants = $results->map(fn ($tenant) => [
+            'id' => $tenant->id,
+            'name' => $tenant->name,
+            'slug' => $tenant->slug,
+            'logo_url' => $tenant->logo_path ? Storage::url($tenant->logo_path) : null,
+            'category_name' => $tenant->category?->name,
+            'city_name' => $tenant->city?->name,
+        ]);
 
         return response()->json([
             'tenants' => $tenants,
-            'products' => $products,
         ]);
     }
 }
