@@ -12,6 +12,7 @@
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.0",
         "chillerlan/php-qrcode": "^5.0",
+        "darkaonline/l5-swagger": "^10.0",
         "filament/filament": "^3.2",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^11.0",

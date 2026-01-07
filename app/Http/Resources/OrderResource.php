@@ -7,20 +7,24 @@ namespace App\Http\Resources;
 use App\Enums\PaymentMethod;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use OpenApi\Attributes as OA;
 
-/**
- * OrderResource - Standardized API Response Formatting
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  SEPARATION OF CONCERNS: Response structure isolated from controller    ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * BENEFITS:
- * - Consistent JSON response structure across all endpoints
- * - Conditional relationship loading (prevents N+1)
- * - Computed fields (formatted_total, whatsapp_url) always available
- * - Easy to extend/modify without touching controller logic
- */
+#[OA\Schema(
+    schema: "Order",
+    title: "Order Resource",
+    description: "Transaction details",
+    readOnly: true,
+    properties: [
+        new OA\Property(property: "id", type: "integer", example: 1001),
+        new OA\Property(property: "code", type: "string", format: "uuid", description: "Tracking UUID", example: "550e8400-e29b-41d4-a716-446655440000"),
+        new OA\Property(property: "status_label", type: "string", example: "Completada"),
+        new OA\Property(property: "total", type: "number", format: "float", example: 150.00),
+        new OA\Property(property: "formatted_total", type: "string", example: "L. 150.00"),
+        new OA\Property(property: "items_count", type: "integer", example: 3),
+        new OA\Property(property: "items", type: "array", items: new OA\Items(ref: "#/components/schemas/OrderItem")),
+        new OA\Property(property: "payment_instructions", type: "object", nullable: true, description: "Dynamic limits for UI rendering"),
+    ]
+)]
 class OrderResource extends JsonResource
 {
     /**
@@ -32,77 +36,27 @@ class OrderResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'order_number' => $this->order_number,
-            'customer_name' => $this->customer_name,
-            'customer_phone' => $this->customer_phone,
-            'customer_email' => $this->customer_email,
-            'customer_address' => $this->customer_address,
-            'customer_notes' => $this->customer_notes,
-            'delivery_type' => $this->delivery_type,
-            'payment_method' => $this->payment_method,
-            'subtotal' => $this->subtotal,
-            'tax_amount' => $this->tax_amount,
-            'delivery_fee' => $this->delivery_fee,
-            'discount_amount' => $this->discount_amount,
-            'coupon_code' => $this->coupon_code,
-            'total' => $this->total,
-            'formatted_total' => $this->formatted_total,
-            'status' => $this->status,
+            'code' => $this->tracking_uuid,
             'status_label' => $this->status_label,
-            'cancel_reason' => $this->cancel_reason,
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
-
-            // ═══════════════════════════════════════════════════════════════════════
-            // REAL-TIME TRACKING (WebSocket Entry Point)
-            // ═══════════════════════════════════════════════════════════════════════
-            // tracking_uuid: Cryptographic token for unauthenticated order tracking
-            // tracking_url: Public URL customers can use to track their order
-            'tracking_uuid' => $this->tracking_uuid,
-            'tracking_url' => $this->tracking_uuid
-                ? url('/track/'.$this->tracking_uuid)
-                : null,
-
-            // Computed fields
-            'whatsapp_url' => $this->getWhatsAppUrl(),
-
-            // ═══════════════════════════════════════════════════════════════════════
-            // PAYMENT INSTRUCTIONS (Server-Side UI Instruction)
-            // ═══════════════════════════════════════════════════════════════════════
-            // Polymorphic content based on payment method.
-            // Frontend renders whatever the backend provides - no hardcoded bank details.
-            'payment_instructions' => $this->getPaymentInstructions(),
-
-            // Conditional relationship loading (prevents N+1)
+            'total' => (float) $this->total,
+            'formatted_total' => $this->formatted_total,
+            'items_count' => $this->items->count(),
+            
+            // Conditional Relations
             'items' => $this->whenLoaded('items'),
-            'tenant' => $this->whenLoaded('tenant', function () {
-                return [
-                    'id' => $this->tenant->id,
-                    'name' => $this->tenant->name,
-                    'slug' => $this->tenant->slug,
-                    'whatsapp' => $this->tenant->whatsapp,
-                ];
-            }),
+
+            // Keep payment instructions as they are UI critical
+            'payment_instructions' => $this->getPaymentInstructions(),
         ];
     }
 
     /**
      * Generate payment instructions based on the selected payment method.
-     *
-     * ╔══════════════════════════════════════════════════════════════════════════╗
-     * ║  SERVER-SIDE UI: Frontend renders whatever the backend provides         ║
-     * ╚══════════════════════════════════════════════════════════════════════════╝
-     *
-     * BENEFITS:
-     * - No hardcoded bank numbers in React (security)
-     * - Easy to update without frontend deploy
-     * - Per-tenant customization possible in future
      */
     protected function getPaymentInstructions(): ?array
     {
         $paymentMethod = $this->payment_method;
 
-        // Handle both enum instance and raw string
         if ($paymentMethod instanceof PaymentMethod) {
             $method = $paymentMethod;
         } elseif (is_string($paymentMethod)) {
@@ -126,34 +80,19 @@ class OrderResource extends JsonResource
                 'call_to_action' => 'Envía una captura de tu comprobante por WhatsApp',
                 'whatsapp_message' => "Hola! Acabo de realizar la transferencia para el pedido #{$this->order_number}. Adjunto comprobante.",
             ],
-
             PaymentMethod::Cash => [
                 'type' => 'cash',
                 'title' => 'Pago en Efectivo',
                 'instruction' => 'Por favor ten el cambio exacto listo para el repartidor.',
                 'amount_due' => $this->total,
-                'formatted_amount' => 'L. '.number_format($this->total, 2),
+                'formatted_amount' => 'L. '.number_format((float)$this->total, 2),
             ],
-
-            PaymentMethod::Card => null, // Card payments handled by gateway redirect
-
+            PaymentMethod::Card => null,
             PaymentMethod::Pending => [
                 'type' => 'pending',
                 'title' => 'Método de Pago Pendiente',
                 'instruction' => 'Selecciona un método de pago para completar tu orden.',
             ],
         };
-    }
-
-    /**
-     * Customize the response wrapper.
-     *
-     * Ensures consistent { success: true, data: {...} } structure.
-     */
-    public function with(Request $request): array
-    {
-        return [
-            'success' => true,
-        ];
     }
 }

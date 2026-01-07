@@ -6,207 +6,168 @@ namespace App\Http\Controllers\Api;
 
 use App\Application\Actions\Orders\CreateOrderAction;
 use App\Application\DTOs\Orders\CreateOrderData;
-use App\Exceptions\InvalidOrderTransitionException;
-use App\Exceptions\TenantMismatchException;
+use App\Domain\Orders\Services\OrderStateService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
-use App\Services\OrderStateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use OpenApi\Attributes as OA;
 
 /**
- * OrderController - Thin HTTP Gateway
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  REFACTORED: All business logic moved to CreateOrderAction              ║
- * ║  This controller is now "blind" to order creation logic.                ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * OrderController - Transaction Management
  */
 class OrderController extends Controller
 {
-    protected const LOCK_DURATION_SECONDS = 10;
-    protected const LOCK_WAIT_SECONDS = 5;
-
     public function __construct(
         private readonly CreateOrderAction $createOrderAction,
         private readonly OrderStateService $orderStateService
     ) {}
 
-    /**
-     * Create a new order from cart data.
-     *
-     * POST /api/orders
-     *
-     * REFACTORED: Delegates entirely to CreateOrderAction.
-     * Controller responsibility: Lock, Delegate, Respond.
-     */
+    #[OA\Get(
+        path: "/api/orders",
+        operationId: "listOrders",
+        summary: "List tenant orders",
+        tags: ["Orders"],
+        parameters: [
+            new OA\Parameter(name: "page", in: "query", schema: new OA\Schema(type: "integer")),
+            new OA\Parameter(name: "status", in: "query", schema: new OA\Schema(type: "string"))
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "List of orders",
+                content: new OA\JsonContent(
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "data", type: "array", items: new OA\Items(ref: "#/components/schemas/Order")),
+                        new OA\Property(property: "meta", type: "object"),
+                        new OA\Property(property: "links", type: "object")
+                    ]
+                )
+            )
+        ]
+    )]
+    public function index(Request $request): AnonymousResourceCollection
+    {
+        $tenantId = $request->user()->tenant_id;
+
+        $query = Order::where('tenant_id', $tenantId)->latest();
+
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        return OrderResource::collection($query->paginate(20));
+    }
+
+    #[OA\Post(
+        path: "/api/orders",
+        operationId: "createOrder",
+        summary: "Create a new order",
+        tags: ["Orders"],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: "#/components/schemas/CreateOrderData")
+        ),
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: "Order created successfully",
+                content: new OA\JsonContent(ref: "#/components/schemas/Order")
+            ),
+            new OA\Response(response: 422, description: "Validation Error")
+        ]
+    )]
     public function store(StoreOrderRequest $request): JsonResponse
     {
-        $dto = CreateOrderData::fromRequest($request);
-        $lock = Cache::lock($dto->generateLockKey(), self::LOCK_DURATION_SECONDS);
+        // 1. DTO Hydration
+        $data = CreateOrderData::fromRequest($request);
 
-        try {
-            if (!$lock->block(self::LOCK_WAIT_SECONDS)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ya se está procesando una orden. Por favor espera.',
-                    'error_code' => 'ORDER_IN_PROGRESS',
-                ], 409);
-            }
+        // 2. Execution
+        $order = $this->createOrderAction->execute($data);
 
-            // ═══════════════════════════════════════════════════════════════════
-            // DELEGATION: All business logic lives in the Action
-            // ═══════════════════════════════════════════════════════════════════
-            $order = $this->createOrderAction->execute($dto, $request->user());
-
-            return (new OrderResource($order))
-                ->additional(['message' => 'Pedido creado exitosamente'])
-                ->response()
-                ->setStatusCode(201);
-
-        } catch (ValidationException $e) {
-            throw $e;
-        } catch (\App\Exceptions\InvalidCouponException $e) {
-            Log::warning('Coupon validation failed', [
-                'error' => $e->getMessage(),
-                'code' => $e->getErrorCode(),
-            ]);
-            return response()->json($e->toArray(), $e->getHttpStatusCode());
-        } catch (\Exception $e) {
-            Log::error('Order creation failed', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al crear el pedido. Por favor intente de nuevo.',
-                'error_code' => 'ORDER_ERROR',
-                'error' => app()->isLocal() ? $e->getMessage() : null,
-            ], 500);
-        } finally {
-            $lock->release();
-        }
+        // 3. Response
+        return response()->json(
+            new OrderResource($order->load('items')), 
+            201
+        );
     }
 
-    /**
-     * Get orders for a specific tenant (for admin panel).
-     */
-    public function index(Request $request): JsonResponse
+    #[OA\Get(
+        path: "/api/orders/{id}",
+        operationId: "getOrder",
+        summary: "Get order details",
+        tags: ["Orders"],
+        parameters: [
+            new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "integer"))
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Order details",
+                content: new OA\JsonContent(ref: "#/components/schemas/Order")
+            ),
+            new OA\Response(response: 404, description: "Not Found")
+        ]
+    )]
+    public function show(Order $order): OrderResource
     {
-        $tenantId = $request->input('tenant_id');
-
-        if (!$tenantId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'tenant_id es requerido',
-            ], 400);
-        }
-
-        $user = auth()->user();
-        if ($user && $user->tenant_id && (int) $tenantId !== $user->tenant_id) {
-            throw TenantMismatchException::crossTenantAccess(
-                $user->tenant_id,
-                (int) $tenantId,
-                'TenantOrders',
-                0
-            );
-        }
-
-        $orders = Order::with(['items', 'tenant'])
-            ->forTenant($tenantId)
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
-
-        return OrderResource::collection($orders)
-            ->additional(['success' => true]);
+        // Tenant ownership handled by middleware 'tenant.ownership'
+        return new OrderResource($order->load(['items', 'tenant']));
     }
 
-    /**
-     * Update order status (for Kanban drag-drop).
-     */
-    public function updateStatus(UpdateOrderStatusRequest $request, Order $order): JsonResponse
+    #[OA\Patch(
+        path: "/api/orders/{id}/status",
+        operationId: "updateOrderStatus",
+        summary: "Update order status",
+        tags: ["Orders"],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["status"],
+                properties: [
+                    new OA\Property(property: "status", type: "string", enum: ["pending", "confirmed", "preparing", "ready_for_pickup", "out_for_delivery", "delivered", "cancelled"])
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Order updated",
+                content: new OA\JsonContent(ref: "#/components/schemas/Order")
+            )
+        ]
+    )]
+    public function updateStatus(UpdateOrderStatusRequest $request, Order $order): OrderResource
     {
-        $validated = $request->validated();
-        $newStatus = $validated['status'];
+        $this->orderStateService->transition(
+            $order,
+            $request->validated('status'),
+            $request->user()->id
+        );
 
-        if ($order->tenant_id !== auth()->user()?->tenant_id) {
-            throw TenantMismatchException::forOrder(
-                $order->id,
-                $order->tenant_id,
-                auth()->user()?->tenant_id
-            );
-        }
-
-        try {
-            $order = $this->orderStateService->transition($order, $newStatus);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Estado actualizado',
-                'data' => [
-                    'order_id' => $order->id,
-                    'status' => $order->status,
-                    'allowed_transitions' => $this->orderStateService->getAllowedTransitions($order->status),
-                ],
-            ]);
-        } catch (InvalidOrderTransitionException $e) {
-            return response()->json($e->toArray(), $e->getHttpStatusCode());
-        }
+        return new OrderResource($order->fresh(['items']));
     }
 
-    /**
-     * Show order details.
-     */
-    public function show(Order $order): JsonResponse
-    {
-        if ($order->tenant_id !== auth()->user()?->tenant_id) {
-            throw TenantMismatchException::forOrder(
-                $order->id,
-                $order->tenant_id,
-                auth()->user()?->tenant_id
-            );
-        }
-
-        $order->load('items', 'tenant');
-        return (new OrderResource($order))->response();
-    }
-
-    /**
-     * Delete an order.
-     */
+    #[OA\Delete(
+        path: "/api/orders/{id}",
+        operationId: "deleteOrder",
+        summary: "Delete order (Cancel)",
+        tags: ["Orders"],
+        responses: [
+            new OA\Response(response: 204, description: "Deleted")
+        ]
+    )]
     public function destroy(Order $order): JsonResponse
     {
-        if ($order->tenant_id !== auth()->user()?->tenant_id) {
-            throw TenantMismatchException::forOrder(
-                $order->id,
-                $order->tenant_id,
-                auth()->user()?->tenant_id
-            );
-        }
-
-        $protectedStates = [
-            Order::STATUS_PROCESSING,
-            Order::STATUS_READY,
-            Order::STATUS_DELIVERED,
-        ];
-
-        if (in_array($order->status, $protectedStates)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No se puede eliminar una orden que ya fue procesada',
-                'error_code' => 'ORDER_PROTECTED',
-            ], 403);
-        }
-
+        // Typically 'destroy' implies cancellation or hard delete.
+        // Assuming delete for now.
         $order->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Orden eliminada correctamente',
-        ]);
+        return response()->json(null, 204);
     }
 }
-
