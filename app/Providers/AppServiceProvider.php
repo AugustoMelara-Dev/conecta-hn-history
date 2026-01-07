@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace App\Providers;
 
 // Models
+use App\Contracts\Events\DomainEventBus;
+use App\Infrastructure\Events\LaravelEventBus;
 use App\Models\Campaign;
 use App\Models\Coupon;
 use App\Models\Lead;
 use App\Models\MenuSection;
 use App\Models\Order;
+// Policies
 use App\Models\Product;
 use App\Models\Review;
-// Policies
 use App\Policies\CampaignPolicy;
 use App\Policies\CouponPolicy;
 use App\Policies\LeadPolicy;
@@ -22,12 +24,9 @@ use App\Policies\ProductPolicy;
 use App\Policies\ReviewPolicy;
 use App\Policies\TenantPolicy;
 use App\Policies\UserPolicy;
+// Event Bus Infrastructure
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
-
-// Event Bus Infrastructure
-use App\Contracts\Events\DomainEventBus;
-use App\Infrastructure\Events\LaravelEventBus;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -55,6 +54,28 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Contracts\DataExportInterface::class,
             \App\Services\ExcelExportService::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // NOTIFICATION ABSTRACTION: Decouples Filament from Business Logic
+        // ═══════════════════════════════════════════════════════════════════════
+        // NOTIFICATION ABSTRACTION: Decouples Filament from Business Logic
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Contracts\AdminNotifier::class,
+            \App\Infrastructure\Notifications\FilamentAdminNotifier::class
+        );
+        $this->app->bind(
+            \App\Domain\Contracts\SearchRepository::class,
+            \App\Infrastructure\Search\EloquentSearchRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\Directory\Contracts\DirectoryReader::class,
+            \App\Infrastructure\Directory\EloquentDirectoryReader::class
+        );
+        $this->app->bind(
+            \App\Domain\Catalog\Contracts\ProductCatalogReader::class,
+            \App\Infrastructure\Catalog\CachedProductReader::class
         );
     }
 
@@ -145,31 +166,31 @@ class AppServiceProvider extends ServiceProvider
             'App\\Jobs\\GenerateSalesExport' => \App\Application\Jobs\Exports\GenerateSalesExport::class,
             'App\\Jobs\\GenerateSalesReportJob' => \App\Domain\ReportingAndExports\Jobs\GenerateSalesReportJob::class,
             // Legacy Root to Application (Double Jump Protection)
-            'App\\Jobs\\SendCampaignEmail' => \App\Application\Jobs\Marketing\SendCampaignEmail::class,
-            'App\\Jobs\\GenerateProductBlurhash' => \App\Application\Jobs\Media\GenerateProductBlurhash::class,
+            'App\\Jobs\\SendCampaignEmail' => \App\Infrastructure\Jobs\Marketing\SendCampaignEmail::class,
+            'App\\Jobs\\GenerateProductBlurhash' => \App\Infrastructure\Jobs\Media\GenerateProductBlurhash::class,
             'App\\Jobs\\EnhanceTenantProfileJob' => \App\Application\Jobs\AI\EnhanceTenantProfileJob::class,
             'App\\Jobs\\GenerateBusinessProfile' => \App\Application\Jobs\AI\GenerateBusinessProfile::class,
-            'App\\Jobs\\RecordInteraction' => \App\Application\Jobs\Analytics\RecordInteraction::class,
-            'App\\Jobs\\SyncAnalyticsJob' => \App\Application\Jobs\Analytics\SyncAnalyticsJob::class,
-            'App\\Jobs\\ReleaseStaleOrders' => \App\Application\Jobs\Governance\ReleaseStaleOrders::class,
-            'App\\Jobs\\AuditTenantLimits' => \App\Application\Jobs\Governance\AuditTenantLimits::class,
+            'App\\Jobs\\RecordInteraction' => \App\Infrastructure\Jobs\Analytics\RecordInteraction::class,
+            'App\\Jobs\\SyncAnalyticsJob' => \App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob::class,
+            'App\\Jobs\\ReleaseStaleOrders' => \App\Infrastructure\Jobs\Governance\ReleaseStaleOrders::class,
+            'App\\Jobs\\AuditTenantLimits' => \App\Infrastructure\Jobs\Governance\AuditTenantLimits::class,
 
-            // Domain to Application (The Great Migration)
-            'App\\Domain\\Marketing\\Jobs\\SendCampaignEmail' => \App\Application\Jobs\Marketing\SendCampaignEmail::class,
-            'App\\Domain\\Analytics\\Jobs\\RecordInteraction' => \App\Application\Jobs\Analytics\RecordInteraction::class,
-            'App\\Domain\\Analytics\\Jobs\\SyncAnalyticsJob' => \App\Application\Jobs\Analytics\SyncAnalyticsJob::class,
-            'App\\Domain\\Analytics\\Jobs\\SyncTenantAnalytics' => \App\Application\Jobs\Analytics\SyncTenantAnalytics::class,
-            'App\\Domain\\TenantGovernance\\Jobs\\AuditTenantLimits' => \App\Application\Jobs\Governance\AuditTenantLimits::class,
-            'App\\Domain\\TenantGovernance\\Jobs\\ReleaseStaleOrders' => \App\Application\Jobs\Governance\ReleaseStaleOrders::class,
+            // Domain to Application/Infrastructure (The Great Migration)
+            'App\\Domain\\Marketing\\Jobs\\SendCampaignEmail' => \App\Infrastructure\Jobs\Marketing\SendCampaignEmail::class,
+            'App\\Domain\\Analytics\\Jobs\\RecordInteraction' => \App\Infrastructure\Jobs\Analytics\RecordInteraction::class,
+            'App\\Domain\\Analytics\\Jobs\\SyncAnalyticsJob' => \App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob::class,
+            'App\\Domain\\Analytics\\Jobs\\SyncTenantAnalytics' => \App\Infrastructure\Jobs\Analytics\SyncTenantAnalytics::class,
+            'App\\Domain\\TenantGovernance\\Jobs\\AuditTenantLimits' => \App\Infrastructure\Jobs\Governance\AuditTenantLimits::class,
+            'App\\Domain\\TenantGovernance\\Jobs\\ReleaseStaleOrders' => \App\Infrastructure\Jobs\Governance\ReleaseStaleOrders::class,
             'App\\Domain\\AIEnrichment\\Jobs\\EnhanceTenantProfileJob' => \App\Application\Jobs\AI\EnhanceTenantProfileJob::class,
             'App\\Domain\\AIEnrichment\\Jobs\\GenerateBusinessProfile' => \App\Application\Jobs\AI\GenerateBusinessProfile::class,
-            'App\\Domain\\MediaProcessing\\Jobs\\GenerateProductBlurhash' => \App\Application\Jobs\Media\GenerateProductBlurhash::class,
+            'App\\Domain\\MediaProcessing\\Jobs\\GenerateProductBlurhash' => \App\Infrastructure\Jobs\Media\GenerateProductBlurhash::class,
             'App\\Domain\\ReportingAndExports\\Jobs\\GeneratePdfReportJob' => \App\Application\Jobs\Reporting\GeneratePdfReportJob::class,
             'App\\Domain\\ReportingAndExports\\Jobs\\GenerateSalesExport' => \App\Application\Jobs\Exports\GenerateSalesExport::class,
         ];
 
         foreach ($aliases as $oldClass => $newClass) {
-            if (!class_exists($oldClass)) {
+            if (! class_exists($oldClass)) {
                 class_alias($newClass, $oldClass);
             }
         }
@@ -194,7 +215,7 @@ class AppServiceProvider extends ServiceProvider
         ];
 
         foreach ($aliases as $oldClass => $newClass) {
-            if (!class_exists($oldClass)) {
+            if (! class_exists($oldClass)) {
                 class_alias($newClass, $oldClass);
             }
         }
