@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Domain\Billing\Contracts\BillingReader;
 use App\Http\Controllers\Controller;
-use App\Models\Payment;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -32,6 +32,10 @@ final class BillingController extends Controller
         'other' => 'Otro',
     ];
 
+    public function __construct(
+        private readonly BillingReader $reader
+    ) {}
+
     // ═══════════════════════════════════════════════════════════════════════
     // INDEX - Billing Dashboard
     // ═══════════════════════════════════════════════════════════════════════
@@ -39,8 +43,20 @@ final class BillingController extends Controller
     {
         $tenant = $this->getTenant($request);
 
-        // Get payment history with ISO 8601 dates
-        $payments = $this->getPaymentHistory($tenant);
+        // Get payment history via Reader (Infrastructure Agnostic)
+        $payments = $this->reader->getPaymentHistory($tenant->id)
+            ->map(fn ($payment) => [
+                'id' => $payment->id,
+                'bank' => $payment->bank,
+                'reference_number' => $payment->reference_number,
+                'amount' => (float) $payment->amount,
+                'status' => $payment->status,
+                'created_at' => $payment->created_at->toIso8601String(),
+                'download_url' => $payment->receipt_path
+                    ? route('tenant.billing.download-receipt', $payment->id)
+                    : null,
+            ])
+            ->toArray();
 
         // Get subscription status (mock if Cashier not configured)
         $subscription = $this->getSubscriptionStatus($tenant);
@@ -124,37 +140,6 @@ final class BillingController extends Controller
     }
 
     /**
-     * Get payment history with ISO 8601 dates.
-     *
-     * DATE SERIALIZATION: Returns dates in 'Y-m-d\TH:i:s\Z' format.
-     * Frontend's Intl.DateTimeFormat handles local timezone conversion.
-     */
-    private function getPaymentHistory(Tenant $tenant): array
-    {
-        // Check if Payment model exists, otherwise return mock data
-        if (! class_exists(Payment::class)) {
-            return $this->getMockPayments();
-        }
-
-        return Payment::where('tenant_id', $tenant->id)
-            ->orderByDesc('created_at')
-            ->limit(20)
-            ->get()
-            ->map(fn (Payment $payment) => [
-                'id' => $payment->id,
-                'bank' => $payment->bank,
-                'reference_number' => $payment->reference_number,
-                'amount' => (float) $payment->amount,
-                'status' => $payment->status,
-                'created_at' => $payment->created_at->toIso8601String(),
-                'download_url' => $payment->receipt_path
-                    ? route('tenant.billing.download-receipt', $payment->id)
-                    : null,
-            ])
-            ->toArray();
-    }
-
-    /**
      * Get subscription status.
      * Returns mock structure if Cashier not configured.
      */
@@ -175,32 +160,5 @@ final class BillingController extends Controller
             'renewal_date' => now()->addMonth()->toIso8601String(),
             'plan' => 'PRO',
         ] : null;
-    }
-
-    /**
-     * Mock payments for development/demo.
-     */
-    private function getMockPayments(): array
-    {
-        return [
-            [
-                'id' => 1,
-                'bank' => 'bac',
-                'reference_number' => 'REF-001234',
-                'amount' => 1500.00,
-                'status' => 'approved',
-                'created_at' => now()->subDays(30)->toIso8601String(),
-                'download_url' => null,
-            ],
-            [
-                'id' => 2,
-                'bank' => 'ficohsa',
-                'reference_number' => 'REF-005678',
-                'amount' => 1500.00,
-                'status' => 'pending',
-                'created_at' => now()->subDays(2)->toIso8601String(),
-                'download_url' => null,
-            ],
-        ];
     }
 }

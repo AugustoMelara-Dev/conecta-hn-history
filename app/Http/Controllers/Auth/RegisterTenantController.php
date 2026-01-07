@@ -6,11 +6,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Application\Actions\Auth\RegisterTenantAction;
 use App\Application\DTOs\Auth\RegisterTenantData;
+use App\Domain\Tenant\Contracts\OnboardingReader;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,26 +18,20 @@ use Inertia\Response;
 /**
  * RegisterTenantController - Thin HTTP Gateway
  *
- * REFACTORED: All business logic delegated to RegisterTenantAction.
+ * REFACTORED:
+ * - Business Logic -> RegisterTenantAction
+ * - Data Retrieval -> OnboardingReader
  */
 class RegisterTenantController extends Controller
 {
     /**
      * Display the tenant registration form.
      */
-    public function create(): Response
+    public function create(OnboardingReader $reader): Response
     {
         return Inertia::render('Auth/RegisterTenant', [
-            'categories' => Cache::remember(
-                'registration_categories',
-                300,
-                fn () => \App\Models\Category::orderBy('name')->get(['id', 'name', 'slug'])
-            ),
-            'cities' => Cache::remember(
-                'registration_cities',
-                300,
-                fn () => \App\Models\City::orderBy('name')->get(['id', 'name', 'slug'])
-            ),
+            'categories' => $reader->getBusinessCategories(),
+            'cities' => $reader->getAvailableCities(),
         ]);
     }
 
@@ -88,5 +82,3 @@ class RegisterTenantController extends Controller
         }
     }
 }
-
-
