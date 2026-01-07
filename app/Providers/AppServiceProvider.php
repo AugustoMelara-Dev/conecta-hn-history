@@ -77,6 +77,14 @@ class AppServiceProvider extends ServiceProvider
             \App\Domain\Catalog\Contracts\ProductCatalogReader::class,
             \App\Infrastructure\Catalog\CachedProductReader::class
         );
+        $this->app->bind(
+            \App\Domain\Billing\Contracts\BillingReader::class,
+            \App\Infrastructure\Billing\EloquentBillingReader::class
+        );
+        $this->app->bind(
+            \App\Domain\Tenant\Contracts\OnboardingReader::class,
+            \App\Infrastructure\Tenant\CachedOnboardingReader::class
+        );
     }
 
     /**
