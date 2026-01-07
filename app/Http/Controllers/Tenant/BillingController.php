@@ -55,75 +55,52 @@ final class BillingController extends Controller
 
     // ═══════════════════════════════════════════════════════════════════════
     // REPORT PAYMENT - Manual Payment Reporting
+    // REFACTORED: Delegates to ReportPaymentAction
     // ═══════════════════════════════════════════════════════════════════════
-    public function reportPayment(Request $request)
-    {
+    public function reportPayment(
+        Request $request,
+        \App\Application\Actions\Billing\ReportPaymentAction $action
+    ): \Illuminate\Http\RedirectResponse {
         $tenant = $this->getTenant($request);
 
-        $validated = $request->validate([
+        $request->validate([
             'bank' => ['required', 'string', 'in:' . implode(',', array_keys(self::BANK_OPTIONS))],
             'reference_number' => ['required', 'string', 'max:50'],
             'amount' => ['required', 'numeric', 'min:1'],
             'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
         ]);
 
-        // Store receipt if provided
-        $receiptPath = null;
-        if ($request->hasFile('receipt')) {
-            $receiptPath = $request->file('receipt')
-                ->store("tenants/{$tenant->id}/receipts", 'public');
-        }
-
-        Payment::create([
-            'tenant_id' => $tenant->id,
-            'bank' => $validated['bank'],
-            'reference_number' => $validated['reference_number'],
-            'amount' => $validated['amount'],
-            'receipt_path' => $receiptPath,
-            'status' => 'pending', // Admin will verify and approve
-        ]);
+        // Create DTO and delegate to Action
+        $dto = \App\Application\DTOs\Billing\ReportPaymentData::fromRequest($request, $tenant->id);
+        $action->execute($dto);
 
         return back()->with('success', 'Pago reportado exitosamente. En revisión.');
     }
 
     // ═══════════════════════════════════════════════════════════════════════
     // UPGRADE - Plan Upgrade Processing
-    // FIX #1: Added to support tenant.billing.upgrade route
-    // Principle: Complete Route Coverage - all frontend actions need endpoints
+    // REFACTORED: Delegates to RequestUpgradeAction
     // ═══════════════════════════════════════════════════════════════════════
-    public function upgrade(Request $request)
-    {
+    public function upgrade(
+        Request $request,
+        \App\Application\Actions\Billing\RequestUpgradeAction $action
+    ): \Illuminate\Http\RedirectResponse {
         $tenant = $this->getTenant($request);
 
-        $validated = $request->validate([
+        $request->validate([
             'plan' => ['required', 'string', 'in:pro,premium'],
             'payment_method' => ['required', 'string'],
         ]);
 
-        // TODO: Implement actual payment gateway integration
-        // For now, create a pending payment record for admin approval
-
-        $planPrices = [
-            'pro' => 499.00,
-            'premium' => 999.00,
-        ];
-
-        $amount = $planPrices[$validated['plan']] ?? 499.00;
-
-        // Create pending payment
-        Payment::create([
-            'tenant_id' => $tenant->id,
-            'bank' => $validated['payment_method'],
-            'reference_number' => 'UPGRADE-' . strtoupper(uniqid()),
-            'amount' => $amount,
-            'status' => 'pending',
-            'notes' => "Upgrade to {$validated['plan']} plan",
-        ]);
+        // Create DTO and delegate to Action
+        $dto = \App\Application\DTOs\Billing\RequestUpgradeData::fromRequest($request, $tenant->id);
+        $action->execute($dto);
 
         return redirect()
             ->route('tenant.billing.index')
             ->with('success', 'Solicitud de upgrade recibida. Te contactaremos pronto.');
     }
+
 
     // ═══════════════════════════════════════════════════════════════════════
     // PRIVATE HELPERS
@@ -155,7 +132,7 @@ final class BillingController extends Controller
     private function getPaymentHistory(Tenant $tenant): array
     {
         // Check if Payment model exists, otherwise return mock data
-        if (!class_exists(Payment::class)) {
+        if (! class_exists(Payment::class)) {
             return $this->getMockPayments();
         }
 

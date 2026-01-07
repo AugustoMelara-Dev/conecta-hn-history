@@ -30,7 +30,6 @@ class ToggleFavoriteController extends Controller
      * This preserves scroll position and page state.
      * Standard 302 redirects would reset the viewport.
      *
-     * @param Request $request
      * @return \Symfony\Component\HttpFoundation\Response
      */
     public function __invoke(Request $request)
@@ -45,7 +44,7 @@ class ToggleFavoriteController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$tenant) {
+        if (! $tenant) {
             return back()
                 ->setStatusCode(303)
                 ->withErrors(['tenant_id' => 'Negocio no encontrado o no disponible.']);

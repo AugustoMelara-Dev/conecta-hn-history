@@ -104,6 +104,7 @@ final class OrderController extends Controller
     {
         $tenant = $request->user()?->tenant;
         abort_unless($tenant, 403, 'Tenant not found.');
+
         return $tenant;
     }
 

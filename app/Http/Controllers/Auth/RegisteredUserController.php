@@ -4,25 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Application\Actions\Auth\RegisterUserAction;
+use App\Application\DTOs\Auth\RegisterUserData;
 use App\Http\Controllers\Controller;
-use App\Models\Tenant;
-use App\Models\User;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * RegisteredUserController - Atomic Onboarding
+ * RegisteredUserController - Thin HTTP Gateway
  *
- * Implements transactional User + Tenant creation.
- * CRITICAL: Never leaves orphan users without a tenant.
+ * REFACTORED: All business logic delegated to RegisterUserAction.
  */
 class RegisteredUserController extends Controller
 {
@@ -49,40 +45,27 @@ class RegisteredUserController extends Controller
     /**
      * Handle an incoming registration request.
      *
-     * ATOMIC OPERATION:
-     * 1. Validate user + tenant data
-     * 2. Begin transaction
-     * 3. Create User
-     * 4. Create Tenant linked to User
-     * 5. Commit or Rollback
-     * 6. Redirect to admin panel (not generic dashboard)
-     *
-     * @throws \Illuminate\Validation\ValidationException
+     * REFACTORED: Delegates to RegisterUserAction with proper error handling.
+     * Controller responsibility: Validate, Delegate, Handle Errors, Redirect.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, RegisterUserAction $action): RedirectResponse
     {
-        // ═══════════════════════════════════════════════════════════════
-        // EXTENDED VALIDATION: User + Tenant data
-        // ═══════════════════════════════════════════════════════════════
+        // Validation
         $validated = $request->validate([
-            // User fields
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:users,email',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-
-            // Tenant fields (New for atomic onboarding)
             'tenant_name' => 'required|string|max:255|min:2',
             'slug' => [
                 'required',
                 'string',
                 'max:100',
                 'min:3',
-                'alpha_dash',  // Only alphanumeric, dashes, underscores
-                'unique:tenants,slug',  // Must be unique
-                'not_in:'.implode(',', self::RESERVED_SLUGS),  // Blacklist
+                'alpha_dash',
+                'unique:tenants,slug',
+                'not_in:' . implode(',', self::RESERVED_SLUGS),
             ],
         ], [
-            // Custom error messages in Spanish
             'tenant_name.required' => 'El nombre de tu negocio es obligatorio.',
             'tenant_name.min' => 'El nombre debe tener al menos 2 caracteres.',
             'slug.required' => 'La URL de tu negocio es obligatoria.',
@@ -92,45 +75,28 @@ class RegisteredUserController extends Controller
             'slug.not_in' => 'Esta URL está reservada y no puede ser utilizada.',
         ]);
 
-        // ═══════════════════════════════════════════════════════════════
-        // ATOMIC TRANSACTION: User + Tenant
-        // If either fails, both are rolled back
-        // ═══════════════════════════════════════════════════════════════
-        $user = DB::transaction(function () use ($validated) {
-            // Step 1: Create User
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
+        try {
+            // DELEGATION: All business logic lives in the Action
+            $dto = RegisterUserData::fromRequest($request);
+            $user = $action->execute($dto);
+
+            Auth::login($user);
+
+            return redirect()->intended(route('filament.admin.pages.dashboard'));
+
+        } catch (\Exception $e) {
+            // GRACEFUL DEGRADATION: Log error and return user-friendly message
+            Log::error('User registration failed', [
+                'error' => $e->getMessage(),
+                'email' => $request->input('email'),
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            // Step 2: Create Tenant linked to User
-            Tenant::create([
-                'name' => $validated['tenant_name'],
-                'slug' => Str::lower($validated['slug']),
-                'user_id' => $user->id,
-
-                // ZERO-CONFIG DEFAULTS: Ready to use immediately
-                'plan_type' => 'semilla',
-                'subscription_status' => 'active',
-                'brand_color' => '#2563EB',  // Corporate blue
-                'is_active' => true,
-                'product_limit' => 12,  // Semilla limit
-            ]);
-
-            return $user;
-        });
-
-        // ═══════════════════════════════════════════════════════════════
-        // POST-REGISTRATION: Events and Login
-        // ═══════════════════════════════════════════════════════════════
-        event(new Registered($user));
-        Auth::login($user);
-
-        // ═══════════════════════════════════════════════════════════════
-        // CONTEXTUAL REDIRECT: To admin panel, not generic dashboard
-        // This provides immediate "Wow" moment
-        // ═══════════════════════════════════════════════════════════════
-        return redirect()->intended(route('filament.admin.pages.dashboard'));
+            return back()
+                ->withInput($request->except('password', 'password_confirmation'))
+                ->withErrors(['email' => 'Hubo un problema inesperado al crear tu cuenta. Por favor, intenta de nuevo más tarde.']);
+        }
     }
 }
+
+

@@ -7,7 +7,6 @@ namespace App\Http\Controllers\Tenant;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreProductRequest;
 use App\Http\Requests\Tenant\UpdateProductRequest;
-use App\Models\MenuSection;
 use App\Models\Product;
 use App\Models\Tenant;
 use Illuminate\Http\RedirectResponse;
@@ -38,7 +37,7 @@ final class ProductController extends Controller
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'LIKE', "%{$search}%")
-                      ->orWhere('sku', 'LIKE', "%{$search}%");
+                        ->orWhere('sku', 'LIKE', "%{$search}%");
                 });
             })
             ->orderByDesc('created_at')
@@ -206,7 +205,7 @@ final class ProductController extends Controller
         $tenant = $this->getTenant($request);
         $product = $this->findProductOrFail($tenant, $productId);
 
-        $product->update(['is_visible' => !$product->is_visible]);
+        $product->update(['is_visible' => ! $product->is_visible]);
 
         return back()->with('success', $product->is_visible ? 'Producto visible.' : 'Producto oculto.');
     }
@@ -262,6 +261,7 @@ final class ProductController extends Controller
     private function storeImage($file, Tenant $tenant): string
     {
         $directory = "tenants/{$tenant->id}/products";
+
         return $file->store($directory, 'public');
     }
 

@@ -10,7 +10,6 @@ use App\Http\Requests\Tenant\UpdateTenantProfileRequest;
 use App\Models\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -67,42 +66,20 @@ final class SettingsController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     // UPDATE PROFILE - Tenant Model Update
     // ═══════════════════════════════════════════════════════════════════════
-    public function updateProfile(UpdateTenantProfileRequest $request): RedirectResponse
-    {
-        $tenant = $this->getTenant($request);
-        $validated = $request->validated();
+    // ═══════════════════════════════════════════════════════════════════════
+    // UPDATE PROFILE - Tenant Model Update
+    // ═══════════════════════════════════════════════════════════════════════
+    public function updateProfile(
+        UpdateTenantProfileRequest $request,
+        \App\Application\Actions\Tenant\UpdateTenantBrandingAction $updater
+    ): RedirectResponse {
+        // 1. DTO Hydration
+        $data = \App\Application\DTOs\Tenant\UpdateBrandingData::fromRequest($request);
 
-        // Handle logo upload
-        if ($request->hasFile('logo')) {
-            if ($tenant->logo_path) {
-                Storage::disk('public')->delete($tenant->logo_path);
-            }
-            $validated['logo_path'] = $request->file('logo')->store("tenants/{$tenant->id}", 'public');
-        }
+        // 2. Execution (Domain/App Logic)
+        $updater->execute($data);
 
-        // Handle cover upload
-        if ($request->hasFile('cover')) {
-            if ($tenant->cover_path) {
-                Storage::disk('public')->delete($tenant->cover_path);
-            }
-            $validated['cover_path'] = $request->file('cover')->store("tenants/{$tenant->id}", 'public');
-        }
-
-        $tenant->update([
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? $tenant->description,
-            'about' => $validated['about'] ?? $tenant->about,
-            'phone' => $validated['phone'] ?? $tenant->phone,
-            'whatsapp_number' => $validated['whatsapp_number'] ?? $tenant->whatsapp_number,
-            'address' => $validated['address'] ?? $tenant->address,
-            'instagram_url' => $validated['instagram_url'] ?? $tenant->instagram_url,
-            'facebook_url' => $validated['facebook_url'] ?? $tenant->facebook_url,
-            'tiktok_url' => $validated['tiktok_url'] ?? $tenant->tiktok_url,
-            'website_url' => $validated['website_url'] ?? $tenant->website_url,
-            'logo_path' => $validated['logo_path'] ?? $tenant->logo_path,
-            'cover_path' => $validated['cover_path'] ?? $tenant->cover_path,
-        ]);
-
+        // 3. Response
         return back()->with('success', 'Perfil actualizado exitosamente.');
     }
 
@@ -136,6 +113,7 @@ final class SettingsController extends Controller
     {
         $tenant = $request->user()?->tenant;
         abort_unless($tenant, 403, 'Tenant not found.');
+
         return $tenant;
     }
 

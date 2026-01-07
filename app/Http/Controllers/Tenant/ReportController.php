@@ -110,7 +110,7 @@ final class ReportController extends Controller
             'generatedAt' => now(),
         ]);
 
-        $filename = "inventario_{$tenant->slug}_" . now()->format('Y-m-d') . ".pdf";
+        $filename = "inventario_{$tenant->slug}_".now()->format('Y-m-d').'.pdf';
 
         return $pdf->stream($filename);
     }
@@ -123,6 +123,7 @@ final class ReportController extends Controller
     {
         $tenant = $request->user()?->tenant;
         abort_unless($tenant, 403, 'Tenant not found.');
+
         return $tenant;
     }
 }
