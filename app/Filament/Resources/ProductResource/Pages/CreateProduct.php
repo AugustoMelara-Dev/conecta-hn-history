@@ -19,16 +19,16 @@ class CreateProduct extends CreateRecord
         if ($tenant) {
             // Get effective limit (default 12 for semilla)
             $limit = $tenant->product_limit ?? 12;
-            
-            // Note: products() is already scoped by TenantScope if active, 
+
+            // Note: products() is already scoped by TenantScope if active,
             // but relying on relationship provides cleaner syntax here.
             $currentCount = $tenant->products()->count();
 
             if ($tenant->plan_type === 'semilla' && $currentCount >= $limit) {
-                
+
                 \Filament\Notifications\Notification::make()
                     ->danger()
-                    ->title("🛑 Límite de Plan Semilla Alcanzado")
+                    ->title('🛑 Límite de Plan Semilla Alcanzado')
                     ->body("Has llegado al límite de {$limit} productos. ¡Actualiza a Plan PRO para inventario ilimitado!")
                     ->actions([
                         \Filament\Notifications\Actions\Action::make('upgrade')

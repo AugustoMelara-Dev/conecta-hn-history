@@ -40,12 +40,12 @@ final class LowStockListener
      */
     public function handle(LowStockThresholdReached $event): void
     {
-        $cacheKey = "low_stock_alert:{$event->aggregateId()}:" . now()->format('Y-m-d');
+        $cacheKey = "low_stock_alert:{$event->aggregateId()}:".now()->format('Y-m-d');
 
         // ─────────────────────────────────────────────────────────────────────
         // STEP 1: Rate-Limited Email Notification (max 1 per product per day)
         // ─────────────────────────────────────────────────────────────────────
-        if (!Cache::has($cacheKey)) {
+        if (! Cache::has($cacheKey)) {
             // Mark as notified for today
             Cache::put($cacheKey, true, now()->endOfDay());
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
+use Spatie\TypeScriptTransformer\Attributes\TypeScript;
+
 /**
  * PaymentMethod - Type-Safe Payment Method Values
  *
@@ -25,6 +27,7 @@ namespace App\Enums;
  *     'payment_method' => PaymentMethod::class,
  * ];
  */
+#[TypeScript]
 enum PaymentMethod: string
 {
     /**

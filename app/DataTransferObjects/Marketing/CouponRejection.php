@@ -22,7 +22,7 @@ enum CouponRejection: string
 
     public function message(): string
     {
-        return match($this) {
+        return match ($this) {
             self::NOT_FOUND => 'Cupón no encontrado',
             self::EXPIRED => 'Este cupón ha expirado',
             self::NOT_STARTED => 'Este cupón aún no está activo',

@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Actions\Identity;
 
-use App\Domain\Identity\Models\User;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Application Layer Action
- * 
- * Orchestrates the domain logic and handles infrastructure concerns 
+ *
+ * Orchestrates the domain logic and handles infrastructure concerns
  * (Transactions, Logging, Persistence).
  */
 final class ReactivateUserAction
@@ -19,14 +19,15 @@ final class ReactivateUserAction
     /**
      * Execute the action.
      *
-     * @param User $user The user to reactivate.
+     * @param  User  $user  The user to reactivate.
+     *
      * @throws \DomainException If user is already active.
      */
     public function handle(User $user): void
     {
         // Wrapper for atomicity (best practice even for single saves)
         DB::transaction(function () use ($user) {
-            
+
             // 1. PURE DOMAIN LOGIC
             // Only mutates memory state. Throws DomainException if invalid.
             $user->reactivate();
@@ -36,7 +37,7 @@ final class ReactivateUserAction
             $user->save();
 
             // 3. SIDE EFFECTS (Audit/Log)
-            Log::info("User successfully reactivated via Action", ['user_id' => $user->id]);
+            Log::info('User successfully reactivated via Action', ['user_id' => $user->id]);
         });
     }
 }

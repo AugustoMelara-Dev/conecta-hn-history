@@ -32,6 +32,7 @@ use Tests\TestCase;
 class BroadcastPayloadTest extends TestCase
 {
     private const REQUIRED_KEYS = ['title', 'message', 'status', 'icon'];
+
     private const VERSIONING_KEYS = ['_version', '_timestamp'];
 
     protected function setUp(): void
@@ -187,7 +188,7 @@ class BroadcastPayloadTest extends TestCase
     {
         app()->setLocale('es');
 
-        $event = OrderPaidBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', 'cash', new DateTimeImmutable());
+        $event = OrderPaidBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', 'cash', new DateTimeImmutable);
         $payload = $event->broadcastWith();
 
         $this->assertTranslationResolved($payload['title']);
@@ -200,7 +201,7 @@ class BroadcastPayloadTest extends TestCase
     {
         app()->setLocale('en');
 
-        $event = OrderPaidBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', 'cash', new DateTimeImmutable());
+        $event = OrderPaidBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', 'cash', new DateTimeImmutable);
         $payload = $event->broadcastWith();
 
         $this->assertTranslationResolved($payload['title']);
@@ -224,7 +225,7 @@ class BroadcastPayloadTest extends TestCase
             currentStock: 5,
             threshold: 10,
             severity: 'warning',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
 
         $payload = $event->broadcastWith();
@@ -246,7 +247,7 @@ class BroadcastPayloadTest extends TestCase
             currency: 'HNL',
             isPartial: false,
             reason: null,
-            refundedAt: new DateTimeImmutable(),
+            refundedAt: new DateTimeImmutable,
         );
 
         $payload = $event->broadcastWith();
@@ -265,7 +266,7 @@ class BroadcastPayloadTest extends TestCase
             userEmail: 'user@test.com',
             ipAddress: '10.0.0.1',
             userAgent: null,
-            loginAt: new DateTimeImmutable(),
+            loginAt: new DateTimeImmutable,
         );
 
         $payload = $event->broadcastWith();
@@ -289,7 +290,7 @@ class BroadcastPayloadTest extends TestCase
             currentStock: 5,
             threshold: 10,
             severity: 'warning',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
 
         $payload = $event->broadcastWith();
@@ -314,7 +315,7 @@ class BroadcastPayloadTest extends TestCase
             amountCents: 0,
             currency: 'HNL',
             paymentMethod: 'card',
-            paidAt: new DateTimeImmutable(),
+            paidAt: new DateTimeImmutable,
         );
 
         $payload = $event->broadcastWith();
@@ -332,7 +333,7 @@ class BroadcastPayloadTest extends TestCase
             amountCents: 99999999,
             currency: 'HNL',
             paymentMethod: 'card',
-            paidAt: new DateTimeImmutable(),
+            paidAt: new DateTimeImmutable,
         );
 
         $payload = $event->broadcastWith();
@@ -349,7 +350,7 @@ class BroadcastPayloadTest extends TestCase
             amountCents: 333,
             currency: 'HNL',
             paymentMethod: 'card',
-            paidAt: new DateTimeImmutable(),
+            paidAt: new DateTimeImmutable,
         );
 
         $payload = $event->broadcastWith();
@@ -442,7 +443,7 @@ class BroadcastPayloadTest extends TestCase
             currentStock: 5,
             threshold: 10,
             severity: 'invalid_severity',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
     }
 
@@ -460,7 +461,7 @@ class BroadcastPayloadTest extends TestCase
                 currentStock: 5,
                 threshold: 10,
                 severity: $severity,
-                occurredAt: new DateTimeImmutable(),
+                occurredAt: new DateTimeImmutable,
             );
 
             $payload = $event->broadcastWith();
@@ -476,12 +477,12 @@ class BroadcastPayloadTest extends TestCase
     public function broadcast_payloads_contain_no_object_instances(): void
     {
         $events = [
-            OrderPaidBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', 'cash', new DateTimeImmutable()),
-            OrderCancelledBroadcast::fromDomainData(1, 1, 'ORD-1', 'test', false, new DateTimeImmutable()),
-            LowStockBroadcast::fromDomainData(1, 1, 'Product', null, 5, 10, 'warning', new DateTimeImmutable()),
-            OrderShippedBroadcast::fromDomainData(1, 1, 'ORD-1', 'ups', '123', null, new DateTimeImmutable()),
-            OrderRefundedBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', false, null, new DateTimeImmutable()),
-            NewLoginDetectedBroadcast::fromDomainData(1, 1, 'test@test.com', '1.1.1.1', null, new DateTimeImmutable()),
+            OrderPaidBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', 'cash', new DateTimeImmutable),
+            OrderCancelledBroadcast::fromDomainData(1, 1, 'ORD-1', 'test', false, new DateTimeImmutable),
+            LowStockBroadcast::fromDomainData(1, 1, 'Product', null, 5, 10, 'warning', new DateTimeImmutable),
+            OrderShippedBroadcast::fromDomainData(1, 1, 'ORD-1', 'ups', '123', null, new DateTimeImmutable),
+            OrderRefundedBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', false, null, new DateTimeImmutable),
+            NewLoginDetectedBroadcast::fromDomainData(1, 1, 'test@test.com', '1.1.1.1', null, new DateTimeImmutable),
         ];
 
         foreach ($events as $event) {
@@ -568,7 +569,7 @@ class BroadcastPayloadTest extends TestCase
     {
         foreach ($data as $key => $value) {
             // Skip metadata keys (underscore prefix)
-            if (str_starts_with((string)$key, '_')) {
+            if (str_starts_with((string) $key, '_')) {
                 continue;
             }
 
@@ -585,7 +586,7 @@ class BroadcastPayloadTest extends TestCase
                 if (preg_match_all('/:[a-zA-Z_][a-zA-Z0-9_]*/', $value, $matches)) {
                     foreach ($matches[0] as $placeholder) {
                         $this->fail(
-                            "Detected missing translation placeholder '{$placeholder}' " .
+                            "Detected missing translation placeholder '{$placeholder}' ".
                             "in payload key '{$currentPath}'. Value: \"{$value}\""
                         );
                     }
@@ -613,7 +614,7 @@ class BroadcastPayloadTest extends TestCase
             currentStock: 1,
             threshold: 10,
             severity: 'warning',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
 
         $payload = $event->broadcastWith();
@@ -636,7 +637,7 @@ class BroadcastPayloadTest extends TestCase
             currentStock: 5,
             threshold: 10,
             severity: 'warning',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
 
         $payload = $event->broadcastWith();
@@ -658,7 +659,7 @@ class BroadcastPayloadTest extends TestCase
             currentStock: 0,
             threshold: 10,
             severity: 'critical',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
 
         $payload = $event->broadcastWith();
@@ -713,19 +714,19 @@ class BroadcastPayloadTest extends TestCase
     public function all_broadcast_events_implement_broadcastable_notification(): void
     {
         $events = [
-            OrderPaidBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', 'cash', new DateTimeImmutable()),
-            OrderCancelledBroadcast::fromDomainData(1, 1, 'ORD-1', 'test', false, new DateTimeImmutable()),
-            LowStockBroadcast::fromDomainData(1, 1, 'Product', null, 5, 10, 'warning', new DateTimeImmutable()),
-            OrderShippedBroadcast::fromDomainData(1, 1, 'ORD-1', 'ups', '123', null, new DateTimeImmutable()),
-            OrderRefundedBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', false, null, new DateTimeImmutable()),
-            NewLoginDetectedBroadcast::fromDomainData(1, 1, 'test@test.com', '1.1.1.1', null, new DateTimeImmutable()),
+            OrderPaidBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', 'cash', new DateTimeImmutable),
+            OrderCancelledBroadcast::fromDomainData(1, 1, 'ORD-1', 'test', false, new DateTimeImmutable),
+            LowStockBroadcast::fromDomainData(1, 1, 'Product', null, 5, 10, 'warning', new DateTimeImmutable),
+            OrderShippedBroadcast::fromDomainData(1, 1, 'ORD-1', 'ups', '123', null, new DateTimeImmutable),
+            OrderRefundedBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', false, null, new DateTimeImmutable),
+            NewLoginDetectedBroadcast::fromDomainData(1, 1, 'test@test.com', '1.1.1.1', null, new DateTimeImmutable),
         ];
 
         foreach ($events as $event) {
             $this->assertInstanceOf(
                 \App\Contracts\Broadcasting\BroadcastableNotification::class,
                 $event,
-                get_class($event) . ' should implement BroadcastableNotification interface'
+                get_class($event).' should implement BroadcastableNotification interface'
             );
         }
     }
@@ -747,7 +748,7 @@ class BroadcastPayloadTest extends TestCase
             amountCents: 10000,
             currency: 'HNL',
             paymentMethod: 'card',
-            paidAt: new DateTimeImmutable(),
+            paidAt: new DateTimeImmutable,
         );
 
         // Trigger broadcastWith which contains the log call
@@ -768,7 +769,8 @@ class BroadcastPayloadTest extends TestCase
         // The actual formatMoney method in the trait validates currency
 
         // Create a simple class using the trait for testing
-        $formatter = new class {
+        $formatter = new class
+        {
             use \App\Traits\FormatsCurrency;
 
             public function testFormat(int $cents, string $currency): string
@@ -786,10 +788,11 @@ class BroadcastPayloadTest extends TestCase
     /** @test */
     public function format_money_supports_additional_currencies(): void
     {
-        $formatter = new class {
+        $formatter = new class
+        {
             use \App\Traits\FormatsCurrency;
 
-            public function testFormat(int $cents, string $currency): string
+            public function test_format(int $cents, string $currency): string
             {
                 return $this->formatMoney($cents, $currency);
             }
@@ -843,12 +846,12 @@ class BroadcastPayloadTest extends TestCase
     public function all_broadcast_events_include_tenant_id_in_payload(): void
     {
         $events = [
-            OrderPaidBroadcast::fromDomainData(42, 1, 'ORD-1', 1000, 'HNL', 'cash', new DateTimeImmutable()),
-            OrderCancelledBroadcast::fromDomainData(42, 1, 'ORD-1', 'test', false, new DateTimeImmutable()),
-            LowStockBroadcast::fromDomainData(42, 1, 'Product', null, 5, 10, 'warning', new DateTimeImmutable()),
-            OrderShippedBroadcast::fromDomainData(42, 1, 'ORD-1', 'ups', '123', null, new DateTimeImmutable()),
-            OrderRefundedBroadcast::fromDomainData(42, 1, 'ORD-1', 1000, 'HNL', false, null, new DateTimeImmutable()),
-            NewLoginDetectedBroadcast::fromDomainData(1, 42, 'test@test.com', '1.1.1.1', null, new DateTimeImmutable()),
+            OrderPaidBroadcast::fromDomainData(42, 1, 'ORD-1', 1000, 'HNL', 'cash', new DateTimeImmutable),
+            OrderCancelledBroadcast::fromDomainData(42, 1, 'ORD-1', 'test', false, new DateTimeImmutable),
+            LowStockBroadcast::fromDomainData(42, 1, 'Product', null, 5, 10, 'warning', new DateTimeImmutable),
+            OrderShippedBroadcast::fromDomainData(42, 1, 'ORD-1', 'ups', '123', null, new DateTimeImmutable),
+            OrderRefundedBroadcast::fromDomainData(42, 1, 'ORD-1', 1000, 'HNL', false, null, new DateTimeImmutable),
+            NewLoginDetectedBroadcast::fromDomainData(1, 42, 'test@test.com', '1.1.1.1', null, new DateTimeImmutable),
         ];
 
         foreach ($events as $event) {
@@ -857,15 +860,14 @@ class BroadcastPayloadTest extends TestCase
             $this->assertArrayHasKey(
                 'tenant_id',
                 $payload,
-                get_class($event) . ' must include tenant_id in payload'
+                get_class($event).' must include tenant_id in payload'
             );
 
             $this->assertEquals(
                 42,
                 $payload['tenant_id'],
-                get_class($event) . ' tenant_id must match constructor value'
+                get_class($event).' tenant_id must match constructor value'
             );
         }
     }
 }
-

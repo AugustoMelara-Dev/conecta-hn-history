@@ -10,7 +10,6 @@ use App\Enums\LowStockSeverity;
 use App\Traits\LogsBroadcasts;
 use DateTimeImmutable;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Foundation\Events\Dispatchable;
 
 /**
@@ -24,18 +23,9 @@ final class LowStockBroadcast implements BroadcastableNotification
 
     // SRE: Fail-Fast Configuration
     public $tries = 1;
+
     public $timeout = 30;
 
-    /**
-     * @param int $tenantId
-     * @param int $productId
-     * @param string $productName
-     * @param string|null $productSku
-     * @param float $currentStock
-     * @param float $threshold
-     * @param LowStockSeverity $severity
-     * @param DateTimeImmutable $occurredAt
-     */
     public function __construct(
         public int $tenantId,
         public int $productId,
@@ -79,7 +69,7 @@ final class LowStockBroadcast implements BroadcastableNotification
 
     /**
      * Get the channels the event should broadcast on.
-     * 
+     *
      * SECURITY: Uses isolated ADMIN channel to prevent noise/disclosure.
      */
     public function broadcastOn(): array
@@ -118,7 +108,7 @@ final class LowStockBroadcast implements BroadcastableNotification
         return [
             // Versioning
             '_version' => self::PAYLOAD_VERSION,
-            '_timestamp' => (new DateTimeImmutable())->format(DateTimeImmutable::ATOM),
+            '_timestamp' => (new DateTimeImmutable)->format(DateTimeImmutable::ATOM),
 
             // UI Contract
             'title' => $this->severity->label(),
@@ -142,11 +132,11 @@ final class LowStockBroadcast implements BroadcastableNotification
 
     private function buildMessage(): string
     {
-        $key = $this->productSku !== null 
-            ? 'notifications.low_stock.message_with_sku' 
+        $key = $this->productSku !== null
+            ? 'notifications.low_stock.message_with_sku'
             : 'notifications.low_stock.message';
 
-        return trans_choice($key, (int)$this->currentStock, [
+        return trans_choice($key, (int) $this->currentStock, [
             'product' => $this->productName,
             'sku' => $this->productSku ?? '',
             'stock' => $this->currentStock,

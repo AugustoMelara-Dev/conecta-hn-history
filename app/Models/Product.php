@@ -7,7 +7,7 @@ namespace App\Models;
 use App\Enums\StockStatus;
 use App\Scopes\LocationScope;
 use App\Scopes\PublicVisibilityScope;
-use App\Models\Traits\BelongsToTenant;
+use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -420,7 +420,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         }
 
         $paginator = $query->orderByDesc('created_at')->paginate(12);
-        
+
         // Hydrate results to return actual Product models
         $paginator->setCollection(static::hydrate($paginator->items()->all()));
 

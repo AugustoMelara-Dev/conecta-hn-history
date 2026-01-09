@@ -37,15 +37,14 @@ use DateTimeImmutable;
  */
 final readonly class TenantSuspended implements AuditEvent
 {
-
     /**
-     * @param TenantId $tenantId The suspended tenant's ID
-     * @param string $tenantSlug The tenant's slug (snapshotted)
-     * @param string $tenantName The tenant's name (snapshotted)
-     * @param string $reason Machine or human-readable suspension reason
-     * @param AuditContext $context Standardized audit metadata
-     * @param int|null $suspendedById The admin user ID who performed suspension
-     * @param DateTimeImmutable|null $suspendedUntil Expiration (null = permanent)
+     * @param  TenantId  $tenantId  The suspended tenant's ID
+     * @param  string  $tenantSlug  The tenant's slug (snapshotted)
+     * @param  string  $tenantName  The tenant's name (snapshotted)
+     * @param  string  $reason  Machine or human-readable suspension reason
+     * @param  AuditContext  $context  Standardized audit metadata
+     * @param  int|null  $suspendedById  The admin user ID who performed suspension
+     * @param  DateTimeImmutable|null  $suspendedUntil  Expiration (null = permanent)
      */
     public function __construct(
         public TenantId $tenantId,

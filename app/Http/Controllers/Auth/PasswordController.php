@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
-use App\Application\Actions\Auth\UpdateUserPasswordAction;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
+use Laravel\Fortify\Contracts\UpdatesUserPasswords;
 
 /**
  * PasswordController - Thin HTTP Gateway for Password Security
@@ -18,7 +16,7 @@ use Illuminate\Validation\Rules\Password;
  * ║  REFACTORED: Implementation Hiding                                       ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║  Controller knows NOTHING about hashing algorithms.                      ║
- * ║  Delegates update logic to UpdateUserPasswordAction.                     ║
+ * ║  Delegates update logic to Fortify Contract.                             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final class PasswordController extends Controller
@@ -26,17 +24,9 @@ final class PasswordController extends Controller
     /**
      * Update the user's password.
      */
-    public function update(Request $request, UpdateUserPasswordAction $action): RedirectResponse
+    public function update(Request $request, UpdatesUserPasswords $updater): RedirectResponse
     {
-        $validated = $request->validate([
-            'current_password' => ['required', 'current_password'],
-            'password' => ['required', Password::defaults(), 'confirmed'],
-        ]);
-
-        $action->execute(
-            user: $request->user(),
-            plainPassword: $validated['password']
-        );
+        $updater->update($request->user(), $request->input());
 
         return back()->with('status', 'password-updated');
     }

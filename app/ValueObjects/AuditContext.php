@@ -32,10 +32,10 @@ use DateTimeImmutable;
 final readonly class AuditContext
 {
     /**
-     * @param int|null $actorId The user ID who triggered the event (null for anonymous/system)
-     * @param IpAddress $ipAddress The origin IP address (should be anonymized for logging)
-     * @param string $userAgent The HTTP User-Agent header (browser fingerprint)
-     * @param DateTimeImmutable $occurredAt The exact moment the event occurred
+     * @param  int|null  $actorId  The user ID who triggered the event (null for anonymous/system)
+     * @param  IpAddress  $ipAddress  The origin IP address (should be anonymized for logging)
+     * @param  string  $userAgent  The HTTP User-Agent header (browser fingerprint)
+     * @param  DateTimeImmutable  $occurredAt  The exact moment the event occurred
      */
     public function __construct(
         public ?int $actorId,
@@ -47,8 +47,8 @@ final readonly class AuditContext
     /**
      * Factory: Capture context from the current HTTP request.
      *
-     * @param ?int $actorId The authenticated user ID (null if guest)
-     * @param bool $anonymizeIp Whether to anonymize the IP for GDPR compliance
+     * @param  ?int  $actorId  The authenticated user ID (null if guest)
+     * @param  bool  $anonymizeIp  Whether to anonymize the IP for GDPR compliance
      */
     public static function capture(?int $actorId = null, bool $anonymizeIp = false): self
     {
@@ -58,7 +58,7 @@ final readonly class AuditContext
             actorId: $actorId,
             ipAddress: $anonymizeIp ? $ip->anonymize() : $ip,
             userAgent: request()->userAgent() ?? 'Unknown',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
     }
 
@@ -71,7 +71,7 @@ final readonly class AuditContext
             actorId: null,
             ipAddress: new IpAddress('127.0.0.1'),
             userAgent: 'System/ConectaHN',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
     }
 
@@ -91,7 +91,7 @@ final readonly class AuditContext
     /**
      * Convert to array for JSON serialization or logging.
      *
-     * @param bool $anonymize Whether to anonymize the IP in output
+     * @param  bool  $anonymize  Whether to anonymize the IP in output
      */
     public function toArray(bool $anonymize = true): array
     {
@@ -136,7 +136,7 @@ final readonly class AuditContext
      */
     public function getFingerprint(): string
     {
-        return md5($this->ipAddress->toString() . '|' . $this->userAgent);
+        return md5($this->ipAddress->toString().'|'.$this->userAgent);
     }
 
     /**

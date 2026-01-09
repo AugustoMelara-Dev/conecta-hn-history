@@ -7,28 +7,32 @@ namespace App\Http\Middleware;
 use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * ResolveTenantFromRequest - Single Source of Truth for Tenant Context (ADR-004).
+ * ResolveTenantFromRequest - Single Source of Truth for Tenant Context.
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  CONFIG-DRIVEN: All parameters read from config/tenancy.php            ║
- * ║  TENANT RESOLUTION: Request-based ONLY, never from authenticated user  ║
+ * ║  PERFORMANCE ARCHITECTURE: Cache-Aside Pattern (Host/Slug Resolution)  ║
+ * ║  SECURITY: Negative Caching to prevent DoS (DB Exhaustion)             ║
+ * ║  MEMORY: Hydrates only essential identity columns (id, slug, is_active) ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * RESOLUTION ORDER (from config):
- * 1. Route parameter: {tenant} or {tenant_slug}
- * 2. Subdomain: {slug}.domain.com
- * 3. Header: X-Tenant-ID (for API clients)
- *
- * SECURITY:
- * - User->tenant relationship is IGNORED for resolution
- * - User validation happens in EnsureUserBelongsToTenant (separate middleware)
- * - Mismatch = 403 Forbidden, not silent fallback
  */
-class ResolveTenantFromRequest
+final class ResolveTenantFromRequest
 {
+    /**
+     * Cache TTL for valid tenants (1 hour).
+     * High hit-ratio optimization.
+     */
+    private const TTL_VALID = 3600;
+
+    /**
+     * Cache TTL for invalid lookups (5 minutes).
+     * DoS prevention against subdomain flooding.
+     */
+    private const TTL_INVALID = 300;
+
     /**
      * Handle an incoming request.
      */
@@ -37,120 +41,158 @@ class ResolveTenantFromRequest
         $tenant = $this->resolveTenant($request);
 
         if ($tenant === null) {
-            // No tenant context - allowed for public routes
+            // No tenant context - allowed for public routes.
+            // Strict 404 handled by EnsureTenantOwnership/EnsureUserBelongsToTenant if route requires it.
             return $next($request);
         }
 
-        // Bind to container - this is the ONLY place tenant gets bound
+        if (! $tenant->is_active) {
+             abort(404); // Or specific suspended page
+        }
+
+        // Bind to container - Single Source of Truth
         app()->instance('currentTenant', $tenant);
+
+        // Optional: Share with views if global state is needed
+        // View::share('currentTenant', $tenant);
 
         return $next($request);
     }
 
     /**
-     * Resolve tenant from request context.
-     * NEVER uses authenticated user for resolution.
+     * Resolve tenant with Cache-Aside protection.
+     * Implements Granular TTL for Positive vs Negative results.
      */
     private function resolveTenant(Request $request): ?Tenant
     {
-        // Priority 1: Route parameter (from config)
-        $tenantFromRoute = $this->resolveFromRoute($request);
-        if ($tenantFromRoute !== null) {
-            return $tenantFromRoute;
+        // 1. Identify Resolution Strategy (Cache Key)
+        $cacheKey = $this->getCacheKey($request);
+
+        if (! $cacheKey) {
+            return null;
         }
 
-        // Priority 2: Subdomain
-        $tenantFromSubdomain = $this->resolveFromSubdomain($request);
-        if ($tenantFromSubdomain !== null) {
-            return $tenantFromSubdomain;
+        // 2. Cache Hit Check
+        if (Cache::has($cacheKey)) {
+            $cached = Cache::get($cacheKey);
+            // Check if it's a Negative Cache Hit
+            return $cached === 'NOT_FOUND' ? null : $cached;
         }
 
-        // Priority 3: Header (API clients)
-        $tenantFromHeader = $this->resolveFromHeader($request);
-        if ($tenantFromHeader !== null) {
-            return $tenantFromHeader;
+        // 3. Cache Miss - Database Query (Optimized Memory Footprint)
+        // Select ONLY essential columns to keep Redis serialization light.
+        $query = Tenant::query()
+            ->select(['id', 'slug', 'domain', 'name', 'is_active', 'is_pro', 'logo_path'])
+            ->take(1);
+
+        $this->applyResolutionLogic($query, $request);
+        
+        /** @var Tenant|null $tenant */
+        $tenant = $query->first();
+
+        // 4. Store Result (Cache-Aside)
+        if ($tenant) {
+            // Positive Cache: 1 Hour
+            Cache::put($cacheKey, $tenant, self::TTL_VALID);
+        } else {
+            // Negative Cache: 5 Minutes (DoS Protection)
+            // Stores a lightweight sentinel value
+            Cache::put($cacheKey, 'NOT_FOUND', self::TTL_INVALID);
+        }
+
+        return $tenant;
+    }
+
+    /**
+     * Determine unique cache key based on Request context.
+     * Returns null if no resolution criteria found (e.g. naked IP access).
+     */
+    private function getCacheKey(Request $request): ?string
+    {
+        // Strategy A: Route Parameter
+        $routeParam = $this->getRouteParam($request);
+        if ($routeParam) {
+            return "tenant_resolver:route:{$routeParam}";
+        }
+
+        // Strategy B: Subdomain
+        $subdomain = $this->getSubdomain($request);
+        if ($subdomain) {
+            return "tenant_resolver:subdomain:{$subdomain}";
+        }
+
+        // Strategy C: Header (API)
+        $headerId = $this->getHeaderId($request);
+        if ($headerId) {
+            return "tenant_resolver:header:{$headerId}";
         }
 
         return null;
     }
 
     /**
-     * Resolve tenant from route parameters.
-     * Parameters are CONFIG-DRIVEN (Issue #7 fix).
+     * Apply specific query logic based on available context.
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param Request $request
      */
-    private function resolveFromRoute(Request $request): ?Tenant
+    private function applyResolutionLogic($query, Request $request): void
     {
-        // Config-driven: Parameters from config/tenancy.php
-        $parameterNames = config('tenancy.resolution.route_parameters', ['tenant', 'tenant_slug']);
+        // Strategy A: Route Parameter
+        $routeParam = $this->getRouteParam($request);
+        if ($routeParam) {
+            $query->where('slug', $routeParam);
+            return;
+        }
 
-        $slug = null;
-        foreach ($parameterNames as $paramName) {
-            $value = $request->route($paramName);
-            if ($value !== null) {
-                $slug = $value;
-                break;
+        // Strategy B: Subdomain
+        $subdomain = $this->getSubdomain($request);
+        if ($subdomain) {
+            $query->where('slug', $subdomain);
+            return;
+        }
+
+        // Strategy C: Header
+        $headerId = $this->getHeaderId($request);
+        if ($headerId) {
+            $query->where('id', $headerId);
+            return;
+        }
+
+        // Failsafe
+        $query->whereRaw('1=0');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONTEXT EXTRACTORS (Config Driven)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private function getRouteParam(Request $request): ?string
+    {
+        $params = config('tenancy.resolution.route_parameters', ['tenant', 'tenant_slug']);
+        foreach ($params as $param) {
+            if ($value = $request->route($param)) {
+                 return (string) $value;
             }
         }
-
-        if ($slug === null) {
-            return null;
-        }
-
-        return Tenant::where('slug', $slug)->first();
+        return null;
     }
 
-    /**
-     * Resolve tenant from subdomain.
-     * Base domain is CONFIG-DRIVEN.
-     *
-     * SECURITY: Uses Str::beforeLast to prevent injection via crafted hostnames.
-     * Example: tienda.tienda.com with base "tienda.com" -> "tienda" (not corrupted)
-     */
-    private function resolveFromSubdomain(Request $request): ?Tenant
+    private function getSubdomain(Request $request): ?string
     {
         $host = $request->getHost();
-        // Config-driven: Base domain from config/tenancy.php
-        $baseDomain = config('tenancy.resolution.base_domain', 'localhost');
+        $base = config('tenancy.resolution.base_domain', 'localhost');
+        $suffix = '.'.$base;
 
-        // Construct the full suffix to match
-        $suffix = '.'.$baseDomain;
+        if (! str_ends_with($host, $suffix)) return null;
 
-        // SECURITY: Must end with EXACTLY the suffix (not just contain it)
-        if (! str_ends_with($host, $suffix)) {
-            return null;
-        }
-
-        // SAFE EXTRACTION: Use Str::beforeLast to get only the subdomain portion
-        // Example: "shop.tienda.com" with suffix ".tienda.com" -> "shop"
-        $subdomain = \Illuminate\Support\Str::beforeLast($host, $suffix);
-
-        // Validation: Subdomain must not be empty or "www"
-        if ($subdomain === '' || $subdomain === 'www') {
-            return null;
-        }
-
-        // Validation: Subdomain should not contain dots (prevent multi-level)
-        if (str_contains($subdomain, '.')) {
-            return null;
-        }
-
-        return Tenant::where('slug', $subdomain)->first();
+        $sub = \Illuminate\Support\Str::beforeLast($host, $suffix);
+        
+        return ($sub && $sub !== 'www' && !str_contains($sub, '.')) ? $sub : null;
     }
 
-    /**
-     * Resolve tenant from header.
-     * Header name is CONFIG-DRIVEN.
-     */
-    private function resolveFromHeader(Request $request): ?Tenant
+    private function getHeaderId(Request $request): ?string
     {
-        // Config-driven: Header name from config/tenancy.php
-        $headerName = config('tenancy.resolution.header_name', 'X-Tenant-ID');
-        $tenantId = $request->header($headerName);
-
-        if ($tenantId === null) {
-            return null;
-        }
-
-        return Tenant::find((int) $tenantId);
+        return $request->header(config('tenancy.resolution.header_name', 'X-Tenant-ID'));
     }
 }

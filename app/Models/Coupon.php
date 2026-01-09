@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\DataTransferObjects\CouponValidationResult;
-use App\Models\Traits\BelongsToTenant;
+use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

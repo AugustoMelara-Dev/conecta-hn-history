@@ -76,16 +76,15 @@ interface CurrentTenant
     /**
      * Check if a specific feature is enabled for this tenant.
      *
-     * @param string $feature Feature key (e.g., 'whatsapp', 'inventory', 'coupons')
+     * @param  string  $feature  Feature key (e.g., 'whatsapp', 'inventory', 'coupons')
      */
     public function hasFeature(string $feature): bool;
 
     /**
      * Get a specific configuration value for this tenant.
      *
-     * @param string $key Config key (e.g., 'brand_color', 'invoice_prefix')
-     * @param mixed $default Default value if key doesn't exist
-     * @return mixed
+     * @param  string  $key  Config key (e.g., 'brand_color', 'invoice_prefix')
+     * @param  mixed  $default  Default value if key doesn't exist
      */
     public function getConfig(string $key, mixed $default = null): mixed;
 

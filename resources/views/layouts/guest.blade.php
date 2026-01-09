@@ -20,7 +20,7 @@
 
     {{-- Styles & Scripts --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @livewireStyles
+    {{-- Livewire styles removed - migrated to React/Inertia --}}
 
     <style>
         body {
@@ -58,12 +58,9 @@
         </div>
     @endif
 
-    {{-- Global AuthModal for B2C Interception --}}
-    @guest
-        <livewire:auth.auth-modal />
-    @endguest
+    {{-- AuthModal removed - migrated to React GlobalLoginModal --}}
 
-    @livewireScripts
+    {{-- Livewire scripts removed - migrated to React/Inertia --}}
     @stack('scripts')
 </body>
 </html>

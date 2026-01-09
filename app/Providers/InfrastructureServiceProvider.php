@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Contracts\Scope\TenantContextInterface;
+use App\Infrastructure\Scope\FilamentTenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
@@ -22,7 +23,45 @@ class InfrastructureServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // ═══════════════════════════════════════════════════════════════════════
+        // TENANT CONTEXT ABSTRACTION (Dependency Inversion Principle)
+        // ═══════════════════════════════════════════════════════════════════════
+        // This binding allows Models and Scopes to resolve tenant context
+        // WITHOUT knowing about Filament. The FilamentTenantContext adapter
+        // encapsulates all UI-layer coupling in a single, replaceable class.
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->singleton(TenantContextInterface::class, FilamentTenantContext::class);
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // REPOSITORY PATTERN BINDINGS (ORM Decoupling)
+        // ═══════════════════════════════════════════════════════════════════════
+        // These bindings allow Application Layer (Jobs, Actions) to depend on
+        // Domain interfaces rather than Eloquent directly. For unit testing,
+        // swap EloquentTenantRepository with InMemoryTenantRepository.
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface::class,
+            \App\Infrastructure\Repositories\TenantGovernance\EloquentTenantRepository::class
+        );
+
+        $this->app->bind(
+            \App\Domain\Identity\Repositories\UserRepositoryInterface::class,
+            \App\Infrastructure\Repositories\Identity\EloquentUserRepository::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // PAYMENT GATEWAY BINDING (ACL Pattern)
+        // ═══════════════════════════════════════════════════════════════════════
+        // StripePaymentGateway wraps all Stripe SDK calls and translates
+        // vendor-specific exceptions to Domain exceptions. Swap with
+        // FakePaymentGateway for testing or PayPalPaymentGateway for migration.
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Payments\Gateways\PaymentGatewayInterface::class,
+            fn () => app()->environment('testing')
+                ? new \App\Infrastructure\Payments\FakePaymentGateway()
+                : new \App\Infrastructure\Payments\Stripe\StripePaymentGateway()
+        );
     }
 
     /**
@@ -72,19 +111,19 @@ class InfrastructureServiceProvider extends ServiceProvider
     protected function configureVite(): void
     {
         Vite::prefetch(concurrency: 3);
-        
+
         // Use CSP Nonce for scripts if requested
         Vite::useCspNonce();
-        
+
         // Blade directive for simpler usage
         Blade::directive('cspnonce', function () {
-            return "<?php echo Vite::cspNonce(); ?>";
+            return '<?php echo Vite::cspNonce(); ?>';
         });
     }
 
     /**
      * Configure granular rate limiters for API security.
-     * 
+     *
      * ARCHITECTURE: Named Rate Limiters for Traffic Shaping
      * Each limiter targets a specific attack vector with mathematically
      * chosen thresholds based on legitimate human behavior patterns.

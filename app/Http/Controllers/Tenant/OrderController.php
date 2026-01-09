@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Application\Actions\Orders\GenerateOrderPdfAction;
+use App\Domain\Shared\Contracts\TenantContext;
+use App\Domain\Tenant\Contracts\OrderRepository;
 use App\Http\Controllers\Controller;
-use App\Models\Order;
-use App\Models\Tenant;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Http\Requests\Tenant\UpdateOrderStatusRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -15,52 +16,62 @@ use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 /**
- * OrderController - Order Management for Tenant Dashboard
+ * OrderController - Hexagonal Compliant (DIP Remediation)
  *
- * SECURITY: Zero-Trust Tenant Isolation.
- * All queries scoped to $request->user()->tenant->orders()
+ * ARCHITECTURAL COMPLIANCE:
+ * - Zero App\Models imports.
+ * - TenantContext for tenant resolution (no $request->user()->tenant).
+ * - Single Responsibility: HTTP translation only.
+ *
+ * SECURITY: Zero-Trust Tenant Isolation via TenantContext.
  */
 final class OrderController extends Controller
 {
+    public function __construct(
+        private readonly OrderRepository $orderRepository,
+        private readonly GenerateOrderPdfAction $pdfAction,
+        private readonly TenantContext $tenantContext
+    ) {}
+
     // ═══════════════════════════════════════════════════════════════════════
-    // INDEX - Orders Kanban/List View
+    // INDEX - Orders List View (Paginated)
     // ═══════════════════════════════════════════════════════════════════════
     public function index(Request $request): InertiaResponse
     {
-        $tenant = $this->getTenant($request);
+        $tenantId = $this->tenantContext->getTenantId();
 
-        // Fetch today's orders grouped by status
-        $orders = $tenant->orders()
-            ->whereDate('created_at', today())
-            ->with('items.product')
-            ->orderByDesc('created_at')
-            ->get()
-            ->groupBy('status');
+        // DELEGATED: Query logic lives in Repository.
+        $orders = $this->orderRepository->getDashboardList(
+            tenantId: $tenantId,
+            filters: $request->only(['status', 'date', 'search']),
+            perPage: 15
+        );
 
         return Inertia::render('Tenant/Orders/Index', [
-            'orders' => [
-                'pending' => $this->transformOrders($orders->get('pending', collect())),
-                'processing' => $this->transformOrders($orders->get('processing', collect())),
-                'completed' => $this->transformOrders($orders->get('completed', collect())),
-                'cancelled' => $this->transformOrders($orders->get('cancelled', collect())),
-            ],
-            'tenant' => $tenant->only('id', 'name', 'slug', 'is_pro'),
+            'orders' => $orders,
+            'filters' => $request->only(['status', 'date', 'search']),
+            'tenant' => $this->tenantContext->getTenantData(['id', 'name', 'slug', 'is_pro']),
         ]);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // UPDATE STATUS - Kanban Card Movement
+    // UPDATE STATUS - Order Lifecycle
     // ═══════════════════════════════════════════════════════════════════════
-    public function updateStatus(Request $request, int $orderId): RedirectResponse
+    public function updateStatus(UpdateOrderStatusRequest $request, int $orderId): RedirectResponse
     {
-        $tenant = $this->getTenant($request);
-        $order = $tenant->orders()->findOrFail($orderId);
+        $tenantId = $this->tenantContext->getTenantId();
+        $validated = $request->validated();
 
-        $validated = $request->validate([
-            'status' => ['required', 'string', 'in:pending,processing,completed,cancelled'],
-        ]);
+        // DELEGATED: Update logic lives in Repository
+        $updated = $this->orderRepository->updateStatus(
+            tenantId: $tenantId,
+            orderId: $orderId,
+            status: $validated['status']
+        );
 
-        $order->update(['status' => $validated['status']]);
+        if (!$updated) {
+            abort(404, 'Order not found.');
+        }
 
         return back()->with('success', 'Estado actualizado.');
     }
@@ -70,13 +81,18 @@ final class OrderController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     public function printTicket(Request $request, int $orderId)
     {
-        $tenant = $this->getTenant($request);
-        $order = $tenant->orders()->with('items.product')->findOrFail($orderId);
+        $tenantId = $this->tenantContext->getTenantId();
 
-        // Return a simple HTML view optimized for thermal printers
+        // DELEGATED: Query via Repository
+        $order = $this->orderRepository->findForDetails($tenantId, $orderId);
+
+        if (!$order) {
+            abort(404, 'Order not found.');
+        }
+
         return view('orders.ticket', [
             'order' => $order,
-            'tenant' => $tenant,
+            'tenant' => $this->tenantContext->getTenantData(),
         ]);
     }
 
@@ -85,47 +101,17 @@ final class OrderController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     public function downloadReceipt(Request $request, int $orderId): Response
     {
-        $tenant = $this->getTenant($request);
-        $order = $tenant->orders()->with('items.product')->findOrFail($orderId);
+        $tenantId = $this->tenantContext->getTenantId();
 
-        $pdf = Pdf::loadView('orders.receipt', [
-            'order' => $order,
-            'tenant' => $tenant,
-        ]);
+        // DELEGATED: Query via Repository
+        $order = $this->orderRepository->findForDetails($tenantId, $orderId);
 
-        return $pdf->stream("recibo_orden_{$order->id}.pdf");
-    }
+        if (!$order) {
+            abort(404, 'Order not found.');
+        }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // PRIVATE HELPERS
-    // ═══════════════════════════════════════════════════════════════════════
-
-    private function getTenant(Request $request): Tenant
-    {
-        $tenant = $request->user()?->tenant;
-        abort_unless($tenant, 403, 'Tenant not found.');
-
-        return $tenant;
-    }
-
-    /**
-     * Transform orders collection for frontend.
-     */
-    private function transformOrders($orders): array
-    {
-        return $orders->map(fn (Order $order) => [
-            'id' => $order->id,
-            'customer_name' => $order->customer_name,
-            'total' => (float) $order->total,
-            'status' => $order->status,
-            'items_count' => $order->items->count(),
-            'created_at' => $order->created_at->toIso8601String(),
-            'items' => $order->items->map(fn ($item) => [
-                'id' => $item->id,
-                'product_name' => $item->product?->name ?? $item->name,
-                'quantity' => $item->quantity,
-                'price' => (float) $item->price,
-            ])->toArray(),
-        ])->values()->toArray();
+        // DELEGATED: PDF generation via Action
+        // Note: Action may need refactoring to accept ID or DTO instead of Model
+        return $this->pdfAction->execute($order, $this->tenantContext->getTenantData());
     }
 }

@@ -36,6 +36,7 @@ class LocationScope implements Scope
      * Session key for the user's selected city.
      */
     protected const SESSION_KEY_PRIMARY = 'user_selected_city_id';
+
     protected const SESSION_KEY_LEGACY = 'active_city_id';
 
     /**
@@ -100,7 +101,7 @@ class LocationScope implements Scope
     {
         try {
             // Check if session is available
-            if (!$this->isSessionAvailable()) {
+            if (! $this->isSessionAvailable()) {
                 return null;
             }
 
@@ -131,12 +132,12 @@ class LocationScope implements Scope
     {
         try {
             // Check if request exists and has session
-            if (!app()->bound('request')) {
+            if (! app()->bound('request')) {
                 return false;
             }
 
             $request = request();
-            
+
             // Check if session is started
             return $request->hasSession() && $request->session()->isStarted();
         } catch (\Throwable $e) {
@@ -149,7 +150,7 @@ class LocationScope implements Scope
      */
     protected function isFilamentContext(): bool
     {
-        if (!class_exists(\Filament\Facades\Filament::class)) {
+        if (! class_exists(\Filament\Facades\Filament::class)) {
             return false;
         }
 
@@ -166,7 +167,7 @@ class LocationScope implements Scope
     protected function isAdminRoute(): bool
     {
         try {
-            return request()->is('admin/*') || 
+            return request()->is('admin/*') ||
                    request()->is('admin') ||
                    request()->is('app/*') ||
                    request()->is('app');

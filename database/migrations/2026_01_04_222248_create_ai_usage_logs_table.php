@@ -20,9 +20,9 @@ return new class extends Migration
             $table->unsignedInteger('input_tokens');
             $table->unsignedInteger('output_tokens');
             // High precision for micro-costs (e.g. $0.000125)
-            $table->decimal('cost', 10, 6); 
+            $table->decimal('cost', 10, 6);
             $table->timestamps();
-            
+
             $table->index(['created_at']);
         });
     }

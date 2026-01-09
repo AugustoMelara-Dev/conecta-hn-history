@@ -8,7 +8,7 @@ use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\OrderNumber;
 use App\ValueObjects\TenantId;
-use DateTimeImmutable;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * OrderCancelled - Pure Domain Event for Order Voiding
@@ -47,17 +47,17 @@ use DateTimeImmutable;
  *
  * DISPATCH POINT: OrderStateService::onCancelled() via DomainEventBus
  */
-final readonly class OrderCancelled implements DomainEvent
+final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterCommit
 {
     use HasDomainMetadata;
 
     /**
-     * @param TenantId $tenantId Tenant context for queue middleware
-     * @param int $orderId The order aggregate root ID
-     * @param OrderNumber $orderNumber Human-readable order reference
-     * @param string $reason Machine or human-readable cancellation reason
-     * @param int|null $cancelledById User ID who initiated cancellation (null for system)
-     * @param bool $wasPaid Whether the order was paid (affects refund logic)
+     * @param  TenantId  $tenantId  Tenant context for queue middleware
+     * @param  int  $orderId  The order aggregate root ID
+     * @param  OrderNumber  $orderNumber  Human-readable order reference
+     * @param  string  $reason  Machine or human-readable cancellation reason
+     * @param  int|null  $cancelledById  User ID who initiated cancellation (null for system)
+     * @param  bool  $wasPaid  Whether the order was paid (affects refund logic)
      */
     public function __construct(
         private TenantId $tenantId,
@@ -149,19 +149,42 @@ final readonly class OrderCancelled implements DomainEvent
 
     public static function fromPrimitives(array $primitives): self
     {
-        // Defensive deserialization: fail fast on missing tenant_id
-        $tenantId = $primitives['tenant_id'] ?? null;
-        if ($tenantId === null) {
-            throw new \InvalidArgumentException('Missing required key: tenant_id');
+        // ═══════════════════════════════════════════════════════════════════
+        // FAIL-FAST VALIDATION: Critical Fields Must Exist
+        // ═══════════════════════════════════════════════════════════════════
+        // RATIONALE: The 'was_paid' field determines whether a refund should
+        // be initiated. Defaulting to 'false' when missing causes paid orders
+        // to NOT receive refunds - a critical business logic failure.
+        // ═══════════════════════════════════════════════════════════════════
+
+        $requiredKeys = [
+            'tenant_id',
+            'order_id',
+            'order_number',
+            'reason',
+        ];
+
+        foreach ($requiredKeys as $key) {
+            if (! array_key_exists($key, $primitives)) {
+                throw \App\Exceptions\CorruptedDomainEventException::missingKey($key, self::class);
+            }
+            if ($primitives[$key] === null) {
+                throw \App\Exceptions\CorruptedDomainEventException::nullValue($key, self::class);
+            }
+        }
+
+        // was_paid is CRITICAL for refund logic - must be explicitly set
+        if (! array_key_exists('was_paid', $primitives)) {
+            throw \App\Exceptions\CorruptedDomainEventException::missingKey('was_paid', self::class);
         }
 
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
-            orderId: $primitives['order_id'] ?? 0,
-            orderNumber: OrderNumber::fromString($primitives['order_number'] ?? 'UNKNOWN'),
-            reason: $primitives['reason'] ?? 'unknown',
-            cancelledById: $primitives['cancelled_by_id'] ?? null,
-            wasPaid: $primitives['was_paid'] ?? false,
+            tenantId: TenantId::fromInt($primitives['tenant_id']),
+            orderId: $primitives['order_id'],
+            orderNumber: OrderNumber::fromString($primitives['order_number']),
+            reason: $primitives['reason'],
+            cancelledById: $primitives['cancelled_by_id'] ?? null, // nullable by design
+            wasPaid: (bool) $primitives['was_paid'],
             restoredEventId: $primitives['event_id'] ?? null,
             restoredOccurredAt: $primitives['occurred_at'] ?? null,
             restoredCorrelationId: $primitives['correlation_id'] ?? null,

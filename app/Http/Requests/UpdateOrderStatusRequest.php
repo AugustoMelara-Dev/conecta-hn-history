@@ -20,7 +20,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * - Automatic 422 response on failure
  * - Consistent with StoreOrderRequest pattern
  */
-class UpdateOrderStatusRequest extends FormRequest
+final class UpdateOrderStatusRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

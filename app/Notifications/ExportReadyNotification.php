@@ -52,7 +52,6 @@ final class ExportReadyNotification extends Notification implements ShouldQueue
      * - Returns disk identifier.
      * - NO signed URLs allowed here.
      *
-     * @param mixed $notifiable
      * @return array<string, mixed>
      */
     public function toArray(mixed $notifiable): array
@@ -75,9 +74,6 @@ final class ExportReadyNotification extends Notification implements ShouldQueue
      * - Real-time events are consumed immediately (within ms).
      * - We GENERATE a signed URL here to allow instant access via Toast
      *   without forcing the frontend to query the API immediately.
-     *
-     * @param mixed $notifiable
-     * @return BroadcastMessage
      */
     public function toBroadcast(mixed $notifiable): BroadcastMessage
     {

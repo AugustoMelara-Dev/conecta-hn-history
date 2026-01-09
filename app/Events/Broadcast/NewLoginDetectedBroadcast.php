@@ -10,7 +10,6 @@ use App\Traits\LogsBroadcasts;
 use App\Traits\ParsesUserAgent;
 use DateTimeImmutable;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Foundation\Events\Dispatchable;
 
 /**
@@ -24,16 +23,9 @@ final class NewLoginDetectedBroadcast implements BroadcastableNotification
 
     // SRE: Fail-Fast Configuration
     public $tries = 1;
+
     public $timeout = 30;
 
-    /**
-     * @param int $userId
-     * @param int $tenantId
-     * @param string $userEmail
-     * @param string $ipAddress
-     * @param string|null $userAgent
-     * @param DateTimeImmutable $loginAt
-     */
     public function __construct(
         public int $userId,
         public int $tenantId,
@@ -116,7 +108,7 @@ final class NewLoginDetectedBroadcast implements BroadcastableNotification
         return [
             // Versioning
             '_version' => self::PAYLOAD_VERSION,
-            '_timestamp' => (new DateTimeImmutable())->format(DateTimeImmutable::ATOM),
+            '_timestamp' => (new DateTimeImmutable)->format(DateTimeImmutable::ATOM),
 
             // UI Contract
             'title' => __('notifications.new_login.title'),
@@ -127,7 +119,7 @@ final class NewLoginDetectedBroadcast implements BroadcastableNotification
             ]),
             'status' => 'security_alert',
             'icon' => 'shield-alert',
-            
+
             // Domain Data
             'tenant_id' => $this->tenantId,
             'user_id' => $this->userId,

@@ -24,7 +24,7 @@ class CategoryObserver
     /**
      * Handle the Category "saved" event (covers both create and update).
      *
-     * @param Category $category The category instance that was saved
+     * @param  Category  $category  The category instance that was saved
      */
     public function saved(Category $category): void
     {
@@ -34,7 +34,7 @@ class CategoryObserver
     /**
      * Handle the Category "deleted" event.
      *
-     * @param Category $category The category instance that was deleted
+     * @param  Category  $category  The category instance that was deleted
      */
     public function deleted(Category $category): void
     {
@@ -47,8 +47,8 @@ class CategoryObserver
      * DEFENSIVE: Wrapped in try-catch to prevent cache failures
      * from breaking data operations.
      *
-     * @param Category $category The category instance
-     * @param string $event The event type for logging
+     * @param  Category  $category  The category instance
+     * @param  string  $event  The event type for logging
      */
     private function invalidateRegistrationCache(Category $category, string $event): void
     {

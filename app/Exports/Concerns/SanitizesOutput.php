@@ -42,12 +42,12 @@ trait SanitizesOutput
      * - Always escape: = @ TAB CR LF
      * - For + and -: Only escape if the value is NOT a valid number
      *
-     * @param mixed $value The value to sanitize
+     * @param  mixed  $value  The value to sanitize
      * @return mixed The sanitized value (strings are escaped, others pass through)
      */
     protected function sanitize(mixed $value): mixed
     {
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return $value;
         }
 
@@ -58,7 +58,7 @@ trait SanitizesOutput
         // Check for definitely dangerous prefixes (always escape)
         foreach (self::DANGEROUS_PREFIXES as $prefix) {
             if (str_starts_with($value, $prefix)) {
-                return "'" . $value;
+                return "'".$value;
             }
         }
 
@@ -72,7 +72,7 @@ trait SanitizesOutput
                 }
 
                 // It's a formula or command, escape it
-                return "'" . $value;
+                return "'".$value;
             }
         }
 
@@ -99,24 +99,23 @@ trait SanitizesOutput
     /**
      * Sanitize an entire array of values.
      *
-     * @param array<mixed> $values
+     * @param  array<mixed>  $values
      * @return array<mixed>
      */
     protected function sanitizeAll(array $values): array
     {
-        return array_map(fn($v) => $this->sanitize($v), $values);
+        return array_map(fn ($v) => $this->sanitize($v), $values);
     }
 
     /**
      * Check if a value contains a potential CSV injection attempt.
      * Use for logging/alerting purposes.
      *
-     * @param mixed $value
      * @return bool Returns true if this looks like an attack attempt
      */
     protected function detectsInjectionAttempt(mixed $value): bool
     {
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return false;
         }
 
@@ -129,7 +128,7 @@ trait SanitizesOutput
 
         // Check for numeric prefixes that aren't actually numbers
         foreach (self::NUMERIC_PREFIXES as $prefix) {
-            if (str_starts_with($value, $prefix) && !$this->isLegitimateNumber($value)) {
+            if (str_starts_with($value, $prefix) && ! $this->isLegitimateNumber($value)) {
                 // Additional heuristic: formulas often contain pipes, exclamation marks, or parentheses
                 if (preg_match('/[\|!()]/', $value)) {
                     return true;

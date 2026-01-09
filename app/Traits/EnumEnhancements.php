@@ -53,7 +53,7 @@ trait EnumEnhancements
     public static function options(): array
     {
         return collect(self::cases())
-            ->mapWithKeys(fn(self $case) => [$case->value => $case->label()])
+            ->mapWithKeys(fn (self $case) => [$case->value => $case->label()])
             ->toArray();
     }
 
@@ -74,7 +74,7 @@ trait EnumEnhancements
      */
     public static function validationRule(): string
     {
-        return 'in:' . implode(',', self::values());
+        return 'in:'.implode(',', self::values());
     }
 
     /**
@@ -106,11 +106,11 @@ trait EnumEnhancements
     public static function fromValue(string $value): self
     {
         $enum = self::tryFrom($value);
-        
+
         if ($enum === null) {
             $validValues = implode(', ', self::values());
             throw new \InvalidArgumentException(
-                "Invalid value '{$value}' for " . self::class . ". Valid values: {$validValues}"
+                "Invalid value '{$value}' for ".self::class.". Valid values: {$validValues}"
             );
         }
 

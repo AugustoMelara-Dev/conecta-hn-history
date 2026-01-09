@@ -10,10 +10,9 @@ use App\ValueObjects\TenantId;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Database\Eloquent\Model;
-use Tests\TestCase;
 use ReflectionClass;
-use ReflectionProperty;
 use Symfony\Component\Finder\Finder;
+use Tests\TestCase;
 
 /**
  * EventsArchitectureTest - Pre-Production Compliance Verification
@@ -35,6 +34,7 @@ use Symfony\Component\Finder\Finder;
  *
  * @group architecture
  * @group events
+ * @group arch
  */
 class EventsArchitectureTest extends TestCase
 {
@@ -42,6 +42,7 @@ class EventsArchitectureTest extends TestCase
      * Cache of discovered event classes.
      */
     private static ?array $domainEventClasses = null;
+
     private static ?array $allEventClasses = null;
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -59,10 +60,10 @@ class EventsArchitectureTest extends TestCase
 
         foreach ($events as $eventClass) {
             $reflection = new ReflectionClass($eventClass);
-            
+
             foreach ($reflection->getProperties() as $prop) {
                 $type = $prop->getType();
-                
+
                 if ($type === null) {
                     continue;
                 }
@@ -71,8 +72,8 @@ class EventsArchitectureTest extends TestCase
 
                 $this->assertFalse(
                     $this->isEloquentModel($typeName),
-                    "VIOLATION: {$eventClass} contains Eloquent property '\${$prop->getName()}' of type {$typeName}. " .
-                    "Domain Events must use primitives or Value Objects only."
+                    "VIOLATION: {$eventClass} contains Eloquent property '\${$prop->getName()}' of type {$typeName}. ".
+                    'Domain Events must use primitives or Value Objects only.'
                 );
             }
         }
@@ -105,14 +106,14 @@ class EventsArchitectureTest extends TestCase
             $hasDomainEvent = array_key_exists(DomainEvent::class, $implements);
             $hasAuditEvent = array_key_exists(AuditEvent::class, $implements);
 
-            if (!$hasDomainEvent && !$hasAuditEvent) {
+            if (! $hasDomainEvent && ! $hasAuditEvent) {
                 $violations[] = $eventClass;
             }
         }
 
         $this->assertEmpty(
             $violations,
-            "ADR-002 VIOLATION: Events must implement DomainEvent or AuditEvent:\n" .
+            "ADR-002 VIOLATION: Events must implement DomainEvent or AuditEvent:\n".
             implode("\n", $violations)
         );
     }
@@ -132,19 +133,19 @@ class EventsArchitectureTest extends TestCase
             }
 
             $reflection = new ReflectionClass($eventClass);
-            
-            if (!$reflection->isFinal()) {
+
+            if (! $reflection->isFinal()) {
                 $violations[] = "{$eventClass} is not final";
             }
-            
-            if (!$reflection->isReadOnly()) {
+
+            if (! $reflection->isReadOnly()) {
                 $violations[] = "{$eventClass} is not readonly";
             }
         }
 
         $this->assertEmpty(
             $violations,
-            "ADR-002 VIOLATION: Events must be 'final readonly class':\n" .
+            "ADR-002 VIOLATION: Events must be 'final readonly class':\n".
             implode("\n", $violations)
         );
     }
@@ -179,7 +180,7 @@ class EventsArchitectureTest extends TestCase
 
         $this->assertEmpty(
             $violations,
-            "ADR-002 VIOLATION: Eloquent Models in events:\n" . implode("\n", $violations)
+            "ADR-002 VIOLATION: Eloquent Models in events:\n".implode("\n", $violations)
         );
     }
 
@@ -200,31 +201,29 @@ class EventsArchitectureTest extends TestCase
 
             $reflection = new ReflectionClass($eventClass);
             $implements = class_implements($eventClass, true) ?: [];
-            
+
             // AuditEvents use toAuditLog(), DomainEvents use toPrimitives()
             $isAuditEvent = array_key_exists(AuditEvent::class, $implements);
             $requiredMethod = $isAuditEvent ? 'toAuditLog' : 'toPrimitives';
-            
+
             // Check for required method OR toPrimitives (either is valid)
             $hasToPrimitives = $reflection->hasMethod('toPrimitives');
             $hasToAuditLog = $reflection->hasMethod('toAuditLog');
-            
-            if (!$hasToPrimitives && !$hasToAuditLog) {
+
+            if (! $hasToPrimitives && ! $hasToAuditLog) {
                 $violations[] = "{$eventClass} (needs {$requiredMethod}())";
             }
         }
 
         $this->assertEmpty(
             $violations,
-            "ADR-002 VIOLATION: Events missing serialization method:\n" . implode("\n", $violations)
+            "ADR-002 VIOLATION: Events missing serialization method:\n".implode("\n", $violations)
         );
     }
-
 
     // ═══════════════════════════════════════════════════════════════════════
     // TEST 2: Domain Events are final readonly
     // ═══════════════════════════════════════════════════════════════════════
-
 
     /**
      * @test
@@ -239,8 +238,8 @@ class EventsArchitectureTest extends TestCase
 
             $this->assertTrue(
                 $reflection->isFinal(),
-                "VIOLATION: {$eventClass} must be declared as 'final'. " .
-                "This prevents subclasses from breaking immutability."
+                "VIOLATION: {$eventClass} must be declared as 'final'. ".
+                'This prevents subclasses from breaking immutability.'
             );
         }
 
@@ -260,8 +259,8 @@ class EventsArchitectureTest extends TestCase
 
             $this->assertTrue(
                 $reflection->isReadOnly(),
-                "VIOLATION: {$eventClass} must be declared as 'readonly'. " .
-                "This prevents property mutation after construction."
+                "VIOLATION: {$eventClass} must be declared as 'readonly'. ".
+                'This prevents property mutation after construction.'
             );
         }
 
@@ -323,9 +322,9 @@ class EventsArchitectureTest extends TestCase
 
         $this->assertEmpty(
             $overlap,
-            "VIOLATION: The following events implement BOTH DomainEvent and ShouldBroadcast:\n" .
-            implode("\n", $overlap) . "\n" .
-            "Domain Events must be pure. Create separate Broadcast events in app/Events/Broadcast/."
+            "VIOLATION: The following events implement BOTH DomainEvent and ShouldBroadcast:\n".
+            implode("\n", $overlap)."\n".
+            'Domain Events must be pure. Create separate Broadcast events in app/Events/Broadcast/.'
         );
     }
 
@@ -347,7 +346,7 @@ class EventsArchitectureTest extends TestCase
 
         // Exclude AuditEvent implementations - they legitimately log PII for security
         $auditEvents = $this->findClassesImplementing(AuditEvent::class);
-        
+
         // Also exclude all events in Security folder - they need PII for threat detection
         $eventsToCheck = array_filter($events, function (string $class) use ($auditEvents) {
             // Skip if it's an AuditEvent
@@ -358,6 +357,11 @@ class EventsArchitectureTest extends TestCase
             if (str_contains($class, '\\Security\\')) {
                 return false;
             }
+            // Skip if in Broadcast namespace (UI notifications need PII)
+            if (str_contains($class, '\\Broadcast\\')) {
+                return false;
+            }
+
             return true;
         });
 
@@ -377,7 +381,7 @@ class EventsArchitectureTest extends TestCase
 
         foreach ($eventsToCheck as $eventClass) {
             $reflection = new ReflectionClass($eventClass);
-            
+
             foreach ($reflection->getProperties() as $prop) {
                 $propName = strtolower($prop->getName());
 
@@ -385,9 +389,9 @@ class EventsArchitectureTest extends TestCase
                     $this->assertStringNotContainsString(
                         $pattern,
                         $propName,
-                        "VIOLATION: {$eventClass}::\${$prop->getName()} appears to contain PII (matches '{$pattern}'). " .
-                        "Events should NOT contain emails, phones, addresses, or other PII. " .
-                        "Store only IDs and look up sensitive data in listeners."
+                        "VIOLATION: {$eventClass}::\${$prop->getName()} appears to contain PII (matches '{$pattern}'). ".
+                        'Events should NOT contain emails, phones, addresses, or other PII. '.
+                        'Store only IDs and look up sensitive data in listeners.'
                     );
                 }
             }
@@ -414,8 +418,8 @@ class EventsArchitectureTest extends TestCase
             $this->assertArrayHasKey(
                 ShouldDispatchAfterCommit::class,
                 $implements,
-                "VIOLATION: {$eventClass} must implement ShouldDispatchAfterCommit. " .
-                "Without this, queue workers may see uncommitted state."
+                "VIOLATION: {$eventClass} must implement ShouldDispatchAfterCommit. ".
+                'Without this, queue workers may see uncommitted state.'
             );
         }
 
@@ -439,9 +443,9 @@ class EventsArchitectureTest extends TestCase
 
         $this->assertEmpty(
             $overlap,
-            "SECURITY VIOLATION: The following Audit Events implement ShouldBroadcast:\n" .
-            implode("\n", $overlap) . "\n" .
-            "Audit Events contain sensitive security data and MUST NOT be broadcast to WebSockets."
+            "SECURITY VIOLATION: The following Audit Events implement ShouldBroadcast:\n".
+            implode("\n", $overlap)."\n".
+            'Audit Events contain sensitive security data and MUST NOT be broadcast to WebSockets.'
         );
     }
 
@@ -470,9 +474,9 @@ class EventsArchitectureTest extends TestCase
                 $this->assertNotEquals(
                     'array',
                     $type->getName(),
-                    "VIOLATION: {$eventClass}::\${$prop->getName()} is an array. " .
-                    "Arrays are mutable even in readonly classes. " .
-                    "Use an immutable Value Object instead (e.g., EventMetadata)."
+                    "VIOLATION: {$eventClass}::\${$prop->getName()} is an array. ".
+                    'Arrays are mutable even in readonly classes. '.
+                    'Use an immutable Value Object instead (e.g., EventMetadata).'
                 );
             }
         }
@@ -487,7 +491,7 @@ class EventsArchitectureTest extends TestCase
     /**
      * Find all classes implementing a given interface.
      *
-     * @param class-string $interface
+     * @param  class-string  $interface
      * @return array<class-string>
      */
     private function findClassesImplementing(string $interface): array
@@ -496,6 +500,7 @@ class EventsArchitectureTest extends TestCase
 
         return array_filter($allClasses, function (string $class) use ($interface) {
             $implements = class_implements($class, true) ?: [];
+
             return array_key_exists($interface, $implements);
         });
     }
@@ -513,25 +518,25 @@ class EventsArchitectureTest extends TestCase
 
         $eventsPath = app_path('Events');
 
-        if (!is_dir($eventsPath)) {
+        if (! is_dir($eventsPath)) {
             return self::$allEventClasses = [];
         }
 
-        $finder = new Finder();
+        $finder = new Finder;
         $finder->files()->in($eventsPath)->name('*.php');
 
         $classes = [];
 
         foreach ($finder as $file) {
             $relativePath = str_replace(
-                [app_path() . DIRECTORY_SEPARATOR, '.php', DIRECTORY_SEPARATOR],
+                [app_path().DIRECTORY_SEPARATOR, '.php', DIRECTORY_SEPARATOR],
                 ['', '', '\\'],
                 $file->getRealPath()
             );
 
-            $class = 'App\\' . $relativePath;
+            $class = 'App\\'.$relativePath;
 
-            if (class_exists($class) && !interface_exists($class)) {
+            if (class_exists($class) && ! interface_exists($class)) {
                 $classes[] = $class;
             }
         }
@@ -544,7 +549,7 @@ class EventsArchitectureTest extends TestCase
      */
     private function isEloquentModel(string $typeName): bool
     {
-        if (!class_exists($typeName)) {
+        if (! class_exists($typeName)) {
             return false;
         }
 

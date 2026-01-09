@@ -4,22 +4,27 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
-use App\Models\User;
+use App\Application\Shared\DTOs\Mail\UserMailData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
 
+/**
+ * WelcomeUserMail - Refactored for Safe Serialization
+ *
+ * Uses UserMailData DTO instead of Eloquent Model to avoid
+ * SerializesModels race conditions in queued mail.
+ */
 class WelcomeUserMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable;
 
     /**
      * Create a new message instance.
      */
     public function __construct(
-        public User $user
+        public readonly UserMailData $user
     ) {}
 
     /**

@@ -40,11 +40,12 @@ use Illuminate\Support\Collection;
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * @implements Arrayable<string, mixed>
+ *
  * @throws MissingRequiredDataException When required fields are missing
  * @throws InvalidBusinessRuleException When values violate business rules
  * @throws PayloadTooLargeException When items array exceeds safe limits
  */
-final readonly class OrderData implements Arrayable, \JsonSerializable
+final readonly class OrderData implements \JsonSerializable, Arrayable
 {
     /**
      * Maximum number of line items allowed.
@@ -53,7 +54,7 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
     private const MAX_ITEMS = 2000;
 
     /**
-     * @param Collection<int, OrderItemData> $items
+     * @param  Collection<int, OrderItemData>  $items
      */
     public function __construct(
         public string $customerEmail,
@@ -84,17 +85,18 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
     public static function fromRequest(Request $request): self
     {
         // Use validated() if available (from FormRequest), else raw input
-        $data = method_exists($request, 'validated') 
-            ? $request->validated() 
+        $data = method_exists($request, 'validated')
+            ? $request->validated()
             : $request->all();
-            
+
         return self::fromArray($data);
     }
 
     /**
      * Hydrate from array with STRICT validation.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
+     *
      * @throws MissingRequiredDataException When required fields are missing
      * @throws InvalidBusinessRuleException When values violate business rules
      * @throws PayloadTooLargeException When items exceed MAX_ITEMS limit
@@ -105,13 +107,13 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
         // PHASE 1: Payload Size Validation (DoS Protection)
         // ═══════════════════════════════════════════════════════════════════════
         $rawItems = $data['items'] ?? null;
-        
-        if ($rawItems === null || !is_array($rawItems)) {
+
+        if ($rawItems === null || ! is_array($rawItems)) {
             throw MissingRequiredDataException::forField('items', 'OrderData');
         }
 
         $itemCount = count($rawItems);
-        
+
         if ($itemCount === 0) {
             throw InvalidBusinessRuleException::emptyItems();
         }
@@ -134,7 +136,7 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
         // Validate each item is an array before processing
         $items = collect();
         foreach ($rawItems as $index => $item) {
-            if (!is_array($item)) {
+            if (! is_array($item)) {
                 throw InvalidBusinessRuleException::custom(
                     "Item at index {$index} is not a valid array",
                     ['index' => $index, 'type' => gettype($item)]
@@ -147,12 +149,12 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
         // PHASE 4: Calculate Totals (NEVER trust client-side calculations)
         // ═══════════════════════════════════════════════════════════════════════
         $calculatedSubtotal = $items->reduce(
-            static fn(Money $carry, OrderItemData $item): Money => $carry->add($item->subtotal),
+            static fn (Money $carry, OrderItemData $item): Money => $carry->add($item->subtotal),
             Money::zero()
         );
 
         $taxRate = isset($data['tax_rate']) ? (float) $data['tax_rate'] : 15.0;
-        
+
         if ($taxRate < 0 || $taxRate > 100) {
             throw InvalidBusinessRuleException::custom(
                 "Invalid tax rate: {$taxRate}%. Must be between 0 and 100.",
@@ -169,7 +171,7 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
         // Validate discount doesn't exceed subtotal
         if ($discount->cents() > $calculatedSubtotal->cents()) {
             throw InvalidBusinessRuleException::custom(
-                "Discount cannot exceed subtotal.",
+                'Discount cannot exceed subtotal.',
                 ['discount' => $discount->cents(), 'subtotal' => $calculatedSubtotal->cents()]
             );
         }
@@ -179,7 +181,7 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
         return new self(
             customerEmail: (string) $customerEmail,
             customerName: (string) ($data['customer_name'] ?? $data['name'] ?? 'Guest'),
-            customerPhone: isset($data['customer_phone']) ? (string) $data['customer_phone'] : 
+            customerPhone: isset($data['customer_phone']) ? (string) $data['customer_phone'] :
                           (isset($data['phone']) ? (string) $data['phone'] : null),
             items: $items,
             subtotal: $calculatedSubtotal,
@@ -206,7 +208,7 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
             'customer_email' => $this->customerEmail,
             'customer_name' => $this->customerName,
             'customer_phone' => $this->customerPhone,
-            'items' => $this->items->map(fn(OrderItemData $item) => $item->toArray())->all(),
+            'items' => $this->items->map(fn (OrderItemData $item) => $item->toArray())->all(),
             'item_count' => $this->items->count(),
             'subtotal' => [
                 'cents' => $this->subtotal->cents(),
@@ -253,12 +255,12 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
 
     public function hasCoupon(): bool
     {
-        return !empty($this->couponCode);
+        return ! empty($this->couponCode);
     }
 
     public function getTotalQuantity(): int
     {
-        return $this->items->sum(fn(OrderItemData $item) => $item->quantity);
+        return $this->items->sum(fn (OrderItemData $item) => $item->quantity);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -272,6 +274,7 @@ final readonly class OrderData implements Arrayable, \JsonSerializable
         }
 
         $cents = $data[$centsFallback] ?? $data[$key] ?? $default;
+
         return Money::fromCents((int) $cents);
     }
 }

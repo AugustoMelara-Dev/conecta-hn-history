@@ -30,8 +30,8 @@ trait LogsBroadcasts
      * This method is fault-tolerant - it will never throw an exception
      * that could interrupt the broadcast flow.
      *
-     * @param string $eventName The event name (e.g., 'order.paid')
-     * @param array<string, mixed> $context Additional context data
+     * @param  string  $eventName  The event name (e.g., 'order.paid')
+     * @param  array<string, mixed>  $context  Additional context data
      */
     protected function logBroadcast(string $eventName, array $context = []): void
     {
@@ -52,9 +52,9 @@ trait LogsBroadcasts
     /**
      * Log broadcast failure.
      *
-     * @param string $eventName The event name
-     * @param \Throwable $exception The exception that occurred
-     * @param array<string, mixed> $context Additional context
+     * @param  string  $eventName  The event name
+     * @param  \Throwable  $exception  The exception that occurred
+     * @param  array<string, mixed>  $context  Additional context
      */
     protected function logBroadcastFailure(string $eventName, \Throwable $exception, array $context = []): void
     {
@@ -78,7 +78,7 @@ trait LogsBroadcasts
     private function resolveLogChannel(): string
     {
         // Check if broadcasting channel is configured
-        if (config("logging.channels." . self::BROADCAST_LOG_CHANNEL)) {
+        if (config('logging.channels.'.self::BROADCAST_LOG_CHANNEL)) {
             return self::BROADCAST_LOG_CHANNEL;
         }
 

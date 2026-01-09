@@ -24,13 +24,21 @@ final class InvalidCouponException extends DomainException
     // ERROR CODES - CONSTANTS
     // ═══════════════════════════════════════════════════════════════════════════════
     public const NOT_FOUND = 'NOT_FOUND';
+
     public const INACTIVE = 'INACTIVE';
+
     public const NOT_STARTED = 'NOT_STARTED';
+
     public const EXPIRED = 'EXPIRED';
+
     public const DEPLETED = 'DEPLETED';
+
     public const REQUIRE_LOGIN = 'REQUIRE_LOGIN';
+
     public const USER_LIMIT_REACHED = 'USER_LIMIT_REACHED';
+
     public const MIN_SPEND_NOT_MET = 'MIN_SPEND_NOT_MET';
+
     public const NO_TENANT_CONTEXT = 'NO_TENANT_CONTEXT';
 
     public function __construct(
@@ -64,8 +72,6 @@ final class InvalidCouponException extends DomainException
     {
         return $this->errorCodeValue;
     }
-
-
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // FACTORY METHODS
@@ -109,8 +115,9 @@ final class InvalidCouponException extends DomainException
     public static function minSpendNotMet(float $minSpend, float $cartTotal): self
     {
         $remaining = $minSpend - $cartTotal;
+
         return new self(
-            'Agrega L. ' . number_format($remaining, 2) . ' más para usar este cupón',
+            'Agrega L. '.number_format($remaining, 2).' más para usar este cupón',
             self::MIN_SPEND_NOT_MET,
             [
                 'min_spend' => $minSpend,

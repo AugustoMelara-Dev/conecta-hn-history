@@ -8,6 +8,7 @@ use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\OrderNumber;
 use App\ValueObjects\TenantId;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * OrderDelivered - Pure Domain Event for Delivery Completion
@@ -32,9 +33,9 @@ use App\ValueObjects\TenantId;
  * ║    - SendDeliveryConfirmationEmailListener                              ║
  * ║    - RequestReviewListener                                              ║
  * ║    - → OrderDeliveredBroadcastListener (fires UI event)                 ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * ║  ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class OrderDelivered implements DomainEvent
+final readonly class OrderDelivered implements DomainEvent, ShouldDispatchAfterCommit
 {
     use HasDomainMetadata;
 

@@ -47,7 +47,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->authGuard('web')
-            
+
             // ═══════════════════════════════════════════════════════════════
             // MULTI-TENANCY ARCHITECTURE
             // ═══════════════════════════════════════════════════════════════
@@ -191,13 +191,19 @@ class AdminPanelProvider extends PanelProvider
                 return;
             }
 
-            // Master admin always has access
-            if (auth()->user()->email === 'admin@conectahn.com') {
+            $user = auth()->user();
+            $superAdmins = config('auth.super_admins', []);
+
+            // Check if user is whitelisted super admin
+            $isWhitelistedAdmin = $user->role === 'super_admin'
+                && in_array($user->email, $superAdmins, true);
+
+            if ($isWhitelistedAdmin) {
                 return;
             }
 
-            // Other admins must have super_admin role (using role column, not Spatie)
-            if (auth()->user()->role !== 'super_admin') {
+            // Other admins must have super_admin role
+            if ($user->role !== 'super_admin') {
                 abort(403, 'Acceso denegado. Se requiere rol de Super Admin.');
             }
         });

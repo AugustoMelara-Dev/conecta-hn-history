@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\PaymentMethod;
-use App\Models\Traits\BelongsToTenant;
+use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -216,7 +215,7 @@ class Order extends Model
 
     public function getFormattedTotalAttribute(): string
     {
-        return 'L. '.number_format($this->total, 2);
+        return 'L. '.number_format((float) $this->total, 2);
     }
 
     public function getStatusLabelAttribute(): string
@@ -397,6 +396,67 @@ class Order extends Model
         $message = rawurlencode($this->buildWhatsAppMessage());
 
         return "https://wa.me/{$cleanPhone}?text={$message}";
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // RICH DOMAIN BEHAVIOR (DDD)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Cancel this order with business rule enforcement.
+     *
+     * INVARIANTS PROTECTED:
+     * - Cannot cancel orders that are already shipped/delivered/completed
+     * - Idempotent: Cancelling an already cancelled order is a no-op
+     *
+     * @param string $reason Mandatory cancellation reason (audited)
+     * @param int $cancelledByUserId User who initiated the cancellation
+     * @return void
+     * @throws \App\Domain\Sales\Exceptions\OrderCannotBeCancelledException
+     */
+    public function cancel(string $reason, int $cancelledByUserId): void
+    {
+        // IDEMPOTENCY: Already cancelled, nothing to do
+        if ($this->status === self::STATUS_CANCELLED) {
+            return;
+        }
+
+        // INVARIANT: Cannot cancel orders that have progressed past Ready
+        $terminalStatuses = [self::STATUS_DELIVERED];
+        if (in_array($this->status, $terminalStatuses, true)) {
+            throw new \App\Domain\Sales\Exceptions\OrderCannotBeCancelledException(
+                "Order #{$this->order_number} cannot be cancelled: already {$this->status}"
+            );
+        }
+
+        // MUTATION: Apply cancellation state
+        $this->status = self::STATUS_CANCELLED;
+        $this->cancellation_reason = $reason;
+        $this->cancelled_at = now();
+        $this->cancelled_by = $cancelledByUserId;
+    }
+
+    /**
+     * Check if this order can be cancelled.
+     *
+     * @return bool
+     */
+    public function canBeCancelled(): bool
+    {
+        return !in_array($this->status, [
+            self::STATUS_DELIVERED,
+            self::STATUS_CANCELLED,
+        ], true);
+    }
+
+    /**
+     * Check if payment was made for this order.
+     *
+     * @return bool
+     */
+    public function wasPaid(): bool
+    {
+        return $this->payment_status === 'paid' && $this->paid_at !== null;
     }
 
     /**

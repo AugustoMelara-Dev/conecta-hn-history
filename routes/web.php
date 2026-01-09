@@ -19,6 +19,8 @@ use Inertia\Inertia;
 |
 */
 
+require __DIR__.'/tenant.php';
+
 // ═══════════════════════════════════════════════════════════════════════
 // 1. LANDING PAGE: React/Inertia (Welcome.jsx)
 // ═══════════════════════════════════════════════════════════════════════
@@ -45,12 +47,13 @@ Route::get('/ciudades', [DirectoryController::class, 'index'])->name('cities.ind
 Route::get('/categoria/{category:slug}', [DirectoryController::class, 'byCategory'])->name('category.show');
 
 // ═══════════════════════════════════════════════════════════════════════
-// 3. REGISTRO DE NEGOCIOS (Mantiene Livewire por ahora - Fase 2)
+// 3. REGISTRO DE NEGOCIOS [MIGRATED TO REACT - 2026-01-08]
 // ═══════════════════════════════════════════════════════════════════════
-Route::get('/registrar-negocio', \App\Livewire\Pages\RegisterTenant::class)->name('tenant.register');
+// [MIGRATED TO REACT] Route::get('/registrar-negocio', \App\Livewire\Pages\RegisterTenant::class)->name('tenant.register');
 
-// Página de Pago Pendiente (PRO Post-Registro)
-Route::get('/registro/pago-pendiente/{payment}', \App\Livewire\Pages\PaymentPending::class)->name('payment.pending');
+// [MIGRATED TO REACT] Página de Pago Pendiente (PRO Post-Registro)
+// Route::get('/registro/pago-pendiente/{payment}', \App\Livewire\Pages\PaymentPending::class)->name('payment.pending');
+Route::get('/registro/pago-pendiente/{payment}', [\App\Http\Controllers\Web\BillingController::class, 'showPaymentPending'])->name('payment.pending');
 
 // ═══════════════════════════════════════════════════════════════════════
 // Location API Routes
@@ -59,6 +62,7 @@ Route::post('/location/set', [LocationController::class, 'setCity'])->name('loca
 Route::post('/location/clear', [LocationController::class, 'clearCity'])->name('location.clear');
 Route::get('/api/cities', [LocationController::class, 'getCities'])->name('cities.all');
 Route::get('/api/search', [\App\Http\Controllers\Api\SearchController::class, 'index'])->name('api.search');
+Route::get('/api/check-slug', [\App\Http\Controllers\Web\RegistrationController::class, 'checkSlug'])->name('api.check-slug');
 
 // ... (Skip lines)
 
@@ -103,62 +107,67 @@ Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+// ═══════════════════════════════════════════════════════════════════════
+// TENANT INERTIA ROUTES (Must be loaded BEFORE wildcards)
+// ═══════════════════════════════════════════════════════════════════════
+
+
 Route::middleware('auth')->group(function () {
     // ═══════════════════════════════════════════════════════════════════
     // TENANT DASHBOARD (Owner Panel)
     // ═══════════════════════════════════════════════════════════════════
-    Route::get('/app/{tenant:slug}', \App\Livewire\Tenant\Dashboard::class)
-        ->name('tenant.dashboard');
+    // Route::get('/app/{tenant:slug}', \App\Livewire\Tenant\Dashboard::class)
+    //    ->name('tenant.dashboard');
 
     // ═══════════════════════════════════════════════════════════════════
     // UPGRADE TO PRO (Pricing Table + Payment Order)
     // ═══════════════════════════════════════════════════════════════════
-    Route::get('/upgrade/{tenant:slug}', \App\Livewire\Tenant\Upgrade::class)
-        ->name('tenant.upgrade');
+    // Route::get('/upgrade/{tenant:slug}', \App\Livewire\Tenant\Upgrade::class)
+    //    ->name('tenant.upgrade');
 
     // ═══════════════════════════════════════════════════════════════════
-    // PRODUCTS CRUD (Tenant Panel)
+    // PRODUCTS CRUD (Tenant Panel) - ARCHIVED: Migrated to React/Inertia
     // ═══════════════════════════════════════════════════════════════════
-    Route::get('/admin/products', \App\Livewire\Tenant\Products\Index::class)
-        ->name('tenant.products.index');
-    Route::get('/admin/products/create', \App\Livewire\Tenant\Products\Form::class)
-        ->name('tenant.products.create');
-    Route::get('/admin/products/{product}/edit', \App\Livewire\Tenant\Products\Form::class)
-        ->name('tenant.products.edit');
+    // Route::get('/admin/products', \App\Livewire\Tenant\Products\Index::class)
+    //     ->name('tenant.products.index');
+    // Route::get('/admin/products/create', \App\Livewire\Tenant\Products\Form::class)
+    //     ->name('tenant.products.create');
+    // Route::get('/admin/products/{product}/edit', \App\Livewire\Tenant\Products\Form::class)
+    //     ->name('tenant.products.edit');
 
     // ═══════════════════════════════════════════════════════════════════
-    // ORDERS MANAGEMENT (Kanban PRO / List FREE)
+    // ORDERS MANAGEMENT (Kanban PRO / List FREE) - ARCHIVED
     // ═══════════════════════════════════════════════════════════════════
-    Route::get('/admin/orders', \App\Livewire\Tenant\Orders\Manage::class)
-        ->name('tenant.orders.manage');
+    // Route::get('/admin/orders', \App\Livewire\Tenant\Orders\Manage::class)
+    //     ->name('tenant.orders.manage');
 
     // ═══════════════════════════════════════════════════════════════════
-    // REPORTS & ANALYTICS (Tiered Access)
+    // REPORTS & ANALYTICS (Tiered Access) - ARCHIVED
     // ═══════════════════════════════════════════════════════════════════
-    Route::get('/admin/reports', \App\Livewire\Tenant\Reports\Index::class)
-        ->name('tenant.reports.index');
+    // Route::get('/admin/reports', \App\Livewire\Tenant\Reports\Index::class)
+    //     ->name('tenant.reports.index');
 
     // ═══════════════════════════════════════════════════════════════════
-    // SETTINGS (Branding, Schedule, Security)
+    // SETTINGS (Branding, Schedule, Security) - ARCHIVED
     // ═══════════════════════════════════════════════════════════════════
-    Route::get('/admin/settings', \App\Livewire\Tenant\Settings\Profile::class)
-        ->name('tenant.settings.profile');
-    Route::get('/admin/settings/schedule', \App\Livewire\Tenant\Settings\Schedule::class)
-        ->name('tenant.settings.schedule');
-    Route::get('/admin/settings/security', \App\Livewire\Tenant\Settings\Security::class)
-        ->name('tenant.settings.security');
+    // Route::get('/admin/settings', \App\Livewire\Tenant\Settings\Profile::class)
+    //     ->name('tenant.settings.profile');
+    // Route::get('/admin/settings/schedule', \App\Livewire\Tenant\Settings\Schedule::class)
+    //     ->name('tenant.settings.schedule');
+    // Route::get('/admin/settings/security', \App\Livewire\Tenant\Settings\Security::class)
+    //     ->name('tenant.settings.security');
 
     // ═══════════════════════════════════════════════════════════════════
-    // MARKETING (WhatsApp Config, QR Generation)
+    // MARKETING (WhatsApp Config, QR Generation) - ARCHIVED
     // ═══════════════════════════════════════════════════════════════════
-    Route::get('/admin/marketing', \App\Livewire\Tenant\Marketing\Index::class)
-        ->name('tenant.marketing.index');
+    // Route::get('/admin/marketing', \App\Livewire\Tenant\Marketing\Index::class)
+    //     ->name('tenant.marketing.index');
 
     // ═══════════════════════════════════════════════════════════════════
     // BILLING (Subscription & Payments)
     // ═══════════════════════════════════════════════════════════════════
-    Route::get('/admin/billing', \App\Livewire\Tenant\Billing\Index::class)
-        ->name('tenant.billing.index');
+    // Route::get('/admin/billing', \App\Livewire\Tenant\Billing\Index::class)
+    //    ->name('tenant.billing.index');
 
     // Unified Profile/Account Route
     Route::get('/mi-cuenta', [ProfileController::class, 'edit'])->name('mi-cuenta.edit');
@@ -181,23 +190,10 @@ Route::middleware('auth')->group(function () {
 
 
     // ═══════════════════════════════════════════════════════════════════
-    // SHADOW LOGIN - Impersonation Exit Route
+    // SHADOW LOGIN - Impersonation Exit Route (SECURED)
     // ═══════════════════════════════════════════════════════════════════
-    Route::get('/impersonate/leave', function () {
-        $impersonatorId = session('impersonator_id');
-
-        if ($impersonatorId) {
-            session()->forget('impersonator_id');
-            session()->forget('impersonator_name');
-
-            $admin = \App\Models\User::find($impersonatorId);
-            if ($admin) {
-                \Illuminate\Support\Facades\Auth::login($admin);
-            }
-        }
-
-        return redirect('/admin');
-    })->name('impersonate.leave');
+    Route::get('/impersonate/leave', [\App\Http\Controllers\Auth\ImpersonationController::class, 'leave'])
+        ->name('impersonate.leave');
 });
 
 require __DIR__.'/auth.php';
@@ -219,4 +215,4 @@ require __DIR__.'/auth.php';
 // The public.php version includes full product/schedule data for React frontend
 // ═══════════════════════════════════════════════════════════════════════════
 
-require __DIR__.'/tenant.php';
+// Tenant routes moved to top to avoid wildcard shadowing

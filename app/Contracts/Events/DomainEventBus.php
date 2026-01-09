@@ -44,7 +44,7 @@ interface DomainEventBus
      * The implementation decides HOW to dispatch (sync, async, Kafka, etc.).
      * The domain service does NOT know about the underlying mechanism.
      *
-     * @param DomainEvent $event The domain event to publish
+     * @param  DomainEvent  $event  The domain event to publish
      */
     public function publish(DomainEvent $event): void;
 
@@ -54,7 +54,7 @@ interface DomainEventBus
      * Used when a single domain action produces multiple events.
      * Implementations should ensure all-or-nothing semantics.
      *
-     * @param DomainEvent ...$events The domain events to publish
+     * @param  DomainEvent  ...$events  The domain events to publish
      */
     public function publishMany(DomainEvent ...$events): void;
 }

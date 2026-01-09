@@ -37,7 +37,7 @@
     
     {{-- Styles --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @livewireStyles
+    {{-- Livewire styles removed - migrated to React/Inertia --}}
     
     {{-- Custom Styles Stack --}}
     @stack('styles')
@@ -55,10 +55,7 @@
         {{ $slot }}
     </main>
 
-    {{-- Global AuthModal (B2C Invisible Barrier) --}}
-    @guest
-        <livewire:auth.auth-modal />
-    @endguest
+    {{-- AuthModal removed - migrated to React GlobalLoginModal --}}
 
     {{-- Global Toast Notifications --}}
     @if(session('toast'))
@@ -140,7 +137,7 @@
         </div>
     </footer>
     
-    @livewireScripts
+    {{-- Livewire scripts removed - migrated to React/Inertia --}}
     
     {{-- Custom Scripts Stack --}}
     @stack('scripts')

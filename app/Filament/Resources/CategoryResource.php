@@ -21,10 +21,25 @@ use Illuminate\Support\Str;
 class CategoryResource extends Resource
 {
     // Strict Governance: Global Categories are managed ONLY by Super Admin
-    public static function canCreate(): bool { return auth()->user()?->isSuperAdmin() ?? false; }
-    public static function canEdit($record): bool { return auth()->user()?->isSuperAdmin() ?? false; }
-    public static function canDelete($record): bool { return auth()->user()?->isSuperAdmin() ?? false; }
-    public static function canDeleteAny(): bool { return auth()->user()?->isSuperAdmin() ?? false; }
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
 
     protected static ?string $model = Category::class;
 

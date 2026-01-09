@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\TenantProfileResource\Pages;
 
 use App\Filament\App\Resources\TenantProfileResource;
-use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
 class EditTenant extends EditRecord

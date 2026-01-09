@@ -40,15 +40,16 @@ final readonly class IpAddress
     public bool $isAnonymized;
 
     /**
-     * @param string $value The IP address string (IPv4 or IPv6)
-     * @param bool $isAnonymized Whether this instance is already anonymized
+     * @param  string  $value  The IP address string (IPv4 or IPv6)
+     * @param  bool  $isAnonymized  Whether this instance is already anonymized
+     *
      * @throws InvalidArgumentException If value is not a valid IP address
      */
     public function __construct(
         public string $value,
         bool $isAnonymized = false
     ) {
-        if (!filter_var($value, FILTER_VALIDATE_IP)) {
+        if (! filter_var($value, FILTER_VALIDATE_IP)) {
             throw new InvalidArgumentException(
                 "Invalid IP address format: {$value}"
             );
@@ -140,17 +141,17 @@ final readonly class IpAddress
     {
         // Expand the IPv6 address to full 8 groups
         $packed = inet_pton($this->value);
-        
+
         if ($packed === false) {
             return new self('::', true);
         }
 
         // Zero the last 10 bytes (80 bits), keeping first 6 bytes (48 bits)
         // This preserves the /48 prefix (typically organization/ISP allocation)
-        $masked = substr($packed, 0, 6) . str_repeat("\x00", 10);
+        $masked = substr($packed, 0, 6).str_repeat("\x00", 10);
 
         $anonymized = inet_ntop($masked);
-        
+
         if ($anonymized === false) {
             return new self('::', true);
         }
@@ -165,7 +166,7 @@ final readonly class IpAddress
      */
     public function isPrivate(): bool
     {
-        return !filter_var(
+        return ! filter_var(
             $this->value,
             FILTER_VALIDATE_IP,
             FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE

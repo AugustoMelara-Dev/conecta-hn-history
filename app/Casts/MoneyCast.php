@@ -40,7 +40,7 @@ use InvalidArgumentException;
 class MoneyCast implements CastsAttributes
 {
     /**
-     * @param string $currency Default currency for this attribute
+     * @param  string  $currency  Default currency for this attribute
      */
     public function __construct(
         protected string $currency = 'HNL'
@@ -49,11 +49,7 @@ class MoneyCast implements CastsAttributes
     /**
      * Transform the database value into a Money Value Object.
      *
-     * @param Model $model
-     * @param string $key
-     * @param mixed $value Raw database value (integer cents or null)
-     * @param array $attributes
-     * @return Money|null
+     * @param  mixed  $value  Raw database value (integer cents or null)
      */
     public function get(Model $model, string $key, mixed $value, array $attributes): ?Money
     {
@@ -68,11 +64,8 @@ class MoneyCast implements CastsAttributes
     /**
      * Transform the Money Value Object for database storage.
      *
-     * @param Model $model
-     * @param string $key
-     * @param mixed $value Money object, null, or (INVALID) primitive
-     * @param array $attributes
-     * @return int|null
+     * @param  mixed  $value  Money object, null, or (INVALID) primitive
+     *
      * @throws InvalidArgumentException if primitive type is passed
      */
     public function set(Model $model, string $key, mixed $value, array $attributes): ?int
@@ -97,13 +90,13 @@ class MoneyCast implements CastsAttributes
         // ═══════════════════════════════════════════════════════════════════════
         if (is_int($value) || is_float($value)) {
             throw new InvalidArgumentException(
-                "Cannot assign primitive type to '{$key}'. Use Money::fromCents() or Money::fromDecimal() instead. " .
+                "Cannot assign primitive type to '{$key}'. Use Money::fromCents() or Money::fromDecimal() instead. ".
                 "Example: \$model->{$key} = Money::fromDecimal({$value});"
             );
         }
 
         throw new InvalidArgumentException(
-            "Invalid type for '{$key}'. Expected Money object or null, got " . get_debug_type($value)
+            "Invalid type for '{$key}'. Expected Money object or null, got ".get_debug_type($value)
         );
     }
 }

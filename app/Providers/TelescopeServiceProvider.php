@@ -96,28 +96,23 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
     {
         Gate::define('viewTelescope', function ($user) {
             // ═══════════════════════════════════════════════════════════════
-            // WHITELIST: Explicit super admin emails
+            // WHITELIST: Super admin emails from environment config
             // ═══════════════════════════════════════════════════════════════
-            $superAdmins = [
-                'admin@conectahn.com',
-                'augusto@conectahn.com',
-                // Add more trusted admin emails here
-            ];
+            $superAdmins = config('auth.super_admins', []);
 
-            // Option 1: Email whitelist check
-            if (in_array($user->email, $superAdmins, true)) {
+            // Dual-gate: Role + Whitelist check
+            $hasSuperAdminRole = isset($user->role) && $user->role === 'super_admin';
+            $isWhitelisted = in_array($user->email ?? '', $superAdmins, true);
+
+            // Option 1: Role + Whitelist check (recommended)
+            if ($hasSuperAdminRole && $isWhitelisted) {
                 return true;
             }
 
-            // Option 2: Role-based check (if using roles)
-            if (property_exists($user, 'is_super_admin') && $user->is_super_admin) {
+            // Option 2: Whitelist-only check for production debugging
+            if ($isWhitelisted) {
                 return true;
             }
-
-            // Option 3: Permission-based check (if using Spatie Permissions)
-            // if ($user->hasRole('super-admin')) {
-            //     return true;
-            // }
 
             // Default: DENY access to everyone else
             return false;

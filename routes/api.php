@@ -1,313 +1,160 @@
 <?php
 
-use App\Http\Controllers\Api\CouponController;
-use App\Http\Controllers\Api\OrderController;
-use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\V1\CouponController;
+use App\Http\Controllers\Api\V1\OrderController;
+use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Auth\OtpController;
-use App\Http\Controllers\Api\InteractionController;
+use App\Http\Controllers\Api\V1\InteractionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AUTHENTICATED USER PROFILE
+// API V1 ROUTING GROUP
 // ═══════════════════════════════════════════════════════════════════════════
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware(['auth:sanctum', 'throttle:api']);
+Route::prefix('v1')->group(function () {
 
-// ═══════════════════════════════════════════════════════════════════════════
-// AUTHENTICATION: OTP Routes (Granular Rate Limiting Applied)
-// ═══════════════════════════════════════════════════════════════════════════
-//
-// SECURITY ARCHITECTURE:
-// - /generate: Uses 'api.otp-generation' limiter (3/min per IP)
-//              Prevents SMS Pumping fraud
-// - /verify: Uses 'api.verification' limiter (5/min per IP)
-//            Prevents brute-force dictionary attacks
-// ═══════════════════════════════════════════════════════════════════════════
-Route::prefix('otp')->group(function () {
-    // FINANCIAL FIREWALL: Strict SMS rate limit (3 per minute per IP)
-    Route::post('/generate', [OtpController::class, 'generate'])
-        ->middleware('throttle:api.otp-generation');
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AUTHENTICATED USER PROFILE
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    })->middleware(['auth:sanctum', 'throttle:api']);
 
-    // ANTI-ENUMERATION SHIELD: Verification rate limit (5 per minute per IP)
-    Route::post('/verify', [OtpController::class, 'verify'])
-        ->middleware('throttle:api.verification');
-});
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AUTHENTICATION: OTP Routes
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::prefix('otp')->group(function () {
+        Route::post('/generate', [OtpController::class, 'generate'])
+            ->middleware('throttle:api.otp-generation');
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PUBLIC ANALYTICS: Conversion event tracking (No tenant protection - public)
-// ═══════════════════════════════════════════════════════════════════════════
-Route::post('/interactions', [InteractionController::class, 'store'])
-    ->middleware('throttle:api');
+        Route::post('/verify', [OtpController::class, 'verify'])
+            ->middleware('throttle:api.verification');
+    });
 
-Route::post('/analytics/track', [\App\Http\Controllers\Api\AnalyticsController::class, 'track'])
-    ->middleware('throttle:api');  // Uses global API limiter (60/min)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PUBLIC ANALYTICS: Tenant-Aware Protection
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::post('/interactions', [InteractionController::class, 'store'])
+        ->middleware('throttle:tenant-aware'); // REPLACED: analytics-protection -> tenant-aware
 
-// Beacon API endpoint for conversion tracking (always returns 200)
-Route::post('/analytics/conversion', [\App\Http\Controllers\Api\AnalyticsController::class, 'conversion'])
-    ->middleware('throttle:api');
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PUBLIC CATALOG: Product listings with Cache-Aside optimization
-// ═══════════════════════════════════════════════════════════════════════════
-//
-// PERFORMANCE ARCHITECTURE:
-// - Cache-Aside Pattern with tenant-scoped keys
-// - TTL: 60 minutes (catalog data is relatively static)
-// - Invalidation: ProductObserver flushes on product changes
-// - Tagged caching for atomic tenant cache clearing
-// ═══════════════════════════════════════════════════════════════════════════
-Route::prefix('products')->group(function () {
-    // Public: Get product catalog for tenant
-    Route::get('/', [ProductController::class, 'index'])
-        ->middleware(['throttle:api', 'cacheResponse:600']);
-
-    // Public: Get single product details
-    Route::get('/{id}', [ProductController::class, 'show'])
-        ->middleware(['throttle:api', 'cacheResponse:600']);
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PUBLIC ENDPOINTS: Coupon verification and listing (Granular Protection)
-// ═══════════════════════════════════════════════════════════════════════════
-//
-// SECURITY ARCHITECTURE:
-// - /verify: Uses 'api.verification' limiter (5/min per IP)
-//            Prevents coupon code enumeration attacks
-// - / (list): Uses global 'api' limiter (60/min per IP)
-//             Standard scraping protection
-//
-// PERFORMANCE ARCHITECTURE:
-// - Cache-Aside Pattern with 15-minute TTL
-// - CouponObserver invalidates on coupon changes
-// ═══════════════════════════════════════════════════════════════════════════
-Route::prefix('coupons')->group(function () {
-    // ANTI-ENUMERATION SHIELD: Verification rate limit (5 per minute per IP)
-    Route::post('/verify', [CouponController::class, 'verify'])
-        ->middleware('throttle:api.verification');
-
-    // Standard API rate limit for listing
-    Route::get('/', [CouponController::class, 'index'])
+    Route::post('/analytics/track', [\App\Http\Controllers\Api\V1\AnalyticsController::class, 'track'])
         ->middleware('throttle:api');
-});
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PUBLIC CHECKOUT: Order creation from storefront (Write Protection)
-// ═══════════════════════════════════════════════════════════════════════════
-//
-// SECURITY ARCHITECTURE:
-// Uses 'api.transactions' limiter (10/min per IP)
-// Prevents database flooding and resource exhaustion attacks
-// ═══════════════════════════════════════════════════════════════════════════
-Route::post('/orders', [OrderController::class, 'store'])
-    ->middleware('throttle:api.transactions');
+    Route::post('/analytics/conversion', [\App\Http\Controllers\Api\V1\AnalyticsController::class, 'conversion'])
+        ->middleware('throttle:api');
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PUBLIC CHECKOUT API: Coupon validation and cart summary (Guest Compatible)
-// ═══════════════════════════════════════════════════════════════════════════
-//
-// GUEST SUPPORT: These endpoints work for both authenticated and anonymous users.
-// $request->user() returns null for guests, which is handled gracefully.
-//
-// SECURITY ARCHITECTURE:
-// - /checkout/validate-coupon: Uses 'api.verification' limiter (5/min per IP)
-//   Prevents coupon code enumeration attacks
-// - /checkout/cart-summary: Uses global 'api' limiter (60/min per IP)
-// - /checkout/remove-coupon: Uses global 'api' limiter (60/min per IP)
-//
-// DATA HIDING: Responses never expose raw Eloquent models or internal fields.
-// ═══════════════════════════════════════════════════════════════════════════
-Route::prefix('checkout')->group(function () {
-    // ANTI-ENUMERATION: Strict rate limit for coupon validation
-    Route::post('/validate-coupon', [\App\Http\Controllers\CheckoutController::class, 'validateCoupon'])
-        ->middleware('throttle:api.verification')
-        ->name('checkout.validate-coupon');
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PUBLIC CATALOG
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::prefix('products')->group(function () {
+        Route::get('/', [ProductController::class, 'index'])
+            ->middleware(['throttle:api', 'cacheResponse:600']);
 
-    // Cart summary with optional coupon applied
-    Route::post('/cart-summary', [\App\Http\Controllers\CheckoutController::class, 'getCartSummary'])
-        ->middleware('throttle:api')
-        ->name('checkout.cart-summary');
-
-    // Remove applied coupon
-    Route::post('/remove-coupon', [\App\Http\Controllers\CheckoutController::class, 'removeCoupon'])
-        ->middleware('throttle:api')
-        ->name('checkout.remove-coupon');
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ⚠️ PROTECTED TENANT ROUTES: Require auth + tenant ownership verification
-// ═══════════════════════════════════════════════════════════════════════════
-// These routes handle sensitive tenant-specific resources.
-// The tenant.ownership middleware validates that route-model-bound resources
-// belong to the authenticated user's tenant BEFORE reaching the controller.
-//
-// RATE LIMITING: Global 'api' limiter applied (60/min per user/IP)
-// Lower priority since authenticated users are lower risk than anonymous.
-// ═══════════════════════════════════════════════════════════════════════════
-Route::middleware(['auth:sanctum', 'tenant.ownership', 'throttle:api'])->group(function () {
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // ORDERS MANAGEMENT: Admin operations on orders
-    // ─────────────────────────────────────────────────────────────────────────
-    Route::prefix('orders')->group(function () {
-        // List tenant's orders (for dashboard/kanban)
-        Route::get('/', [OrderController::class, 'index']);
-
-        // Get specific order details
-        Route::get('/{order}', [OrderController::class, 'show']);
-
-        // Update order status (Kanban drag-drop)
-        Route::patch('/{order}/status', [OrderController::class, 'updateStatus']);
-
-        // Cancel order
-        Route::delete('/{order}', [OrderController::class, 'destroy']);
+        Route::get('/{id}', [ProductController::class, 'show'])
+            ->middleware(['throttle:api', 'cacheResponse:600']);
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // TENANT SETTINGS: Self-service business configuration
-    // ─────────────────────────────────────────────────────────────────────────
-    // SECURITY: Tenant ID is derived from authenticated user, not request body.
-    // This prevents IDOR attacks where a malicious user could update another
-    // tenant's banking details by manipulating the ID parameter.
-    Route::prefix('settings')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Api\TenantSettingsController::class, 'show']);
-        
-        // POST required for multipart/form-data file uploads
-        Route::post('/update', [\App\Http\Controllers\Api\TenantSettingsController::class, 'update'])
-            ->name('api.tenant.settings.update');
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PUBLIC COUPONS
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::prefix('coupons')->group(function () {
+        Route::post('/verify', [CouponController::class, 'verify'])
+            ->middleware('throttle:api.verification');
+
+        Route::get('/', [CouponController::class, 'index'])
+            ->middleware('throttle:api');
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // BUSINESS INTELLIGENCE EXPORTS (Reports)
-    // ─────────────────────────────────────────────────────────────────────────
-    // Streaming exports for accounting and operations.
-    // Memory-safe: Uses chunked processing for 100k+ records.
-    // ─────────────────────────────────────────────────────────────────────────
-    Route::prefix('reports')->group(function () {
-        // Excel export for accounting
-        Route::get('/sales/excel', [\App\Http\Controllers\Api\ReportController::class, 'salesExcel'])
-            ->name('reports.sales.excel');
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PUBLIC CHECKOUT
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::post('/orders', [OrderController::class, 'store'])
+        ->middleware('throttle:api.transactions');
 
-        // PDF export for summary
-        Route::get('/sales/pdf', [\App\Http\Controllers\Api\ReportController::class, 'salesPdf'])
-            ->name('reports.sales.pdf');
+    Route::prefix('checkout')->group(function () {
+        // Note: CheckoutController is Public (Storefront), not Api/V1 yet, but used in API contexts.
+        // Keeping as is for now, assuming it handles JSON.
+        Route::post('/validate-coupon', [\App\Http\Controllers\Public\CheckoutController::class, 'validateCoupon'])
+            ->middleware('throttle:api.verification')
+            ->name('checkout.validate-coupon');
 
-        // Inventory check manifest
-        Route::get('/inventory/pdf', [\App\Http\Controllers\Api\ReportController::class, 'inventoryPdf'])
-            ->name('reports.inventory.pdf');
+        Route::post('/cart-summary', [\App\Http\Controllers\Public\CheckoutController::class, 'getCartSummary'])
+            ->middleware('throttle:api')
+            ->name('checkout.cart-summary');
 
-        // Kitchen prep list
-        Route::get('/kitchen/pdf', [\App\Http\Controllers\Api\ReportController::class, 'kitchenPdf'])
-            ->name('reports.kitchen.pdf');
+        Route::post('/remove-coupon', [\App\Http\Controllers\Public\CheckoutController::class, 'removeCoupon'])
+            ->middleware('throttle:api')
+            ->name('checkout.remove-coupon');
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ASYNC EXPORTS (Deferred Execution Pattern)
-    // ─────────────────────────────────────────────────────────────────────────
-    // Background-processed exports for large datasets.
-    // Controller returns 202 Accepted; user notified via WebSocket when ready.
-    // ─────────────────────────────────────────────────────────────────────────
-    Route::prefix('exports')->group(function () {
-        // Request async sales export (dispatches to queue)
-        Route::post('/sales', [\App\Http\Controllers\Api\SalesExportController::class, 'store'])
-            ->name('api.exports.sales');
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PROTECTED TENANT ROUTES
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::middleware(['auth:sanctum', 'tenant.ownership', 'throttle:api'])->group(function () {
+        Route::prefix('orders')->group(function () {
+            Route::get('/', [OrderController::class, 'index']);
+            Route::get('/{order}', [OrderController::class, 'show']);
+            Route::patch('/{order}/status', [OrderController::class, 'updateStatus']);
+            Route::delete('/{order}', [OrderController::class, 'destroy']);
+        });
+
+        Route::prefix('settings')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\V1\TenantSettingsController::class, 'show']);
+            Route::post('/update', [\App\Http\Controllers\Api\V1\TenantSettingsController::class, 'update'])
+                ->name('api.tenant.settings.update');
+        });
+
+        Route::prefix('reports')->group(function () {
+            Route::get('/sales/excel', [\App\Http\Controllers\Api\V1\ReportController::class, 'salesExcel'])
+                ->name('reports.sales.excel');
+            Route::get('/sales/pdf', [\App\Http\Controllers\Api\V1\ReportController::class, 'salesPdf'])
+                ->name('reports.sales.pdf');
+            Route::get('/inventory/pdf', [\App\Http\Controllers\Api\V1\ReportController::class, 'inventoryPdf'])
+                ->name('reports.inventory.pdf');
+            Route::get('/kitchen/pdf', [\App\Http\Controllers\Api\V1\ReportController::class, 'kitchenPdf'])
+                ->name('reports.kitchen.pdf');
+        });
+
+        Route::prefix('exports')->group(function () {
+            Route::post('/sales', [\App\Http\Controllers\Api\V1\SalesExportController::class, 'store'])
+                ->name('api.exports.sales');
+        });
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // REPORT DOWNLOADS
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::get('/reports/download/{path}', [\App\Http\Controllers\Api\V1\ReportDownloadController::class, 'download'])
+        ->where('path', '.*')
+        ->name('reports.download')
+        ->middleware('signed');
+
+    Route::get('/exports/download', [\App\Http\Controllers\Api\V1\SalesExportController::class, 'download'])
+        ->name('api.exports.download')
+        ->middleware(['auth:sanctum', 'signed']);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // NOTIFICATIONS
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('notifications')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\V1\NotificationController::class, 'index']);
+        Route::get('/count', [\App\Http\Controllers\Api\V1\NotificationController::class, 'count']);
+        Route::patch('/read-all', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAllAsRead']);
+        Route::patch('/{id}/read', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAsRead']);
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AI TOOLS
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('ai')->group(function () {
+        Route::post('/generate', [\App\Http\Controllers\Api\V1\AiController::class, 'generate']);
     });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PAYMENT WEBHOOKS (Zero-Trust Security) - HIBERNATED
+// WEBHOOKS (Legacy path maintained)
 // ═══════════════════════════════════════════════════════════════════════════
-// External payment providers send asynchronous notifications here.
-// SECURITY:
-// - CSRF automatically bypassed (API routes don't use web middleware)
-// - HMAC-SHA256 signature verification in controller
-// - No auth required (webhook uses cryptographic verification instead)
-//
-// TESTING:
-// curl -X POST http://your-domain/api/webhooks/payment \
-//   -H "Content-Type: application/json" \
-//   -H "X-Webhook-Signature: [hmac_signature]" \
-//   -d '{"event":"payment.succeeded","data":{"order_number":"ORD-123","amount":100.00}}'
-// ═══════════════════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════════════════
-// PAYMENT WEBHOOKS (Financial Integration)
-// ═══════════════════════════════════════════════════════════════════════════════
-// Receives asynchronous payment confirmations from gateways.
-// SECURITY: HMAC-SHA256 signature verification, no CSRF (external origin).
-// IDEMPOTENCY: Duplicate events return 200 OK without re-processing.
-// ═══════════════════════════════════════════════════════════════════════════════
 Route::post('/webhooks/payment', [\App\Http\Controllers\Webhook\PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// REPORT DOWNLOADS (Signed URL Pattern for Local Storage)
-// ═══════════════════════════════════════════════════════════════════════════════
-//
-// WHY SIGNED ROUTES?
-// Laravel's Storage::temporaryUrl() only works with cloud drivers (S3, Azure).
-// For local disk storage, we use signed routes that:
-// 1. Validate cryptographic signature (prevents URL tampering)
-// 2. Check expiration timestamp (24 hours)
-// 3. Serve file via streaming (memory-efficient)
-//
-// SECURITY:
-// - 'signed' middleware validates URL signature
-// - ReportDownloadController validates path (prevents directory traversal)
-// - Only files in 'reports/' directory allowed
-//
-// USAGE:
-// Jobs generate file → Create signed URL → User downloads via this route
-// ═══════════════════════════════════════════════════════════════════════════════
-Route::get('/reports/download/{path}', [\App\Http\Controllers\Api\ReportDownloadController::class, 'download'])
-    ->where('path', '.*')  // Allow slashes in path parameter
-    ->name('reports.download')
-    ->middleware('signed');
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// EXPORT DOWNLOADS (Async Export Pattern - Double Security Layer)
-// ═══════════════════════════════════════════════════════════════════════════════
-//
-// SECURITY ARCHITECTURE:
-// 1. 'auth:sanctum' - User must be authenticated
-// 2. 'signed' - URL has valid cryptographic signature
-// 3. Controller validates tenant ownership before serving
-//
-// FLOW:
-// GenerateSalesExport Job → ExportReadyNotification → Signed URL → This route
-// ═══════════════════════════════════════════════════════════════════════════════
-Route::get('/exports/download', [\App\Http\Controllers\Api\SalesExportController::class, 'download'])
-    ->name('api.exports.download')
-    ->middleware(['auth:sanctum', 'signed']);
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// NOTIFICATION CENTER API (Authenticated Users Only)
-// ═══════════════════════════════════════════════════════════════════════════════
-//
-// ARCHITECTURE:
-// - Syncs with database notifications (Laravel's Notifiable trait)
-// - Real-time updates via WebSocket complement this API
-// - Used by NotificationBell component in frontend
-// ═══════════════════════════════════════════════════════════════════════════════
-Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('notifications')->group(function () {
-    // GET /api/notifications - List user's notifications
-    Route::get('/', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
-
-    // GET /api/notifications/count - Get unread count only (lightweight)
-    Route::get('/count', [\App\Http\Controllers\Api\NotificationController::class, 'count']);
-
-    // PATCH /api/notifications/read-all - Mark all as read
-    Route::patch('/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
-
-    // PATCH /api/notifications/{id}/read - Mark single as read
-    Route::patch('/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
-});
-
-// ═══════════════════════════════════════════════════════════════════════
-// AI TOOLS (GPT-4o)
-// ═══════════════════════════════════════════════════════════════════════
-Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('ai')->group(function () {
-    // Non-blocking generation with Rate Limiting (5/hr enforced in controller)
-    Route::post('/generate', [\App\Http\Controllers\Api\AiController::class, 'generate']);
-});

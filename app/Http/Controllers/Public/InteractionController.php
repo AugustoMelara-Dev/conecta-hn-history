@@ -5,69 +5,91 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Application\Actions\Interactions\RecordInteractionAction;
-use App\Application\DTOs\Interactions\RecordInteractionData;
+use App\Application\Interactions\Results\RecordInteractionResult;
+use App\Domain\Analytics\Enums\InteractionType;
+use App\Domain\Shared\ValueObjects\PhoneNumber;
+use App\Domain\TenantGovernance\Services\TenantResolver;
 use App\Http\Controllers\Controller;
-use App\Models\Interaction;
-use App\Models\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * InteractionController - Public Redirect Tracking
- * 
- * Handles Click-to-Action redirects (WhatsApp, Calls, Maps).
+ * InteractionController - Hexagonal Compliant (DIP Remediation)
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  ARCHITECTURAL COMPLIANCE:                                               ║
+ * ║  - Zero App\Models imports (DIP compliant)                               ║
+ * ║  - Uses Domain Enum for interaction types                                ║
+ * ║  - Uses TenantResolver instead of Route Model Binding                   ║
+ * ║  - Scalars in method signatures, not Eloquent models                    ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-class InteractionController extends Controller
+final class InteractionController extends Controller
 {
-    public function whatsapp(Request $request, Tenant $tenant, RecordInteractionAction $action): RedirectResponse
-    {
-        $phone = preg_replace('/[^0-9]/', '', $tenant->whatsapp_number ?? $tenant->phone ?? '');
+    public function __construct(
+        private readonly TenantResolver $tenantResolver,
+        private readonly RecordInteractionAction $recordAction
+    ) {}
 
-        if (empty($phone)) {
+    public function whatsapp(Request $request, string $tenantSlug): RedirectResponse
+    {
+        $tenant = $this->tenantResolver->findPublicBySlug($tenantSlug);
+
+        if (!$tenant) {
+            abort(404, 'Negocio no encontrado.');
+        }
+
+        $phone = new PhoneNumber($tenant->whatsapp_number ?? $tenant->phone);
+
+        if (!$phone->isValid()) {
             return redirect()->back()->with('error', 'Este negocio no tiene WhatsApp configurado.');
         }
 
-        if (strlen($phone) === 8) {
-            $phone = '504' . $phone;
-        }
-
         $text = $request->input('text', '');
-        $finalUrl = "https://wa.me/{$phone}";
-        if (!empty($text)) {
-            $finalUrl .= '?text=' . urlencode($text);
-        }
 
-        $dto = RecordInteractionData::forRedirect(
+        $dto = RecordInteractionResult::forRedirect(
             tenantId: $tenant->id,
-            type: Interaction::TYPE_WHATSAPP_CLICK,
+            type: InteractionType::WHATSAPP_CLICK->value,
             request: $request,
             metadata: !empty($text) ? ['message' => substr($text, 0, 200)] : null
         );
-        $action->execute($dto);
+        $this->recordAction->execute($dto);
 
-        return redirect()->away($finalUrl);
+        return redirect()->away($phone->toWhatsappLink($text));
     }
 
-    public function call(Request $request, Tenant $tenant, RecordInteractionAction $action): RedirectResponse
+    public function call(Request $request, string $tenantSlug): RedirectResponse
     {
-        $phone = $tenant->phone ?? $tenant->whatsapp_number ?? '';
+        $tenant = $this->tenantResolver->findPublicBySlug($tenantSlug);
 
-        if (empty($phone)) {
+        if (!$tenant) {
+            abort(404, 'Negocio no encontrado.');
+        }
+
+        $phone = new PhoneNumber($tenant->phone ?? $tenant->whatsapp_number);
+
+        if (!$phone->isValid()) {
             return redirect()->back()->with('error', 'Este negocio no tiene teléfono configurado.');
         }
 
-        $dto = RecordInteractionData::forRedirect(
+        $dto = RecordInteractionResult::forRedirect(
             tenantId: $tenant->id,
-            type: Interaction::TYPE_CALL_CLICK,
+            type: InteractionType::CALL->value,
             request: $request
         );
-        $action->execute($dto);
+        $this->recordAction->execute($dto);
 
-        return redirect()->away("tel:{$phone}");
+        return redirect()->away($phone->toCallLink());
     }
 
-    public function maps(Request $request, Tenant $tenant, RecordInteractionAction $action): RedirectResponse
+    public function maps(Request $request, string $tenantSlug): RedirectResponse
     {
+        $tenant = $this->tenantResolver->findPublicBySlug($tenantSlug);
+
+        if (!$tenant) {
+            abort(404, 'Negocio no encontrado.');
+        }
+
         if (!empty($tenant->latitude) && !empty($tenant->longitude)) {
             $url = "https://www.google.com/maps/dir/?api=1&destination={$tenant->latitude},{$tenant->longitude}";
         } elseif (!empty($tenant->address)) {
@@ -76,12 +98,12 @@ class InteractionController extends Controller
             return redirect()->back()->with('error', 'Este negocio no tiene ubicación configurada.');
         }
 
-        $dto = RecordInteractionData::forRedirect(
+        $dto = RecordInteractionResult::forRedirect(
             tenantId: $tenant->id,
-            type: 'maps_click',
+            type: InteractionType::LOCATION_VIEW->value,
             request: $request
         );
-        $action->execute($dto);
+        $this->recordAction->execute($dto);
 
         return redirect()->away($url);
     }

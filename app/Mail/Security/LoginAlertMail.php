@@ -4,32 +4,33 @@ declare(strict_types=1);
 
 namespace App\Mail\Security;
 
-use App\Models\User;
+use App\Application\Shared\DTOs\Mail\UserMailData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
 
+/**
+ * LoginAlertMail - Refactored for Safe Serialization
+ *
+ * Uses UserMailData DTO and primitive login context instead of Eloquent Model.
+ */
 class LoginAlertMail extends Mailable
 {
-    use Queueable, SerializesModels;
-
-    public $user;
-
-    public $ipAddress;
-
-    public $time;
+    use Queueable;
 
     /**
      * Create a new message instance.
+     *
+     * @param UserMailData $user User snapshot at dispatch time
+     * @param string $ipAddress IP address of login attempt
+     * @param string $time Formatted timestamp of login attempt
      */
-    public function __construct(User $user, string $ipAddress, $time)
-    {
-        $this->user = $user;
-        $this->ipAddress = $ipAddress;
-        $this->time = $time;
-    }
+    public function __construct(
+        public readonly UserMailData $user,
+        public readonly string $ipAddress,
+        public readonly string $time
+    ) {}
 
     /**
      * Get the message envelope.
@@ -52,7 +53,7 @@ class LoginAlertMail extends Mailable
                 <p>Hola {$this->user->name},</p>
                 <p>Se ha detectado un nuevo inicio de sesión en tu cuenta de Conecta HN.</p>
                 <ul>
-                    <li><strong>Fecha y Hora:</strong> {$this->time->format('d/m/Y H:i:s')}</li>
+                    <li><strong>Fecha y Hora:</strong> {$this->time}</li>
                     <li><strong>Dirección IP:</strong> {$this->ipAddress}</li>
                 </ul>
                 <p>Si no fuiste tú, por favor cambia tu contraseña inmediatamente.</p>

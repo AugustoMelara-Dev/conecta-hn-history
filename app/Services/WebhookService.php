@@ -44,7 +44,7 @@ class WebhookService
                 // ═══════════════════════════════════════════════════════════════════════
                 // lockForUpdate() blocks any other transaction from reading/writing
                 // this row until we commit. This prevents race conditions.
-                
+
                 // Uses DB Facade to avoid "Scope Evasion" architecture violation in globally-scoped webhooks
                 $rawOrder = DB::table('orders')
                     ->where('order_number', $orderNumber)

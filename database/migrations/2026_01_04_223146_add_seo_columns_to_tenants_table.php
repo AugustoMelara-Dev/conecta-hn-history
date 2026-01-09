@@ -12,16 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tenants', function (Blueprint $table) {
-            if (!Schema::hasColumn('tenants', 'seo_title')) {
+            if (! Schema::hasColumn('tenants', 'seo_title')) {
                 $table->string('seo_title')->nullable()->after('description');
             }
-            if (!Schema::hasColumn('tenants', 'seo_description')) {
+            if (! Schema::hasColumn('tenants', 'seo_description')) {
                 $table->text('seo_description')->nullable()->after('seo_title');
             }
-            if (!Schema::hasColumn('tenants', 'tags')) {
+            if (! Schema::hasColumn('tenants', 'tags')) {
                 $table->json('tags')->nullable()->after('seo_description');
             }
-            if (!Schema::hasColumn('tenants', 'category_suggestion')) {
+            if (! Schema::hasColumn('tenants', 'category_suggestion')) {
                 $table->string('category_suggestion')->nullable()->after('tags');
             }
         });

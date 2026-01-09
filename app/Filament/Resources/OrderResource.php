@@ -6,19 +6,18 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
+use App\Services\OrderStateService;
 use Filament\Forms\Form;
+use Filament\Infolists\Components\Grid;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\Section;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Support\Enums\FontFamily;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Support\Enums\FontFamily;
-use Filament\Infolists\Infolist;
-use Filament\Infolists\Components\Section;
-use Filament\Infolists\Components\RepeatableEntry;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Components\Grid;
-use Illuminate\Database\Eloquent\Builder;
-use Filament\Notifications\Notification;
-use App\Services\OrderStateService;
 
 /**
  * OrderResource - Forensic Immutable Viewer & Workflow Command Center
@@ -104,10 +103,10 @@ class OrderResource extends Resource
                     ->colors([
                         'warning' => 'pending',   // Advertencia (Requiere atención)
                         'success' => 'delivered', // Éxito (Completado)     - Mapped from 'completed' requirement
-                        'danger'  => 'cancelled', // Peligro (Fallido)
+                        'danger' => 'cancelled', // Peligro (Fallido)
                         'primary' => 'processing',
-                        'info'    => 'confirmed',
-                        'gray'    => 'ready',
+                        'info' => 'confirmed',
+                        'gray' => 'ready',
                     ]),
 
                 // TOTAL: Right-aligned monetary format
@@ -146,15 +145,15 @@ class OrderResource extends Resource
                     ->url(function (Order $record) {
                         // SANITIZATION: Remove all non-digits
                         $phone = preg_replace('/\D/', '', $record->customer_phone);
-                        
+
                         // Honduras Localization: Ensure 504 prefix entry
                         if (strlen($phone) === 8) {
-                           $phone = '504' . $phone; 
+                            $phone = '504'.$phone;
                         }
 
                         return "https://wa.me/{$phone}";
                     })
-                    ->visible(fn (Order $record) => !empty($record->customer_phone))
+                    ->visible(fn (Order $record) => ! empty($record->customer_phone))
                     ->openUrlInNewTab(),
 
                 // ═══════════════════════════════════════════════════════════════
@@ -191,7 +190,7 @@ class OrderResource extends Resource
                     }),
             ])
             // IMMUTABILITY: NO BULK ACTIONS
-            ->bulkActions([]); 
+            ->bulkActions([]);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -228,14 +227,14 @@ class OrderResource extends Resource
                                             $badges = collect($options)->map(function ($opt) {
                                                 // SECURITY CRITICAL: Escape user input
                                                 $safeOption = e($opt['option'] ?? 'N/A');
-                                                $safePrice = isset($opt['price']) && $opt['price'] > 0 
-                                                    ? ' (+L.'.number_format($opt['price'], 2).')' 
+                                                $safePrice = isset($opt['price']) && $opt['price'] > 0
+                                                    ? ' (+L.'.number_format($opt['price'], 2).')'
                                                     : '';
-                                                
+
                                                 return "<span class='inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 ml-1'>{$safeOption}{$safePrice}</span>";
                                             })->join(' ');
 
-                                            return $baseName . "<br>" . $badges;
+                                            return $baseName.'<br>'.$badges;
                                         })
                                         ->html() // Enable HTML rendering for badges
                                         ->columnSpan(2),
@@ -259,7 +258,7 @@ class OrderResource extends Resource
                         TextEntry::make('delivery_fee')->label('Envío')->money('HNL'),
                         TextEntry::make('total')->money('HNL')->weight('bold')->size(TextEntry\TextEntrySize::Large),
                     ]),
-                
+
                 // Customer Section
                 Section::make('Datos del Cliente')
                     ->columns(2)

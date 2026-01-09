@@ -28,25 +28,25 @@ final readonly class PaymentData
     public function __construct(
         /** Amount to charge (in Money Value Object) */
         public Money $amount,
-        
+
         /** Payment method token (from frontend SDK) */
         public string $paymentMethodToken,
-        
+
         /** Customer email for receipts */
         public string $customerEmail,
-        
+
         /** Customer name for the transaction */
         public string $customerName,
-        
+
         /** Order reference (for reconciliation) */
         public string $orderId,
-        
+
         /** Description shown on statement */
         public string $statementDescriptor = 'CONECTAHN',
-        
+
         /** Additional metadata (idempotency keys, etc.) */
         public array $metadata = [],
-        
+
         /** Billing address (optional) */
         public ?array $billingAddress = null,
     ) {}
@@ -54,7 +54,8 @@ final readonly class PaymentData
     /**
      * Create from array (useful for request validation).
      *
-     * @param array $data Payment data array
+     * @param  array  $data  Payment data array
+     *
      * @throws \InvalidArgumentException When required fields are missing
      */
     public static function fromArray(array $data): self
@@ -64,17 +65,17 @@ final readonly class PaymentData
         // ═══════════════════════════════════════════════════════════════════════
         $requiredFields = ['order_id'];
         foreach ($requiredFields as $field) {
-            if (!isset($data[$field]) || $data[$field] === '') {
+            if (! isset($data[$field]) || $data[$field] === '') {
                 throw new \InvalidArgumentException("PaymentData: Required field '{$field}' is missing");
             }
         }
 
         // Amount can be Money object, int (cents), or missing (throws)
-        if (!isset($data['amount'])) {
+        if (! isset($data['amount'])) {
             throw new \InvalidArgumentException("PaymentData: 'amount' is required");
         }
-        $amount = $data['amount'] instanceof Money 
-            ? $data['amount'] 
+        $amount = $data['amount'] instanceof Money
+            ? $data['amount']
             : Money::fromCents((int) $data['amount']);
 
         // Payment token with fallback keys
@@ -104,4 +105,3 @@ final readonly class PaymentData
         );
     }
 }
-

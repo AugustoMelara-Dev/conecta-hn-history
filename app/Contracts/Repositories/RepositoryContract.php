@@ -56,7 +56,7 @@ interface RepositoryContract
     /**
      * Find a single entity by its primary key.
      *
-     * @param TId $id
+     * @param  TId  $id
      * @return TModel|null
      */
     public function find(mixed $id): mixed;
@@ -64,8 +64,9 @@ interface RepositoryContract
     /**
      * Find a single entity by ID or throw exception.
      *
-     * @param TId $id
+     * @param  TId  $id
      * @return TModel
+     *
      * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
      */
     public function findOrFail(mixed $id): mixed;
@@ -73,7 +74,7 @@ interface RepositoryContract
     /**
      * Find a single entity by criteria.
      *
-     * @param array<string, mixed> $criteria
+     * @param  array<string, mixed>  $criteria
      * @return TModel|null
      */
     public function findOneByCriteria(array $criteria): mixed;
@@ -112,8 +113,8 @@ interface RepositoryContract
     /**
      * Stream entities matching criteria using database cursor.
      *
-     * @param array<string, mixed> $criteria [column => value] pairs
-     * @param array<string, string> $orderBy ['column' => 'asc|desc']
+     * @param  array<string, mixed>  $criteria  [column => value] pairs
+     * @param  array<string, string>  $orderBy  ['column' => 'asc|desc']
      * @return LazyCollection<int, TModel>
      */
     public function cursorByCriteria(
@@ -126,9 +127,9 @@ interface RepositoryContract
      *
      * @notice For large/unbounded results, use cursorByCriteria() instead.
      *
-     * @param array<string, mixed> $criteria [column => value] pairs
-     * @param array<string, string> $orderBy ['column' => 'asc|desc']
-     * @param int|null $limit STRONGLY RECOMMENDED for unbounded queries
+     * @param  array<string, mixed>  $criteria  [column => value] pairs
+     * @param  array<string, string>  $orderBy  ['column' => 'asc|desc']
+     * @param  int|null  $limit  STRONGLY RECOMMENDED for unbounded queries
      * @return Collection<int, TModel>
      */
     public function findByCriteria(
@@ -142,7 +143,7 @@ interface RepositoryContract
      *
      * @notice Only use when ID count is bounded (e.g., cart items max 50).
      *
-     * @param array<TId> $ids
+     * @param  array<TId>  $ids
      * @return Collection<int, TModel>
      */
     public function findByIds(array $ids): Collection;
@@ -150,10 +151,8 @@ interface RepositoryContract
     /**
      * Paginate entities (memory-safe by design due to LIMIT).
      *
-     * @param int $perPage
-     * @param array<string, mixed> $criteria Optional filter criteria
-     * @param array<string, string> $orderBy
-     * @return LengthAwarePaginator
+     * @param  array<string, mixed>  $criteria  Optional filter criteria
+     * @param  array<string, string>  $orderBy
      */
     public function paginate(
         int $perPage = 15,
@@ -168,7 +167,7 @@ interface RepositoryContract
     /**
      * Create a new entity.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return TModel The created entity
      */
     public function create(array $data): mixed;
@@ -176,8 +175,8 @@ interface RepositoryContract
     /**
      * Update an existing entity.
      *
-     * @param TId $id
-     * @param array<string, mixed> $data
+     * @param  TId  $id
+     * @param  array<string, mixed>  $data
      * @return TModel The updated entity
      */
     public function update(mixed $id, array $data): mixed;
@@ -185,8 +184,7 @@ interface RepositoryContract
     /**
      * Delete an entity.
      *
-     * @param TId $id
-     * @return bool
+     * @param  TId  $id
      */
     public function delete(mixed $id): bool;
 
@@ -210,7 +208,7 @@ interface RepositoryContract
      * ║    - Does NOT return inserted models (returns bool)                  ║
      * ╚════════════════════════════════════════════════════════════════════════╝
      *
-     * @param array<int, array<string, mixed>> $rows Array of row data
+     * @param  array<int, array<string, mixed>>  $rows  Array of row data
      * @return bool Whether the insert succeeded
      */
     public function insert(array $rows): bool;
@@ -230,9 +228,9 @@ interface RepositoryContract
      * ║  );                                                                   ║
      * ╚════════════════════════════════════════════════════════════════════════╝
      *
-     * @param array<int, array<string, mixed>> $rows Data to insert/update
-     * @param array<string>|string $uniqueBy Unique column(s) for matching
-     * @param array<string>|null $update Columns to update (null = all except uniqueBy)
+     * @param  array<int, array<string, mixed>>  $rows  Data to insert/update
+     * @param  array<string>|string  $uniqueBy  Unique column(s) for matching
+     * @param  array<string>|null  $update  Columns to update (null = all except uniqueBy)
      * @return int Number of affected rows
      */
     public function upsert(array $rows, array|string $uniqueBy, ?array $update = null): int;
@@ -240,7 +238,7 @@ interface RepositoryContract
     /**
      * Delete multiple entities by criteria (single query).
      *
-     * @param array<string, mixed> $criteria
+     * @param  array<string, mixed>  $criteria
      * @return int Number of deleted rows
      */
     public function deleteByCriteria(array $criteria): int;
@@ -248,8 +246,8 @@ interface RepositoryContract
     /**
      * Update multiple entities by criteria (single query).
      *
-     * @param array<string, mixed> $criteria Filter criteria
-     * @param array<string, mixed> $data Data to update
+     * @param  array<string, mixed>  $criteria  Filter criteria
+     * @param  array<string, mixed>  $data  Data to update
      * @return int Number of affected rows
      */
     public function updateByCriteria(array $criteria, array $data): int;
@@ -261,16 +259,14 @@ interface RepositoryContract
     /**
      * Check if an entity exists by criteria (uses EXISTS, no model loading).
      *
-     * @param array<string, mixed> $criteria
-     * @return bool
+     * @param  array<string, mixed>  $criteria
      */
     public function exists(array $criteria): bool;
 
     /**
      * Count entities matching criteria (uses COUNT, no model loading).
      *
-     * @param array<string, mixed> $criteria
-     * @return int
+     * @param  array<string, mixed>  $criteria
      */
     public function count(array $criteria = []): int;
 }

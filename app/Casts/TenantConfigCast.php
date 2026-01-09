@@ -42,11 +42,7 @@ class TenantConfigCast implements CastsAttributes
     /**
      * Transform the database JSON into a TenantSettingsDTO.
      *
-     * @param Model $model
-     * @param string $key
-     * @param mixed $value Raw JSON string or array from database
-     * @param array $attributes
-     * @return TenantSettingsDTO
+     * @param  mixed  $value  Raw JSON string or array from database
      */
     public function get(Model $model, string $key, mixed $value, array $attributes): TenantSettingsDTO
     {
@@ -58,7 +54,7 @@ class TenantConfigCast implements CastsAttributes
         // Decode JSON string if needed
         if (is_string($value)) {
             $decoded = json_decode($value, true);
-            
+
             // Handle JSON decode errors gracefully
             if (json_last_error() !== JSON_ERROR_NONE) {
                 \Illuminate\Support\Facades\Log::warning(
@@ -69,10 +65,10 @@ class TenantConfigCast implements CastsAttributes
                         'json_error' => json_last_error_msg(),
                     ]
                 );
-                
+
                 return TenantSettingsDTO::fromArray([]);
             }
-            
+
             $value = $decoded;
         }
 
@@ -88,11 +84,9 @@ class TenantConfigCast implements CastsAttributes
     /**
      * Transform the TenantSettingsDTO for database storage.
      *
-     * @param Model $model
-     * @param string $key
-     * @param mixed $value DTO object, array, or null
-     * @param array $attributes
+     * @param  mixed  $value  DTO object, array, or null
      * @return string JSON string for storage
+     *
      * @throws InvalidArgumentException if invalid type is passed
      */
     public function set(Model $model, string $key, mixed $value, array $attributes): string
@@ -111,11 +105,12 @@ class TenantConfigCast implements CastsAttributes
         if (is_array($value)) {
             // Validate by round-tripping through DTO
             $dto = TenantSettingsDTO::fromArray($value);
+
             return json_encode($dto->toArray(), JSON_THROW_ON_ERROR);
         }
 
         throw new InvalidArgumentException(
-            "Invalid type for '{$key}'. Expected TenantSettingsDTO or array, got " . get_debug_type($value)
+            "Invalid type for '{$key}'. Expected TenantSettingsDTO or array, got ".get_debug_type($value)
         );
     }
 }

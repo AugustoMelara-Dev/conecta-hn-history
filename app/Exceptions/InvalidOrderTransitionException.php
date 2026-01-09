@@ -23,7 +23,7 @@ final class InvalidOrderTransitionException extends DomainException
             : implode(', ', $allowedTransitions);
 
         parent::__construct(
-            "Transición de estado inválida: No se puede pasar de '{$currentStatus}' a '{$attemptedStatus}'. " .
+            "Transición de estado inválida: No se puede pasar de '{$currentStatus}' a '{$attemptedStatus}'. ".
             "Transiciones permitidas desde '{$currentStatus}': [{$allowed}]",
             0,
             $previous,

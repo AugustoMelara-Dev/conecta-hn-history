@@ -7,7 +7,7 @@ namespace App\Events\Inventory;
 use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\TenantId;
-use DateTimeImmutable;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * LowStockThresholdReached - Pure Domain Event for Inventory Alert
@@ -30,17 +30,17 @@ use DateTimeImmutable;
  *
  * DISPATCH POINT: InventoryManager::decrementStock() via DomainEventBus
  */
-final readonly class LowStockThresholdReached implements DomainEvent
+final readonly class LowStockThresholdReached implements DomainEvent, ShouldDispatchAfterCommit
 {
     use HasDomainMetadata;
 
     /**
-     * @param TenantId $tenantId Tenant context for queue middleware
-     * @param int $productId The product aggregate root ID
-     * @param string $productName Human-readable product name (snapshotted)
-     * @param string|null $productSku Product SKU if available (snapshotted)
-     * @param int $currentStock Stock level after decrement
-     * @param int $threshold The low stock threshold configured for this product
+     * @param  TenantId  $tenantId  Tenant context for queue middleware
+     * @param  int  $productId  The product aggregate root ID
+     * @param  string  $productName  Human-readable product name (snapshotted)
+     * @param  string|null  $productSku  Product SKU if available (snapshotted)
+     * @param  int  $currentStock  Stock level after decrement
+     * @param  int  $threshold  The low stock threshold configured for this product
      */
     public function __construct(
         private TenantId $tenantId,

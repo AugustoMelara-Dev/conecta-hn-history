@@ -90,7 +90,7 @@ class ProcessedEvent extends Model
 
     /**
      * Mark this event as processed by this listener.
-     * 
+     *
      * Uses INSERT IGNORE to handle race conditions.
      */
     public static function markProcessed(string $eventId, string $listenerClass): void
@@ -105,8 +105,8 @@ class ProcessedEvent extends Model
 
     /**
      * Clean up old entries (call from scheduled job).
-     * 
-     * @param int $daysOld Delete entries older than this many days
+     *
+     * @param  int  $daysOld  Delete entries older than this many days
      */
     public static function cleanup(int $daysOld = 30): int
     {

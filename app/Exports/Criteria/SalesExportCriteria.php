@@ -25,6 +25,7 @@ use DateTimeImmutable;
 final readonly class SalesExportCriteria
 {
     private const MAX_DATE_RANGE_DAYS = 365;
+
     private const DEFAULT_DATE_RANGE_DAYS = 30;
 
     public function __construct(
@@ -83,7 +84,7 @@ final readonly class SalesExportCriteria
     {
         if ($days <= 0 || $days > self::MAX_DATE_RANGE_DAYS) {
             throw InvalidBusinessRuleException::custom(
-                "El rango de fechas debe estar entre 1 y " . self::MAX_DATE_RANGE_DAYS . " días"
+                'El rango de fechas debe estar entre 1 y '.self::MAX_DATE_RANGE_DAYS.' días'
             );
         }
 
@@ -129,7 +130,7 @@ final readonly class SalesExportCriteria
      * Used by GenerateSalesExport Job to reconstruct criteria from
      * primitive array after queue serialization.
      *
-     * @param array{start_date: ?string, end_date: ?string, status: ?string} $data
+     * @param  array{start_date: ?string, end_date: ?string, status: ?string}  $data
      */
     public static function fromArray(array $data): self
     {
@@ -209,7 +210,7 @@ final readonly class SalesExportCriteria
         $diff = $this->startDate->diff($this->endDate);
         if ($diff->days > self::MAX_DATE_RANGE_DAYS) {
             throw InvalidBusinessRuleException::custom(
-                "El rango de fechas no puede exceder " . self::MAX_DATE_RANGE_DAYS . " días para prevenir sobrecarga del sistema"
+                'El rango de fechas no puede exceder '.self::MAX_DATE_RANGE_DAYS.' días para prevenir sobrecarga del sistema'
             );
         }
     }
@@ -221,9 +222,9 @@ final readonly class SalesExportCriteria
         }
 
         // Use Order::STATUSES as single source of truth
-        if (!in_array($this->status, Order::STATUSES, true)) {
+        if (! in_array($this->status, Order::STATUSES, true)) {
             throw InvalidBusinessRuleException::custom(
-                "Estado inválido: {$this->status}. Válidos: " . implode(', ', Order::STATUSES)
+                "Estado inválido: {$this->status}. Válidos: ".implode(', ', Order::STATUSES)
             );
         }
     }

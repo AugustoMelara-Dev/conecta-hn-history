@@ -40,13 +40,13 @@ class StatsOverview extends BaseWidget
         // Cache Key is scoped to tenant to ensure isolation.
 
         $financialStats = Cache::remember("stats_financial_overview_{$tenant->id}", 60, function () use ($tenant) {
-            
+
             // --- KPI 1: FINANCIAL - Gross Revenue ---
             $revenue = Order::query()
                 ->where('status', '!=', 'cancelled')
                 ->sum('total');
 
-            $revenueStat = Stat::make('Volumen de Ingresos Brutos', 'L. ' . number_format($revenue ?? 0, 2))
+            $revenueStat = Stat::make('Volumen de Ingresos Brutos', 'L. '.number_format($revenue ?? 0, 2))
                 ->description('Ingresos acumulados (real + proyectado)')
                 ->descriptionIcon('heroicon-m-currency-dollar')
                 ->color($revenue > 0 ? 'success' : 'gray');
@@ -77,8 +77,8 @@ class StatsOverview extends BaseWidget
         // ═══════════════════════════════════════════════════════════════════════
         // LAYER 2: CRITICAL STATE METRICS (Real-Time Scope)
         // ═══════════════════════════════════════════════════════════════════════
-        // Inventory limits MUST be checked in real-time to allow instant 
-        // gratification after plan upgrade (Upsell UX). 
+        // Inventory limits MUST be checked in real-time to allow instant
+        // gratification after plan upgrade (Upsell UX).
         // Cost: O(1) index lookup - negligible impact.
 
         // KPI 3: INVENTORY - Capacity & Upsell
@@ -92,7 +92,7 @@ class StatsOverview extends BaseWidget
                 ->color('success');
         } else {
             $limit = $tenant->product_limit ?? 12;
-            
+
             // Threshold Logic
             $state = match (true) {
                 $productCount >= $limit => 'critical',  // Limit Hit
@@ -103,21 +103,21 @@ class StatsOverview extends BaseWidget
             // Visual Configuration
             $config = match ($state) {
                 'critical' => [
-                    'val'   => "{$productCount} / {$limit}",
-                    'desc'  => 'Límite Alcanzado. Actualiza a Pro',
-                    'icon'  => 'heroicon-m-lock-closed',
+                    'val' => "{$productCount} / {$limit}",
+                    'desc' => 'Límite Alcanzado. Actualiza a Pro',
+                    'icon' => 'heroicon-m-lock-closed',
                     'color' => 'danger',
                 ],
                 'warning' => [
-                    'val'   => "{$productCount} / {$limit}",
-                    'desc'  => 'Cerca del Límite',
-                    'icon'  => 'heroicon-m-exclamation-triangle',
+                    'val' => "{$productCount} / {$limit}",
+                    'desc' => 'Cerca del Límite',
+                    'icon' => 'heroicon-m-exclamation-triangle',
                     'color' => 'warning',
                 ],
                 'safe' => [
-                    'val'   => "{$productCount} / {$limit}",
-                    'desc'  => 'Espacio Disponible',
-                    'icon'  => 'heroicon-m-check',
+                    'val' => "{$productCount} / {$limit}",
+                    'desc' => 'Espacio Disponible',
+                    'icon' => 'heroicon-m-check',
                     'color' => 'success',
                 ],
             };

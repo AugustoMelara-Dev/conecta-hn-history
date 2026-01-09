@@ -21,7 +21,7 @@ use Illuminate\Validation\Rule;
  * - Automatic 422 response on failure
  * - Type-safe validated() data access
  */
-class StoreOrderRequest extends FormRequest
+final class StoreOrderRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -89,5 +89,39 @@ class StoreOrderRequest extends FormRequest
                 'coupon_code' => strtoupper(trim($this->coupon_code)),
             ]);
         }
+    }
+
+    /**
+     * Factory: Create Command from Validated Data.
+     *
+     * @return \App\Application\Sales\Commands\CreateOrderCommand
+     */
+    public function toCommand(): \App\Application\Sales\Commands\CreateOrderCommand
+    {
+        // 1. Get validated data (clean, type-safe)
+        $validated = $this->validated();
+
+        // 2. Map HTTP Input (snake_case) to Domain Command (camelCase)
+        return new \App\Application\Sales\Commands\CreateOrderCommand(
+            tenantId: (int) $validated['tenant_id'],
+            customerId: isset($validated['customer_id']) ? (int) $validated['customer_id'] : null, // Handle conditional ID
+            customerName: $validated['customer_name'] ?? null,
+            customerEmail: $validated['customer_email'] ?? null,
+            customerPhone: $validated['customer_phone'] ?? null,
+            customerAddress: $validated['customer_address'] ?? null,
+            customerNotes: $validated['customer_notes'] ?? null,
+            currency: 'HNL', // Default or read from request if supported
+            items: array_map(fn($item) => [
+                'product_id' => (int) $item['product_id'],
+                'quantity' => (int) $item['quantity'],
+                'price' => (float) $item['price'],
+                'options' => $item['options'] ?? [],
+                'notes' => $item['notes'] ?? null,
+            ], $validated['items']),
+            deliveryType: $validated['delivery_type'],
+            paymentMethod: $validated['payment_method'] ?? null,
+            couponCode: $validated['coupon_code'] ?? null,
+            requestorUserId: $this->user()?->id, // Nullable for guests
+        );
     }
 }

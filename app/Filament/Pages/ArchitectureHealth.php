@@ -16,15 +16,23 @@ use Filament\Pages\Page;
 class ArchitectureHealth extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
+
     protected static ?string $navigationLabel = 'Architecture Health';
+
     protected static ?string $navigationGroup = 'Configuración';
+
     protected static ?int $navigationSort = 100;
+
     protected static ?string $title = 'Event Architecture Health';
+
     protected static string $view = 'filament.pages.architecture-health';
 
     public array $metrics = [];
+
     public array $summary = [];
+
     public array $events = [];
+
     public array $violations = [];
 
     public function mount(): void
@@ -40,6 +48,7 @@ class ArchitectureHealth extends Page
     {
         // Only super admins can access this page
         $user = auth()->user();
+
         return $user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
     }
 }

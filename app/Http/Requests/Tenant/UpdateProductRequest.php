@@ -78,9 +78,25 @@ final class UpdateProductRequest extends FormRequest
     {
         return [
             'name.required' => 'El nombre del producto es obligatorio.',
-            'price.required' => 'El precio es obligatorio.',
-            'sku.unique' => 'Este código SKU ya está en uso.',
             'image.max' => 'La imagen no puede superar 1MB.',
         ];
+    }
+
+    public function toCommand(int $productId): \App\Application\Products\Commands\UpdateProductCommand
+    {
+        $validated = $this->validated();
+
+        return new \App\Application\Products\Commands\UpdateProductCommand(
+            id: $productId,
+            tenantId: (int) $this->user()->tenant_id,
+            sku: $validated['sku'], // Now strictly required by DTO/Handler
+            name: $validated['name'],
+            description: $validated['description'] ?? '',
+            price: (float) $validated['price'],
+            stock: isset($validated['stock']) ? (int) $validated['stock'] : 0,
+            categoryId: (int) $validated['category_id'],
+            imagePath: null, // Handle image separately if needed
+            isVisible: (bool) ($validated['is_visible'] ?? true),
+        );
     }
 }

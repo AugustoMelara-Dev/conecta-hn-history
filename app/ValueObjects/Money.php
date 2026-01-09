@@ -35,8 +35,8 @@ use InvalidArgumentException;
 final readonly class Money implements \JsonSerializable
 {
     /**
-     * @param int $cents The monetary amount in smallest currency unit (centavos)
-     * @param string $currency ISO 4217 currency code (default: HNL for Honduras)
+     * @param  int  $cents  The monetary amount in smallest currency unit (centavos)
+     * @param  string  $currency  ISO 4217 currency code (default: HNL for Honduras)
      */
     public function __construct(
         private int $cents,
@@ -57,14 +57,14 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * Create Money from decimal amount (USER INPUT → DOMAIN).
-     * 
+     *
      * WARNING: Use only for user input! Internal operations should use cents.
      */
     public static function fromDecimal(float|string $amount, string $currency = 'HNL'): self
     {
         // Convert to string to avoid float precision issues during conversion
         $cents = (int) round((float) $amount * 100);
-        
+
         return new self($cents, $currency);
     }
 
@@ -116,7 +116,7 @@ final readonly class Money implements \JsonSerializable
     public function add(Money $other): self
     {
         $this->assertSameCurrency($other);
-        
+
         return new self($this->cents + $other->cents, $this->currency);
     }
 
@@ -128,13 +128,13 @@ final readonly class Money implements \JsonSerializable
     public function subtract(Money $other): self
     {
         $this->assertSameCurrency($other);
-        
+
         $result = $this->cents - $other->cents;
-        
+
         if ($result < 0) {
             throw new InvalidArgumentException('Subtraction would result in negative amount');
         }
-        
+
         return new self($result, $this->currency);
     }
 
@@ -156,38 +156,40 @@ final readonly class Money implements \JsonSerializable
      * ║  RIGHT:  $subtotal->multiplyByPercentage(15)  // Correct calculation  ║
      * ╚════════════════════════════════════════════════════════════════════════╝
      *
-     * @param float $percentage The percentage (e.g., 15 for 15%)
+     * @param  float  $percentage  The percentage (e.g., 15 for 15%)
      */
     public function multiplyByPercentage(float $percentage): self
     {
         $result = (int) round($this->cents * ($percentage / 100));
+
         return new self($result, $this->currency);
     }
 
     /**
      * Multiply by a decimal factor (for arbitrary multiplications).
      *
-     * @param float $factor The multiplication factor (e.g., 0.15 for 15%)
+     * @param  float  $factor  The multiplication factor (e.g., 0.15 for 15%)
      */
     public function multiplyByFloat(float $factor): self
     {
         $result = (int) round($this->cents * $factor);
+
         return new self($result, $this->currency);
     }
 
     /**
      * Apply a percentage discount.
      *
-     * @param int $percentage Discount percentage (0-100)
+     * @param  int  $percentage  Discount percentage (0-100)
      */
     public function discount(int $percentage): self
     {
         if ($percentage < 0 || $percentage > 100) {
             throw new InvalidArgumentException('Percentage must be between 0 and 100');
         }
-        
+
         $discountAmount = (int) round($this->cents * ($percentage / 100));
-        
+
         return new self($this->cents - $discountAmount, $this->currency);
     }
 
@@ -196,7 +198,7 @@ final readonly class Money implements \JsonSerializable
      *
      * Uses the Largest Remainder Method to distribute cents without losing money.
      *
-     * @param array<int> $ratios Allocation ratios [50, 30, 20] for 50%, 30%, 20%
+     * @param  array<int>  $ratios  Allocation ratios [50, 30, 20] for 50%, 30%, 20%
      * @return array<Money>
      */
     public function allocate(array $ratios): array
@@ -221,7 +223,9 @@ final readonly class Money implements \JsonSerializable
         arsort($fractions);
 
         foreach (array_keys($fractions) as $i) {
-            if ($remainder <= 0) break;
+            if ($remainder <= 0) {
+                break;
+            }
             $shares[$i]++;
             $remainder--;
         }
@@ -246,12 +250,14 @@ final readonly class Money implements \JsonSerializable
     public function greaterThan(Money $other): bool
     {
         $this->assertSameCurrency($other);
+
         return $this->cents > $other->cents;
     }
 
     public function lessThan(Money $other): bool
     {
         $this->assertSameCurrency($other);
+
         return $this->cents < $other->cents;
     }
 
@@ -273,10 +279,10 @@ final readonly class Money implements \JsonSerializable
             'HNL' => 'L.',
             'USD' => '$',
             'EUR' => '€',
-            default => $this->currency . ' ',
+            default => $this->currency.' ',
         };
 
-        return $symbol . ' ' . number_format($this->toDecimal(), 2, '.', ',');
+        return $symbol.' '.number_format($this->toDecimal(), 2, '.', ',');
     }
 
     /**
@@ -328,7 +334,11 @@ final readonly class Money implements \JsonSerializable
     }
 
     /**
-     * Alias for interface consistency with other events.
+     * Alias for cents() - for interface consistency with event serialization.
+     *
+     * @deprecated Use cents() instead for clarity. This method will be removed in v2.0.
+     *             - cents() returns int (raw value in smallest currency unit)
+     *             - toDecimal() returns float (for display purposes)
      */
     public function amount(): int
     {

@@ -47,8 +47,10 @@ class CheckTenantStatus
         $user = auth()->user();
 
         if ($user) {
-            // Verificar si es Super Admin
-            $isSuperAdmin = $user->hasRole('super_admin') || $user->email === 'admin@conectahn.com';
+            // Verificar si es Super Admin (role + whitelist check)
+            $superAdmins = config('auth.super_admins', []);
+            $isSuperAdmin = $user->hasRole('super_admin')
+                && in_array($user->email, $superAdmins, true);
 
             // Verificar si es dueño del negocio
             $isOwner = $tenant->user_id === $user->id;

@@ -45,7 +45,7 @@ arch('RULE 1.4: Domain Layer must NOT contain Artisan Commands')
     ->not->toExtend(Command::class);
 
 arch('RULE 1.5: Application Layer SHOULD contain all Jobs')
-    ->expect('App\Application\Jobs')
+    ->expect('App\Infrastructure\Jobs')
     ->toImplement(ShouldQueue::class);
 
 // ═══════════════════════════════════════════════════════════════════════════════

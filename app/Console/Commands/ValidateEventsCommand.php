@@ -29,6 +29,7 @@ class ValidateEventsCommand extends Command
     protected $description = 'Validate all domain events comply with ADR-002 standards';
 
     protected array $violations = [];
+
     protected int $eventsChecked = 0;
 
     public function handle(): int
@@ -40,10 +41,11 @@ class ValidateEventsCommand extends Command
 
         if (empty($events)) {
             $this->warn('No events found in app/Events/');
+
             return 0;
         }
 
-        $this->info("🔍 Scanning " . count($events) . " events for ADR-002 compliance...\n");
+        $this->info('🔍 Scanning '.count($events)." events for ADR-002 compliance...\n");
 
         foreach ($events as $eventClass) {
             // Skip Broadcast events (different rules)
@@ -80,12 +82,13 @@ class ValidateEventsCommand extends Command
             $this->newLine();
             $this->info("✅ All {$this->eventsChecked} events pass ADR-002 validation");
             $this->newLine();
+
             return 0;
         }
 
         $this->newLine();
-        $this->error("❌ ADR-002 VALIDATION FAILED");
-        $this->error("   " . count($this->violations) . " violation(s) found in {$this->eventsChecked} events:");
+        $this->error('❌ ADR-002 VALIDATION FAILED');
+        $this->error('   '.count($this->violations)." violation(s) found in {$this->eventsChecked} events:");
         $this->newLine();
 
         foreach ($this->violations as $violation) {
@@ -93,7 +96,7 @@ class ValidateEventsCommand extends Command
         }
 
         $this->newLine();
-        $this->line("📚 See: docs/architecture/decisions/ADR-002-domain-events-governance.md");
+        $this->line('📚 See: docs/architecture/decisions/ADR-002-domain-events-governance.md');
         $this->newLine();
 
         return 1;
@@ -103,20 +106,20 @@ class ValidateEventsCommand extends Command
     {
         $eventsPath = app_path('Events');
 
-        if (!is_dir($eventsPath)) {
+        if (! is_dir($eventsPath)) {
             return [];
         }
 
-        $finder = new Finder();
+        $finder = new Finder;
         $finder->in($eventsPath)->name('*.php')->files();
 
         $events = [];
         foreach ($finder as $file) {
             $relativePath = $file->getRelativePathname();
             $className = str_replace(['/', '.php'], ['\\', ''], $relativePath);
-            $fullClass = 'App\\Events\\' . $className;
+            $fullClass = 'App\\Events\\'.$className;
 
-            if (class_exists($fullClass) && !interface_exists($fullClass)) {
+            if (class_exists($fullClass) && ! interface_exists($fullClass)) {
                 $events[] = $fullClass;
             }
         }
@@ -128,11 +131,11 @@ class ValidateEventsCommand extends Command
     {
         $shortName = $reflector->getShortName();
 
-        if (!$reflector->isFinal()) {
+        if (! $reflector->isFinal()) {
             $this->violations[] = "{$shortName}: Missing 'final' keyword";
         }
 
-        if (method_exists($reflector, 'isReadOnly') && !$reflector->isReadOnly()) {
+        if (method_exists($reflector, 'isReadOnly') && ! $reflector->isReadOnly()) {
             $this->violations[] = "{$shortName}: Missing 'readonly' keyword";
         }
 
@@ -149,7 +152,7 @@ class ValidateEventsCommand extends Command
         $hasDomainEvent = in_array('App\\Contracts\\Events\\DomainEvent', $interfaces, true);
         $hasAuditEvent = in_array('App\\Contracts\\Events\\AuditEvent', $interfaces, true);
 
-        if (!$hasDomainEvent && !$hasAuditEvent) {
+        if (! $hasDomainEvent && ! $hasAuditEvent) {
             $this->violations[] = "{$shortName}: Must implement DomainEvent or AuditEvent";
         }
 
@@ -169,7 +172,7 @@ class ValidateEventsCommand extends Command
         $hasToPrimitives = $reflector->hasMethod('toPrimitives');
         $hasToAuditLog = $reflector->hasMethod('toAuditLog');
 
-        if (!$hasToPrimitives && !$hasToAuditLog) {
+        if (! $hasToPrimitives && ! $hasToAuditLog) {
             $method = $hasAuditEvent ? 'toAuditLog()' : 'toPrimitives()';
             $this->violations[] = "{$shortName}: Missing {$method} method";
         }
@@ -202,7 +205,7 @@ class ValidateEventsCommand extends Command
         $filename = $reflector->getFileName();
         if ($filename && file_exists($filename)) {
             $content = file_get_contents($filename);
-            
+
             // Detect common Eloquent model property patterns
             $eloquentPatterns = [
                 '/use\s+SerializesModels\s*;/' => 'Uses SerializesModels trait',

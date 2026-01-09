@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -61,47 +60,49 @@ class SystemPruneCommand extends Command
                 'description' => 'One-Time Passwords (15 min TTL)',
                 'class' => 'App\\Models\\Otp',
                 'table' => 'otps',
-                'query' => fn($class) => $class::where('expires_at', '<', now())
+                'query' => fn ($class) => $class::where('expires_at', '<', now())
                     ->orWhere('created_at', '<', now()->subMinutes(15)),
             ],
             [
                 'description' => 'Password Reset Tokens (1 hour TTL)',
                 'class' => null, // Use raw table query
                 'table' => 'password_reset_tokens',
-                'query' => fn() => DB::table('password_reset_tokens')
+                'query' => fn () => DB::table('password_reset_tokens')
                     ->where('created_at', '<', now()->subHour()),
             ],
             [
                 'description' => 'Telescope Debug Entries (48 hours)',
                 'class' => 'Laravel\\Telescope\\Storage\\EntryModel',
                 'table' => 'telescope_entries',
-                'query' => fn($class) => $class::where('created_at', '<', now()->subHours(48)),
+                'query' => fn ($class) => $class::where('created_at', '<', now()->subHours(48)),
             ],
             [
                 'description' => 'Activity Logs (30 days)',
                 'class' => 'Spatie\\Activitylog\\Models\\Activity',
                 'table' => 'activity_log',
-                'query' => fn($class) => $class::where('created_at', '<', now()->subDays(30)),
+                'query' => fn ($class) => $class::where('created_at', '<', now()->subDays(30)),
             ],
             [
                 'description' => 'Failed Job Records (7 days)',
                 'class' => null,
                 'table' => 'failed_jobs',
-                'query' => fn() => DB::table('failed_jobs')
+                'query' => fn () => DB::table('failed_jobs')
                     ->where('failed_at', '<', now()->subDays(7)),
             ],
             [
                 'description' => 'Expired API Tokens',
                 'class' => 'Laravel\\Sanctum\\PersonalAccessToken',
                 'table' => 'personal_access_tokens',
-                'query' => fn($class) => $class::whereNotNull('expires_at')
+                'query' => fn ($class) => $class::whereNotNull('expires_at')
                     ->where('expires_at', '<', now()),
             ],
         ];
     }
 
     protected int $totalPruned = 0;
+
     protected bool $dryRun = false;
+
     protected int $chunkSize = 1000;
 
     public function handle(): int
@@ -112,9 +113,9 @@ class SystemPruneCommand extends Command
 
         $this->components->info('System Prune - Ephemeral Data Garbage Collector');
         $this->components->bulletList([
-            "Mode: " . ($this->dryRun ? 'DRY RUN' : 'LIVE'),
+            'Mode: '.($this->dryRun ? 'DRY RUN' : 'LIVE'),
             "Chunk size: {$this->chunkSize}",
-            "Scope: " . ($specificModel ?: 'All ephemeral models'),
+            'Scope: '.($specificModel ?: 'All ephemeral models'),
         ]);
 
         foreach ($this->getEphemeralModels() as $config) {
@@ -152,23 +153,25 @@ class SystemPruneCommand extends Command
 
         try {
             // Check if table exists first
-            if (!Schema::hasTable($config['table'])) {
+            if (! Schema::hasTable($config['table'])) {
                 $this->components->twoColumnDetail(
                     $description,
                     '<fg=gray>Table not found - skipping</>'
                 );
+
                 return;
             }
 
             // If class is specified, check it exists
-            if ($config['class'] && !class_exists($config['class'])) {
+            if ($config['class'] && ! class_exists($config['class'])) {
                 // Fall back to raw table query
                 $pruned = $this->pruneViaRawQuery($config['table'], $config['description']);
+
                 return;
             }
 
             // Build the query
-            $query = $config['class'] 
+            $query = $config['class']
                 ? ($config['query'])($config['class'])
                 : ($config['query'])();
 
@@ -178,10 +181,11 @@ class SystemPruneCommand extends Command
                 $this->totalPruned += $count;
                 $this->components->twoColumnDetail(
                     $description,
-                    $count > 0 
-                        ? "<fg=yellow>{$count} would be deleted</>" 
+                    $count > 0
+                        ? "<fg=yellow>{$count} would be deleted</>"
                         : '<fg=gray>0 records</>'
                 );
+
                 return;
             }
 
@@ -196,17 +200,17 @@ class SystemPruneCommand extends Command
 
             $this->components->twoColumnDetail(
                 $description,
-                $deleted > 0 
-                    ? "<fg=green>{$deleted} records</>" 
+                $deleted > 0
+                    ? "<fg=green>{$deleted} records</>"
                     : '<fg=gray>0 records</>'
             );
 
         } catch (\Exception $e) {
             $this->components->twoColumnDetail(
                 $description,
-                "<fg=red>Error: " . substr($e->getMessage(), 0, 50) . "...</>"
+                '<fg=red>Error: '.substr($e->getMessage(), 0, 50).'...</>'
             );
-            
+
             Log::error('SystemPrune: Failed to prune entity', [
                 'entity' => $description,
                 'error' => $e->getMessage(),
@@ -222,10 +226,10 @@ class SystemPruneCommand extends Command
         try {
             // Apply generic retention policy based on created_at
             $query = DB::table($table)->where('created_at', '<', now()->subDays(30));
-            
+
             $count = $query->count();
-            
-            if (!$this->dryRun) {
+
+            if (! $this->dryRun) {
                 $deleted = 0;
                 do {
                     $batch = DB::table($table)
@@ -240,8 +244,8 @@ class SystemPruneCommand extends Command
             $this->totalPruned += $count;
 
             $this->components->twoColumnDetail(
-                $description . ' (raw)',
-                $count > 0 
+                $description.' (raw)',
+                $count > 0
                     ? ($this->dryRun ? "<fg=yellow>{$count} would be deleted</>" : "<fg=green>{$count} records</>")
                     : '<fg=gray>0 records</>'
             );

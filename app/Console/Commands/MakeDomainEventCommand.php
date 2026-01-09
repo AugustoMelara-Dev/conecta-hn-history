@@ -70,7 +70,7 @@ class MakeDomainEventCommand extends GeneratorCommand
     {
         return file_exists($customPath = $this->laravel->basePath(trim($stub, '/')))
             ? $customPath
-            : __DIR__ . $stub;
+            : __DIR__.$stub;
     }
 
     /**
@@ -81,10 +81,10 @@ class MakeDomainEventCommand extends GeneratorCommand
         $bounded = $this->option('bounded');
 
         if ($bounded) {
-            return $rootNamespace . '\\Events\\' . Str::studly($bounded);
+            return $rootNamespace.'\\Events\\'.Str::studly($bounded);
         }
 
-        return $rootNamespace . '\\Events';
+        return $rootNamespace.'\\Events';
     }
 
     /**
@@ -121,10 +121,10 @@ class MakeDomainEventCommand extends GeneratorCommand
 
         // Extract from event name (e.g., OrderCancelled -> Order)
         $name = $this->getNameInput();
-        
+
         // Common suffixes to remove
         $suffixes = ['Created', 'Updated', 'Deleted', 'Cancelled', 'Paid', 'Shipped', 'Refunded', 'Approved', 'Rejected'];
-        
+
         foreach ($suffixes as $suffix) {
             if (Str::endsWith($name, $suffix)) {
                 return Str::replaceLast($suffix, '', $name);

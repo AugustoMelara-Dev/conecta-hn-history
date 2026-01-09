@@ -9,8 +9,8 @@ use App\Infrastructure\Events\InMemoryEventBus;
 use App\Models\Order;
 use App\Services\InventoryManager;
 use App\Services\OrderStateService;
-use PHPUnit\Framework\TestCase;
 use Mockery;
+use PHPUnit\Framework\TestCase;
 
 /**
  * OrderStateServiceTest - Pure Domain Unit Test
@@ -40,7 +40,9 @@ use Mockery;
 class OrderStateServiceTest extends TestCase
 {
     private InMemoryEventBus $eventBus;
+
     private InventoryManager $inventoryManager;
+
     private OrderStateService $service;
 
     protected function setUp(): void
@@ -48,7 +50,7 @@ class OrderStateServiceTest extends TestCase
         parent::setUp();
 
         // Use InMemoryEventBus for pure unit testing
-        $this->eventBus = new InMemoryEventBus();
+        $this->eventBus = new InMemoryEventBus;
 
         // Mock InventoryManager (we're testing OrderStateService, not InventoryManager)
         $this->inventoryManager = Mockery::mock(InventoryManager::class);

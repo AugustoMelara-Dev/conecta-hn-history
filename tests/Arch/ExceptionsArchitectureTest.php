@@ -111,17 +111,17 @@ class ExceptionsArchitectureTest extends TestCase
         foreach ($testCases as $exception) {
             $array = $exception->toArray();
 
-            $this->assertArrayHasKey('success', $array, get_class($exception) . ' toArray must have "success" key');
-            $this->assertFalse($array['success'], get_class($exception) . ' toArray["success"] must be false');
+            $this->assertArrayHasKey('success', $array, get_class($exception).' toArray must have "success" key');
+            $this->assertFalse($array['success'], get_class($exception).' toArray["success"] must be false');
 
-            $this->assertArrayHasKey('error_code', $array, get_class($exception) . ' toArray must have "error_code" key');
-            $this->assertIsString($array['error_code'], get_class($exception) . ' error_code must be string');
+            $this->assertArrayHasKey('error_code', $array, get_class($exception).' toArray must have "error_code" key');
+            $this->assertIsString($array['error_code'], get_class($exception).' error_code must be string');
 
-            $this->assertArrayHasKey('message', $array, get_class($exception) . ' toArray must have "message" key');
-            $this->assertIsString($array['message'], get_class($exception) . ' message must be string');
+            $this->assertArrayHasKey('message', $array, get_class($exception).' toArray must have "message" key');
+            $this->assertIsString($array['message'], get_class($exception).' message must be string');
 
-            $this->assertArrayHasKey('meta', $array, get_class($exception) . ' toArray must have "meta" key');
-            $this->assertIsArray($array['meta'], get_class($exception) . ' meta must be array');
+            $this->assertArrayHasKey('meta', $array, get_class($exception).' toArray must have "meta" key');
+            $this->assertIsArray($array['meta'], get_class($exception).' meta must be array');
         }
     }
 
@@ -147,14 +147,14 @@ class ExceptionsArchitectureTest extends TestCase
             $this->assertEquals(
                 $expectedCode,
                 $exception->getErrorCode(),
-                get_class($exception) . ' must return correct error code'
+                get_class($exception).' must return correct error code'
             );
 
             // Validate SCREAMING_SNAKE_CASE format
             $this->assertMatchesRegularExpression(
                 '/^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$/',
                 $exception->getErrorCode(),
-                get_class($exception) . ' error code must be SCREAMING_SNAKE_CASE'
+                get_class($exception).' error code must be SCREAMING_SNAKE_CASE'
             );
         }
     }
@@ -237,19 +237,29 @@ class ExceptionsArchitectureTest extends TestCase
     public function it_prohibits_sensitive_keys_in_context(): void
     {
         $forbiddenKeys = [
-            'password', 'api_key', 'token', 'secret', 'credit_card', 'ssn', 'authorization'
+            'password', 'api_key', 'token', 'secret', 'credit_card', 'ssn', 'authorization',
         ];
 
         foreach ($forbiddenKeys as $key) {
             try {
                 // Create a concrete implementation of abstract DomainException for testing
-                new class("Security Breach Test", [$key => 'leak']) extends DomainException {
-                    public function __construct(string $message, array $context) {
+                new class('Security Breach Test', [$key => 'leak']) extends DomainException
+                {
+                    public function __construct(string $message, array $context)
+                    {
                         parent::__construct($message);
                         $this->validateContextSafety($context);
                     }
-                    public function context(): array { return []; }
-                    public function getErrorCode(): string { return 'TEST'; }
+
+                    public function context(): array
+                    {
+                        return [];
+                    }
+
+                    public function getErrorCode(): string
+                    {
+                        return 'TEST';
+                    }
                 };
                 $this->fail("Should have thrown LogicException for forbidden key: {$key}");
             } catch (\LogicException $e) {
@@ -272,13 +282,23 @@ class ExceptionsArchitectureTest extends TestCase
 
         foreach ($sensitiveValues as $value) {
             try {
-                new class("Security Pattern Test", ['safe_key' => $value]) extends DomainException {
-                    public function __construct(string $message, array $context) {
+                new class('Security Pattern Test', ['safe_key' => $value]) extends DomainException
+                {
+                    public function __construct(string $message, array $context)
+                    {
                         parent::__construct($message);
                         $this->validateContextSafety($context);
                     }
-                    public function context(): array { return []; }
-                    public function getErrorCode(): string { return 'TEST'; }
+
+                    public function context(): array
+                    {
+                        return [];
+                    }
+
+                    public function getErrorCode(): string
+                    {
+                        return 'TEST';
+                    }
                 };
                 $this->fail("Should have thrown LogicException for sensitive value: {$value}");
             } catch (\LogicException $e) {

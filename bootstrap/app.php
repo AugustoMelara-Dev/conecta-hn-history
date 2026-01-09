@@ -1,6 +1,7 @@
 <?php
 
-use App\Application\Jobs\Governance\AuditTenantLimits;
+use App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob;
+use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -13,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withCommands([
+        __DIR__.'/../app/Infrastructure/Console/Commands',
+    ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             \App\Http\Middleware\SecurityHeaders::class, // Zero-Trust Security Headers
@@ -49,7 +53,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('media:clean-orphans')->weekly()->sundays()->at('03:00');
 
         // Pilar 8: Analytics Sync (Daily at 00:05 AM)
-        $schedule->job(new \App\Application\Jobs\Analytics\SyncAnalyticsJob)->dailyAt('00:05');
+        $schedule->job(new SyncAnalyticsJob)->dailyAt('00:05');
 
         // ═══════════════════════════════════════════════════════════════════
         // PILAR SEO: Generación automática de sitemap (Diario a medianoche)

@@ -22,7 +22,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * - String length limits prevent buffer/column overflow
  * - Phone number format validation for WhatsApp
  */
-class UpdateTenantSettingsRequest extends FormRequest
+final class UpdateTenantSettingsRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

@@ -108,7 +108,7 @@ class ProductResource extends Resource
 
         $settings = app(GeneralSettings::class);
         $limit = ($tenant->is_pro) ? '∞' : ($settings->free_plan_product_limit ?? 10);
-        
+
         $currentCount = DB::table('products')
             ->where('tenant_id', $tenant->id)
             ->whereNull('deleted_at')

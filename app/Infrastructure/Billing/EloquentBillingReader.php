@@ -24,7 +24,8 @@ final class EloquentBillingReader implements BillingReader
             return collect([]);
         }
 
-        return Payment::where('tenant_id', $tenantId)
+        return Payment::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get();

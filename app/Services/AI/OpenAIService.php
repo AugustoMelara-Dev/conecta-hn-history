@@ -32,15 +32,12 @@ final class OpenAIService
 
     // Pricing Configuration (USD per 1M tokens) - GPT-4o
     private const PRICE_PER_1M_INPUT_TOKENS = 2.50;
+
     private const PRICE_PER_1M_OUTPUT_TOKENS = 10.00;
 
     /**
      * Generate a structured business profile with Strict Data Contracts.
      *
-     * @param string $businessName
-     * @param string $description
-     * @param int $userId
-     * @param int $tenantId
      * @return array{
      *     description: string,
      *     seo_title: string,
@@ -48,13 +45,14 @@ final class OpenAIService
      *     tags: array,
      *     category_suggestion: string
      * }
+     *
      * @throws AiProviderUnavailableException
      * @throws AiMalformedResponseException
      */
     public function generateStructuredProfile(string $businessName, string $description, int $userId, int $tenantId): array
     {
-        $systemPrompt = "Eres un experto en SEO y Marketing Digital. Tu salida es JSON estricto.";
-        
+        $systemPrompt = 'Eres un experto en SEO y Marketing Digital. Tu salida es JSON estricto.';
+
         $userPrompt = <<<EOT
 Genera un perfil optimizado para el negocio "{$businessName}".
 Descripción original: "{$description}".
@@ -90,12 +88,12 @@ EOT;
 
                 // Defensiive check: Client Errors (4xx) are strictly NOT retriable
                 if ($response->clientError()) {
-                    throw new AiMalformedResponseException("OpenAI Client Error: " . $response->status());
+                    throw new AiMalformedResponseException('OpenAI Client Error: '.$response->status());
                 }
 
                 // Server Errors (5xx) or Rate Limits (429) trigger manual retry
                 if ($response->serverError() || $response->status() === 429) {
-                    throw new ConnectionException("Upstream Failure: " . $response->status());
+                    throw new ConnectionException('Upstream Failure: '.$response->status());
                 }
 
                 // Success
@@ -103,7 +101,7 @@ EOT;
 
             } catch (ConnectionException $e) {
                 $attempts++;
-                
+
                 if ($attempts >= $maxAttempts) {
                     Log::critical('[OpenAIService] Exhausted backoff strategy.', ['error' => $e->getMessage()]);
                     throw new AiProviderUnavailableException("OpenAI Unavailable after {$attempts} attempts.", 0, $e);
@@ -113,7 +111,7 @@ EOT;
                 usleep($sleepMs * 1000); // usleep takes microseconds
             } catch (Throwable $e) {
                 // Unexpected Fatal Error
-                throw new AiProviderUnavailableException("Unexpected AI Service Failure: " . $e->getMessage(), 0, $e);
+                throw new AiProviderUnavailableException('Unexpected AI Service Failure: '.$e->getMessage(), 0, $e);
             }
         }
 
@@ -124,24 +122,24 @@ EOT;
         $contentRaw = $data['choices'][0]['message']['content'] ?? '{}';
         $decoded = json_decode($contentRaw, true);
 
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
-            throw new AiMalformedResponseException("Invalid JSON structure received.");
+        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+            throw new AiMalformedResponseException('Invalid JSON structure received.');
         }
 
         // SCHEMA VALIDATION (Strict Type Enforcement)
         $validator = Validator::make($decoded, [
-            'description'       => 'required|string',
-            'seo_title'         => 'required|string|max:70',
-            'seo_description'   => 'required|string|max:160',
-            'tags'              => 'required|array|min:3|max:10',
-            'tags.*'            => 'string|max:30', // Nested array validation
-            'category_suggestion'=> 'required|string|max:50'
+            'description' => 'required|string',
+            'seo_title' => 'required|string|max:70',
+            'seo_description' => 'required|string|max:160',
+            'tags' => 'required|array|min:3|max:10',
+            'tags.*' => 'string|max:30', // Nested array validation
+            'category_suggestion' => 'required|string|max:50',
         ]);
 
         if ($validator->fails()) {
             $errors = $validator->errors()->all();
             Log::error('[OpenAIService] Schema Violation', ['errors' => $errors, 'payload' => $decoded]);
-            throw new AiMalformedResponseException("AI returned invalid schema: " . implode(", ", $errors));
+            throw new AiMalformedResponseException('AI returned invalid schema: '.implode(', ', $errors));
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -150,7 +148,7 @@ EOT;
         // Whitelist: p, b, strong, i, em, u, ul, ol, li, br
         // Any other tag (script, iframe, object, img) is obliterated.
         $cleanDescription = strip_tags(
-            $decoded['description'], 
+            $decoded['description'],
             ['p', 'b', 'strong', 'i', 'em', 'u', 'ul', 'ol', 'li', 'br']
         );
 
