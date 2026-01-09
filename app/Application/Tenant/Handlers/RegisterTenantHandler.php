@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Identity\Handlers;
+namespace App\Application\Tenant\Handlers;
 
 use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Application\Tenant\Results\RegisterTenantResult;

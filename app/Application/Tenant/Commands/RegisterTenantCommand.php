@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Identity\Commands;
+namespace App\Application\Tenant\Commands;
 
 /**
  * RegisterTenantCommand - Intent for Tenant + User Registration

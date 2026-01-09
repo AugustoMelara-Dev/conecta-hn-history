@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Sales\Results;
+namespace App\Application\Sales\DTOs;
 
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
