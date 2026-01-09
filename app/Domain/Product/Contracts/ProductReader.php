@@ -1,0 +1,29 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Product\Contracts;
+
+use App\Models\Product;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
+/**
+ * ProductReader - Domain Contract for Product Data Retrieval
+ *
+ * PORT: Defines how the Application Layer retrieves product data.
+ * ADAPTER: Implemented by Infrastructure layer (EloquentProductReader).
+ */
+interface ProductReader
+{
+    public function getInventory(int $tenantId): Collection;
+
+    public function getLowStockProducts(int $tenantId): Collection;
+
+    public function search(int $tenantId, array $filters, int $perPage = 20): LengthAwarePaginator;
+
+    /**
+     * Find a product by ID, ensuring tenant scope.
+     */
+    public function find(int $tenantId, int $productId): ?Product;
+}

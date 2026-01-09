@@ -1,0 +1,36 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Product\Events;
+
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+
+/**
+ * ProductCreated - Domain Event for Product Creation
+ *
+ * Implements ShouldDispatchAfterCommit for Transactional Outbox safety.
+ */
+final readonly class ProductCreated implements ShouldDispatchAfterCommit
+{
+    public function __construct(
+        public int $productId,
+        public int $tenantId,
+        public string $name,
+    ) {}
+
+    /**
+     * Serialize to safe payload for Outbox storage.
+     *
+     * @return array<string, mixed>
+     */
+    public function toPayload(): array
+    {
+        return [
+            'product_id' => $this->productId,
+            'tenant_id' => $this->tenantId,
+            'name' => $this->name,
+            'occurred_at' => now()->toIso8601String(),
+        ];
+    }
+}
