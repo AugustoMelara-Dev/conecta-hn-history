@@ -8,7 +8,7 @@ use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\OrderNumber;
 use App\ValueObjects\TenantId;
-use DateTimeImmutable;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * OrderShipped - Pure Domain Event for Fulfillment Completion
@@ -41,17 +41,17 @@ use DateTimeImmutable;
  *
  * DISPATCH POINT: FulfillmentService::markAsShipped() via DomainEventBus
  */
-final readonly class OrderShipped implements DomainEvent
+final readonly class OrderShipped implements DomainEvent, ShouldDispatchAfterCommit
 {
     use HasDomainMetadata;
 
     /**
-     * @param TenantId $tenantId Tenant context for queue middleware
-     * @param int $orderId The order aggregate root ID
-     * @param OrderNumber $orderNumber Human-readable order reference
-     * @param string $carrier Shipping carrier name (e.g., 'fedex', 'dhl')
-     * @param string $trackingNumber Carrier tracking number
-     * @param string|null $estimatedDelivery ISO date of estimated delivery
+     * @param  TenantId  $tenantId  Tenant context for queue middleware
+     * @param  int  $orderId  The order aggregate root ID
+     * @param  OrderNumber  $orderNumber  Human-readable order reference
+     * @param  string  $carrier  Shipping carrier name (e.g., 'fedex', 'dhl')
+     * @param  string  $trackingNumber  Carrier tracking number
+     * @param  string|null  $estimatedDelivery  ISO date of estimated delivery
      */
     public function __construct(
         private TenantId $tenantId,

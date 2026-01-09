@@ -47,7 +47,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *   );
  *   return Excel::download($export, 'sales.xlsx');
  */
-class SalesExport implements FromQuery, WithChunkReading, WithHeadings, WithMapping, WithStyles, WithTitle, ShouldQueue
+class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadings, WithMapping, WithStyles, WithTitle
 {
     use Exportable;
     use SanitizesOutput;
@@ -97,12 +97,12 @@ class SalesExport implements FromQuery, WithChunkReading, WithHeadings, WithMapp
      * Dispatches audit event AFTER successful object construction,
      * preventing race conditions and orphaned audit records.
      *
-     * @param TenantId $tenantId The tenant context (MANDATORY)
-     * @param SalesExportCriteria $criteria The export filters (validated)
-     * @param int $userId The user requesting the export
-     * @param bool $showFullPii If true, show full phone/email (requires explicit permission)
-     * @param string $ipAddress Request IP for audit trail
-     * @param string $userAgent Request user agent for audit trail
+     * @param  TenantId  $tenantId  The tenant context (MANDATORY)
+     * @param  SalesExportCriteria  $criteria  The export filters (validated)
+     * @param  int  $userId  The user requesting the export
+     * @param  bool  $showFullPii  If true, show full phone/email (requires explicit permission)
+     * @param  string  $ipAddress  Request IP for audit trail
+     * @param  string  $userAgent  Request user agent for audit trail
      */
     public static function create(
         TenantId $tenantId,
@@ -346,7 +346,7 @@ class SalesExport implements FromQuery, WithChunkReading, WithHeadings, WithMapp
         // Redact: "Juan Carlos Pérez" → "J** C** P**"
         $parts = explode(' ', $name);
         $redacted = array_map(function ($part) {
-            return strlen($part) > 0 ? $part[0] . str_repeat('*', max(0, strlen($part) - 1)) : '';
+            return strlen($part) > 0 ? $part[0].str_repeat('*', max(0, strlen($part) - 1)) : '';
         }, $parts);
 
         return implode(' ', $redacted);

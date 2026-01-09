@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\PaymentMethod;
 use App\Models\Order;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -51,7 +50,7 @@ class OrderFactory extends Factory
             // ═══════════════════════════════════════════════════════════════════════
             // UNIQUE IDENTIFIERS
             // ═══════════════════════════════════════════════════════════════════════
-            'order_number' => '#' . $this->faker->unique()->numberBetween(1001, 99999),
+            'order_number' => '#'.$this->faker->unique()->numberBetween(1001, 99999),
             'tracking_uuid' => $this->faker->uuid(), // Real-time tracking token
 
             // PII fields (as per migration)
@@ -85,7 +84,7 @@ class OrderFactory extends Factory
     private function generateHondurasPhone(): string
     {
         $prefix = $this->faker->randomElement(['9', '8', '3']);
-        $number = $this->faker->numerify($prefix . '###-####');
+        $number = $this->faker->numerify($prefix.'###-####');
 
         return $number;
     }

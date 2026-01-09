@@ -4,19 +4,28 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
+use App\Domain\Public\Contracts\BuyerRepository;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
-class BuyerController extends Controller
+/**
+ * BuyerController - Clean Active Record
+ */
+final class BuyerController extends Controller
 {
-    public function index()
+    public function __construct(
+        private readonly BuyerRepository $repository
+    ) {}
+
+    public function index(Request $request): Response
     {
-        $favorites = auth()->user()->favorites()->with(['product.tenant', 'product.category'])->get();
-        $followedTenants = auth()->user()->following()->get();
+        $userId = $request->user()->id;
 
         return Inertia::render('Buyer/Profile', [
-            'favorites' => $favorites,
-            'followedTenants' => $followedTenants,
+            'favorites' => $this->repository->getFavorites($userId),
+            'followedTenants' => $this->repository->getFollowedTenants($userId),
         ]);
     }
 }

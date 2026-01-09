@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\TenantResource\Pages;
+use App\Models\Tenant;
 // MIGRATION: Updated to Domain namespace (2026-01-05)
-use App\Domain\TenantGovernance\Models\Tenant;
+use App\Filament\Resources\TenantResource\Pages;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -438,6 +438,7 @@ class TenantResource extends Resource
                         session(['impersonator_id' => auth()->id()]);
                         session(['impersonator_name' => auth()->user()->name]);
                         \Illuminate\Support\Facades\Auth::login($record->user);
+
                         return redirect('/app');
                     }),
 

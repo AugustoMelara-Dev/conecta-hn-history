@@ -11,8 +11,8 @@ interface ReportGenerationInterface
     /**
      * Generates a raw PDF string for the sales report.
      *
-     * @param Tenant $tenant The tenant requesting the report.
-     * @param array $filters Filters applied to the report (date range, status, etc).
+     * @param  Tenant  $tenant  The tenant requesting the report.
+     * @param  array  $filters  Filters applied to the report (date range, status, etc).
      * @return string Raw binary PDF content.
      */
     public function generateSalesPdf(Tenant $tenant, array $filters): string;
@@ -20,7 +20,7 @@ interface ReportGenerationInterface
     /**
      * Generates a raw PDF string for the inventory report.
      *
-     * @param Tenant $tenant The tenant requesting the report.
+     * @param  Tenant  $tenant  The tenant requesting the report.
      * @return string Raw binary PDF content.
      */
     public function generateInventoryPdf(Tenant $tenant): string;
@@ -28,7 +28,7 @@ interface ReportGenerationInterface
     /**
      * Generates a raw PDF string for the kitchen report.
      *
-     * @param Tenant $tenant The tenant requesting the report.
+     * @param  Tenant  $tenant  The tenant requesting the report.
      * @return string Raw binary PDF content.
      */
     public function generateKitchenPdf(Tenant $tenant): string;

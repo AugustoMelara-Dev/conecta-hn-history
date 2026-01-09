@@ -12,9 +12,19 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Mail;
 
-class SendLoginAlertListener implements ShouldQueue
+final class SendLoginAlertListener implements ShouldQueue
 {
     use InteractsWithQueue;
+
+    /**
+     * Get the middleware the job should pass through.
+     */
+    public function middleware(NewLoginDetected $event): array
+    {
+        return [
+            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()->toInt())
+        ];
+    }
 
     /**
      * Handle the event.

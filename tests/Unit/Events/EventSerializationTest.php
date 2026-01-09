@@ -37,6 +37,7 @@ class EventSerializationTest extends TestCase
 {
     /**
      * @test
+     *
      * @group events
      * @group serialization
      */
@@ -74,6 +75,7 @@ class EventSerializationTest extends TestCase
 
     /**
      * @test
+     *
      * @group events
      * @group serialization
      */
@@ -83,7 +85,7 @@ class EventSerializationTest extends TestCase
             actorId: null,
             ipAddress: IpAddress::fromString('10.0.0.1')->anonymize(),
             userAgent: 'curl/7.68.0',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
 
         $original = new FailedLoginAttempt(
@@ -103,6 +105,7 @@ class EventSerializationTest extends TestCase
 
     /**
      * @test
+     *
      * @group events
      * @group serialization
      */
@@ -140,6 +143,7 @@ class EventSerializationTest extends TestCase
 
     /**
      * @test
+     *
      * @group events
      * @group serialization
      */
@@ -150,7 +154,7 @@ class EventSerializationTest extends TestCase
             actorId: 1,
             ipAddress: IpAddress::fromString('192.168.0.1'),
             userAgent: 'AdminCLI/1.0',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
 
         $original = new TenantSuspended(
@@ -179,6 +183,7 @@ class EventSerializationTest extends TestCase
 
     /**
      * @test
+     *
      * @group events
      * @group serialization
      */
@@ -188,7 +193,7 @@ class EventSerializationTest extends TestCase
             actorId: null,
             ipAddress: IpAddress::fromString('127.0.0.1'),
             userAgent: 'System/FraudDetection',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
 
         $original = new TenantSuspended(
@@ -212,6 +217,7 @@ class EventSerializationTest extends TestCase
 
     /**
      * @test
+     *
      * @group events
      * @group serialization
      */
@@ -238,6 +244,7 @@ class EventSerializationTest extends TestCase
 
     /**
      * @test
+     *
      * @group events
      * @group serialization
      */
@@ -247,7 +254,7 @@ class EventSerializationTest extends TestCase
             actorId: 1,
             ipAddress: IpAddress::fromString('10.0.0.1'),
             userAgent: 'Test/1.0',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
 
         $event = new SensitiveDataAccessed(
@@ -278,15 +285,16 @@ class EventSerializationTest extends TestCase
 
     /**
      * @test
+     *
      * @group events
      * @group robustness
      * @group chaos
-     * 
+     *
      * CHAOS TEST: Verify system survives missing non-critical keys.
-     * 
+     *
      * Simulates: A message from an older version of the event, or partial
      * data corruption in Redis that strips some keys from the payload.
-     * 
+     *
      * Expected: The system uses default values and does NOT throw
      * "Undefined array key" warnings.
      */
@@ -304,7 +312,7 @@ class EventSerializationTest extends TestCase
 
         // Verify defaults were applied correctly via toPrimitives()
         $primitives = $event->toPrimitives();
-        
+
         $this->assertEquals(42, $primitives['tenant_id']);
         $this->assertEquals(0, $primitives['order_id']);
         $this->assertEquals('UNKNOWN', $primitives['order_number']);
@@ -320,15 +328,16 @@ class EventSerializationTest extends TestCase
 
     /**
      * @test
+     *
      * @group events
      * @group robustness
      * @group chaos
-     * 
+     *
      * CHAOS TEST: Verify system ignores extraneous/malicious keys.
-     * 
+     *
      * Simulates: A payload injection attack or legacy fields from an
      * older version of the event schema that should be silently ignored.
-     * 
+     *
      * Expected: The object is created correctly, extra keys are discarded,
      * and no security vulnerabilities are introduced.
      */
@@ -360,7 +369,7 @@ class EventSerializationTest extends TestCase
 
         // Verify valid data was processed correctly via toPrimitives()
         $primitives = $event->toPrimitives();
-        
+
         $this->assertEquals(1, $primitives['tenant_id']);
         $this->assertEquals(999, $primitives['order_id']);
         $this->assertEquals('ORD-CLEAN', $primitives['order_number']);
@@ -375,10 +384,10 @@ class EventSerializationTest extends TestCase
         // (readonly class prevents dynamic properties anyway)
         $reflection = new \ReflectionClass($event);
         $properties = $reflection->getProperties();
-        
+
         // Event should only have expected properties, not injected ones
-        $propertyNames = array_map(fn($p) => $p->getName(), $properties);
-        
+        $propertyNames = array_map(fn ($p) => $p->getName(), $properties);
+
         $this->assertNotContains('hack_attempt', $propertyNames);
         $this->assertNotContains('sql_injection', $propertyNames);
         $this->assertNotContains('legacy_field', $propertyNames);
@@ -387,11 +396,12 @@ class EventSerializationTest extends TestCase
 
     /**
      * @test
+     *
      * @group events
      * @group robustness
-     * 
+     *
      * BOUNDARY TEST: Verify fail-fast on missing critical identifier.
-     * 
+     *
      * tenant_id is the only truly required field for multi-tenant isolation.
      * Without it, we cannot route the event correctly.
      */
@@ -415,6 +425,7 @@ class EventSerializationTest extends TestCase
 
     /**
      * @test
+     *
      * @group events
      * @group serialization
      */
@@ -450,6 +461,7 @@ class EventSerializationTest extends TestCase
 
     /**
      * @test
+     *
      * @group events
      * @group serialization
      */

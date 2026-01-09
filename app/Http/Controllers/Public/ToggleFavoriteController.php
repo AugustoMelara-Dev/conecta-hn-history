@@ -4,66 +4,55 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
+use App\Domain\TenantGovernance\Services\TenantResolver;
 use App\Http\Controllers\Controller;
-use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
- * ToggleFavoriteController - Inertia-Compatible Favorite Toggle
+ * ToggleFavoriteController - IDOR-Hardened Favorite Toggle
  *
- * ARCHITECTURE:
- * - Uses polymorphic favorites via User->toggleFavorite()
- * - Returns HTTP 303 (See Other) for Inertia scroll preservation
- * - Validates tenant existence before toggle
- *
- * SECURITY:
- * - Requires authentication (middleware)
- * - Validates tenant_id exists
+ * REFACTORED:
+ * - Uses TenantResolver instead of direct Tenant::where()
+ * - Only allows favoriting PUBLIC, ACTIVE tenants
+ * - No direct Eloquent queries in controller
  */
-class ToggleFavoriteController extends Controller
+final class ToggleFavoriteController extends Controller
 {
+    public function __construct(
+        private readonly TenantResolver $tenantResolver
+    ) {}
+
     /**
      * Toggle the favorite status for a tenant.
      *
-     * CRITICAL: Uses back()->setStatusCode(303) for Inertia.
-     * This preserves scroll position and page state.
-     * Standard 302 redirects would reset the viewport.
-     *
-     * @return \Symfony\Component\HttpFoundation\Response
+     * SECURITY: Uses TenantResolver for IDOR protection.
      */
-    public function __invoke(Request $request)
+    public function __invoke(Request $request): Response
     {
-        // Validate input
         $validated = $request->validate([
             'tenant_id' => ['required', 'integer'],
         ]);
 
-        // Zero Trust: Only allow favoriting visible, active tenants
-        $tenant = Tenant::where('id', $validated['tenant_id'])
-            ->where('is_active', true)
-            ->first();
+        // SECURE: Use TenantResolver - only returns public, active tenants
+        $tenant = $this->tenantResolver->findPublicById($validated['tenant_id']);
 
-        if (! $tenant) {
+        if (!$tenant) {
             return back()
                 ->setStatusCode(303)
                 ->withErrors(['tenant_id' => 'Negocio no encontrado o no disponible.']);
         }
 
-        // Get authenticated user
         $user = $request->user();
-
-        // Toggle favorite using User model method
         $isFavorited = $user->toggleFavorite($tenant);
 
-        // Log for analytics
         Log::info('Favorite toggled', [
             'user_id' => $user->id,
             'tenant_id' => $tenant->id,
             'is_favorited' => $isFavorited,
         ]);
 
-        // Return with HTTP 303 for Inertia scroll preservation
         return back()
             ->setStatusCode(303)
             ->with('success', $isFavorited ? 'Guardado en favoritos' : 'Eliminado de favoritos');

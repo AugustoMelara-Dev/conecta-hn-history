@@ -85,6 +85,280 @@ class AppServiceProvider extends ServiceProvider
             \App\Domain\Tenant\Contracts\OnboardingReader::class,
             \App\Infrastructure\Tenant\CachedOnboardingReader::class
         );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // SALES DOMAIN: Order Query Abstraction
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Sales\Contracts\OrderReader::class,
+            \App\Infrastructure\Sales\EloquentOrderReader::class
+        );
+        $this->app->bind(
+            \App\Domain\Sales\Contracts\ReportReader::class,
+            \App\Infrastructure\Sales\EloquentReportReader::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // ANALYTICS DOMAIN: Metrics Query Abstraction
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Analytics\Contracts\AnalyticsReader::class,
+            \App\Infrastructure\Analytics\EloquentAnalyticsReader::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // PRODUCT DOMAIN: Inventory Query Abstraction
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Product\Contracts\ProductReader::class,
+            \App\Infrastructure\Product\EloquentProductReader::class
+        );
+        $this->app->bind(
+            \App\Domain\Tenant\Contracts\TenantProductRepository::class,
+            \App\Infrastructure\Tenant\EloquentTenantProductRepository::class
+        );
+        // Shared Domains
+        $this->app->singleton(
+            \App\Domain\Shared\Contracts\TenantContext::class,
+            \App\Infrastructure\Shared\RequestTenantContext::class
+        );
+        $this->app->bind(
+            \App\Domain\Shared\Contracts\TenantReadRepository::class,
+            \App\Infrastructure\Shared\EloquentTenantReadRepository::class
+        );
+
+        // Public/Storefront Domains (Decorated with Cache)
+        $this->app->bind(
+            \App\Domain\Public\Contracts\TenantStorefrontRepository::class,
+            function ($app) {
+                // Instantiate the inner Eloquent Implementation
+                $inner = $app->make(\App\Infrastructure\Public\EloquentTenantStorefrontRepository::class);
+                
+                // Wrap it with the Cached Decorator
+                return new \App\Infrastructure\Public\CachedTenantStorefrontRepository($inner);
+            }
+        );
+        $this->app->bind(
+            \App\Domain\Public\Contracts\LandingPageRepository::class,
+            \App\Infrastructure\Public\EloquentLandingPageRepository::class
+        );
+        $this->app->singleton(
+            \App\Domain\Shared\Services\TenantContext::class,
+            \App\Domain\Shared\Services\TenantContext::class
+        );
+
+        $this->app->bind(
+            \App\Domain\Public\Contracts\BuyerRepository::class,
+            \App\Infrastructure\Public\EloquentBuyerRepository::class
+        );
+
+        // Tenant Domains (Metrics)
+        $this->app->bind(
+            \App\Domain\Tenant\Contracts\DashboardMetricsRepository::class,
+            \App\Infrastructure\Tenant\EloquentDashboardMetricsRepository::class
+        );
+
+        // Tenant Domains
+        $this->app->bind(
+            \App\Domain\Tenant\Contracts\OrderRepository::class,
+            \App\Infrastructure\Tenant\EloquentOrderRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\Tenant\Contracts\TenantProductRepository::class,
+            \App\Infrastructure\Tenant\EloquentTenantProductRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\Tenant\Contracts\CouponRepository::class,
+            \App\Infrastructure\Tenant\EloquentCouponRepository::class
+        );
+
+        // API Domains
+        $this->app->bind(
+             \App\Domain\Api\Contracts\NotificationRepository::class,
+             \App\Infrastructure\Api\EloquentNotificationRepository::class
+        );
+        $this->app->bind(
+             \App\Domain\Tenant\Contracts\BillingRepository::class,
+             \App\Infrastructure\Tenant\EloquentBillingRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\Marketing\Contracts\CouponReader::class,
+            \App\Infrastructure\Marketing\EloquentCouponReader::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // SEARCH & PUBLIC CATALOG
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Search\Contracts\GlobalSearchReader::class,
+            \App\Infrastructure\Search\EloquentGlobalSearchReader::class
+        );
+        $this->app->bind(
+            \App\Domain\Catalog\Contracts\PublicCatalogReader::class,
+            \App\Infrastructure\Catalog\EloquentPublicCatalogReader::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // COMMAND BUS: Synchronous Execution Pipeline
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Application\Shared\Contracts\CommandBus::class,
+            \App\Infrastructure\Bus\IlluminateCommandBus::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // REPOSITORY BINDINGS: DIP Compliance for Handlers
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Identity\Repositories\UserRepositoryInterface::class,
+            \App\Infrastructure\Repositories\Identity\EloquentUserRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface::class,
+            \App\Infrastructure\Repositories\TenantGovernance\EloquentTenantRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\Billing\Repositories\PaymentRepositoryInterface::class,
+            \App\Infrastructure\Repositories\Billing\EloquentPaymentRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\Sales\Repositories\OrderRepositoryInterface::class,
+            \App\Infrastructure\Repositories\Sales\EloquentOrderRepository::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // REVIEWS DOMAIN: Repository Bindings
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Reviews\Repositories\ReviewRepositoryInterface::class,
+            \App\Infrastructure\Repositories\Reviews\EloquentReviewRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\Product\Repositories\ProductRepositoryInterface::class,
+            \App\Infrastructure\Repositories\Products\EloquentProductRepository::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // PAYMENT DOMAIN: Repository Bindings
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Payment\Repositories\WebhookLogRepositoryInterface::class,
+            \App\Infrastructure\Repositories\Payment\EloquentWebhookLogRepository::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // IDENTITY DOMAIN: Social Identity Repository
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface::class,
+            \App\Infrastructure\Repositories\Identity\EloquentSocialIdentityRepository::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // DOCUMENT STORAGE: Abstraction for file handling in Billing Domain
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Billing\Services\DocumentStorageServiceInterface::class,
+            \App\Infrastructure\Storage\LaravelDocumentStorageService::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // ANALYTICS DOMAIN: Interaction Repository
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Analytics\Repositories\InteractionRepositoryInterface::class,
+            \App\Infrastructure\Repositories\Analytics\EloquentInteractionRepository::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // SALES DOMAIN: Lead Repository
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Sales\Repositories\LeadRepositoryInterface::class,
+            \App\Infrastructure\Repositories\Sales\EloquentLeadRepository::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // AUTH DOMAIN: OTP Notification and Repository Abstractions
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Auth\Contracts\OtpNotifierInterface::class,
+            \App\Infrastructure\Notifications\EmailOtpNotifier::class
+        );
+        
+        // OTP Repository with scalar injection (config-agnostic)
+        $this->app->bind(
+            \App\Domain\Auth\Repositories\OtpRepositoryInterface::class,
+            fn () => new \App\Infrastructure\Repositories\Auth\EloquentOtpRepository(
+                defaultExpiryMinutes: (int) config('auth.otp.expiry_minutes', 10)
+            )
+        );
+
+        // Admin Notifier with pure domain entities
+        $this->app->bind(
+            \App\Domain\Shared\Contracts\AdminNotifierInterface::class,
+            \App\Infrastructure\Notifications\FilamentAdminNotifier::class
+        );
+
+        // Admin Notifier with pure domain entities
+        $this->app->bind(
+            \App\Domain\Shared\Contracts\AdminNotifierInterface::class,
+            \App\Infrastructure\Notifications\FilamentAdminNotifier::class
+        );
+
+        // System Failure Notifier (SRE Hardening)
+        $this->app->bind(
+            \App\Domain\Shared\Contracts\FailureNotifierInterface::class,
+            \App\Infrastructure\Notifications\LogFailureNotifier::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // BILLING DOMAIN: Subscription Gateway Abstraction
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Billing\Gateways\SubscriptionGatewayInterface::class,
+            \App\Infrastructure\Billing\Gateways\ManualSubscriptionGateway::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // SHARED: Media Storage Abstraction
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Shared\Contracts\MediaStorageServiceInterface::class,
+            \App\Infrastructure\Storage\LaravelMediaStorageService::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // ORDERS DOMAIN: Receipt PDF Generator
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Orders\Contracts\ReceiptGeneratorInterface::class,
+            \App\Infrastructure\Reporting\DomPdfReceiptGenerator::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // SECURITY: Rate Limiting Abstraction
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Shared\Contracts\RateLimitServiceInterface::class,
+            \App\Infrastructure\Security\LaravelRateLimitService::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // TRANSACTIONAL OUTBOX: Event Dispatcher with At-Least-Once Delivery
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->singleton(
+            \App\Infrastructure\Bus\TransactionalEventDispatcher::class,
+            \App\Infrastructure\Bus\TransactionalEventDispatcher::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // FORTIFY ACTIONS: Password Reset & User Authentication
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \Laravel\Fortify\Contracts\ResetsUserPasswords::class,
+            \App\Actions\Fortify\ResetPasswordAction::class
+        );
     }
 
     /**
@@ -101,8 +375,8 @@ class AppServiceProvider extends ServiceProvider
         // tables would have orphaned records pointing to non-existent classes.
         // ═══════════════════════════════════════════════════════════════════════
         \Illuminate\Database\Eloquent\Relations\Relation::enforceMorphMap([
-            'user' => \App\Domain\Identity\Models\User::class,
-            'tenant' => \App\Domain\TenantGovernance\Models\Tenant::class,
+            'user' => \App\Models\User::class,
+            'tenant' => \App\Models\Tenant::class,
             'product' => \App\Models\Product::class,
             'order' => \App\Models\Order::class,
             'coupon' => \App\Models\Coupon::class,
@@ -135,8 +409,8 @@ class AppServiceProvider extends ServiceProvider
 
         // Policies for User and Tenant are auto-discovered via Domain structure
         // or explicitly bound here if needed.
-        Gate::policy(\App\Domain\Identity\Models\User::class, UserPolicy::class);
-        Gate::policy(\App\Domain\TenantGovernance\Models\Tenant::class, TenantPolicy::class);
+        Gate::policy(\App\Models\User::class, UserPolicy::class);
+        Gate::policy(\App\Models\Tenant::class, TenantPolicy::class);
 
         // Core Models Policies
         Gate::policy(Product::class, ProductPolicy::class);
@@ -149,7 +423,79 @@ class AppServiceProvider extends ServiceProvider
 
         // Observers
         Product::observe(\App\Observers\ProductObserver::class);
-        \App\Domain\TenantGovernance\Models\Tenant::observe(\App\Observers\TenantObserver::class);
+        \App\Models\Tenant::observe(\App\Observers\TenantObserver::class);
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // SECURITY: Rate Limiters
+        // ═══════════════════════════════════════════════════════════════════════
+        \Illuminate\Support\Facades\RateLimiter::for('analytics-protection', function (\Illuminate\Http\Request $request) {
+            // Composite Key: IP + User Agent + Target Tenant
+            // Prevents botnet distributed attacks against a specific tenant.
+            $key = $request->ip() . '|' . $request->userAgent() . '|' . $request->input('tenant_id');
+            
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by($key);
+        });
+
+        // TENANT-AWARE RATE LIMITING (Contextual Throttling)
+        \Illuminate\Support\Facades\RateLimiter::for('tenant-aware', function (\Illuminate\Http\Request $request) {
+            // Resolve Tenant ID securely from Context if available
+            // If explicit 'tenant_id' input is missing, try to resolve from route or attributes
+            // Fallback to IP if purely anonymous without context
+            
+            /** @var \App\Domain\Shared\Contracts\TenantContext $context */
+            $context = app(\App\Domain\Shared\Contracts\TenantContext::class);
+            $tenantId = $context->getTenantId() ?? $request->input('tenant_id'); // Try context first
+
+            $key = $tenantId 
+                ? "tenant_id:{$tenantId}|ip:" . $request->ip() 
+                : "ip:" . $request->ip();
+
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(120)->by($key); // Increased to 120 as per prompt example
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // BUS CONFIGURATION: Middleware & Mappings
+        // ═══════════════════════════════════════════════════════════════════════
+        \Illuminate\Support\Facades\Bus::pipeThrough([
+            \App\Infrastructure\Bus\Middleware\TransactionalMiddleware::class,
+        ]);
+
+        \Illuminate\Support\Facades\Bus::map([
+            \App\Application\Sales\Commands\CreateOrderCommand::class => \App\Application\Sales\Handlers\CreateOrderHandler::class,
+            \App\Application\Tenant\Commands\RegisterTenantCommand::class => \App\Application\Tenant\Handlers\RegisterTenantHandler::class,
+            \App\Application\Identity\Commands\RegisterUserCommand::class => \App\Application\Identity\Handlers\RegisterUserHandler::class,
+            \App\Application\Billing\Commands\ReportPaymentCommand::class => \App\Application\Billing\Handlers\ReportPaymentHandler::class,
+            \App\Application\Reviews\Commands\SubmitReviewCommand::class => \App\Application\Reviews\Handlers\SubmitReviewHandler::class,
+            \App\Application\Products\Commands\CreateProductCommand::class => \App\Application\Products\Handlers\CreateProductHandler::class,
+            \App\Application\Products\Commands\UpdateProductCommand::class => \App\Application\Products\Handlers\UpdateProductHandler::class,
+            \App\Application\Products\Commands\DeleteProductCommand::class => \App\Application\Products\Handlers\DeleteProductHandler::class,
+            \App\Application\Products\Commands\ToggleProductVisibilityCommand::class => \App\Application\Products\Handlers\ToggleProductVisibilityHandler::class,
+            \App\Application\Sales\Commands\CancelOrderCommand::class => \App\Application\Sales\Handlers\CancelOrderHandler::class,
+            \App\Application\Payments\Commands\HandlePaymentWebhookCommand::class => \App\Application\Payments\Handlers\HandlePaymentWebhookHandler::class,
+            \App\Application\Billing\Commands\RequestUpgradeCommand::class => \App\Application\Billing\Handlers\RequestUpgradeHandler::class,
+            \App\Application\Auth\Commands\LoginViaSocialProviderCommand::class => \App\Application\Auth\Handlers\LoginViaSocialProviderHandler::class,
+            \App\Application\Auth\Commands\UpdateUserPasswordCommand::class => \App\Application\Auth\Handlers\UpdateUserPasswordHandler::class,
+            \App\Application\Auth\Commands\UpdateUserProfileCommand::class => \App\Application\Auth\Handlers\UpdateUserProfileHandler::class,
+            \App\Application\Auth\Commands\DeleteUserCommand::class => \App\Application\Auth\Handlers\DeleteUserHandler::class,
+            \App\Application\Auth\Commands\GenerateOtpCommand::class => \App\Application\Auth\Handlers\GenerateOtpHandler::class,
+            \App\Application\Auth\Commands\VerifyOtpCommand::class => \App\Application\Auth\Handlers\VerifyOtpHandler::class,
+            \App\Application\Tenant\Commands\UpdateTenantScheduleCommand::class => \App\Application\Tenant\Handlers\UpdateTenantScheduleHandler::class,
+            \App\Application\Tenant\Commands\UpdateLandingPageCommand::class => \App\Application\Tenant\Handlers\UpdateLandingPageHandler::class,
+            \App\Application\Tenant\Commands\UpdateTenantBrandingCommand::class => \App\Application\Tenant\Handlers\UpdateTenantBrandingHandler::class,
+            \App\Application\Interactions\Commands\RecordInteractionCommand::class => \App\Application\Interactions\Handlers\RecordInteractionHandler::class,
+        ]);
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // EVENT LISTENERS: Eventual Consistency Handlers
+        // ═══════════════════════════════════════════════════════════════════════
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Domain\Reviews\Events\ReviewCreated::class,
+            \App\Application\Reviews\Listeners\UpdateProductRating::class
+        );
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\Order\OrderCancelled::class,
+            \App\Application\Sales\Listeners\RestoreStockOnCancellation::class
+        );
     }
 
     /**
@@ -170,14 +516,14 @@ class AppServiceProvider extends ServiceProvider
     protected function registerJobAliases(): void
     {
         $aliases = [
-            'App\\Jobs\\GeneratePdfReportJob' => \App\Application\Jobs\Reporting\GeneratePdfReportJob::class,
-            'App\\Jobs\\GenerateSalesExport' => \App\Application\Jobs\Exports\GenerateSalesExport::class,
-            'App\\Jobs\\GenerateSalesReportJob' => \App\Domain\ReportingAndExports\Jobs\GenerateSalesReportJob::class,
+            'App\\Jobs\\GeneratePdfReportJob' => \App\Infrastructure\Jobs\Reporting\GeneratePdfReportJob::class,
+            'App\\Jobs\\GenerateSalesExport' => \App\Infrastructure\Jobs\Exports\GenerateSalesExport::class,
+            // REMOVED: 'App\\Jobs\\GenerateSalesReportJob' - Legacy proxy deleted
             // Legacy Root to Application (Double Jump Protection)
             'App\\Jobs\\SendCampaignEmail' => \App\Infrastructure\Jobs\Marketing\SendCampaignEmail::class,
             'App\\Jobs\\GenerateProductBlurhash' => \App\Infrastructure\Jobs\Media\GenerateProductBlurhash::class,
-            'App\\Jobs\\EnhanceTenantProfileJob' => \App\Application\Jobs\AI\EnhanceTenantProfileJob::class,
-            'App\\Jobs\\GenerateBusinessProfile' => \App\Application\Jobs\AI\GenerateBusinessProfile::class,
+            'App\\Jobs\\EnhanceTenantProfileJob' => \App\Infrastructure\Jobs\AI\EnhanceTenantProfileJob::class,
+            'App\\Jobs\\GenerateBusinessProfile' => \App\Infrastructure\Jobs\AI\GenerateBusinessProfile::class,
             'App\\Jobs\\RecordInteraction' => \App\Infrastructure\Jobs\Analytics\RecordInteraction::class,
             'App\\Jobs\\SyncAnalyticsJob' => \App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob::class,
             'App\\Jobs\\ReleaseStaleOrders' => \App\Infrastructure\Jobs\Governance\ReleaseStaleOrders::class,
@@ -190,11 +536,11 @@ class AppServiceProvider extends ServiceProvider
             'App\\Domain\\Analytics\\Jobs\\SyncTenantAnalytics' => \App\Infrastructure\Jobs\Analytics\SyncTenantAnalytics::class,
             'App\\Domain\\TenantGovernance\\Jobs\\AuditTenantLimits' => \App\Infrastructure\Jobs\Governance\AuditTenantLimits::class,
             'App\\Domain\\TenantGovernance\\Jobs\\ReleaseStaleOrders' => \App\Infrastructure\Jobs\Governance\ReleaseStaleOrders::class,
-            'App\\Domain\\AIEnrichment\\Jobs\\EnhanceTenantProfileJob' => \App\Application\Jobs\AI\EnhanceTenantProfileJob::class,
-            'App\\Domain\\AIEnrichment\\Jobs\\GenerateBusinessProfile' => \App\Application\Jobs\AI\GenerateBusinessProfile::class,
+            'App\\Domain\\AIEnrichment\\Jobs\\EnhanceTenantProfileJob' => \App\Infrastructure\Jobs\AI\EnhanceTenantProfileJob::class,
+            'App\\Domain\\AIEnrichment\\Jobs\\GenerateBusinessProfile' => \App\Infrastructure\Jobs\AI\GenerateBusinessProfile::class,
             'App\\Domain\\MediaProcessing\\Jobs\\GenerateProductBlurhash' => \App\Infrastructure\Jobs\Media\GenerateProductBlurhash::class,
-            'App\\Domain\\ReportingAndExports\\Jobs\\GeneratePdfReportJob' => \App\Application\Jobs\Reporting\GeneratePdfReportJob::class,
-            'App\\Domain\\ReportingAndExports\\Jobs\\GenerateSalesExport' => \App\Application\Jobs\Exports\GenerateSalesExport::class,
+            'App\\Domain\\ReportingAndExports\\Jobs\\GeneratePdfReportJob' => \App\Infrastructure\Jobs\Reporting\GeneratePdfReportJob::class,
+            'App\\Domain\\ReportingAndExports\\Jobs\\GenerateSalesExport' => \App\Infrastructure\Jobs\Exports\GenerateSalesExport::class,
         ];
 
         foreach ($aliases as $oldClass => $newClass) {
@@ -207,25 +553,15 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register class aliases for migrated Models.
      *
-     * DOMAIN MIGRATION SAFETY:
-     * These aliases maintain backward compatibility during gradual transition.
+     * NOTE: Aliases reversed after Domain Purification (2026-01-07).
+     * Now App\Models is canonical, Domain namespace is deprecated.
      *
-     * @deprecated Remove after 2026-03-05 (60 days post-migration)
+     * @deprecated Remove after 2026-03-05 (60 days post original migration)
      */
     protected function registerModelAliases(): void
     {
-        $aliases = [
-            // Identity Domain
-            'App\\Models\\User' => \App\Domain\Identity\Models\User::class,
-
-            // TenantGovernance Domain
-            'App\\Models\\Tenant' => \App\Domain\TenantGovernance\Models\Tenant::class,
-        ];
-
-        foreach ($aliases as $oldClass => $newClass) {
-            if (! class_exists($oldClass)) {
-                class_alias($newClass, $oldClass);
-            }
-        }
+        // MIGRATION COMPLETE: User and Tenant now live in App\Models
+        // No aliases needed as App\Models is now the canonical location.
+        // This method is retained for documentation purposes only.
     }
 }

@@ -31,22 +31,24 @@ final class OpenAIServiceTest extends TestCase
     use RefreshDatabase;
 
     private OpenAIService $service;
+
     private User $user;
+
     private int $tenantId;
 
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         config(['services.openai.api_key' => 'sk-fake-key']);
-        
-        $this->service = new OpenAIService();
+
+        $this->service = new OpenAIService;
         $this->user = User::factory()->create();
 
         // Manual Tenant scaffolding
         $tenantId = DB::table('tenants')->insertGetId([
             'user_id' => $this->user->id,
-            'slug' => 'test-tenant-' . uniqid(),
+            'slug' => 'test-tenant-'.uniqid(),
             'name' => 'Test Tenant',
             'created_at' => now(),
             'updated_at' => now(),
@@ -62,7 +64,7 @@ final class OpenAIServiceTest extends TestCase
             'seo_title' => 'Best SEO Title',
             'seo_description' => 'Meta desc',
             'tags' => ['marketing', 'seo', 'growth'], // Min 3 required
-            'category_suggestion' => 'Marketing Agency'
+            'category_suggestion' => 'Marketing Agency',
         ];
 
         Http::fake([
@@ -70,8 +72,8 @@ final class OpenAIServiceTest extends TestCase
                 'id' => 'chatcmpl-123',
                 'object' => 'chat.completion',
                 'choices' => [['message' => ['content' => json_encode($expectedPayload), 'role' => 'assistant']]],
-                'usage' => ['prompt_tokens' => 100, 'completion_tokens' => 50]
-            ], 200)
+                'usage' => ['prompt_tokens' => 100, 'completion_tokens' => 50],
+            ], 200),
         ]);
 
         $result = $this->service->generateStructuredProfile('My Biz', 'Desc', $this->user->id, $this->tenantId);
@@ -87,7 +89,7 @@ final class OpenAIServiceTest extends TestCase
             'api.openai.com/*' => Http::sequence()
                 ->push('Server Error', 500)
                 ->push('Server Error', 503)
-                ->push('Connection Error', 502)
+                ->push('Connection Error', 502),
         ]);
 
         $this->expectException(AiProviderUnavailableException::class);
@@ -102,8 +104,8 @@ final class OpenAIServiceTest extends TestCase
         Http::fake([
             'api.openai.com/*' => Http::response([
                 'choices' => [['message' => ['content' => json_encode($brokenPayload)]]],
-                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 10]
-            ], 200)
+                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 10],
+            ], 200),
         ]);
 
         $this->expectException(AiMalformedResponseException::class);
@@ -118,18 +120,18 @@ final class OpenAIServiceTest extends TestCase
             'description' => 'Valid desc',
             'seo_title' => 'Valid Title',
             'seo_description' => 'Valid Meta',
-            'tags' => "tag1, tag2", // VIOLATION
-            'category_suggestion' => 'Cat'
+            'tags' => 'tag1, tag2', // VIOLATION
+            'category_suggestion' => 'Cat',
         ];
 
         Http::fake([
             'api.openai.com/*' => Http::response([
-                'choices' => [['message' => ['content' => json_encode($invalidTypePayload)]]]
-            ], 200)
+                'choices' => [['message' => ['content' => json_encode($invalidTypePayload)]]],
+            ], 200),
         ]);
 
         $this->expectException(AiMalformedResponseException::class);
-        $this->expectExceptionMessage("AI returned invalid schema: The tags field must be an array");
+        $this->expectExceptionMessage('AI returned invalid schema: The tags field must be an array');
 
         $this->service->generateStructuredProfile('Biz', 'Desc', $this->user->id, $this->tenantId);
     }
@@ -143,14 +145,14 @@ final class OpenAIServiceTest extends TestCase
             'seo_title' => 'Title',
             'seo_description' => 'Meta',
             'tags' => ['one', 'two', 'three'],
-            'category_suggestion' => 'Cat'
+            'category_suggestion' => 'Cat',
         ];
 
         Http::fake([
             'api.openai.com/*' => Http::response([
                 'choices' => [['message' => ['content' => json_encode($maliciousPayload)]]],
-                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 10]
-            ], 200)
+                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 10],
+            ], 200),
         ]);
 
         $result = $this->service->generateStructuredProfile('Biz', 'Desc', $this->user->id, $this->tenantId);
@@ -160,10 +162,10 @@ final class OpenAIServiceTest extends TestCase
         $this->assertStringNotContainsString('<iframe>', $result['description']);
         $this->assertStringContainsString('<p>Safe intro</p>', $result['description']);
         $this->assertStringContainsString('<b>Bold</b>', $result['description']);
-        
+
         // Strip tags keeps content of script usually? Standard PHP behavior:
         // strip_tags('<script>alert("XSS")</script>') -> 'alert("XSS")'.
         // So we check text content remains but tag is gone.
-        $this->assertStringContainsString('alert("XSS")', $result['description']); 
+        $this->assertStringContainsString('alert("XSS")', $result['description']);
     }
 }

@@ -39,12 +39,12 @@ use DateTimeImmutable;
 final readonly class EventMetadata
 {
     /**
-     * @param string $correlationId Links related events in a saga/workflow
-     * @param string|null $causationId ID of the event that caused this event
-     * @param int|null $actorId User who triggered the action (null for system)
-     * @param IpAddress|null $ipAddress Anonymized IP of the actor
-     * @param string|null $userAgent Browser/client identifier
-     * @param DateTimeImmutable $occurredAt Immutable timestamp
+     * @param  string  $correlationId  Links related events in a saga/workflow
+     * @param  string|null  $causationId  ID of the event that caused this event
+     * @param  int|null  $actorId  User who triggered the action (null for system)
+     * @param  IpAddress|null  $ipAddress  Anonymized IP of the actor
+     * @param  string|null  $userAgent  Browser/client identifier
+     * @param  DateTimeImmutable  $occurredAt  Immutable timestamp
      */
     public function __construct(
         public string $correlationId,
@@ -66,7 +66,7 @@ final readonly class EventMetadata
             actorId: $actorId ?? auth()->id(),
             ipAddress: self::captureIp(),
             userAgent: request()->userAgent(),
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
     }
 
@@ -81,7 +81,7 @@ final readonly class EventMetadata
             actorId: null,
             ipAddress: null,
             userAgent: 'system',
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
     }
 
@@ -96,7 +96,7 @@ final readonly class EventMetadata
             actorId: $parent->actorId,
             ipAddress: $parent->ipAddress,
             userAgent: $parent->userAgent,
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
     }
 
@@ -175,7 +175,7 @@ final readonly class EventMetadata
     private static function captureIp(): ?IpAddress
     {
         $ip = request()->ip();
-        
+
         if ($ip === null) {
             return null;
         }

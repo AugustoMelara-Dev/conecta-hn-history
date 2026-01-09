@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Traits\BelongsToTenant;
+use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -16,7 +16,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
  */
 class Payment extends Model
 {
-    use BelongsToTenant, LogsActivity;
+    use BelongsToTenant, LogsActivity, \Illuminate\Database\Eloquent\Factories\HasFactory;
 
     protected $fillable = [
         'tenant_id',
@@ -123,5 +123,44 @@ class Payment extends Model
     public function isApproved(): bool
     {
         return $this->status === 'approved';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ACCESSORS & MUTATORS (Schema Adapter)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Map 'bank' to 'provider' column.
+     */
+    public function getBankAttribute(): ?string
+    {
+        return $this->attributes['provider'] ?? null;
+    }
+
+    public function setBankAttribute(?string $value): void
+    {
+        $this->attributes['provider'] = $value;
+    }
+
+    /**
+     * Map 'reference_number' to 'reference_id' column.
+     */
+    public function getReferenceNumberAttribute(): ?string
+    {
+        return $this->attributes['reference_id'] ?? null;
+    }
+
+    public function setReferenceNumberAttribute(?string $value): void
+    {
+        $this->attributes['reference_id'] = $value;
+    }
+    
+    /**
+     * Map 'receipt_path' to null (Schema has no column).
+     * Prevents logic errors in Controller.
+     */
+    public function getReceiptPathAttribute(): ?string
+    {
+        return null; // Feature disabled due to schema limitation
     }
 }

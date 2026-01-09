@@ -69,8 +69,6 @@ abstract class DomainException extends \Exception implements HttpDomainException
     /**
      * Returns a machine-readable error code in SCREAMING_SNAKE_CASE.
      * Examples: 'INVALID_COUPON', 'TENANT_MISMATCH', 'DATA_INTEGRITY_VIOLATION'
-     *
-     * @return string
      */
     abstract public function getErrorCode(): string;
 
@@ -96,10 +94,10 @@ abstract class DomainException extends \Exception implements HttpDomainException
     public function toArray(): array
     {
         return [
-            'success'    => false,
+            'success' => false,
             'error_code' => $this->getErrorCode(),
-            'message'    => $this->getMessage(),
-            'meta'       => $this->context(),
+            'message' => $this->getMessage(),
+            'meta' => $this->context(),
         ];
     }
 
@@ -114,7 +112,7 @@ abstract class DomainException extends \Exception implements HttpDomainException
     final public function getAuditMessage(): string
     {
         return sprintf(
-            "[%s] %s | Context: %s",
+            '[%s] %s | Context: %s',
             static::class,
             $this->getMessage(),
             json_encode($this->context(), JSON_UNESCAPED_UNICODE),
@@ -124,7 +122,7 @@ abstract class DomainException extends \Exception implements HttpDomainException
     /**
      * Validate that context doesn't contain forbidden keys or sensitive values.
      * Throws LogicException if security risk detected.
-     * 
+     *
      * STABILITY PATCH (2026-01-04): Added recursion depth check to prevent Stack Overflow.
      *
      * @throws \LogicException If forbidden key, sensitive value, or recursion depth exceeded.
@@ -134,8 +132,8 @@ abstract class DomainException extends \Exception implements HttpDomainException
         // DOS PROTECTION: Max recursion depth
         if ($depth > 3) {
             throw new \LogicException(
-                "Exception context exceeds maximum recursion depth (3). " .
-                "Simplify context data to prevent Stack Overflow DoS."
+                'Exception context exceeds maximum recursion depth (3). '.
+                'Simplify context data to prevent Stack Overflow DoS.'
             );
         }
 
@@ -145,8 +143,8 @@ abstract class DomainException extends \Exception implements HttpDomainException
         foreach (self::FORBIDDEN_CONTEXT_KEYS as $forbidden) {
             if (in_array($forbidden, $keys, true)) {
                 throw new \LogicException(
-                    "Exception context cannot contain '{$forbidden}'. Security risk. " .
-                    "Remove sensitive data before creating exception."
+                    "Exception context cannot contain '{$forbidden}'. Security risk. ".
+                    'Remove sensitive data before creating exception.'
                 );
             }
         }
@@ -161,8 +159,8 @@ abstract class DomainException extends \Exception implements HttpDomainException
                 foreach (self::SENSITIVE_VALUE_PATTERNS as $pattern) {
                     if (preg_match($pattern, $value)) {
                         throw new \LogicException(
-                            "Exception context value for '{$key}' contains sensitive data pattern. " .
-                            "Remove sensitive data before creating exception."
+                            "Exception context value for '{$key}' contains sensitive data pattern. ".
+                            'Remove sensitive data before creating exception.'
                         );
                     }
                 }
@@ -171,8 +169,8 @@ abstract class DomainException extends \Exception implements HttpDomainException
                 // Context must contain only primitive values (scalars or arrays).
                 $type = get_class($value);
                 throw new \LogicException(
-                    "Exception context value for '{$key}' is an object ({$type}). " .
-                    "Only primitives (int, string, bool, array) are allowed to prevent data leakage."
+                    "Exception context value for '{$key}' is an object ({$type}). ".
+                    'Only primitives (int, string, bool, array) are allowed to prevent data leakage.'
                 );
             }
         }

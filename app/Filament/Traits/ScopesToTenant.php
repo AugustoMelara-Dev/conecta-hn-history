@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 /**
  * Trait ScopesToTenant
- * 
+ *
  * ARCHITECTURAL GOAL: DRY & Security
  * Centralizes the "Defense in Depth" logic for ensuring resources are strictly
  * scoped to the current tenant, even if the global scope fails or is bypassed.
@@ -26,7 +26,7 @@ trait ScopesToTenant
 
         // Apply SoftDeletes if the model uses it
         if (in_array(SoftDeletingScope::class, class_uses_recursive(static::getModel()))) {
-             $query->withoutGlobalScopes([
+            $query->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
         }

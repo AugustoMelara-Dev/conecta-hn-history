@@ -70,7 +70,7 @@ final class InMemoryEventBus implements DomainEventBus
     /**
      * Check if an event of the given type was published.
      *
-     * @param class-string<DomainEvent> $eventClass
+     * @param  class-string<DomainEvent>  $eventClass
      */
     public function hasPublished(string $eventClass): bool
     {
@@ -87,7 +87,8 @@ final class InMemoryEventBus implements DomainEventBus
      * Get the first event of a given type.
      *
      * @template T of DomainEvent
-     * @param class-string<T> $eventClass
+     *
+     * @param  class-string<T>  $eventClass
      * @return T|null
      */
     public function getFirst(string $eventClass): ?DomainEvent
@@ -112,8 +113,8 @@ final class InMemoryEventBus implements DomainEventBus
     /**
      * Assert a specific event was published with matching properties.
      *
-     * @param class-string<DomainEvent> $eventClass
-     * @param array<string, mixed> $properties
+     * @param  class-string<DomainEvent>  $eventClass
+     * @param  array<string, mixed>  $properties
      */
     public function assertPublished(string $eventClass, array $properties = []): void
     {

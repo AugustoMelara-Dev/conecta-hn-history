@@ -59,9 +59,9 @@ trait FormatsCurrency
      * Uses PHP intl extension for locale-aware formatting when available.
      * Falls back to manual formatting for environments without intl.
      *
-     * @param int $cents Amount in cents (smallest currency unit, must be >= 0)
-     * @param string $currency ISO 4217 currency code (HNL, USD, EUR, etc.)
-     * @param string|null $locale Optional locale override (defaults to app locale)
+     * @param  int  $cents  Amount in cents (smallest currency unit, must be >= 0)
+     * @param  string  $currency  ISO 4217 currency code (HNL, USD, EUR, etc.)
+     * @param  string|null  $locale  Optional locale override (defaults to app locale)
      * @return string Formatted amount for display (e.g., "L 1,500.00")
      *
      * @throws InvalidArgumentException If cents is negative or currency is invalid
@@ -98,9 +98,9 @@ trait FormatsCurrency
 
         // We allow any valid-looking currency code for intl extension
         // but enforce supported list for manual fallback reliability
-        if (!extension_loaded('intl') && !in_array($currency, self::SUPPORTED_CURRENCIES, true)) {
+        if (! extension_loaded('intl') && ! in_array($currency, self::SUPPORTED_CURRENCIES, true)) {
             throw new InvalidArgumentException(
-                "Unsupported currency '{$currency}'. Supported: " . implode(', ', self::SUPPORTED_CURRENCIES)
+                "Unsupported currency '{$currency}'. Supported: ".implode(', ', self::SUPPORTED_CURRENCIES)
             );
         }
     }
@@ -124,7 +124,7 @@ trait FormatsCurrency
         // Build exact decimal representation using sprintf to avoid float errors
         $wholePart = intdiv($cents, 100);
         $decimalPart = abs($cents % 100);
-        $amount = (float)sprintf('%d.%02d', $wholePart, $decimalPart);
+        $amount = (float) sprintf('%d.%02d', $wholePart, $decimalPart);
 
         $formatted = $formatter->formatCurrency($amount, $currency);
 
@@ -146,16 +146,16 @@ trait FormatsCurrency
         $decimalPart = abs($cents % 100);
 
         $config = self::CURRENCY_CONFIG[$currency] ?? [
-            'symbol' => $currency . ' ',
+            'symbol' => $currency.' ',
             'decimals' => 2,
             'dec_point' => '.',
             'thousands' => ',',
         ];
 
         $formattedWhole = number_format($wholePart, 0, '', $config['thousands']);
-        $formattedDecimal = str_pad((string)$decimalPart, $config['decimals'], '0', STR_PAD_LEFT);
+        $formattedDecimal = str_pad((string) $decimalPart, $config['decimals'], '0', STR_PAD_LEFT);
 
-        return $config['symbol'] . $formattedWhole . $config['dec_point'] . $formattedDecimal;
+        return $config['symbol'].$formattedWhole.$config['dec_point'].$formattedDecimal;
     }
 
     /**

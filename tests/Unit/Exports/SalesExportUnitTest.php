@@ -226,7 +226,8 @@ class SalesExportUnitTest extends TestCase
      */
     public function sanitizes_output_escapes_formula_characters(): void
     {
-        $export = new class {
+        $export = new class
+        {
             use SanitizesOutput;
 
             public function testSanitize(mixed $input): mixed
@@ -253,10 +254,11 @@ class SalesExportUnitTest extends TestCase
      */
     public function sanitizes_output_preserves_negative_numbers(): void
     {
-        $export = new class {
+        $export = new class
+        {
             use SanitizesOutput;
 
-            public function testSanitize(mixed $input): mixed
+            public function test_sanitize(mixed $input): mixed
             {
                 return $this->sanitize($input);
             }

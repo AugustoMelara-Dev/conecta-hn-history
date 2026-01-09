@@ -37,9 +37,9 @@ interface NotificationChannel
     /**
      * Send a notification.
      *
-     * @param string $recipient Phone number, email, or device token
-     * @param string $message The notification content
-     * @param array $options Additional options (template_id, media_url, etc.)
+     * @param  string  $recipient  Phone number, email, or device token
+     * @param  string  $message  The notification content
+     * @param  array  $options  Additional options (template_id, media_url, etc.)
      * @return bool Whether the notification was queued/sent successfully
      */
     public function send(string $recipient, string $message, array $options = []): bool;
@@ -52,7 +52,7 @@ interface NotificationChannel
     /**
      * Get the delivery status of a previous notification.
      *
-     * @param string $notificationId The ID returned by send()
+     * @param  string  $notificationId  The ID returned by send()
      * @return string Status: 'pending', 'delivered', 'failed', 'unknown'
      */
     public function getDeliveryStatus(string $notificationId): string;

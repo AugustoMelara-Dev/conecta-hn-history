@@ -36,86 +36,86 @@ final readonly class TenantSettingsDTO
         // ═══════════════════════════════════════════════════════════════════════
         // BRANDING CONFIGURATION
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         /** Primary brand color (hex format) */
         public string $brandColor = '#3B82F6',
-        
+
         /** Secondary brand color */
         public string $secondaryColor = '#1E40AF',
-        
+
         /** Custom logo URL (nullable) */
         public ?string $logoUrl = null,
-        
+
         /** Favicon URL (nullable) */
         public ?string $faviconUrl = null,
-        
+
         // ═══════════════════════════════════════════════════════════════════════
         // INVOICE & BILLING CONFIGURATION
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         /** Prefix for invoice numbers (e.g., "INV-2024-") */
         public string $invoicePrefix = 'INV-',
-        
+
         /** Next invoice sequence number */
         public int $invoiceNextNumber = 1,
-        
+
         /** Tax identification number */
         public ?string $taxId = null,
-        
+
         /** Default tax rate percentage */
         public float $defaultTaxRate = 15.0,
-        
+
         // ═══════════════════════════════════════════════════════════════════════
         // FEATURE FLAGS & MODULES
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         /** Enabled platform modules */
         public array $modulesEnabled = ['orders', 'products', 'customers'],
-        
+
         /** Enable WhatsApp integration */
         public bool $whatsappEnabled = false,
-        
+
         /** Enable inventory management */
         public bool $inventoryEnabled = true,
-        
+
         /** Enable coupon system */
         public bool $couponsEnabled = true,
-        
+
         /** Enable delivery tracking */
         public bool $deliveryTrackingEnabled = false,
-        
+
         // ═══════════════════════════════════════════════════════════════════════
         // OPERATIONAL SETTINGS
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         /** Default currency code */
         public string $currency = 'HNL',
-        
+
         /** Timezone for the tenant */
         public string $timezone = 'America/Tegucigalpa',
-        
+
         /** Locale for formatting */
         public string $locale = 'es_HN',
-        
+
         /** Minimum order amount in cents */
         public int $minimumOrderAmount = 0,
-        
+
         /** Order auto-confirmation timeout in minutes (0 = disabled) */
         public int $orderAutoConfirmMinutes = 0,
-        
+
         // ═══════════════════════════════════════════════════════════════════════
         // NOTIFICATION PREFERENCES
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         /** Email for receiving order notifications */
         public ?string $notificationEmail = null,
-        
+
         /** Phone for SMS notifications */
         public ?string $notificationPhone = null,
-        
+
         /** Enable email notifications */
         public bool $emailNotificationsEnabled = true,
-        
+
         /** Enable SMS notifications */
         public bool $smsNotificationsEnabled = false,
     ) {}
@@ -128,7 +128,7 @@ final readonly class TenantSettingsDTO
      * - Extra keys → Silently ignored (forward compatibility)
      * - Invalid types → Coerced to expected type when safe
      *
-     * @param array<string, mixed>|null $data Raw JSON-decoded data
+     * @param  array<string, mixed>|null  $data  Raw JSON-decoded data
      */
     public static function fromArray(?array $data): self
     {
@@ -140,27 +140,27 @@ final readonly class TenantSettingsDTO
             secondaryColor: self::getString($data, 'secondary_color', '#1E40AF'),
             logoUrl: self::getNullableString($data, 'logo_url'),
             faviconUrl: self::getNullableString($data, 'favicon_url'),
-            
+
             // Invoice & Billing
             invoicePrefix: self::getString($data, 'invoice_prefix', 'INV-'),
             invoiceNextNumber: self::getInt($data, 'invoice_next_number', 1),
             taxId: self::getNullableString($data, 'tax_id'),
             defaultTaxRate: self::getFloat($data, 'default_tax_rate', 15.0),
-            
+
             // Feature Flags
             modulesEnabled: self::getArray($data, 'modules_enabled', ['orders', 'products', 'customers']),
             whatsappEnabled: self::getBool($data, 'whatsapp_enabled', false),
             inventoryEnabled: self::getBool($data, 'inventory_enabled', true),
             couponsEnabled: self::getBool($data, 'coupons_enabled', true),
             deliveryTrackingEnabled: self::getBool($data, 'delivery_tracking_enabled', false),
-            
+
             // Operational
             currency: self::getString($data, 'currency', 'HNL'),
             timezone: self::getString($data, 'timezone', 'America/Tegucigalpa'),
             locale: self::getString($data, 'locale', 'es_HN'),
             minimumOrderAmount: self::getInt($data, 'minimum_order_amount', 0),
             orderAutoConfirmMinutes: self::getInt($data, 'order_auto_confirm_minutes', 0),
-            
+
             // Notifications
             notificationEmail: self::getNullableString($data, 'notification_email'),
             notificationPhone: self::getNullableString($data, 'notification_phone'),
@@ -182,27 +182,27 @@ final readonly class TenantSettingsDTO
             'secondary_color' => $this->secondaryColor,
             'logo_url' => $this->logoUrl,
             'favicon_url' => $this->faviconUrl,
-            
+
             // Invoice & Billing
             'invoice_prefix' => $this->invoicePrefix,
             'invoice_next_number' => $this->invoiceNextNumber,
             'tax_id' => $this->taxId,
             'default_tax_rate' => $this->defaultTaxRate,
-            
+
             // Feature Flags
             'modules_enabled' => $this->modulesEnabled,
             'whatsapp_enabled' => $this->whatsappEnabled,
             'inventory_enabled' => $this->inventoryEnabled,
             'coupons_enabled' => $this->couponsEnabled,
             'delivery_tracking_enabled' => $this->deliveryTrackingEnabled,
-            
+
             // Operational
             'currency' => $this->currency,
             'timezone' => $this->timezone,
             'locale' => $this->locale,
             'minimum_order_amount' => $this->minimumOrderAmount,
             'order_auto_confirm_minutes' => $this->orderAutoConfirmMinutes,
-            
+
             // Notifications
             'notification_email' => $this->notificationEmail,
             'notification_phone' => $this->notificationPhone,
@@ -218,7 +218,7 @@ final readonly class TenantSettingsDTO
     /**
      * Create a copy with modified values.
      *
-     * @param array<string, mixed> $overrides
+     * @param  array<string, mixed>  $overrides
      */
     public function with(array $overrides): self
     {

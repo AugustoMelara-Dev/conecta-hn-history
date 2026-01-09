@@ -9,7 +9,7 @@ use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
 use App\ValueObjects\TenantId;
-use DateTimeImmutable;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * OrderRefunded - Pure Domain Event for Refund Processing
@@ -41,18 +41,18 @@ use DateTimeImmutable;
  *
  * DISPATCH POINT: RefundService::processRefund() via DomainEventBus
  */
-final readonly class OrderRefunded implements DomainEvent
+final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCommit
 {
     use HasDomainMetadata;
 
     /**
-     * @param TenantId $tenantId Tenant context for queue middleware
-     * @param int $orderId The order aggregate root ID
-     * @param OrderNumber $orderNumber Human-readable order reference
-     * @param Money $refundAmount The exact refund amount (Value Object)
-     * @param string $transactionId Gateway refund transaction ID
-     * @param bool $isPartial Whether this is a partial refund
-     * @param string|null $reason Optional refund reason
+     * @param  TenantId  $tenantId  Tenant context for queue middleware
+     * @param  int  $orderId  The order aggregate root ID
+     * @param  OrderNumber  $orderNumber  Human-readable order reference
+     * @param  Money  $refundAmount  The exact refund amount (Value Object)
+     * @param  string  $transactionId  Gateway refund transaction ID
+     * @param  bool  $isPartial  Whether this is a partial refund
+     * @param  string|null  $reason  Optional refund reason
      */
     public function __construct(
         private TenantId $tenantId,
@@ -111,7 +111,7 @@ final readonly class OrderRefunded implements DomainEvent
      */
     public function isFullRefund(): bool
     {
-        return !$this->isPartial;
+        return ! $this->isPartial;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -151,23 +151,47 @@ final readonly class OrderRefunded implements DomainEvent
 
     public static function fromPrimitives(array $primitives): self
     {
-        // Defensive deserialization: fail fast on missing tenant_id
-        $tenantId = $primitives['tenant_id'] ?? null;
-        if ($tenantId === null) {
-            throw new \InvalidArgumentException('Missing required key: tenant_id');
+        // ═══════════════════════════════════════════════════════════════════
+        // FAIL-FAST VALIDATION: Critical Fields Must Exist
+        // ═══════════════════════════════════════════════════════════════════
+        // RATIONALE: Silent defaults (e.g., refund_amount_cents ?? 0) cause
+        // data corruption. A refund of $0 is processed instead of failing
+        // visibly. This is unacceptable for financial transactions.
+        // ═══════════════════════════════════════════════════════════════════
+
+        $requiredKeys = [
+            'tenant_id',
+            'order_id',
+            'order_number',
+            'refund_amount_cents',
+            'transaction_id',
+        ];
+
+        foreach ($requiredKeys as $key) {
+            if (! array_key_exists($key, $primitives)) {
+                throw \App\Exceptions\CorruptedDomainEventException::missingKey($key, self::class);
+            }
+            if ($primitives[$key] === null) {
+                throw \App\Exceptions\CorruptedDomainEventException::nullValue($key, self::class);
+            }
+        }
+
+        // is_partial has boolean semantics - missing is ambiguous, must be explicit
+        if (! array_key_exists('is_partial', $primitives)) {
+            throw \App\Exceptions\CorruptedDomainEventException::missingKey('is_partial', self::class);
         }
 
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
-            orderId: $primitives['order_id'] ?? 0,
-            orderNumber: OrderNumber::fromString($primitives['order_number'] ?? 'UNKNOWN'),
+            tenantId: TenantId::fromInt($primitives['tenant_id']),
+            orderId: $primitives['order_id'],
+            orderNumber: OrderNumber::fromString($primitives['order_number']),
             refundAmount: Money::fromCents(
-                $primitives['refund_amount_cents'] ?? 0,
+                $primitives['refund_amount_cents'],
                 $primitives['currency'] ?? 'HNL'
             ),
-            transactionId: $primitives['transaction_id'] ?? '',
-            isPartial: $primitives['is_partial'] ?? false,
-            reason: $primitives['reason'] ?? null,
+            transactionId: $primitives['transaction_id'],
+            isPartial: (bool) $primitives['is_partial'],
+            reason: $primitives['reason'] ?? null, // reason IS optional
             restoredEventId: $primitives['event_id'] ?? null,
             restoredOccurredAt: $primitives['occurred_at'] ?? null,
             restoredCorrelationId: $primitives['correlation_id'] ?? null,

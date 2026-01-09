@@ -96,7 +96,7 @@ class PublicVisibilityScope implements Scope
      */
     protected function isFilamentContext(): bool
     {
-        if (!class_exists(\Filament\Facades\Filament::class)) {
+        if (! class_exists(\Filament\Facades\Filament::class)) {
             return false;
         }
 
@@ -114,7 +114,7 @@ class PublicVisibilityScope implements Scope
     protected function isAdminRoute(): bool
     {
         try {
-            return request()->is('admin/*') || 
+            return request()->is('admin/*') ||
                    request()->is('admin') ||
                    request()->is('app/*') ||
                    request()->is('app');
@@ -128,19 +128,19 @@ class PublicVisibilityScope implements Scope
      */
     protected function isTenantOwnerViewingOwnData(Builder $builder): bool
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return false;
         }
 
         // Get tenant from route parameter
         $tenant = request()->route('tenant');
-        if (!$tenant) {
+        if (! $tenant) {
             return false;
         }
 
         // Check if current user owns this tenant
         $user = Auth::user();
-        
+
         // Method 1: Direct ownership check via tenant's user relationship
         if (method_exists($tenant, 'user') && $tenant->user_id === $user->id) {
             return true;
@@ -163,7 +163,7 @@ class PublicVisibilityScope implements Scope
         // This avoids database schema introspection overhead
         return in_array($column, $model->getFillable()) ||
                $model->getConnection()
-                     ->getSchemaBuilder()
-                     ->hasColumn($model->getTable(), $column);
+                   ->getSchemaBuilder()
+                   ->hasColumn($model->getTable(), $column);
     }
 }

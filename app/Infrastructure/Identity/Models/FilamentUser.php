@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Identity\Models;
 
-use App\Domain\Identity\Models\User as DomainUser;
-use App\Enums\UserRole;
+use App\Models\User as DomainUser;
 use Filament\Models\Contracts\FilamentUser as FilamentUserContract;
 use Filament\Models\Contracts\HasTenants;
 use Filament\Panel;
@@ -37,8 +36,8 @@ final class FilamentUser extends DomainUser implements FilamentUserContract, Has
     {
         return match ($panel->getId()) {
             DomainUser::PANEL_ADMIN => $this->isSuperAdmin(),
-            DomainUser::PANEL_APP   => $this->isTenantOwner() || $this->isSuperAdmin(),
-            default                 => false,
+            DomainUser::PANEL_APP => $this->isTenantOwner() || $this->isSuperAdmin(),
+            default => false,
         };
     }
 

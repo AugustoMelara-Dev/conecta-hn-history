@@ -170,7 +170,7 @@ class ValueObjectsSerializationTest extends TestCase
             $this->assertInstanceOf(
                 \JsonSerializable::class,
                 $vo,
-                get_class($vo) . ' must implement JsonSerializable'
+                get_class($vo).' must implement JsonSerializable'
             );
 
             // 2. Verify serialize() works

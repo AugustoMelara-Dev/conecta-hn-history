@@ -128,7 +128,7 @@ class SalesExportTest extends TestCase
             return $event->tenantId->toInt() === $data['tenantA']->id
                 && $event->userId === 42
                 && $event->format === 'xlsx'
-                && !empty($event->criteriaHash);
+                && ! empty($event->criteriaHash);
         });
     }
 

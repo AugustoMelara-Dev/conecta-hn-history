@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Application\Actions\Reviews\SubmitReviewAction;
-use App\Application\DTOs\Reviews\SubmitReviewData;
+use App\Application\Reviews\Results\SubmitReviewResult;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,7 +41,7 @@ final class ReviewController extends Controller
 
         try {
             // 2. Hydrate DTO
-            $data = SubmitReviewData::fromRequest($request);
+            $data = SubmitReviewResult::fromRequest($request);
 
             // 3. Invoke Action
             $action->execute($data);

@@ -71,7 +71,7 @@ interface PaymentGateway
     /**
      * Charge a payment method.
      *
-     * @param PaymentData $data All payment information (amount, token, customer, etc.)
+     * @param  PaymentData  $data  All payment information (amount, token, customer, etc.)
      * @return TransactionResult NEVER returns vendor-specific objects
      *
      * @throws \App\Exceptions\PaymentFailedException When charge fails irrecoverably
@@ -82,24 +82,24 @@ interface PaymentGateway
     /**
      * Refund a previous transaction (full or partial).
      *
-     * @param string $transactionId The gateway's transaction ID (from TransactionResult)
-     * @param Money|null $amount Amount to refund (null = full refund)
-     * @param string $reason Refund reason for audit trail
+     * @param  string  $transactionId  The gateway's transaction ID (from TransactionResult)
+     * @param  Money|null  $amount  Amount to refund (null = full refund)
+     * @param  string  $reason  Refund reason for audit trail
      * @return TransactionResult Result of the refund operation
      *
      * @throws \App\Exceptions\RefundFailedException When refund fails
      */
     public function refund(
-        string $transactionId, 
-        ?Money $amount = null, 
+        string $transactionId,
+        ?Money $amount = null,
         string $reason = ''
     ): TransactionResult;
 
     /**
      * Verify webhook signature and parse event.
      *
-     * @param string $payload Raw webhook body
-     * @param string $signature Signature header from gateway
+     * @param  string  $payload  Raw webhook body
+     * @param  string  $signature  Signature header from gateway
      * @return array Parsed and validated event data
      *
      * @throws \App\Exceptions\InvalidWebhookSignatureException On signature mismatch
@@ -123,7 +123,7 @@ interface PaymentGateway
     /**
      * Retrieve transaction details from gateway (for reconciliation).
      *
-     * @param string $transactionId Gateway's transaction ID
+     * @param  string  $transactionId  Gateway's transaction ID
      * @return TransactionResult Current state of the transaction
      */
     public function getTransaction(string $transactionId): TransactionResult;

@@ -19,9 +19,10 @@ class TenantProfileResource extends Resource
     protected static ?string $model = Tenant::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
-    
+
     // NAVIGATION SETTINGS: High Priority
     protected static ?string $navigationGroup = 'Configuración';
+
     protected static ?int $navigationSort = 1;
 
     public static function getNavigationLabel(): string
@@ -48,7 +49,7 @@ class TenantProfileResource extends Resource
     {
         // 1. Get Base Query
         $query = parent::getEloquentQuery();
-        
+
         // 2. Apply Strict Firewall Rule
         // Only allow access to the tenant ID that matches the current session context
         return $query->where('id', Filament::getTenant()->id);
@@ -125,7 +126,7 @@ class TenantProfileResource extends Resource
 
                         Forms\Components\TextInput::make('slug')
                             ->label('URL del Micrositio')
-                            ->prefix(env('APP_URL') . '/negocio/')
+                            ->prefix(env('APP_URL').'/negocio/')
                             ->disabled()
                             ->dehydrated(false),
 
@@ -147,7 +148,7 @@ class TenantProfileResource extends Resource
                                 default => strtoupper($state),
                             }),
                     ])->columns(2)
-                    ->collapsed(), 
+                    ->collapsed(),
             ]);
     }
 

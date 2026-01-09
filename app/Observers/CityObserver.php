@@ -25,7 +25,7 @@ class CityObserver
     /**
      * Handle the City "saved" event (covers both create and update).
      *
-     * @param City $city The city instance that was saved
+     * @param  City  $city  The city instance that was saved
      */
     public function saved(City $city): void
     {
@@ -35,7 +35,7 @@ class CityObserver
     /**
      * Handle the City "deleted" event.
      *
-     * @param City $city The city instance that was deleted
+     * @param  City  $city  The city instance that was deleted
      */
     public function deleted(City $city): void
     {
@@ -48,8 +48,8 @@ class CityObserver
      * DEFENSIVE: Wrapped in try-catch to prevent cache failures
      * from breaking data operations.
      *
-     * @param City $city The city instance
-     * @param string $event The event type for logging
+     * @param  City  $city  The city instance
+     * @param  string  $event  The event type for logging
      */
     private function invalidateRegistrationCache(City $city, string $event): void
     {

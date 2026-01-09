@@ -4,72 +4,45 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Domain\Analytics\Contracts\AnalyticsReader;
 use App\Http\Controllers\Controller;
-use App\Models\TenantAnalytic;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
-class AnalyticsController extends Controller
+/**
+ * AnalyticsController - Tenant Analytics API
+ *
+ * REFACTORED:
+ * - Uses $request->user()->tenant (middleware-guaranteed) instead of tenants()->first()
+ * - Delegates all queries to AnalyticsReader
+ * - No direct Eloquent in controller
+ */
+final class AnalyticsController extends Controller
 {
-    /**
-     * Get analytics data for the authenticated tenant owner
-     */
-    public function index(Request $request)
-    {
-        $user = Auth::user();
-        $tenant = $user->tenants()->first();
+    public function __construct(
+        private readonly AnalyticsReader $analyticsReader
+    ) {}
 
-        if (! $tenant) {
+    /**
+     * Get analytics data for the authenticated tenant.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        // SECURE: Tenant resolved via middleware, not manual query
+        $tenant = $request->user()?->tenant;
+
+        if (!$tenant) {
             return response()->json(['error' => 'No tenant found'], 404);
         }
 
-        $days = $request->input('days', 30);
-        $startDate = now()->subDays($days)->startOfDay();
-        $endDate = now()->endOfDay();
+        $days = (int) $request->input('days', 30);
 
-        $analytics = TenantAnalytic::where('tenant_id', $tenant->id)
-            ->whereBetween('date', [$startDate, $endDate])
-            ->orderBy('date', 'asc')
-            ->get()
-            ->map(function ($record) {
-                return [
-                    'date' => $record->date->format('Y-m-d'),
-                    'visits' => $record->unique_visits,
-                    'total' => $record->total_visits,
-                ];
-            });
+        // Validate days range
+        $days = max(1, min($days, 365));
 
-        // Fill gaps
-        $filledData = [];
-        $currentDate = $startDate->copy();
+        // DELEGATED: All query logic in AnalyticsReader
+        $result = $this->analyticsReader->getFilledAnalytics($tenant->id, $days);
 
-        while ($currentDate <= $endDate) {
-            $dateStr = $currentDate->format('Y-m-d');
-            $existing = $analytics->firstWhere('date', $dateStr);
-
-            $filledData[] = [
-                'date' => $dateStr,
-                'visits' => $existing['visits'] ?? 0,
-                'total' => $existing['total'] ?? 0,
-            ];
-
-            $currentDate->addDay();
-        }
-
-        $totalVisits = $analytics->sum('visits');
-        $avgVisits = $analytics->avg('visits');
-        $peakDay = $analytics->sortByDesc('visits')->first();
-
-        return response()->json([
-            'data' => $filledData,
-            'summary' => [
-                'total_unique_visits' => $totalVisits,
-                'average_daily_visits' => round($avgVisits, 1),
-                'peak_day' => $peakDay ? [
-                    'date' => $peakDay['date'],
-                    'visits' => $peakDay['visits'],
-                ] : null,
-            ],
-        ]);
+        return response()->json($result);
     }
 }

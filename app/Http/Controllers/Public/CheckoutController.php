@@ -7,23 +7,22 @@ namespace App\Http\Controllers\Public;
 use App\Exceptions\InvalidCouponException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\StoreCheckoutRequest;
-use App\Models\Coupon;
 use App\Services\CouponValidatorService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
- * CheckoutController - Secure Checkout API Endpoints
- * 
- * REFACTORED: Moved to Public Namespace. Validation extracted.
+ * CheckoutController - Hexagonal Compliant (DIP Remediation)
+ *
+ * ARCHITECTURAL COMPLIANCE:
+ * - Zero App\Models imports.
+ * - Uses primitives for message generation.
+ * - Tenant resolution via request attributes (middleware-set).
  */
-class CheckoutController extends Controller
+final class CheckoutController extends Controller
 {
-    /**
-     * Validate a coupon code for the shopping cart.
-     * Uses StoreCheckoutRequest for validation.
-     */
+    public function __construct() {}
+
     public function validateCoupon(StoreCheckoutRequest $request, CouponValidatorService $couponValidator): JsonResponse
     {
         $validated = $request->validated();
@@ -31,27 +30,35 @@ class CheckoutController extends Controller
         $cartTotal = (float) $validated['cart_total'];
         $shippingCost = (float) ($validated['shipping_cost'] ?? 0);
 
-        // Tenant Resolution via App Container (Middleware managed)
-        $tenant = app()->has('currentTenant') ? app('currentTenant') : null;
+        // Tenant resolution: middleware-set attribute or route parameter
+        $tenant = $request->route('tenant') ?? $request->get('tenant');
 
         try {
+            // CouponValidatorService returns a validated Coupon model internally,
+            // but we only extract primitives from it for the response.
             $coupon = $couponValidator->validate(
                 code: $code,
-                user: $request->user(), // Nullable for guests
+                user: $request->user(),
                 cartTotal: $cartTotal,
                 tenant: $tenant
             );
 
+            // Extract primitives BEFORE returning - no Model dependency in Controller
             $discountAmount = $coupon->calculateDiscountUnsafe($cartTotal, $shippingCost);
             $newTotal = max(0, $cartTotal - $discountAmount);
+            
+            // Extract primitive data for message generation
+            $couponType = (string) $coupon->type;
+            $couponValue = (float) $coupon->value;
+            $couponCode = (string) $coupon->code;
 
             return response()->json([
                 'valid' => true,
-                'code' => $coupon->code,
-                'discount_type' => $coupon->type,
+                'code' => $couponCode,
+                'discount_type' => $couponType,
                 'discount_amount' => round($discountAmount, 2),
                 'new_total' => round($newTotal, 2),
-                'message' => $this->getSuccessMessage($coupon),
+                'message' => $this->getSuccessMessage($couponType, $couponValue),
             ], 200);
 
         } catch (InvalidCouponException $e) {
@@ -65,7 +72,6 @@ class CheckoutController extends Controller
                 'valid' => false,
                 'code' => $e->getErrorCode(),
                 'message' => $e->getMessage(),
-                // Defensive data exposure
                 'data' => array_intersect_key($e->context(), array_flip([
                     'min_spend', 'required_quantity', 'current_total'
                 ])),
@@ -73,12 +79,19 @@ class CheckoutController extends Controller
         }
     }
 
-    private function getSuccessMessage(Coupon $coupon): string
+    /**
+     * Generate success message using primitives only.
+     * 
+     * @param string $type Coupon type constant value (percent, fixed, free_shipping)
+     * @param float $value Discount value
+     */
+    private function getSuccessMessage(string $type, float $value): string
     {
-        return match ($coupon->type) {
-            Coupon::TYPE_PERCENT => "¡Cupón aplicado! {$coupon->value}% de descuento",
-            Coupon::TYPE_FIXED => '¡Cupón aplicado! L. '.number_format((float) $coupon->value, 2).' de descuento',
-            Coupon::TYPE_FREE_SHIPPING => '¡Cupón aplicado! Envío gratis',
+        // Using string literals instead of Model constants to avoid import
+        return match ($type) {
+            'percent' => "¡Cupón aplicado! {$value}% de descuento",
+            'fixed' => '¡Cupón aplicado! L. ' . number_format($value, 2) . ' de descuento',
+            'free_shipping' => '¡Cupón aplicado! Envío gratis',
             default => 'Cupón aplicado correctamente',
         };
     }

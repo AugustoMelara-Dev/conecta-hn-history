@@ -26,7 +26,7 @@ use Illuminate\Contracts\Support\Arrayable;
  *
  * @implements Arrayable<string, mixed>
  */
-final readonly class CouponResult implements Arrayable, \JsonSerializable
+final readonly class CouponResult implements \JsonSerializable, Arrayable
 {
     private function __construct(
         public bool $isValid,
@@ -85,7 +85,7 @@ final readonly class CouponResult implements Arrayable, \JsonSerializable
         return new self(
             isValid: false,
             rejection: CouponRejection::MIN_SPEND_NOT_MET,
-            message: "Mínimo de compra no alcanzado",
+            message: 'Mínimo de compra no alcanzado',
             minSpend: $minSpend,
             remaining: $remaining,
         );

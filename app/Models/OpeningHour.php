@@ -4,37 +4,50 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * OpeningHour - Business Schedule Configuration (Production Hardened)
+ * OpeningHour - Business Schedule Configuration (Deterministic & Pure)
  *
- * Represents a single day's operating hours for a tenant.
- * Each tenant has 0-6 entries (one per OPEN day of week).
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  DETERMINISM GUARANTEE                                                  ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║                                                                          ║
+ * ║  INVARIANT: Reading an attribute ALWAYS returns the same value.         ║
+ * ║                                                                          ║
+ * ║  $openingHour->opening_time === $openingHour->opening_time  // ALWAYS   ║
+ * ║                                                                          ║
+ * ║  Accessors are PURE FUNCTIONS: They transform database values without   ║
+ * ║  injecting volatile state like now(). Time comparisons are delegated    ║
+ * ║  to isOpenAt() where context is passed explicitly.                      ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * TIME STANDARD: Uses Carbon's dayOfWeek convention:
  * - 0 = Sunday, 1 = Monday, ..., 6 = Saturday
  *
  * DATABASE DESIGN:
  * - Columns: id, tenant_id, day_of_week, opening_time, closing_time, timestamps
- * - opening_time and closing_time are NOT NULL
+ * - opening_time and closing_time store H:i:s format
  * - CLOSED DAYS: No record exists for that day_of_week
  * - OPEN DAYS: Record exists with opening_time and closing_time
- *
- * PRODUCTION HARDENING:
- * 1. Timezone: All times forced to America/Tegucigalpa (Honduras UTC-6)
- * 2. Nightclub Logic: Supports overnight hours (20:00 to 02:00) using OR logic
- * 3. Date Sync: Time accessors sync to today's date for accurate comparisons
  */
 class OpeningHour extends Model
 {
+    use BelongsToTenant;
+
     /**
      * Business timezone - Honduras (UTC-6).
      * CRITICAL: All time comparisons MUST use this timezone.
      */
     public const BUSINESS_TIMEZONE = 'America/Tegucigalpa';
+
+    /**
+     * Epoch date for time-only Carbon instances (deterministic).
+     * Using Unix epoch ensures consistent behavior across all reads.
+     */
+    private const EPOCH_DATE = '1970-01-01';
 
     /**
      * The attributes that are mass assignable.
@@ -57,7 +70,6 @@ class OpeningHour extends Model
     {
         return [
             'day_of_week' => 'integer',
-            // opening_time and closing_time handled by Accessors below
         ];
     }
 
@@ -75,14 +87,17 @@ class OpeningHour extends Model
     ];
 
     // ═══════════════════════════════════════════════════════════════════════
-    // TIME ACCESSORS (Timezone-Aware, Date-Synchronized)
+    // PURE TIME ACCESSORS (Deterministic - No Volatile State)
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * Get the opening time with today's date and business timezone.
+     * Get the opening time as a Carbon instance.
      *
-     * @param string|null $value Raw time string from database (e.g., "08:00:00")
-     * @return Carbon|null Carbon instance with today's date + stored time
+     * DETERMINISM: Uses epoch date (1970-01-01) to ensure the same value
+     * is returned on every read, regardless of the current date.
+     *
+     * @param  string|null  $value  Raw time string from database (e.g., "08:00:00")
+     * @return Carbon|null Carbon instance with epoch date + stored time
      */
     public function getOpeningTimeAttribute(?string $value): ?Carbon
     {
@@ -90,18 +105,21 @@ class OpeningHour extends Model
             return null;
         }
 
-        return Carbon::createFromFormat('H:i:s', $value, self::BUSINESS_TIMEZONE)
-            ->setDateFrom(now(self::BUSINESS_TIMEZONE));
+        return Carbon::createFromFormat(
+            'Y-m-d H:i:s',
+            self::EPOCH_DATE.' '.$value,
+            self::BUSINESS_TIMEZONE
+        );
     }
 
     /**
-     * Get the closing time with today's date and business timezone.
+     * Get the closing time as a Carbon instance.
      *
-     * NOTE: Does NOT add a day here - nightclub logic is handled in isOpenAt()
-     * to keep accessor pure and predictable.
+     * DETERMINISM: Uses epoch date (1970-01-01) to ensure the same value
+     * is returned on every read, regardless of the current date.
      *
-     * @param string|null $value Raw time string from database (e.g., "17:00:00")
-     * @return Carbon|null Carbon instance with today's date + stored time
+     * @param  string|null  $value  Raw time string from database (e.g., "17:00:00")
+     * @return Carbon|null Carbon instance with epoch date + stored time
      */
     public function getClosingTimeAttribute(?string $value): ?Carbon
     {
@@ -109,12 +127,33 @@ class OpeningHour extends Model
             return null;
         }
 
-        return Carbon::createFromFormat('H:i:s', $value, self::BUSINESS_TIMEZONE)
-            ->setDateFrom(now(self::BUSINESS_TIMEZONE));
+        return Carbon::createFromFormat(
+            'Y-m-d H:i:s',
+            self::EPOCH_DATE.' '.$value,
+            self::BUSINESS_TIMEZONE
+        );
+    }
+
+    /**
+     * Get raw opening time string (H:i:s format).
+     * Useful when you need the original database value.
+     */
+    public function getRawOpeningTime(): ?string
+    {
+        return $this->getOriginal('opening_time');
+    }
+
+    /**
+     * Get raw closing time string (H:i:s format).
+     * Useful when you need the original database value.
+     */
+    public function getRawClosingTime(): ?string
+    {
+        return $this->getOriginal('closing_time');
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // BUSINESS LOGIC
+    // BUSINESS LOGIC (Context Passed Explicitly)
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
@@ -122,13 +161,11 @@ class OpeningHour extends Model
      *
      * Example: Opening 20:00, Closing 02:00 = TRUE (crosses midnight)
      * Example: Opening 08:00, Closing 17:00 = FALSE (standard hours)
-     *
-     * @return bool
      */
     public function crossesMidnight(): bool
     {
-        $openingRaw = $this->getOriginal('opening_time');
-        $closingRaw = $this->getOriginal('closing_time');
+        $openingRaw = $this->getRawOpeningTime();
+        $closingRaw = $this->getRawClosingTime();
 
         if ($openingRaw === null || $closingRaw === null) {
             return false;
@@ -140,7 +177,10 @@ class OpeningHour extends Model
     }
 
     /**
-     * Check if the business is currently open based on this schedule entry.
+     * Check if the business is open at a specific time.
+     *
+     * EXPLICIT CONTEXT: The $time parameter MUST be provided for deterministic
+     * behavior. If null, defaults to current time (explicitly stated).
      *
      * TIMEZONE HANDLING:
      * - External $time is converted to business timezone before comparison
@@ -150,25 +190,25 @@ class OpeningHour extends Model
      * - Standard (9AM-5PM): time >= opening AND time <= closing
      * - Overnight (8PM-2AM): time >= opening OR time <= closing
      *
-     * @param Carbon|null $time The time to check (any timezone, will be converted)
-     * @return bool
+     * @param  Carbon|null  $time  The time to check. If null, uses current time.
      */
     public function isOpenAt(?Carbon $time = null): bool
     {
-        // Default to current time in business timezone
-        $time = $time 
+        // Explicit: Use provided time or current time (documented behavior)
+        $checkTime = $time !== null
             ? $time->copy()->setTimezone(self::BUSINESS_TIMEZONE)
-            : now(self::BUSINESS_TIMEZONE);
+            : Carbon::now(self::BUSINESS_TIMEZONE);
 
         // Guard: No times defined = closed
-        if ($this->opening_time === null || $this->closing_time === null) {
+        $openingRaw = $this->getRawOpeningTime();
+        $closingRaw = $this->getRawClosingTime();
+
+        if ($openingRaw === null || $closingRaw === null) {
             return false;
         }
 
-        // Extract time components for comparison (ignore date)
-        $currentTimeString = $time->format('H:i:s');
-        $openingTimeString = $this->getOriginal('opening_time');
-        $closingTimeString = $this->getOriginal('closing_time');
+        // Extract time component for comparison (ignore date)
+        $currentTimeString = $checkTime->format('H:i:s');
 
         // ═══════════════════════════════════════════════════════════
         // NIGHTCLUB SCENARIO: Closing time < Opening time
@@ -176,9 +216,8 @@ class OpeningHour extends Model
         // Logic: Open if NOW >= 20:00 OR NOW <= 02:00
         // ═══════════════════════════════════════════════════════════
         if ($this->crossesMidnight()) {
-            // OR logic: Either after opening (same day) OR before closing (next day)
-            return $currentTimeString >= $openingTimeString 
-                || $currentTimeString <= $closingTimeString;
+            return $currentTimeString >= $openingRaw
+                || $currentTimeString <= $closingRaw;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -186,21 +225,13 @@ class OpeningHour extends Model
         // Example: 08:00 to 17:00 (same day)
         // Logic: Open if NOW >= 08:00 AND NOW <= 17:00
         // ═══════════════════════════════════════════════════════════
-        return $currentTimeString >= $openingTimeString 
-            && $currentTimeString <= $closingTimeString;
+        return $currentTimeString >= $openingRaw
+            && $currentTimeString <= $closingRaw;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
     // COMPUTED ATTRIBUTES
     // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Get the tenant that owns this opening hour entry.
-     */
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
 
     /**
      * Get the localized day name (e.g., "Lunes").
@@ -215,14 +246,17 @@ class OpeningHour extends Model
      */
     public function getFormattedHoursAttribute(): string
     {
-        if ($this->opening_time === null || $this->closing_time === null) {
+        $opening = $this->opening_time;
+        $closing = $this->closing_time;
+
+        if ($opening === null || $closing === null) {
             return 'Horario no definido';
         }
 
         $formatted = sprintf(
             '%s - %s',
-            $this->opening_time->format('g:i A'),
-            $this->closing_time->format('g:i A')
+            $opening->format('g:i A'),
+            $closing->format('g:i A')
         );
 
         // Indicate overnight hours for clarity

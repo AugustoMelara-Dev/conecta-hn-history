@@ -61,7 +61,7 @@ final readonly class SalesExportCreated implements AuditEvent
         string $ipAddress,
         string $userAgent,
     ): self {
-        $occurredAt = new DateTimeImmutable();
+        $occurredAt = new DateTimeImmutable;
 
         return new self(
             exportId: $exportId,

@@ -39,7 +39,7 @@ trait TenantAwareEvent
 {
     /**
      * Tenant ID for Queue Worker context switching.
-     * 
+     *
      * @notice This MUST be a primitive (int/string), NOT a model.
      *         It's read by TenantQueueMiddleware BEFORE model deserialization.
      */
@@ -68,13 +68,13 @@ trait TenantAwareEvent
     {
         // Find and activate tenant
         $tenant = Tenant::find($tenantId);
-        
+
         if ($tenant) {
             // If using Spatie Laravel-Multitenancy
             if (method_exists($tenant, 'makeCurrent')) {
                 $tenant->makeCurrent();
             }
-            
+
             // If using manual tenant switching
             // config(['database.default' => 'tenant_' . $tenantId]);
             // DB::purge('tenant');

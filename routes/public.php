@@ -1,11 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-use App\Models\Tenant;
 use App\Models\Category;
 use App\Models\City;
+use App\Models\Tenant;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
@@ -110,61 +110,8 @@ Route::get('/directory', function (\Illuminate\Http\Request $request) {
 })->name('directory.index');
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TENANT MICROSITE - Public Profile
+// TENANT MICROSITE - Public Profile (CQRS: READ-ONLY Controller)
 // ═══════════════════════════════════════════════════════════════════════════
-Route::get('/{tenant:slug}', function (Tenant $tenant) {
-    // Ensure tenant is visible (public)
-    abort_unless($tenant->is_visible, 404);
+Route::get('/{tenant:slug}', [\App\Http\Controllers\Public\TenantMicrositeController::class, 'show'])
+    ->name('tenant.microsite.show');
 
-    // Get public products only
-    $products = $tenant->products()
-        ->where('is_visible', true)
-        ->orderBy('name')
-        ->get()
-        ->map(fn ($p) => [
-            'id' => $p->id,
-            'name' => $p->name,
-            'price' => (float) $p->price,
-            'description' => $p->description,
-            'image_url' => $p->image_url,
-            'stock_status' => $p->stock_status,
-        ]);
-
-    // Calculate if currently open
-    $now = Carbon::now();
-    $dayOfWeek = strtolower($now->format('l')); // e.g., "monday"
-    $schedule = $tenant->schedule ?? [];
-    $todaySchedule = $schedule[$dayOfWeek] ?? null;
-    $isOpen = false;
-
-    if ($todaySchedule && ($todaySchedule['isOpen'] ?? false)) {
-        $openTime = Carbon::parse($todaySchedule['open']);
-        $closeTime = Carbon::parse($todaySchedule['close']);
-        $isOpen = $now->between($openTime, $closeTime);
-    }
-
-    return Inertia::render('Public/Tenant/Show', [
-        'tenant' => [
-            'id' => $tenant->id,
-            'name' => $tenant->name,
-            'slug' => $tenant->slug,
-            'description' => $tenant->description,
-            'about' => $tenant->about,
-            'phone' => $tenant->phone,
-            'whatsapp_number' => $tenant->whatsapp_number,
-            'address' => $tenant->address,
-            'logo_url' => $tenant->logo_url,
-            'cover_url' => $tenant->cover_url,
-            'category' => $tenant->category?->name,
-            'city' => $tenant->city?->name,
-            'instagram_url' => $tenant->instagram_url,
-            'facebook_url' => $tenant->facebook_url,
-        ],
-        'products' => $products,
-        'isOpen' => $isOpen,
-        'todaySchedule' => $todaySchedule && ($todaySchedule['isOpen'] ?? false) ? [
-            'open' => $todaySchedule['open'],
-            'close' => $todaySchedule['close'],
-        ] : null,
-    ]);
-})->name('tenant.show');

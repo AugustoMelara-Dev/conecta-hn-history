@@ -22,7 +22,7 @@ use Inertia\Response;
  * - Business Logic -> RegisterTenantAction
  * - Data Retrieval -> OnboardingReader
  */
-class RegisterTenantController extends Controller
+final class RegisterTenantController extends Controller
 {
     /**
      * Display the tenant registration form.
@@ -41,10 +41,12 @@ class RegisterTenantController extends Controller
      * REFACTORED: Delegates to RegisterTenantAction.
      * Controller responsibility: Validate, Delegate, Redirect/Error.
      */
-    public function store(Request $request, RegisterTenantAction $action): RedirectResponse
-    {
+    public function store(
+        Request $request,
+        \App\Application\Shared\Contracts\CommandBus $bus
+    ): RedirectResponse {
         // Validation
-        $validated = $request->validate([
+        $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'category_id' => ['required', 'exists:categories,id'],
             'city_id' => ['required', 'exists:cities,id'],
@@ -60,25 +62,34 @@ class RegisterTenantController extends Controller
         ]);
 
         try {
-            // DELEGATION: All business logic lives in the Action
-            $dto = RegisterTenantData::fromRequest($request);
-            $result = $action->execute($dto);
+            // PRE-PROCESS: File upload handled in Controller (Infrastructure Layer)
+            $logoPath = $request->file('logo')?->store('tenants/logos', 'public');
+            
+            // DELEGATION: Command Bus
+            $command = new \App\Application\Tenant\Commands\RegisterTenantCommand(
+                businessName: $request->input('name'),
+                slug: \Illuminate\Support\Str::slug($request->input('name')),
+                ownerName: $request->input('owner_name'),
+                email: $request->input('email'),
+                password: $request->input('password'),
+                cityId: (int) $request->input('city_id'),
+                categoryId: (int) $request->input('category_id'),
+                whatsapp: $request->input('whatsapp_number'),
+                selectedPlan: $request->input('plan', 'free'),
+                logoPath: $logoPath
+            );
+
+            // EXECUTE
+            $result = $bus->dispatch($command);
 
             Auth::login($result['user']);
 
             return redirect()->intended(route('tenant.dashboard'));
 
-        } catch (\RuntimeException $e) {
-            // Handle semantic errors from Action
-            if (str_starts_with($e->getMessage(), 'EMAIL_COLLISION')) {
-                return back()
-                    ->withInput($request->except('password', 'password_confirmation'))
-                    ->withErrors(['email' => 'Este correo electrónico ya está registrado.']);
-            }
-
+        } catch (\Exception $e) {
             return back()
-                ->withInput($request->except('password', 'password_confirmation'))
-                ->withErrors(['email' => 'El sistema está experimentando alta demanda. Intenta de nuevo.']);
+                 ->withInput($request->except('password', 'password_confirmation'))
+                 ->withErrors(['email' => 'Error: ' . $e->getMessage()]);
         }
     }
 }

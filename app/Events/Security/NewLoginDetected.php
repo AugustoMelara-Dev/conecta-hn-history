@@ -50,12 +50,12 @@ final readonly class NewLoginDetected implements AuditEvent
     use HasDomainMetadata;
 
     /**
-     * @param TenantId|null $tenantId Tenant context (null for system-level login)
-     * @param int $userId The authenticated user's ID
-     * @param string $userEmail User email (snapshot for audit trail)
-     * @param IpAddress $ipAddress GDPR-anonymized IP address
-     * @param string $userAgent Browser/client user agent string
-     * @param Severity $severity Event severity level
+     * @param  TenantId|null  $tenantId  Tenant context (null for system-level login)
+     * @param  int  $userId  The authenticated user's ID
+     * @param  string  $userEmail  User email (snapshot for audit trail)
+     * @param  IpAddress  $ipAddress  GDPR-anonymized IP address
+     * @param  string  $userAgent  Browser/client user agent string
+     * @param  Severity  $severity  Event severity level
      */
     public function __construct(
         private ?TenantId $tenantId,

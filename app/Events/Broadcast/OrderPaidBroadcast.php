@@ -18,23 +18,15 @@ use Illuminate\Foundation\Events\Dispatchable;
  */
 final class OrderPaidBroadcast implements BroadcastableNotification
 {
-    use Dispatchable, InteractsWithSockets, FormatsCurrency, LogsBroadcasts;
+    use Dispatchable, FormatsCurrency, InteractsWithSockets, LogsBroadcasts;
 
     private const PAYLOAD_VERSION = 1;
 
     // SRE: Fail-Fast Configuration
     public $tries = 1;
+
     public $timeout = 30;
 
-    /**
-     * @param int $tenantId
-     * @param int $orderId
-     * @param string $orderNumber
-     * @param int $amountCents
-     * @param string $currency
-     * @param string $paymentMethod
-     * @param DateTimeImmutable $paidAt
-     */
     public function __construct(
         public int $tenantId,
         public int $orderId,
@@ -114,7 +106,7 @@ final class OrderPaidBroadcast implements BroadcastableNotification
         return [
             // Versioning
             '_version' => self::PAYLOAD_VERSION,
-            '_timestamp' => (new DateTimeImmutable())->format(DateTimeImmutable::ATOM),
+            '_timestamp' => (new DateTimeImmutable)->format(DateTimeImmutable::ATOM),
 
             // UI Contract
             'title' => __('notifications.order_paid.title', ['order' => $this->orderNumber]),

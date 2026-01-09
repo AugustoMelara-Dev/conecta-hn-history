@@ -8,7 +8,6 @@ use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Product;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -51,7 +50,7 @@ class ProductResource extends Resource
                                     ->label('Nombre del Producto')
                                     ->required()
                                     ->maxLength(255),
-                                
+
                                 // RichEditor with simplified toolbar to avoid messy HTML
                                 Forms\Components\RichEditor::make('description')
                                     ->label('Descripción')
@@ -77,7 +76,7 @@ class ProductResource extends Resource
                         // GATED FEATURE: Modifiers (Only for PRO/ENT)
                         Forms\Components\Section::make('Opciones y Modificadores')
                             ->schema([
-                                $isPro 
+                                $isPro
                                 ? Forms\Components\Repeater::make('modifiers')
                                     ->label('Grupos de Opciones')
                                     ->relationship('modifierGroups')
@@ -115,7 +114,7 @@ class ProductResource extends Resource
                                     ->searchable()
                                     ->preload()
                                     ->required(),
-                                
+
                                 Forms\Components\Select::make('menu_section_id')
                                     ->relationship('menuSection', 'name')
                                     ->label('Sección del Menú')

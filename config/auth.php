@@ -10,10 +10,22 @@ return [
     | This option defines the default authentication "guard" and password
     | reset "broker" for your application. You may change these values
     | as required, but they're a perfect start for most applications.
+    /*
+    |--------------------------------------------------------------------------
+    | Super Admin Configuration (Security Critical)
+    |--------------------------------------------------------------------------
+    |
+    | Define super admin emails via APP_SUPER_ADMINS environment variable.
+    | Multiple emails separated by commas: "admin1@example.com,admin2@example.com"
+    |
+    | SECURITY: Never hardcode admin emails in source code.
+    | AUDIT: Changes to this list should trigger security review.
     |
     */
 
-    'super_admin_email' => env('SUPER_ADMIN_EMAIL', 'admin@conectahn.com'),
+    'super_admins' => array_filter(
+        array_map('trim', explode(',', env('APP_SUPER_ADMINS', '')))
+    ),
 
     'defaults' => [
         'guard' => env('AUTH_GUARD', 'web'),
@@ -70,7 +82,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Domain\Identity\Models\User::class),
+            'model' => env('AUTH_MODEL', App\Models\User::class),
         ],
         'admins' => [
             'driver' => 'eloquent',

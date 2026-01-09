@@ -35,7 +35,7 @@ interface DomainEvent
 {
     /**
      * Unique identifier for this specific event instance.
-     * 
+     *
      * Used for idempotency checks in listeners:
      *   if (ProcessedEvent::exists($event->eventId())) return;
      */
@@ -43,8 +43,9 @@ interface DomainEvent
 
     /**
      * Get the tenant context for queue middleware context switching.
-     * 
+     *
      * CRITICAL: This must be available BEFORE any model deserialization.
+     * Returns TenantId value object for type safety.
      */
     public function tenantId(): TenantId;
 
@@ -55,27 +56,27 @@ interface DomainEvent
 
     /**
      * Get the exact moment this event occurred.
-     * 
+     *
      * IMMUTABILITY: Must return DateTimeImmutable, never Carbon.
      */
     public function occurredAt(): DateTimeImmutable;
 
     /**
      * Serialize event to flat primitives (JSON-safe).
-     * 
+     *
      * This decouples your PHP class structure from the queue message format.
      * Refactoring VOs won't break pending jobs.
-     * 
+     *
      * @return array<string, scalar|null>
      */
     public function toPrimitives(): array;
 
     /**
      * Reconstruct event from primitives.
-     * 
+     *
      * Used by consumers to deserialize from queue message.
-     * 
-     * @param array<string, mixed> $primitives
+     *
+     * @param  array<string, mixed>  $primitives
      */
     public static function fromPrimitives(array $primitives): self;
 }

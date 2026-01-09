@@ -1,13 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
 
+/**
+ * PasswordResetTest - Password Reset Flow Tests
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  FIXED: Uses proper token extraction pattern instead of callback.        ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ */
 class PasswordResetTest extends TestCase
 {
     use RefreshDatabase;
@@ -25,7 +35,7 @@ class PasswordResetTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->post('/forgot-password', ['email' => $user->email]);
+        $response = $this->post('/forgot-password', ['email' => $user->email]);
 
         Notification::assertSentTo($user, ResetPassword::class);
     }
@@ -38,13 +48,18 @@ class PasswordResetTest extends TestCase
 
         $this->post('/forgot-password', ['email' => $user->email]);
 
-        Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
-            $response = $this->get('/reset-password/'.$notification->token);
+        Notification::assertSentTo($user, ResetPassword::class);
 
-            $response->assertStatus(200);
+        // Extract notification from fake
+        $notifications = Notification::sent($user, ResetPassword::class);
+        $this->assertNotEmpty($notifications, 'No ResetPassword notification was sent.');
 
-            return true;
-        });
+        $notification = $notifications->first();
+        $token = $notification->token;
+
+        $response = $this->get('/reset-password/' . $token);
+
+        $response->assertStatus(200);
     }
 
     public function test_password_can_be_reset_with_valid_token(): void
@@ -55,19 +70,24 @@ class PasswordResetTest extends TestCase
 
         $this->post('/forgot-password', ['email' => $user->email]);
 
-        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
-            $response = $this->post('/reset-password', [
-                'token' => $notification->token,
-                'email' => $user->email,
-                'password' => 'password',
-                'password_confirmation' => 'password',
-            ]);
+        Notification::assertSentTo($user, ResetPassword::class);
 
-            $response
-                ->assertSessionHasNoErrors()
-                ->assertRedirect(route('login'));
+        // Extract token from notification
+        $notifications = Notification::sent($user, ResetPassword::class);
+        $this->assertNotEmpty($notifications, 'No ResetPassword notification was sent.');
 
-            return true;
-        });
+        $notification = $notifications->first();
+        $token = $notification->token;
+
+        $response = $this->post('/reset-password', [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'new-password-123',
+            'password_confirmation' => 'new-password-123',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect(route('login'));
     }
 }
+

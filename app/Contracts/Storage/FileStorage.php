@@ -47,9 +47,9 @@ interface FileStorage
     /**
      * Store an uploaded file.
      *
-     * @param UploadedFile $file The uploaded file
-     * @param string $directory Target directory (tenant-scoped automatically)
-     * @param array $options ['visibility' => 'public', 'disk' => 'override']
+     * @param  UploadedFile  $file  The uploaded file
+     * @param  string  $directory  Target directory (tenant-scoped automatically)
+     * @param  array  $options  ['visibility' => 'public', 'disk' => 'override']
      * @return string The stored file's path
      */
     public function store(UploadedFile $file, string $directory = '', array $options = []): string;
@@ -57,17 +57,15 @@ interface FileStorage
     /**
      * Store raw file contents.
      *
-     * @param string $path Relative path
-     * @param string|resource $contents File contents or stream
-     * @param array $options
-     * @return bool
+     * @param  string  $path  Relative path
+     * @param  string|resource  $contents  File contents or stream
      */
     public function put(string $path, mixed $contents, array $options = []): bool;
 
     /**
      * Get the public URL for a file.
      *
-     * @param string $path Relative path
+     * @param  string  $path  Relative path
      * @return string Full public URL (CDN-ready)
      */
     public function url(string $path): string;
@@ -75,8 +73,7 @@ interface FileStorage
     /**
      * Get a temporary signed URL for private files.
      *
-     * @param string $path Relative path
-     * @param int $expirationMinutes
+     * @param  string  $path  Relative path
      * @return string Signed URL
      */
     public function temporaryUrl(string $path, int $expirationMinutes = 60): string;
@@ -94,7 +91,7 @@ interface FileStorage
     /**
      * Delete multiple files.
      *
-     * @param iterable<string> $paths Can be array or Generator
+     * @param  iterable<string>  $paths  Can be array or Generator
      */
     public function deleteMany(iterable $paths): bool;
 
@@ -142,8 +139,6 @@ interface FileStorage
      * ║    }                                                                  ║
      * ╚════════════════════════════════════════════════════════════════════════╝
      *
-     * @param string $directory
-     * @param bool $recursive
      * @return iterable<int, string> Generator that yields file paths one at a time
      */
     public function files(string $directory = '', bool $recursive = false): iterable;
@@ -153,8 +148,6 @@ interface FileStorage
      *
      * @notice Same memory-safety rationale as files().
      *
-     * @param string $directory
-     * @param bool $recursive
      * @return iterable<int, string>
      */
     public function directories(string $directory = '', bool $recursive = false): iterable;
@@ -162,7 +155,6 @@ interface FileStorage
     /**
      * Get file metadata without loading content.
      *
-     * @param string $path
      * @return array{size: int, last_modified: int, mime_type: string}
      */
     public function metadata(string $path): array;

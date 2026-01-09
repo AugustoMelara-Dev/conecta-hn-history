@@ -8,10 +8,10 @@ use InvalidArgumentException;
 
 /**
  * TenantId Value Object
- * 
+ *
  * Enforces strict validation for Tenant Identifiers.
  * Impossible to instantiate in an invalid state.
- * 
+ *
  * @property-read int $value
  */
 final readonly class TenantId

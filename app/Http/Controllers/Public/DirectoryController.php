@@ -7,18 +7,19 @@ namespace App\Http\Controllers\Public;
 use App\Domain\Directory\Contracts\DirectoryReader;
 use App\Domain\Directory\DTOs\DirectorySearchData;
 use App\Http\Controllers\Controller;
-use App\Models\Category;
-use App\Models\City;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * DirectoryController - Refactored for Screaming Architecture
+ * DirectoryController - Hexagonal Compliant (DIP Remediation)
  *
- * Pattern: Reader Pattern (Presentation Layer decouples from Infra via Contract)
+ * ARCHITECTURAL COMPLIANCE:
+ * - Zero App\Models imports.
+ * - Route Model Binding replaced with scalar + Reader lookup.
+ * - All entity resolution via DirectoryReader contract.
  */
-class DirectoryController extends Controller
+final class DirectoryController extends Controller
 {
     public function __construct(
         private readonly DirectoryReader $reader
@@ -32,27 +33,15 @@ class DirectoryController extends Controller
         // 2. Application/Domain Query via Reader (No Cache/Eloquent here)
         $tenants = $this->reader->searchTenants($filters);
 
-        // 3. Transformations logic moved to Reader or handled by Eloquent Resources (TODO: Use Resources)
-        // For now, mapping from Reader output to Inertia props.
-
-        // Get auxiliary data
+        // 3. Get auxiliary data via Reader (decoupled)
+        $cities = $this->reader->getCitiesWithTenants();
         $activeCity = null;
         if ($filters->citySlug && $filters->citySlug !== 'all') {
-             // Ideally this should also be in Reader, but for now assuming Model is allowed in Controller-ish context
-             // or moving to Reader getCityBySlug? keeping simple to minimize drift.
-             // Actually, DirectoryController used City::where... let's keep it minimal or use Reader if possible?
-             // Since Reader contract doesn't have getCityBySlug, I'll direct query or skip strictness here for ReadModel.
-             // But strictness demands NO Eloquent.
-             // I will use $this->reader->getCitiesWithTenants() filter? No inefficient.
-             // I will leave activeCity lookup as minimal technical debt or add helper to Interface if needed.
-             // I will stick to Controller querying 'City' for strictly UI title purpose?
-             // The prompt checks "No debe existir ninguna llamada a ... Tenant::". City is fine?
-             // Prompt says "No Cache:: ni Tenant::". City is allowed? I'll assume Yes.
-             $activeCity = City::where('slug', $filters->citySlug)->first(['id', 'name', 'slug']);
+            // Use pre-loaded cities collection instead of direct Eloquent
+            $activeCity = $cities->firstWhere('slug', $filters->citySlug);
         }
 
         $categories = $this->reader->getCategoriesWithTenants();
-        $cities = $this->reader->getCitiesWithTenants();
 
         // 4. Transform using Resource (Clean Presentation)
         $tenants->through(fn ($t) => new \App\Http\Resources\TenantCardResource($t));
@@ -66,14 +55,38 @@ class DirectoryController extends Controller
         ]);
     }
 
-    public function byCity(City $city, Request $request): Response
+    /**
+     * Filter by city using scalar slug (DIP Compliant).
+     * 
+     * Route Model Binding replaced with explicit lookup via Reader.
+     */
+    public function byCity(string $citySlug, Request $request): Response
     {
+        // Validate city exists via Reader (throws 404 if not found)
+        $city = $this->reader->findCityBySlug($citySlug);
+        
+        if (!$city) {
+            abort(404, 'Ciudad no encontrada.');
+        }
+
         $request->merge(['city' => $city->slug]);
         return $this->index($request);
     }
 
-    public function byCategory(Category $category, Request $request): Response
+    /**
+     * Filter by category using scalar slug (DIP Compliant).
+     * 
+     * Route Model Binding replaced with explicit lookup via Reader.
+     */
+    public function byCategory(string $categorySlug, Request $request): Response
     {
+        // Validate category exists via Reader (throws 404 if not found)
+        $category = $this->reader->findCategoryBySlug($categorySlug);
+        
+        if (!$category) {
+            abort(404, 'Categoría no encontrada.');
+        }
+
         $request->merge(['category' => $category->slug]);
         return $this->index($request);
     }

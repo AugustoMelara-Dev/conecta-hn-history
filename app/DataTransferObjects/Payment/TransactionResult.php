@@ -32,43 +32,43 @@ final readonly class TransactionResult
     public function __construct(
         /** Whether the payment was successful */
         public bool $success,
-        
+
         /** Our internal transaction reference */
         public string $transactionId,
-        
+
         /** Gateway's transaction/charge ID (for refunds, disputes) */
         public string $gatewayTransactionId,
-        
+
         /** Normalized status: 'completed', 'pending', 'failed', 'requires_action' */
         public string $status,
-        
+
         /** Amount charged (confirmed by gateway) */
         public Money $amount,
-        
+
         /** Gateway name for audit trail (e.g., 'stripe', 'pixelpay') */
         public string $gatewayName,
-        
+
         /** Human-readable message (for UI display) */
         public string $message = '',
-        
+
         /** Error code if failed (gateway-specific, for debugging) */
         public ?string $errorCode = null,
-        
+
         /** Decline reason for failed transaction */
         public ?string $declineReason = null,
-        
+
         /** Card last 4 digits (for receipts) */
         public ?string $cardLast4 = null,
-        
+
         /** Card brand (visa, mastercard, etc.) */
         public ?string $cardBrand = null,
-        
+
         /** 3DS/SCA redirect URL if action required */
         public ?string $actionUrl = null,
-        
+
         /** Raw gateway response (for debugging, NOT for business logic) */
         public array $rawResponse = [],
-        
+
         /** Transaction timestamp */
         public ?\DateTimeInterface $processedAt = null,
     ) {}
@@ -151,7 +151,7 @@ final readonly class TransactionResult
      */
     public function requiresUserAction(): bool
     {
-        return $this->status === 'requires_action' && !empty($this->actionUrl);
+        return $this->status === 'requires_action' && ! empty($this->actionUrl);
     }
 
     /**

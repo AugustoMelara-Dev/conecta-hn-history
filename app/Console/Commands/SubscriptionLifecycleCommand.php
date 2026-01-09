@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Domain\TenantGovernance\Jobs\AuditTenantLimits;
+use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
 use App\Mail\SubscriptionExpiredMail;
 use App\Mail\SubscriptionExpiringMail;
 use App\Models\Tenant;
@@ -58,17 +58,20 @@ class SubscriptionLifecycleCommand extends Command
     protected $description = 'Unified subscription lifecycle: warnings, expirations, and downgrades';
 
     protected int $notifiedCount = 0;
+
     protected int $expiredCount = 0;
+
     protected int $errorCount = 0;
+
     protected bool $dryRun = false;
 
     public function handle(): int
     {
         $this->dryRun = (bool) $this->option('dry-run');
-        
+
         $settings = app(GeneralSettings::class);
-        $graceDays = $this->option('grace-days') !== null 
-            ? (int) $this->option('grace-days') 
+        $graceDays = $this->option('grace-days') !== null
+            ? (int) $this->option('grace-days')
             : $settings->grace_period_days;
         $warningDays = (int) $this->option('warning-days');
         $freeProductLimit = $settings->free_plan_product_limit;
@@ -81,7 +84,7 @@ class SubscriptionLifecycleCommand extends Command
             "Grace period: {$graceDays} days",
             "Warning threshold: {$warningDays} days before expiry",
             "Free plan limit: {$freeProductLimit} products",
-            "Mode: " . ($this->dryRun ? 'DRY RUN (no changes)' : 'LIVE'),
+            'Mode: '.($this->dryRun ? 'DRY RUN (no changes)' : 'LIVE'),
         ]);
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -126,11 +129,11 @@ class SubscriptionLifecycleCommand extends Command
             Tenant::query()
                 ->where(function ($q) {
                     $q->where('subscription_status', 'active')
-                      ->orWhere('is_pro', true);
+                        ->orWhere('is_pro', true);
                 })
                 ->where(function ($q) use ($targetStart, $targetEnd) {
                     $q->whereBetween('subscription_ends_at', [$targetStart, $targetEnd])
-                      ->orWhereBetween('plan_expires_at', [$targetStart, $targetEnd]);
+                        ->orWhereBetween('plan_expires_at', [$targetStart, $targetEnd]);
                 })
                 ->chunkById(100, function ($tenants) use ($daysBeforeExpiry) {
                     foreach ($tenants as $tenant) {
@@ -148,10 +151,11 @@ class SubscriptionLifecycleCommand extends Command
     protected function sendExpirationWarning(Tenant $tenant, int $daysUntilExpiry): void
     {
         // Guard: Tenant must have an associated user with email
-        if (!$tenant->user || empty($tenant->user->email)) {
+        if (! $tenant->user || empty($tenant->user->email)) {
             Log::warning('SubscriptionLifecycle: Tenant has no valid user for notification', [
                 'tenant_id' => $tenant->id,
             ]);
+
             return;
         }
 
@@ -161,6 +165,7 @@ class SubscriptionLifecycleCommand extends Command
                 $tenant->user->email
             );
             $this->notifiedCount++;
+
             return;
         }
 
@@ -169,7 +174,7 @@ class SubscriptionLifecycleCommand extends Command
             if (class_exists(SubscriptionExpiringNotification::class)) {
                 $tenant->user->notify(new SubscriptionExpiringNotification($tenant));
             }
-            
+
             // Also send email for redundancy
             if (class_exists(SubscriptionExpiringMail::class)) {
                 Mail::to($tenant->user->email)->queue(
@@ -205,13 +210,13 @@ class SubscriptionLifecycleCommand extends Command
             Tenant::query()
                 ->where(function ($q) {
                     $q->where('subscription_status', 'active')
-                      ->orWhere('is_pro', true);
+                        ->orWhere('is_pro', true);
                 })
                 ->where(function ($q) use ($cutoffDate) {
                     $q->where('subscription_ends_at', '<', $cutoffDate)
-                      ->orWhere('plan_expires_at', '<', $cutoffDate);
+                        ->orWhere('plan_expires_at', '<', $cutoffDate);
                 })
-                ->chunkById(100, function ($tenants) use ($freeProductLimit, $graceDays) {
+                ->chunkById(100, function ($tenants) use ($freeProductLimit) {
                     foreach ($tenants as $tenant) {
                         $this->expireTenantSubscription($tenant, $freeProductLimit);
                     }
@@ -249,6 +254,7 @@ class SubscriptionLifecycleCommand extends Command
                 "ID: {$tenant->id}"
             );
             $this->expiredCount++;
+
             return;
         }
 
@@ -275,12 +281,12 @@ class SubscriptionLifecycleCommand extends Command
             // These are now OUTSIDE the transaction, ensuring they only run
             // if the database changes were successfully committed.
             // ═══════════════════════════════════════════════════════════════════════
-            
+
             // Reload tenant to get confirmed state
             $tenant->refresh();
-            
+
             // Send expiration notification (now safe - DB is committed)
-            if ($tenant->user && !empty($tenant->user->email)) {
+            if ($tenant->user && ! empty($tenant->user->email)) {
                 if (class_exists(SubscriptionExpiredMail::class)) {
                     Mail::to($tenant->user->email)->queue(
                         new SubscriptionExpiredMail($tenant)
@@ -296,7 +302,7 @@ class SubscriptionLifecycleCommand extends Command
             $this->expiredCount++;
             $this->components->twoColumnDetail(
                 "  ✓ Expired: {$tenant->name}",
-                "Downgraded to Free"
+                'Downgraded to Free'
             );
         } catch (\Exception $e) {
             // Transaction failed - NO email was sent, NO job was dispatched
@@ -307,7 +313,7 @@ class SubscriptionLifecycleCommand extends Command
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             $this->components->error("  ✗ Failed: {$tenant->name} - {$e->getMessage()}");
         }
     }

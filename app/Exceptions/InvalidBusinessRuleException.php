@@ -74,14 +74,14 @@ final class InvalidBusinessRuleException extends DomainException
     public static function emptyItems(): self
     {
         return new self(
-            message: "La orden debe contener al menos un producto.",
+            message: 'La orden debe contener al menos un producto.',
             rule: 'items.count >= 1',
             violationData: [],
         );
     }
 
     /**
-     * @deprecated Anti-Pattern: Do not use generic exceptions for new business rules. 
+     * @deprecated Anti-Pattern: Do not use generic exceptions for new business rules.
      * Create a specific DomainException class instead to ensure "Screaming Architecture".
      */
     public static function custom(string $message, string $rule = '', array $context = []): self

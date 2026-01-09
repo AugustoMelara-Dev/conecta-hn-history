@@ -50,7 +50,7 @@ class TenantObserver
         try {
             $this->getCacheManager()->rotateTenantVersion($tenant->id);
         } catch (\Exception $e) {
-            Log::warning("Cache invalidation failed for tenant {$tenant->id}: " . $e->getMessage());
+            Log::warning("Cache invalidation failed for tenant {$tenant->id}: ".$e->getMessage());
         }
     }
 
@@ -62,7 +62,7 @@ class TenantObserver
     public function saved(Tenant $tenant): void
     {
         if ($tenant->isDirty('logo_path') && ! empty($tenant->logo_path)) {
-            $fullPath = storage_path('app/public/' . $tenant->logo_path);
+            $fullPath = storage_path('app/public/'.$tenant->logo_path);
 
             if (file_exists($fullPath)) {
                 try {
@@ -74,7 +74,7 @@ class TenantObserver
                         imagedestroy($image);
                     }
                 } catch (\Exception $e) {
-                    Log::error("Blurhash generation failed for tenant {$tenant->id}: " . $e->getMessage());
+                    Log::error("Blurhash generation failed for tenant {$tenant->id}: ".$e->getMessage());
                 }
             }
         }
@@ -90,7 +90,7 @@ class TenantObserver
         try {
             $this->getCacheManager()->forgetVersion($tenant->id);
         } catch (\Exception $e) {
-            Log::warning("Cache cleanup failed for deleted tenant {$tenant->id}: " . $e->getMessage());
+            Log::warning("Cache cleanup failed for deleted tenant {$tenant->id}: ".$e->getMessage());
         }
     }
 
@@ -102,7 +102,7 @@ class TenantObserver
         try {
             $this->getCacheManager()->rotateTenantVersion($tenant->id);
         } catch (\Exception $e) {
-            Log::warning("Cache rotation failed for restored tenant {$tenant->id}: " . $e->getMessage());
+            Log::warning("Cache rotation failed for restored tenant {$tenant->id}: ".$e->getMessage());
         }
     }
 
@@ -114,7 +114,7 @@ class TenantObserver
         try {
             $this->getCacheManager()->forgetVersion($tenant->id);
         } catch (\Exception $e) {
-            Log::warning("Cache cleanup failed for force-deleted tenant {$tenant->id}: " . $e->getMessage());
+            Log::warning("Cache cleanup failed for force-deleted tenant {$tenant->id}: ".$e->getMessage());
         }
     }
 

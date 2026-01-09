@@ -52,12 +52,16 @@ class MediaCleanupCommand extends Command
     protected $description = 'Reconcile database and filesystem to remove orphaned media (production-grade)';
 
     protected int $dbOrphansDeleted = 0;
+
     protected int $fileOrphansDeleted = 0;
+
     protected int $bytesRecovered = 0;
+
     protected bool $dryRun = false;
 
     /**
      * Pre-loaded registry of known file paths (HashSet for O(1) lookup)
+     *
      * @var array<string, bool>
      */
     protected array $knownPaths = [];
@@ -72,7 +76,7 @@ class MediaCleanupCommand extends Command
         $this->components->bulletList([
             "Disk: {$disk}",
             "Safety buffer: {$bufferMinutes} minutes",
-            "Mode: " . ($this->dryRun ? 'DRY RUN' : 'LIVE'),
+            'Mode: '.($this->dryRun ? 'DRY RUN' : 'LIVE'),
         ]);
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -123,10 +127,10 @@ class MediaCleanupCommand extends Command
                     ->select(['file_path', 'path'])
                     ->chunkById(1000, function ($records) {
                         foreach ($records as $record) {
-                            if (!empty($record->file_path)) {
+                            if (! empty($record->file_path)) {
                                 $this->knownPaths[$record->file_path] = true;
                             }
-                            if (!empty($record->path)) {
+                            if (! empty($record->path)) {
                                 $this->knownPaths[$record->path] = true;
                             }
                         }
@@ -141,7 +145,7 @@ class MediaCleanupCommand extends Command
                     ->orderBy('id')
                     ->chunk(1000, function ($records) {
                         foreach ($records as $record) {
-                            if (!empty($record->image)) {
+                            if (! empty($record->image)) {
                                 $this->knownPaths[$record->image] = true;
                                 // Handle JSON arrays of images
                                 if (str_starts_with($record->image, '[')) {
@@ -167,7 +171,7 @@ class MediaCleanupCommand extends Command
                     ->orderBy('id')
                     ->chunk(1000, function ($records) {
                         foreach ($records as $record) {
-                            if (!empty($record->logo)) {
+                            if (! empty($record->logo)) {
                                 $this->knownPaths[$record->logo] = true;
                             }
                         }
@@ -189,7 +193,7 @@ class MediaCleanupCommand extends Command
     protected function cleanOrphanedDatabaseRecords(string $disk): void
     {
         $this->components->task('Pass 1: Cleaning orphaned database records', function () use ($disk) {
-            if (!class_exists(Media::class)) {
+            if (! class_exists(Media::class)) {
                 return true;
             }
 
@@ -197,9 +201,9 @@ class MediaCleanupCommand extends Command
                 ->chunkById(100, function ($mediaRecords) use ($disk) {
                     foreach ($mediaRecords as $media) {
                         $filePath = $media->file_path ?? $media->path ?? null;
-                        
-                        if (!$filePath || !Storage::disk($disk)->exists($filePath)) {
-                            if (!$this->dryRun) {
+
+                        if (! $filePath || ! Storage::disk($disk)->exists($filePath)) {
+                            if (! $this->dryRun) {
                                 $media->delete();
                             }
                             $this->dbOrphansDeleted++;
@@ -222,9 +226,9 @@ class MediaCleanupCommand extends Command
 
             // Process directories one at a time
             $directories = ['uploads', 'media', 'products', 'tenants', 'images'];
-            
+
             foreach ($directories as $directory) {
-                if (!$storage->exists($directory)) {
+                if (! $storage->exists($directory)) {
                     continue;
                 }
 
@@ -244,7 +248,7 @@ class MediaCleanupCommand extends Command
         try {
             // Get files in current directory only (not recursive)
             $files = $storage->files($directory);
-            
+
             foreach ($files as $file) {
                 $this->processOrphanedFile($storage, $file, $cutoffTime);
             }
@@ -254,7 +258,7 @@ class MediaCleanupCommand extends Command
 
             // Now get subdirectories and recurse
             $subdirectories = $storage->directories($directory);
-            
+
             foreach ($subdirectories as $subdir) {
                 $this->scanDirectoryRecursively($storage, $subdir, $cutoffTime);
             }
@@ -287,7 +291,7 @@ class MediaCleanupCommand extends Command
             }
 
             // O(1) HashSet lookup instead of 3 DB queries
-            if (!$this->isKnownPath($file)) {
+            if (! $this->isKnownPath($file)) {
                 $fileSize = $storage->size($file);
 
                 if ($this->dryRun) {
@@ -318,8 +322,8 @@ class MediaCleanupCommand extends Command
         $variations = [
             $filePath,
             ltrim($filePath, '/'),
-            'storage/' . ltrim($filePath, '/'),
-            'public/' . ltrim($filePath, '/'),
+            'storage/'.ltrim($filePath, '/'),
+            'public/'.ltrim($filePath, '/'),
         ];
 
         foreach ($variations as $path) {
@@ -338,7 +342,7 @@ class MediaCleanupCommand extends Command
     {
         $units = ['B', 'KB', 'MB', 'GB'];
         $factor = floor((strlen((string) $bytes) - 1) / 3);
-        
-        return sprintf("%.2f %s", $bytes / pow(1024, $factor), $units[$factor] ?? 'B');
+
+        return sprintf('%.2f %s', $bytes / pow(1024, $factor), $units[$factor] ?? 'B');
     }
 }

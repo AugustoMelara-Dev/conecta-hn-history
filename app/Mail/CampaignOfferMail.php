@@ -4,30 +4,30 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
-use App\Models\Campaign;
-use App\Models\User;
+use App\Application\Shared\DTOs\Mail\CampaignMailData;
+use App\Application\Shared\DTOs\Mail\UserMailData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
 
+/**
+ * CampaignOfferMail - Refactored for Safe Serialization
+ *
+ * Uses CampaignMailData and UserMailData DTOs instead of Eloquent Models.
+ */
 class CampaignOfferMail extends Mailable
 {
-    use Queueable, SerializesModels;
-
-    public $campaign;
-
-    public $user;
+    use Queueable;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(Campaign $campaign, User $user)
-    {
-        $this->campaign = $campaign;
-        $this->user = $user;
-    }
+    public function __construct(
+        public readonly CampaignMailData $campaign,
+        public readonly UserMailData $user
+    ) {}
 
     /**
      * Get the message envelope.
@@ -36,9 +36,9 @@ class CampaignOfferMail extends Mailable
     {
         return new Envelope(
             subject: $this->campaign->subject,
-            from: new \Illuminate\Mail\Mailables\Address(
+            from: new Address(
                 config('mail.from.address'),
-                $this->campaign->tenant->name.' via Conecta HN'
+                $this->campaign->tenantName . ' via Conecta HN'
             ),
         );
     }

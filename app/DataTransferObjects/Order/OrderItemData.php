@@ -28,10 +28,11 @@ use Illuminate\Contracts\Support\Arrayable;
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * @implements Arrayable<string, mixed>
+ *
  * @throws MissingRequiredDataException When required fields are missing
  * @throws InvalidBusinessRuleException When values violate business rules
  */
-final readonly class OrderItemData implements Arrayable, \JsonSerializable
+final readonly class OrderItemData implements \JsonSerializable, Arrayable
 {
     private const REQUIRED_FIELDS = ['product_id', 'quantity', 'unit_price'];
 
@@ -50,7 +51,8 @@ final readonly class OrderItemData implements Arrayable, \JsonSerializable
     /**
      * Hydrate from array with STRICT validation.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
+     *
      * @throws MissingRequiredDataException When product_id, quantity, or price missing
      * @throws InvalidBusinessRuleException When quantity <= 0 or price < 0
      */
@@ -66,7 +68,7 @@ final readonly class OrderItemData implements Arrayable, \JsonSerializable
         // ═══════════════════════════════════════════════════════════════════════
         $productId = (int) $data['product_id'];
         $quantity = (int) $data['quantity'];
-        
+
         // Handle unit_price: can be Money object, int (cents), or array with 'cents' key
         $unitPriceCents = self::extractPriceCents($data, 'unit_price');
 
@@ -138,21 +140,21 @@ final readonly class OrderItemData implements Arrayable, \JsonSerializable
         $missing = [];
 
         // product_id is absolutely required
-        if (!isset($data['product_id'])) {
+        if (! isset($data['product_id'])) {
             $missing[] = 'product_id';
         }
 
         // quantity is absolutely required
-        if (!isset($data['quantity'])) {
+        if (! isset($data['quantity'])) {
             $missing[] = 'quantity';
         }
 
         // price can come as unit_price or price
-        if (!isset($data['unit_price']) && !isset($data['price'])) {
+        if (! isset($data['unit_price']) && ! isset($data['price'])) {
             $missing[] = 'unit_price';
         }
 
-        if (!empty($missing)) {
+        if (! empty($missing)) {
             throw MissingRequiredDataException::forFields($missing, 'OrderItemData');
         }
     }

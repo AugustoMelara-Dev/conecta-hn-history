@@ -75,7 +75,7 @@ class MinimalSeeder extends Seeder
                 1 => $tecnologia,
                 2 => $salud,
             };
-            
+
             $cityId = \App\Models\City::where('name', $biz['city'])->first()->id;
 
             $factory = \App\Domain\TenantGovernance\Models\Tenant::factory()
@@ -85,10 +85,10 @@ class MinimalSeeder extends Seeder
                     'slug' => Str::slug($biz['name']),
                     'category_id' => $categoryId,
                     'city_id' => $cityId,
-                    'description' => 'Negocio profesional en ' . $biz['city'],
+                    'description' => 'Negocio profesional en '.$biz['city'],
                     'is_active' => true,
                     'primary_color' => ['#7c3aed', '#dc2626', '#059669'][$idx % 3],
-                    'whatsapp_number' => '+504 9999-999' . $idx,
+                    'whatsapp_number' => '+504 9999-999'.$idx,
                 ]);
 
             if ($biz['is_pro']) {
@@ -96,10 +96,10 @@ class MinimalSeeder extends Seeder
             } else {
                 $factory = $factory->state(['plan_type' => 'semilla']);
             }
-            
+
             $factory->create();
         }
 
-        $this->command->info("✅ Minimal seed complete: Domain Factories utilized.");
+        $this->command->info('✅ Minimal seed complete: Domain Factories utilized.');
     }
 }

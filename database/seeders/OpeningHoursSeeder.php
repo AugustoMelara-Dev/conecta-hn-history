@@ -52,6 +52,7 @@ class OpeningHoursSeeder extends Seeder
 
         if ($tenantIds->isEmpty()) {
             $this->command->warn('⚠️  No tenants found. Skipping opening hours seeding.');
+
             return;
         }
 
@@ -83,10 +84,10 @@ class OpeningHoursSeeder extends Seeder
         }
 
         $totalTenants = $tenantIds->count();
-        $this->command->info("✅ Opening Hours seeding complete!");
+        $this->command->info('✅ Opening Hours seeding complete!');
         $this->command->info("   Tenants processed: {$totalTenants}");
         $this->command->info("   Records created: {$created}");
         $this->command->info("   Records skipped (already exist): {$skipped}");
-        $this->command->info("   Note: Sunday (day 0) is closed (no record)");
+        $this->command->info('   Note: Sunday (day 0) is closed (no record)');
     }
 }

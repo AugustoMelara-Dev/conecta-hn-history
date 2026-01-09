@@ -22,8 +22,8 @@ final class ExportFailedNotification extends Notification implements ShouldQueue
     /**
      * Create a new notification instance.
      *
-     * @param string $exportType   The type of export that failed
-     * @param string $errorMessage User-friendly error message
+     * @param  string  $exportType  The type of export that failed
+     * @param  string  $errorMessage  User-friendly error message
      */
     public function __construct(
         private readonly string $exportType = 'sales',
@@ -35,7 +35,6 @@ final class ExportFailedNotification extends Notification implements ShouldQueue
     /**
      * Get the notification's delivery channels.
      *
-     * @param mixed $notifiable
      * @return array<string>
      */
     public function via(mixed $notifiable): array
@@ -46,7 +45,6 @@ final class ExportFailedNotification extends Notification implements ShouldQueue
     /**
      * Get the array representation of the notification (for database).
      *
-     * @param mixed $notifiable
      * @return array<string, mixed>
      */
     public function toArray(mixed $notifiable): array
@@ -62,9 +60,6 @@ final class ExportFailedNotification extends Notification implements ShouldQueue
 
     /**
      * Get the broadcastable representation of the notification.
-     *
-     * @param mixed $notifiable
-     * @return BroadcastMessage
      */
     public function toBroadcast(mixed $notifiable): BroadcastMessage
     {

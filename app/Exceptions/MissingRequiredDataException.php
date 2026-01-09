@@ -70,7 +70,7 @@ final class MissingRequiredDataException extends DomainException
     public static function forFields(array $fields, string $dto): self
     {
         return new self(
-            message: "Faltan los datos requeridos: " . implode(', ', $fields) . " en {$dto}",
+            message: 'Faltan los datos requeridos: '.implode(', ', $fields)." en {$dto}",
             contextData: ['fields' => $fields, 'dto' => $dto],
             entityName: $dto,
             missingFields: $fields,

@@ -13,7 +13,7 @@ final class ExcelExportService implements DataExportInterface
     {
         // Use configured disk if none provided
         $disk = $disk ?? config('filesystems.default_export_disk', 'local');
-        
+
         return Excel::store($export, $filePath, $disk);
     }
 }

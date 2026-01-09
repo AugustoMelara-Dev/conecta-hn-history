@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\Middleware;
 
-use Closure;
 use App\Models\Tenant;
+use Closure;
 
 /**
  * TenantQueueMiddleware - Restores Tenant Context BEFORE Job Execution
@@ -76,19 +76,21 @@ class TenantQueueMiddleware
     {
         $tenant = Tenant::find($tenantId);
 
-        if (!$tenant) {
+        if (! $tenant) {
             throw new \RuntimeException("Tenant {$tenantId} not found. Cannot process queued job.");
         }
 
         // If using Spatie Laravel-Multitenancy
         if (method_exists($tenant, 'makeCurrent')) {
             $tenant->makeCurrent();
+
             return;
         }
 
         // If using Stancl/Tenancy
         if (function_exists('tenancy') && method_exists(tenancy(), 'initialize')) {
             tenancy()->initialize($tenant);
+
             return;
         }
 

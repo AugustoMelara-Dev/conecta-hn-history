@@ -26,52 +26,52 @@ use Illuminate\Http\Request;
  *
  * @implements Arrayable<string, mixed>
  */
-final readonly class TenantSettings implements Arrayable, \JsonSerializable
+final readonly class TenantSettings implements \JsonSerializable, Arrayable
 {
     public function __construct(
         // ═══════════════════════════════════════════════════════════════════════
         // BRANDING CONFIGURATION
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         public string $brandColor = '#3B82F6',
         public string $secondaryColor = '#1E40AF',
         public ?string $logoUrl = null,
         public ?string $faviconUrl = null,
-        
+
         // ═══════════════════════════════════════════════════════════════════════
         // INVOICE & BILLING CONFIGURATION
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         public string $invoicePrefix = 'INV-',
         public int $invoiceNextNumber = 1,
         public ?string $taxId = null,
         public float $defaultTaxRate = 15.0,
-        
+
         // ═══════════════════════════════════════════════════════════════════════
         // FEATURE FLAGS & MODULES
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         /** @var array<string> */
         public array $modulesEnabled = ['orders', 'products', 'customers'],
         public bool $whatsappEnabled = false,
         public bool $inventoryEnabled = true,
         public bool $couponsEnabled = true,
         public bool $deliveryTrackingEnabled = false,
-        
+
         // ═══════════════════════════════════════════════════════════════════════
         // OPERATIONAL SETTINGS
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         public string $currency = 'HNL',
         public string $timezone = 'America/Tegucigalpa',
         public string $locale = 'es_HN',
         public int $minimumOrderAmount = 0,
         public int $orderAutoConfirmMinutes = 0,
-        
+
         // ═══════════════════════════════════════════════════════════════════════
         // NOTIFICATION PREFERENCES
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         public ?string $notificationEmail = null,
         public ?string $notificationPhone = null,
         public bool $emailNotificationsEnabled = true,

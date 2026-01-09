@@ -9,7 +9,7 @@ use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
 use App\ValueObjects\TenantId;
-use DateTimeImmutable;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * OrderPaid - Pure Domain Event for Payment Confirmation
@@ -42,17 +42,17 @@ use DateTimeImmutable;
  *
  * DISPATCH POINT: PaymentService::confirmPayment() via DomainEventBus
  */
-final readonly class OrderPaid implements DomainEvent
+final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
 {
     use HasDomainMetadata;
 
     /**
-     * @param TenantId $tenantId Tenant context for queue middleware
-     * @param int $orderId The order aggregate root ID
-     * @param OrderNumber $orderNumber Human-readable order reference
-     * @param string $transactionId Payment gateway transaction ID
-     * @param string $paymentMethod Payment method used (e.g., 'card', 'transfer')
-     * @param Money $amountPaid The exact amount paid (Value Object)
+     * @param  TenantId  $tenantId  Tenant context for queue middleware
+     * @param  int  $orderId  The order aggregate root ID
+     * @param  OrderNumber  $orderNumber  Human-readable order reference
+     * @param  string  $transactionId  Payment gateway transaction ID
+     * @param  string  $paymentMethod  Payment method used (e.g., 'card', 'transfer')
+     * @param  Money  $amountPaid  The exact amount paid (Value Object)
      */
     public function __construct(
         private TenantId $tenantId,
@@ -130,20 +130,35 @@ final readonly class OrderPaid implements DomainEvent
 
     public static function fromPrimitives(array $primitives): self
     {
-        // Defensive deserialization: fail fast on missing tenant_id
-        $tenantId = $primitives['tenant_id'] ?? null;
-        if ($tenantId === null) {
-            throw new \InvalidArgumentException('Missing required key: tenant_id');
+        // ═══════════════════════════════════════════════════════════════════
+        // FAIL-FAST VALIDATION: Prevent Silent Financial Data Corruption
+        // ═══════════════════════════════════════════════════════════════════
+        $requiredKeys = [
+            'tenant_id',
+            'order_id',
+            'order_number',
+            'transaction_id',
+            'payment_method',
+            'amount_cents',
+        ];
+
+        foreach ($requiredKeys as $key) {
+            if (! array_key_exists($key, $primitives)) {
+                throw \App\Exceptions\CorruptedDomainEventException::missingKey($key, self::class);
+            }
+            if ($primitives[$key] === null) {
+                throw \App\Exceptions\CorruptedDomainEventException::nullValue($key, self::class);
+            }
         }
 
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
-            orderId: $primitives['order_id'] ?? 0,
-            orderNumber: OrderNumber::fromString($primitives['order_number'] ?? 'UNKNOWN'),
-            transactionId: $primitives['transaction_id'] ?? '',
-            paymentMethod: $primitives['payment_method'] ?? 'unknown',
+            tenantId: TenantId::fromInt($primitives['tenant_id']),
+            orderId: $primitives['order_id'],
+            orderNumber: OrderNumber::fromString($primitives['order_number']),
+            transactionId: $primitives['transaction_id'],
+            paymentMethod: $primitives['payment_method'],
             amountPaid: Money::fromCents(
-                $primitives['amount_cents'] ?? 0,
+                $primitives['amount_cents'],
                 $primitives['currency'] ?? 'HNL'
             ),
             restoredEventId: $primitives['event_id'] ?? null,

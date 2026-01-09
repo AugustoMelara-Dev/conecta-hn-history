@@ -62,7 +62,10 @@ class ActivityLogResource extends Resource
     {
         $user = auth()->user();
 
-        return $user && ($user->hasRole(['super_admin', 'auditor']) || $user->email === 'admin@conectahn.com');
+        $superAdmins = config('auth.super_admins', []);
+        $isWhitelisted = in_array($user->email ?? '', $superAdmins, true);
+
+        return $user && ($user->hasRole(['super_admin', 'auditor']) || $isWhitelisted);
     }
 
     /**

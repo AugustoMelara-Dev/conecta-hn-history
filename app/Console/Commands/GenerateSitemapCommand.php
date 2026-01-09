@@ -56,15 +56,22 @@ class GenerateSitemapCommand extends Command
     protected $description = 'Generate SEO sitemaps using memory-safe streaming';
 
     protected int $urlsGenerated = 0;
+
     protected int $tenantsProcessed = 0;
+
     protected int $sitemapsCreated = 0;
+
     protected bool $dryRun = false;
+
     protected int $maxUrlsPerSitemap = 50000;
 
     /** @var resource|null File handle for streaming */
     protected $fileHandle = null;
+
     protected int $currentUrlCount = 0;
+
     protected int $currentSitemapIndex = 1;
+
     protected string $currentTenantSlug = '';
 
     public function handle(): int
@@ -76,14 +83,15 @@ class GenerateSitemapCommand extends Command
         $this->components->info('Sitemap Generator - Memory-Safe Streaming');
         $this->components->bulletList([
             "Max URLs per file: {$this->maxUrlsPerSitemap}",
-            "Mode: " . ($this->dryRun ? 'DRY RUN' : 'LIVE'),
-            "Scope: " . ($tenantId ? "Tenant #{$tenantId}" : "All active tenants"),
+            'Mode: '.($this->dryRun ? 'DRY RUN' : 'LIVE'),
+            'Scope: '.($tenantId ? "Tenant #{$tenantId}" : 'All active tenants'),
         ]);
 
         if ($tenantId) {
             $tenant = Tenant::find($tenantId);
-            if (!$tenant) {
+            if (! $tenant) {
                 $this->components->error("Tenant #{$tenantId} not found");
+
                 return Command::FAILURE;
             }
             $this->generateTenantSitemap($tenant);
@@ -143,7 +151,7 @@ class GenerateSitemapCommand extends Command
     protected function generateTenantSitemap(Tenant $tenant): void
     {
         $this->line("  Processing: {$tenant->name} (ID: {$tenant->id})");
-        
+
         $this->currentTenantSlug = $tenant->slug;
         $this->currentSitemapIndex = 1;
         $this->currentUrlCount = 0;
@@ -151,7 +159,7 @@ class GenerateSitemapCommand extends Command
         $baseUrl = $this->getTenantBaseUrl($tenant);
 
         try {
-            if (!$this->dryRun) {
+            if (! $this->dryRun) {
                 $this->startNewSitemapFile($tenant->slug);
             }
 
@@ -204,7 +212,7 @@ class GenerateSitemapCommand extends Command
             // - Corrupted/truncated XML files
             // - Resource exhaustion
             // ═══════════════════════════════════════════════════════════════════════
-            if (!$this->dryRun) {
+            if (! $this->dryRun) {
                 $this->closeSitemapFile();
             }
         }
@@ -240,8 +248,8 @@ class GenerateSitemapCommand extends Command
         }
 
         // Format the date
-        $date = $lastmod instanceof \DateTime 
-            ? $lastmod->format('Y-m-d') 
+        $date = $lastmod instanceof \DateTime
+            ? $lastmod->format('Y-m-d')
             : (is_string($lastmod) ? $lastmod : now()->format('Y-m-d'));
 
         // Write URL entry directly to file (no memory accumulation)
@@ -265,10 +273,10 @@ XML;
     {
         $filename = $this->getSitemapFilename($tenantSlug, $this->currentSitemapIndex);
         $path = Storage::disk('public')->path($filename);
-        
+
         // Ensure directory exists
         $dir = dirname($path);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
@@ -276,7 +284,7 @@ XML;
         $this->sitemapsCreated++;
 
         // Write XML header
-        $header = <<<XML
+        $header = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
@@ -306,8 +314,8 @@ XML;
         $indexPath = Storage::disk('public')->path("sitemaps/sitemap-{$tenantSlug}-index.xml");
 
         $handle = fopen($indexPath, 'w');
-        
-        $header = <<<XML
+
+        $header = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
@@ -340,6 +348,7 @@ XML;
         if ($index === 1) {
             return "sitemaps/sitemap-{$tenantSlug}.xml";
         }
+
         return "sitemaps/sitemap-{$tenantSlug}-{$index}.xml";
     }
 
@@ -356,10 +365,10 @@ XML;
      */
     protected function getTenantBaseUrl(Tenant $tenant): string
     {
-        if (!empty($tenant->custom_domain)) {
+        if (! empty($tenant->custom_domain)) {
             return "https://{$tenant->custom_domain}";
         }
 
-        return config('app.url') . "/tienda/{$tenant->slug}";
+        return config('app.url')."/tienda/{$tenant->slug}";
     }
 }

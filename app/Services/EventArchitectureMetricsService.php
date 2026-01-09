@@ -69,12 +69,12 @@ class EventArchitectureMetricsService
         $violations = [];
 
         // Rule 1: final
-        if (!$reflection->isFinal()) {
+        if (! $reflection->isFinal()) {
             $violations['final'] = 'Missing final keyword';
         }
 
         // Rule 2: readonly
-        if (method_exists($reflection, 'isReadOnly') && !$reflection->isReadOnly()) {
+        if (method_exists($reflection, 'isReadOnly') && ! $reflection->isReadOnly()) {
             $violations['readonly'] = 'Missing readonly keyword';
         }
 
@@ -83,7 +83,7 @@ class EventArchitectureMetricsService
         $hasDomain = in_array('App\\Contracts\\Events\\DomainEvent', $interfaces, true);
         $hasAudit = in_array('App\\Contracts\\Events\\AuditEvent', $interfaces, true);
 
-        if (!$hasDomain && !$hasAudit) {
+        if (! $hasDomain && ! $hasAudit) {
             $violations['interface'] = 'Must implement DomainEvent or AuditEvent';
         }
 
@@ -91,13 +91,13 @@ class EventArchitectureMetricsService
         $hasToPrimitives = $reflection->hasMethod('toPrimitives');
         $hasToAuditLog = $reflection->hasMethod('toAuditLog');
 
-        if (!$hasToPrimitives && !$hasToAuditLog) {
+        if (! $hasToPrimitives && ! $hasToAuditLog) {
             $violations['serialization'] = 'Missing toPrimitives() or toAuditLog()';
         }
 
         // Rule 5: HasDomainMetadata trait
         $traits = $reflection->getTraitNames();
-        if (!in_array('App\\Traits\\HasDomainMetadata', $traits, true)) {
+        if (! in_array('App\\Traits\\HasDomainMetadata', $traits, true)) {
             $violations['metadata'] = 'Missing HasDomainMetadata trait';
         }
 
@@ -115,16 +115,16 @@ class EventArchitectureMetricsService
 
     private function findAllEvents(): array
     {
-        $finder = new Finder();
+        $finder = new Finder;
         $finder->in(app_path('Events'))->name('*.php')->files();
 
         $events = [];
         foreach ($finder as $file) {
             $relativePath = $file->getRelativePathname();
             $className = str_replace(['/', '.php'], ['\\', ''], $relativePath);
-            $fullClass = 'App\\Events\\' . $className;
+            $fullClass = 'App\\Events\\'.$className;
 
-            if (class_exists($fullClass) && !interface_exists($fullClass)) {
+            if (class_exists($fullClass) && ! interface_exists($fullClass)) {
                 $events[] = $fullClass;
             }
         }
@@ -134,21 +134,29 @@ class EventArchitectureMetricsService
 
     private function countBroadcastEvents(array $events): int
     {
-        return count(array_filter($events, fn($e) => str_contains($e, '\\Broadcast\\')));
+        return count(array_filter($events, fn ($e) => str_contains($e, '\\Broadcast\\')));
     }
 
     private function getHealthStatus(int $compliant, int $total): string
     {
-        if ($total === 0) return 'unknown';
+        if ($total === 0) {
+            return 'unknown';
+        }
         $pct = ($compliant / $total) * 100;
-        if ($pct === 100.0) return 'healthy';
-        if ($pct >= 80) return 'warning';
+        if ($pct === 100.0) {
+            return 'healthy';
+        }
+        if ($pct >= 80) {
+            return 'warning';
+        }
+
         return 'critical';
     }
 
     private function getSeverity(string $rule): string
     {
         $critical = ['interface', 'serialization', 'serializes_models'];
+
         return in_array($rule, $critical) ? 'critical' : 'warning';
     }
 }

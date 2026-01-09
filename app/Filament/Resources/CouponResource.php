@@ -17,7 +17,6 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -71,6 +70,7 @@ class CouponResource extends Resource
                                         if ($tenant) {
                                             return $rule->where('tenant_id', $tenant->id);
                                         }
+
                                         return $rule;
                                     }
                                 ),
@@ -301,7 +301,6 @@ class CouponResource extends Resource
             'edit' => Pages\EditCoupon::route('/{record}/edit'),
         ];
     }
-
 
     /**
      * Navigation badge: Active coupons count

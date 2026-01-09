@@ -9,7 +9,7 @@ use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
 use App\ValueObjects\TenantId;
-use DateTimeImmutable;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * NewOrderReceived - Pure Domain Event for Order Creation
@@ -43,18 +43,18 @@ use DateTimeImmutable;
  *
  * DISPATCH POINT: OrderService::createOrder() via DomainEventBus
  */
-final readonly class NewOrderReceived implements DomainEvent
+final readonly class NewOrderReceived implements DomainEvent, ShouldDispatchAfterCommit
 {
     use HasDomainMetadata;
 
     /**
-     * @param TenantId $tenantId Tenant context for queue middleware
-     * @param int $orderId The order aggregate root ID
-     * @param OrderNumber $orderNumber Human-readable order reference
-     * @param int $itemCount Total number of items in order (snapshot)
-     * @param Money $totalAmount Order total amount (Value Object)
-     * @param int $customerId Customer who placed the order
-     * @param string $customerName Customer display name (safe for notifications)
+     * @param  TenantId  $tenantId  Tenant context for queue middleware
+     * @param  int  $orderId  The order aggregate root ID
+     * @param  OrderNumber  $orderNumber  Human-readable order reference
+     * @param  int  $itemCount  Total number of items in order (snapshot)
+     * @param  Money  $totalAmount  Order total amount (Value Object)
+     * @param  int  $customerId  Customer who placed the order
+     * @param  string  $customerName  Customer display name (safe for notifications)
      */
     public function __construct(
         private TenantId $tenantId,
@@ -145,23 +145,39 @@ final readonly class NewOrderReceived implements DomainEvent
 
     public static function fromPrimitives(array $primitives): self
     {
-        // Defensive deserialization: fail fast on missing tenant_id
-        $tenantId = $primitives['tenant_id'] ?? null;
-        if ($tenantId === null) {
-            throw new \InvalidArgumentException('Missing required key: tenant_id');
+        // ═══════════════════════════════════════════════════════════════════
+        // FAIL-FAST VALIDATION: Prevent Silent Data Corruption
+        // ═══════════════════════════════════════════════════════════════════
+        $requiredKeys = [
+            'tenant_id',
+            'order_id',
+            'order_number',
+            'item_count',
+            'total_amount_cents',
+            'customer_id',
+            'customer_name',
+        ];
+
+        foreach ($requiredKeys as $key) {
+            if (! array_key_exists($key, $primitives)) {
+                throw \App\Exceptions\CorruptedDomainEventException::missingKey($key, self::class);
+            }
+            if ($primitives[$key] === null) {
+                throw \App\Exceptions\CorruptedDomainEventException::nullValue($key, self::class);
+            }
         }
 
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
-            orderId: $primitives['order_id'] ?? 0,
-            orderNumber: OrderNumber::fromString($primitives['order_number'] ?? 'UNKNOWN'),
-            itemCount: $primitives['item_count'] ?? 0,
+            tenantId: TenantId::fromInt($primitives['tenant_id']),
+            orderId: $primitives['order_id'],
+            orderNumber: OrderNumber::fromString($primitives['order_number']),
+            itemCount: $primitives['item_count'],
             totalAmount: Money::fromCents(
-                $primitives['total_amount_cents'] ?? 0,
+                $primitives['total_amount_cents'],
                 $primitives['currency'] ?? 'HNL'
             ),
-            customerId: $primitives['customer_id'] ?? 0,
-            customerName: $primitives['customer_name'] ?? 'Unknown',
+            customerId: $primitives['customer_id'],
+            customerName: $primitives['customer_name'],
             restoredEventId: $primitives['event_id'] ?? null,
             restoredOccurredAt: $primitives['occurred_at'] ?? null,
             restoredCorrelationId: $primitives['correlation_id'] ?? null,

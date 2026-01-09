@@ -100,9 +100,9 @@ enum TransactionStatus: string
     public function isFinal(): bool
     {
         return match ($this) {
-            self::COMPLETED, self::FAILED, self::REFUNDED, 
+            self::COMPLETED, self::FAILED, self::REFUNDED,
             self::CANCELLED, self::DISPUTED => true,
-            self::PENDING, self::PROCESSING, 
+            self::PENDING, self::PROCESSING,
             self::REQUIRES_ACTION, self::PARTIALLY_REFUNDED => false,
         };
     }

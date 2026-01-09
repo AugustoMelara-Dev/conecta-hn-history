@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use App\Events\Broadcast\OrderCancelledBroadcast;
 use App\Events\Order\OrderCancelled;
 use App\Exceptions\TenantMismatchException;
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use App\Models\Order;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -51,7 +51,7 @@ final class OrderCancelledListener implements ShouldQueue
 {
     /**
      * Get the middleware the job should pass through.
-     * 
+     *
      * CRITICAL: TenantQueueMiddleware must run FIRST to set context.
      *
      * @return array<int, object>
@@ -59,7 +59,7 @@ final class OrderCancelledListener implements ShouldQueue
     public function middleware(): array
     {
         return [
-            new TenantQueueMiddleware(),
+            new TenantQueueMiddleware,
         ];
     }
 
@@ -73,7 +73,7 @@ final class OrderCancelledListener implements ShouldQueue
         // ─────────────────────────────────────────────────────────────────────
         // Even with middleware, add explicit validation as defense-in-depth.
         // This prevents processing if middleware fails silently.
-        
+
         $order = Order::where('tenant_id', $event->tenantId()->toInt())
             ->find($event->aggregateId());
 

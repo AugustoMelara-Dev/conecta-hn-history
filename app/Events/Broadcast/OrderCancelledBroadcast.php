@@ -9,7 +9,6 @@ use App\Contracts\Broadcasting\BroadcastableNotification;
 use App\Traits\LogsBroadcasts;
 use DateTimeImmutable;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Foundation\Events\Dispatchable;
 
 /**
@@ -23,16 +22,9 @@ final class OrderCancelledBroadcast implements BroadcastableNotification
 
     // SRE: Fail-Fast Configuration
     public $tries = 1;
+
     public $timeout = 30;
 
-    /**
-     * @param int $tenantId
-     * @param int $orderId
-     * @param string $orderNumber
-     * @param string $reason
-     * @param bool $shouldRefund
-     * @param DateTimeImmutable $cancelledAt
-     */
     public function __construct(
         public int $tenantId,
         public int $orderId,
@@ -109,7 +101,7 @@ final class OrderCancelledBroadcast implements BroadcastableNotification
         return [
             // Versioning
             '_version' => self::PAYLOAD_VERSION,
-            '_timestamp' => (new DateTimeImmutable())->format(DateTimeImmutable::ATOM),
+            '_timestamp' => (new DateTimeImmutable)->format(DateTimeImmutable::ATOM),
 
             // UI Contract
             'title' => __('notifications.order_cancelled.title'),

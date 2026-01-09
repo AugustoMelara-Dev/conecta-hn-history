@@ -72,7 +72,7 @@ class LogSalesExportActivity
     protected function persistToActivityLog(SalesExportCreated $event, array $auditPayload): void
     {
         try {
-            \Spatie\Activitylog\Facades\Activity::withoutLogs(function () use ($event, $auditPayload) {
+            \Spatie\Activitylog\Facades\Activity::withoutLogs(function () use ($event) {
                 activity('export')
                     ->causedBy($event->userId)
                     ->performedOn(null) // No specific model

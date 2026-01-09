@@ -39,8 +39,12 @@ class PendingPaymentsWidget extends BaseWidget
             return false;
         }
 
-        // super_admin, auditor, o admin@conectahn.com pueden ver
-        return $user->hasRole(['super_admin', 'auditor']) || $user->email === 'admin@conectahn.com';
+        // super_admin or auditor with whitelist verification can view
+        $superAdmins = config('auth.super_admins', []);
+        $isWhitelisted = in_array($user->email ?? '', $superAdmins, true);
+
+        return $user->hasRole(['super_admin', 'auditor'])
+            || ($user->hasRole('super_admin') && $isWhitelisted);
     }
 
     public function table(Table $table): Table

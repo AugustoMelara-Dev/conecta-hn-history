@@ -4,20 +4,24 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
-use App\Models\Tenant;
+use App\Application\Shared\DTOs\Mail\TenantMailData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
 
+/**
+ * SubscriptionExpiredMail - Refactored for Safe Serialization
+ *
+ * Uses TenantMailData DTO instead of Eloquent Model.
+ */
 class SubscriptionExpiredMail extends Mailable implements ShouldQueue
 {
-    use Queueable, SerializesModels;
+    use Queueable;
 
     public function __construct(
-        public Tenant $tenant
+        public readonly TenantMailData $tenant
     ) {}
 
     public function envelope(): Envelope

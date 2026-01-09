@@ -38,12 +38,11 @@ use App\ValueObjects\TenantId;
  */
 final readonly class FailedLoginAttempt implements AuditEvent
 {
-
     /**
-     * @param string $email The email address used in the failed attempt
-     * @param TenantId|null $tenantId The tenant context (null if central login)
-     * @param AuditContext $context Standardized audit metadata (IP anonymized)
-     * @param string $failureReason Machine-readable failure code
+     * @param  string  $email  The email address used in the failed attempt
+     * @param  TenantId|null  $tenantId  The tenant context (null if central login)
+     * @param  AuditContext  $context  Standardized audit metadata (IP anonymized)
+     * @param  string  $failureReason  Machine-readable failure code
      */
     public function __construct(
         public string $email,
@@ -73,7 +72,7 @@ final readonly class FailedLoginAttempt implements AuditEvent
      */
     public function fingerprint(): string
     {
-        return md5($this->email . '|' . $this->context->ipAddress->toString());
+        return md5($this->email.'|'.$this->context->ipAddress->toString());
     }
 
     // ═══════════════════════════════════════════════════════════════════════

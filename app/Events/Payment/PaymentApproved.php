@@ -9,7 +9,7 @@ use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
 use App\ValueObjects\TenantId;
-use DateTimeImmutable;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * PaymentApproved - Pure Domain Event for Payment Confirmation
@@ -33,6 +33,7 @@ use DateTimeImmutable;
  * ║                                                                          ║
  * ║  WHY: If this event goes to failed_jobs table or logs, we do NOT want  ║
  * ║  financial PII scattered across our infrastructure.                     ║
+ * ║  FAILURE = BLOCK DEPLOYMENT                                             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * LISTENERS:
@@ -43,17 +44,17 @@ use DateTimeImmutable;
  *
  * DISPATCH POINT: PaymentService::processPayment() via DomainEventBus
  */
-final readonly class PaymentApproved implements DomainEvent
+final readonly class PaymentApproved implements DomainEvent, ShouldDispatchAfterCommit
 {
     use HasDomainMetadata;
 
     /**
-     * @param TenantId $tenantId Tenant context for queue middleware
-     * @param int $orderId The order aggregate root ID
-     * @param OrderNumber $orderNumber Human-readable order reference
-     * @param string $transactionId Gateway's transaction token (NOT card data)
-     * @param string $gatewayName Payment processor (e.g., 'stripe', 'bac')
-     * @param Money $amountApproved The exact amount approved (Value Object)
+     * @param  TenantId  $tenantId  Tenant context for queue middleware
+     * @param  int  $orderId  The order aggregate root ID
+     * @param  OrderNumber  $orderNumber  Human-readable order reference
+     * @param  string  $transactionId  Gateway's transaction token (NOT card data)
+     * @param  string  $gatewayName  Payment processor (e.g., 'stripe', 'bac')
+     * @param  Money  $amountApproved  The exact amount approved (Value Object)
      */
     public function __construct(
         private TenantId $tenantId,
@@ -116,7 +117,7 @@ final readonly class PaymentApproved implements DomainEvent
 
     /**
      * Serialize to flat primitives for safe queue transport.
-     * 
+     *
      * This decouples PHP class structure from queue message format.
      * Refactoring Money or TenantId VOs won't break pending jobs.
      */
@@ -140,20 +141,35 @@ final readonly class PaymentApproved implements DomainEvent
      */
     public static function fromPrimitives(array $primitives): self
     {
-        // Defensive deserialization: fail fast on missing tenant_id
-        $tenantId = $primitives['tenant_id'] ?? null;
-        if ($tenantId === null) {
-            throw new \InvalidArgumentException('Missing required key: tenant_id');
+        // ═══════════════════════════════════════════════════════════════════
+        // FAIL-FAST VALIDATION: Prevent Silent Financial Data Corruption
+        // ═══════════════════════════════════════════════════════════════════
+        $requiredKeys = [
+            'tenant_id',
+            'order_id',
+            'order_number',
+            'transaction_id',
+            'gateway_name',
+            'amount_cents',
+        ];
+
+        foreach ($requiredKeys as $key) {
+            if (! array_key_exists($key, $primitives)) {
+                throw \App\Exceptions\CorruptedDomainEventException::missingKey($key, self::class);
+            }
+            if ($primitives[$key] === null) {
+                throw \App\Exceptions\CorruptedDomainEventException::nullValue($key, self::class);
+            }
         }
 
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
-            orderId: $primitives['order_id'] ?? 0,
-            orderNumber: OrderNumber::fromString($primitives['order_number'] ?? 'UNKNOWN'),
-            transactionId: $primitives['transaction_id'] ?? '',
-            gatewayName: $primitives['gateway_name'] ?? 'unknown',
+            tenantId: TenantId::fromInt($primitives['tenant_id']),
+            orderId: $primitives['order_id'],
+            orderNumber: OrderNumber::fromString($primitives['order_number']),
+            transactionId: $primitives['transaction_id'],
+            gatewayName: $primitives['gateway_name'],
             amountApproved: Money::fromCents(
-                $primitives['amount_cents'] ?? 0,
+                $primitives['amount_cents'],
                 $primitives['currency'] ?? 'HNL'
             ),
             restoredEventId: $primitives['event_id'] ?? null,

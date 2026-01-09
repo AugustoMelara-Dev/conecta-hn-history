@@ -34,7 +34,8 @@ use InvalidArgumentException;
 final readonly class OrderNumber implements \JsonSerializable
 {
     /**
-     * @param string $value The order number string (non-empty, trimmed)
+     * @param  string  $value  The order number string (non-empty, trimmed)
+     *
      * @throws InvalidArgumentException If value is empty after trimming
      */
     public function __construct(

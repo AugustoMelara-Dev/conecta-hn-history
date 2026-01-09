@@ -52,10 +52,7 @@ class SecureSecretCast implements CastsAttributes
     /**
      * Decrypt the value when retrieving from database.
      *
-     * @param Model $model
-     * @param string $key
-     * @param mixed $value Encrypted ciphertext from database
-     * @param array $attributes
+     * @param  mixed  $value  Encrypted ciphertext from database
      * @return string|null Decrypted plaintext or null on failure
      */
     public function get(Model $model, string $key, mixed $value, array $attributes): ?string
@@ -97,10 +94,7 @@ class SecureSecretCast implements CastsAttributes
     /**
      * Encrypt the value when storing to database.
      *
-     * @param Model $model
-     * @param string $key
-     * @param mixed $value Plaintext secret or null
-     * @param array $attributes
+     * @param  mixed  $value  Plaintext secret or null
      * @return string|null Encrypted ciphertext for storage
      */
     public function set(Model $model, string $key, mixed $value, array $attributes): ?string
@@ -111,7 +105,7 @@ class SecureSecretCast implements CastsAttributes
         }
 
         // Ensure we're working with a string
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             $value = (string) $value;
         }
 
@@ -136,7 +130,7 @@ class SecureSecretCast implements CastsAttributes
     protected function isAlreadyEncrypted(string $value): bool
     {
         // Quick heuristic: Laravel encrypted strings are base64 JSON
-        if (strlen($value) < 50 || !str_starts_with($value, 'eyJ')) {
+        if (strlen($value) < 50 || ! str_starts_with($value, 'eyJ')) {
             return false;
         }
 
@@ -147,8 +141,8 @@ class SecureSecretCast implements CastsAttributes
         }
 
         $payload = json_decode($decoded, true);
-        
-        return is_array($payload) && 
+
+        return is_array($payload) &&
                isset($payload['iv'], $payload['value'], $payload['mac']);
     }
 }

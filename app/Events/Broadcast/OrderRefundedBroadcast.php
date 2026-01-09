@@ -10,7 +10,6 @@ use App\Traits\FormatsCurrency;
 use App\Traits\LogsBroadcasts;
 use DateTimeImmutable;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Foundation\Events\Dispatchable;
 
 /**
@@ -18,24 +17,15 @@ use Illuminate\Foundation\Events\Dispatchable;
  */
 final class OrderRefundedBroadcast implements BroadcastableNotification
 {
-    use Dispatchable, InteractsWithSockets, FormatsCurrency, LogsBroadcasts;
+    use Dispatchable, FormatsCurrency, InteractsWithSockets, LogsBroadcasts;
 
     private const PAYLOAD_VERSION = 1;
 
     // SRE: Fail-Fast Configuration
     public $tries = 1;
+
     public $timeout = 30;
 
-    /**
-     * @param int $tenantId
-     * @param int $orderId
-     * @param string $orderNumber
-     * @param int $refundAmountCents
-     * @param string $currency
-     * @param bool $isPartial
-     * @param string|null $reason
-     * @param DateTimeImmutable $refundedAt
-     */
     public function __construct(
         public int $tenantId,
         public int $orderId,
@@ -119,7 +109,7 @@ final class OrderRefundedBroadcast implements BroadcastableNotification
         return [
             // Versioning
             '_version' => self::PAYLOAD_VERSION,
-            '_timestamp' => (new DateTimeImmutable())->format(DateTimeImmutable::ATOM),
+            '_timestamp' => (new DateTimeImmutable)->format(DateTimeImmutable::ATOM),
 
             // UI Contract
             'title' => __('notifications.order_refunded.title', ['order' => $this->orderNumber]),

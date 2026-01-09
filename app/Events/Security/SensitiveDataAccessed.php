@@ -40,16 +40,15 @@ use App\ValueObjects\TenantId;
  */
 final readonly class SensitiveDataAccessed implements AuditEvent
 {
-
     /**
-     * @param int $actorId The user ID who accessed the data (snapshotted)
-     * @param string $actorEmail The user's email (snapshotted for persistence)
-     * @param TenantId $tenantId The tenant context
-     * @param string $resource The resource type accessed (e.g., 'customer_export')
-     * @param string $action The action performed (e.g., 'download', 'view')
-     * @param AuditContext $context Standardized audit metadata
-     * @param string|null $reason User-provided reason (for compliance)
-     * @param int|null $affectedRecords Number of records accessed
+     * @param  int  $actorId  The user ID who accessed the data (snapshotted)
+     * @param  string  $actorEmail  The user's email (snapshotted for persistence)
+     * @param  TenantId  $tenantId  The tenant context
+     * @param  string  $resource  The resource type accessed (e.g., 'customer_export')
+     * @param  string  $action  The action performed (e.g., 'download', 'view')
+     * @param  AuditContext  $context  Standardized audit metadata
+     * @param  string|null  $reason  User-provided reason (for compliance)
+     * @param  int|null  $affectedRecords  Number of records accessed
      */
     public function __construct(
         public int $actorId,

@@ -67,6 +67,7 @@ class CouponResource extends Resource
                                             if ($tenant) {
                                                 return $rule->where('tenant_id', $tenant->id);
                                             }
+
                                             return $rule;
                                         }
                                     )

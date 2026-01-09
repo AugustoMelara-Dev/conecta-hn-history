@@ -32,7 +32,8 @@ use InvalidArgumentException;
 final readonly class TenantId implements \JsonSerializable
 {
     /**
-     * @param int $value The tenant identifier (must be > 0)
+     * @param  int  $value  The tenant identifier (must be > 0)
+     *
      * @throws InvalidArgumentException If value is not a positive integer
      */
     public function __construct(

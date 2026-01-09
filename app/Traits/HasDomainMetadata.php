@@ -48,9 +48,9 @@ trait HasDomainMetadata
      * Initialize metadata with auto-generated or restored values.
      * Call this in the constructor for ALL events.
      *
-     * @param string|null $correlationId Pass existing ID to continue a trace chain
-     * @param string|null $restoredEventId Pass existing eventId when deserializing
-     * @param string|null $restoredOccurredAt Pass ISO timestamp when deserializing
+     * @param  string|null  $correlationId  Pass existing ID to continue a trace chain
+     * @param  string|null  $restoredEventId  Pass existing eventId when deserializing
+     * @param  string|null  $restoredOccurredAt  Pass ISO timestamp when deserializing
      */
     private function initMetadata(
         ?string $correlationId = null,
@@ -66,7 +66,7 @@ trait HasDomainMetadata
             // New event: generate fresh metadata
             $this->eventId = (string) Str::uuid();
             $this->correlationId = $correlationId ?? (string) Str::uuid();
-            $this->occurredAt = new DateTimeImmutable();
+            $this->occurredAt = new DateTimeImmutable;
         }
     }
 

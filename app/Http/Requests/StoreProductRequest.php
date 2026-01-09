@@ -19,7 +19,7 @@ use Illuminate\Validation\Rule;
  * - Prevents IDOR attacks where Tenant A could reference Tenant B's resources
  * - Image files validated for type and size to prevent DoS
  */
-class StoreProductRequest extends FormRequest
+final class StoreProductRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -108,5 +108,22 @@ class StoreProductRequest extends FormRequest
             'image.mimes' => 'La imagen debe ser JPEG, PNG o WebP.',
             'image.max' => 'La imagen no puede exceder 2MB.',
         ];
+    }
+
+    public function toCommand(): \App\Application\Products\Commands\CreateProductCommand
+    {
+        $validated = $this->validated();
+
+        return new \App\Application\Products\Commands\CreateProductCommand(
+            tenantId: (int) $this->user()->tenant_id,
+            sku: $validated['sku'],
+            name: $validated['name'],
+            description: $validated['description'] ?? '',
+            price: (float) $validated['price'],
+            stock: isset($validated['stock']) ? (int) $validated['stock'] : 0,
+            categoryId: (int) $validated['category_id'],
+            imagePath: null, // Image upload handled separately or via another field? Assuming simple field for now
+            isVisible: $validated['is_visible'] ?? true,
+        );
     }
 }
