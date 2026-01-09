@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "resources/js/*"
+            ],
+            "ziggy-js": [
+                "./vendor/tightenco/ziggy"
+            ]
+        },
+        "allowJs": true,
+        "checkJs": false,
+        "jsx": "react-jsx",
+        "moduleResolution": "node",
+        "target": "esnext",
+        "module": "esnext",
+        "strict": true,
+        "noImplicitAny": false,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true
+    },
+    "include": [
+        "resources/js/**/*.ts",
+        "resources/js/**/*.tsx",
+        "resources/js/**/*.d.ts",
+        "resources/js/types/generated.d.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "public"
+    ]
+}
