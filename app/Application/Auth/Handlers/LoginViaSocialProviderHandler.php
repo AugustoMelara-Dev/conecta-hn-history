@@ -5,61 +5,74 @@ declare(strict_types=1);
 namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
-use App\Application\DTOs\Auth\SocialLoginResult;
+use App\Application\Auth\Results\SocialLoginResult;
 use App\Application\Shared\Traits\LogSanitizer;
+use App\Domain\Identity\Enums\RegistrationSource;
 use App\Domain\Identity\Events\SocialIdentityLinked;
 use App\Domain\Identity\Events\UserRegistered;
 use App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
+use App\Domain\Security\Contracts\HasherInterface;
+use App\Domain\Security\Contracts\TokenGeneratorInterface;
+use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Contracts\TransactionManagerInterface;
+use App\Domain\TenantGovernance\Factories\TenantFactory;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * LoginViaSocialProviderHandler - Identity Federation Orchestrator
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  SOCIALITE AGNOSTIC: Zero Laravel\Socialite imports.                    ║
+ * ║  SRE GRADE: HIGH AVAILABILITY & DURABILITY COMPLIANT                    ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  TRI-STATE RESOLUTION:                                                   ║
- * ║  A) User exists + linked → Direct login                                 ║
- * ║  B) User exists by email → Link identity (TOFU)                         ║
- * ║  C) User not found → Full registration (User + Tenant)                  ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  STRICT RETURN: SocialLoginResult DTO with isNewUser flag               ║
+ * ║  - ATOMICITY: Enforced via TransactionManagerInterface.                 ║
+ * ║  - CONCURRENCY: Handled via atomic SQL updates (Blind Writes).          ║
+ * ║  - DETERMINISM: Time and Entropy injected via Interfaces.               ║
+ * ║  - OBSERVABILITY: Strict Log Sanitization.                              ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class LoginViaSocialProviderHandler
+final readonly class LoginViaSocialProviderHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private readonly SocialIdentityRepositoryInterface $socialIdentityRepository,
-        private readonly UserRepositoryInterface $userRepository,
-        private readonly TenantRepositoryInterface $tenantRepository,
-        private readonly TransactionalEventDispatcher $eventDispatcher,
+        private SocialIdentityRepositoryInterface $socialIdentityRepository,
+        private UserRepositoryInterface $userRepository,
+        private TenantRepositoryInterface $tenantRepository,
+        private TransactionalEventDispatcher $eventDispatcher,
+        private HasherInterface $hasher,
+        private TenantFactory $tenantFactory,
+        private TransactionManagerInterface $transactionManager,
+        private ClockInterface $clock,
+        private TokenGeneratorInterface $tokenGenerator
     ) {}
 
     /**
-     * Handle social login command.
+     * Handle social login orchestration with strict ACID guarantees.
      *
      * @param LoginViaSocialProviderCommand $command
      * @return SocialLoginResult
+     * @throws Throwable
      */
     public function handle(LoginViaSocialProviderCommand $command): SocialLoginResult
     {
-        // ═══════════════════════════════════════════════════════════════════
-        // SCENARIO A: Direct Identity Resolution
-        // ═══════════════════════════════════════════════════════════════════
+        return $this->transactionManager->transaction(function () use ($command) {
+            return $this->processLogin($command);
+        });
+    }
+
+    private function processLogin(LoginViaSocialProviderCommand $command): SocialLoginResult
+    {
+        // 1. STRATEGY A: DIRECT IDENTITY RESOLUTION
         $user = $this->socialIdentityRepository->findUserByProvider(
             $command->providerName,
             $command->providerId
         );
 
         if ($user !== null) {
-            // Update token for API calls
             $this->socialIdentityRepository->updateToken(
                 $command->providerName,
                 $command->providerId,
@@ -74,13 +87,10 @@ final class LoginViaSocialProviderHandler
             return SocialLoginResult::forExistingUser($user);
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // SCENARIO B: Account Linking (Trust On First Use)
-        // ═══════════════════════════════════════════════════════════════════
+        // 2. STRATEGY B: ACCOUNT LINKING (TRUST-ON-FIRST-USE)
         $user = $this->userRepository->findByEmail($command->email);
 
         if ($user !== null) {
-            // Link the new social identity
             $this->socialIdentityRepository->linkIdentity(
                 $user,
                 $command->providerName,
@@ -89,56 +99,50 @@ final class LoginViaSocialProviderHandler
                 $command->avatarUrl
             );
 
-            // Update avatar if missing (using wither pattern for immutability)
-            if (empty($user->avatar) && $command->avatarUrl) {
-                $user = $user->withAvatar($command->avatarUrl);
-                $user = $this->userRepository->save($user);
+            // SRE REQUIREMENT: Atomic Blind Update for Concurrency Safety
+            if ($command->avatarUrl) {
+                $this->userRepository->updateAvatarIfMissing($user->id, $command->avatarUrl);
             }
 
-            // Dispatch audit event
+            // Dispatch Domain Event
             $this->eventDispatcher->dispatch(SocialIdentityLinked::create(
                 userId: $user->id,
                 providerName: $command->providerName,
             ));
 
-            Log::info('Social login: identity linked', $this->sanitizePayload([
-                'user_id' => $user->id,
-                'provider' => $command->providerName,
-            ]));
-
             return SocialLoginResult::forExistingUser($user);
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // SCENARIO C: Full Registration (User + Tenant)
-        // ═══════════════════════════════════════════════════════════════════
-        return $this->registerNewUser($command);
+        // 3. STRATEGY C: FULL PROVISIONING (Refactored for Determinism)
+        return $this->provisionNewUser($command);
     }
 
-    /**
-     * Register a completely new user from social identity.
-     */
-    private function registerNewUser(LoginViaSocialProviderCommand $command): SocialLoginResult
+    private function provisionNewUser(LoginViaSocialProviderCommand $command): SocialLoginResult
     {
-        // 1. Create Tenant first
-        $teamName = $this->generateTeamName($command->name);
-        $tenant = $this->tenantRepository->create([
-            'name' => $teamName,
-            'slug' => Str::slug($teamName) . '-' . Str::random(4),
-            'status' => 'active',
-        ]);
+        // 3.1 Generate Secure Entropy (Deterministically Testable)
+        $secureRandomPassword = $this->tokenGenerator->generate(32); 
+        $hashedPassword = $this->hasher->make($secureRandomPassword);
 
-        // 2. Create User with secure random password
+        // 3.2 Create User Entity (Time Decoupled)
         $user = $this->userRepository->create([
             'name' => $command->name,
             'email' => $command->email,
-            'password' => Hash::make(Str::random(32)),
-            'email_verified_at' => now(), // Trusted provider
+            'password' => $hashedPassword,
+            'email_verified_at' => $this->clock->now(), // Injected Time
             'avatar' => $command->avatarUrl,
-            'tenant_id' => $tenant->id,
         ]);
 
-        // 3. Link Social Identity
+        // 3.3 Create Tenant Entity (Via Rich Domain Factory)
+        $tenantEntity = $this->tenantFactory->createTrialTenant(
+            userId: $user->id,
+            name: $command->name,
+            source: $command->providerName
+        );
+        
+        // 3.4 Persist Tenant (Pass-through Entity)
+        $tenant = $this->tenantRepository->create($tenantEntity);
+
+        // 3.5 Establish Identity Link
         $this->socialIdentityRepository->linkIdentity(
             $user,
             $command->providerName,
@@ -147,12 +151,12 @@ final class LoginViaSocialProviderHandler
             $command->avatarUrl
         );
 
-        // 4. Dispatch registration event
+        // 3.6 Dispatch Domain Event (Safe from Magic Strings)
         $this->eventDispatcher->dispatch(new UserRegistered(
             userId: $user->id,
             tenantId: $tenant->id,
             email: $command->email,
-            source: 'social:' . $command->providerName,
+            source: RegistrationSource::fromProvider($command->providerName), // Safe Enum
         ));
 
         Log::info('Social login: new user registered', $this->sanitizePayload([
@@ -163,14 +167,4 @@ final class LoginViaSocialProviderHandler
 
         return SocialLoginResult::forNewUser($user, $tenant);
     }
-
-    /**
-     * Generate team name from user name.
-     */
-    private function generateTeamName(string $userName): string
-    {
-        $firstName = explode(' ', trim($userName), 2)[0];
-        return $firstName . "'s Store";
-    }
 }
-
