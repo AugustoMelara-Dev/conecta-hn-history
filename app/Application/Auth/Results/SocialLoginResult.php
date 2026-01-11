@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\DTOs\Auth;
+namespace App\Application\Auth\Results;
 
 /**
  * SocialLoginResult - Immutable Output Contract for Social Authentication

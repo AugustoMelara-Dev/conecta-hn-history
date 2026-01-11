@@ -43,5 +43,14 @@ interface UserRepositoryInterface
      * @return UserEntity Fresh entity reflecting persisted state
      */
     public function save(UserEntity $entity): UserEntity;
-}
 
+    /**
+     * Atomic update of avatar only if currently missing.
+     * Prevents race conditions (blind overwrite) in concurrent logins.
+     * 
+     * @param int $userId
+     * @param string $avatarUrl
+     * @return bool True if updated, False if already present or phantom
+     */
+    public function updateAvatarIfMissing(int $userId, string $avatarUrl): bool;
+}

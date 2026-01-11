@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domain\Identity\Entities;
 
-use Carbon\Carbon;
+use App\Domain\Shared\ValueObjects\EmailAddress;
+use DateTimeImmutable;
 
 /**
  * UserEntity - Pure Domain Entity for User
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  PURE: No Eloquent dependencies.                                        ║
- * ║  IMMUTABLE: Use wither methods for state transitions.                   ║
+ * ║  DEFENSIVE DOMAIN MODELING:                                             ║
+ * ║  - NO Carbon Dependency (Native PHP DateTimeImmutable).                 ║
+ * ║  - Strict Constructor (No magic casting).                               ║
+ * ║  - Audit Fields (createdAt, updatedAt) enforced.                        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class UserEntity
@@ -19,23 +22,22 @@ final readonly class UserEntity
     public function __construct(
         public int $id,
         public int $tenantId,
-        public string $email,
+        public EmailAddress $email,
         public string $name,
         public string $role,
+        public DateTimeImmutable $createdAt,
+        public ?DateTimeImmutable $updatedAt = null,
         public ?string $password = null,
         public ?string $rememberToken = null,
         public ?string $avatar = null,
-        public ?Carbon $emailVerifiedAt = null,
+        public ?DateTimeImmutable $emailVerifiedAt = null,
     ) {}
 
     // ═══════════════════════════════════════════════════════════════════════
     // WITHER METHODS (Immutable State Transitions)
     // ═══════════════════════════════════════════════════════════════════════
 
-    /**
-     * Create a new instance with email verified.
-     */
-    public function withEmailVerified(?Carbon $date): self
+    public function withEmailVerified(?DateTimeImmutable $date): self
     {
         return new self(
             id: $this->id,
@@ -43,6 +45,8 @@ final readonly class UserEntity
             email: $this->email,
             name: $this->name,
             role: $this->role,
+            createdAt: $this->createdAt,
+            updatedAt: new DateTimeImmutable(), // Update timestamp on change
             password: $this->password,
             rememberToken: $this->rememberToken,
             avatar: $this->avatar,
@@ -50,9 +54,6 @@ final readonly class UserEntity
         );
     }
 
-    /**
-     * Create a new instance with updated avatar.
-     */
     public function withAvatar(?string $avatarUrl): self
     {
         return new self(
@@ -61,6 +62,8 @@ final readonly class UserEntity
             email: $this->email,
             name: $this->name,
             role: $this->role,
+            createdAt: $this->createdAt,
+            updatedAt: new DateTimeImmutable(),
             password: $this->password,
             rememberToken: $this->rememberToken,
             avatar: $avatarUrl,
@@ -68,9 +71,6 @@ final readonly class UserEntity
         );
     }
 
-    /**
-     * Create a new instance with updated name.
-     */
     public function withName(string $name): self
     {
         return new self(
@@ -79,6 +79,8 @@ final readonly class UserEntity
             email: $this->email,
             name: $name,
             role: $this->role,
+            createdAt: $this->createdAt,
+            updatedAt: new DateTimeImmutable(),
             password: $this->password,
             rememberToken: $this->rememberToken,
             avatar: $this->avatar,
@@ -86,10 +88,7 @@ final readonly class UserEntity
         );
     }
 
-    /**
-     * Create a new instance with updated email.
-     */
-    public function withEmail(string $email): self
+    public function withEmail(EmailAddress $email): self
     {
         return new self(
             id: $this->id,
@@ -97,6 +96,8 @@ final readonly class UserEntity
             email: $email,
             name: $this->name,
             role: $this->role,
+            createdAt: $this->createdAt,
+            updatedAt: new DateTimeImmutable(),
             password: $this->password,
             rememberToken: $this->rememberToken,
             avatar: $this->avatar,
@@ -104,9 +105,6 @@ final readonly class UserEntity
         );
     }
 
-    /**
-     * Create a new instance with updated password (hashed).
-     */
     public function withPassword(string $hashedPassword): self
     {
         return new self(
@@ -115,6 +113,8 @@ final readonly class UserEntity
             email: $this->email,
             name: $this->name,
             role: $this->role,
+            createdAt: $this->createdAt,
+            updatedAt: new DateTimeImmutable(),
             password: $hashedPassword,
             rememberToken: $this->rememberToken,
             avatar: $this->avatar,
@@ -122,9 +122,6 @@ final readonly class UserEntity
         );
     }
 
-    /**
-     * Create a new instance with refreshed remember token.
-     */
     public function withRememberToken(?string $token): self
     {
         return new self(
@@ -133,6 +130,8 @@ final readonly class UserEntity
             email: $this->email,
             name: $this->name,
             role: $this->role,
+            createdAt: $this->createdAt,
+            updatedAt: new DateTimeImmutable(), // Token refresh implies update
             password: $this->password,
             rememberToken: $token,
             avatar: $this->avatar,
@@ -144,25 +143,16 @@ final readonly class UserEntity
     // QUERY METHODS
     // ═══════════════════════════════════════════════════════════════════════
 
-    /**
-     * Check if user is a seller.
-     */
     public function isSeller(): bool
     {
         return $this->role === 'seller';
     }
 
-    /**
-     * Check if user is a customer.
-     */
     public function isCustomer(): bool
     {
         return $this->role === 'customer';
     }
 
-    /**
-     * Check if email has been verified.
-     */
     public function isEmailVerified(): bool
     {
         return $this->emailVerifiedAt !== null;

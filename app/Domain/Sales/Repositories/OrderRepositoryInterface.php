@@ -4,29 +4,35 @@ declare(strict_types=1);
 
 namespace App\Domain\Sales\Repositories;
 
+use App\Domain\Sales\Entities\OrderEntity;
+
 /**
  * OrderRepositoryInterface - Port for Order Persistence
  *
- * This interface defines the contract for Order aggregate persistence.
- * Handlers use this interface; Infrastructure provides implementations.
+ * DOMAIN: Sales
+ * TYPE: Repository Contract
+ * INVARIANTS:
+ * - Must operate on Domain Aggregates, not Arrays.
+ * - Must return typed Domain Objects.
  */
 interface OrderRepositoryInterface
 {
     /**
      * Find an order by primary identifier.
      *
-     * @return object|null Order entity or null
+     * @param int $id
+     * @return OrderEntity|null
      */
-    public function findById(int $id): ?object;
+    public function findById(int $id): ?OrderEntity;
 
     /**
-     * Create a new order with its items.
+     * Persist a new or updated order aggregate.
+     * Replaces createWithItems(array).
      *
-     * @param array<string, mixed> $orderAttributes
-     * @param array<array<string, mixed>> $items
-     * @return object The created order
+     * @param OrderEntity $order
+     * @return void
      */
-    public function createWithItems(array $orderAttributes, array $items): object;
+    public function save(OrderEntity $order): void;
 
     /**
      * Generate a unique order number for a tenant.
@@ -35,12 +41,4 @@ interface OrderRepositoryInterface
      * @return string
      */
     public function generateOrderNumber(int $tenantId): string;
-
-    /**
-     * Update an order's coupon reference.
-     *
-     * @param int $orderId
-     * @param int $couponId
-     */
-    public function linkCoupon(int $orderId, int $couponId): void;
 }
