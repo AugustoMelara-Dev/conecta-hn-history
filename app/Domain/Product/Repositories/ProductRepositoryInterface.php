@@ -4,69 +4,38 @@ declare(strict_types=1);
 
 namespace App\Domain\Product\Repositories;
 
+use App\Domain\Product\Entities\ProductEntity;
+
 /**
  * ProductRepositoryInterface - Domain Port for Product Persistence
  *
  * Defines the contract for product storage operations.
  * Serves both Products domain (CRUD) and Reviews domain (metrics).
+ * 
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  CONTRACT HARDENING:                                                    ║
+ * ║  - Strict Typing: Inputs and Outputs must be ProductEntity.             ║
+ * ║  - No 'object' or 'mixed' allowed.                                      ║
+ * ║  - Enforces Re-hydration pattern (save returns fresh instance).         ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 interface ProductRepositoryInterface
 {
-    /**
-     * Find a product by ID.
-     *
-     * @param int $id
-     * @return object|null
-     */
-    public function findById(int $id): ?object;
+    public function findById(int $id): ?ProductEntity;
 
     /**
-     * Create a new product.
-     *
      * @param array<string, mixed> $data
-     * @return object The created product entity
+     * @deprecated Use Factory + save() instead for strictly typed creation.
      */
-    public function create(array $data): object;
+    public function create(array $data): ProductEntity;
 
-    /**
-     * Save (update) an existing product.
-     *
-     * @param object $product The product entity to save
-     * @return void
-     */
-    public function save(object $product): void;
+    public function save(ProductEntity $product): ProductEntity;
 
-    /**
-     * Delete a product.
-     *
-     * @param object $product The product entity to delete
-     * @return void
-     */
-    public function delete(object $product): void;
+    public function delete(ProductEntity $product): void;
 
-    /**
-     * Update only the rating metrics of a product.
-     *
-     * This specialized method prevents race conditions by updating
-     * only specific columns without affecting other product data.
-     *
-     * @param int $id Product ID
-     * @param float $averageRating Calculated average rating
-     * @param int $totalReviews Total count of reviews
-     * @return void
-     */
+    // Specialized Metric Updates (kept as void since they don't hydrate full entity usually)
     public function updateRatingMetrics(int $id, float $averageRating, int $totalReviews): void;
 
-    /**
-     * Atomically increment stock for a product.
-     *
-     * Used by inventory restoration after order cancellation.
-     * Atomic operation prevents race conditions.
-     *
-     * @param int $productId Product ID
-     * @param int $quantity Quantity to add to stock
-     * @return void
-     */
+    // Atomic Stock Update
     public function incrementStock(int $productId, int $quantity): void;
 }
-
