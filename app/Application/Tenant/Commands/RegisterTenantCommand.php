@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Commands;
 
+use App\Application\Common\Interfaces\IdempotentCommandInterface;
+
 /**
  * RegisterTenantCommand - Intent for Tenant + User Registration
  *
  * Encapsulates all data required for the registration use case.
  * Dispatched via CommandBus, handled by RegisterTenantHandler.
  */
-final readonly class RegisterTenantCommand
+final readonly class RegisterTenantCommand implements IdempotentCommandInterface
 {
     public function __construct(
         // Identity
@@ -29,6 +31,19 @@ final readonly class RegisterTenantCommand
         public string $selectedPlan = 'free',
 
         // Metadata
-        public ?string $logoPath = null
+        public ?string $logoPath = null,
+        
+        // Explicit Idempotency
+        public ?string $idempotencyKey = null
     ) {}
+
+    public function getIdempotencyKey(): string
+    {
+         if ($this->idempotencyKey) {
+            return $this->idempotencyKey;
+        }
+
+        // Dedicated Hash: Tenant Name + Owner Email
+        return md5("register_tenant_{$this->businessName}_{$this->email}");
+    }
 }

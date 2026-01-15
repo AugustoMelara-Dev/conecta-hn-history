@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Log;
  * ║  - Enforces Transaction Integrity.                                      ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class RegisterTenantHandler
+final readonly class RegisterTenantHandler implements RegisterTenantHandlerInterface
 {
     use LogSanitizer;
 
