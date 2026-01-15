@@ -9,10 +9,7 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 /**
  * RegisterUserResult - Immutable Output Contract
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  STRICT RETURN TYPE: Guarantees API stability and type safety.          ║
- * ║  READONLY: Prevents accidental mutation of response data.               ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * Implements strict JSON serialization to avoid PHP class coupling.
  */
 #[TypeScript]
 final readonly class RegisterUserResult
@@ -23,4 +20,24 @@ final readonly class RegisterUserResult
         public string $email,
         public bool $requiresVerification,
     ) {}
+
+    public function toArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'tenantId' => $this->tenantId,
+            'email' => $this->email,
+            'requiresVerification' => $this->requiresVerification,
+        ];
+    }
+
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: (int) $data['id'],
+            tenantId: (int) $data['tenantId'],
+            email: (string) $data['email'],
+            requiresVerification: (bool) $data['requiresVerification'],
+        );
+    }
 }

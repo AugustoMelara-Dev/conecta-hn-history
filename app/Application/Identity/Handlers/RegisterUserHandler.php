@@ -4,82 +4,82 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Handlers;
 
+use App\Application\Common\Interfaces\ClientContextProviderInterface;
 use App\Application\Identity\Commands\RegisterUserCommand;
 use App\Application\Identity\Results\RegisterUserResult;
 use App\Application\Shared\Traits\LogSanitizer;
-use App\Domain\Identity\Repositories\UserRepositoryInterface;
+use App\Domain\Identity\Entities\UserEntity;
+use App\Domain\Identity\Enums\UserRole;
+use App\Application\Identity\Interfaces\UserRepositoryInterface; // Updated Interface Path
 use App\Domain\Security\Contracts\HasherInterface;
-use App\Domain\TenantGovernance\Factories\TenantFactory;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Infrastructure\Bus\TransactionalEventDispatcher;
+use App\Domain\Tenancy\Entities\TenantEntity; // Updated Entity Path
+use App\Application\Tenancy\Interfaces\TenantRepositoryInterface; // Checked Interface Path
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
- * RegisterUserHandler - Command Handler for Simple User Registration
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ARCHITECTURAL COMPLIANCE: DIP + Hexagonal + Transactional Outbox       ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  - NO DB::transaction (handled by Bus Middleware)                        ║
- * ║  - NO App\Models imports (uses Repository interfaces only)              ║
- * ║  - NO HARDCODED LOGIC (delegates to TenantFactory)                      ║
- * ║  - INFRASTRUCTURE AGNOSTIC (injects HasherInterface)                    ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * RegisterUserHandler - Titanium Atomic Orquestrator
+ * 
+ * - Injects Business Rules (Default Plan).
  */
-final class RegisterUserHandler
+final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
 {
     use LogSanitizer;
 
+    private const DEFAULT_PLAN = 'SEED';
+
     public function __construct(
-        private readonly UserRepositoryInterface $userRepository,
-        private readonly TenantRepositoryInterface $tenantRepository,
-        private readonly TransactionalEventDispatcher $eventDispatcher,
-        private readonly HasherInterface $hasher,
-        private readonly TenantFactory $tenantFactory,
+        private UserRepositoryInterface $userRepository,
+        private TenantRepositoryInterface $tenantRepository,
+        private HasherInterface $hasher,
+        private ClientContextProviderInterface $contextProvider
     ) {}
 
-    /**
-     * Handle the user registration command.
-     *
-     * @param RegisterUserCommand $command
-     * @return RegisterUserResult
-     */
     public function handle(RegisterUserCommand $command): RegisterUserResult
     {
-        // 1. Create User via Repository
-        $user = $this->userRepository->create([
-            'name' => $command->name,
-            'email' => $command->email,
-            'password' => $this->hasher->make($command->password),
-        ]);
+        Log::info('Registering User & Tenant (Atomic)', $this->sanitizePayload(['email' => $command->email]));
 
-        // 2. Create implicit Tenant via Domain Factory
-        $tenantData = $this->tenantFactory->createTrialTenant(
-            userId: $user->id,
-            name: $command->name,
-            email: $command->email
-        );
+        $hashedPassword = $this->hasher->make($command->password);
         
-        $tenant = $this->tenantRepository->create($tenantData);
+        $tenantName = $command->tenantName ?? ($command->name . "'s Store");
+        $tenantDomain = $command->slug ?? Str::slug($tenantName);
 
-        // 3. Dispatch Domain Event (Transactional Outbox)
-        $this->eventDispatcher->dispatch(new \App\Domain\Identity\Events\UserRegistered(
-            userId: $user->id,
-            tenantId: $tenant->id,
+        // 1. IDENTITY PRE-ALLOCATION
+        $userId = Str::uuid()->toString();
+        $tenantId = Str::uuid()->toString();
+
+        // 2. IN-MEMORY INSTANTIATION
+        
+        // Create Tenant Aggregate (With Injection of Business Rule)
+        $tenant = TenantEntity::create(
+            id: $tenantId,
+            name: $tenantName,
+            domain: $tenantDomain,
+            plan: self::DEFAULT_PLAN
+        );
+
+        // Create User Aggregate
+        $user = UserEntity::register(
+            uuid: $userId,
+            name: $command->name,
             email: $command->email,
-        ));
+            passwordHash: $hashedPassword,
+            role: UserRole::OWNER,
+            tenantId: $tenantId
+        );
 
-        // 4. Audit Log (PII Scrubbed)
-        Log::info('User registered successfully', $this->sanitizePayload([
-            'user_id' => $user->id,
-            'tenant_id' => $tenant->id,
-            'email' => $command->email,
-        ]));
+        // 3. PERSISTENCE (Atomic Dual-Write)
+        DB::transaction(function () use ($user, $tenant) {
+            $this->tenantRepository->save($tenant);
+            $this->userRepository->save($user);
+        });
 
+        // 4. RETURN RESULT
         return new RegisterUserResult(
-            id: $user->id,
-            tenantId: $tenant->id,
-            email: $user->email,
+            id: (string) $user->id(),
+            tenantId: (string) $tenant->id(),
+            email: $user->email(),
             requiresVerification: true
         );
     }

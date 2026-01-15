@@ -4,30 +4,44 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Commands;
 
+use App\Application\Common\Interfaces\IdempotentCommandInterface;
+
 /**
- * RegisterUserCommand - Immutable Input Contract for User Registration
+ * RegisterUserCommand - Titanium Standard Input
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  TRANSPORT ONLY: No validation logic, no framework dependencies.        ║
- * ║  SERIALIZABLE: Safe for queue dispatch if needed.                       ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * Includes Idempotency Key for robust distributed processing.
  */
-final readonly class RegisterUserCommand
+final readonly class RegisterUserCommand implements IdempotentCommandInterface
 {
     public function __construct(
-        /** User's full name */
         public string $name,
-        
-        /** User's email address (validated at controller level) */
         public string $email,
-        
-        /** Plain text password (hashing is Handler's responsibility) */
         public string $password,
-        
-        /** Optional tenant/organization name for implicit tenant creation */
         public ?string $tenantName = null,
-        
-        /** Optional slug for the tenant */
         public ?string $slug = null,
+        
+        /** 
+         * Origin of the registration. 
+         * Required for Data Fidelity.
+         */
+        public string $source = 'user_registration',
+
+        /** 
+         * Unique Request ID for Idempotency Control.
+         * Prevents duplicate processing in unstable networks.
+         */
+        public ?string $idempotencyKey = null,
     ) {}
+
+    public function getIdempotencyKey(): string
+    {
+        // If explicit key provided (e.g. from Client), use it.
+        if ($this->idempotencyKey) {
+            return $this->idempotencyKey;
+        }
+
+        // Fallback: Deterministic Hash of Payload
+        // Ensures that identical payloads equate to the same key
+        return md5('register_user_' . $this->email);
+    }
 }
