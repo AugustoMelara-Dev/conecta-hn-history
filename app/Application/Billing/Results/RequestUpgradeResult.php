@@ -5,22 +5,32 @@ declare(strict_types=1);
 namespace App\Application\Billing\Results;
 
 /**
- * RequestUpgradeResult - Immutable Result DTO for Plan Upgrades
+ * RequestUpgradeResult - Immutable Result DTO
  *
- * DOMAIN: Billing
- * TYPE: Pure DTO
- * INVARIANT: Transport agnostic container for upgrade intent result.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  TYPE SAFE: Uses string IDs to align with Domain (UUID/ULID compatible).║
+ * ║  ZERO HTTP LEAKAGE: Pure transport object for Application layer.        ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class RequestUpgradeResult
 {
-    /**
-     * @param int $tenantId
-     * @param string $plan
-     * @param string $paymentMethod
-     */
     public function __construct(
         public int $tenantId,
-        public string $plan,
-        public string $paymentMethod
+        public string $newPlanId,
+        public string $status,
+        public ?string $validUntil
     ) {}
+
+    /**
+     * Factory method to create DTO from updated Tenant state.
+     */
+    public static function fromTenantState(int $tenantId, string $newPlanId, \DateTimeImmutable|string|null $endsAt): self
+    {
+        return new self(
+            tenantId: $tenantId,
+            newPlanId: $newPlanId,
+            status: 'active', // Assumed active after successful gateway swap
+            validUntil: $endsAt instanceof \DateTimeInterface ? $endsAt->format('Y-m-d') : $endsAt
+        );
+    }
 }

@@ -4,27 +4,44 @@ declare(strict_types=1);
 
 namespace App\Application\Billing\Results;
 
+use App\Domain\Billing\Entities\PaymentEntity;
+
 /**
- * ReportPaymentResult - Immutable Result DTO for Payment Reporting
+ * ReportPaymentResult - Immutable Result DTO
  *
- * DOMAIN: Billing
- * TYPE: Pure DTO
- * INVARIANT: Contains only validated scalar data ready for domain processing.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  HEXAGONAL COMPLIANT: Uses PaymentEntity (Domain), not Eloquent Model. ║
+ * ║  ZERO HTTP LEAKAGE: Pure transport object for Application layer.        ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class ReportPaymentResult
 {
-    /**
-     * @param int $tenantId
-     * @param string $bank
-     * @param string $referenceNumber
-     * @param float $amount
-     * @param string|null $receiptPath
-     */
     public function __construct(
-        public int $tenantId,
+        public string $id,
+        public string $tenantId,
         public string $bank,
         public string $referenceNumber,
-        public float $amount,
+        public int $amountInCents,
+        public string $currency,
+        public string $status,
         public ?string $receiptPath
     ) {}
+
+    /**
+     * Factory method to create DTO from PaymentEntity (Domain).
+     * No Eloquent dependencies.
+     */
+    public static function fromEntity(PaymentEntity $payment): self
+    {
+        return new self(
+            id: $payment->id,
+            tenantId: $payment->tenantId,
+            bank: $payment->bank,
+            referenceNumber: $payment->referenceNumber,
+            amountInCents: $payment->amount->amount,
+            currency: $payment->amount->currency,
+            status: $payment->status->value,
+            receiptPath: $payment->proofUrl
+        );
+    }
 }
