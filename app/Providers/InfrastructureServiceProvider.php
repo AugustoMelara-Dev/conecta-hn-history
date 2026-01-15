@@ -32,6 +32,8 @@ class InfrastructureServiceProvider extends ServiceProvider
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->singleton(TenantContextInterface::class, FilamentTenantContext::class);
 
+
+
         // ═══════════════════════════════════════════════════════════════════════
         // REPOSITORY PATTERN BINDINGS (ORM Decoupling)
         // ═══════════════════════════════════════════════════════════════════════

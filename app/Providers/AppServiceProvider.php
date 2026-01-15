@@ -36,6 +36,22 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // ═══════════════════════════════════════════════════════════════════════
+        // TITANIUM EVENT STORE: The One True Store (DB + Outbox)
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\Common\Contracts\EventStoreRepositoryInterface::class,
+            \App\Infrastructure\Common\EventStore\DatabaseEventStore::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // OUTBOX PUBLISHER: Transport Adapter (Log, Redis, etc.)
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Infrastructure\Common\Outbox\MessagePublisherInterface::class,
+            \App\Infrastructure\Common\Outbox\LogMessagePublisher::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
         // DOMAIN EVENT BUS: Decouples Domain Layer from Laravel Event System
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(DomainEventBus::class, LaravelEventBus::class);
@@ -359,6 +375,79 @@ class AppServiceProvider extends ServiceProvider
             \Laravel\Fortify\Contracts\ResetsUserPasswords::class,
             \App\Actions\Fortify\ResetPasswordAction::class
         );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // IDEMPOTENCY: Titanium Stability
+        // ═══════════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════════
+        // IDENTITY DOMAIN: Defense in Depth (Decorator Pattern)
+        // ═══════════════════════════════════════════════════════════════════════
+        
+        // 1. CONTEXT PROVIDER (Polymorphic Identity)
+        $this->app->bind(
+            \App\Application\Common\Interfaces\ClientContextProviderInterface::class,
+            function ($app) {
+                return $app->runningInConsole()
+                    ? new \App\Infrastructure\Common\Context\CliClientContextProvider()
+                    : new \App\Infrastructure\Common\Context\WebClientContextProvider();
+            }
+        );
+
+        // 2. DECORATOR STACK (The Onion)
+        // Order: Security -> Observability -> Consistency -> Core
+        $this->app->bind(
+            \App\Application\Identity\Handlers\RegisterUserHandlerInterface::class,
+            function ($app) {
+                // CORE: The Business Logic (Pure)
+                $core = $app->make(\App\Application\Identity\Handlers\RegisterUserHandler::class);
+
+                // LAYER 1: Idempotency (The Guard) - Protects Core from duplicates
+                $idempotent = new \App\Application\Identity\Decorators\IdempotentRegisterUserHandler(
+                    inner: $core,
+                    service: $app->make(\App\Infrastructure\Common\Idempotency\IdempotencyService::class)
+                );
+
+                // LAYER 2: Telemetry (The Watcher) - Measures Total Execution (including Idempotency check)
+                $telemetry = new \App\Application\Identity\Decorators\TelemetryRegisterUserHandler(
+                    inner: $idempotent,
+                    logger: $app->make(\Psr\Log\LoggerInterface::class)
+                );
+
+                // LAYER 3: Security (The Shield) - OUTERMOST LAYER
+                // This runs first! (Fail Fast Principle)
+                return new \App\Application\Identity\Decorators\RateLimitedRegisterUserHandler(
+                    inner: $telemetry,
+                    rateLimiter: $app->make(\Illuminate\Cache\RateLimiter::class),
+                    contextProvider: $app->make(\App\Application\Common\Interfaces\ClientContextProviderInterface::class)
+                );
+            }
+        );
+
+        // 3. SALES DOMAIN: Idempotency Protection
+        $this->app->bind(
+            \App\Application\Sales\Handlers\CreateOrderHandlerInterface::class,
+            function ($app) {
+                $core = $app->make(\App\Application\Sales\Handlers\CreateOrderHandler::class);
+
+                return new \App\Application\Sales\Decorators\IdempotentCreateOrderHandler(
+                    inner: $core,
+                    service: $app->make(\App\Infrastructure\Common\Idempotency\IdempotencyService::class)
+                );
+            }
+        );
+
+        // 4. TENANCY DOMAIN: Idempotency Protection
+        $this->app->bind(
+            \App\Application\Tenant\Handlers\RegisterTenantHandlerInterface::class,
+            function ($app) {
+                $core = $app->make(\App\Application\Tenant\Handlers\RegisterTenantHandler::class);
+
+                return new \App\Application\Tenant\Decorators\IdempotentRegisterTenantHandler(
+                    inner: $core,
+                    service: $app->make(\App\Infrastructure\Common\Idempotency\IdempotencyService::class)
+                );
+            }
+        );
     }
 
     /**
@@ -461,9 +550,10 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         \Illuminate\Support\Facades\Bus::map([
+            \App\Application\Identity\Commands\RegisterUserCommand::class => \App\Application\Identity\Handlers\RegisterUserHandlerInterface::class,
             \App\Application\Sales\Commands\CreateOrderCommand::class => \App\Application\Sales\Handlers\CreateOrderHandler::class,
             \App\Application\Tenant\Commands\RegisterTenantCommand::class => \App\Application\Tenant\Handlers\RegisterTenantHandler::class,
-            \App\Application\Identity\Commands\RegisterUserCommand::class => \App\Application\Identity\Handlers\RegisterUserHandler::class,
+            // \App\Application\Identity\Commands\RegisterUserCommand::class => \App\Application\Identity\Handlers\RegisterUserHandler::class, (Replaced by Decorator Stack)
             \App\Application\Billing\Commands\ReportPaymentCommand::class => \App\Application\Billing\Handlers\ReportPaymentHandler::class,
             \App\Application\Reviews\Commands\SubmitReviewCommand::class => \App\Application\Reviews\Handlers\SubmitReviewHandler::class,
             \App\Application\Products\Commands\CreateProductCommand::class => \App\Application\Products\Handlers\CreateProductHandler::class,
