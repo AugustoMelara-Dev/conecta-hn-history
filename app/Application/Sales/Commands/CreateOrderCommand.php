@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Sales\Commands;
 
+use App\Application\Common\Interfaces\IdempotentCommandInterface;
 use OpenApi\Attributes as OA;
 
 /**
@@ -16,6 +17,7 @@ use OpenApi\Attributes as OA;
  * - Immutable (Final Readonly)
  * - Strict Scalar Typing (No generic objects)
  * - No HTTP dependencies
+ * - Idempotency Aware
  */
 #[OA\Schema(
     schema: "CreateOrderCommand",
@@ -23,7 +25,7 @@ use OpenApi\Attributes as OA;
     description: "Command to place a new order",
     required: ["tenant_id", "customer_id", "items", "currency"]
 )]
-final readonly class CreateOrderCommand
+final readonly class CreateOrderCommand implements IdempotentCommandInterface
 {
     /**
      * @param int $tenantId
@@ -38,7 +40,8 @@ final readonly class CreateOrderCommand
      * @param string $paymentMethod
      * @param array<int, array{product_id: int, quantity: int, options?: array, notes?: string}> $items
      * @param string|null $couponCode
-     * @param int|null $requestorId (ID of the user placing the order, or null for system/guest)
+     * @param int|null $requestorId
+     * @param string|null $idempotencyKey
      */
     public function __construct(
         #[OA\Property(property: "tenant_id", type: "integer", example: 1)]
@@ -89,6 +92,31 @@ final readonly class CreateOrderCommand
         public ?string $couponCode = null,
 
         // Context - Strict Scalar ID only.
-        public ?int $requestorId = null
+        public ?int $requestorId = null,
+        
+        // Explicit Idempotency
+        public ?string $idempotencyKey = null
     ) {}
+
+    public function getIdempotencyKey(): string
+    {
+        // Use explicit key if provided (best practice for frontend apps)
+        if ($this->idempotencyKey) {
+            return $this->idempotencyKey;
+        }
+
+        // Fallback: Generate generic hash based on critical parameters
+        // To prevent collisions on legit same-orders, frontend MUST send a unique key.
+        // Hashing content is a "lazy" dedupe but risky if user unintentionally orders twice.
+        // However, for "Double Click" protection, this is effective within a short window.
+        $payload = json_encode([
+            'tenant' => $this->tenantId,
+            'customer' => $this->customerId,
+            'items' => $this->items,
+            'total_items' => count($this->items),
+            'coupon' => $this->couponCode
+        ]);
+
+        return md5("create_order_" . $payload);
+    }
 }

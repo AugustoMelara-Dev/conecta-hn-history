@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Log;
  * ║  - Transactional via TransactionManagerInterface.                       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class CreateOrderHandler
+final class CreateOrderHandler implements CreateOrderHandlerInterface
 {
     use LogSanitizer;
 
