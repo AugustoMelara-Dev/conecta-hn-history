@@ -7,59 +7,56 @@ namespace App\Domain\Auth\Repositories;
 use App\Domain\Auth\Entities\OtpEntity;
 
 /**
- * OtpRepositoryInterface - Pure Domain Port for OTP Persistence
+ * OtpRepositoryInterface - Strict Data Mapper Contract
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  PURE: Returns domain entities, not Eloquent models.                    ║
- * ║  INVERSED: Domain depends on abstraction, not infrastructure.           ║
+ * ║  PURE INPUT/OUTPUT: Operates strictly on OtpEntity.                     ║
+ * ║  ATOMIC OPERATIONS: Enforces atomicity for counters (incrementAttempts).║
+ * ║  PERSISTENCE IGNORANT: No references to Eloquent/SQL.                   ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 interface OtpRepositoryInterface
 {
     /**
-     * Invalidate all previous OTPs for a user and type.
-     *
-     * @param int $userId
-     * @param string $type OTP purpose (login, password_reset, etc.)
-     * @return int Number of invalidated records
+     * Find a valid (not expired, exists) OTP by identifier string.
+     * Hydrates and returns a pure OtpEntity.
      */
-    public function invalidateUserOtps(int $userId, string $type): int;
-
-    /**
-     * Invalidate all previous OTPs for an identifier (email/phone).
-     *
-     * @param string $identifier Email or phone
-     * @return int Number of invalidated records
-     */
-    public function invalidateByIdentifier(string $identifier): int;
+    public function findValidByIdentifier(string $identifier): ?OtpEntity;
 
     /**
      * Create a new OTP record.
-     *
-     * @param int|null $userId User ID (null for new registrations)
-     * @param string $identifier Email or phone
-     * @param string $plainCode Plain OTP code (hashing handled by infrastructure)
-     * @param string $type OTP purpose
-     * @param string $ipAddress Client IP
-     * @param string $userAgent Client User-Agent
-     * @param int $expiryMinutes Minutes until expiration
-     * @return OtpEntity Created OTP entity
      */
     public function create(
         ?int $userId,
         string $identifier,
-        string $plainCode,
+        string $hashedCode,
         string $type,
-        string $ipAddress,
-        string $userAgent,
-        int $expiryMinutes = 10
+        ?string $ipAddress,
+        ?string $userAgent,
+        int $expiryMinutes
     ): OtpEntity;
 
     /**
-     * Find valid OTP by identifier.
-     *
-     * @param string $identifier
-     * @return OtpEntity|null
+     * Atomically increment the attempts counter in persistence.
+     * This moves the "race condition" risk from PHP memory to DB locking.
+     * 
+     * @param string $otpId The unique entity ID
      */
-    public function findValidByIdentifier(string $identifier): ?OtpEntity;
+    public function incrementAttempts(string $otpId): void;
+
+    /**
+     * Invalidate/Delete OTP by identifier (Clean up).
+     */
+    public function invalidateByIdentifier(string $identifier): void;
+
+    /**
+     * Delete a specific OTP entity.
+     */
+    public function delete(OtpEntity $otp): void;
+    
+    /**
+     * Save/Update entity state (General purpose).
+     * NOTE: Prefer incrementAttempts() for counters to avoid concurrency issues.
+     */
+    public function save(OtpEntity $otp): void;
 }

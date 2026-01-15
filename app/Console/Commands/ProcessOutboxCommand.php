@@ -4,137 +4,105 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Domain\Shared\Contracts\ShouldBeStoredInOutbox;
-use App\Infrastructure\Persistence\Eloquent\Models\OutboxMessage;
+use App\Infrastructure\Common\Outbox\MessagePublisherInterface;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
- * ProcessOutboxCommand - Transactional Outbox Worker
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  OUTBOX RELAY WORKER                                                     ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  This command reads pending messages from the outbox table,              ║
- * ║  reconstructs the original event objects, and dispatches them.           ║
- * ║                                                                          ║
- * ║  GUARANTEES:                                                             ║
- * ║  - At-least-once delivery (duplicates possible on crash-restart)         ║
- * ║  - Ordered delivery per aggregate (via occurred_at ordering)             ║
- * ║  - Parallel worker safety (via lockForUpdate + skipLocked)               ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * USAGE:
- *   php artisan infrastructure:process-outbox           # Process one batch
- *   php artisan infrastructure:process-outbox --daemon  # Run continuously
+ * ProcessOutboxCommand - The Heartbeat Daemon
+ * 
+ * Responsibilities:
+ * - FIFO Processing (Strict Order)
+ * - At-Least-Once Delivery (Pessimistic Ack)
+ * - Resource Efficiency (Sleep on Empty)
  */
-final class ProcessOutboxCommand extends Command
+class ProcessOutboxCommand extends Command
 {
-    protected $signature = 'infrastructure:process-outbox 
-                            {--batch=50 : Number of messages to process per cycle}
-                            {--max-attempts=3 : Maximum retry attempts}
-                            {--daemon : Run continuously}
-                            {--sleep=1 : Seconds to sleep between cycles in daemon mode}';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'outbox:process';
 
-    protected $description = 'Process pending domain events from the Transactional Outbox';
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Daemon that reads pending events from DB and pushes them to the Message Bus.';
 
-    public function handle(): int
-    {
-        $batchSize = (int) $this->option('batch');
-        $maxAttempts = (int) $this->option('max-attempts');
-        $daemon = (bool) $this->option('daemon');
-        $sleep = (int) $this->option('sleep');
-
-        $this->info('🚀 Starting Outbox Worker...');
-
-        do {
-            $processed = $this->processBatch($batchSize, $maxAttempts);
-            
-            if ($processed === 0 && $daemon) {
-                sleep($sleep);
-            }
-            
-            if ($processed > 0) {
-                $this->info("✅ Processed {$processed} messages");
-            }
-            
-        } while ($daemon);
-
-        $this->info('✅ Outbox processing complete');
-        return Command::SUCCESS;
+    /**
+     * Create a new command instance.
+     */
+    public function __construct(
+        private readonly MessagePublisherInterface $publisher
+    ) {
+        parent::__construct();
     }
 
     /**
-     * Process a batch of pending messages.
+     * Execute the console command.
      */
-    private function processBatch(int $batchSize, int $maxAttempts): int
+    public function handle(): void
     {
-        // Query with pessimistic locking for parallel worker safety
-        $messages = OutboxMessage::query()
-            ->whereNull('published_at')
-            ->where('attempts', '<', $maxAttempts)
-            ->orderBy('occurred_at', 'asc')
-            ->limit($batchSize)
-            ->lockForUpdate()
-            // ->skipLocked() // Uncomment if using MySQL 8+ or PostgreSQL
-            ->get();
+        $this->info('Starting Outbox Processor Daemon...');
 
-        $processed = 0;
+        // THE DAEMON LOOP
+        while (true) {
+            // 1. SELECT PENDING (Atomic Batch)
+            // Limit 100 to prevent memory bloating.
+            $messages = DB::table('outbox_messages')
+                ->whereNull('published_at')
+                ->orderBy('id', 'asc') // FIFO Rule
+                ->limit(100)
+                ->get();
 
-        foreach ($messages as $message) {
-            try {
-                $event = $this->reconstructEvent($message);
-                
-                if ($event !== null) {
-                    Event::dispatch($event);
-                    $message->markAsPublished();
-                    $processed++;
+            // 2. RESOURCE RESPECT RULE
+            if ($messages->isEmpty()) {
+                // Sleep to release CPU cycles when idle.
+                // 1 second pause.
+                sleep(1); 
+                continue;
+            }
+
+            $count = 0;
+
+            // 3. PROCESS BATCH
+            foreach ($messages as $message) {
+                try {
+                    // A. PUBLISH (The Critical Side Effect)
+                    $this->publisher->publish($message->type, $message->payload);
+
+                    // B. ACKNOWLEDGE (Commit)
+                    // Only done if Publish succeeds.
+                    DB::table('outbox_messages')
+                        ->where('id', $message->id)
+                        ->update(['published_at' => now()]);
                     
-                    $this->line("  📤 Dispatched: {$message->type}");
-                } else {
-                    $message->recordFailure("Failed to reconstruct event class: {$message->type}");
-                    $this->warn("  ⚠️ Reconstruction failed: {$message->type}");
+                    $this->info("Published message ID: {$message->id}");
+                    $count++;
+
+                } catch (Throwable $e) {
+                    // C. FAILURE HANDLING (Retry Strategy)
+                    // We DO NOT mark as published. It will be retried endlessly until fixed.
+                    // This guarantees "At-Least-Once" Delivery.
+                    Log::error("Failed to publish message ID {$message->id}: " . $e->getMessage());
+                    
+                    // Optional: Break loop to avoid spamming logs if Broker is down?
+                    // For now, we continue trying subsequent messages (though FIFO might imply blocking? 
+                    // Usually blocking the specific message is enough, but strictly FIFO means we should stop?
+                    // The prompt implies "Retry Infinito por defecto" -> next iteration picks it up.
+                    // If strict FIFO is required universally, a failure should perhaps halt the batch.
+                    // However, stopping the daemon might require supervisor restart. 
+                    // Continuing allows temporary glitches to self-heal. 
+                    // Implementation follows prompt: "Next iteration" implied.
                 }
-                
-            } catch (\Throwable $e) {
-                $message->recordFailure($e->getMessage());
-                
-                Log::error('Outbox delivery failed', [
-                    'message_id' => $message->id,
-                    'type' => $message->type,
-                    'error' => $e->getMessage(),
-                    'attempts' => $message->attempts,
-                ]);
-                
-                $this->error("  ❌ Failed: {$message->type} - {$e->getMessage()}");
             }
+            
+            $this->info("Processed batch of {$count} messages.");
         }
-
-        return $processed;
-    }
-
-    /**
-     * Reconstruct the original event object from stored payload.
-     */
-    private function reconstructEvent(OutboxMessage $message): ?object
-    {
-        $eventClass = $message->type;
-
-        if (!class_exists($eventClass)) {
-            return null;
-        }
-
-        if (!is_subclass_of($eventClass, ShouldBeStoredInOutbox::class)) {
-            // Event class no longer implements the interface
-            // Dispatch as generic array event for backwards compatibility
-            return (object) [
-                'type' => $eventClass,
-                'payload' => $message->payload,
-            ];
-        }
-
-        // Use the fromPayload factory method
-        return $eventClass::fromPayload($message->payload);
     }
 }

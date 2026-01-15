@@ -4,63 +4,46 @@ declare(strict_types=1);
 
 namespace App\Domain\Auth\Entities;
 
-use App\Models\OneTimePassword;
-use Carbon\Carbon;
+use DateTimeImmutable;
 
 /**
- * OtpEntity - Pure Domain Entity for OTP
+ * OtpEntity - Pure Domain Object
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  PURE: No Eloquent methods (save/delete/update) exposed.                ║
- * ║  IMMUTABLE: Readonly properties, no setters.                            ║
- * ║  HYDRATION: Static factory from Eloquent model.                         ║
+ * ║  POPO: Plain Old PHP Object. Zero Framework Coupling.                   ║
+ * ║  IMMUTABLE: Readonly state ensures predictability.                      ║
+ * ║  NATIVE: Uses DateTimeImmutable for time, strict scalar types.          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class OtpEntity
 {
+    private const MAX_ATTEMPTS = 5;
+
     public function __construct(
         public string $id,
         public ?int $userId,
         public string $identifier,
-        public string $code, // Changed from hashedCode to code as per spec
+        public string $hashedCode,
         public string $type,
-        public Carbon $expiresAt,
+        public DateTimeImmutable $expiresAt,
+        public int $attempts,
         public ?string $ipAddress = null,
         public ?string $userAgent = null,
     ) {}
 
     /**
-     * Hydrate entity from Eloquent model.
-     *
-     * SINGLE COUPLING POINT: This is the only place where Eloquent is referenced.
+     * Check if OTP has expired relative to 'now'.
      */
-    public static function fromModel(OneTimePassword $model): self
+    public function isExpired(DateTimeImmutable $now): bool
     {
-        return new self(
-            id: (string) $model->id,
-            userId: $model->user_id,
-            identifier: $model->identifier,
-            code: $model->code, // Can be hash or plain depending on context, usually hash from DB
-            type: $model->type,
-            expiresAt: Carbon::parse($model->expires_at),
-            ipAddress: $model->ip_address,
-            userAgent: $model->user_agent,
-        );
+        return $this->expiresAt < $now;
     }
 
     /**
-     * Check if OTP is expired.
+     * Check if maximum verification attempts have been exceeded.
      */
-    public function isExpired(): bool
+    public function maxAttemptsExceeded(): bool
     {
-        return $this->expiresAt->isPast();
-    }
-
-    /**
-     * Verify code against hashed value.
-     */
-    public function verifyCode(string $plainCode): bool
-    {
-        return password_verify($plainCode, $this->code);
+        return $this->attempts >= self::MAX_ATTEMPTS;
     }
 }
