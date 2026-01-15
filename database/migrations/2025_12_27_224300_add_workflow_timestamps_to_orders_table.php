@@ -27,15 +27,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->timestamp('processing_started_at')
-                ->nullable()
-                ->after('confirmed_at')
-                ->comment('When order entered processing/preparation');
+            // SAFETY: Ensure dependency exists
+            if (! Schema::hasColumn('orders', 'confirmed_at')) {
+                $table->timestamp('confirmed_at')->nullable()->after('status');
+            }
 
-            $table->timestamp('ready_at')
-                ->nullable()
-                ->after('processing_started_at')
-                ->comment('When order became ready for pickup/delivery');
+            if (! Schema::hasColumn('orders', 'processing_started_at')) {
+                $table->timestamp('processing_started_at')
+                    ->nullable()
+                    ->after('confirmed_at')
+                    ->comment('When order entered processing/preparation');
+            }
+
+            if (! Schema::hasColumn('orders', 'ready_at')) {
+                $table->timestamp('ready_at')
+                    ->nullable()
+                    ->after('processing_started_at')
+                    ->comment('When order became ready for pickup/delivery');
+            }
         });
     }
 

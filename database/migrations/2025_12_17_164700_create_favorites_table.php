@@ -22,7 +22,7 @@ return new class extends Migration
             $table->id();
 
             // User who favorited
-            $table->foreignId('user_id')
+            $table->foreignUuid('user_id')
                 ->constrained()
                 ->cascadeOnDelete();
 

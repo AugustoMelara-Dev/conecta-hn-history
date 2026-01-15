@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('ai_usage_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('tenant_id')->nullable()->constrained()->nullOnDelete();
             $table->string('provider')->index(); // 'openai'
             $table->string('model')->index();    // 'gpt-4o'

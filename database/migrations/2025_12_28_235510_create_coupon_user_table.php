@@ -29,7 +29,7 @@ return new class extends Migration
                 ->constrained('coupons')
                 ->cascadeOnDelete();
 
-            $table->foreignId('user_id')
+            $table->foreignUuid('user_id')
                 ->constrained('users')
                 ->cascadeOnDelete();
 
