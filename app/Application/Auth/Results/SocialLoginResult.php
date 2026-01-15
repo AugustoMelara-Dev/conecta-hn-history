@@ -4,45 +4,38 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Results;
 
+use App\Application\Auth\Enums\AuthStatus;
+use App\Domain\Identity\Entities\UserEntity;
+
 /**
- * SocialLoginResult - Immutable Output Contract for Social Authentication
+ * SocialLoginResult - Pure Application Output
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  UX CRITICAL: isNewUser flag distinguishes onboarding vs dashboard.     ║
+ * ║  PROTOCOL AGNOSTIC: Zero knowledge of HTTP, URLs, or Redirects.         ║
+ * ║  STATE FOCUSED: Exposes the exact result state via AuthStatus Enum.     ║
+ * ║  INMUTABLE: Final readonly DTO.                                         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class SocialLoginResult
 {
     public function __construct(
-        public int $userId,
-        public int $tenantId,
-        public bool $isNewUser,
-        public string $redirectUrl,
+        public AuthStatus $status,
+        public UserEntity $user,
+        public ?string $token = null // Optional JWT/Sanctum token if needed immediately
     ) {}
 
-    /**
-     * Factory for existing user login.
-     */
-    public static function forExistingUser(object $user): self
+    public static function success(UserEntity $user): self
     {
-        return new self(
-            userId: $user->id,
-            tenantId: $user->tenant_id ?? 0,
-            isNewUser: false,
-            redirectUrl: url('/dashboard'),
-        );
+        // If user has no tenant, they require onboarding
+        $status = $user->tenantId === null 
+            ? AuthStatus::REQUIRES_ONBOARDING 
+            : AuthStatus::SUCCESS;
+
+        return new self($status, $user);
     }
 
-    /**
-     * Factory for newly registered user.
-     */
-    public static function forNewUser(object $user, object $tenant): self
+    public static function newUser(UserEntity $user): self
     {
-        return new self(
-            userId: $user->id,
-            tenantId: $tenant->id,
-            isNewUser: true,
-            redirectUrl: url("/tenant/{$tenant->slug}/onboarding"),
-        );
+        return new self(AuthStatus::NEW_USER, $user);
     }
 }

@@ -4,19 +4,22 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Commands;
 
+use App\Domain\Shared\Enums\ProviderName;
+
 /**
  * LoginViaSocialProviderCommand - Provider-Agnostic Social Identity Contract
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  SOCIALITE AGNOSTIC: No Laravel\Socialite references - normalized data. ║
  * ║  UNIVERSAL: Works for Google, GitHub, LinkedIn, Apple, etc.             ║
+ * ║  TYPE SAFETY: Enforced via ProviderName Enum.                           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class LoginViaSocialProviderCommand
 {
     public function __construct(
-        /** Provider slug (google, github, linkedin, apple) */
-        public string $providerName,
+        /** Provider enum (google, github, linkedin, apple) */
+        public ProviderName $providerName,
         
         /** Provider's unique user ID (immutable) */
         public string $providerId,
