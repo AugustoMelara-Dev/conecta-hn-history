@@ -4,32 +4,56 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Events;
 
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\Events\DomainEvent; // Assuming a base abstract class or interface exists, or just standalone
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
- * TenantProfileEnhanced - Domain Event for AI Enhancement Completion
+ * TenantProfileEnhanced - Domain Event (Scalar Compliant)
  *
  * Represents the fact that a tenant's profile was enhanced by AI.
- * This event is recorded by the Tenant entity and dispatched by the Repository.
+ * Updated to "Titanium Standard":
+ * - Scalar Constructor strings/ints (No Value Objects).
+ * - Implements toPayload/fromPayload.
+ * - Outbox Ready.
  */
-final readonly class TenantProfileEnhanced
+final class TenantProfileEnhanced implements ShouldDispatchAfterCommit
 {
     public function __construct(
-        public TenantId $tenantId,
-        public int $userId,
-        public \DateTimeImmutable $occurredAt,
-        public array $enhancedFields
+        public readonly string $tenant_id,
+        public readonly int $user_id, // IDs as scalar
+        public readonly string $occurred_at, // ISO8601 String
+        public readonly array $enhanced_fields // Array is scalar-ish enough for JSON
     ) {}
 
     public static function fromTenant(
-        \App\Domain\TenantGovernance\Models\Tenant $tenant,
+        \App\Models\Tenant $tenant,
         array $enhancedFields
     ): self {
         return new self(
-            tenantId: TenantId::fromInt($tenant->id),
-            userId: $tenant->user_id,
-            occurredAt: new \DateTimeImmutable,
-            enhancedFields: $enhancedFields
+            tenant_id: (string) $tenant->id,
+            user_id: (int) $tenant->user_id,
+            occurred_at: now()->toIso8601String(),
+            enhanced_fields: $enhancedFields
         );
+    }
+
+    public static function fromPayload(array $payload): self
+    {
+        return new self(
+            tenant_id: (string) ($payload['tenant_id'] ?? ''),
+            user_id: (int) ($payload['user_id'] ?? 0),
+            occurred_at: (string) ($payload['occurred_at'] ?? now()->toIso8601String()),
+            enhanced_fields: (array) ($payload['enhanced_fields'] ?? [])
+        );
+    }
+
+    public function toPayload(): array
+    {
+        return [
+            'tenant_id' => $this->tenant_id,
+            'user_id' => $this->user_id,
+            'occurred_at' => $this->occurred_at,
+            'enhanced_fields' => $this->enhanced_fields,
+        ];
     }
 }

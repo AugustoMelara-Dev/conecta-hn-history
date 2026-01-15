@@ -9,20 +9,23 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 /**
  * SubscriptionUpgraded - Domain Event for Plan Upgrade
  *
- * Fired after successful plan change for downstream processing:
- * - Send confirmation email
- * - Update feature limits
- * - Trigger analytics
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  TYPE SAFE: Uses string IDs (UUID/ULID compatible).                      ║
+ * ║  TRANSACTIONAL: Implements ShouldDispatchAfterCommit for Outbox safety.  ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class SubscriptionUpgraded implements ShouldDispatchAfterCommit
 {
+    public const SCHEMA_VERSION = 2;
+
     public function __construct(
         public int $tenantId,
-        public int $oldPlanId,
-        public int $newPlanId,
+        public string $oldPlanId,
+        public string $newPlanId,
         public string $newPlanName,
         public \DateTimeImmutable $occurredAt,
         public ?string $transactionId = null,
+        public int $schemaVersion = self::SCHEMA_VERSION,
     ) {}
 
     /**
@@ -30,8 +33,8 @@ final readonly class SubscriptionUpgraded implements ShouldDispatchAfterCommit
      */
     public static function create(
         int $tenantId,
-        int $oldPlanId,
-        int $newPlanId,
+        string $oldPlanId,
+        string $newPlanId,
         string $newPlanName,
         ?string $transactionId = null,
     ): self {
@@ -53,6 +56,7 @@ final readonly class SubscriptionUpgraded implements ShouldDispatchAfterCommit
     public function toPayload(): array
     {
         return [
+            'schema_version' => $this->schemaVersion,
             'tenant_id' => $this->tenantId,
             'old_plan_id' => $this->oldPlanId,
             'new_plan_id' => $this->newPlanId,

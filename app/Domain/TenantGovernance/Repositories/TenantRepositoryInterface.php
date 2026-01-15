@@ -7,14 +7,7 @@ namespace App\Domain\TenantGovernance\Repositories;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
 
 /**
- * TenantRepositoryInterface - Domain Port for Tenant Persistence
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ARCHITECTURAL PURITY: NO ELOQUENT DEPENDENCIES                         ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  - Updated to use strict TenantEntity.                                  ║
- * ║  - Enforces Re-hydration pattern (save returns TenantEntity).           ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * TenantRepositoryInterface - Diamond Standard Port
  */
 interface TenantRepositoryInterface
 {
@@ -22,11 +15,16 @@ interface TenantRepositoryInterface
 
     public function findBySlug(string $slug): ?TenantEntity;
 
+    /**
+     * Check existence efficiently without hydrating the entity.
+     * O(1) operation.
+     */
+    public function existsBySlug(string $slug): bool;
+
     public function findByDomain(string $domain): ?TenantEntity;
 
     /**
      * @param array<string, mixed> $attributes
-     * @return TenantEntity
      */
     public function create(array $attributes): TenantEntity;
 

@@ -4,38 +4,35 @@ declare(strict_types=1);
 
 namespace App\Domain\Billing\Repositories;
 
-use App\Models\Payment;
+use App\Domain\Billing\Entities\PaymentEntity;
 
 /**
  * PaymentRepositoryInterface - Port for Payment Persistence
  *
- * This interface defines the contract for Payment entity persistence.
- * Applications use this interface; Infrastructure provides implementations.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  HEXAGONAL COMPLIANT: No Eloquent or Infrastructure dependencies.       ║
+ * ║  DOMAIN PURE: Uses PaymentEntity, not Eloquent Model.                   ║
+ * ║  CLEAN CONTRACT: No legacy array methods permitted.                     ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 interface PaymentRepositoryInterface
 {
     /**
      * Find a payment by primary identifier.
+     * @throws \App\Domain\Billing\Exceptions\PaymentNotFoundException
      */
-    public function findById(int $id): ?Payment;
+    public function findById(string $id): ?PaymentEntity;
 
     /**
      * Find payments by tenant ID.
      *
-     * @return Payment[]
+     * @return PaymentEntity[]
      */
-    public function findByTenantId(int $tenantId): array;
-
-    /**
-     * Create a new payment record.
-     *
-     * @param array<string, mixed> $attributes
-     * @return Payment
-     */
-    public function create(array $attributes): Payment;
+    public function findByTenantId(string $tenantId): array;
 
     /**
      * Persist a payment entity.
+     * Handles both creation and updates (Upsert).
      */
-    public function save(Payment $payment): void;
+    public function save(PaymentEntity $payment): void;
 }

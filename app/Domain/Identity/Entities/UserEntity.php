@@ -4,157 +4,144 @@ declare(strict_types=1);
 
 namespace App\Domain\Identity\Entities;
 
-use App\Domain\Shared\ValueObjects\EmailAddress;
+use App\Domain\Common\Traits\EventSourcedAggregate;
+use App\Domain\Identity\Enums\UserRole;
+use App\Domain\Identity\Events\UserRegistered;
 use DateTimeImmutable;
 
 /**
- * UserEntity - Pure Domain Entity for User
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  DEFENSIVE DOMAIN MODELING:                                             ║
- * ║  - NO Carbon Dependency (Native PHP DateTimeImmutable).                 ║
- * ║  - Strict Constructor (No magic casting).                               ║
- * ║  - Audit Fields (createdAt, updatedAt) enforced.                        ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * UserEntity - Aggregate Root (Titanium Immutable)
+ * 
+ * - Identity Pre-allocation (UUIDs).
+ * - Full Immutability (No setters, no Event Patching).
+ * - Valid Birth State (TenantID required at register).
  */
-final readonly class UserEntity
+final class UserEntity
 {
-    public function __construct(
-        public int $id,
-        public int $tenantId,
-        public EmailAddress $email,
-        public string $name,
-        public string $role,
-        public DateTimeImmutable $createdAt,
-        public ?DateTimeImmutable $updatedAt = null,
-        public ?string $password = null,
-        public ?string $rememberToken = null,
-        public ?string $avatar = null,
-        public ?DateTimeImmutable $emailVerifiedAt = null,
-    ) {}
+    use EventSourcedAggregate;
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // WITHER METHODS (Immutable State Transitions)
-    // ═══════════════════════════════════════════════════════════════════════
+    private string $id;
+    private string $name;
+    private string $email;
+    private string $password;
+    private UserRole $role;
+    private string $tenantId;
+    private ?DateTimeImmutable $createdAt = null;
+    private ?DateTimeImmutable $updatedAt = null;
 
-    public function withEmailVerified(?DateTimeImmutable $date): self
-    {
-        return new self(
-            id: $this->id,
-            tenantId: $this->tenantId,
-            email: $this->email,
-            name: $this->name,
-            role: $this->role,
-            createdAt: $this->createdAt,
-            updatedAt: new DateTimeImmutable(), // Update timestamp on change
-            password: $this->password,
-            rememberToken: $this->rememberToken,
-            avatar: $this->avatar,
-            emailVerifiedAt: $date,
-        );
-    }
+    private function __construct() {}
 
-    public function withAvatar(?string $avatarUrl): self
-    {
-        return new self(
-            id: $this->id,
-            tenantId: $this->tenantId,
-            email: $this->email,
-            name: $this->name,
-            role: $this->role,
-            createdAt: $this->createdAt,
-            updatedAt: new DateTimeImmutable(),
-            password: $this->password,
-            rememberToken: $this->rememberToken,
-            avatar: $avatarUrl,
-            emailVerifiedAt: $this->emailVerifiedAt,
-        );
-    }
+    /**
+     * Factory: Register a new User with Pre-allocated Identity.
+     * 
+     * @param string $uuid Pre-allocated UUID v4/v7.
+     * @param string $tenantId Pre-allocated Tenant UUID.
+     */
+    public static function register(
+        string $uuid,
+        string $name, 
+        string $email, 
+        string $passwordHash, 
+        UserRole $role,
+        string $tenantId
+    ): self {
+        $user = new self();
 
-    public function withName(string $name): self
-    {
-        return new self(
-            id: $this->id,
-            tenantId: $this->tenantId,
-            email: $this->email,
+        // The Event is recorded ONCE with the FINAL state.
+        // No patching allowed.
+        $event = new UserRegistered(
+            user_id: $uuid,
             name: $name,
-            role: $this->role,
-            createdAt: $this->createdAt,
-            updatedAt: new DateTimeImmutable(),
-            password: $this->password,
-            rememberToken: $this->rememberToken,
-            avatar: $this->avatar,
-            emailVerifiedAt: $this->emailVerifiedAt,
-        );
-    }
-
-    public function withEmail(EmailAddress $email): self
-    {
-        return new self(
-            id: $this->id,
-            tenantId: $this->tenantId,
             email: $email,
-            name: $this->name,
-            role: $this->role,
-            createdAt: $this->createdAt,
-            updatedAt: new DateTimeImmutable(),
-            password: $this->password,
-            rememberToken: $this->rememberToken,
-            avatar: $this->avatar,
-            emailVerifiedAt: $this->emailVerifiedAt,
+            password_hash: $passwordHash,
+            role: $role->value,
+            tenant_id: $tenantId
         );
+
+        $user->recordThat($event);
+
+        return $user;
     }
 
-    public function withPassword(string $hashedPassword): self
+    // -- MUTATORS (Internal) --
+
+    protected function applyUserRegistered(UserRegistered $event): void
     {
-        return new self(
-            id: $this->id,
-            tenantId: $this->tenantId,
-            email: $this->email,
-            name: $this->name,
-            role: $this->role,
-            createdAt: $this->createdAt,
-            updatedAt: new DateTimeImmutable(),
-            password: $hashedPassword,
-            rememberToken: $this->rememberToken,
-            avatar: $this->avatar,
-            emailVerifiedAt: $this->emailVerifiedAt,
-        );
+        $this->id = $event->user_id;
+        $this->name = $event->name;
+        $this->email = $event->email;
+        $this->password = $event->password_hash;
+        $this->role = UserRole::from($event->role);
+        $this->tenantId = $event->tenant_id;
+        $this->createdAt = $event->occurredOn();
+        $this->updatedAt = $event->occurredOn();
     }
 
-    public function withRememberToken(?string $token): self
+    // -- GETTERS (Strict & Explicit) --
+
+    public function id(): string
     {
-        return new self(
-            id: $this->id,
-            tenantId: $this->tenantId,
-            email: $this->email,
-            name: $this->name,
-            role: $this->role,
-            createdAt: $this->createdAt,
-            updatedAt: new DateTimeImmutable(), // Token refresh implies update
-            password: $this->password,
-            rememberToken: $token,
-            avatar: $this->avatar,
-            emailVerifiedAt: $this->emailVerifiedAt,
-        );
+        return $this->id;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // QUERY METHODS
-    // ═══════════════════════════════════════════════════════════════════════
-
-    public function isSeller(): bool
+    public function name(): string
     {
-        return $this->role === 'seller';
+        return $this->name;
     }
 
-    public function isCustomer(): bool
+    public function email(): string
     {
-        return $this->role === 'customer';
+        return $this->email;
     }
 
-    public function isEmailVerified(): bool
+    public function password(): string
     {
-        return $this->emailVerifiedAt !== null;
+        return $this->password;
+    }
+
+    public function role(): UserRole
+    {
+        return $this->role;
+    }
+
+    public function tenantId(): string
+    {
+        return $this->tenantId;
+    }
+    
+    public function createdAt(): ?DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    // -- SNAPSHOT COMPATIBILITY --
+
+    public function toStateArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'password' => $this->password,
+            'role' => $this->role->value,
+            'tenant_id' => $this->tenantId,
+            'created_at' => $this->createdAt?->format(DateTimeImmutable::ATOM),
+            'updated_at' => $this->updatedAt?->format(DateTimeImmutable::ATOM),
+        ];
+    }
+
+    public static function fromStateArray(array $state): self
+    {
+        $user = new self();
+        $user->id = (string) ($state['id'] ?? '');
+        $user->name = $state['name'] ?? '';
+        $user->email = $state['email'] ?? '';
+        $user->password = $state['password'] ?? '';
+        $user->role = UserRole::from($state['role']);
+        $user->tenantId = (string) ($state['tenant_id'] ?? '');
+        $user->createdAt = isset($state['created_at']) ? new DateTimeImmutable($state['created_at']) : null;
+        $user->updatedAt = isset($state['updated_at']) ? new DateTimeImmutable($state['updated_at']) : null;
+        $user->version = 0;
+        return $user;
     }
 }
