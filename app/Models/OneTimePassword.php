@@ -29,12 +29,10 @@ class OneTimePassword extends Model
     }
 
     /**
-     * Hash the code before saving
+     * Hash the code before saving - REMOVED TO PREVENT DOUBLE HASHING
+     * The Repository handles hashing via HmacOtpHasher.
      */
-    public function setCodeAttribute($value): void
-    {
-        $this->attributes['code'] = Hash::make($value);
-    }
+    // public function setCodeAttribute($value): void ...
 
     /**
      * Verify if the OTP is still valid
@@ -46,11 +44,9 @@ class OneTimePassword extends Model
 
     /**
      * Verify the code against the hashed value
+     * @deprecated Use OtpHasherInterface::verify() instead.
      */
-    public function verifyCode(string $code): bool
-    {
-        return Hash::check($code, $this->code);
-    }
+    // public function verifyCode(string $code): bool ...
 
     /**
      * Scope to get only valid (non-expired) OTPs

@@ -25,13 +25,17 @@ final class RegisterRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'tenant_name' => ['nullable', 'string', 'max:255'], // Optional
-            'details' => ['nullable', 'array'], // Market details
+            // 'details' ignored as not in Command
         ];
     }
 
     public function toCommand(): RegisterUserCommand
     {
         $validated = $this->validated();
+        
+        // IDEMPOTENCY Extraction
+        // Support Header (Standard) or Body (Fallback)
+        $idempotencyKey = $this->header('X-Idempotency-Key') ?? $this->input('idempotency_key');
 
         return new RegisterUserCommand(
              name: $validated['name'],
@@ -39,7 +43,8 @@ final class RegisterRequest extends FormRequest
              password: $validated['password'],
              tenantName: $validated['tenant_name'] ?? null,
              slug: null, // Let Handler generate it
-             details: $validated['details'] ?? []
+             source: 'api_registration', // Traceability
+             idempotencyKey: $idempotencyKey
         );
     }
 }

@@ -14,6 +14,8 @@ return [
     App\Providers\BusServiceProvider::class, // Command Bus Middleware Pipeline
     App\Providers\FortifyServiceProvider::class, // Security Actions
     App\Providers\InfrastructureServiceProvider::class,
+    App\Providers\EventServiceProvider::class, // Central Event Hub (Projections)
+    App\Providers\TitaniumServiceProvider::class, // Titanium Standard (ACID, Outbox, Idempotency)
     App\Providers\Filament\AdminPanelProvider::class,
     App\Providers\Filament\AppPanelProvider::class,
     App\Providers\TelescopeServiceProvider::class,
@@ -28,4 +30,6 @@ return [
     App\Providers\Domain\AnalyticsServiceProvider::class,
     App\Providers\Domain\ReportingServiceProvider::class,
     App\Providers\Domain\MediaProcessingServiceProvider::class,
+    App\Providers\SchemaRegistryServiceProvider::class, // Schema Registry (Contract Testing)
+    App\Providers\AuthDomainServiceProvider::class,
 ];

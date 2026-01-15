@@ -14,6 +14,13 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // PUBLIC REGISTRATION
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::post('/register', \App\Infrastructure\Identity\Http\Controllers\RegisterUserController::class)
+        ->middleware('throttle:api')
+        ->name('api.register');
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // AUTHENTICATED USER PROFILE
     // ═══════════════════════════════════════════════════════════════════════════
     Route::get('/user', function (Request $request) {

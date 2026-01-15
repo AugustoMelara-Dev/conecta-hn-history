@@ -50,20 +50,19 @@ Schedule::command('storage:cleanup-orphans --grace=60')
 // ═══════════════════════════════════════════════════════════════════════════════
 // Runs every minute to dispatch pending domain events from the outbox table.
 // Guarantees at-least-once delivery even if app crashes after DB commit.
-// Manual run: php artisan infrastructure:process-outbox
+// Manual run: php artisan outbox:process
 // ═══════════════════════════════════════════════════════════════════════════════
-Schedule::command('infrastructure:process-outbox --batch=50')
+Schedule::command('outbox:process')
     ->everyMinute()
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/outbox-worker.log'));
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// STORAGE MAINTENANCE - Outbox Pruning
+// STORAGE MAINTENANCE - Data Hygiene (Prunable Models)
 // ═══════════════════════════════════════════════════════════════════════════════
-// Daily clean-up of processed events to prevent table bloat.
-// Retention: 7 days for Published, 30 days for Failed (default).
+// Cleans Idempotency Keys (>48h) and Outbox Messages (Logic in Prunable).
 // ═══════════════════════════════════════════════════════════════════════════════
-Schedule::command('outbox:prune')->daily()->at('04:00');
+Schedule::command('model:prune')->daily()->at('04:00');
 
 

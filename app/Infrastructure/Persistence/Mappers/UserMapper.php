@@ -5,35 +5,33 @@ declare(strict_types=1);
 namespace App\Infrastructure\Persistence\Mappers;
 
 use App\Domain\Identity\Entities\UserEntity;
-use App\Models\User;
+use App\Domain\Identity\Enums\UserRole;
+use App\Models\User as UserModel;
 use Carbon\Carbon;
 
 /**
- * UserMapper - Bidirectional Data Translator
+ * UserMapper - Bidirectional Data Translator (Shielded)
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ACL BOUNDARY: Translates between Eloquent ORM and Domain Entities.     ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  - Eloquent Models NEVER leave Infrastructure layer                      ║
- * ║  - Domain Entities are pure, serializable, ORM-agnostic                 ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * Enforces strict type boundaries between Eloquent and Domain.
+ * - Unknown roles fallback securely to CUSTOMER object.
+ * - Enums are explicitly degraded to scalars for persistence.
  */
 final class UserMapper
 {
-    /**
-     * Transform Eloquent Model to Domain Entity.
-     *
-     * @param User $model The Eloquent model from database
-     * @return UserEntity Pure domain entity
-     */
-    public static function toEntity(User $model): UserEntity
+    public static function toEntity(UserModel $model): UserEntity
     {
+        // LIFTING (Secure Fallback)
+        // If Model cast fails or role is missing, we use Enum Object, NOT string.
+        $role = $model->role instanceof UserRole 
+            ? $model->role 
+            : UserRole::CUSTOMER;
+
         return new UserEntity(
             id: $model->id,
             tenantId: $model->tenant_id ?? 0,
             email: $model->email,
             name: $model->name,
-            role: $model->role ?? 'customer',
+            role: $role, // STRICT TYPE
             password: $model->password ?? null,
             rememberToken: $model->remember_token ?? null,
             avatar: $model->avatar ?? null,
@@ -43,12 +41,6 @@ final class UserMapper
         );
     }
 
-    /**
-     * Transform Domain Entity to persistence array.
-     *
-     * @param UserEntity $entity The domain entity
-     * @return array<string, mixed> Data for Eloquent::create/update
-     */
     public static function toModelArray(UserEntity $entity): array
     {
         $data = [
@@ -56,17 +48,15 @@ final class UserMapper
             'tenant_id' => $entity->tenantId,
             'email' => $entity->email,
             'name' => $entity->name,
-            'role' => $entity->role,
+            'role' => $entity->role->value, // LOWERING (Explicit Scalar)
             'avatar' => $entity->avatar,
             'email_verified_at' => $entity->emailVerifiedAt,
         ];
 
-        // Only include password if set (avoid nullifying existing password)
         if ($entity->password !== null) {
             $data['password'] = $entity->password;
         }
 
-        // Only include remember_token if set
         if ($entity->rememberToken !== null) {
             $data['remember_token'] = $entity->rememberToken;
         }

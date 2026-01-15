@@ -18,7 +18,10 @@
         "strict": true,
         "noImplicitAny": false,
         "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true
+        "forceConsistentCasingInFileNames": true,
+        "types": [
+            "vite/client"
+        ]
     },
     "include": [
         "resources/js/**/*.ts",

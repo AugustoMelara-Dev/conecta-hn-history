@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Domain\Shared\Traits\HasDomainEvents;
+use App\Domain\TenantGovernance\Enums\TenantPlan; // IMPORT ENUM
 use App\Domain\TenantGovernance\Events\TenantProfileEnhanced;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Scopes\LocationScope;
@@ -70,6 +71,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'delivery_enabled',
         'pickup_enabled',
         'minimum_order',
+        // 'plan_type', 'subscription_status' handled via guarded or explicit logic
     ];
 
     protected $guarded = [
@@ -100,6 +102,8 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'minimum_order' => 'decimal:2',
         'is_ai_enhanced' => 'boolean',
         'landing_page_data' => 'array',
+        // TITANIUM UPGRADE: STRICT CASTING
+        'plan_type' => TenantPlan::class,
     ];
 
     protected $appends = [
@@ -201,7 +205,10 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public function getIsProAttribute(): bool
     {
-        if (! in_array($this->plan_type, ['pro', 'enterprise'])) {
+        // Handling Enum or String (if called before cast takes effect or legacy)
+        $value = $this->plan_type instanceof TenantPlan ? $this->plan_type->value : $this->plan_type;
+        
+        if (! in_array($value, ['pro', 'enterprise'])) {
             return false;
         }
 
@@ -267,13 +274,15 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public function getPlanTypeLabelAttribute(): string
     {
+        $value = $this->plan_type instanceof TenantPlan ? $this->plan_type->value : $this->plan_type;
+        
         $labels = [
             'semilla' => 'Plan Semilla',
             'pro' => 'Plan Pro',
             'enterprise' => 'Plan Enterprise',
         ];
 
-        return $labels[$this->plan_type] ?? 'Desconocido';
+        return $labels[$value] ?? 'Desconocido';
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
