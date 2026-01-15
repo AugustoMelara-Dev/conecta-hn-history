@@ -7,48 +7,35 @@ namespace App\Infrastructure\Repositories\TenantGovernance;
 use App\Models\Tenant;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 
 /**
  * EloquentTenantRepository - Infrastructure Adapter for Tenant Persistence
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ARCHITECTURAL ROLE: Infrastructure Adapter (Hexagonal Architecture)    ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║                                                                          ║
- * ║  This class is the ONLY place where Eloquent ORM is used for Tenant     ║
- * ║  operations. All static calls (::find, ::where, ::create) are           ║
- * ║  encapsulated here, keeping the Application Layer ORM-agnostic.         ║
- * ║                                                                          ║
- * ║  REPLACEABILITY:                                                         ║
- * ║  - For unit tests: Swap with InMemoryTenantRepository                   ║
- * ║  - For read replicas: Swap with ReadReplicaTenantRepository             ║
- * ║  - For caching: Wrap with CachingTenantRepositoryDecorator              ║
- * ║                                                                          ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * Implements strict type conversion between Domain and Eloquent.
  */
 final class EloquentTenantRepository implements TenantRepositoryInterface
 {
-    /**
-     * Find a tenant by its primary identifier.
-     */
     public function findById(int $id): ?TenantEntity
     {
         $model = Tenant::find($id);
         return $model ? $this->toEntity($model) : null;
     }
 
-    /**
-     * Find a tenant by its unique slug.
-     */
     public function findBySlug(string $slug): ?TenantEntity
     {
         $model = Tenant::where('slug', $slug)->first();
         return $model ? $this->toEntity($model) : null;
     }
-
+    
     /**
-     * Find a tenant by its domain.
+     * Efficient O(1) existence check.
      */
+    public function existsBySlug(string $slug): bool
+    {
+        return Tenant::where('slug', $slug)->exists();
+    }
+
     public function findByDomain(string $domain): ?TenantEntity
     {
         $model = Tenant::where('domain', $domain)->first();
@@ -56,35 +43,25 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
     }
 
     /**
-     * Create a new tenant entity.
-     *
      * @param array<string, mixed> $attributes
-     * @return Tenant
      */
     public function create(array $attributes): TenantEntity
     {
+        // Direct model creation for legacy/factory support, though ideally we use factories
         $model = Tenant::create($attributes);
         return $this->toEntity($model);
     }
 
-    /**
-     * Persist a tenant entity to the data store.
-     *
-     * DEFERRED EVENT DISPATCH:
-     * After successful save, this method extracts any domain events
-     * recorded by the entity and dispatches them via Laravel's event bus.
-     * This ensures events are only fired when persistence succeeds.
-     */
     public function save(TenantEntity $tenant): TenantEntity
     {
         $data = [
             'user_id' => $tenant->userId,
             'name' => $tenant->name,
             'slug' => $tenant->slug,
-            'plan_type' => $tenant->planType,
+            'plan_type' => $tenant->planType->value, // LOWERING TO SCALAR
             'subscription_status' => $tenant->subscriptionStatus,
             'is_active' => $tenant->isActive,
-            // Add other fields as necessary from Entity
+            'source' => $tenant->source,
         ];
 
         if ($tenant->id) {
@@ -94,16 +71,9 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             $model = Tenant::create($data);
         }
 
-        // Release events logic if supported by Entity? 
-        // TenantEntity is PURE so it doesn't have 'releaseEvents' trait from Eloquent.
-        // DTO/Hander manages events. Repository just saves state.
-        
         return $this->toEntity($model);
     }
 
-    /**
-     * Remove a tenant from the data store.
-     */
     public function delete(TenantEntity $tenant): void
     {
         if ($tenant->id) {
@@ -113,12 +83,23 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
 
     private function toEntity(Tenant $model): TenantEntity
     {
+        // LIFTING TO DOMAIN
+        // We rely on Eloquent Casting ($casts) for 'plan_type'.
+        // However, for defense in depth, we verify or fallback safely.
+        
+        $plan = $model->plan_type;
+        if (! $plan instanceof TenantPlan) {
+            // Should not happen if Model casts are correct, but handling legacy strings:
+            $plan = TenantPlan::from((string) ($plan ?? 'semilla'));
+        }
+
         return new TenantEntity(
             id: $model->id,
             userId: $model->user_id,
             name: $model->name,
             slug: $model->slug,
-            planType: $model->plan_type ?? 'semilla',
+            source: $model->source ?? 'SYSTEM', // FALLBACK
+            planType: $plan,
             subscriptionStatus: $model->subscription_status ?? 'active',
             isActive: (bool)$model->is_active,
             createdAt: $model->created_at instanceof \Carbon\Carbon ? \DateTimeImmutable::createFromMutable($model->created_at) : new \DateTimeImmutable(),

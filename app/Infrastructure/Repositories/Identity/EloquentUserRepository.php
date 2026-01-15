@@ -51,6 +51,11 @@ final class EloquentUserRepository implements UserRepositoryInterface
         return UserMapper::toEntity($model);
     }
 
+    public function existsByEmail(string $email): bool
+    {
+        return User::where('email', $email)->exists();
+    }
+
     /**
      * Create a new user entity.
      *
@@ -72,22 +77,65 @@ final class EloquentUserRepository implements UserRepositoryInterface
         return UserMapper::toEntity($model);
     }
 
+    public function update(UserEntity $user): void
+    {
+       if (!$user->id) {
+           throw new \InvalidArgumentException("Cannot update a user without an ID.");
+       }
+       
+       $model = User::findOrFail($user->id);
+       
+       $model->update([
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role->value, // LOWERING
+            'avatar' => $user->avatar,
+            'email_verified_at' => $user->emailVerifiedAt,
+            'password' => $user->password,
+            // 'tenant_id' => ... immutable.
+       ]);
+    }
+
+    public function updateAvatarIfMissing(int $userId, string $avatarUrl): bool
+    {
+        return (bool) User::where('id', $userId)
+            ->whereNull('avatar')
+            ->update(['avatar' => $avatarUrl]);
+    }
+
     /**
-     * Persist changes to a user entity.
+     * Persist changes to a user entity OR Create if new.
      *
      * @param UserEntity $entity The entity to save
      * @return UserEntity Fresh entity reflecting persisted state
      */
     public function save(UserEntity $entity): UserEntity
     {
+        // UPSERT LOGIC:
+        // If entity has no ID, it's new -> Create.
+        // If entity has ID, it's existing -> Update.
+        
+        if ($entity->id === null) {
+            // DELEGATE TO CREATE (Enforcing Context)
+            return $this->create([
+                'name' => $entity->name,
+                'email' => $entity->email,
+                'role' => $entity->role->value, // LOWERING
+                'password' => $entity->password,
+                'avatar' => $entity->avatar,
+            ]);
+        }
+        
+        // UPDATE PATH
         $model = User::findOrFail($entity->id);
 
         $model->update([
             'name' => $entity->name,
             'email' => $entity->email,
-            'role' => $entity->role,
+            'role' => $entity->role->value, // LOWERING
             'avatar' => $entity->avatar,
             'email_verified_at' => $entity->emailVerifiedAt,
+            'password' => $entity->password, // Persist password changes
             // tenant_id is immutable - never update it
         ]);
 
@@ -95,5 +143,3 @@ final class EloquentUserRepository implements UserRepositoryInterface
         return UserMapper::toEntity($model->fresh());
     }
 }
-
-
