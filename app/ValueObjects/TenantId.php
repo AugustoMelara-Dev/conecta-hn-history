@@ -66,12 +66,24 @@ final readonly class TenantId implements \JsonSerializable
     }
 
     /**
-     * Check if this tenant ID matches a raw integer.
+     * Get the tenant ID as a string.
      *
-     * Useful for database queries: ->where('tenant_id', $tenantId->toInt())
+     * PREFERRED METHOD: Use this for all serialization and async contexts.
+     * Useful for database queries: ->where('tenant_id', $tenantId->toString())
+     */
+    public function toString(): string
+    {
+        return (string) $this->value;
+    }
+
+    /**
+     * @deprecated Use toString() instead. This method will be removed in a future version.
+     *
+     * Check if this tenant ID matches a raw integer.
      */
     public function toInt(): int
     {
+        trigger_error('TenantId::toInt() is deprecated. Use toString() instead.', E_USER_DEPRECATED);
         return $this->value;
     }
 
