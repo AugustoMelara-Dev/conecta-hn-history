@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web;
 
+use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Http\Controllers\Controller;
-use App\Models\Payment;
 use App\Settings\GeneralSettings;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -15,24 +14,37 @@ use Inertia\Response;
  * BillingController - Payment Flow Pages
  *
  * MIGRATED FROM: App\Livewire\Pages\PaymentPending
+ * REFACTORED: Now uses PaymentRepositoryInterface instead of Eloquent model
  */
 final class BillingController extends Controller
 {
+    public function __construct(
+        private readonly PaymentRepositoryInterface $paymentRepository,
+    ) {}
+
     /**
      * Show the payment pending page.
      */
     public function showPaymentPending(string $paymentId): Response
     {
-        $payment = Payment::with('tenant')->findOrFail($paymentId);
+        $result = $this->paymentRepository->findByIdWithTenant($paymentId);
+
+        if (!$result) {
+            abort(404, 'Pago no encontrado.');
+        }
+
+        $payment = $result['payment'];
+        $tenantName = $result['tenant_name'];
+        $tenantUserId = $result['tenant_user_id'];
 
         // Security: Verify ownership
         $user = auth()->user();
-        if ($user && $payment->tenant->user_id !== $user->id) {
+        if ($user && $tenantUserId !== $user->id) {
             abort(403, 'No tienes permiso para ver esta página.');
         }
 
         // If payment is already approved, redirect
-        if ($payment->status === 'approved') {
+        if ($payment->isApproved()) {
             return Inertia::location(route('login'));
         }
 
@@ -42,17 +54,21 @@ final class BillingController extends Controller
         $supportWhatsApp = $settings->support_whatsapp_number ?? '';
 
         // Generate WhatsApp URL
-        $whatsappUrl = $this->generateWhatsAppUrl($payment, $supportWhatsApp);
+        $whatsappUrl = $this->generateWhatsAppUrl(
+            $payment->referenceNumber,
+            $payment->amount->format(),
+            $tenantName,
+            $supportWhatsApp
+        );
 
         return Inertia::render('Billing/PaymentPending', [
             'payment' => [
                 'id' => $payment->id,
-                'reference_number' => $payment->reference_number,
-                'amount' => $payment->amount,
-                'currency' => $payment->currency ?? 'HNL',
-                'status' => $payment->status,
-                'description' => $payment->description,
-                'tenant_name' => $payment->tenant->name ?? 'Tu Negocio',
+                'reference_number' => $payment->referenceNumber,
+                'amount' => $payment->amount->amount / 100,
+                'currency' => $payment->amount->currency,
+                'status' => $payment->status->value,
+                'tenant_name' => $tenantName,
             ],
             'bankInstructions' => $bankInstructions,
             'whatsappUrl' => $whatsappUrl,
@@ -62,8 +78,12 @@ final class BillingController extends Controller
     /**
      * Generate WhatsApp URL with pre-filled message.
      */
-    private function generateWhatsAppUrl(Payment $payment, string $supportPhone): string
-    {
+    private function generateWhatsAppUrl(
+        string $reference,
+        string $formattedAmount,
+        string $tenantName,
+        string $supportPhone
+    ): string {
         $phone = preg_replace('/[^0-9]/', '', $supportPhone);
 
         if (empty($phone)) {
@@ -72,17 +92,13 @@ final class BillingController extends Controller
 
         // Add country code if missing
         if (strlen($phone) === 8) {
-            $phone = '504' . $phone; // Honduras
+            $phone = '504' . $phone;
         }
-
-        $tenantName = $payment->tenant?->name ?? 'Mi Negocio';
-        $reference = $payment->reference_number ?? 'N/A';
-        $amount = number_format($payment->amount, 2);
 
         $message = "Hola, acabo de registrar mi negocio *{$tenantName}* en Conecta HN.\n\n";
         $message .= "Adjunto el comprobante de pago:\n";
         $message .= "📋 Referencia: *{$reference}*\n";
-        $message .= "💰 Monto: *L. {$amount}*";
+        $message .= "💰 Monto: *{$formattedAmount}*";
 
         return "https://wa.me/{$phone}?text=" . urlencode($message);
     }

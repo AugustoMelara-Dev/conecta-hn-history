@@ -52,6 +52,21 @@ final class EloquentPaymentRepository implements PaymentRepositoryInterface
         );
     }
 
+    public function findByIdWithTenant(string $id): ?array
+    {
+        $model = Payment::with('tenant')->find($id);
+        
+        if (!$model) {
+            return null;
+        }
+
+        return [
+            'payment' => $this->toEntity($model),
+            'tenant_name' => $model->tenant?->name ?? 'Unknown',
+            'tenant_user_id' => $model->tenant?->user_id ?? 0,
+        ];
+    }
+
     /**
      * Map Eloquent model to domain entity.
      */

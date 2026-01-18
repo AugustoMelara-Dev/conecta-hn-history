@@ -38,8 +38,7 @@ class InfrastructureServiceProvider extends ServiceProvider
         // REPOSITORY PATTERN BINDINGS (ORM Decoupling)
         // ═══════════════════════════════════════════════════════════════════════
         // These bindings allow Application Layer (Jobs, Actions) to depend on
-        // Domain interfaces rather than Eloquent directly. For unit testing,
-        // swap EloquentTenantRepository with InMemoryTenantRepository.
+        // Domain interfaces rather than Eloquent directly.
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
             \App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface::class,
@@ -48,7 +47,12 @@ class InfrastructureServiceProvider extends ServiceProvider
 
         $this->app->bind(
             \App\Domain\Identity\Repositories\UserRepositoryInterface::class,
-            \App\Infrastructure\Repositories\Identity\EloquentUserRepository::class
+            \App\Infrastructure\Persistence\EloquentUserRepository::class
+        );
+
+        $this->app->bind(
+            \App\Application\Shared\Contracts\SocialIdentityRepositoryInterface::class,
+            \App\Infrastructure\Persistence\EloquentSocialIdentityRepository::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -63,6 +67,24 @@ class InfrastructureServiceProvider extends ServiceProvider
             fn () => app()->environment('testing')
                 ? new \App\Infrastructure\Payments\FakePaymentGateway()
                 : new \App\Infrastructure\Payments\Stripe\StripePaymentGateway()
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // CONTROLLER DECOUPLING BINDINGS (Hexagonal Architecture)
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Application\Shared\Contracts\ReferenceDataReaderInterface::class,
+            \App\Infrastructure\Persistence\Readers\EloquentReferenceDataReader::class
+        );
+
+        $this->app->bind(
+            \App\Domain\Billing\Repositories\PaymentRepositoryInterface::class,
+            \App\Infrastructure\Repositories\Billing\EloquentPaymentRepository::class
+        );
+
+        $this->app->bind(
+            \App\Application\Auth\Contracts\AuthTokenServiceInterface::class,
+            \App\Infrastructure\Auth\SanctumAuthTokenService::class
         );
     }
 

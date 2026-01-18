@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Web;
 
 use App\Application\Shared\Contracts\CommandBus;
+use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
-use App\Models\Category;
-use App\Models\City;
-use App\Models\Tenant;
 use App\Services\TenantRegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,16 +21,14 @@ use Inertia\Response;
  * RegistrationController - React/Inertia Tenant Registration
  *
  * MIGRATED FROM: App\Livewire\Pages\RegisterTenant
- * 
- * Provides:
- * - create(): Render registration form with cities/categories
- * - checkSlug(): API for real-time slug availability
- * - store(): Process registration via CommandBus
+ * REFACTORED: Now uses Repository interfaces instead of Eloquent models
  */
 final class RegistrationController extends Controller
 {
     public function __construct(
-        private readonly CommandBus $bus
+        private readonly CommandBus $bus,
+        private readonly ReferenceDataReaderInterface $referenceDataReader,
+        private readonly TenantRepositoryInterface $tenantRepository,
     ) {}
 
     /**
@@ -45,14 +42,8 @@ final class RegistrationController extends Controller
         }
 
         return Inertia::render('Auth/RegisterTenant', [
-            'cities' => City::query()
-                ->where('is_available', true)
-                ->orderBy('name')
-                ->get(['id', 'name']),
-            'categories' => Category::query()
-                ->where('is_active', true)
-                ->orderBy('sort_order')
-                ->get(['id', 'name']),
+            'cities' => $this->referenceDataReader->getAvailableCities(),
+            'categories' => $this->referenceDataReader->getActiveCategories(),
             'settings' => [
                 'freeProductLimit' => config('conecta.free_plan_product_limit', 10),
                 'proProductLimit' => config('conecta.pro_plan_product_limit', 100),
@@ -80,8 +71,8 @@ final class RegistrationController extends Controller
             ]);
         }
 
-        // Check database (including soft-deleted if using SoftDeletes)
-        $exists = Tenant::withTrashed()->where('slug', $slug)->exists();
+        // Check database via Repository (not direct Eloquent)
+        $exists = $this->tenantRepository->existsBySlug($slug);
 
         if ($exists) {
             return response()->json([

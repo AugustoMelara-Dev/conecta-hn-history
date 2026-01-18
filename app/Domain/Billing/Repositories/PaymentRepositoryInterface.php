@@ -35,4 +35,12 @@ interface PaymentRepositoryInterface
      * Handles both creation and updates (Upsert).
      */
     public function save(PaymentEntity $payment): void;
+
+    /**
+     * Find a payment by ID with eager-loaded tenant.
+     * For display purposes (e.g., billing pages).
+     *
+     * @return array{payment: PaymentEntity, tenant_name: string, tenant_user_id: int|string}|null
+     */
+    public function findByIdWithTenant(string $id): ?array;
 }
