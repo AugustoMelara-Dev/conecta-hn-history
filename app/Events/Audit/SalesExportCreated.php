@@ -90,7 +90,7 @@ final readonly class SalesExportCreated implements AuditEvent
             'event_type' => 'sales.export.created',
             'severity' => $this->severity()->value,
             'export_id' => $this->exportId,
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'user_id' => $this->userId,
             'format' => $this->format,
             'criteria_hash' => $this->criteriaHash,
@@ -117,7 +117,7 @@ final readonly class SalesExportCreated implements AuditEvent
     {
         return [
             'export_id' => $this->exportId,
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'user_id' => $this->userId,
             'format' => $this->format,
             'criteria_hash' => $this->criteriaHash,

@@ -91,7 +91,7 @@ final readonly class FailedLoginAttempt implements AuditEvent
         return [
             'event' => 'failed_login_attempt',
             'email' => $this->email,
-            'tenant_id' => $this->tenantId?->toInt(),
+            'tenant_id' => $this->tenantId?->toString(),
             'failure_reason' => $this->failureReason,
             'fingerprint' => $this->fingerprint(),
             ...$safeContext->toArray(anonymize: true),
@@ -122,7 +122,7 @@ final readonly class FailedLoginAttempt implements AuditEvent
     {
         return [
             'email' => $this->email,
-            'tenant_id' => $this->tenantId?->toInt(),
+            'tenant_id' => $this->tenantId?->toString(),
             'failure_reason' => $this->failureReason,
             'context' => $this->context->toArray(anonymize: false),
         ];

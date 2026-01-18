@@ -100,7 +100,7 @@ final readonly class SensitiveDataAccessed implements AuditEvent
             'event' => 'sensitive_data_accessed',
             'actor_id' => $this->actorId,
             'actor_email' => $this->actorEmail,
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'resource' => $this->resource,
             'action' => $this->action,
             'reason' => $this->reason,
@@ -138,7 +138,7 @@ final readonly class SensitiveDataAccessed implements AuditEvent
         return [
             'actor_id' => $this->actorId,
             'actor_email' => $this->actorEmail,
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'resource' => $this->resource,
             'action' => $this->action,
             'reason' => $this->reason,

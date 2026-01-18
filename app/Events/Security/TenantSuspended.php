@@ -107,7 +107,7 @@ final readonly class TenantSuspended implements AuditEvent
 
         return [
             'event' => 'tenant_suspended',
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'tenant_slug' => $this->tenantSlug,
             'tenant_name' => $this->tenantName,
             'reason' => $this->reason,
@@ -142,7 +142,7 @@ final readonly class TenantSuspended implements AuditEvent
     public function toPrimitives(): array
     {
         return [
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'tenant_slug' => $this->tenantSlug,
             'tenant_name' => $this->tenantName,
             'reason' => $this->reason,

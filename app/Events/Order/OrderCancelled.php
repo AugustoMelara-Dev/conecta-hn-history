@@ -137,7 +137,7 @@ final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterC
     {
         return [
             'event_id' => $this->eventId,
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'order_id' => $this->orderId,
             'order_number' => $this->orderNumber->toString(),
             'reason' => $this->reason,

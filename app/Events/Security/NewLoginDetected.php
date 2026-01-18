@@ -162,7 +162,7 @@ final readonly class NewLoginDetected implements AuditEvent
             'event' => 'new_login_detected',
             'event_id' => $this->eventId,
             'correlation_id' => $this->correlationId,
-            'tenant_id' => $this->tenantId?->toInt(),
+            'tenant_id' => $this->tenantId?->toString(),
             'user_id' => $this->userId,
             'user_email' => $this->userEmail,
             'ip_address' => $this->ipAddress->toString(), // Already anonymized
@@ -202,7 +202,7 @@ final readonly class NewLoginDetected implements AuditEvent
         return [
             'event_id' => $this->eventId,
             'correlation_id' => $this->correlationId,
-            'tenant_id' => $this->tenantId?->toInt(),
+            'tenant_id' => $this->tenantId?->toString(),
             'user_id' => $this->userId,
             'user_email' => $this->userEmail,
             'ip_address' => $this->ipAddress->toString(),

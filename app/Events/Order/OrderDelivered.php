@@ -93,7 +93,7 @@ final readonly class OrderDelivered implements DomainEvent, ShouldDispatchAfterC
         return [
             'event_id' => $this->eventId,
             'correlation_id' => $this->correlationId,
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'order_id' => $this->orderId,
             'order_number' => $this->orderNumber->toString(),
             'occurred_at' => $this->occurredAt->format(DATE_ATOM),

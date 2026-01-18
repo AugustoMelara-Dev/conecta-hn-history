@@ -128,7 +128,7 @@ final readonly class LowStockThresholdReached implements DomainEvent, ShouldDisp
     {
         return [
             'event_id' => $this->eventId,
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'product_id' => $this->productId,
             'product_name' => $this->productName,
             'product_sku' => $this->productSku,

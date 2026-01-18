@@ -47,7 +47,7 @@ final readonly class ProductPriceChanged implements DomainEvent, TenantAwareEven
     public function toPrimitives(): array
     {
         return [
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'product_id' => $this->productId,
             'old_price' => $this->oldPrice,
             'new_price' => $this->newPrice,
