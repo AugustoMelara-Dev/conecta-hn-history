@@ -34,5 +34,8 @@ final readonly class UpdateUserPasswordCommand
         
         /** Whether to refresh remember token (forces re-login on other devices) */
         public bool $refreshRememberToken = false,
+
+        /** Unique Receipt ID (UUID v7) for transactional idempotency */
+        public string $idempotencyKey,
     ) {}
 }

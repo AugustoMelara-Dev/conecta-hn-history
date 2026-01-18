@@ -39,15 +39,20 @@ interface IdempotencyServiceInterface
     public function store(string $key, mixed $value, int $ttlSeconds = 86400): void;
 
     /**
-     * Execute a callback atomically with distributed locking.
+     * Check if a key exists in the store.
      *
-     * This method provides a framework-agnostic way to acquire a lock
-     * and execute critical sections without exposing Lock objects.
-     *
-     * @param string $key The lock key
-     * @param int $seconds Maximum time to wait for lock acquisition
-     * @param callable $callback The operation to execute atomically
-     * @return mixed The result of the callback
+     * @param string $key
+     * @return bool
      */
-    public function atomic(string $key, int $seconds, callable $callback): mixed;
+    public function has(string $key): bool;
+
+    /**
+     * Acquire a distributed lock and execute callback.
+     *
+     * @param string $key
+     * @param callable $callback
+     * @param int $secondsTimeout
+     * @return mixed
+     */
+    public function lock(string $key, callable $callback, int $secondsTimeout = 10): mixed;
 }

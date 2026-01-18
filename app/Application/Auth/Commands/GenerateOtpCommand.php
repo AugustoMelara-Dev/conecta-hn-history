@@ -18,6 +18,7 @@ final readonly class GenerateOtpCommand
         public string $type,
         public string $ipAddress,
         public string $userAgent,
-        public ?string $idempotencyKey = null,
+        /** Unique Receipt ID (UUID v7) for transactional idempotency */
+        public string $idempotencyKey,
     ) {}
 }

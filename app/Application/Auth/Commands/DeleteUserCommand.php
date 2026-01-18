@@ -24,5 +24,8 @@ final readonly class DeleteUserCommand
          * CRITICAL: Used to verify ownership before deletion.
          */
         public string $requestingTenantId,
+
+        /** Unique Receipt ID (UUID v7) for transactional idempotency */
+        public string $idempotencyKey,
     ) {}
 }

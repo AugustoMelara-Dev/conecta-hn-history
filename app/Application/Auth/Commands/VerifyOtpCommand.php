@@ -27,5 +27,8 @@ final readonly class VerifyOtpCommand
         
         /** Client IP for security audit and brute-force detection */
         public string $ipAddress,
+
+        /** Unique Receipt ID (UUID v7) for transactional idempotency */
+        public string $idempotencyKey,
     ) {}
 }

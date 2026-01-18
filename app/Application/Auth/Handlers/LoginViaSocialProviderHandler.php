@@ -6,7 +6,9 @@ namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Results\SocialLoginResult;
-use App\Application\Shared\Contracts\EventBusInterface;
+use App\Application\Shared\Contracts\OutboxRepositoryInterface;
+use App\Application\Common\Contracts\IdempotencyServiceInterface;
+use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Application\Shared\Interfaces\EntropyGeneratorInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Identity\Entities\UserEntity;
@@ -18,14 +20,15 @@ use App\Domain\Security\Contracts\HasherInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Domain\Shared\Exceptions\DuplicateEntityException;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
+use Ramsey\Uuid\Uuid;
 
 /**
  * LoginViaSocialProviderHandler - Tenant-Scoped Identity Orchestrator
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  NO SILENT WRITES: Dispatches UserRegistered/UserIdentityLinked events. ║
- * ║  TENANT ISOLATED: All lookups are scoped by tenantId.                   ║
+ * ║  CONSISTENCY: Transactional Outbox & Idempotency Barrier.               ║
  * ║  RESILIENT: Handles concurrency via try/catch strategies.               ║
  * ║  HIGH PERFORMANCE: Short Transactions & Ordered UUIDs.                  ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
@@ -41,17 +44,29 @@ final readonly class LoginViaSocialProviderHandler
         private HasherInterface $hasher,
         private ClockInterface $clock,
         private EntropyGeneratorInterface $entropyGenerator,
-        private EventBusInterface $eventBus,
+        private OutboxRepositoryInterface $outboxRepository,
+        private IdempotencyServiceInterface $idempotencyService,
+        private LoggerInterface $logger,
     ) {}
 
     public function handle(LoginViaSocialProviderCommand $command): SocialLoginResult
     {
-        // PERFORMANCE: Store events to dispatch AFTER transaction commit
-        // Prevents Connection Starvation if listeners are slow
-        $pendingEvents = [];
+        // ═══════════════════════════════════════════════════════════════════
+        // PHASE 1: IDEMPOTENCY BARRIER (Concurrency Control)
+        // ═══════════════════════════════════════════════════════════════════
+        if ($this->idempotencyService->has($command->idempotencyKey)) {
+            $cachedResult = $this->idempotencyService->get($command->idempotencyKey);
+            if ($cachedResult instanceof SocialLoginResult) {
+                return $cachedResult;
+            }
+        }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // PHASE 2: TRANSACTIONAL ORCHESTRATION (Unit of Work)
+        // ═══════════════════════════════════════════════════════════════════
+        
         /** @var SocialLoginResult $result */
-        $result = $this->transactionManager->transaction(function () use ($command, &$pendingEvents) {
+        $result = $this->transactionManager->transaction(function () use ($command) {
             
             // 1. Strategy: Direct Social Identity Match (Login)
             $user = $this->socialIdentityRepository->findUserByProvider(
@@ -72,12 +87,14 @@ final readonly class LoginViaSocialProviderHandler
                 $this->linkIdentity($existingUser, $command);
                 $this->updateAvatarIfNeeded($existingUser, $command);
                 
-                // Queue Event
-                $pendingEvents[] = SocialIdentityLinked::now(
-                    userId: $existingUser->id(),
+                // Outbox Persistence
+                $event = SocialIdentityLinked::now(
+                    userId: (string) $existingUser->id(),
                     tenantId: $command->tenantId,
                     provider: $command->providerName->value,
                 );
+                
+                $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $existingUser->id());
                 
                 return SocialLoginResult::success($existingUser);
             }
@@ -97,19 +114,21 @@ final readonly class LoginViaSocialProviderHandler
 
                 $this->linkIdentity($newUser, $command);
                 
-                // Queue Event
-                $pendingEvents[] = UserRegisteredViaSocial::now(
-                    userId: $newUser->id(),
+                // Outbox Persistence
+                $event = UserRegisteredViaSocial::now(
+                    userId: (string) $newUser->id(),
                     tenantId: $command->tenantId,
                     email: $newUser->email(),
                     provider: $command->providerName->value,
                 );
 
+                $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $newUser->id());
+
                 return SocialLoginResult::newUser($newUser);
 
             } catch (DuplicateEntityException $e) {
                 // RESILIENCE: Handle Race Condition (User created by another process)
-                Log::warning("Race condition detected in social login provisioning", $this->sanitizePayload([
+                $this->logger->warning("Race condition detected in social login provisioning", $this->sanitizePayload([
                     'email' => $command->email,
                     'tenant_id' => $command->tenantId
                 ]));
@@ -122,16 +141,17 @@ final readonly class LoginViaSocialProviderHandler
                     try {
                         $this->linkIdentity($racedUser, $command);
                         
-                        // If successful, queue event
-                        $pendingEvents[] = SocialIdentityLinked::now(
-                            userId: $racedUser->id(),
+                        // Outbox Persistence (Recovery)
+                        $event = SocialIdentityLinked::now(
+                            userId: (string) $racedUser->id(),
                             tenantId: $command->tenantId,
                             provider: $command->providerName->value,
                         );
+
+                        $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $racedUser->id());
+
                     } catch (DuplicateEntityException $innerException) {
                         // Idempotency: Identity already linked.
-                        // We swallow this error because the desired state (Linked) is achieved.
-                        // No event dispatched here to avoid noise, or duplicate dispatch
                     }
                     
                     return SocialLoginResult::success($racedUser);
@@ -140,13 +160,28 @@ final readonly class LoginViaSocialProviderHandler
             }
         });
 
-        // DISPATCH EVENTS AFTER COMMIT
-        // This ensures DB connection is free and ready for next request
-        foreach ($pendingEvents as $event) {
-            $this->eventBus->dispatch($event);
-        }
+        // ═══════════════════════════════════════════════════════════════════
+        // PHASE 3: IDEMPOTENCY RECORDING
+        // ═══════════════════════════════════════════════════════════════════
+        $this->idempotencyService->store($command->idempotencyKey, $result);
 
         return $result;
+    }
+
+    private function persistToOutbox(object $event, string $idempotencyKey, string $tenantId, ?int $aggregateId): void
+    {
+        $message = new DomainEventMessage(
+            eventId: Uuid::uuid7()->toString(),
+            type: get_class($event),
+            aggregateId: (string) $aggregateId,
+            payload: json_encode($event->toPayload()),
+            occurredAt: $this->clock->now(),
+            metadata: [
+                'tenant_id' => $tenantId,
+                'causation_id' => $idempotencyKey,
+            ]
+        );
+        $this->outboxRepository->save($message);
     }
 
     private function linkIdentity(UserEntity $user, LoginViaSocialProviderCommand $command): void

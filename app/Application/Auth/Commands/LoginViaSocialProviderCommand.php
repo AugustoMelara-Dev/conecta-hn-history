@@ -42,5 +42,8 @@ final readonly class LoginViaSocialProviderCommand
         
         /** OAuth refresh token */
         public ?string $refreshToken = null,
+
+        /** Unique Receipt ID (UUID v7) for transactional idempotency */
+        public string $idempotencyKey,
     ) {}
 }
