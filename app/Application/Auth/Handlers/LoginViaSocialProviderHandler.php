@@ -6,25 +6,28 @@ namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Results\SocialLoginResult;
+use App\Application\Shared\Contracts\EventBusInterface;
+use App\Application\Shared\Interfaces\EntropyGeneratorInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Identity\Entities\UserEntity;
+use App\Domain\Identity\Events\SocialIdentityLinked;
+use App\Domain\Identity\Events\UserRegisteredViaSocial;
 use App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Security\Contracts\HasherInterface;
-use App\Domain\Security\Contracts\TokenGeneratorInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
-use App\Domain\Shared\Contracts\TransactionManagerInterface;
-use App\Application\Shared\Interfaces\EntropyGeneratorInterface;
-use Illuminate\Database\UniqueConstraintViolationException;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
+use App\Domain\Shared\Exceptions\DuplicateEntityException;
 use Illuminate\Support\Facades\Log;
 
 /**
- * LoginViaSocialProviderHandler - Pure Identity Orchestrator
+ * LoginViaSocialProviderHandler - Tenant-Scoped Identity Orchestrator
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  CONTEXT ISOLATION: No Tenant logic. Identity creation only.            ║
- * ║  PROTOCOL AGNOSTIC: Returns pure DTOs, no URLs.                         ║
+ * ║  NO SILENT WRITES: Dispatches UserRegistered/UserIdentityLinked events. ║
+ * ║  TENANT ISOLATED: All lookups are scoped by tenantId.                   ║
  * ║  RESILIENT: Handles concurrency via try/catch strategies.               ║
+ * ║  HIGH PERFORMANCE: Short Transactions & Ordered UUIDs.                  ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class LoginViaSocialProviderHandler
@@ -37,119 +40,141 @@ final readonly class LoginViaSocialProviderHandler
         private TransactionManagerInterface $transactionManager,
         private HasherInterface $hasher,
         private ClockInterface $clock,
-        private EntropyGeneratorInterface $entropyGenerator
+        private EntropyGeneratorInterface $entropyGenerator,
+        private EventBusInterface $eventBus,
     ) {}
 
     public function handle(LoginViaSocialProviderCommand $command): SocialLoginResult
     {
-        return $this->transactionManager->transaction(function () use ($command) {
+        // PERFORMANCE: Store events to dispatch AFTER transaction commit
+        // Prevents Connection Starvation if listeners are slow
+        $pendingEvents = [];
+
+        /** @var SocialLoginResult $result */
+        $result = $this->transactionManager->transaction(function () use ($command, &$pendingEvents) {
             
-            // 1. Strategy: Direct Social Identity Match
+            // 1. Strategy: Direct Social Identity Match (Login)
             $user = $this->socialIdentityRepository->findUserByProvider(
                 $command->providerName->value,
-                $command->providerId
+                $command->providerId,
+                $command->tenantId
             );
 
-            if ($user !== null) {
-                $this->updateSocialToken($user, $command); // Side Effect: Refresh Token
-                return SocialLoginResult::success($this->mapToEntity($user));
+            if ($user instanceof UserEntity) {
+                $this->updateSocialToken($user, $command);
+                return SocialLoginResult::success($user);
             }
 
             // 2. Strategy: Link Existing Account (Trust on First Use)
-            $existingUser = $this->userRepository->findByEmail($command->email);
+            $existingUser = $this->userRepository->findByEmail($command->email, $command->tenantId);
 
             if ($existingUser !== null) {
                 $this->linkIdentity($existingUser, $command);
-                $this->updateAvatarIfNeeded($existingUser, $command); // Logic in memory, then persist
-                return SocialLoginResult::success($this->mapToEntity($existingUser));
+                $this->updateAvatarIfNeeded($existingUser, $command);
+                
+                // Queue Event
+                $pendingEvents[] = SocialIdentityLinked::now(
+                    userId: $existingUser->id(),
+                    tenantId: $command->tenantId,
+                    provider: $command->providerName->value,
+                );
+                
+                return SocialLoginResult::success($existingUser);
             }
 
-            // 3. Strategy: New User Provisioning
+            // 3. Strategy: New User Provisioning (Registration)
             try {
-                $newUser = $this->provisionNewIdentity($command);
-                return SocialLoginResult::newUser($this->mapToEntity($newUser));
-            } catch (UniqueConstraintViolationException $e) {
-                // Race condition: User created by another process in the microseconds between check and insert
-                Log::warning("Race condition detected in social login provisioning", ['email' => $command->email]);
+                $newUser = UserEntity::registerViaSocial(
+                    $command->tenantId,
+                    $command->name,
+                    $command->email,
+                    $command->avatarUrl,
+                    $command->providerName->value,
+                    $command->providerId
+                );
+
+                $this->userRepository->save($newUser);
+
+                $this->linkIdentity($newUser, $command);
                 
-                $racedUser = $this->userRepository->findByEmail($command->email);
-                if ($racedUser) {
-                    $this->linkIdentity($racedUser, $command);
-                    return SocialLoginResult::success($this->mapToEntity($racedUser));
+                // Queue Event
+                $pendingEvents[] = UserRegisteredViaSocial::now(
+                    userId: $newUser->id(),
+                    tenantId: $command->tenantId,
+                    email: $newUser->email(),
+                    provider: $command->providerName->value,
+                );
+
+                return SocialLoginResult::newUser($newUser);
+
+            } catch (DuplicateEntityException $e) {
+                // RESILIENCE: Handle Race Condition (User created by another process)
+                Log::warning("Race condition detected in social login provisioning", $this->sanitizePayload([
+                    'email' => $command->email,
+                    'tenant_id' => $command->tenantId
+                ]));
+                
+                // Re-fetch with tenant scope
+                $racedUser = $this->userRepository->findByEmail($command->email, $command->tenantId);
+                
+                if ($racedUser instanceof UserEntity) {
+                    // ATOMIC RECOVERY: Try to link, but ignore if already linked by competitor
+                    try {
+                        $this->linkIdentity($racedUser, $command);
+                        
+                        // If successful, queue event
+                        $pendingEvents[] = SocialIdentityLinked::now(
+                            userId: $racedUser->id(),
+                            tenantId: $command->tenantId,
+                            provider: $command->providerName->value,
+                        );
+                    } catch (DuplicateEntityException $innerException) {
+                        // Idempotency: Identity already linked.
+                        // We swallow this error because the desired state (Linked) is achieved.
+                        // No event dispatched here to avoid noise, or duplicate dispatch
+                    }
+                    
+                    return SocialLoginResult::success($racedUser);
                 }
                 throw $e;
             }
         });
+
+        // DISPATCH EVENTS AFTER COMMIT
+        // This ensures DB connection is free and ready for next request
+        foreach ($pendingEvents as $event) {
+            $this->eventBus->dispatch($event);
+        }
+
+        return $result;
     }
 
-    private function provisionNewIdentity(LoginViaSocialProviderCommand $command): object
-    {
-        // Generate secure random password as placeholder
-        $securePassword = $this->entropyGenerator->generateString(32);
-        
-        $user = $this->userRepository->create([
-            'name' => $command->name,
-            'email' => $command->email,
-            'password' => $this->hasher->make($securePassword),
-            'email_verified_at' => $this->clock->now(),
-            'avatar' => $command->avatarUrl,
-        ]);
-
-        $this->socialIdentityRepository->linkIdentity(
-            $user,
-            $command->providerName->value,
-            $command->providerId,
-            $command->accessToken,
-            $command->avatarUrl
-        );
-
-        Log::info('New social identity provisioned', $this->sanitizePayload([
-            'user_id' => $user->id,
-            'provider' => $command->providerName->value
-        ]));
-
-        return $user;
-    }
-
-    private function linkIdentity(object $user, LoginViaSocialProviderCommand $command): void
+    private function linkIdentity(UserEntity $user, LoginViaSocialProviderCommand $command): void
     {
         $this->socialIdentityRepository->linkIdentity(
             $user,
             $command->providerName->value,
             $command->providerId,
             $command->accessToken,
-            $command->avatarUrl
+            $command->avatarUrl,
+            $command->tenantId
         );
     }
 
-    private function updateSocialToken(object $user, LoginViaSocialProviderCommand $command): void
+    private function updateSocialToken(UserEntity $user, LoginViaSocialProviderCommand $command): void
     {
-        // Optimistic update, non-critical
         $this->socialIdentityRepository->updateToken(
             $command->providerName->value,
             $command->providerId,
-            $command->accessToken
+            $command->accessToken,
+            $command->tenantId
         );
     }
 
-    private function updateAvatarIfNeeded(object $user, LoginViaSocialProviderCommand $command): void
+    private function updateAvatarIfNeeded(UserEntity $user, LoginViaSocialProviderCommand $command): void
     {
-        if (empty($user->avatar) && !empty($command->avatarUrl)) {
-            // Memory update
-            $user->avatar = $command->avatarUrl;
-            // Persistence
-            $this->userRepository->save($user);
+        if (empty($user->avatar()) && !empty($command->avatarUrl)) {
+            $this->userRepository->updateAvatarIfMissing($user->id(), $command->avatarUrl);
         }
-    }
-
-    private function mapToEntity(object $eloquentUser): UserEntity
-    {
-        return new UserEntity(
-            id: $eloquentUser->id,
-            tenantId: $eloquentUser->tenant_id ?? null,
-            email: $eloquentUser->email,
-            name: $eloquentUser->name,
-            role: $eloquentUser->role ?? 'user', // Default role
-        );
     }
 }

@@ -10,11 +10,15 @@ namespace App\Application\Auth\Commands;
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  TRANSPORT ONLY: No validation logic - Handler validates cryptography.  ║
  * ║  SECURITY METADATA: Carries IP for audit and brute-force detection.     ║
+ * ║  TENANT AWARE: Mandatory tenantId to prevent cross-tenant verification. ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class VerifyOtpCommand
 {
     public function __construct(
+        /** Mandatory Tenant Context (Axiom A) */
+        public string $tenantId,
+
         /** Email or phone number associated with OTP */
         public string $identifier,
         

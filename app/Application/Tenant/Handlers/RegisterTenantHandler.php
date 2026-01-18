@@ -11,7 +11,7 @@ use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Domain\Identity\Factories\UserFactory;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Security\Contracts\HasherInterface;
-use App\Domain\Shared\Contracts\TransactionManagerInterface;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Domain\TenantGovernance\Factories\TenantFactory;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Services\SubscriptionPricingService;

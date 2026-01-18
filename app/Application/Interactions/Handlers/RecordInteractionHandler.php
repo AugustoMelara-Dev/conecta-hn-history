@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Application\Interactions\Handlers;
 
 use App\Application\Interactions\Commands\RecordInteractionCommand;
+use App\Application\Shared\Contracts\LoggerInterface;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Analytics\Repositories\InteractionRepositoryInterface;
 use App\Domain\Sales\Repositories\LeadRepositoryInterface;
 use App\Domain\Shared\Contracts\AdminNotifierInterface;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * RecordInteractionHandler - Pure Interaction Recording Orchestrator
@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Log;
  * ║  VISITOR-AWARE: Deduplication is per-visitor, not global.               ║
  * ║  CONVERSION: WhatsApp clicks automatically create Leads.                ║
  * ║  PURE ENTITIES: Works with domain entities throughout.                  ║
+ * ║  FRAMEWORK AGNOSTIC: Uses injected interfaces for DB & Log.             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final class RecordInteractionHandler
@@ -32,17 +33,16 @@ final class RecordInteractionHandler
         private readonly InteractionRepositoryInterface $interactionRepository,
         private readonly LeadRepositoryInterface $leadRepository,
         private readonly AdminNotifierInterface $adminNotifier,
+        private readonly TransactionManagerInterface $transactionManager,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
      * Handle interaction recording command.
-     *
-     * @param RecordInteractionCommand $command
-     * @return void
      */
     public function handle(RecordInteractionCommand $command): void
     {
-        DB::transaction(function () use ($command): void {
+        $this->transactionManager->transaction(function () use ($command): void {
             // ═══════════════════════════════════════════════════════════════
             // PHASE 1: Deduplication Check (5-minute window, PER-VISITOR)
             // ═══════════════════════════════════════════════════════════════
@@ -54,12 +54,12 @@ final class RecordInteractionHandler
             );
 
             if ($isDuplicate) {
-                Log::debug('Interaction deduplicated', $this->sanitizePayload([
+                $this->logger->debug('Interaction deduplicated', $this->sanitizePayload([
                     'tenant_id' => $command->tenantId,
                     'visitor_id' => substr($command->visitorId, 0, 8) . '...',
                     'type' => $command->type,
                 ]));
-                return; // Early exit - no metrics pollution
+                return;
             }
 
             // ═══════════════════════════════════════════════════════════════
@@ -77,7 +77,7 @@ final class RecordInteractionHandler
                 metadata: $command->metadata,
             );
 
-            Log::info('Interaction recorded', $this->sanitizePayload([
+            $this->logger->info('Interaction recorded', $this->sanitizePayload([
                 'tenant_id' => $command->tenantId,
                 'type' => $command->type,
                 'interaction_id' => $interaction->id,
@@ -87,19 +87,17 @@ final class RecordInteractionHandler
             // PHASE 3: Business Rule - WhatsApp Click → Lead Conversion
             // ═══════════════════════════════════════════════════════════════
             if ($this->isWhatsAppClick($command->type)) {
-                // Repository returns LeadEntity (domain entity)
                 $lead = $this->leadRepository->createFromInteraction(
                     tenantId: $command->tenantId,
                     productId: $command->productId,
                     source: $command->type,
                 );
 
-                Log::info('Lead created from interaction', [
+                $this->logger->info('Lead created from interaction', [
                     'tenant_id' => $command->tenantId,
                     'lead_id' => $lead->id,
                 ]);
 
-                // Notify using pure domain entity (not Eloquent model)
                 $this->adminNotifier->notifyNewLead($lead);
             }
         });

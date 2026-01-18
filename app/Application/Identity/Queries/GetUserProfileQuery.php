@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace App\Application\Identity\Queries;
 
 /**
- * GetUserProfileQuery - Intent of Read (DTO)
- * 
- * Contains only the parameters required to fetch a user profile.
- * Does not contain logic.
+ * Class GetUserProfileQuery
+ *
+ * Immutable DTO for querying a user profile.
+ * Enforces strict multi-tenancy requirements via mandatory tenantId.
  */
 final readonly class GetUserProfileQuery
 {
     public function __construct(
-        public int $userId,
+        public string $id,
+        public string $tenantId,
     ) {}
 }

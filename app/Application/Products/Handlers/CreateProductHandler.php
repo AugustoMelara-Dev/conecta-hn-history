@@ -9,7 +9,7 @@ use App\Application\Products\Results\CreateProductResult;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Product\Factories\ProductFactory;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
-use App\Domain\Shared\Contracts\TransactionManagerInterface;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
 use Illuminate\Support\Facades\Log;
 

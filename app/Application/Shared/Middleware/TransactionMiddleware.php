@@ -4,40 +4,33 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\Middleware;
 
-use Illuminate\Support\Facades\DB;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use Closure;
 
 /**
- * TransactionMiddleware - Atomic Execution Wrappers
+ * TransactionMiddleware - Atomic Execution Wrapper
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  ACID GUARANTEE: Wraps entire handler execution in a DB transaction.    ║
- * ║  ATOMIC OUTBOX: Events dispatched within are committed atomically.      ║
+ * ║  FRAMEWORK AGNOSTIC: Uses TransactionManagerInterface instead of DB.    ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final class TransactionMiddleware
 {
+    public function __construct(
+        private readonly TransactionManagerInterface $transactionManager
+    ) {}
+
     public function handle(object $command, Closure $next): mixed
     {
         // PERFORMANCE OPTIMIZATION: Skip transaction for Read-Only operations
         if ($command instanceof \App\Application\Shared\Contracts\ReadOnlyCommand) {
-             return $next($command);
+            return $next($command);
         }
 
-        // MANUAL TRANSACTION MANAGEMENT
-        // Requirement: "Este middleware debe envolver... dentro de un bloque DB::beginTransaction() y DB::commit()"
-        DB::beginTransaction();
-
-        try {
-            $result = $next($command);
-            
-            DB::commit();
-            
-            return $result;
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            
-            throw $e;
-        }
+        // FRAMEWORK AGNOSTIC: Delegate to injected TransactionManager
+        return $this->transactionManager->transaction(
+            fn () => $next($command)
+        );
     }
 }

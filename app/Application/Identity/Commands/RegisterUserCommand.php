@@ -41,7 +41,8 @@ final readonly class RegisterUserCommand implements IdempotentCommandInterface
         }
 
         // Fallback: Deterministic Hash of Payload
-        // Ensures that identical payloads equate to the same key
-        return md5('register_user_' . $this->email);
+        // P3 FIX: Changed md5 → xxh128 for modern, collision-resistant hashing
+        // xxh128 is faster and has better distribution than MD5
+        return hash('xxh128', 'register_user_' . $this->email);
     }
 }

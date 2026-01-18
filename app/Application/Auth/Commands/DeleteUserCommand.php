@@ -16,13 +16,13 @@ namespace App\Application\Auth\Commands;
 final readonly class DeleteUserCommand
 {
     public function __construct(
-        /** User ID to delete */
-        public int $userId,
+        /** User ID to delete (UUID string) */
+        public string $userId,
         
         /** 
          * Tenant ID from the requesting context.
          * CRITICAL: Used to verify ownership before deletion.
          */
-        public int $requestingTenantId,
+        public string $requestingTenantId,
     ) {}
 }

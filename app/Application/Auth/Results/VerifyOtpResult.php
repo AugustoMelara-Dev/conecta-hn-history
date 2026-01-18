@@ -2,66 +2,48 @@
 
 declare(strict_types=1);
 
-namespace App\Application\DTOs\Auth;
+namespace App\Application\Auth\Results;
 
 use App\Domain\Identity\Entities\UserEntity;
-use Carbon\Carbon;
+use DateTimeImmutable;
 
 /**
- * VerifyOtpResult - Structured Verification Outcome
+ * VerifyOtpResult - Pure Application DTO
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  RICH CONTRACT: Replaces ambiguous arrays with typed properties.        ║
- * ║  NULLABLE USER: Explicit null instead of empty object anti-pattern.     ║
- * ║  CONTROLLER DECISION: Enables informed session/routing decisions.       ║
+ * ║  PURE: Uses native DateTimeImmutable, no Carbon dependency.             ║
+ * ║  IMMUTABLE: final readonly ensures state consistency.                   ║
+ * ║  TYPED: Strongly typed properties for IDE support and safety.           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class VerifyOtpResult
 {
     public function __construct(
-        /** User entity (null if registration required) */
         public ?UserEntity $user,
-        
-        /** Timestamp of successful verification */
-        public Carbon $verifiedAt,
-        
-        /** Flag for future 2FA step requirement */
+        public DateTimeImmutable $verifiedAt,
         public bool $requiresTwoFactor = false,
-        
-        /** Flag if user was not found (new registration needed) */
         public bool $requiresRegistration = false,
-        
-        /** Original identifier for registration flow */
         public ?string $identifier = null,
     ) {}
 
-    /**
-     * Create result for existing user verification.
-     */
     public static function forUser(UserEntity $user): self
     {
         return new self(
             user: $user,
-            verifiedAt: Carbon::now(),
+            verifiedAt: new DateTimeImmutable(),
         );
     }
 
-    /**
-     * Create result for new user (requires registration).
-     */
     public static function forNewUser(string $identifier): self
     {
         return new self(
-            user: null, // Explicit null instead of empty object
-            verifiedAt: Carbon::now(),
+            user: null, 
+            verifiedAt: new DateTimeImmutable(),
             requiresRegistration: true,
             identifier: $identifier,
         );
     }
 
-    /**
-     * Check if user exists and verification was successful.
-     */
     public function hasUser(): bool
     {
         return $this->user !== null;

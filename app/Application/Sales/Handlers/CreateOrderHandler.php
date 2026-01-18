@@ -10,7 +10,7 @@ use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Sales\Factories\OrderFactory;
 use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Domain\Shared\Contracts\TransactionManagerInterface;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Exceptions\InvalidCouponException;
 use App\Exceptions\TenantNotFoundException;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;

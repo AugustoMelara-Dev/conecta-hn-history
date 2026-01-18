@@ -10,6 +10,7 @@ use App\Domain\Shared\Enums\ProviderName;
  * LoginViaSocialProviderCommand - Provider-Agnostic Social Identity Contract
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  TENANT AWARE: Mandatory tenantId to prevent cross-tenant account hijack║
  * ║  SOCIALITE AGNOSTIC: No Laravel\Socialite references - normalized data. ║
  * ║  UNIVERSAL: Works for Google, GitHub, LinkedIn, Apple, etc.             ║
  * ║  TYPE SAFETY: Enforced via ProviderName Enum.                           ║
@@ -18,6 +19,9 @@ use App\Domain\Shared\Enums\ProviderName;
 final readonly class LoginViaSocialProviderCommand
 {
     public function __construct(
+        /** Mandatory Tenant Context (Axiom A) - Social login is always INTO a specific tenant */
+        public string $tenantId,
+
         /** Provider enum (google, github, linkedin, apple) */
         public ProviderName $providerName,
         
