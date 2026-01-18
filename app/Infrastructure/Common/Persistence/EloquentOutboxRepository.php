@@ -4,17 +4,44 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Common\Persistence;
 
-use App\Application\Common\Interfaces\OutboxRepositoryInterface;
-use App\Domain\Common\DomainEvent;
+use App\Domain\Common\Contracts\DomainEventInterface;
+use App\Domain\Common\Contracts\OutboxRepositoryInterface;
 use App\Infrastructure\Common\Models\OutboxMessage;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use JsonException;
 
+/**
+ * EloquentOutboxRepository - Transactional Event Storage Implementation
+ *
+ * UPDATED: Now implements Domain interface with append() method.
+ * The store() method is kept as an alias for backward compatibility.
+ */
 final class EloquentOutboxRepository implements OutboxRepositoryInterface
 {
-    public function store(DomainEvent $event): void
+    /**
+     * Append a domain event to the outbox.
+     * Primary method as per Domain interface.
+     */
+    public function append(DomainEventInterface $event): void
+    {
+        $this->persistEvent($event);
+    }
+
+    /**
+     * Legacy alias for backward compatibility.
+     * @deprecated Use append() instead.
+     */
+    public function store(DomainEventInterface $event): void
+    {
+        $this->persistEvent($event);
+    }
+
+    /**
+     * Internal persistence logic.
+     */
+    private function persistEvent(DomainEventInterface $event): void
     {
         $payloadArray = $event->toPayload();
         $jsonPayload = json_encode($payloadArray, JSON_THROW_ON_ERROR);
@@ -25,7 +52,7 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
         OutboxMessage::create([
             'event_type' => get_class($event),
             'payload' => $encryptedPayload,
-            'occurred_at' => $event->occurredAt(),
+            'occurred_at' => $event->occurredOn(),
             'processed' => false,
         ]);
     }

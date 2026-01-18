@@ -61,7 +61,7 @@ class AuthDomainServiceProvider extends ServiceProvider
         // This keeps the Auth module self-contained (Events + Listeners)
         \Illuminate\Support\Facades\Event::listen(
             \App\Domain\Auth\Events\OtpGenerated::class,
-            \App\Application\Auth\Listeners\SendOtpNotificationListener::class
+            \App\Infrastructure\Auth\Listeners\SendOtpNotificationListener::class
         );
     }
 }

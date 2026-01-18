@@ -19,6 +19,30 @@ class EventServiceProvider extends ServiceProvider
     ];
 
     /**
+     * The event listener mappings for the application.
+     * 
+     * Mapped for Zero Downtime Migration (V1 -> V2).
+     *
+     * @var array
+     */
+    protected $listen = [
+        // Canonical (V2)
+        \App\Domain\User\Events\UserProfileUpdated::NAME => [
+            \App\Infrastructure\User\Listeners\SendProfileUpdateNotificationListener::class,
+        ],
+
+        /**
+         * @deprecated LEGACY ALIAS SUPPORT (V1 -> V2 MIGRATION)
+         * Policy: Monitor application logs for event tag 'auth.user_profile_updated'.
+         * Action: Remove this mapping entry when traffic = 0 for 30 consecutive days.
+         * Creation Date: 2026-01-17
+         */
+        \App\Domain\User\Events\UserProfileUpdated::LEGACY_NAME => [
+            \App\Infrastructure\User\Listeners\SendProfileUpdateNotificationListener::class,
+        ],
+    ];
+
+    /**
      * Register any events for your application.
      */
     public function boot(): void

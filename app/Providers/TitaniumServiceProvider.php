@@ -6,7 +6,7 @@ namespace App\Providers;
 
 use App\Application\Common\Interfaces\IdempotencyRepositoryInterface;
 use App\Application\Common\Interfaces\OutboxRepositoryInterface;
-use App\Application\Common\TransactionManagerInterface;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Infrastructure\Common\LaravelTransactionManager;
 use App\Infrastructure\Common\Persistence\EloquentIdempotencyRepository;
 use App\Infrastructure\Common\Persistence\EloquentOutboxRepository;

@@ -4,22 +4,25 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Common\Idempotency;
 
+use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
-use Illuminate\Contracts\Cache\Lock;
 use RuntimeException;
 
 /**
- * IdempotencyService - Distributed State Manager
- * 
+ * IdempotencyService - Laravel Cache-Based Implementation
+ *
+ * Implements the framework-agnostic IdempotencyServiceInterface
+ * using Laravel's cache repository.
+ *
  * Safe serialization using JSON to prevent PHP Class Mismatch errors.
  */
-final readonly class IdempotencyService
+final readonly class IdempotencyService implements IdempotencyServiceInterface
 {
     public function __construct(
         private CacheRepository $cache
     ) {}
 
-    public function get(string $key): ?object
+    public function get(string $key): mixed
     {
         $json = $this->cache->get("idempotency_result:{$key}");
 
@@ -42,23 +45,26 @@ final readonly class IdempotencyService
         return $className::fromArray($payload['data']);
     }
 
-    public function store(string $key, object $result, int $ttlSeconds = 86400): void
+    public function store(string $key, mixed $value, int $ttlSeconds = 86400): void
     {
-        if (! method_exists($result, 'toArray')) {
-            throw new RuntimeException("Result object " . get_class($result) . " must implement toArray() for safe serialization.");
+        if (is_object($value) && ! method_exists($value, 'toArray')) {
+            throw new RuntimeException("Result object " . get_class($value) . " must implement toArray() for safe serialization.");
         }
 
         $payload = [
-            'class' => get_class($result),
-            'data' => $result->toArray(),
+            'class' => is_object($value) ? get_class($value) : null,
+            'data' => is_object($value) ? $value->toArray() : $value,
         ];
 
         $this->cache->put("idempotency_result:{$key}", json_encode($payload), $ttlSeconds);
     }
 
-    public function lock(string $key): Lock
+    public function atomic(string $key, int $seconds, callable $callback): mixed
     {
-        // Atomic lock with 10s expiration to prevent deadlocks
-        return $this->cache->lock("idempotency_lock:{$key}", 10);
+        // Acquire atomic lock with configurable expiration
+        $lock = $this->cache->lock("idempotency_lock:{$key}", $seconds + 5);
+
+        // Block and execute atomically
+        return $lock->block($seconds, $callback);
     }
 }

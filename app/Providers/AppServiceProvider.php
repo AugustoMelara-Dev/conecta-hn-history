@@ -75,8 +75,6 @@ class AppServiceProvider extends ServiceProvider
         // ═══════════════════════════════════════════════════════════════════════
         // NOTIFICATION ABSTRACTION: Decouples Filament from Business Logic
         // ═══════════════════════════════════════════════════════════════════════
-        // NOTIFICATION ABSTRACTION: Decouples Filament from Business Logic
-        // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
             \App\Domain\Contracts\AdminNotifier::class,
             \App\Infrastructure\Notifications\FilamentAdminNotifier::class
@@ -302,19 +300,82 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Notifications\EmailOtpNotifier::class
         );
         
-        // OTP Repository with scalar injection (config-agnostic)
+        // OTP Repository - Tenant-Aware Implementation (CANONICAL)
         $this->app->bind(
             \App\Domain\Auth\Repositories\OtpRepositoryInterface::class,
-            fn () => new \App\Infrastructure\Repositories\Auth\EloquentOtpRepository(
-                defaultExpiryMinutes: (int) config('auth.otp.expiry_minutes', 10)
-            )
+            \App\Infrastructure\Auth\Repositories\EloquentOtpRepository::class
         );
 
-        // Admin Notifier with pure domain entities
-        $this->app->bind(
-            \App\Domain\Shared\Contracts\AdminNotifierInterface::class,
-            \App\Infrastructure\Notifications\FilamentAdminNotifier::class
-        );
+        // ═══════════════════════════════════════════════════════════════════════
+        // OTP CONFIGURATION: Fail-Fast Injection (No Silent Failures)
+        // All values MUST be defined in config/auth.php['otp'] or boot will abort.
+        // ═══════════════════════════════════════════════════════════════════════
+        
+        // GenerateOtpHandler: OTP Expiry Minutes
+        $this->app->when(\App\Application\Auth\Handlers\GenerateOtpHandler::class)
+            ->needs('$otpExpiryMinutes')
+            ->give(function () {
+                $value = config('auth.otp.expiry_minutes');
+                if ($value === null) {
+                    throw new \RuntimeException('Critical configuration missing: auth.otp.expiry_minutes');
+                }
+                return (int) $value;
+            });
+
+        // GenerateOtpHandler: Max Requests Per Hour
+        $this->app->when(\App\Application\Auth\Handlers\GenerateOtpHandler::class)
+            ->needs('$maxOtpRequestsPerHour')
+            ->give(function () {
+                $value = config('auth.otp.max_requests_per_hour');
+                if ($value === null) {
+                    throw new \RuntimeException('Critical configuration missing: auth.otp.max_requests_per_hour');
+                }
+                return (int) $value;
+            });
+
+        // GenerateOtpHandler: OTP Length
+        $this->app->when(\App\Application\Auth\Handlers\GenerateOtpHandler::class)
+            ->needs('$otpLength')
+            ->give(function () {
+                $value = config('auth.otp.length');
+                if ($value === null) {
+                    throw new \RuntimeException('Critical configuration missing: auth.otp.length');
+                }
+                return (int) $value;
+            });
+
+        // GenerateOtpHandler: Rate Limit Decay Seconds
+        $this->app->when(\App\Application\Auth\Handlers\GenerateOtpHandler::class)
+            ->needs('$rateLimitDecaySeconds')
+            ->give(function () {
+                $value = config('auth.otp.rate_limit_decay_seconds');
+                if ($value === null) {
+                    throw new \RuntimeException('Critical configuration missing: auth.otp.rate_limit_decay_seconds');
+                }
+                return (int) $value;
+            });
+
+        // VerifyOtpHandler: Max Verification Attempts
+        $this->app->when(\App\Application\Auth\Handlers\VerifyOtpHandler::class)
+            ->needs('$maxOtpAttempts')
+            ->give(function () {
+                $value = config('auth.otp.max_attempts');
+                if ($value === null) {
+                    throw new \RuntimeException('Critical configuration missing: auth.otp.max_attempts');
+                }
+                return (int) $value;
+            });
+
+        // IdempotentGenerateOtpHandler: Idempotency TTL (Fail-Fast)
+        $this->app->when(\App\Application\Auth\Decorators\IdempotentGenerateOtpHandler::class)
+            ->needs('$idempotencyTtlSeconds')
+            ->give(function () {
+                $value = config('auth.otp.idempotency_ttl_seconds');
+                if ($value === null) {
+                    throw new \RuntimeException('Critical configuration missing: auth.otp.idempotency_ttl_seconds');
+                }
+                return (int) $value;
+            });
 
         // Admin Notifier with pure domain entities
         $this->app->bind(
@@ -377,10 +438,36 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // ═══════════════════════════════════════════════════════════════════════
-        // IDEMPOTENCY: Titanium Stability
+        // INFRASTRUCTURE: Resilience & Observability
         // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Application\Common\Contracts\MetricsCollectorInterface::class,
+            \App\Infrastructure\Monitoring\DatadogMetricsAdapter::class
+        );
+        
+        $this->app->bind(
+            \App\Application\Common\Contracts\CircuitBreakerInterface::class,
+            function ($app) {
+                return new \App\Infrastructure\Resilience\RedisCircuitBreaker(
+                    redis: $app['redis']->connection(), // Explicit Connection Resolution
+                    metrics: $app->make(\App\Application\Common\Contracts\MetricsCollectorInterface::class)
+                );
+            }
+        );
+
+        // IDEMPOTENCY SERVICE
+        // Manually injecting dependency to avoid auto-wiring failure
+        $this->app->bind(
+            \App\Application\Common\Contracts\IdempotencyServiceInterface::class,
+            function ($app) {
+                return new \App\Infrastructure\Common\Idempotency\RedisIdempotencyService(
+                    redis: $app['redis']->connection() // Explicit Connection Resolution
+                );
+            }
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
-        // IDENTITY DOMAIN: Defense in Depth (Decorator Pattern)
+        // IDEMPOTENCY: Titanium Stability (AUTH & IDENTITY)
         // ═══════════════════════════════════════════════════════════════════════
         
         // 1. CONTEXT PROVIDER (Polymorphic Identity)
@@ -393,7 +480,24 @@ class AppServiceProvider extends ServiceProvider
             }
         );
 
-        // 2. DECORATOR STACK (The Onion)
+        // 2. AUTH DOMAIN: Resilience Layer (Decorator)
+        // Binds Interface to Decorated Handler Stack
+        $this->app->bind(
+            \App\Application\Auth\Contracts\GenerateOtpHandlerInterface::class,
+            function ($app) {
+                // Core Handler
+                $core = $app->make(\App\Application\Auth\Handlers\GenerateOtpHandler::class);
+
+                // Idempotency Decorator with configurable TTL
+                return new \App\Application\Auth\Decorators\IdempotentGenerateOtpHandler(
+                    inner: $core,
+                    idempotencyService: $app->make(\App\Application\Common\Contracts\IdempotencyServiceInterface::class),
+                    idempotencyTtlSeconds: (int) config('auth.otp.idempotency_ttl_seconds', 86400)
+                );
+            }
+        );
+
+        // 3. IDENTITY DOMAIN DECORATOR STACK (The Onion)
         // Order: Security -> Observability -> Consistency -> Core
         $this->app->bind(
             \App\Application\Identity\Handlers\RegisterUserHandlerInterface::class,
@@ -402,9 +506,10 @@ class AppServiceProvider extends ServiceProvider
                 $core = $app->make(\App\Application\Identity\Handlers\RegisterUserHandler::class);
 
                 // LAYER 1: Idempotency (The Guard) - Protects Core from duplicates
+                // Uses the container-resolved IdempotencyService
                 $idempotent = new \App\Application\Identity\Decorators\IdempotentRegisterUserHandler(
                     inner: $core,
-                    service: $app->make(\App\Infrastructure\Common\Idempotency\IdempotencyService::class)
+                    service: $app->make(\App\Application\Common\Contracts\IdempotencyServiceInterface::class)
                 );
 
                 // LAYER 2: Telemetry (The Watcher) - Measures Total Execution (including Idempotency check)
@@ -423,7 +528,7 @@ class AppServiceProvider extends ServiceProvider
             }
         );
 
-        // 3. SALES DOMAIN: Idempotency Protection
+        // 4. SALES DOMAIN: Idempotency Protection
         $this->app->bind(
             \App\Application\Sales\Handlers\CreateOrderHandlerInterface::class,
             function ($app) {
@@ -431,12 +536,12 @@ class AppServiceProvider extends ServiceProvider
 
                 return new \App\Application\Sales\Decorators\IdempotentCreateOrderHandler(
                     inner: $core,
-                    service: $app->make(\App\Infrastructure\Common\Idempotency\IdempotencyService::class)
+                    service: $app->make(\App\Application\Common\Contracts\IdempotencyServiceInterface::class)
                 );
             }
         );
 
-        // 4. TENANCY DOMAIN: Idempotency Protection
+        // 5. TENANCY DOMAIN: Idempotency Protection
         $this->app->bind(
             \App\Application\Tenant\Handlers\RegisterTenantHandlerInterface::class,
             function ($app) {
@@ -444,7 +549,7 @@ class AppServiceProvider extends ServiceProvider
 
                 return new \App\Application\Tenant\Decorators\IdempotentRegisterTenantHandler(
                     inner: $core,
-                    service: $app->make(\App\Infrastructure\Common\Idempotency\IdempotencyService::class)
+                    service: $app->make(\App\Application\Common\Contracts\IdempotencyServiceInterface::class)
                 );
             }
         );
@@ -484,7 +589,7 @@ class AppServiceProvider extends ServiceProvider
         // DEPLOYMENT SAFETY: Class Aliases for Migrated Jobs
         // ═══════════════════════════════════════════════════════════════════════
         // Jobs in Redis queue may reference old App\Jobs\* namespace.
-        // These aliases ensure pending jobs are correctly resolved during deploy.
+        // These aliases redirect to new App\Domain\*\Jobs\* locations.
         // REMOVE AFTER: 2026-02-05 (30 days post-migration)
         // ═══════════════════════════════════════════════════════════════════════
         $this->registerJobAliases();
@@ -567,7 +672,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Application\Auth\Commands\UpdateUserPasswordCommand::class => \App\Application\Auth\Handlers\UpdateUserPasswordHandler::class,
             \App\Application\Auth\Commands\UpdateUserProfileCommand::class => \App\Application\Auth\Handlers\UpdateUserProfileHandler::class,
             \App\Application\Auth\Commands\DeleteUserCommand::class => \App\Application\Auth\Handlers\DeleteUserHandler::class,
-            \App\Application\Auth\Commands\GenerateOtpCommand::class => \App\Application\Auth\Handlers\GenerateOtpHandler::class,
+            \App\Application\Auth\Commands\GenerateOtpCommand::class => \App\Application\Auth\Contracts\GenerateOtpHandlerInterface::class,
             \App\Application\Auth\Commands\VerifyOtpCommand::class => \App\Application\Auth\Handlers\VerifyOtpHandler::class,
             \App\Application\Tenant\Commands\UpdateTenantScheduleCommand::class => \App\Application\Tenant\Handlers\UpdateTenantScheduleHandler::class,
             \App\Application\Tenant\Commands\UpdateLandingPageCommand::class => \App\Application\Tenant\Handlers\UpdateLandingPageHandler::class,
@@ -596,12 +701,6 @@ class AppServiceProvider extends ServiceProvider
      * These aliases redirect to new App\Domain\*\Jobs\* locations.
      *
      * @deprecated Remove after 2026-02-05 (30 days post-migration)
-     */
-    /**
-     * Register class aliases for migrated Jobs.
-     *
-     * @deprecated Remove entire method after 2026-03-05 (60 days post-migration).
-     *             Once Redis is clear of old payloads, this mapping is tech debt.
      */
     protected function registerJobAliases(): void
     {
