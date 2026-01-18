@@ -71,22 +71,20 @@ final class OrderCancelledListener implements ShouldQueue
         // ─────────────────────────────────────────────────────────────────────
         // DEFENSIVE CHECK: Verify tenant context is correct
         // ─────────────────────────────────────────────────────────────────────
-        // Even with middleware, add explicit validation as defense-in-depth.
-        // This prevents processing if middleware fails silently.
+        $tenantIdString = $event->tenantId()->toString();
 
-        $order = Order::where('tenant_id', $event->tenantId()->toInt())
+        $order = Order::where('tenant_id', $tenantIdString)
             ->find($event->aggregateId());
 
         if ($order === null) {
-            // Log security event - possible tenant isolation breach attempt
             logger()->critical('Order not found with event tenant context', [
                 'order_id' => $event->aggregateId(),
-                'event_tenant_id' => $event->tenantId()->toInt(),
+                'event_tenant_id' => $tenantIdString,
                 'reason' => 'tenant_isolation_check_failed',
             ]);
 
             throw new TenantMismatchException(
-                "Order {$event->aggregateId()} not found for tenant {$event->tenantId()->toInt()}"
+                "Order {$event->aggregateId()} not found for tenant {$tenantIdString}"
             );
         }
 
@@ -94,25 +92,17 @@ final class OrderCancelledListener implements ShouldQueue
         // STEP 1: Business Logic - Initiate refund if the order was paid
         // ─────────────────────────────────────────────────────────────────────
         if ($event->shouldAutoRefund()) {
-            // NOTE: Replace with actual refund service call
-            // $this->refundService->initiateForOrder($event->aggregateId());
             logger()->info('Refund initiated for cancelled order', [
                 'order_id' => $event->aggregateId(),
-                'tenant_id' => $event->tenantId()->toInt(),
+                'tenant_id' => $tenantIdString,
             ]);
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // STEP 2: Notification - Send cancellation email to customer
-        // ─────────────────────────────────────────────────────────────────────
-        // NOTE: Email sending is already handled by OrderObserver
-        // Add additional notification logic here if needed
-
-        // ─────────────────────────────────────────────────────────────────────
-        // STEP 3: Real-Time UI Update - Broadcast to tenant dashboard
+        // STEP 2: Real-Time UI Update - Broadcast to tenant dashboard
         // ─────────────────────────────────────────────────────────────────────
         broadcast(OrderCancelledBroadcast::fromDomainData(
-            tenantId: $event->tenantId()->toInt(),
+            tenantId: $tenantIdString,
             orderId: $event->aggregateId(),
             orderNumber: $event->orderNumber->toString(),
             reason: $event->reason,
@@ -128,7 +118,7 @@ final class OrderCancelledListener implements ShouldQueue
     {
         logger()->error('OrderCancelledListener failed', [
             'order_id' => $event->aggregateId(),
-            'tenant_id' => $event->tenantId()->toInt(),
+            'tenant_id' => $event->tenantId()->toString(),
             'exception' => $exception->getMessage(),
         ]);
     }

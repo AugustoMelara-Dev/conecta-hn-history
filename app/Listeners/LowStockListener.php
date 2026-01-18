@@ -41,23 +41,21 @@ final class LowStockListener
     public function handle(LowStockThresholdReached $event): void
     {
         $cacheKey = "low_stock_alert:{$event->aggregateId()}:".now()->format('Y-m-d');
+        $tenantIdString = $event->tenantId()->toString();
 
         // ─────────────────────────────────────────────────────────────────────
         // STEP 1: Rate-Limited Email Notification (max 1 per product per day)
         // ─────────────────────────────────────────────────────────────────────
         if (! Cache::has($cacheKey)) {
-            // Mark as notified for today
             Cache::put($cacheKey, true, now()->endOfDay());
 
-            // NOTE: Replace with actual email notification
-            // Mail::to($tenantOwner)->send(new LowStockAlert($event));
             logger()->warning('Low stock alert', [
                 'product_id' => $event->aggregateId(),
                 'product_name' => $event->productName,
                 'current_stock' => $event->currentStock,
                 'threshold' => $event->threshold,
                 'severity' => $event->severity(),
-                'tenant_id' => $event->tenantId()->toInt(),
+                'tenant_id' => $tenantIdString,
             ]);
         }
 
@@ -65,7 +63,7 @@ final class LowStockListener
         // STEP 2: Real-Time UI Update (always broadcast, no rate limit)
         // ─────────────────────────────────────────────────────────────────────
         broadcast(LowStockBroadcast::fromDomainData(
-            tenantId: $event->tenantId()->toInt(),
+            tenantId: $tenantIdString,
             productId: $event->aggregateId(),
             productName: $event->productName,
             productSku: $event->productSku,

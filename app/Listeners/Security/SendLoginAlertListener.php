@@ -21,8 +21,9 @@ final class SendLoginAlertListener implements ShouldQueue
      */
     public function middleware(NewLoginDetected $event): array
     {
+        // UUID STRING: Use toString() for tenant context
         return [
-            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()->toInt())
+            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()?->toString())
         ];
     }
 
@@ -45,11 +46,11 @@ final class SendLoginAlertListener implements ShouldQueue
         if ($tenantId = $event->tenantId()) {
             NewLoginDetectedBroadcast::fromDomainData(
                 userId: $event->userId(),
-                tenantId: $tenantId->toInt(),
+                tenantId: $tenantId->toString(),
                 userEmail: $event->userEmail(),
                 ipAddress: $event->ipAddress()->toString(),
                 userAgent: $event->userAgent(),
-                loginAt: $event->occurredAt() // Mapped from occurredAt -> loginAt
+                loginAt: $event->occurredAt()
             )->dispatch();
         }
     }
