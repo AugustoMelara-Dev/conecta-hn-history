@@ -12,13 +12,24 @@ use Illuminate\Support\Facades\RateLimiter;
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  ONLY CLASS that imports RateLimiter Facade.                            ║
- * ║  Maps domain contract to Laravel's rate limiting infrastructure.        ║
+ * ║  FIXED: Added hitAndCheck(), fixed hit() return type to int.            ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final class LaravelRateLimitService implements RateLimitServiceInterface
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
+     * 
+     * ATOMIC: Increments counter and checks in single operation to prevent race conditions.
+     */
+    public function hitAndCheck(string $key, int $maxAttempts, int $decaySeconds = 60): bool
+    {
+        $attempts = RateLimiter::hit($key, $decaySeconds);
+        return $attempts > $maxAttempts;
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public function checkTooManyAttempts(string $key, int $maxAttempts): bool
     {
@@ -26,15 +37,17 @@ final class LaravelRateLimitService implements RateLimitServiceInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
+     * 
+     * FIXED: Now returns int (attempt count) as specified in interface.
      */
-    public function hit(string $key, int $decaySeconds = 60): void
+    public function hit(string $key, int $decaySeconds = 60): int
     {
-        RateLimiter::hit($key, $decaySeconds);
+        return RateLimiter::hit($key, $decaySeconds);
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function clear(string $key): void
     {
@@ -42,7 +55,7 @@ final class LaravelRateLimitService implements RateLimitServiceInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function availableIn(string $key): int
     {

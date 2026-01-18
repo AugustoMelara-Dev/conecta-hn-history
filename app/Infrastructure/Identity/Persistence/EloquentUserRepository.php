@@ -9,100 +9,111 @@ use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Models\User;
 use DateTimeImmutable;
 
-final readonly class EloquentUserRepository implements UserRepositoryInterface
+/**
+ * EloquentUserRepository - Infrastructure Layer User Persistence
+ *
+ * FIXED: Updated method signatures to match UserRepositoryInterface.
+ * - save() now returns void
+ * - findById() now accepts (string $id, string $tenantId)
+ * - findByEmail() now accepts (string $email, string $tenantId)
+ * - updateAvatarIfMissing() now accepts string $userId
+ * - Added delete(UserEntity) method
+ */
+final class EloquentUserRepository implements UserRepositoryInterface
 {
-    public function findById(int $id): ?UserEntity
+    public function save(UserEntity $user): void
     {
-        $model = User::find($id);
-        return $model ? $this->toEntity($model) : null;
-    }
-
-    public function findByEmail(string $email): ?UserEntity
-    {
-        $model = User::where('email', $email)->first();
-        return $model ? $this->toEntity($model) : null;
-    }
-
-    public function existsByEmail(string $email): bool
-    {
-        return User::where('email', $email)->exists();
-    }
-
-    public function create(array $attributes): UserEntity
-    {
-        $model = User::create($attributes);
-        return $this->toEntity($model);
-    }
-
-    /**
-     * Persist entity mutations to Infrastructure.
-     */
-    public function update(UserEntity $user): void
-    {
-        if ($user->id === null) {
-            return;
-        }
-
-        // Use findOrFail for strict integrity check per specification
-        $model = User::findOrFail($user->id);
-        
-        $model->name = $user->name;
-        $model->email = $user->email;
-        $model->password = $user->password;
-        
-        // Critical Update: Link Tenant
-        if ($user->tenantId !== null) {
-            $model->tenant_id = $user->tenantId;
+        if ($user->id) {
+            $model = User::where('id', $user->id)->first();
+            
+            if ($model) {
+                $model->name = $user->name;
+                $model->email = $user->email;
+                $model->password = $user->password;
+                
+                if ($user->tenantId !== null) {
+                    $model->tenant_id = $user->tenantId;
+                }
+                
+                $model->save();
+                return;
+            }
         }
         
-        $model->save();
-    }
-
-    public function save(UserEntity $entity): UserEntity
-    {
-        // Polymorphic save (create or update)
-        if ($entity->id) {
-            $this->update($entity);
-            return $this->findById($entity->id);
-        }
-        return $this->create([
-            'name' => $entity->name,
-            'email' => $entity->email,
-            'password' => $entity->password,
+        // Create new user
+        User::create([
+            'name' => $user->name,
+            'email' => $user->email,
+            'password' => $user->password,
+            'tenant_id' => $user->tenantId,
         ]);
     }
 
-    public function updateAvatarIfMissing(int $userId, string $avatarUrl): bool
+    public function findById(string $id, string $tenantId): ?UserEntity
+    {
+        $model = User::where('id', $id)
+            ->where('tenant_id', $tenantId)
+            ->first();
+            
+        return $model ? $this->toEntity($model) : null;
+    }
+
+    public function findByEmail(string $email, string $tenantId): ?UserEntity
+    {
+        $model = User::where('email', $email)
+            ->where('tenant_id', $tenantId)
+            ->first();
+            
+        return $model ? $this->toEntity($model) : null;
+    }
+
+    public function updateAvatarIfMissing(string $userId, string $avatarUrl): bool
     {
         $user = User::find($userId);
+        
         if ($user && empty($user->avatar_url)) {
             $user->update(['avatar_url' => $avatarUrl]);
             return true;
         }
+        
         return false;
+    }
+
+    public function delete(UserEntity $user): void
+    {
+        if ($user->id === null) {
+            return;
+        }
+        
+        User::where('id', $user->id)->delete();
     }
 
     private function toEntity(User $model): UserEntity
     {
         $tenantId = null;
         
-        // Handle TenantId Value Object (from TenantIdCast)
         $rawTenantId = $model->tenant_id;
         
         if ($rawTenantId instanceof \App\Domain\Shared\ValueObjects\TenantId) {
-            $tenantId = $rawTenantId->value;
+            $tenantId = (string) $rawTenantId->value;
         } elseif (is_numeric($rawTenantId)) {
-            $tenantId = (int) $rawTenantId;
+            $tenantId = (string) $rawTenantId;
+        } elseif (is_string($rawTenantId)) {
+            $tenantId = $rawTenantId;
         }
 
         return new UserEntity(
-            id: $model->id,
+            id: (string) $model->id,
             name: $model->name,
             email: $model->email,
             password: $model->password,
             tenantId: $tenantId,
-            createdAt: $model->created_at instanceof \DateTime ? DateTimeImmutable::createFromMutable($model->created_at) : new DateTimeImmutable($model->created_at ?? 'now'),
-            updatedAt: $model->updated_at instanceof \DateTime ? DateTimeImmutable::createFromMutable($model->updated_at) : new DateTimeImmutable($model->updated_at ?? 'now'),
+            createdAt: $model->created_at instanceof \DateTime 
+                ? DateTimeImmutable::createFromMutable($model->created_at) 
+                : new DateTimeImmutable($model->created_at ?? 'now'),
+            updatedAt: $model->updated_at instanceof \DateTime 
+                ? DateTimeImmutable::createFromMutable($model->updated_at) 
+                : new DateTimeImmutable($model->updated_at ?? 'now'),
         );
     }
 }

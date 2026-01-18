@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Notifications;
 
 use App\Domain\Auth\Contracts\OtpNotifierInterface;
+use App\Domain\Identity\Entities\UserEntity;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -12,33 +13,33 @@ use Illuminate\Support\Facades\Log;
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  PLACEHOLDER: Awaiting Twilio/AWS SNS credentials configuration.        ║
- * ║  Currently simulates SMS delivery via logging.                          ║
+ * ║  FIXED: Method signature now matches OtpNotifierInterface contract.     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * TODO: Integrate with production SMS provider (Twilio/AWS SNS).
  */
 final class SmsOtpNotifier implements OtpNotifierInterface
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function send(
-        string $otpCode,
-        string $recipientIdentifier,
-        string $recipientName,
-        int $expiryMinutes = 10
+        ?UserEntity $recipient,
+        string $plainTextCode,
+        string $identifier,
+        string $tenantId,
+        int $expiryMinutes
     ): void {
         // Check if production SMS service is configured
         if (!$this->isSmsServiceConfigured()) {
-            $this->simulateSms($otpCode, $recipientIdentifier);
+            $this->simulateSms($plainTextCode, $identifier, $tenantId);
             return;
         }
 
         // TODO: Real SMS implementation
-        // $this->twilioClient->messages->create($recipientIdentifier, [...]);
+        // $this->twilioClient->messages->create($identifier, [...]);
         
         Log::info('SMS OTP sent', [
-            'phone' => $this->maskPhone($recipientIdentifier),
+            'phone' => $this->maskPhone($identifier),
+            'tenant_id' => $tenantId,
         ]);
     }
 
@@ -54,10 +55,11 @@ final class SmsOtpNotifier implements OtpNotifierInterface
     /**
      * Simulate SMS for development/testing.
      */
-    private function simulateSms(string $code, string $phone): void
+    private function simulateSms(string $code, string $phone, string $tenantId): void
     {
         Log::info('SMS OTP Simulated (No provider configured)', [
             'phone' => $this->maskPhone($phone),
+            'tenant_id' => $tenantId,
             'code' => app()->environment('local') ? $code : '[REDACTED]',
         ]);
     }

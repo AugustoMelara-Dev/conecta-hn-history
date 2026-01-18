@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Notifications;
 
 use App\Domain\Auth\Contracts\OtpNotifierInterface;
+use App\Domain\Identity\Entities\UserEntity;
 use App\Mail\OtpMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -14,23 +15,30 @@ use Illuminate\Support\Facades\Mail;
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  AUTHORIZED: This is the ONLY class allowed to use Mail:: facade.       ║
+ * ║  FIXED: Method signature now matches OtpNotifierInterface contract.     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final class EmailOtpNotifier implements OtpNotifierInterface
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function send(
-        string $otpCode,
-        string $recipientIdentifier,
-        string $recipientName,
-        int $expiryMinutes = 10
+        ?UserEntity $recipient,
+        string $plainTextCode,
+        string $identifier,
+        string $tenantId,
+        int $expiryMinutes
     ): void {
-        Mail::to($recipientIdentifier)->send(new OtpMail($otpCode, $expiryMinutes));
+        // Use recipient email if available, otherwise use the provided identifier
+        $recipientEmail = $recipient?->email ?? $identifier;
+        $recipientName = $recipient?->name ?? 'User';
+
+        Mail::to($recipientEmail)->send(new OtpMail($plainTextCode, $expiryMinutes));
 
         Log::info('OTP email sent', [
-            'identifier' => $this->maskEmail($recipientIdentifier),
+            'identifier' => $this->maskEmail($recipientEmail),
+            'tenant_id' => $tenantId,
         ]);
     }
 

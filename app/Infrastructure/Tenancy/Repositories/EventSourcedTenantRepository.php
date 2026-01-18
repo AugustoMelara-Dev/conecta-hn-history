@@ -9,7 +9,7 @@ use App\Application\Tenancy\Interfaces\TenantRepositoryInterface;
 use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotStrategyInterface;
-use App\Domain\Tenancy\Entities\TenantEntity;
+use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Infrastructure\Common\Outbox\OutboxRepository;
 use Illuminate\Database\QueryException;
 use App\Domain\Common\Exceptions\ConcurrencyException;
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  * - Inline Projection to 'tenants'.
  * - Efficient SQL checks.
  */
-final readonly class EventSourcedTenantRepository implements TenantRepositoryInterface
+final class EventSourcedTenantRepository implements TenantRepositoryInterface
 {
     public function __construct(
         private EventStoreRepositoryInterface $eventStore,
