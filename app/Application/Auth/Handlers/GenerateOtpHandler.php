@@ -59,10 +59,27 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         // ═══════════════════════════════════════════════════════════════════
         // PHASE 1: IDEMPOTENCY BARRIER (Concurrency Control)
         // ═══════════════════════════════════════════════════════════════════
-        if ($this->idempotencyService->has($command->idempotencyKey)) {
+        // ═══════════════════════════════════════════════════════════════════
+        // PHASE 1: IDEMPOTENCY BARRIER (The Gatekeeper)
+        // ═══════════════════════════════════════════════════════════════════
+        // Protocol: 
+        // 1. If COMPLETED -> Return Cached Result
+        // 2. If PROCESSING -> Throw ConcurrentRequestException
+        // 3. If NULL -> Register PROCESSING and Continue
+        
+        $state = $this->idempotencyService->getState($command->idempotencyKey);
+
+        if ($state === 'COMPLETED') {
             $this->logger->info('Idempotency hit: Returning cached result', ['key' => $command->idempotencyKey]);
             return;
         }
+
+        if ($state === 'PROCESSING') {
+            throw \App\Application\Common\Exceptions\ConcurrentRequestException::forKey($command->idempotencyKey);
+        }
+
+        // Atomic Reservation
+        $this->idempotencyService->registerProcessing($command->idempotencyKey);
 
         // ═══════════════════════════════════════════════════════════════════
         // PHASE 2: VALIDATION & GUARD

@@ -54,10 +54,22 @@ final readonly class DeleteUserHandler
         // ═══════════════════════════════════════════════════════════════════
         // PHASE 1: IDEMPOTENCY BARRIER
         // ═══════════════════════════════════════════════════════════════════
-        if ($this->idempotencyService->has($command->idempotencyKey)) {
+        // ═══════════════════════════════════════════════════════════════════
+        // PHASE 1: IDEMPOTENCY BARRIER (The Gatekeeper)
+        // ═══════════════════════════════════════════════════════════════════
+        $state = $this->idempotencyService->getState($command->idempotencyKey);
+
+        if ($state === 'COMPLETED') {
             $this->logger->info('Idempotency hit: Returning cached result (void)', ['key' => $command->idempotencyKey]);
             return;
         }
+
+        if ($state === 'PROCESSING') {
+            throw \App\Application\Common\Exceptions\ConcurrentRequestException::forKey($command->idempotencyKey);
+        }
+
+        // Atomic Reservation
+        $this->idempotencyService->registerProcessing($command->idempotencyKey);
 
         // ═══════════════════════════════════════════════════════════════════
         // PHASE 2: READ - Load Target User
