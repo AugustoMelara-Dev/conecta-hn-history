@@ -84,3 +84,43 @@ test('commands should not use uploaded file objects')
 test('application layer should not use illuminate http request')
     ->expect('App\Application')
     ->not->toUse('Illuminate\Http\Request');
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LAW 1: APPLICATION LAYER ISOLATION GUARD (FRAMEWORK DECOUPLING)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+test('application layer must not use db facade')
+    ->expect('App\Application')
+    ->not->toUse('Illuminate\Support\Facades\DB');
+
+test('application layer must not use log facade')
+    ->expect('App\Application')
+    ->not->toUse('Illuminate\Support\Facades\Log');
+
+test('application layer must not use cache facade')
+    ->expect('App\Application')
+    ->not->toUse('Illuminate\Support\Facades\Cache');
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LAW 2: UUID IDENTITY ENFORCEMENT GUARD (ASYNC SAFETY)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+test('listeners should use string identifiers not integers')
+    ->expect('App\Listeners')
+    ->not->toUse(['toInt']);
+
+test('domain events should serialize identifiers as strings')
+    ->expect('App\Events')
+    ->not->toUse(['toInt']);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LAW 3: PORTS AND ADAPTERS EXISTENCE GUARD
+// ═══════════════════════════════════════════════════════════════════════════════
+
+test('transaction manager interface exists in application contracts')
+    ->expect('App\Application\Shared\Contracts\TransactionManagerInterface')
+    ->toBeInterface();
+
+test('logger interface exists in application contracts')
+    ->expect('App\Application\Shared\Contracts\LoggerInterface')
+    ->toBeInterface();
