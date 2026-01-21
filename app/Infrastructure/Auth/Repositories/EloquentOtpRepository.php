@@ -74,16 +74,32 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
         return $this->hydrate($model);
     }
 
-    /**
-     * Atomically increment the attempts counter in persistence.
-     * Uses database-level increment to avoid race conditions.
-     */
     public function incrementAttempts(string $otpId): void
     {
         // ATOMIC SQL: UPDATE one_time_passwords SET attempts = attempts + 1 WHERE id = ?
         OneTimePassword::query()
             ->where('id', $otpId)
             ->increment('attempts');
+    }
+
+    /**
+     * Atomically increment attempts with conditional gatekeeping.
+     * Uses database-level locking (row update constraint) to prevent race conditions.
+     */
+    public function incrementAttemptsAtomically(string $otpId, int $maxAttempts): void
+    {
+        // ATOMIC SQL: UPDATE one_time_passwords SET attempts = attempts + 1 WHERE id = ? AND attempts < ?
+        $affected = OneTimePassword::query()
+            ->where('id', $otpId)
+            ->where('attempts', '<', $maxAttempts)
+            ->increment('attempts');
+
+        // Affected rows will be 0 if the record doesn't exist OR if attempts >= maxAttempts
+        if ($affected === 0) {
+            // We assume it's exceeded because existence is usually checked prior, but even if not,
+            // failing secure is better.
+            throw new \App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException();
+        }
     }
 
     /**
