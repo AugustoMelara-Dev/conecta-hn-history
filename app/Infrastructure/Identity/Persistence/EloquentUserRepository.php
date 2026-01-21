@@ -7,6 +7,7 @@ namespace App\Infrastructure\Identity\Persistence;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Models\User;
+use App\Contracts\Events\DomainEventBus;
 use DateTimeImmutable;
 
 /**
@@ -21,32 +22,47 @@ use DateTimeImmutable;
  */
 final class EloquentUserRepository implements UserRepositoryInterface
 {
+    public function __construct(
+        private readonly DomainEventBus $eventBus
+    ) {}
+
+    /**
+     * Persiste una entidad de dominio UserEntity en la base de datos.
+     * 
+     * PATRÓN DATA MAPPER: Mapeo manual explícito.
+     * Cada campo se asigna individualmente - PROHIBIDO usar fill() o create().
+     * 
+     * @param UserEntity $user Agregado de dominio a persistir
+     */
     public function save(UserEntity $user): void
     {
-        if ($user->id) {
-            $model = User::where('id', $user->id)->first();
-            
-            if ($model) {
-                $model->name = $user->name;
-                $model->email = $user->email;
-                $model->password = $user->password;
-                
-                if ($user->tenantId !== null) {
-                    $model->tenant_id = $user->tenantId;
-                }
-                
-                $model->save();
-                return;
-            }
+        // 1. DETERMINACIÓN INSERT/UPDATE mediante findOrNew
+        $model = User::findOrNew($user->id());
+        
+        // 2. MAPEO MANUAL EXPLÍCITO (Data Mapper Pattern)
+        // Cada propiedad se extrae del agregado y se asigna al modelo Eloquent
+        $model->id = $user->id();               // UUID pre-generado
+        $model->name = $user->name();           // String plano
+        $model->email = $user->email();         // String validado en entidad
+        $model->password = $user->password();   // Hash ya cocinado
+        $model->tenant_id = $user->tenantId();  // UUID del tenant
+        $model->role = $user->role()->value;    // Enum -> string
+        
+        // Campos opcionales
+        if ($user->rememberToken() !== null) {
+            $model->remember_token = $user->rememberToken();
         }
         
-        // Create new user
-        User::create([
-            'name' => $user->name,
-            'email' => $user->email,
-            'password' => $user->password,
-            'tenant_id' => $user->tenantId,
-        ]);
+        // 3. PERSISTENCIA ATÓMICA
+        $model->save();
+        
+        // 4. DISPATCH DE EVENTOS DE DOMINIO (Event-Driven Architecture)
+        // Titanium Rule: La persistencia INCLUYE la publicación de eventos
+        // NOTA: Usamos el dispatcher nativo de Laravel ya que DomainEventInterface
+        // es compatible con el sistema de eventos de Laravel.
+        foreach ($user->getUncommittedEvents() as $event) {
+            event($event);
+        }
     }
 
     public function findById(string $id, string $tenantId): ?UserEntity
@@ -81,17 +97,16 @@ final class EloquentUserRepository implements UserRepositoryInterface
 
     public function delete(UserEntity $user): void
     {
-        if ($user->id === null) {
+        if ($user->id() === null) {
             return;
         }
         
-        User::where('id', $user->id)->delete();
+        User::where('id', $user->id())->delete();
     }
 
     private function toEntity(User $model): UserEntity
     {
         $tenantId = null;
-        
         $rawTenantId = $model->tenant_id;
         
         if ($rawTenantId instanceof \App\Domain\Shared\ValueObjects\TenantId) {
@@ -102,18 +117,17 @@ final class EloquentUserRepository implements UserRepositoryInterface
             $tenantId = $rawTenantId;
         }
 
-        return new UserEntity(
-            id: (string) $model->id,
-            name: $model->name,
-            email: $model->email,
-            password: $model->password,
-            tenantId: $tenantId,
-            createdAt: $model->created_at instanceof \DateTime 
-                ? DateTimeImmutable::createFromMutable($model->created_at) 
-                : new DateTimeImmutable($model->created_at ?? 'now'),
-            updatedAt: $model->updated_at instanceof \DateTime 
-                ? DateTimeImmutable::createFromMutable($model->updated_at) 
-                : new DateTimeImmutable($model->updated_at ?? 'now'),
-        );
+        // Use fromStateArray factory method instead of private constructor
+        return UserEntity::fromStateArray([
+            'id' => (string) $model->id,
+            'name' => $model->name,
+            'email' => $model->email,
+            'password' => $model->password,
+            'role' => $model->role instanceof \UnitEnum ? $model->role->value : ($model->role ?? 'user'),
+            'tenant_id' => $tenantId,
+            'remember_token' => $model->remember_token,
+            'created_at' => $model->created_at?->format(\DateTimeImmutable::ATOM),
+            'updated_at' => $model->updated_at?->format(\DateTimeImmutable::ATOM),
+        ]);
     }
 }
