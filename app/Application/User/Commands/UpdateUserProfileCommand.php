@@ -25,10 +25,10 @@ final readonly class UpdateUserProfileCommand
          * Must match the user's tenantId or operation is aborted.
          */
         public string $requestingTenantId,
-        
+
         /** New display name */
         public string $name,
-        
+
         /** New email address */
         public string $email,
     ) {}

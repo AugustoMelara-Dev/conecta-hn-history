@@ -2,11 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Application\Auth\Handlers\GenerateOtpHandler;
+use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use App\Application\Shared\Contracts\EventBusInterface;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
-use App\Application\Common\Contracts\IdempotencyServiceInterface;
-use Illuminate\Support\Facades\Log;
 
 arch('Auth Handlers must not use EventBus directly - Strict Outbox Pattern')
     ->expect('App\Application\Auth\Handlers')
@@ -30,7 +28,7 @@ arch('Auth Layer must not use Laravel Facades (Rule of Application Purity)')
     ->not->toUse([
         'Illuminate\Support\Facades\DB',
         'Illuminate\Support\Facades\Log',
-        'Illuminate\Support\Facades\Event'
+        'Illuminate\Support\Facades\Event',
     ]);
 
 arch('Auth Handlers must not have side effects dependencies (Rule of Effect Isolation)')
@@ -38,8 +36,7 @@ arch('Auth Handlers must not have side effects dependencies (Rule of Effect Isol
     ->not->toUse([
         'Illuminate\Contracts\Mail\Mailer',
         'Illuminate\Contracts\Notifications\Dispatcher',
-        'App\Domain\Auth\Contracts\OtpNotifierInterface'
+        'App\Domain\Auth\Contracts\OtpNotifierInterface',
     ]);
 
 // Placeholder removed to ensure test passes. Listeners scope is validated in separate test suite.
-

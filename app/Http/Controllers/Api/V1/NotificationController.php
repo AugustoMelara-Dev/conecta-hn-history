@@ -39,10 +39,10 @@ final class NotificationController extends Controller
         return response()->json([
             'notifications' => NotificationResource::collection($notifications),
             'unread_count' => $notifications->total(), // Approximation or add strict unread count method to repo if needed.
-             // For strictness with 'EloquentNotificationRepository', paginate returns everything.
-             // If unread_count is critical, we might need a dedicated method in Repo: countUnread($userId).
-             // Spec didn't ask for it explicitly but index usually requires it.
-             // I will stick to what's available or simple.
+            // For strictness with 'EloquentNotificationRepository', paginate returns everything.
+            // If unread_count is critical, we might need a dedicated method in Repo: countUnread($userId).
+            // Spec didn't ask for it explicitly but index usually requires it.
+            // I will stick to what's available or simple.
         ]);
     }
 

@@ -29,6 +29,7 @@ final readonly class VerifyOtpCommandValidator implements VerifyOtpHandlerInterf
     public function handle(VerifyOtpCommand $command): VerifyOtpResult
     {
         $this->validate($command);
+
         return $this->inner->handle($command);
     }
 

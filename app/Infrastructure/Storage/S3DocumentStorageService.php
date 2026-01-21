@@ -11,7 +11,7 @@ use Throwable;
 
 /**
  * GenericDocumentStorageService - Polymorphic Storage Adapter (Level 25 - Env Aware)
- * 
+ *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  ADAPTABILITY: ENVIRONMENT AGNOSTIC                                      ║
  * ║  1. Uses config('filesystems.default') instead of hardcoded 's3'.        ║
@@ -22,6 +22,7 @@ use Throwable;
 final readonly class S3DocumentStorageService implements DocumentStorageServiceInterface
 {
     private const QUARANTINE_PREFIX = 'temp';
+
     private const PERMANENT_PREFIX = 'permanent';
 
     public function __construct(
@@ -35,26 +36,26 @@ final readonly class S3DocumentStorageService implements DocumentStorageServiceI
 
         $diskName = config('filesystems.default', 'local');
         $disk = $this->storage->disk($diskName);
-        
+
         // STREAMING UPLOAD
         $stream = fopen($sourcePath, 'r');
-        
+
         if ($stream === false) {
-             throw new RuntimeException("Failed to open source file stream: {$sourcePath}");
+            throw new RuntimeException("Failed to open source file stream: {$sourcePath}");
         }
 
         try {
             $success = $disk->put($destinationPath, $stream);
         } catch (Throwable $e) {
             fclose($stream);
-            throw new RuntimeException("Stream upload failed on disk [{$diskName}]: " . $e->getMessage(), 0, $e);
+            throw new RuntimeException("Stream upload failed on disk [{$diskName}]: ".$e->getMessage(), 0, $e);
         }
-        
+
         if (is_resource($stream)) {
             fclose($stream);
         }
 
-        if (!$success) {
+        if (! $success) {
             throw new RuntimeException("Failed to upload proof of payment to quarantine on disk [{$diskName}]");
         }
 
@@ -63,17 +64,17 @@ final readonly class S3DocumentStorageService implements DocumentStorageServiceI
 
     public function promote(string $tempPath): string
     {
-        if (!str_starts_with($tempPath, self::QUARANTINE_PREFIX)) {
-             throw new RuntimeException("Cannot promote a file that is not in quarantine: {$tempPath}");
+        if (! str_starts_with($tempPath, self::QUARANTINE_PREFIX)) {
+            throw new RuntimeException("Cannot promote a file that is not in quarantine: {$tempPath}");
         }
 
         $diskName = config('filesystems.default', 'local');
         $disk = $this->storage->disk($diskName);
 
         // Verify existence
-        if (!$disk->exists($tempPath)) {
-             // If relying on this method, we expect file to be there. 
-             // Exception will trigger Self-Healing in Listener if applicable.
+        if (! $disk->exists($tempPath)) {
+            // If relying on this method, we expect file to be there.
+            // Exception will trigger Self-Healing in Listener if applicable.
             throw new RuntimeException("Quarantine file not found on disk [{$diskName}]: {$tempPath}");
         }
 
@@ -81,25 +82,25 @@ final readonly class S3DocumentStorageService implements DocumentStorageServiceI
         // Instead of reusing the Temp UUID (which allows Reference-Jacking if a user reuses a temp key),
         // we generate a FRESH UUID for the permanent artifact.
         // This ensures 1 Payment = 1 Unique File. No shared fate.
-        
+
         // Parse Tenant ID manually to maintain structure: temp/{tenant}/{uuid}.ext
         // $parts = [temp, tenant, filename]
-        $parts = explode('/', $tempPath); 
+        $parts = explode('/', $tempPath);
         $tenantId = $parts[1] ?? 'common';
         $extension = pathinfo($tempPath, PATHINFO_EXTENSION);
-        
+
         $permanentPath = sprintf(
-            '%s/%s/%s.%s', 
-            self::PERMANENT_PREFIX, 
-            $tenantId, 
-            \Illuminate\Support\Str::uuid()->toString(), 
+            '%s/%s/%s.%s',
+            self::PERMANENT_PREFIX,
+            $tenantId,
+            \Illuminate\Support\Str::uuid()->toString(),
             $extension
         );
 
         // Atomic "Move" (Copy + Delete-Later)
         $copySuccess = $disk->copy($tempPath, $permanentPath);
 
-        if (!$copySuccess) {
+        if (! $copySuccess) {
             throw new RuntimeException("Failed to promote file to permanent storage on disk [{$diskName}]");
         }
 
@@ -131,25 +132,25 @@ final readonly class S3DocumentStorageService implements DocumentStorageServiceI
             // CRITICAL: Differentiate "Not Found" from "Infrastructure Failure" (503/Timeout)
             // If the driver explicitly says "Unable to retrieve metadata", it might be missing OR a connection error.
             // AWS SDK typically throws an exception with a code.
-            
+
             // Heuristic: If it's a "file not found" scenario, wrap it.
             // If it's a connection error, letting it bubble up is safer for retries/dead-lettering.
-            
-            // For Flysystem V3/V2, 'UnableToRetrieveMetadata' is common. 
-            // We'll check the message or assume 'Unable' implies missing in standard operation, 
+
+            // For Flysystem V3/V2, 'UnableToRetrieveMetadata' is common.
+            // We'll check the message or assume 'Unable' implies missing in standard operation,
             // BUT strict observability requires we don't swallow 500s.
-            
+
             // Simplest Robust Check:
             if ($e instanceof \League\Flysystem\UnableToRetrieveMetadata || str_contains($e->getMessage(), 'not found') || str_contains($e->getMessage(), '404')) {
-                 throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::atPath($path);
+                throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::atPath($path);
             }
-            
+
             // RETHROW Infrastructure Errors (e.g., 503 Service Unavailable, Curl Error)
             throw $e;
         }
 
         if ($size === 0) {
-             throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::checkSumFailed($path);
+            throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::checkSumFailed($path);
         }
     }
 }

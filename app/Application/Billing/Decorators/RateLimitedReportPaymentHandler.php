@@ -23,6 +23,7 @@ use Illuminate\Validation\ValidationException;
 final readonly class RateLimitedReportPaymentHandler implements ReportPaymentHandlerInterface
 {
     private const MAX_ATTEMPTS = 10;
+
     private const DECAY_SECONDS = 60;
 
     public function __construct(
@@ -32,12 +33,12 @@ final readonly class RateLimitedReportPaymentHandler implements ReportPaymentHan
 
     public function handle(ReportPaymentCommand $command): ReportPaymentResult
     {
-        $key = 'billing:report_payment:' . $command->tenantId;
+        $key = 'billing:report_payment:'.$command->tenantId;
 
         try {
             if ($this->rateLimiter->tooManyAttempts($key, self::MAX_ATTEMPTS)) {
                 $seconds = $this->rateLimiter->availableIn($key);
-                
+
                 throw ValidationException::withMessages([
                     'tenant_id' => ["Rate limit exceeded. Please try again in {$seconds} seconds."],
                 ]);
@@ -50,7 +51,7 @@ final readonly class RateLimitedReportPaymentHandler implements ReportPaymentHan
             // CIRCUIT BREAKER: Fail Open (Level 33)
             // If Redis is down, we MUST NOT block payment reporting (Revenue).
             // We log the failure as critical but allow the request to pass.
-            \Illuminate\Support\Facades\Log::critical("Rate Limiter FAILURE in ReportPayment (Fail-Open active): " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::critical('Rate Limiter FAILURE in ReportPayment (Fail-Open active): '.$e->getMessage());
         }
 
         return $this->inner->handle($command);

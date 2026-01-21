@@ -17,8 +17,10 @@ interface TransactionManagerInterface
      * Execute the given operation within a database transaction.
      *
      * @template T
-     * @param \Closure(): T $operation
+     *
+     * @param  \Closure(): T  $operation
      * @return T
+     *
      * @throws \Throwable If the operation fails, the transaction is rolled back.
      */
     public function transaction(\Closure $operation): mixed;

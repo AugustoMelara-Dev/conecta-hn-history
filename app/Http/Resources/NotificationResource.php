@@ -27,7 +27,7 @@ final class NotificationResource extends JsonResource
             try {
                 $tenantId = $request->user()?->tenant_id;
                 if ($tenantId) {
-                     $actionUrl = URL::temporarySignedRoute(
+                    $actionUrl = URL::temporarySignedRoute(
                         'api.exports.download',
                         now()->addMinutes(30),
                         [

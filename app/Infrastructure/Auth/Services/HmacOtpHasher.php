@@ -33,6 +33,7 @@ final readonly class HmacOtpHasher implements OtpHasherInterface
     public function verify(string $plainOtp, string $hashedOtp): bool
     {
         $calculatedHash = $this->hash($plainOtp);
+
         return hash_equals($hashedOtp, $calculatedHash);
     }
 }

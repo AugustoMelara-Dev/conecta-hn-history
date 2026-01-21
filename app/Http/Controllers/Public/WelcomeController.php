@@ -18,7 +18,7 @@ final class WelcomeController extends Controller
 
     /**
      * Display the landing page.
-     * 
+     *
      * Data parity with Livewire Home.php:
      * - categories: Active categories for navigation pills
      * - cities: Popular cities with tenant counts

@@ -20,9 +20,8 @@ interface GenerateOtpHandlerInterface
     /**
      * Handle OTP generation for the given command.
      *
-     * @param GenerateOtpCommand $command The OTP generation request
-     * @return void
-     * 
+     * @param  GenerateOtpCommand  $command  The OTP generation request
+     *
      * @throws \App\Domain\Auth\Exceptions\TooManyOtpRequestsException If rate limit exceeded
      */
     public function handle(GenerateOtpCommand $command): void;

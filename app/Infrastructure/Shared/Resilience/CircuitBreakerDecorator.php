@@ -22,7 +22,9 @@ use Throwable;
 final class CircuitBreakerDecorator implements OtpNotifierInterface
 {
     private const FAILURE_THRESHOLD = 5;
+
     private const OPEN_TTL_SECONDS = 60;
+
     private const CACHE_PREFIX = 'circuit_breaker:otp_notifier';
 
     public function __construct(
@@ -33,7 +35,7 @@ final class CircuitBreakerDecorator implements OtpNotifierInterface
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * FIXED: Updated signature to match OtpNotifierInterface contract.
      */
     public function send(
@@ -51,7 +53,7 @@ final class CircuitBreakerDecorator implements OtpNotifierInterface
         try {
             // 2. DELEGATE EXECUTION
             $this->innerService->send($recipient, $plainTextCode, $identifier, $tenantId, $expiryMinutes);
-            
+
             // 3. SUCCESS - Reset local failure count if needed
         } catch (Throwable $e) {
             // 4. ON FAILURE - Record and Trip
@@ -68,9 +70,9 @@ final class CircuitBreakerDecorator implements OtpNotifierInterface
     private function recordFailure(): void
     {
         $key = $this->getFailureKey();
-        
+
         $failures = $this->cache->increment($key);
-        
+
         if ($failures === 1) {
             $this->cache->put($key, 1, 120);
         }
@@ -88,11 +90,11 @@ final class CircuitBreakerDecorator implements OtpNotifierInterface
 
     private function getOpenKey(): string
     {
-        return self::CACHE_PREFIX . ":{$this->serviceName}:open";
+        return self::CACHE_PREFIX.":{$this->serviceName}:open";
     }
 
     private function getFailureKey(): string
     {
-        return self::CACHE_PREFIX . ":{$this->serviceName}:failures";
+        return self::CACHE_PREFIX.":{$this->serviceName}:failures";
     }
 }

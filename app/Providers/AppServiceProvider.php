@@ -147,7 +147,7 @@ class AppServiceProvider extends ServiceProvider
             function ($app) {
                 // Instantiate the inner Eloquent Implementation
                 $inner = $app->make(\App\Infrastructure\Public\EloquentTenantStorefrontRepository::class);
-                
+
                 // Wrap it with the Cached Decorator
                 return new \App\Infrastructure\Public\CachedTenantStorefrontRepository($inner);
             }
@@ -188,16 +188,16 @@ class AppServiceProvider extends ServiceProvider
 
         // API Domains
         $this->app->bind(
-             \App\Domain\Api\Contracts\NotificationRepository::class,
-             \App\Infrastructure\Api\EloquentNotificationRepository::class
+            \App\Domain\Api\Contracts\NotificationRepository::class,
+            \App\Infrastructure\Api\EloquentNotificationRepository::class
         );
         $this->app->bind(
-             \App\Domain\Tenant\Contracts\BillingRepository::class,
-             \App\Infrastructure\Tenant\EloquentBillingRepository::class
+            \App\Domain\Tenant\Contracts\BillingRepository::class,
+            \App\Infrastructure\Tenant\EloquentBillingRepository::class
         );
         $this->app->bind(
-             \App\Domain\Billing\Repositories\PlanRepositoryInterface::class,
-             \App\Infrastructure\Billing\Persistence\ConfigPlanRepository::class
+            \App\Domain\Billing\Repositories\PlanRepositoryInterface::class,
+            \App\Infrastructure\Billing\Persistence\ConfigPlanRepository::class
         );
         $this->app->bind(
             \App\Domain\Marketing\Contracts\CouponReader::class,
@@ -211,7 +211,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Domain\Shared\PasswordHasherInterface::class,
             \App\Infrastructure\Shared\Services\LaravelPasswordHasher::class
         );
-        
+
         $this->app->bind(
             \App\Domain\Shared\OutboxRepositoryInterface::class,
             \App\Infrastructure\Shared\Persistence\EloquentOutboxRepository::class
@@ -316,7 +316,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Domain\Auth\Contracts\OtpNotifierInterface::class,
             \App\Infrastructure\Notifications\EmailOtpNotifier::class
         );
-        
+
         // OTP Repository - Tenant-Aware Implementation (CANONICAL)
         $this->app->bind(
             \App\Domain\Auth\Repositories\OtpRepositoryInterface::class,
@@ -327,7 +327,7 @@ class AppServiceProvider extends ServiceProvider
         // OTP CONFIGURATION: Fail-Fast Injection (No Silent Failures)
         // All values MUST be defined in config/auth.php['otp'] or boot will abort.
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         // GenerateOtpHandler: OTP Expiry Minutes
         $this->app->when(\App\Application\Auth\Handlers\GenerateOtpHandler::class)
             ->needs('$otpExpiryMinutes')
@@ -336,6 +336,7 @@ class AppServiceProvider extends ServiceProvider
                 if ($value === null) {
                     throw new \RuntimeException('Critical configuration missing: auth.otp.expiry_minutes');
                 }
+
                 return (int) $value;
             });
 
@@ -347,6 +348,7 @@ class AppServiceProvider extends ServiceProvider
                 if ($value === null) {
                     throw new \RuntimeException('Critical configuration missing: auth.otp.max_requests_per_hour');
                 }
+
                 return (int) $value;
             });
 
@@ -358,6 +360,7 @@ class AppServiceProvider extends ServiceProvider
                 if ($value === null) {
                     throw new \RuntimeException('Critical configuration missing: auth.otp.length');
                 }
+
                 return (int) $value;
             });
 
@@ -369,6 +372,7 @@ class AppServiceProvider extends ServiceProvider
                 if ($value === null) {
                     throw new \RuntimeException('Critical configuration missing: auth.otp.rate_limit_decay_seconds');
                 }
+
                 return (int) $value;
             });
 
@@ -380,9 +384,10 @@ class AppServiceProvider extends ServiceProvider
                 if ($value === null) {
                     throw new \RuntimeException('Critical configuration missing: auth.otp.max_attempts');
                 }
+
                 return (int) $value;
             });
-            
+
         // VerifyOtpRateLimitDecorator: Rate Limit Config
         $this->app->when(\App\Application\Auth\Decorators\VerifyOtpRateLimitDecorator::class)
             ->needs('$maxAttempts')
@@ -391,7 +396,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(\App\Application\Auth\Decorators\VerifyOtpRateLimitDecorator::class)
             ->needs('$decaySeconds')
             ->give(60);
-            
+
         // ═══════════════════════════════════════════════════════════════════════
         // AUTH DOMAIN: VERIFY OTP PIPELINE (Standardized)
         // ═══════════════════════════════════════════════════════════════════════
@@ -401,7 +406,7 @@ class AppServiceProvider extends ServiceProvider
                 return \App\Infrastructure\Shared\Bus\PipelineBuilder::make(\App\Application\Auth\Handlers\VerifyOtpHandler::class)
                     ->through([
                         // Outermost (Runs First)
-                        \App\Application\Auth\Decorators\VerifyOtpRateLimitDecorator::class, 
+                        \App\Application\Auth\Decorators\VerifyOtpRateLimitDecorator::class,
                         \App\Application\Auth\Validators\VerifyOtpCommandValidator::class,
                         \App\Application\Common\Decorators\AtomicIdempotencyDecorator::class,
                         \App\Application\Common\Decorators\TransactionDecorator::class,
@@ -439,7 +444,6 @@ class AppServiceProvider extends ServiceProvider
             }
         );
 
-
         // UpdateUserPassword Pipeline (Standardized)
         $this->app->bind(
             \App\Application\Auth\Handlers\UpdateUserPasswordHandlerInterface::class,
@@ -464,7 +468,7 @@ class AppServiceProvider extends ServiceProvider
                 // However, Wait. PipelineBuilder::make() takes a string class name OR an instance?
                 // My PipelineBuilder::make takes string.
                 // Does it verify contextual bindings? Yes, $container->make($class) respects them.
-                
+
                 return \App\Infrastructure\Shared\Bus\PipelineBuilder::make(\App\Application\Auth\Handlers\GenerateOtpHandler::class)
                     ->through([
                         \App\Application\Auth\Decorators\RateLimitedGenerateOtpHandler::class, // Outer
@@ -484,6 +488,7 @@ class AppServiceProvider extends ServiceProvider
                 if ($value === null) {
                     throw new \RuntimeException('Critical configuration missing: auth.otp.idempotency_ttl_seconds');
                 }
+
                 return (int) $value;
             });
 
@@ -627,7 +632,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Application\Common\Contracts\MetricsCollectorInterface::class,
             \App\Infrastructure\Monitoring\DatadogMetricsAdapter::class
         );
-        
+
         $this->app->bind(
             \App\Application\Common\Contracts\CircuitBreakerInterface::class,
             function ($app) {
@@ -651,25 +656,19 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Events\LaravelEventBus::class
         );
 
-
         // ═══════════════════════════════════════════════════════════════════════
         // IDEMPOTENCY: Titanium Stability (AUTH & IDENTITY)
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         // 1. CONTEXT PROVIDER (Polymorphic Identity)
         $this->app->bind(
             \App\Application\Common\Interfaces\ClientContextProviderInterface::class,
             function ($app) {
                 return $app->runningInConsole()
-                    ? new \App\Infrastructure\Shared\ConsoleContextProvider()
+                    ? new \App\Infrastructure\Shared\ConsoleContextProvider
                     : new \App\Infrastructure\Shared\RequestContextProvider($app['request']);
             }
         );
-
-
-
-
-
 
         // 3. IDENTITY DOMAIN DECORATOR STACK (The Onion)
         // Order: Security -> Observability -> Consistency -> Core
@@ -805,8 +804,8 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\RateLimiter::for('analytics-protection', function (\Illuminate\Http\Request $request) {
             // Composite Key: IP + User Agent + Target Tenant
             // Prevents botnet distributed attacks against a specific tenant.
-            $key = $request->ip() . '|' . $request->userAgent() . '|' . $request->input('tenant_id');
-            
+            $key = $request->ip().'|'.$request->userAgent().'|'.$request->input('tenant_id');
+
             return \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by($key);
         });
 
@@ -815,14 +814,14 @@ class AppServiceProvider extends ServiceProvider
             // Resolve Tenant ID securely from Context if available
             // If explicit 'tenant_id' input is missing, try to resolve from route or attributes
             // Fallback to IP if purely anonymous without context
-            
+
             /** @var \App\Domain\Shared\Contracts\TenantContext $context */
             $context = app(\App\Domain\Shared\Contracts\TenantContext::class);
             $tenantId = $context->getTenantId() ?? $request->input('tenant_id'); // Try context first
 
-            $key = $tenantId 
-                ? "tenant_id:{$tenantId}|ip:" . $request->ip() 
-                : "ip:" . $request->ip();
+            $key = $tenantId
+                ? "tenant_id:{$tenantId}|ip:".$request->ip()
+                : 'ip:'.$request->ip();
 
             return \Illuminate\Cache\RateLimiting\Limit::perMinute(120)->by($key); // Increased to 120 as per prompt example
         });

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Application\Actions\Auth\RegisterTenantAction;
-use App\Application\DTOs\Auth\RegisterTenantData;
 use App\Domain\Tenant\Contracts\OnboardingReader;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -64,7 +63,7 @@ final class RegisterTenantController extends Controller
         try {
             // PRE-PROCESS: File upload handled in Controller (Infrastructure Layer)
             $logoPath = $request->file('logo')?->store('tenants/logos', 'public');
-            
+
             // DELEGATION: Command Bus
             $command = new \App\Application\Tenant\Commands\RegisterTenantCommand(
                 businessName: $request->input('name'),
@@ -88,8 +87,8 @@ final class RegisterTenantController extends Controller
 
         } catch (\Exception $e) {
             return back()
-                 ->withInput($request->except('password', 'password_confirmation'))
-                 ->withErrors(['email' => 'Error: ' . $e->getMessage()]);
+                ->withInput($request->except('password', 'password_confirmation'))
+                ->withErrors(['email' => 'Error: '.$e->getMessage()]);
         }
     }
 }

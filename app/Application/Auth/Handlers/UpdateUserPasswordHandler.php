@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\UpdateUserPasswordCommand;
-use App\Application\Common\Contracts\AtomicIdempotencyInterface;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
-
 use App\Domain\Auth\Events\UserPasswordChanged;
 use App\Domain\Auth\Exceptions\InvalidCredentialsException;
 use App\Domain\Identity\Entities\UserEntity;
@@ -21,7 +19,7 @@ use Ramsey\Uuid\Uuid;
 
 /**
  * UpdateUserPasswordHandler - Atomic Protocol Edition
- * 
+ *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  ATOMIC PROTOCOL: "Insert-or-Die" Gatekeeper                            ║
  * ║  CONSISTENCY: Transactional Outbox within Atomic Lock                   ║
@@ -30,8 +28,6 @@ use Ramsey\Uuid\Uuid;
  */
 final readonly class UpdateUserPasswordHandler implements UpdateUserPasswordHandlerInterface
 {
-
-
     public function __construct(
         private UserRepositoryInterface $userRepository,
         private PasswordHasherInterface $hasher,
@@ -53,7 +49,7 @@ final readonly class UpdateUserPasswordHandler implements UpdateUserPasswordHand
         }
 
         // Integrity Check
-        if (!$user instanceof UserEntity) {
+        if (! $user instanceof UserEntity) {
             throw new \RuntimeException('Repository returned invalid object type.');
         }
 
@@ -64,14 +60,14 @@ final readonly class UpdateUserPasswordHandler implements UpdateUserPasswordHand
 
         // 3. Credential Verification
         if ($user->hasPassword()) {
-            if (!$this->hasher->verify($command->currentPassword, $user->password())) {
+            if (! $this->hasher->verify($command->currentPassword, $user->password())) {
                 throw new InvalidCredentialsException('The provided password does not match your current password.');
             }
         }
 
         // 4. Domain Logic: Mutate & Persist
         $newHashedPassword = $this->hasher->hash($command->newPassword);
-        
+
         $updatedUser = $user->withPassword($newHashedPassword);
         $sessionInvalidated = false;
 
@@ -81,7 +77,7 @@ final readonly class UpdateUserPasswordHandler implements UpdateUserPasswordHand
         }
 
         $this->userRepository->save($updatedUser);
-        
+
         // 5. Outbox Persistence
         $event = UserPasswordChanged::now(
             userId: (string) $command->userId,
@@ -98,13 +94,11 @@ final readonly class UpdateUserPasswordHandler implements UpdateUserPasswordHand
             metadata: [
                 'tenant_id' => $command->requestingTenantId,
                 'causation_id' => $command->idempotencyKey,
-                'session_invalidated' => $sessionInvalidated
+                'session_invalidated' => $sessionInvalidated,
             ]
         );
 
         $this->outboxRepository->save($message);
-
-
 
         return new \App\Application\Auth\Results\UpdateUserPasswordResult(
             status: 'success',

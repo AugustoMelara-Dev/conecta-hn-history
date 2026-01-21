@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Architecture\Contracts;
 
 use App\Domain\Auth\Events\UserPasswordChanged;
-use App\Domain\Auth\Events\UserProfileUpdated;
+use App\Domain\User\Events\UserProfileUpdated;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -24,7 +24,7 @@ use PHPUnit\Framework\TestCase;
  */
 class EventSchemaTest extends TestCase
 {
-    private const SCHEMA_BASE_PATH = __DIR__ . '/../../../resources/schemas';
+    private const SCHEMA_BASE_PATH = __DIR__.'/../../../resources/schemas';
 
     /**
      * @dataProvider eventSchemaProvider
@@ -35,7 +35,7 @@ class EventSchemaTest extends TestCase
         string $schemaPath
     ): void {
         // 1. Verify schema file exists
-        $fullSchemaPath = self::SCHEMA_BASE_PATH . $schemaPath;
+        $fullSchemaPath = self::SCHEMA_BASE_PATH.$schemaPath;
         $this->assertFileExists(
             $fullSchemaPath,
             "JSON Schema file missing for {$eventClass}. Expected: {$schemaPath}"
@@ -49,7 +49,7 @@ class EventSchemaTest extends TestCase
             method_exists($event, 'toPayload'),
             "Event {$eventClass} must implement toPayload() method"
         );
-        
+
         $this->assertTrue(
             method_exists($event, 'eventName'),
             "Event {$eventClass} must implement eventName() method"
@@ -75,7 +75,7 @@ class EventSchemaTest extends TestCase
         // 5. Load and parse schema
         $schemaJson = file_get_contents($fullSchemaPath);
         $schema = json_decode($schemaJson, true);
-        
+
         $this->assertNotNull($schema, "Failed to parse JSON Schema: {$schemaPath}");
 
         // 6. Validate structure (simplified validation without external library)
@@ -139,16 +139,16 @@ class EventSchemaTest extends TestCase
         }
 
         // Validate additionalProperties: false (no extra fields)
-        if (isset($schema['properties']['payload']['additionalProperties']) 
+        if (isset($schema['properties']['payload']['additionalProperties'])
             && $schema['properties']['payload']['additionalProperties'] === false) {
-            
+
             $allowedFields = array_keys($schema['properties']['payload']['properties'] ?? []);
             $actualFields = array_keys($data['payload']);
             $extraFields = array_diff($actualFields, $allowedFields);
-            
+
             $this->assertEmpty(
                 $extraFields,
-                "Event {$eventClass} has undocumented payload fields: " . implode(', ', $extraFields)
+                "Event {$eventClass} has undocumented payload fields: ".implode(', ', $extraFields)
             );
         }
 

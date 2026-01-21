@@ -29,7 +29,7 @@ final class SmsOtpNotifier implements OtpNotifierInterface
         // Para esta implementación de referencia, simulamos el envío logueando de forma segura.
 
         // SANITIZACIÓN DOBLE: El número/email se enmascara antes de loguear
-        Log::info("Enviando SMS/Email OTP (Simulado)", $this->sanitizePayload([
+        Log::info('Enviando SMS/Email OTP (Simulado)', $this->sanitizePayload([
             'tenant_id' => $tenantId,
             'recipient' => $identifier, // LogSanitizer enmascarará esto
             'expiry' => $expiryMinutes,
@@ -37,6 +37,6 @@ final class SmsOtpNotifier implements OtpNotifierInterface
         ]));
 
         // Simulación de latencia de red
-        // sleep(1); 
+        // sleep(1);
     }
 }

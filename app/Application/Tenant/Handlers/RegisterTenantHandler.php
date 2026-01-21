@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
+use App\Application\Shared\Contracts\TransactionManagerInterface;
+use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Application\Tenant\Results\RegisterTenantResult;
-use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Domain\Identity\Factories\UserFactory;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Security\Contracts\HasherInterface;
-use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Domain\TenantGovernance\Factories\TenantFactory;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
@@ -56,7 +56,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
     {
         // 1. Create User via Factory (Domain Integrity)
         $hashedPassword = $this->hasher->make($command->password);
-        
+
         $userEntity = $this->userFactory->createNewUser(
             name: $command->ownerName,
             email: $command->email,
@@ -76,7 +76,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         // 4. Create Tenant via Factory (Domain Integrity)
         // Uses the REAL ID from the hydrated $userEntity
         $tenantEntity = $this->tenantFactory->createCommercialTenant(
-            userId: $userEntity->id, 
+            userId: $userEntity->id,
             name: $command->businessName,
             slug: $command->slug,
             planType: $planType,
@@ -104,7 +104,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
                 'amount' => $planPrice,
                 'currency' => 'HNL',
                 'status' => 'pending',
-                'reference_number' => 'PRO-' . strtoupper(uniqid()),
+                'reference_number' => 'PRO-'.strtoupper(uniqid()),
                 'description' => 'Suscripción Plan PRO',
             ]);
         }

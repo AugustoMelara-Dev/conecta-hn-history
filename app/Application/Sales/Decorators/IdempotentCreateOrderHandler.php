@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\Sales\Decorators;
 
+use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
 use App\Application\Sales\Results\CreateOrderResult;
-use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use App\Domain\Common\Exceptions\ConcurrencyException;
 
 /**
@@ -40,7 +40,7 @@ final readonly class IdempotentCreateOrderHandler implements CreateOrderHandlerI
             // We check once more if result appeared (Double-Check Locking variant via Cache)
             // or we throw ConcurrencyException / 429.
             // For now, simple concurrency error.
-            throw new ConcurrencyException("Order processing already in progress for this request.");
+            throw new ConcurrencyException('Order processing already in progress for this request.');
         }
 
         try {

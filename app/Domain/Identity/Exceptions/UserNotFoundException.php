@@ -12,7 +12,7 @@ use DomainException;
  * Decoupled from Illuminate\Database\Eloquent\ModelNotFoundException
  * to maintain hexagonal architecture boundaries.
  *
- * SECURITY: Caution with message verbosity. Ensure logs are sanitized 
+ * SECURITY: Caution with message verbosity. Ensure logs are sanitized
  * via LogSanitizer before storage.
  */
 final class UserNotFoundException extends DomainException
@@ -38,7 +38,7 @@ final class UserNotFoundException extends DomainException
 
     /**
      * Factory: User not found within tenant context.
-     * 
+     *
      * Standardized semantic message for debugging clarity.
      */
     public static function withIdAndTenant(string $userId, string $tenantId): self

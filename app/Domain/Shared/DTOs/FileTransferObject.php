@@ -19,13 +19,13 @@ final readonly class FileTransferObject
     public function __construct(
         /** Absolute path to the temporary file */
         public string $tempPath,
-        
+
         /** Original filename with extension */
         public string $originalName,
-        
+
         /** MIME type (image/png, image/jpeg, etc.) */
         public string $mimeType,
-        
+
         /** File size in bytes */
         public int $size,
     ) {}
@@ -49,8 +49,7 @@ final readonly class FileTransferObject
     /**
      * Create from Laravel UploadedFile (Controller layer only).
      *
-     * @param \Illuminate\Http\UploadedFile $uploadedFile
-     * @return self
+     * @param  \Illuminate\Http\UploadedFile  $uploadedFile
      */
     public static function fromUploadedFile(object $uploadedFile): self
     {

@@ -46,7 +46,7 @@ final class CheckoutController extends Controller
             // Extract primitives BEFORE returning - no Model dependency in Controller
             $discountAmount = $coupon->calculateDiscountUnsafe($cartTotal, $shippingCost);
             $newTotal = max(0, $cartTotal - $discountAmount);
-            
+
             // Extract primitive data for message generation
             $couponType = (string) $coupon->type;
             $couponValue = (float) $coupon->value;
@@ -65,7 +65,7 @@ final class CheckoutController extends Controller
             Log::info('CheckoutController: Coupon validation failed', [
                 'code' => $code,
                 'error_code' => $e->getCode(),
-                'user_id' => $request->user()?->id
+                'user_id' => $request->user()?->id,
             ]);
 
             return response()->json([
@@ -73,7 +73,7 @@ final class CheckoutController extends Controller
                 'code' => $e->getErrorCode(),
                 'message' => $e->getMessage(),
                 'data' => array_intersect_key($e->context(), array_flip([
-                    'min_spend', 'required_quantity', 'current_total'
+                    'min_spend', 'required_quantity', 'current_total',
                 ])),
             ], 422);
         }
@@ -81,16 +81,16 @@ final class CheckoutController extends Controller
 
     /**
      * Generate success message using primitives only.
-     * 
-     * @param string $type Coupon type constant value (percent, fixed, free_shipping)
-     * @param float $value Discount value
+     *
+     * @param  string  $type  Coupon type constant value (percent, fixed, free_shipping)
+     * @param  float  $value  Discount value
      */
     private function getSuccessMessage(string $type, float $value): string
     {
         // Using string literals instead of Model constants to avoid import
         return match ($type) {
             'percent' => "¡Cupón aplicado! {$value}% de descuento",
-            'fixed' => '¡Cupón aplicado! L. ' . number_format($value, 2) . ' de descuento',
+            'fixed' => '¡Cupón aplicado! L. '.number_format($value, 2).' de descuento',
             'free_shipping' => '¡Cupón aplicado! Envío gratis',
             default => 'Cupón aplicado correctamente',
         };

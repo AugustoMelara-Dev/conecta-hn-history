@@ -17,8 +17,9 @@ interface ValidationServiceInterface
     /**
      * Validate data against rules.
      *
-     * @param array $data Input data
-     * @param array $rules Validation rules
+     * @param  array  $data  Input data
+     * @param  array  $rules  Validation rules
+     *
      * @throws ValidationException If validation fails
      */
     public function validate(array $data, array $rules): void;

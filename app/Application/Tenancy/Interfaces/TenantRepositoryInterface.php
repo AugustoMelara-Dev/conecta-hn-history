@@ -8,7 +8,7 @@ use App\Domain\TenantGovernance\Entities\TenantEntity;
 
 /**
  * TenantRepositoryInterface - Honest Contract
- * 
+ *
  * - Uses Strict UUIDs (No legacy integers).
  * - Defines explicit persistence and retrieval contracts.
  */

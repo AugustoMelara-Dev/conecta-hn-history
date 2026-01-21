@@ -9,7 +9,6 @@ declare(strict_types=1);
  * ║  These tests enforce architectural rules. A failing test blocks deploy. ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-
 test('controllers should not interact directly with models')
     ->expect('App\Http\Controllers')
     ->not->toUse('App\Models')

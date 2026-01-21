@@ -6,7 +6,7 @@ namespace App\Domain\Shared\ValueObjects;
 
 /**
  * PhoneNumber Value Object
- * 
+ *
  * Encapsulates logic for formatting and link generation.
  */
 final readonly class PhoneNumber
@@ -20,22 +20,22 @@ final readonly class PhoneNumber
 
     public function isValid(): bool
     {
-        return !empty($this->value);
+        return ! empty($this->value);
     }
 
     public function toWhatsappLink(string $message = ''): string
     {
         $phone = $this->value;
-        
+
         // Honduras Prefix Logic encapsulated
         if (strlen($phone) === 8) {
-            $phone = '504' . $phone;
+            $phone = '504'.$phone;
         }
 
         $url = "https://wa.me/{$phone}";
-        
-        if (!empty($message)) {
-            $url .= '?text=' . urlencode($message);
+
+        if (! empty($message)) {
+            $url .= '?text='.urlencode($message);
         }
 
         return $url;

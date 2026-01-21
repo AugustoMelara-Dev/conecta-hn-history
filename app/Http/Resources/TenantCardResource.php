@@ -22,12 +22,12 @@ class TenantCardResource extends JsonResource
             'brand_color' => $this->brand_color ?? '#2563EB',
             'is_pro' => (bool) $this->is_pro,
             'plan_type' => $this->plan_type ?? 'semilla',
-            'city' => $this->whenLoaded('city', fn() => [
+            'city' => $this->whenLoaded('city', fn () => [
                 'id' => $this->city->id,
                 'name' => $this->city->name,
                 'slug' => $this->city->slug,
             ], ['id' => 0, 'name' => 'Honduras', 'slug' => 'honduras']),
-            'category' => $this->whenLoaded('category', fn() => [
+            'category' => $this->whenLoaded('category', fn () => [
                 'id' => $this->category->id,
                 'name' => $this->category->name,
                 'slug' => $this->category->slug,

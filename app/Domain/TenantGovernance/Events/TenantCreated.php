@@ -9,7 +9,7 @@ use DateTimeImmutable;
 
 /**
  * TenantCreated Event - Domain Fact
- * 
+ *
  * Immutable record of a Tenant's birth.
  */
 final class TenantCreated implements DomainEventInterface
@@ -22,7 +22,7 @@ final class TenantCreated implements DomainEventInterface
         public readonly string $domain,
         ?DateTimeImmutable $occurredOn = null
     ) {
-        $this->occurredOn = $occurredOn ?? new DateTimeImmutable();
+        $this->occurredOn = $occurredOn ?? new DateTimeImmutable;
     }
 
     public function occurredOn(): DateTimeImmutable
@@ -51,9 +51,9 @@ final class TenantCreated implements DomainEventInterface
             id: (string) ($payload['id'] ?? ''),
             name: (string) ($payload['name'] ?? ''),
             domain: (string) ($payload['domain'] ?? ''),
-            occurredOn: isset($payload['occurred_on']) 
-                ? new DateTimeImmutable($payload['occurred_on']) 
-                : new DateTimeImmutable()
+            occurredOn: isset($payload['occurred_on'])
+                ? new DateTimeImmutable($payload['occurred_on'])
+                : new DateTimeImmutable
         );
     }
 }

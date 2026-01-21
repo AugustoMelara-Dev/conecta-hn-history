@@ -17,8 +17,7 @@ interface PlanRepositoryInterface
     /**
      * Find a plan implementation by its identifier.
      *
-     * @param string $planIdentifier (e.g., 'pro', 'enterprise')
-     * @return PlanEntity|null
+     * @param  string  $planIdentifier  (e.g., 'pro', 'enterprise')
      */
     public function findByIdentifier(string $planIdentifier): ?PlanEntity;
 

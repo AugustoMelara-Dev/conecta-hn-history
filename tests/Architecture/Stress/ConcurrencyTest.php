@@ -2,12 +2,10 @@
 
 namespace Tests\Architecture\Stress;
 
-use App\Application\Common\Exceptions\ConcurrentRequestException;
+use App\Application\Common\Exceptions\IdempotencyKeyReuseException;
 use App\Infrastructure\Shared\Services\AtomicIdempotencyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
-use App\Application\Common\Exceptions\IdempotencyKeyReuseException;
 
 class ConcurrencyTest extends TestCase
 {
@@ -45,25 +43,25 @@ class ConcurrencyTest extends TestCase
     public function test_it_allows_execution_with_different_keys()
     {
         // 1. First
-        $res1 = $this->service->execute('key_1', 't1', 'h1', fn() => 'A');
-        
+        $res1 = $this->service->execute('key_1', 't1', 'h1', fn () => 'A');
+
         // 2. Second
-        $res2 = $this->service->execute('key_2', 't1', 'h1', fn() => 'B');
+        $res2 = $this->service->execute('key_2', 't1', 'h1', fn () => 'B');
 
         $this->assertEquals('A', $res1);
         $this->assertEquals('B', $res2);
     }
-    
+
     public function test_it_throws_exception_on_hash_mismatch()
     {
         $key = 'fixed_key';
-        
-        $this->service->execute($key, 't1', 'hash_ORIGINAL', fn() => 'A');
+
+        $this->service->execute($key, 't1', 'hash_ORIGINAL', fn () => 'A');
 
         $this->expectException(IdempotencyKeyReuseException::class);
         $this->expectExceptionMessage('Idempotency key reused with different payload');
 
         // Reuse key but different hash
-        $this->service->execute($key, 't1', 'hash_CHANGED', fn() => 'B');
+        $this->service->execute($key, 't1', 'hash_CHANGED', fn () => 'B');
     }
 }

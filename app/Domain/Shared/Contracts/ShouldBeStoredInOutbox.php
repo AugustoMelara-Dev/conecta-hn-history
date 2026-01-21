@@ -32,22 +32,17 @@ interface ShouldBeStoredInOutbox
     /**
      * Reconstruct event from serialized payload.
      *
-     * @param array<string, mixed> $payload
-     * @return static
+     * @param  array<string, mixed>  $payload
      */
     public static function fromPayload(array $payload): static;
 
     /**
      * Get the aggregate identifier for debugging/filtering.
-     *
-     * @return string|null
      */
     public function getAggregateId(): ?string;
 
     /**
      * Get the aggregate type (entity class) for debugging/filtering.
-     *
-     * @return string|null
      */
     public function getAggregateType(): ?string;
 }

@@ -20,7 +20,7 @@ use Carbon\Carbon;
 final class EloquentInteractionRepository implements InteractionRepositoryInterface
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function hasRecentInteraction(
         int $tenantId,
@@ -37,7 +37,7 @@ final class EloquentInteractionRepository implements InteractionRepositoryInterf
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function create(
         int $tenantId,

@@ -55,7 +55,7 @@ final class RegisterTenantRequest extends FormRequest
                 'min:3',
                 'alpha_dash',
                 'unique:tenants,slug',
-                'not_in:' . implode(',', self::RESERVED_SLUGS),
+                'not_in:'.implode(',', self::RESERVED_SLUGS),
             ],
 
             // Step 2: User Credentials

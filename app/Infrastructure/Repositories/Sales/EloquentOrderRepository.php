@@ -7,7 +7,6 @@ namespace App\Infrastructure\Repositories\Sales;
 use App\Domain\Sales\Entities\OrderEntity;
 use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Models\Order;
-use App\Models\OrderItem;
 use DateTimeImmutable;
 
 /**
@@ -22,14 +21,15 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
     public function findById(int $id): ?OrderEntity
     {
         $model = Order::with(['items', 'tenant'])->find($id);
+
         return $model ? $this->toEntity($model) : null;
     }
 
     public function save(OrderEntity $order): void
     {
-        $model = $order->id 
-            ? Order::findOrFail($order->id) 
-            : new Order();
+        $model = $order->id
+            ? Order::findOrFail($order->id)
+            : new Order;
 
         $model->tenant_id = $order->tenantId;
         $model->customer_id = $order->customerId;
@@ -49,13 +49,13 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
         $model->delivery_fee = $order->deliveryFee;
         $model->discount_amount = $order->discountAmount;
         $model->coupon_code = $order->couponCode;
-        
+
         $model->save();
-        
+
         // Handle items if provided
-        if (!empty($order->items)) {
+        if (! empty($order->items)) {
             $model->items()->delete();
-            
+
             foreach ($order->items as $itemData) {
                 $model->items()->create([
                     'product_id' => $itemData['product_id'] ?? null,
@@ -68,7 +68,7 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
                 ]);
             }
         }
-        
+
         $order->setId($model->id);
     }
 
@@ -90,8 +90,8 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
             subtotal: (float) $model->subtotal,
             total: (float) $model->total,
             status: $model->status,
-            createdAt: $model->created_at instanceof \DateTime 
-                ? DateTimeImmutable::createFromMutable($model->created_at) 
+            createdAt: $model->created_at instanceof \DateTime
+                ? DateTimeImmutable::createFromMutable($model->created_at)
                 : new DateTimeImmutable($model->created_at ?? 'now'),
             customerPhone: $model->customer_phone,
             customerAddress: $model->customer_address,

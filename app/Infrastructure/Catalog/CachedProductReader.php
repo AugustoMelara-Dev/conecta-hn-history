@@ -61,19 +61,19 @@ final class CachedProductReader implements ProductCatalogReader
                     ->where('tenant_id', $tenantId)
                     ->where('is_visible', true);
 
-                if (!empty($filters['search'])) {
+                if (! empty($filters['search'])) {
                     $query->where('name', 'like', "%{$filters['search']}%");
                 }
 
-                if (!empty($filters['category_id'])) {
+                if (! empty($filters['category_id'])) {
                     $query->where('category_id', $filters['category_id']);
                 }
 
-                if (!empty($filters['min_price'])) {
+                if (! empty($filters['min_price'])) {
                     $query->where('price', '>=', $filters['min_price']);
                 }
 
-                if (!empty($filters['max_price'])) {
+                if (! empty($filters['max_price'])) {
                     $query->where('price', '<=', $filters['max_price']);
                 }
 

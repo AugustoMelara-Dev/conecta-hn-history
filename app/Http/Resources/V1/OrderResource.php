@@ -29,14 +29,14 @@ final class OrderResource extends JsonResource
         // If it's an Eloquent Model, properties are magic accessors.
         // The Spec requests "Mapea explícitamente cada propiedad del DTO CreateOrderResult".
         // Assuming OrderController returns `OrderResource` wrapping `CreateOrderResult`.
-        
+
         $resource = $this->resource;
 
         return [
             'id' => $resource->id,
             'order_number' => $resource->orderNumber ?? $resource->order_number, // Fallback for Entity
             'status' => $resource->status,
-            'amount' => $resource->totalAmount ?? (float)($resource->total ?? 0),
+            'amount' => $resource->totalAmount ?? (float) ($resource->total ?? 0),
             'currency' => $resource->currency ?? 'HNL',
             'item_count' => $resource->itemsCount,
             'created_at' => $resource->createdAt ?? $resource->created_at ?? null,

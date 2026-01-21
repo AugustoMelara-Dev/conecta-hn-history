@@ -8,8 +8,8 @@ use App\Domain\Contracts\AdminNotifier;
 use App\Models\Lead;
 use App\Models\Review;
 use App\Models\User;
-use Filament\Notifications\Notification;
 use Filament\Notifications\Actions\Action;
+use Filament\Notifications\Notification;
 
 /**
  * FilamentAdminNotifier - Infrastructure Adapter for Notifications
@@ -30,7 +30,7 @@ final class FilamentAdminNotifier implements AdminNotifier
     {
         $tenantOwner = $this->getTenantOwner($lead->tenant_id);
 
-        if (!$tenantOwner) {
+        if (! $tenantOwner) {
             return;
         }
 
@@ -54,12 +54,12 @@ final class FilamentAdminNotifier implements AdminNotifier
     {
         $tenantOwner = $this->getTenantOwner($review->tenant_id);
 
-        if (!$tenantOwner) {
+        if (! $tenantOwner) {
             return;
         }
 
         $stars = str_repeat('⭐', $review->rating);
-        $excerpt = substr($review->comment ?? '', 0, 50) . (strlen($review->comment ?? '') > 50 ? '...' : '');
+        $excerpt = substr($review->comment ?? '', 0, 50).(strlen($review->comment ?? '') > 50 ? '...' : '');
 
         Notification::make()
             ->title("Nueva Reseña {$stars}")
@@ -81,13 +81,13 @@ final class FilamentAdminNotifier implements AdminNotifier
     {
         $tenantOwner = $this->getTenantOwner($tenantId);
 
-        if (!$tenantOwner) {
+        if (! $tenantOwner) {
             return;
         }
 
         Notification::make()
             ->title('¡Nueva Orden Recibida! 🛍️')
-            ->body("Orden #{$orderId} por L. " . number_format($total, 2))
+            ->body("Orden #{$orderId} por L. ".number_format($total, 2))
             ->success()
             ->actions([
                 Action::make('view')
@@ -111,10 +111,11 @@ final class FilamentAdminNotifier implements AdminNotifier
      */
     private function getTenantOwner(int $tenantId): ?User
     {
-        // Assuming Tenant model has user_id or relationship. 
-        // Or specific logic to find owner. 
+        // Assuming Tenant model has user_id or relationship.
+        // Or specific logic to find owner.
         // For strictness, checking App\Domain\TenantGovernance\Models\Tenant
         $tenant = \App\Domain\TenantGovernance\Models\Tenant::find($tenantId);
+
         return $tenant?->user;
     }
 }

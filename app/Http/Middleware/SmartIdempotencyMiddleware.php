@@ -39,34 +39,34 @@ final readonly class SmartIdempotencyMiddleware
     {
         $key = $request->header('Idempotency-Key');
 
-        if (!$key) {
+        if (! $key) {
             return $next($request);
         }
 
-        $lockKey = 'idempotency_lock:' . $key;
-        
+        $lockKey = 'idempotency_lock:'.$key;
+
         // STEP 1: FAST LOCK (Redis)
         // If we get the lock, we are the FIRST (or the previous lock expired).
         if ($this->lockStore->acquire($lockKey, self::PROCESSING_LOCK_TTL)) {
-            
+
             // CRITICAL: Even if we got the lock, the previous owner might have FINISHED
             // just as the lock expired. We must check the DB to avoid Double Billing.
             // (The "Slope" Scenario: T+61s).
-            
+
             /** @var IdempotencyLedgerInterface $ledger */
             $ledger = app($ledgerService);
-            
+
             if ($ledger->hasProcessed($request, $key)) {
                 // RECOVERY: It was already done. The lock expire was a fluke.
                 // Release the new lock (we don't need it) and return Success.
                 $this->lockStore->release($lockKey);
-                
+
                 // Return a generic "Already Processed" or ideally the original response.
                 // Since we don't cache the full response body in this architecture (DB is Truth),
                 // we return a 200 OK. The Client logic should be able to fetch the entity.
                 return response()->json([
                     'message' => 'Operation already processed.',
-                    'idempotency_key' => $key
+                    'idempotency_key' => $key,
                 ], 200);
             }
 
@@ -84,7 +84,7 @@ final readonly class SmartIdempotencyMiddleware
             // If we release it, and the user retries instantly, they hit the DB check.
             // It is safer to RELEASE it now that DB is committed.
             $this->lockStore->release($lockKey);
-            
+
             return $response;
         }
 
@@ -97,7 +97,7 @@ final readonly class SmartIdempotencyMiddleware
             // RECOVERY: It is done. Return Success.
             return response()->json([
                 'message' => 'Operation already processed.',
-                'idempotency_key' => $key
+                'idempotency_key' => $key,
             ], 200);
         }
 
@@ -105,7 +105,7 @@ final readonly class SmartIdempotencyMiddleware
         // DB Empty + Lock Held by Others = Active Processing.
         return response()->json([
             'message' => 'Request is currently being processed. Please wait.',
-            'retry_after' => 5
+            'retry_after' => 5,
         ], 429);
     }
 }

@@ -30,6 +30,7 @@ final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPas
     public function handle(UpdateUserPasswordCommand $command): UpdateUserPasswordResult
     {
         $this->validate($command);
+
         return $this->inner->handle($command);
     }
 

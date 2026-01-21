@@ -29,21 +29,21 @@ final readonly class PaymentReported implements ShouldDispatchAfterCommit
         public string $currency,
         public string $reference,
         public ?string $idempotencyKey = null,
-        public DateTimeImmutable $occurredAt = new DateTimeImmutable(),
+        public DateTimeImmutable $occurredAt = new DateTimeImmutable,
         public int $schemaVersion = self::SCHEMA_VERSION,
     ) {}
 
     /**
      * Reconstruct event from safe payload.
-     * 
-     * Essential for eliminating "Metadata Bomb" (extra keys) and 
+     *
+     * Essential for eliminating "Metadata Bomb" (extra keys) and
      * resolving Case Mismatch (snake vs camel).
      */
     public static function fromPayload(array $payload): self
     {
-        $occurredAt = isset($payload['occurred_at']) 
-            ? new DateTimeImmutable($payload['occurred_at']) 
-            : new DateTimeImmutable();
+        $occurredAt = isset($payload['occurred_at'])
+            ? new DateTimeImmutable($payload['occurred_at'])
+            : new DateTimeImmutable;
 
         return new self(
             paymentId: (string) ($payload['payment_id'] ?? ''),

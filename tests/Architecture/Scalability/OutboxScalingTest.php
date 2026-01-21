@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Tests\Architecture\Scalability;
 
 use App\Infrastructure\Persistence\Eloquent\Models\OutboxMessage;
+use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
-use Illuminate\Process\Pool;
-use Tests\TestCase;
 use Ramsey\Uuid\Uuid;
+use Tests\TestCase;
 
 /**
  * OutboxScalingTest - Competing Consumers Validation
@@ -33,7 +33,7 @@ class OutboxScalingTest extends TestCase
         // Skip if using SQLite (no SKIP LOCKED support)
         if (DB::getDriverName() === 'sqlite') {
             $this->markTestSkipped(
-                'Skipping concurrency test: SQLite does not support FOR UPDATE SKIP LOCKED. ' .
+                'Skipping concurrency test: SQLite does not support FOR UPDATE SKIP LOCKED. '.
                 'Run this test against MySQL 8.0+ or PostgreSQL 9.5+ for accurate results.'
             );
         }
@@ -95,7 +95,7 @@ class OutboxScalingTest extends TestCase
         $this->assertEquals(
             0,
             $duplicateCheck,
-            "Race condition detected! Some messages were processed multiple times."
+            'Race condition detected! Some messages were processed multiple times.'
         );
     }
 
@@ -108,7 +108,7 @@ class OutboxScalingTest extends TestCase
         // Run with a timeout (should sleep and exit cleanly)
         $result = Process::timeout(5)->run('php artisan outbox:process --once');
 
-        $this->assertTrue($result->successful(), "Command should complete successfully on empty queue");
+        $this->assertTrue($result->successful(), 'Command should complete successfully on empty queue');
         $this->assertStringContainsString('Total processed: 0', $result->output());
     }
 
@@ -187,7 +187,7 @@ class OutboxScalingTest extends TestCase
             } else {
                 $failureCount++;
                 echo "Worker {$index} failed:\n";
-                echo $result->errorOutput() . "\n";
+                echo $result->errorOutput()."\n";
             }
         }
 

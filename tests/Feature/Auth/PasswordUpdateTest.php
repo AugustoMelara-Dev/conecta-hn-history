@@ -26,7 +26,6 @@ class PasswordUpdateTest extends TestCase
 
         $response
             ->assertSessionHasNoErrors();
-        
 
         $response->assertRedirect('/profile');
 

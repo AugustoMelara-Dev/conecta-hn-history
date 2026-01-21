@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Log;
 final readonly class RedisCircuitBreaker implements CircuitBreakerInterface
 {
     private const FAILURE_THRESHOLD = 5;
+
     private const FAILURE_WINDOW = 60;
+
     private const COOL_DOWN_PERIOD = 30;
 
     public function __construct(
@@ -23,11 +25,12 @@ final readonly class RedisCircuitBreaker implements CircuitBreakerInterface
     public function isAvailable(string $serviceName): bool
     {
         $stateKey = $this->getStateKey($serviceName);
-        
+
         // 1. CHECK EXPLICIT OPEN STATE
         $state = $this->redis->get($stateKey);
         if ($state === 'OPEN') {
             $this->metrics->increment('circuit_breaker.rejected', ['service' => $serviceName]);
+
             return false;
         }
 
@@ -40,7 +43,7 @@ final readonly class RedisCircuitBreaker implements CircuitBreakerInterface
 
         // 3. HALF-OPEN: BATTLE FOR THE PROBE
         $probeKey = "circuit:{$serviceName}:probe_lock";
-        
+
         // DRIVER AGNOSTIC LUA SCRIPT FOR 'SET ... NX PX'
         // Increased Probe TTL to 2000ms to safely cover slow backend responses
         // without leaking multiple probes in high-latency scenarios.
@@ -52,10 +55,12 @@ final readonly class RedisCircuitBreaker implements CircuitBreakerInterface
 
         if ($isProbe === true || $isProbe === 'OK' || $isProbe === 1) {
             Log::info("CIRCUIT BREAKER: Probing service {$serviceName} (Half-Open)");
+
             return true;
         }
 
         $this->metrics->increment('circuit_breaker.rejected_half_open', ['service' => $serviceName]);
+
         return false;
     }
 
@@ -64,7 +69,7 @@ final readonly class RedisCircuitBreaker implements CircuitBreakerInterface
         $this->redis->del([
             $this->getFailuresKey($serviceName),
             $this->getStateKey($serviceName),
-            "circuit:{$serviceName}:probe_lock"
+            "circuit:{$serviceName}:probe_lock",
         ]);
 
         $this->metrics->increment('circuit_breaker.success', ['service' => $serviceName]);
@@ -73,7 +78,7 @@ final readonly class RedisCircuitBreaker implements CircuitBreakerInterface
     public function reportFailure(string $serviceName): void
     {
         $failuresKey = $this->getFailuresKey($serviceName);
-        
+
         $script = <<<'LUA'
             local current = redis.call('INCR', KEYS[1])
             if current == 1 then
@@ -97,10 +102,10 @@ final readonly class RedisCircuitBreaker implements CircuitBreakerInterface
         $this->redis->setex($stateKey, self::COOL_DOWN_PERIOD, 'OPEN');
 
         $this->metrics->increment('circuit_breaker.tripped', ['service' => $serviceName]);
-        
+
         Log::critical("CIRCUIT BREAKER TRIPPED: {$serviceName}", [
             'threshold' => self::FAILURE_THRESHOLD,
-            'cool_down' => self::COOL_DOWN_PERIOD
+            'cool_down' => self::COOL_DOWN_PERIOD,
         ]);
     }
 

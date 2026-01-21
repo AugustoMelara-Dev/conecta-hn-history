@@ -13,7 +13,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * TenantRegistered - Domain Event
- * 
+ *
  * Fired when a new Tenant and their Owner (User) are successfully persisted.
  * This is a pure domain fact, decoupled from Framework Auth.
  */
@@ -59,14 +59,14 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
     public static function fromPrimitives(array $primitives): self
     {
         // Hydration logic would go here if needed for queue reconstruction
-        // For this synchronous/internal event, we might not strictly need full hydration implementation 
+        // For this synchronous/internal event, we might not strictly need full hydration implementation
         // if used only in-process, but for correctness:
-        
+
         $tenant = Tenant::find($primitives['tenant_id']);
         $user = User::find($primitives['user_id']); // Assuming User exists
 
-        if (!$tenant || !$user) {
-             throw new \RuntimeException("Failed to rehydrate TenantRegistered event: Resources missing.");
+        if (! $tenant || ! $user) {
+            throw new \RuntimeException('Failed to rehydrate TenantRegistered event: Resources missing.');
         }
 
         return new self(

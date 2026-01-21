@@ -28,16 +28,16 @@ final class TenantScope implements Scope
         try {
             /** @var TenantContext $context */
             $context = app(TenantContext::class);
-            
+
             // BYPASS: System Mode (Console, Jobs, Super Admin)
             if ($context->isRoot()) {
                 return;
             }
 
             $tenantId = $context->id();
-            
-            $builder->where($model->getTable() . '.tenant_id', '=', $tenantId);
-            
+
+            $builder->where($model->getTable().'.tenant_id', '=', $tenantId);
+
         } catch (\App\Domain\Shared\Exceptions\TenantContextMissingException $e) {
             // FAIL SECURE: Context Missing.
             // Explicitly re-throw to comply with Zero Trust Architecture.

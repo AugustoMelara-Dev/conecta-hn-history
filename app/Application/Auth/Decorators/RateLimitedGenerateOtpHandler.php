@@ -11,7 +11,7 @@ use App\Domain\Shared\Contracts\RateLimitServiceInterface;
 
 /**
  * RateLimitDecorator - The Security Shield
- * 
+ *
  * Enforces throughput limits per tenant/user.
  * Prevents abuse before it reaches expensive business logic or validation.
  */

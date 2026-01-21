@@ -6,11 +6,6 @@ namespace Tests\Contract\Identity;
 
 use App\Application\Identity\Queries\GetUserProfileQuery;
 use App\Application\Identity\QueryHandlers\GetUserProfileHandler;
-use App\Application\Identity\ViewModels\UserProfileViewModel;
-use App\Domain\Identity\Entities\UserEntity;
-use App\Domain\TenantGovernance\Entities\TenantEntity;
-use Carbon\Carbon;
-use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 use Tests\Contract\ContractTestCase;
 
@@ -40,7 +35,7 @@ class UserProfileContractTest extends ContractTestCase
         DB::table('users')->where('id', $userId)->update(['tenant_id' => $tenantId]);
 
         // 2. Act: Execute Query Handler
-        $handler = new GetUserProfileHandler();
+        $handler = new GetUserProfileHandler;
         $query = new GetUserProfileQuery($userId);
         $viewModel = $handler->handle($query);
 
@@ -64,7 +59,7 @@ class UserProfileContractTest extends ContractTestCase
         ]);
 
         // 2. Act
-        $handler = new GetUserProfileHandler();
+        $handler = new GetUserProfileHandler;
         $query = new GetUserProfileQuery($userId);
         $viewModel = $handler->handle($query);
 
@@ -72,7 +67,7 @@ class UserProfileContractTest extends ContractTestCase
 
         // 3. Assert
         $this->assertMatchesJsonSchema('user_profile', $responseData);
-        
+
         // Manual assertion to verify schema allowed nulls
         $this->assertNull($responseData['tenantName']);
     }

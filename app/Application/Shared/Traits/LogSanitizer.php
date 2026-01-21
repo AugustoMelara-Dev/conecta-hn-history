@@ -15,7 +15,7 @@ trait LogSanitizer
     {
         /** @var SensitiveDataScrubber $scrubber */
         $scrubber = app(SensitiveDataScrubber::class);
-        
+
         return $scrubber->scrub($payload);
     }
 }

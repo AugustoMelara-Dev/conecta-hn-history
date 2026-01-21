@@ -28,7 +28,7 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
     private const LOCK_TTL_SECONDS = 60;
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function execute(string $idempotencyKey, string $tenantId, string $commandHash, Closure $operation): mixed
     {
@@ -102,22 +102,22 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
     {
         $record = DB::table('processed_commands')->where('idempotency_key', $key)->first();
 
-        if (!$record) {
+        if (! $record) {
             // Anomaly: Insert failed (duplicate), but record is gone?
             // This implies a very tight race where it was deleted.
-            throw new ConcurrentRequestException("Race condition detected: Lock lost.");
+            throw new ConcurrentRequestException('Race condition detected: Lock lost.');
         }
 
         // Integrity Check: Preventing Collision Attacks
         if ($record->command_hash !== $hash) {
-            throw new IdempotencyKeyReuseException("Idempotency key reused with different payload.");
+            throw new IdempotencyKeyReuseException('Idempotency key reused with different payload.');
         }
 
         // State Machine
         return match ($record->status) {
             'COMPLETED' => json_decode($record->response_payload ?? '[]', true),
             'PROCESSING' => $this->checkZombieAndRecover($record, $key, $operation),
-            'FAILED' => throw new \RuntimeException("Previous attempt failed. Please retry with a new key."),
+            'FAILED' => throw new \RuntimeException('Previous attempt failed. Please retry with a new key.'),
             default => throw new \RuntimeException("Unknown state: {$record->status}"),
         };
     }
@@ -132,13 +132,13 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
 
         // Case A: Process Alive (Throttle)
         if ($diff < self::LOCK_TTL_SECONDS) {
-            throw new ConcurrentRequestException("Command is currently being processed.");
+            throw new ConcurrentRequestException('Command is currently being processed.');
         }
 
         // Case B: Zombie Detected (Hostile Takeover)
         // We assume the previous process crashed. We attempt to steal the lock.
         // We use Optimistic Concurrency Control (where updated_at matches).
-        
+
         $affected = DB::table('processed_commands')
             ->where('idempotency_key', $key)
             ->where('status', 'PROCESSING') // Safety check
@@ -166,8 +166,8 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
         $code = (string) $e->getCode();
         $message = $e->getMessage();
 
-        return $code === '23000' 
-            || str_contains($message, 'Duplicate entry') 
+        return $code === '23000'
+            || str_contains($message, 'Duplicate entry')
             || str_contains($message, 'unique constraint');
     }
 }

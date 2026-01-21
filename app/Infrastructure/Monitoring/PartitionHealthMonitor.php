@@ -20,11 +20,12 @@ use Illuminate\Support\Facades\Log;
 final class PartitionHealthMonitor
 {
     private const PENDING_THRESHOLD = 100; // Alert if partition has > 100 pending
+
     private const RECOVERY_THRESHOLD = 3;  // Alert if message recovered > 3 times
 
     /**
      * Get health metrics for all partitions.
-     * 
+     *
      * @return array<int, array{pending: int, processing: int, failed: int}>
      */
     public function getPartitionHealth(): array
@@ -53,7 +54,7 @@ final class PartitionHealthMonitor
 
     /**
      * Detect "hot" partitions that are consuming disproportionate throughput.
-     * 
+     *
      * @return array<int, int> Map of partition_key => pending count
      */
     public function detectHotShards(): array
@@ -64,7 +65,7 @@ final class PartitionHealthMonitor
         foreach ($health as $partition => $stats) {
             if ($stats['pending'] > self::PENDING_THRESHOLD) {
                 $hotShards[$partition] = $stats['pending'];
-                
+
                 Log::warning('HOT SHARD DETECTED', [
                     'partition_key' => $partition,
                     'pending_count' => $stats['pending'],
@@ -79,7 +80,7 @@ final class PartitionHealthMonitor
 
     /**
      * Detect aggregates that are causing repeated failures (toxic aggregates).
-     * 
+     *
      * @return array<string, array{recovery_count: int, failed_count: int}>
      */
     public function detectToxicAggregates(): array

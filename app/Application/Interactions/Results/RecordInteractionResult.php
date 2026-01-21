@@ -13,7 +13,7 @@ namespace App\Application\Interactions\Results;
 final readonly class RecordInteractionResult
 {
     /**
-     * @param array<string, mixed>|null $metadata
+     * @param  array<string, mixed>|null  $metadata
      */
     public function __construct(
         public int $tenantId,

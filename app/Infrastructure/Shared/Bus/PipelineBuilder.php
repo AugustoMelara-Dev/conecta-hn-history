@@ -24,6 +24,7 @@ use InvalidArgumentException;
 final class PipelineBuilder
 {
     private string $coreHandlerClass;
+
     private array $decorators = [];
 
     private function __construct(string $coreHandlerClass)
@@ -39,6 +40,7 @@ final class PipelineBuilder
     public function through(array $decorators): self
     {
         $this->decorators = $decorators;
+
         return $this;
     }
 
@@ -59,12 +61,12 @@ final class PipelineBuilder
         // B(C)
         // A(B)
         // So we invoke constructors in reverse order of the array. C, then B, then A.
-        
+
         $reversedDecorators = array_reverse($this->decorators);
 
         foreach ($reversedDecorators as $decoratorClass) {
             // Check if decorator class exists
-            if (!class_exists($decoratorClass)) {
+            if (! class_exists($decoratorClass)) {
                 throw new InvalidArgumentException("Decorator class not found: {$decoratorClass}");
             }
 
@@ -74,21 +76,21 @@ final class PipelineBuilder
             // standard Laravel injection will try to resolve constructor params.
             // We need to explicitly provide the *instance* of the wrapped handler.
             // Typically this parameter is named $inner or $next.
-            
+
             // We can try to use standard binding, but since we are building a chain of the SAME interface,
             // type-hinting alone is ambiguous for the container (it would resolve the binding, causing infinite loop).
             // We MUST inject this specific instance.
-            
+
             // Let's assume common parameter names: 'inner', 'next', 'handler', 'service'.
             // To be safe and loose, we can try to pass it as a contextual binding or construct manually if simple.
             // BUT, decorators might have other dependencies (Logger, connection, etc).
             // So $container->makeWith() is best.
             // We need to know the parameter name found in the decorator's constructor?
             // Or we just rely on naming convention 'inner' or 'next'.
-            
+
             // The prompt says: "Use container->make($decoratorClass, ['next' => $stack])"
             // It explicitly suggests 'next' as the parameter name.
-            
+
             $stack = $container->make($decoratorClass, [
                 'next' => $stack,   // Convention 1
                 'inner' => $stack,  // Convention 2 (common in this project based on previous snippets)

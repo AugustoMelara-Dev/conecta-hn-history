@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * SendOrderConfirmationNotification
- * 
+ *
  * ASYNC WORKER: Handles the side-effect of notifying the user about a new order.
  * Decoupled from the critical transaction path.
  */
@@ -38,7 +38,7 @@ final class SendOrderConfirmationNotification implements ShouldQueue
         $this->tenantId = $event->tenantId();
         $order = $event->order;
 
-        Log::info("AsyncWorker: Sending NewOrderNotification", ['order_id' => $order->id]);
+        Log::info('AsyncWorker: Sending NewOrderNotification', ['order_id' => $order->id]);
 
         try {
             // Re-hydrate relationships if needed specially for the notification
@@ -47,12 +47,12 @@ final class SendOrderConfirmationNotification implements ShouldQueue
             if ($order->tenant && $order->tenant->user) {
                 $order->tenant->user->notify(new NewOrderNotification($order));
             } else {
-                Log::warning("AsyncWorker: Cannot notify, tenant owner missing", ['order_id' => $order->id]);
+                Log::warning('AsyncWorker: Cannot notify, tenant owner missing', ['order_id' => $order->id]);
             }
         } catch (\Exception $e) {
-            Log::error("AsyncWorker: Notification failed", [
-                'order_id' => $order->id, 
-                'error' => $e->getMessage()
+            Log::error('AsyncWorker: Notification failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
             ]);
             // We do not rethrow to avoid infinite loops unless it's a transient failure we want to retry.
             // For notifications, fail-silent is often preferred after logging.

@@ -9,7 +9,6 @@ use App\Application\Reviews\Results\SubmitReviewResult;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 /**
  * ReviewController - Public HTTP Gateway
@@ -55,6 +54,7 @@ final class ReviewController extends Controller
         } catch (\Exception $e) {
             // Log error internally, return generic message externally
             report($e);
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'Ocurrió un error al procesar tu reseña.',

@@ -16,8 +16,8 @@ final readonly class UpdateLandingPageCommand
     public function __construct(
         /** Tenant ID to update */
         public int $tenantId,
-        
-        /** 
+
+        /**
          * Landing page configuration data.
          * May include: sections, colors, hero text, CTA buttons, etc.
          */

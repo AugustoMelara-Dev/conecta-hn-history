@@ -18,6 +18,7 @@ use DateTimeImmutable;
 final readonly class UserPasswordChanged
 {
     private const SCHEMA_VERSION = 1;
+
     private const EVENT_NAME = 'auth.user_password_changed';
 
     public function __construct(
@@ -27,7 +28,7 @@ final readonly class UserPasswordChanged
         /** Tenant context for multi-tenant routing */
         public string $tenantId,
 
-        /** 
+        /**
          * Indicates if remember_token was rotated (sessions invalidated).
          * CRITICAL for security audit: false means old sessions may persist.
          */
@@ -49,7 +50,7 @@ final readonly class UserPasswordChanged
             userId: $userId,
             tenantId: $tenantId,
             sessionInvalidated: $sessionInvalidated,
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
     }
 
@@ -87,7 +88,7 @@ final readonly class UserPasswordChanged
     /**
      * Hydrate from storage payload.
      *
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     public static function fromPayload(array $payload): self
     {
@@ -99,4 +100,3 @@ final readonly class UserPasswordChanged
         );
     }
 }
-

@@ -32,8 +32,6 @@ class InfrastructureServiceProvider extends ServiceProvider
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->singleton(TenantContextInterface::class, FilamentTenantContext::class);
 
-
-
         // ═══════════════════════════════════════════════════════════════════════
         // REPOSITORY PATTERN BINDINGS (ORM Decoupling)
         // ═══════════════════════════════════════════════════════════════════════
@@ -65,8 +63,8 @@ class InfrastructureServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Domain\Payments\Gateways\PaymentGatewayInterface::class,
             fn () => app()->environment('testing')
-                ? new \App\Infrastructure\Payments\FakePaymentGateway()
-                : new \App\Infrastructure\Payments\Stripe\StripePaymentGateway()
+                ? new \App\Infrastructure\Payments\FakePaymentGateway
+                : new \App\Infrastructure\Payments\Stripe\StripePaymentGateway
         );
 
         $this->app->singleton(\App\Infrastructure\Shared\Context\IdempotencyContext::class);
@@ -107,7 +105,7 @@ class InfrastructureServiceProvider extends ServiceProvider
             $chain->register(
                 'App\Domain\Identity\Events\UserRegistered',
                 '1.0',
-                new \App\Infrastructure\Shared\Services\Upcasting\Upcasters\UserRegisteredV1toV2Upcaster()
+                new \App\Infrastructure\Shared\Services\Upcasting\Upcasters\UserRegisteredV1toV2Upcaster
             );
         });
 

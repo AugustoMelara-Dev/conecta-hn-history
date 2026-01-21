@@ -1,10 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\V1\CouponController;
+use App\Http\Controllers\Api\V1\InteractionController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Auth\OtpController;
-use App\Http\Controllers\Api\V1\InteractionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -164,4 +164,3 @@ Route::prefix('v1')->group(function () {
 Route::post('/webhooks/payment', [\App\Http\Controllers\Webhook\PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
-

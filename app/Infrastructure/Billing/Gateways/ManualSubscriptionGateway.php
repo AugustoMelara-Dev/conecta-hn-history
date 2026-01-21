@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
 final class ManualSubscriptionGateway implements SubscriptionGatewayInterface
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      *
      * In manual billing mode, always returns success.
      * The actual upgrade happens when admin approves the payment.
@@ -34,12 +34,12 @@ final class ManualSubscriptionGateway implements SubscriptionGatewayInterface
         // Manual billing: Always succeed, upgrade activated on admin approval
         return SubscriptionSwapResult::success(
             newPeriodEnd: new \DateTimeImmutable('+30 days'),
-            transactionId: 'MANUAL-' . strtoupper(uniqid()),
+            transactionId: 'MANUAL-'.strtoupper(uniqid()),
         );
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function cancel(string $subscriptionReference, bool $immediately = false): bool
     {

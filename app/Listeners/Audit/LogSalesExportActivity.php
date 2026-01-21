@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Listeners\Audit;
 
-use App\Application\Shared\Contracts\LoggerInterface;
 use App\Events\Audit\SalesExportCreated;
 use Illuminate\Support\Facades\Log;
 

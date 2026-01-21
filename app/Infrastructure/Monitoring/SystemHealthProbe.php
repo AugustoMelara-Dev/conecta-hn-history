@@ -18,12 +18,16 @@ use Illuminate\Support\Facades\Log;
 final class SystemHealthProbe
 {
     private const WARNING_LATENCY_MS = 2000;  // Stop acquiring new shards
+
     private const DANGER_LATENCY_MS = 5000;   // Release shards and cool down
+
     private const SLIDING_WINDOW_SIZE = 10;   // Number of samples to average
+
     private const COOLDOWN_SECONDS = 60;      // How long to sleep in danger zone
 
     /**
      * Sliding window of dispatch latencies in milliseconds.
+     *
      * @var array<float>
      */
     private array $latencyWindow = [];
@@ -39,7 +43,7 @@ final class SystemHealthProbe
     public function recordLatency(float $milliseconds): void
     {
         $this->latencyWindow[] = $milliseconds;
-        
+
         // Keep only the last N samples
         if (count($this->latencyWindow) > self::SLIDING_WINDOW_SIZE) {
             array_shift($this->latencyWindow);
@@ -92,7 +96,7 @@ final class SystemHealthProbe
     public function enterCooldown(): void
     {
         $this->cooldownStartedAt = time();
-        
+
         Log::alert('BACKPRESSURE: Entering cooldown due to high downstream latency', [
             'average_latency_ms' => $this->getAverageLatency(),
             'threshold_ms' => self::DANGER_LATENCY_MS,
@@ -110,7 +114,7 @@ final class SystemHealthProbe
                 'cooldown_duration_seconds' => time() - $this->cooldownStartedAt,
             ]);
         }
-        
+
         $this->cooldownStartedAt = 0;
         $this->latencyWindow = []; // Reset latency window
     }
@@ -120,7 +124,7 @@ final class SystemHealthProbe
      */
     public function getRemainingCooldownSeconds(): int
     {
-        if (!$this->isInCooldown()) {
+        if (! $this->isInCooldown()) {
             return 0;
         }
 

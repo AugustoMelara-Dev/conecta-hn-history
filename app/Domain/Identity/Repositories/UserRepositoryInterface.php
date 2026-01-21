@@ -8,7 +8,7 @@ use App\Domain\Identity\Entities\UserEntity;
 
 /**
  * UserRepositoryInterface - Strict Type Contracts
- * 
+ *
  * Enforces String UUIDs and Entity Encapsulation.
  * The "Int ID" era is over.
  */
@@ -22,10 +22,11 @@ interface UserRepositoryInterface
 
     /**
      * Updates avatar if missing.
-     * @param string $userId UUID
+     *
+     * @param  string  $userId  UUID
      */
     public function updateAvatarIfMissing(string $userId, string $avatarUrl): bool;
-    
+
     // Legacy support removal: delete(int) -> delete(UserEntity)
     public function delete(UserEntity $user): void;
 }

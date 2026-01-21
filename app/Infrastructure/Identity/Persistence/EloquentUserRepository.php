@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Identity\Persistence;
 
+use App\Contracts\Events\DomainEventBus;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Models\User;
-use App\Contracts\Events\DomainEventBus;
-use DateTimeImmutable;
 
 /**
  * EloquentUserRepository - Infrastructure Layer User Persistence
@@ -28,17 +27,17 @@ final class EloquentUserRepository implements UserRepositoryInterface
 
     /**
      * Persiste una entidad de dominio UserEntity en la base de datos.
-     * 
+     *
      * PATRÓN DATA MAPPER: Mapeo manual explícito.
      * Cada campo se asigna individualmente - PROHIBIDO usar fill() o create().
-     * 
-     * @param UserEntity $user Agregado de dominio a persistir
+     *
+     * @param  UserEntity  $user  Agregado de dominio a persistir
      */
     public function save(UserEntity $user): void
     {
         // 1. DETERMINACIÓN INSERT/UPDATE mediante findOrNew
         $model = User::findOrNew($user->id());
-        
+
         // 2. MAPEO MANUAL EXPLÍCITO (Data Mapper Pattern)
         // Cada propiedad se extrae del agregado y se asigna al modelo Eloquent
         $model->id = $user->id();               // UUID pre-generado
@@ -47,15 +46,15 @@ final class EloquentUserRepository implements UserRepositoryInterface
         $model->password = $user->password();   // Hash ya cocinado
         $model->tenant_id = $user->tenantId();  // UUID del tenant
         $model->role = $user->role()->value;    // Enum -> string
-        
+
         // Campos opcionales
         if ($user->rememberToken() !== null) {
             $model->remember_token = $user->rememberToken();
         }
-        
+
         // 3. PERSISTENCIA ATÓMICA
         $model->save();
-        
+
         // 4. DISPATCH DE EVENTOS DE DOMINIO (Event-Driven Architecture)
         // Titanium Rule: La persistencia INCLUYE la publicación de eventos
         // NOTA: Usamos el dispatcher nativo de Laravel ya que DomainEventInterface
@@ -70,7 +69,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
         $model = User::where('id', $id)
             ->where('tenant_id', $tenantId)
             ->first();
-            
+
         return $model ? $this->toEntity($model) : null;
     }
 
@@ -79,19 +78,20 @@ final class EloquentUserRepository implements UserRepositoryInterface
         $model = User::where('email', $email)
             ->where('tenant_id', $tenantId)
             ->first();
-            
+
         return $model ? $this->toEntity($model) : null;
     }
 
     public function updateAvatarIfMissing(string $userId, string $avatarUrl): bool
     {
         $user = User::find($userId);
-        
+
         if ($user && empty($user->avatar_url)) {
             $user->update(['avatar_url' => $avatarUrl]);
+
             return true;
         }
-        
+
         return false;
     }
 
@@ -100,7 +100,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
         if ($user->id() === null) {
             return;
         }
-        
+
         User::where('id', $user->id())->delete();
     }
 
@@ -108,7 +108,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
     {
         $tenantId = null;
         $rawTenantId = $model->tenant_id;
-        
+
         if ($rawTenantId instanceof \App\Domain\Shared\ValueObjects\TenantId) {
             $tenantId = (string) $rawTenantId->value;
         } elseif (is_numeric($rawTenantId)) {

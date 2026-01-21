@@ -10,7 +10,7 @@ use App\Application\Shared\Contracts\ValidationServiceInterface;
 
 /**
  * ValidationDecorator - The Syntactic Gatekeeper
- * 
+ *
  * Enforces schema validity BEFORE business logic.
  * Ensures the Core Handler only deals with well-formed data.
  */

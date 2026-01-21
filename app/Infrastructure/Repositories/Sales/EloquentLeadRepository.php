@@ -18,7 +18,7 @@ use App\Models\Lead;
 final class EloquentLeadRepository implements LeadRepositoryInterface
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function createFromInteraction(
         int $tenantId,
@@ -38,12 +38,12 @@ final class EloquentLeadRepository implements LeadRepositoryInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function findById(int $id): ?LeadEntity
     {
         $model = Lead::find($id);
-        
+
         return $model ? LeadEntity::fromModel($model) : null;
     }
 }

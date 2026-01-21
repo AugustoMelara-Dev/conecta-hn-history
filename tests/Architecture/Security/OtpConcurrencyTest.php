@@ -5,23 +5,23 @@ declare(strict_types=1);
 namespace Tests\Architecture\Security;
 
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
+use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
-use Illuminate\Process\Pool;
-use Tests\TestCase;
 use Ramsey\Uuid\Uuid;
+use Tests\TestCase;
 
 class OtpConcurrencyTest extends TestCase
 {
     // NO RefreshDatabase or DatabaseTruncation as they use Transactions invisible to external processes
-    
+
     /** @test */
     public function it_prevents_race_conditions_on_otp_attempts_limit()
     {
         // 0. DB CONFIGURATION: Use a temp file-based SQLite DB so processes can share it
-        $dbPath = database_path('testing_otp_concurrency_' . Uuid::uuid7()->toString() . '.sqlite');
+        $dbPath = database_path('testing_otp_concurrency_'.Uuid::uuid7()->toString().'.sqlite');
         file_put_contents($dbPath, ''); // Create empty file
-        
+
         // Override Config for THIS process
         config(['database.connections.sqlite_test_file' => [
             'driver' => 'sqlite',
@@ -30,7 +30,7 @@ class OtpConcurrencyTest extends TestCase
         ]]);
         DB::purge();
         DB::setDefaultConnection('sqlite_test_file');
-        
+
         // Manual Schema (Faster than migrating everything)
         // Schema::dropIfExists('one_time_passwords');
         \Illuminate\Support\Facades\Schema::create('one_time_passwords', function ($table) {
@@ -50,17 +50,16 @@ class OtpConcurrencyTest extends TestCase
 
         // 1. SETUP: Create a Target OTP with Attempts = 0
         $tenantId = Uuid::uuid7()->toString();
-        $identifier = 'victim-' . Uuid::uuid7()->toString();
+        $identifier = 'victim-'.Uuid::uuid7()->toString();
         $code = '123456';
 
-        
         /** @var OtpRepositoryInterface $repo */
         $repo = $this->app->make(OtpRepositoryInterface::class);
         $hasher = $this->app->make(\App\Domain\Auth\Services\OtpHasherInterface::class);
-        
+
         $hasher = $this->app->make(\App\Domain\Auth\Services\OtpHasherInterface::class);
         $hashedCode = $hasher->hash($code);
-        
+
         $createdId = null;
 
         try {
@@ -83,14 +82,14 @@ class OtpConcurrencyTest extends TestCase
             // 2. ATTACK: Launch 10 Concurrent Processes trying WRONG code
             $cmdSignature = "php artisan security:attack-otp {$identifier} {$tenantId} 000000";
             $concurrency = 10;
-            
+
             $results = Process::pool(function (Pool $pool) use ($cmdSignature, $concurrency, $dbPath) {
                 for ($i = 0; $i < $concurrency; $i++) {
                     // Inject the SAME database config to subprocesses
                     $pool->command($cmdSignature)
                         ->env([
                             'DB_CONNECTION' => 'sqlite',
-                            'DB_DATABASE' => $dbPath
+                            'DB_DATABASE' => $dbPath,
                         ]);
                 }
             })->wait();
@@ -101,31 +100,36 @@ class OtpConcurrencyTest extends TestCase
             $errorCounts = 0;
 
             foreach ($results as $result) {
-                $output = trim($result->output() . $result->errorOutput());
-                if (str_contains($output, 'INVALID')) $invalidCounts++;
-                elseif (str_contains($output, 'BLOCKED')) $blockedCounts++;
-                else {
+                $output = trim($result->output().$result->errorOutput());
+                if (str_contains($output, 'INVALID')) {
+                    $invalidCounts++;
+                } elseif (str_contains($output, 'BLOCKED')) {
+                    $blockedCounts++;
+                } else {
                     $errorCounts++;
-                    echo "Unexpected Output: " . $output . "\n";
+                    echo 'Unexpected Output: '.$output."\n";
                 }
             }
-            
+
             // Hard Check
             $freshOtp = DB::table('one_time_passwords')->where('id', $createdId)->first();
-            $this->assertNotNull($freshOtp, "OTP should exist.");
-            
+            $this->assertNotNull($freshOtp, 'OTP should exist.');
+
             $maxConfig = config('auth.otp.max_attempts', 3);
-            
-            $this->assertEquals($maxConfig, $freshOtp->attempts, "DB Attempts exceeded the limit! Race condition detected.");
-            
-            $this->assertGreaterThan(0, $blockedCounts, "No requests were blocked! Logic failing open.");
-            $this->assertEquals(0, $errorCounts, "Command execution errors occurred.");
+
+            $this->assertEquals($maxConfig, $freshOtp->attempts, 'DB Attempts exceeded the limit! Race condition detected.');
+
+            $this->assertGreaterThan(0, $blockedCounts, 'No requests were blocked! Logic failing open.');
+            $this->assertEquals(0, $errorCounts, 'Command execution errors occurred.');
 
         } finally {
             // 4. CLEANUP
             if (isset($createdId)) {
                 // Try to delete via DB if connection still valid
-                try { DB::table('one_time_passwords')->where('id', $createdId)->delete(); } catch (\Throwable $e) {}
+                try {
+                    DB::table('one_time_passwords')->where('id', $createdId)->delete();
+                } catch (\Throwable $e) {
+                }
             }
             if (file_exists($dbPath)) {
                 @unlink($dbPath);

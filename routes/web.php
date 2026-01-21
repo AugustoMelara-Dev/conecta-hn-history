@@ -1,10 +1,10 @@
 <?php
 
-use App\Http\Controllers\Public\DirectoryController;
 use App\Http\Controllers\Auth\ProfileController;
-use App\Http\Controllers\Public\WelcomeController;
-use App\Http\Controllers\Public\LocationController;
+use App\Http\Controllers\Public\DirectoryController;
 use App\Http\Controllers\Public\InteractionController;
+use App\Http\Controllers\Public\LocationController;
+use App\Http\Controllers\Public\WelcomeController;
 use App\Http\Controllers\Tenant\AnalyticsController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -111,7 +111,6 @@ Route::get('/dashboard', function () {
 // TENANT INERTIA ROUTES (Must be loaded BEFORE wildcards)
 // ═══════════════════════════════════════════════════════════════════════
 
-
 Route::middleware('auth')->group(function () {
     // ═══════════════════════════════════════════════════════════════════
     // TENANT DASHBOARD (Owner Panel)
@@ -181,13 +180,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/reviews', [\App\Http\Controllers\Public\ReviewController::class, 'store'])->name('reviews.store');
 
     // Follow/Unfollow
-    Route::post('/tenants/{tenant}/toggle-follow', [\App\Http\Controllers\Api\FollowController::class, 'toggle'])->name('tenant.toggle-follow'); // Assume Api for FollowController if not moved yet? Wait, FollowController was orphan. I didn't move it? I should move it to Api or Public. I'll assume Api/FollowController. 
+    Route::post('/tenants/{tenant}/toggle-follow', [\App\Http\Controllers\Api\FollowController::class, 'toggle'])->name('tenant.toggle-follow'); // Assume Api for FollowController if not moved yet? Wait, FollowController was orphan. I didn't move it? I should move it to Api or Public. I'll assume Api/FollowController.
     // Wait, I forgot to move FollowController in the Move Step. I'll add a move step for it now.
     // I put it in Api? Or Public?
     // Follow is authenticated usually.
     // I will checking FollowController... it's small.
     // I will move it to Api\FollowController for now.
-
 
     // ═══════════════════════════════════════════════════════════════════
     // SHADOW LOGIN - Impersonation Exit Route (SECURED)

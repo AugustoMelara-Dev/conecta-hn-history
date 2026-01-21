@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence;
 
-use App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface;
 use App\Domain\Identity\Entities\UserEntity;
+use App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface;
 use App\Infrastructure\Persistence\Mappers\UserMapper;
 use App\Infrastructure\Persistence\Models\SocialIdentityModel;
 
 /**
  * EloquentSocialIdentityRepository - Strict Implementation
- * 
+ *
  * Enforces explicit dependencies via Injection.
  * Eliminates 'object' ambiguity.
  */

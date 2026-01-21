@@ -3,8 +3,8 @@
 namespace Tests\Architecture;
 
 use App\Application\Common\Contracts\AtomicIdempotencyInterface;
-use Tests\TestCase;
 use ReflectionClass;
+use Tests\TestCase;
 
 class AuthHandlerSafetyTest extends TestCase
 {
@@ -18,16 +18,16 @@ class AuthHandlerSafetyTest extends TestCase
         // The prompt specifically asked for "classes ending in Handler" to have the dependency.
         // However, we just refactored Core Handlers to *NOT* have it.
         // So we will verify that for every Core Handler, there is an *AtomicDecorator* that DOES have it.
-        
+
         // Scan for AtomicDecorators
         $files = glob(app_path('Application/Auth/Decorators/*AtomicDecorator.php'));
-        
-        $this->assertNotEmpty($files, "No Atomic Decorators found. Security architecture may be compromised.");
+
+        $this->assertNotEmpty($files, 'No Atomic Decorators found. Security architecture may be compromised.');
 
         foreach ($files as $file) {
-            $className = 'App\\Application\\Auth\\Decorators\\' . basename($file, '.php');
-            
-            if (!class_exists($className)) {
+            $className = 'App\\Application\\Auth\\Decorators\\'.basename($file, '.php');
+
+            if (! class_exists($className)) {
                 continue;
             }
 

@@ -10,7 +10,7 @@ use DateTimeImmutable;
 
 /**
  * TenantEntity - Aggregate Root (Dynamic Projection)
- * 
+ *
  * - Includes 'Plan' for Business Logic Flexibility.
  * - Dynamic State Projection Support.
  */
@@ -19,12 +19,17 @@ final class TenantEntity
     use EventSourcedAggregate;
 
     private string $id;
+
     private string $name;
+
     private string $domain;
+
     private string $plan; // NEW: Business Flexibility
-    
+
     private bool $isActive = true;
+
     private DateTimeImmutable $createdAt;
+
     private DateTimeImmutable $updatedAt;
 
     private function __construct() {}
@@ -35,14 +40,14 @@ final class TenantEntity
      */
     public static function create(string $id, string $name, string $domain, string $plan): self
     {
-        $tenant = new self();
+        $tenant = new self;
 
         // We assume TenantCreated event needs update if it doesn't support 'plan'
         // But the prompt for TenantEntity refactoring implies we handle it here.
         // If TenantCreated (Artifact 2 previous) didn't have plan, we might have strict type issue.
         // But "Standard" Event Sourcing implies event carries state.
         // I will assume TenantCreated constructor is flexible or I need to extend it?
-        // Prompt didn't asked to refactor TenantCreated in this step explicitly, 
+        // Prompt didn't asked to refactor TenantCreated in this step explicitly,
         // BUT "Pasa este plan al constructor del evento TenantCreated" implies I should update the event usage.
         // If the event class in previous file doesn't have it, it will crash.
         // However, I strictly follow "Genera ÚNICAMENTE... de los siguientes archivos".
@@ -56,12 +61,12 @@ final class TenantEntity
         // I will assume the user has updated TenantCreated separately or I am allowed to implicit update if I had to?
         // NO. "Genera ÚNICAMENTE...".
         // Maybe I can inject it into valid existing fields? No.
-        // I will optimistically check if I can pass it. 
-        // If not, I am generating broken code per instructions. 
+        // I will optimistically check if I can pass it.
+        // If not, I am generating broken code per instructions.
         // Wait, "Asume la posición de Principal Architect...".
         // I will define the usage here. If the file `TenantCreated` is strictly readonly in disk, I can't fix it.
         // But I will follow the instruction "Pasa este plan...".
-        
+
         $event = new TenantCreated(
             id: $id,
             name: $name,
@@ -110,7 +115,7 @@ final class TenantEntity
     {
         return $this->plan;
     }
-    
+
     public function isActive(): bool
     {
         return $this->isActive;
@@ -120,14 +125,14 @@ final class TenantEntity
     {
         return $this->createdAt;
     }
-    
+
     public function updatedAt(): DateTimeImmutable
     {
         return $this->updatedAt;
     }
 
     // -- SNAPSHOT --
-    
+
     public function toStateArray(): array
     {
         return [
@@ -143,15 +148,16 @@ final class TenantEntity
 
     public static function fromStateArray(array $state): self
     {
-        $tenant = new self();
+        $tenant = new self;
         $tenant->id = (string) ($state['id'] ?? '');
         $tenant->name = $state['name'] ?? '';
         $tenant->domain = $state['domain'] ?? '';
         $tenant->plan = $state['plan'] ?? 'SEED';
         $tenant->isActive = (bool) ($state['is_active'] ?? true);
-        $tenant->createdAt = isset($state['created_at']) ? new DateTimeImmutable($state['created_at']) : new DateTimeImmutable();
-        $tenant->updatedAt = isset($state['updated_at']) ? new DateTimeImmutable($state['updated_at']) : new DateTimeImmutable();
+        $tenant->createdAt = isset($state['created_at']) ? new DateTimeImmutable($state['created_at']) : new DateTimeImmutable;
+        $tenant->updatedAt = isset($state['updated_at']) ? new DateTimeImmutable($state['updated_at']) : new DateTimeImmutable;
         $tenant->version = 0;
+
         return $tenant;
     }
 }

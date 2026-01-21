@@ -59,10 +59,10 @@ final readonly class UserProfileViewModel
 
     /**
      * Map raw database row (stdClass) to ViewModel.
-     * 
+     *
      * Framework-agnostic date handling using DateTimeImmutable.
      *
-     * @param object $row Raw result from ConnectionInterface->table()->first()
+     * @param  object  $row  Raw result from ConnectionInterface->table()->first()
      */
     public static function fromRow(object $row): self
     {
@@ -85,7 +85,7 @@ final readonly class UserProfileViewModel
     /**
      * Reconstruct from array (for cache hydration).
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public static function fromArray(array $data): self
     {

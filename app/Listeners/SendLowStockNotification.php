@@ -33,7 +33,7 @@ final class SendLowStockNotification implements ShouldQueue
     {
         // UUID STRING: Use toString() for tenant context
         return [
-            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()->toString())
+            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()->toString()),
         ];
     }
 
@@ -43,13 +43,14 @@ final class SendLowStockNotification implements ShouldQueue
     public function handle(LowStockThresholdReached $event): void
     {
         $productId = $event->aggregateId();
-        
+
         // Fresh Fetch: Re-hydrate product within tenant context
         $product = \App\Models\Product::find($productId);
 
         if (! $product) {
-             Log::warning("LowStockNotification: Product #{$productId} not found (could be deleted)");
-             return;
+            Log::warning("LowStockNotification: Product #{$productId} not found (could be deleted)");
+
+            return;
         }
 
         $newStock = $event->currentStock;

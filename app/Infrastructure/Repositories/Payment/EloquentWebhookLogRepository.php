@@ -15,7 +15,7 @@ use App\Models\WebhookLog;
 final class EloquentWebhookLogRepository implements WebhookLogRepositoryInterface
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function hasBeenProcessed(string $provider, string $externalEventId): bool
     {
@@ -25,7 +25,7 @@ final class EloquentWebhookLogRepository implements WebhookLogRepositoryInterfac
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function log(string $provider, string $externalEventId, string $eventType, array $payload): void
     {

@@ -34,7 +34,7 @@ final readonly class SensitiveDataScrubber
     /**
      * Scrub sensitive data from the payload.
      *
-     * @param array<mixed>|object $payload
+     * @param  array<mixed>|object  $payload
      * @return array<mixed>
      */
     public function scrub(array|object $payload): array
@@ -47,11 +47,13 @@ final readonly class SensitiveDataScrubber
         foreach ($data as $key => $value) {
             if ($this->isSensitiveKey((string) $key)) {
                 $scrubbed[$key] = self::REDACTED_MASK;
+
                 continue;
             }
 
             if (is_array($value) || is_object($value)) {
                 $scrubbed[$key] = $this->scrub($value);
+
                 continue;
             }
 
@@ -64,7 +66,7 @@ final readonly class SensitiveDataScrubber
     private function isSensitiveKey(string $key): bool
     {
         $normalizedKey = strtolower($key);
-        
+
         foreach (self::DEFAULT_SENSITIVE_KEYS as $sensitiveKey) {
             if (str_contains($normalizedKey, $sensitiveKey)) {
                 return true;

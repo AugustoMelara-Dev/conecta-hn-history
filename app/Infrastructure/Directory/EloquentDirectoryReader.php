@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 final class EloquentDirectoryReader implements DirectoryReader
 {
     private const CACHE_TTL_MINUTES = 10;
+
     private const LONG_CACHE_TTL_HOURS = 1;
 
     public function getFeaturedTenants(int $limit = 8): Collection
@@ -25,7 +26,7 @@ final class EloquentDirectoryReader implements DirectoryReader
                 ->select([
                     'id', 'name', 'slug', 'description', 'tags', 'is_active',
                     'hero_image', 'banner_path', 'cover_path', 'blur_hash',
-                    'brand_color', 'plan_type', 'subscription_status', 'city_id', 'category_id'
+                    'brand_color', 'plan_type', 'subscription_status', 'city_id', 'category_id',
                 ])
                 ->published()
                 ->inPriorityOrder()

@@ -29,7 +29,6 @@ final class RecordInteractionAction
     /**
      * Execute interaction recording.
      *
-     * @param InteractionData $data
      * @return Interaction|null Returns null if duplicate (idempotency)
      */
     public function execute(InteractionData $data): ?Interaction
@@ -76,7 +75,7 @@ final class RecordInteractionAction
     {
         return in_array($type, [
             Interaction::TYPE_WHATSAPP_CLICK,
-            Interaction::TYPE_CALL_CLICK // Assuming calls are also high intent
+            Interaction::TYPE_CALL_CLICK, // Assuming calls are also high intent
         ]);
     }
 

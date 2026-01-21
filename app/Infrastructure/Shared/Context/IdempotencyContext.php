@@ -24,8 +24,9 @@ class IdempotencyContext
     public function getKey(): string
     {
         if ($this->key === null) {
-            throw new RuntimeException("Idempotency Context not hydrated. Ensure EnsureIdempotencyKey middleware is executing.");
+            throw new RuntimeException('Idempotency Context not hydrated. Ensure EnsureIdempotencyKey middleware is executing.');
         }
+
         return $this->key;
     }
 

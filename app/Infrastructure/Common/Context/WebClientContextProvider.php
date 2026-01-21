@@ -8,7 +8,7 @@ use App\Application\Common\Interfaces\ClientContextProviderInterface;
 
 /**
  * WebClientContextProvider - HTTP Transport Adapter
- * 
+ *
  * Resolves client identity using the HTTP Request IP address.
  */
 final readonly class WebClientContextProvider implements ClientContextProviderInterface

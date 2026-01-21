@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 
 /**
  * PaymentIdempotencyLedger
- * 
+ *
  * The single source of truth for Payment Idempotency.
  */
 final class PaymentIdempotencyLedger implements IdempotencyLedgerInterface
@@ -18,8 +18,8 @@ final class PaymentIdempotencyLedger implements IdempotencyLedgerInterface
     public function hasProcessed(Request $request, string $idempotencyKey): bool
     {
         $tenantId = $request->input('tenant_id'); // Assumes validated request or middleware order
-        
-        if (!$tenantId) {
+
+        if (! $tenantId) {
             return false;
         }
 

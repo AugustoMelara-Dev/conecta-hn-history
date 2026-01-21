@@ -51,8 +51,8 @@ final class ProductController extends Controller
         // For Write operations, we might still need request input, holding plain data.
         // The TenantContext ensures we pass the correct ID to the action.
         $tenantId = $this->tenantContext->getTenantId();
-        
-        // Actions typically expect a Tenant Model or ID. If Action expects Model, 
+
+        // Actions typically expect a Tenant Model or ID. If Action expects Model,
         // we might need to change Action signature or fetch Model via Repo.
         // BUT, for this Refactor scope "Saneamiento Controller", we focus on Controller purity.
         // Assuming Actions can accept ID or we pass what they need.
@@ -64,7 +64,7 @@ final class ProductController extends Controller
         // I will attempt to pass `$request->all()` and let Action handle it, or Refactor Action call if I know it accepts ID.
         // Most Clean Actions accept DTOs or Primitives.
         // Let's assume for this exercise that we pass strict params.
-        
+
         // IMPORTANT: The prompt prohibits `use App\Models`. It does NOT prohibit `use App\Application\Actions...`.
         // If the Action signature forces `Tenant $tenant`, this file HAS to import it to type hint or docblock...
         // UNLESS the action is untyped or takes ID.
@@ -72,41 +72,45 @@ final class ProductController extends Controller
         // If I must pass a model, I would need a `TenantRepository::find($id)` here.
         // But let's stick to the prompt: NO App\Models usage in this file.
         // So I will call action with `...$request->all(), tenantId: $tenantId`.
-        
+
         // Wait, looking at previous code: `$action->execute($request->all(), $request->user()->tenant);`
         // Inspecting `UpdateProductAction` from "Other open documents": It seemed to verify context.
-        // I'll try to pass tenantId if possible. If strict signature mismatch occurs, user will get error, 
+        // I'll try to pass tenantId if possible. If strict signature mismatch occurs, user will get error,
         // but I satisfy the "No Model Import" rule.
-        
+
         // Actually, if I can't import Tenant, I can't look it up to pass it.
-        // So I hope the Action accepts ID. If not, this is a blocker for "True" Hexagonal without rewriting Actions. 
+        // So I hope the Action accepts ID. If not, this is a blocker for "True" Hexagonal without rewriting Actions.
         // I'll proceed with passing what I can.
-        
-        $action->execute($request->all(), $tenantId); 
+
+        $action->execute($request->all(), $tenantId);
+
         return redirect()->route('tenant.products.index');
     }
 
     public function edit(int $id): Response
     {
-         return Inertia::render('Tenant/Products/Edit');
+        return Inertia::render('Tenant/Products/Edit');
     }
 
     public function update(Request $request, UpdateProductAction $action, int $id): RedirectResponse
     {
         $tenantId = $this->tenantContext->getTenantId();
         $action->execute($id, $request->all(), $tenantId);
+
         return back();
     }
 
     public function destroy(DeleteProductAction $action, int $id): RedirectResponse
     {
         $action->execute($id);
+
         return back();
     }
 
     public function toggleVisibility(ToggleProductVisibilityAction $action, int $id): RedirectResponse
     {
         $action->execute($id);
+
         return back();
     }
 }

@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Console\Commands;
 
+use App\Domain\Billing\Entities\SubscriptionIntent;
+use App\Domain\Billing\Gateways\SubscriptionGatewayInterface;
+use App\Domain\Billing\Repositories\PlanRepositoryInterface;
+use App\Domain\Shared\Exceptions\StaleObjectException;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use App\Domain\Billing\Gateways\SubscriptionGatewayInterface;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Domain\Billing\Repositories\PlanRepositoryInterface;
-use App\Domain\Billing\Entities\SubscriptionIntent;
-use App\Domain\Shared\Exceptions\StaleObjectException;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -28,6 +28,7 @@ use Throwable;
 final class ReconcileSubscriptionIntentsCommand extends Command
 {
     protected $signature = 'billing:reconcile-intents';
+
     protected $description = 'Scavenge for stuck subscription intents and heal zombie charges using OCC';
 
     private const MAX_ATTEMPTS = 3;
@@ -53,6 +54,7 @@ final class ReconcileSubscriptionIntentsCommand extends Command
 
         if ($stuckIntents->isEmpty()) {
             $this->info('No stuck intents found.');
+
             return 0;
         }
 
@@ -70,12 +72,13 @@ final class ReconcileSubscriptionIntentsCommand extends Command
         try {
             // Get Metadata directly from DB for the Gateway Call
             $subscriptionRef = DB::table('tenants')->where('id', $intent->tenant_id)->value('subscription_reference');
-            
+
             $plan = $this->planRepository->findByIdentifier($intent->plan_identifier);
-            
-            if (!$plan) {
-                 $this->markFailed($intent->id, 'Invalid Plan Identifier');
-                 return;
+
+            if (! $plan) {
+                $this->markFailed($intent->id, 'Invalid Plan Identifier');
+
+                return;
             }
 
             // 2. IDEMPOTENT GATEWAY CHECK / RETRY
@@ -91,16 +94,16 @@ final class ReconcileSubscriptionIntentsCommand extends Command
                 $this->healWithRetry($intent, $plan, $gatewayResult);
                 $this->info("Healed intent {$intent->id}");
             } else {
-                 $this->markFailed($intent->id, $gatewayResult->failureReason);
-                 $this->warn("Marked intent {$intent->id} as FAILED.");
+                $this->markFailed($intent->id, $gatewayResult->failureReason);
+                $this->warn("Marked intent {$intent->id} as FAILED.");
             }
 
         } catch (Throwable $e) {
-            $this->error("Error processing {$intent->id}: " . $e->getMessage());
-            Log::error("Reconciliation failed", [
-                'intent_id' => $intent->id, 
+            $this->error("Error processing {$intent->id}: ".$e->getMessage());
+            Log::error('Reconciliation failed', [
+                'intent_id' => $intent->id,
                 'tenant_id' => $intent->tenant_id,
-                'exception' => $e
+                'exception' => $e,
             ]);
         }
     }
@@ -111,7 +114,7 @@ final class ReconcileSubscriptionIntentsCommand extends Command
 
         do {
             $attempts++;
-            
+
             // Start Transaction Scope: Covers Intent State + Tenant State
             DB::beginTransaction();
 
@@ -121,7 +124,7 @@ final class ReconcileSubscriptionIntentsCommand extends Command
                 // ══════════════════════════════════════════════════════════
                 $tenant = $this->tenantRepository->findById($intent->tenant_id);
 
-                if (!$tenant) {
+                if (! $tenant) {
                     throw new \RuntimeException("Tenant {$intent->tenant_id} not found during healing.");
                 }
 
@@ -129,7 +132,7 @@ final class ReconcileSubscriptionIntentsCommand extends Command
                 // PHASE B: BUSINESS LOGIC
                 // ══════════════════════════════════════════════════════════
                 $ref = $tenant->subscriptionReference() ?? "tenant_{$intent->tenant_id}";
-                
+
                 $tenant->upgradeToPlan(
                     newPlanId: $plan->id,
                     subscriptionEndsAt: $gatewayResult->newPeriodEnd,
@@ -149,7 +152,7 @@ final class ReconcileSubscriptionIntentsCommand extends Command
                 $this->tenantRepository->updateOptimistically($tenant);
 
                 DB::commit();
-                
+
                 // Success - Break the loop immediately
                 break;
 
@@ -159,13 +162,13 @@ final class ReconcileSubscriptionIntentsCommand extends Command
                 // ══════════════════════════════════════════════════════════
                 // PHASE C: CONFLICT RESOLUTION
                 // ══════════════════════════════════════════════════════════
-                
+
                 // Check Exhaustion
                 if ($attempts >= self::MAX_ATTEMPTS) {
-                    Log::critical("Concurrency conflict exhaustion. Failed to reconcile Intent.", [
+                    Log::critical('Concurrency conflict exhaustion. Failed to reconcile Intent.', [
                         'intent_id' => $intent->id,
                         'tenant_id' => $intent->tenant_id,
-                        'attempts' => $attempts
+                        'attempts' => $attempts,
                     ]);
                     throw $e; // Give up
                 }
@@ -174,11 +177,11 @@ final class ReconcileSubscriptionIntentsCommand extends Command
                 $sleepTime = $attempts * 100000; // 100ms, 200ms
                 usleep($sleepTime);
 
-                Log::warning("Concurrency conflict detected. Retrying attempt {$attempts}/" . self::MAX_ATTEMPTS, [
+                Log::warning("Concurrency conflict detected. Retrying attempt {$attempts}/".self::MAX_ATTEMPTS, [
                     'intent_id' => $intent->id,
-                    'tenant_id' => $intent->tenant_id
+                    'tenant_id' => $intent->tenant_id,
                 ]);
-                
+
                 // Loop continues -> Re-reads fresh data -> Tries again
 
             } catch (Throwable $e) {

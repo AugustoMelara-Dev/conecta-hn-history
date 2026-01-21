@@ -21,7 +21,9 @@ use App\Domain\Shared\Contracts\UpcasterInterface;
 final readonly class UserPasswordChangedV1ToV2Upcaster implements UpcasterInterface
 {
     private const EVENT_TYPE = 'auth.user_password_changed';
+
     private const FROM_VERSION = 1;
+
     private const TO_VERSION = 2;
 
     public function supports(string $eventType, int $schemaVersion): bool

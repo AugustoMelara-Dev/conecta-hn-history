@@ -27,8 +27,8 @@ final readonly class SocialLoginResult
     public static function success(UserEntity $user): self
     {
         // If user has no tenant, they require onboarding
-        $status = $user->tenantId === null 
-            ? AuthStatus::REQUIRES_ONBOARDING 
+        $status = $user->tenantId === null
+            ? AuthStatus::REQUIRES_ONBOARDING
             : AuthStatus::SUCCESS;
 
         return new self($status, $user);

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * BridgeLaravelAuthEvents
- * 
+ *
  * INFRASTRUCTURE BRIDGE: Connects pure Domain Events to Laravel's Auth System.
  * This allows us to keep the Domain clean while still leveraging Laravel features
  * like email verification.
@@ -24,7 +24,7 @@ final class BridgeLaravelAuthEvents
     {
         Log::info('Bridge: Mapping TenantRegistered to Laravel Registered event', [
             'user_id' => $event->user->id,
-            'tenant_id' => $event->tenant->id
+            'tenant_id' => $event->tenant->id,
         ]);
 
         // Dispatch the framework event

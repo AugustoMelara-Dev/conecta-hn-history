@@ -17,16 +17,16 @@ final readonly class SubmitReviewCommand
     public function __construct(
         /** Tenant ID for multi-tenant isolation */
         public int $tenantId,
-        
+
         /** Author's User ID */
         public int $userId,
-        
+
         /** Target Product ID */
         public int $productId,
-        
+
         /** Rating (1-5 stars) */
         public int $rating,
-        
+
         /** Review comment text */
         public ?string $comment = null,
     ) {}

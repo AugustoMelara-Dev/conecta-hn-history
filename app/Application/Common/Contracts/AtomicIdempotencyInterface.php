@@ -18,12 +18,12 @@ interface AtomicIdempotencyInterface
     /**
      * Execute a domain operation atomically.
      *
-     * @param string $idempotencyKey The unique client-provided key
-     * @param string $tenantId The tenant context
-     * @param string $commandHash SHA-256 hash of the command payload for integrity
-     * @param Closure $operation The business logic to execute if lock is acquired
+     * @param  string  $idempotencyKey  The unique client-provided key
+     * @param  string  $tenantId  The tenant context
+     * @param  string  $commandHash  SHA-256 hash of the command payload for integrity
+     * @param  Closure  $operation  The business logic to execute if lock is acquired
      * @return mixed The result of the operation (or cached result)
-     * 
+     *
      * @throws \App\Application\Common\Exceptions\ConcurrentRequestException If lock is held by another process
      * @throws \App\Application\Common\Exceptions\IdempotencyKeyReuseException If key is reused with different hash
      */

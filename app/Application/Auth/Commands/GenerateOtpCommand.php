@@ -20,19 +20,19 @@ final readonly class GenerateOtpCommand implements HashableCommand
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) */
         public string $tenantId,
-        
+
         /** Email or phone number to send OTP */
         public string $identifier,
-        
+
         /** OTP type (email, sms) */
         public string $type,
-        
+
         /** Client IP for security audit */
         public string $ipAddress,
-        
+
         /** Client User-Agent for fingerprinting */
         public string $userAgent,
-        
+
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey = '',
     ) {}
@@ -43,6 +43,7 @@ final readonly class GenerateOtpCommand implements HashableCommand
         if ($this->idempotencyKey === '') {
             return $this->getCommandHash();
         }
+
         return $this->idempotencyKey;
     }
 

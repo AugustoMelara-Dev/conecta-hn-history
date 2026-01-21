@@ -28,11 +28,11 @@ return new class extends Migration
                 $table->bigIncrements('id'); // Sequential Ordering
                 $table->string('type'); // Event FQCN
                 $table->json('payload'); // Event Body
-                
+
                 // STATUS POINTER:
                 // NULL = Pending. Timestamp = Processed.
                 $table->timestamp('published_at')->nullable()->index();
-                
+
                 $table->timestamp('created_at')->useCurrent();
             });
         }

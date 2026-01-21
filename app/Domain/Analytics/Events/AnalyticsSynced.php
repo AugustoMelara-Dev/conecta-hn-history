@@ -11,7 +11,7 @@ use DateTimeImmutable;
 
 /**
  * AnalyticsSynced - Observability Event
- * 
+ *
  * Fired when the nightly analytics sync job completes a batch.
  */
 final readonly class AnalyticsSynced implements DomainEvent

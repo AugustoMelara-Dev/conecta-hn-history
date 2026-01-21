@@ -18,7 +18,7 @@ class IdempotencyLifecycleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Manual Isolation: Create only the table we need
         Schema::dropIfExists('processed_commands');
         Schema::create('processed_commands', function (\Illuminate\Database\Schema\Blueprint $table) {
@@ -28,7 +28,7 @@ class IdempotencyLifecycleTest extends TestCase
             $table->string('command_hash', 64);
             $table->enum('status', ['PROCESSING', 'COMPLETED', 'FAILED']);
             $table->json('response_payload')->nullable();
-            
+
             if (DB::connection()->getDriverName() === 'sqlite') {
                 $table->timestamp('created_at')->nullable();
                 $table->timestamp('updated_at')->nullable();
@@ -36,13 +36,13 @@ class IdempotencyLifecycleTest extends TestCase
                 $table->timestamp('created_at', 6)->nullable();
                 $table->timestamp('updated_at', 6)->nullable();
             }
-            
+
             $table->index(['status', 'created_at']);
         });
 
         $this->service = $this->app->make(AtomicIdempotencyInterface::class);
     }
-    
+
     protected function tearDown(): void
     {
         Schema::dropIfExists('processed_commands');
@@ -84,7 +84,7 @@ class IdempotencyLifecycleTest extends TestCase
         $this->expectException(ConcurrentRequestException::class);
         $this->expectExceptionMessage('Idempotency schema version mismatch');
 
-        $this->service->execute($key, $tenantId, $hash, fn() => "New Result");
+        $this->service->execute($key, $tenantId, $hash, fn () => 'New Result');
 
         // 3. Verify Flush
         $this->assertDatabaseMissing('processed_commands', ['idempotency_key' => $key]);
@@ -99,7 +99,7 @@ class IdempotencyLifecycleTest extends TestCase
 
         try {
             $this->service->execute($key, $tenantId, $hash, function () {
-                throw new \DomainException("Business Logic Failure");
+                throw new \DomainException('Business Logic Failure');
             });
         } catch (\DomainException $e) {
             // Expected
@@ -122,7 +122,7 @@ class IdempotencyLifecycleTest extends TestCase
                 'command_hash' => 'h',
                 'status' => 'COMPLETED',
                 'created_at' => now()->subDays(31),
-                'updated_at' => now()
+                'updated_at' => now(),
             ]);
         }
 
@@ -134,18 +134,18 @@ class IdempotencyLifecycleTest extends TestCase
                 'command_hash' => 'h',
                 'status' => 'COMPLETED',
                 // Use explicit 'now' to match exact boundary logic if needed, but today is safe
-                'created_at' => now(), 
-                'updated_at' => now()
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
 
         // 2. Act: Run Command
         $this->artisan('auth:prune-idempotency', ['--days' => 30])
-             ->assertExitCode(0);
+            ->assertExitCode(0);
 
         // 3. Assert (Strict Integrity)
         $remainingCount = DB::table('processed_commands')->count();
-        $this->assertEquals(5, $remainingCount, "Should have exactly 5 records remaining");
+        $this->assertEquals(5, $remainingCount, 'Should have exactly 5 records remaining');
 
         // Assert remaining are the fresh ones
         $remainingKeys = DB::table('processed_commands')->pluck('idempotency_key')->toArray();

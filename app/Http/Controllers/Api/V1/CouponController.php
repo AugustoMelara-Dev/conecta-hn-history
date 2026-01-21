@@ -65,11 +65,11 @@ final class CouponController extends Controller
         }
 
         // Domain Logic: Validate method on Model is still okay if it's pure domain logic
-        // But ideally this should be a Service or Domain Method. 
+        // But ideally this should be a Service or Domain Method.
         // Assuming $coupon is an Eloquent Model / Entity that has validate() method.
         // Since Reader returns 'object' (likely Model), this is acceptable for now in 'Active Record' refactoring
         // as long as the QUERY is out of the controller.
-        
+
         $result = $coupon->validate($cartSubtotal);
 
         if (! $result->isValid) {
@@ -92,11 +92,11 @@ final class CouponController extends Controller
         }
 
         $cacheKey = $this->cacheManager->makeKey($tenantId, 'coupons_public');
-        
+
         // Caching is fine in controller or Decorator. Keeping here for now to match logic.
         $coupons = Cache::remember($cacheKey, now()->addMinutes(self::CACHE_TTL_MINUTES), function () use ($tenantId) {
-             // Delegated to Reader
-             return $this->reader->getValidCoupons($tenantId)->toArray();
+            // Delegated to Reader
+            return $this->reader->getValidCoupons($tenantId)->toArray();
         });
 
         return response()->json([

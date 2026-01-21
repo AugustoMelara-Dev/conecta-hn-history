@@ -57,37 +57,39 @@ final class DirectoryController extends Controller
 
     /**
      * Filter by city using scalar slug (DIP Compliant).
-     * 
+     *
      * Route Model Binding replaced with explicit lookup via Reader.
      */
     public function byCity(string $citySlug, Request $request): Response
     {
         // Validate city exists via Reader (throws 404 if not found)
         $city = $this->reader->findCityBySlug($citySlug);
-        
-        if (!$city) {
+
+        if (! $city) {
             abort(404, 'Ciudad no encontrada.');
         }
 
         $request->merge(['city' => $city->slug]);
+
         return $this->index($request);
     }
 
     /**
      * Filter by category using scalar slug (DIP Compliant).
-     * 
+     *
      * Route Model Binding replaced with explicit lookup via Reader.
      */
     public function byCategory(string $categorySlug, Request $request): Response
     {
         // Validate category exists via Reader (throws 404 if not found)
         $category = $this->reader->findCategoryBySlug($categorySlug);
-        
-        if (!$category) {
+
+        if (! $category) {
             abort(404, 'Categoría no encontrada.');
         }
 
         $request->merge(['category' => $category->slug]);
+
         return $this->index($request);
     }
 }

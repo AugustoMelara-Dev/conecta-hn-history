@@ -17,9 +17,9 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 final readonly class UpdateProductResult
 {
     /**
-     * @param int $id Product ID
-     * @param string $sku Product SKU
-     * @param array<string> $changedAttributes List of modified field names
+     * @param  int  $id  Product ID
+     * @param  string  $sku  Product SKU
+     * @param  array<string>  $changedAttributes  List of modified field names
      */
     public function __construct(
         public int $id,
@@ -30,8 +30,8 @@ final readonly class UpdateProductResult
     /**
      * Factory method to hydrate from Domain Entity / Eloquent Model.
      *
-     * @param object $product The updated product
-     * @param array<string> $changedAttributes Fields that were modified
+     * @param  object  $product  The updated product
+     * @param  array<string>  $changedAttributes  Fields that were modified
      */
     public static function fromEntity(object $product, array $changedAttributes = []): self
     {

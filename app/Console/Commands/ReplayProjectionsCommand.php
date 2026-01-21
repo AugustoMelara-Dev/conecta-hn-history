@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\App;
 
 /**
  * ReplayProjectionsCommand - The Reset Button
- * 
+ *
  * USE WITH CAUTION. Truncates read tables!
  */
 class ReplayProjectionsCommand extends Command
@@ -41,9 +41,10 @@ class ReplayProjectionsCommand extends Command
         // 1. SAFETY CATCH (Production Guard)
         if ($isProduction) {
             $this->alert('⚠️  WARNING: YOU ARE ABOUT TO TRUNCATE READ TABLES IN PRODUCTION ⚠️');
-            
+
             if (! $this->confirm("Are you sure you want to rebuild [{$projectorInput}]? This implies downtime for read models.")) {
                 $this->info('Operation aborted by user.');
+
                 return 1;
             }
         }
@@ -54,7 +55,7 @@ class ReplayProjectionsCommand extends Command
         try {
             // Callback for visual feedback
             $onProgress = function (int $count) {
-                 $this->output->write("\rProcessed Events: {$count}   ");
+                $this->output->write("\rProcessed Events: {$count}   ");
             };
 
             if ($projectorInput === 'all') {
@@ -68,12 +69,13 @@ class ReplayProjectionsCommand extends Command
             $duration = round(microtime(true) - $startTime, 2);
             $this->newLine();
             $this->info("✅ Replay Complete. Duration: {$duration}s");
-            
+
             return 0;
 
         } catch (\Throwable $e) {
             $this->newLine();
-            $this->error("❌ Replay Failed: " . $e->getMessage());
+            $this->error('❌ Replay Failed: '.$e->getMessage());
+
             return 1;
         }
     }

@@ -19,26 +19,33 @@ use Illuminate\Support\Facades\Log;
 final class ElasticHealthProbe
 {
     private const WARNING_LATENCY_MS = 2000;
+
     private const DANGER_LATENCY_MS = 5000;
+
     private const SLIDING_WINDOW_SIZE = 10;
+
     private const BASE_COOLDOWN_SECONDS = 10;
+
     private const MAX_FAILURE_EXPONENT = 6; // 2^6 = 64x max multiplier
+
     private const STATE_TTL_SECONDS = 3600; // 1 hour state persistence
+
     private const CACHE_KEY_PREFIX = 'outbox:health:';
 
     /** @var array<float> */
     private array $latencyWindow = [];
-    
+
     private int $cooldownStartedAt = 0;
+
     private int $cooldownDuration = 0;
-    
+
     /** @var string Unique worker identifier for state isolation */
     private readonly string $workerId;
 
     public function __construct(string $workerId = '')
     {
-        $this->workerId = $workerId ?: gethostname() . ':' . getmypid();
-        
+        $this->workerId = $workerId ?: gethostname().':'.getmypid();
+
         // LEVEL 50: Re-read failure state on instantiation (survives reboots)
         $this->rehydrateState();
     }
@@ -50,7 +57,7 @@ final class ElasticHealthProbe
     private function rehydrateState(): void
     {
         $cachedFailures = Cache::get($this->getStateKey('consecutive_failures'), 0);
-        
+
         if ($cachedFailures > 0) {
             Log::info('ELASTIC PROBE: Rehydrated failure state from cache', [
                 'worker_id' => $this->workerId,
@@ -73,11 +80,11 @@ final class ElasticHealthProbe
     public function recordLatency(float $milliseconds): void
     {
         $this->latencyWindow[] = $milliseconds;
-        
+
         if (count($this->latencyWindow) > self::SLIDING_WINDOW_SIZE) {
             array_shift($this->latencyWindow);
         }
-        
+
         // Decay failure count on successful operations below warning threshold
         if ($milliseconds < self::WARNING_LATENCY_MS) {
             $currentFailures = $this->getConsecutiveFailures();
@@ -129,26 +136,26 @@ final class ElasticHealthProbe
 
     /**
      * LEVEL 50: Enter cooldown with jittered exponential backoff.
-     * 
+     *
      * Formula: Cooldown = Base × 2^min(failures, 6) × (1 + Random(-0.2, 0.2))
      */
     public function enterCooldown(): void
     {
         $consecutiveFailures = $this->getConsecutiveFailures() + 1;
         $this->persistFailureCount($consecutiveFailures);
-        
+
         // Cap the exponent to prevent insane cooldowns
         $exponent = min($consecutiveFailures, self::MAX_FAILURE_EXPONENT);
-        
+
         // Calculate exponential base: Base × 2^failures
         $baseCooldown = self::BASE_COOLDOWN_SECONDS * pow(2, $exponent);
-        
+
         // LEVEL 50: Jittered multiplier (1 ± 0.2) for staggered recovery
         $jitterMultiplier = 1 + ((mt_rand(-200, 200) / 1000)); // -0.2 to +0.2
-        
+
         $this->cooldownDuration = (int) ($baseCooldown * $jitterMultiplier);
         $this->cooldownStartedAt = time();
-        
+
         Log::alert('ELASTIC BACKPRESSURE: Entering jittered exponential cooldown', [
             'worker_id' => $this->workerId,
             'consecutive_failures' => $consecutiveFailures,
@@ -173,7 +180,7 @@ final class ElasticHealthProbe
                 'consecutive_failures' => $this->getConsecutiveFailures(),
             ]);
         }
-        
+
         $this->cooldownStartedAt = 0;
         $this->cooldownDuration = 0;
         // Note: Do NOT reset consecutiveFailures - it decays naturally
@@ -184,7 +191,7 @@ final class ElasticHealthProbe
      */
     public function getRemainingCooldownSeconds(): int
     {
-        if (!$this->isInCooldown()) {
+        if (! $this->isInCooldown()) {
             return 0;
         }
 
@@ -198,7 +205,7 @@ final class ElasticHealthProbe
     {
         $this->persistFailureCount(0);
         $this->latencyWindow = [];
-        
+
         Log::info('ELASTIC BACKPRESSURE: Failure counter reset', [
             'worker_id' => $this->workerId,
         ]);
@@ -222,7 +229,7 @@ final class ElasticHealthProbe
     private function getStateKey(string $suffix): string
     {
         // Use global key for fleet-wide state, not worker-specific
-        return self::CACHE_KEY_PREFIX . $suffix;
+        return self::CACHE_KEY_PREFIX.$suffix;
     }
 
     /**

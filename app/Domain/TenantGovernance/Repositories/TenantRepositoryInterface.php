@@ -23,7 +23,7 @@ interface TenantRepositoryInterface
 
     /**
      * Find tenant by ID with pessimistic lock (SELECT ... FOR UPDATE).
-     * 
+     *
      * CRITICAL: Use this within a transaction when performing
      * read-modify-write operations to prevent race conditions.
      */
@@ -40,7 +40,7 @@ interface TenantRepositoryInterface
     public function findByDomain(string $domain): ?TenantEntity;
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     public function create(array $attributes): TenantEntity;
 

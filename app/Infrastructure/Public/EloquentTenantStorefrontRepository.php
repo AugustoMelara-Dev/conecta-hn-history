@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Infrastructure\Public;
 
 use App\Domain\Public\Contracts\TenantStorefrontRepository;
-use App\Models\Tenant;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
+use App\Models\Tenant;
 
 /**
  * EloquentTenantStorefrontRepository - Optimized Read Implementation
@@ -21,7 +21,7 @@ final class EloquentTenantStorefrontRepository implements TenantStorefrontReposi
     {
         $tenant = Tenant::where('slug', $slug)->first();
 
-        if (!$tenant) {
+        if (! $tenant) {
             return null;
         }
 

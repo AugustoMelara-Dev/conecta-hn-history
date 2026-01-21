@@ -44,13 +44,13 @@ final class MarketingController extends Controller
     /*
      * NOTE: Write operations (store, toggle) are commented out pending Action implementation.
      * They require CreateCouponAction and ToggleCouponAction to maintain architectural compliance.
-     * 
+     *
      * public function store(StoreCouponRequest $request, CreateCouponAction $action): RedirectResponse
      * {
      *     $action->execute($this->tenantContext->getTenantId(), $request->validated());
      *     return back()->with('success', 'Cupón creado.');
      * }
-     * 
+     *
      * public function toggle(int $couponId, ToggleCouponAction $action): RedirectResponse
      * {
      *     $action->execute($this->tenantContext->getTenantId(), $couponId);

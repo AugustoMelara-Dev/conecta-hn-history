@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Decorators;
 
-use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
 use App\Application\Auth\Commands\VerifyOtpCommand;
+use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
 use App\Application\Auth\Results\VerifyOtpResult;
 use App\Domain\Shared\Contracts\RateLimitServiceInterface;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;

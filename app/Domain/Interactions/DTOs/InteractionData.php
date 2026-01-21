@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Interactions\DTOs;
 
-
-
 /**
  * InteractionData - Immutable DTO for Interaction Tracking
  *
@@ -19,13 +17,13 @@ namespace App\Domain\Interactions\DTOs;
 final readonly class InteractionData
 {
     /**
-     * @param int $tenantId ID of the tenant receiving the interaction
-     * @param string $type Type of interaction (view, whatsapp_click, call_click, etc.)
-     * @param string|null $ipAddress Visitor IP address
-     * @param string|null $userAgent Visitor User Agent
-     * @param string|null $sessionId Session ID for counting unique views
-     * @param int|null $productId Optional product ID context
-     * @param array|null $metadata Additional contextual data
+     * @param  int  $tenantId  ID of the tenant receiving the interaction
+     * @param  string  $type  Type of interaction (view, whatsapp_click, call_click, etc.)
+     * @param  string|null  $ipAddress  Visitor IP address
+     * @param  string|null  $userAgent  Visitor User Agent
+     * @param  string|null  $sessionId  Session ID for counting unique views
+     * @param  int|null  $productId  Optional product ID context
+     * @param  array|null  $metadata  Additional contextual data
      */
     public function __construct(
         public int $tenantId,

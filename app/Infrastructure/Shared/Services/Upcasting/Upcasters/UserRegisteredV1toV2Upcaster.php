@@ -8,7 +8,7 @@ use App\Application\Shared\Contracts\UpcasterInterface;
 
 /**
  * UserRegisteredV1toV2Upcaster
- * 
+ *
  * Example transformation:
  * V1: { "fullname": "John Doe" }
  * V2: { "first_name": "John", "last_name": "Doe" }
@@ -32,7 +32,7 @@ final class UserRegisteredV1toV2Upcaster implements UpcasterInterface
             $payload['name'] = $payload['fullname'];
             unset($payload['fullname']);
         }
-        
+
         return $payload;
     }
 }

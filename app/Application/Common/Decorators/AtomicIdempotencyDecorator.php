@@ -10,7 +10,7 @@ use InvalidArgumentException;
 
 /**
  * AtomicIdempotencyDecorator
- * 
+ *
  * Standardized generic decorator for Atomic Protocol.
  * Requires the command to implement HashableCommand.
  */
@@ -23,17 +23,17 @@ final class AtomicIdempotencyDecorator
 
     public function handle(object $command): mixed
     {
-        if (!($command instanceof HashableCommand)) {
-            // Fallback or Error? 
+        if (! ($command instanceof HashableCommand)) {
+            // Fallback or Error?
             // For standard hardening, we enforce the contract.
-            throw new InvalidArgumentException("Command must implement HashableCommand to use AtomicIdempotencyDecorator.");
+            throw new InvalidArgumentException('Command must implement HashableCommand to use AtomicIdempotencyDecorator.');
         }
 
         return $this->service->execute(
             idempotencyKey: $command->getIdempotencyKey(),
             tenantId: $command->getTenantId(),
             commandHash: $command->getCommandHash(),
-            operation: fn() => $this->inner->handle($command)
+            operation: fn () => $this->inner->handle($command)
         );
     }
 }

@@ -15,8 +15,7 @@ interface OutboxRepositoryInterface
     /**
      * Appends a domain event to the outbox table.
      *
-     * @param object $event The domain event to persist.
-     * @return void
+     * @param  object  $event  The domain event to persist.
      */
     public function append(object $event): void;
 
@@ -24,9 +23,9 @@ interface OutboxRepositoryInterface
      * LEVEL 70: SOVEREIGN RECOVERY
      * Retrieves a batch of stale locked messages, strictly filtered by owned partitions.
      *
-     * @param int $batchSize Maximum number of messages to recover
-     * @param int $staleThresholdSeconds Seconds after which a lock is considered stale
-     * @param array<int> $ownedPartitionKeys Explicit list of partitions this worker owns
+     * @param  int  $batchSize  Maximum number of messages to recover
+     * @param  int  $staleThresholdSeconds  Seconds after which a lock is considered stale
+     * @param  array<int>  $ownedPartitionKeys  Explicit list of partitions this worker owns
      * @return \Illuminate\Support\Collection<mixed>
      */
     public function retrieveNextStaleBatch(int $batchSize, int $staleThresholdSeconds, array $ownedPartitionKeys): \Illuminate\Support\Collection;

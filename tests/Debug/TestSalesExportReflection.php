@@ -15,12 +15,12 @@ echo "Testing SalesExport Reflection...\n";
 
 $uuid = '550e8400-e29b-41d4-a716-446655440000';
 $t = new TenantId($uuid);
-echo "TenantId created: " . $t->toString() . "\n";
+echo 'TenantId created: '.$t->toString()."\n";
 
 try {
     $ref = new ReflectionClass(SalesExport::class);
     $ctor = $ref->getConstructor();
-    if (!$ctor) {
+    if (! $ctor) {
         echo "No Constructor!\n";
         exit(1);
     }
@@ -29,18 +29,18 @@ try {
         echo "No Params!\n";
         exit(1);
     }
-    
+
     $param0 = $params[0];
-    echo "Param 0 Name: " . $param0->getName() . "\n";
-    echo "Param 0 Type: " . $param0->getType()->getName() . "\n";
-    
+    echo 'Param 0 Name: '.$param0->getName()."\n";
+    echo 'Param 0 Type: '.$param0->getType()->getName()."\n";
+
     if ($param0->getType()->getName() === TenantId::class) {
-        echo "MATCH! Type matches " . TenantId::class . "\n";
+        echo 'MATCH! Type matches '.TenantId::class."\n";
     } else {
-        echo "MISMATCH! Expected " . TenantId::class . " but got " . $param0->getType()->getName() . "\n";
+        echo 'MISMATCH! Expected '.TenantId::class.' but got '.$param0->getType()->getName()."\n";
     }
 } catch (Throwable $e) {
-    echo "Error: " . $e->getMessage() . "\n";
+    echo 'Error: '.$e->getMessage()."\n";
     echo $e->getTraceAsString();
 }
 
@@ -51,8 +51,8 @@ echo "\nTesting Criteria Exception:\n";
 try {
     SalesExportCriteria::create('2025-12-31', '2025-01-01');
 } catch (InvalidBusinessRuleException $e) {
-    echo "Caught Exception: '" . $e->getMessage() . "'\n";
-    echo "Hex: " . bin2hex($e->getMessage()) . "\n";
+    echo "Caught Exception: '".$e->getMessage()."'\n";
+    echo 'Hex: '.bin2hex($e->getMessage())."\n";
 } catch (Throwable $e) {
-    echo "Caught Other: " . get_class($e) . " " . $e->getMessage() . "\n";
+    echo 'Caught Other: '.get_class($e).' '.$e->getMessage()."\n";
 }

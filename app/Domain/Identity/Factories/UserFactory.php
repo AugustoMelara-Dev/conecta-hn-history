@@ -7,7 +7,6 @@ namespace App\Domain\Identity\Factories;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\ValueObjects\EmailAddress;
-use DateTimeImmutable;
 
 final readonly class UserFactory
 {
@@ -16,9 +15,9 @@ final readonly class UserFactory
     ) {}
 
     public function createNewUser(
-        string $name, 
-        string $email, 
-        string $hashedPassword, 
+        string $name,
+        string $email,
+        string $hashedPassword,
         string $role = 'customer'
     ): UserEntity {
         return new UserEntity(

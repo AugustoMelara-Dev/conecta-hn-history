@@ -51,6 +51,7 @@ final class EmailOtpNotifier implements OtpNotifierInterface
         if (count($parts) !== 2) {
             return '***';
         }
-        return substr($parts[0], 0, 2) . '***@' . $parts[1];
+
+        return substr($parts[0], 0, 2).'***@'.$parts[1];
     }
 }

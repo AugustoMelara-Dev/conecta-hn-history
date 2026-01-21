@@ -50,6 +50,7 @@ final readonly class SendWelcomeEmail implements ShouldQueue
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
             ]);
+
             return; // Fail silently - job completes successfully
         }
 

@@ -20,7 +20,7 @@ final readonly class TenantId
     private function __construct(
         public string $value
     ) {
-        if (!Str::isUuid($this->value)) {
+        if (! Str::isUuid($this->value)) {
             throw new InvalidArgumentException("TenantId must be a valid UUID string. Received: {$this->value}");
         }
     }

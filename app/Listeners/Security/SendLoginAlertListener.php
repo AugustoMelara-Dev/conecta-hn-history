@@ -23,7 +23,7 @@ final class SendLoginAlertListener implements ShouldQueue
     {
         // UUID STRING: Use toString() for tenant context
         return [
-            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()?->toString())
+            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()?->toString()),
         ];
     }
 

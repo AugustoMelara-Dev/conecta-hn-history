@@ -6,8 +6,6 @@ namespace App\Infrastructure\Jobs\AI;
 
 use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Services\AiProfileGeneratorService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;

@@ -11,8 +11,9 @@ interface SchemaValidatorInterface
     /**
      * Validate a payload against a schema subject.
      *
-     * @param string $subject The logical name of the schema (e.g., 'user.registered.v1')
-     * @param array $payload The data to validate
+     * @param  string  $subject  The logical name of the schema (e.g., 'user.registered.v1')
+     * @param  array  $payload  The data to validate
+     *
      * @throws SchemaViolationException If validation fails
      */
     public function validate(string $subject, array $payload): void;

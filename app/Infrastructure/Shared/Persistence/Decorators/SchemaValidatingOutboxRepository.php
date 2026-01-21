@@ -28,13 +28,13 @@ final readonly class SchemaValidatingOutboxRepository implements OutboxRepositor
         // Convention: 'App\Domain\Auth\Events\UserRegistered' -> 'user.registered.v1'
         // This mapping strategy needs to be robust. For now, we use a static mapper or heuristic.
         // Assuming the Event Class Name or Type carries the version or we default to v1.
-        
+
         $subject = $this->resolveSubject($message->type);
 
         if ($subject) {
             // 2. Decode Payload (it's stored as JSON string in DomainEventMessage)
             $payload = json_decode($message->payload, true);
-            
+
             // 3. Validate
             $this->validator->validate($subject, $payload);
         }
@@ -48,15 +48,15 @@ final readonly class SchemaValidatingOutboxRepository implements OutboxRepositor
         // Heuristic: ClassName to dot.notation
         // App\Domain\Auth\Events\UserRegistered -> user.registered.v1
         // We can optimize this with a Map/Config later.
-        
+
         $className = class_basename($eventType); // UserRegistered
         $kebab = Str::kebab($className); // user-registered
         $dot = str_replace('-', '.', $kebab); // user.registered
-        
-        // Check if a specific version exists? 
+
+        // Check if a specific version exists?
         // ideally the DomainEventMessage should carry the version.
         // For this iteration, we enforce v1.
-        
-        return $dot . '.v1';
+
+        return $dot.'.v1';
     }
 }

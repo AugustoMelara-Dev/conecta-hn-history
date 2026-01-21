@@ -28,10 +28,10 @@ final readonly class PaymentReportedV1ToV2Upcaster implements UpcasterInterface
         // V1 had validation issues and sometimes missed 'currency'.
         // V2 requires 'currency'.
         // Default to 'HNL' if missing.
-        
+
         $newPayload = $payload;
-        
-        if (!isset($newPayload['currency'])) {
+
+        if (! isset($newPayload['currency'])) {
             $newPayload['currency'] = 'HNL';
         }
 

@@ -52,6 +52,7 @@ final class PaymentWebhookController extends Controller
         // 1. Verify Signature
         if (! $this->verifySignature($request)) {
             Log::warning('PaymentWebhook: Invalid signature', ['ip' => $request->ip()]);
+
             return response()->json(['message' => 'Invalid signature'], 403);
         }
 
@@ -67,9 +68,9 @@ final class PaymentWebhookController extends Controller
         try {
             // 2. Delegate to Transactional Action
             $result = $this->action->execute($eventType ?? 'unknown', $eventData);
-            
+
             // Map result to status code
-            $status = match($result['status'] ?? 'ok') {
+            $status = match ($result['status'] ?? 'ok') {
                 'success', 'acknowledged', 'ignored' => 200,
                 default => 500
             };
@@ -78,6 +79,7 @@ final class PaymentWebhookController extends Controller
 
         } catch (\Throwable $e) {
             Log::error('PaymentWebhook: Processing Error', ['error' => $e->getMessage()]);
+
             return response()->json(['status' => 'error'], 500);
         }
     }

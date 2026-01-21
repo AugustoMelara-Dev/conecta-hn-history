@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Decorators;
 
+use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Application\Tenant\Handlers\RegisterTenantHandlerInterface;
 use App\Application\Tenant\Results\RegisterTenantResult;
-use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use App\Domain\Common\Exceptions\ConcurrencyException;
 
 /**
@@ -36,7 +36,7 @@ final readonly class IdempotentRegisterTenantHandler implements RegisterTenantHa
         $lock = $this->service->lock($key);
 
         if (! $lock->get()) {
-            throw new ConcurrencyException("Tenant registration in progress.");
+            throw new ConcurrencyException('Tenant registration in progress.');
         }
 
         try {

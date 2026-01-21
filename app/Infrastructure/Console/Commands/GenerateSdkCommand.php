@@ -11,17 +11,18 @@ use Illuminate\Support\Str;
 class GenerateSdkCommand extends Command
 {
     protected $signature = 'schema:generate-sdk';
+
     protected $description = 'Generate TitaniumSdk.ts with Intelligent Caching & SLA Monitoring';
 
     public function handle(): int
     {
         $schemaPath = resource_path('schemas');
         $outputPath = resource_path('js/Infrastructure/Http/TitaniumSdk.ts');
-        
+
         $files = File::files($schemaPath);
         $methods = [];
 
-        $this->info("Building Intelligent Titanium SDK...");
+        $this->info('Building Intelligent Titanium SDK...');
 
         foreach ($files as $file) {
             if ($file->getExtension() !== 'json') {
@@ -29,29 +30,31 @@ class GenerateSdkCommand extends Command
             }
 
             $content = json_decode(file_get_contents($file->getPathname()), true);
-            
-            if (!isset($content['_meta'])) {
+
+            if (! isset($content['_meta'])) {
                 $this->warn("Skipping [{$file->getFilename()}] - Missing _meta block.");
+
                 continue;
             }
 
             $meta = $content['_meta'];
             $interfaceName = $meta['title'] ?? Str::studly($file->getBasename('.json'));
-            
+
             $methods[] = $this->generateMethod($interfaceName, $meta);
         }
 
         $sdkContent = $this->assembleSdk($methods);
-        
+
         // Ensure directory exists
         $dir = dirname($outputPath);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
         file_put_contents($outputPath, $sdkContent);
-        
+
         $this->info("Titanium SDK generated at [{$outputPath}].");
+
         return Command::SUCCESS;
     }
 
@@ -61,7 +64,7 @@ class GenerateSdkCommand extends Command
 
         $endpoint = $meta['endpoint'];
         $httpMethod = strtoupper($meta['method']);
-        
+
         // Schema-Driven Intelligence Extraction
         $ttl = isset($meta['cache_ttl']) ? (int) $meta['cache_ttl'] : null;
         $sla = isset($meta['sla_threshold']) ? (int) $meta['sla_threshold'] : null;
@@ -74,16 +77,15 @@ class GenerateSdkCommand extends Command
         if ($sla !== null) {
             $configParts[] = "sla: {$sla}";
         }
-        
-        $intelligenceConfig = empty($configParts) 
-            ? "" 
-            : ", { " . implode(', ', $configParts) . " }";
 
+        $intelligenceConfig = empty($configParts)
+            ? ''
+            : ', { '.implode(', ', $configParts).' }';
 
         // Parse Parameters: /users/{id} -> ${id}
         preg_match_all('/\{(\w+)\}/', $endpoint, $matches);
         $params = $matches[1] ?? [];
-        
+
         $tsParams = [];
         $urlRes = $endpoint;
 
@@ -94,10 +96,10 @@ class GenerateSdkCommand extends Command
 
         // Add payload param for POST/PUT
         if (in_array($httpMethod, ['POST', 'PUT', 'PATCH'])) {
-            $tsParams[] = "payload: any";
-            $requestConfig = ", data: payload";
+            $tsParams[] = 'payload: any';
+            $requestConfig = ', data: payload';
         } else {
-            $requestConfig = "";
+            $requestConfig = '';
         }
 
         $paramString = implode(', ', $tsParams);

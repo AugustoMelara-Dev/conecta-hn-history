@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Console\Commands;
 
+use App\Infrastructure\Models\OutboxMessage;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Infrastructure\Models\OutboxMessage;
 
 /**
  * PruneOutboxCommand - Level 42 True (Lifecycle Management)
@@ -37,7 +37,7 @@ final class PruneOutboxCommand extends Command
         $this->info("Pruning FAILED events older than {$failedDays} days...");
         $this->pruneByStatus(OutboxMessage::STATUS_FAILED, $failedDays);
 
-        $this->info("Outbox pruning completed successfully.");
+        $this->info('Outbox pruning completed successfully.');
 
         return Command::SUCCESS;
     }
@@ -60,7 +60,7 @@ final class PruneOutboxCommand extends Command
             $totalDeleted += $rowsAffected;
 
             if ($rowsAffected > 0) {
-                usleep(100000); 
+                usleep(100000);
                 $this->output->write('.');
             }
 

@@ -24,7 +24,7 @@ interface OutboxRepositoryInterface
      * MUST be called within the same database transaction as the aggregate save.
      * Failure to do so breaks the atomicity guarantee.
      *
-     * @param DomainEventInterface $event The domain event to persist
+     * @param  DomainEventInterface  $event  The domain event to persist
      */
     public function append(DomainEventInterface $event): void;
 }

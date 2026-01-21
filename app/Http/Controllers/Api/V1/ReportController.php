@@ -95,8 +95,8 @@ final class ReportController extends Controller
         $dto = ReportRequestData::fromArray([
             'tenant_id' => $tenantId,
             'report_type' => 'sales',
-            'start_date' => $request->getStartDate() . ' 00:00:00',
-            'end_date' => $request->getEndDate() . ' 23:59:59',
+            'start_date' => $request->getStartDate().' 00:00:00',
+            'end_date' => $request->getEndDate().' 23:59:59',
         ]);
 
         GeneratePdfReportJob::dispatch(

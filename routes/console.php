@@ -76,5 +76,3 @@ Schedule::command('auth:prune-idempotency', ['--days=30', '--chunk=1000'])
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/idempotency-pruner.log'));
-
-

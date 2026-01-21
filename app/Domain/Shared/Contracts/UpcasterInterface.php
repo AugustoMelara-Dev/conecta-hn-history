@@ -25,8 +25,8 @@ interface UpcasterInterface
     /**
      * Determine if this upcaster can transform the given event type and version.
      *
-     * @param string $eventType The canonical event type (e.g., 'auth.user_password_changed')
-     * @param int $schemaVersion The source schema version stored in the payload
+     * @param  string  $eventType  The canonical event type (e.g., 'auth.user_password_changed')
+     * @param  int  $schemaVersion  The source schema version stored in the payload
      * @return bool True if this upcaster handles V{schemaVersion} → V{schemaVersion+1}
      */
     public function supports(string $eventType, int $schemaVersion): bool;
@@ -34,7 +34,7 @@ interface UpcasterInterface
     /**
      * Transform the payload from source version to target version.
      *
-     * @param array<string, mixed> $payload The raw payload from storage (JSON decoded)
+     * @param  array<string, mixed>  $payload  The raw payload from storage (JSON decoded)
      * @return array<string, mixed> The transformed payload compatible with next version
      */
     public function upcast(array $payload): array;

@@ -48,6 +48,7 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
 
         if ($user instanceof UserEntity) {
             $this->updateSocialToken($user, $command);
+
             return SocialLoginResult::success($user);
         }
 
@@ -63,16 +64,16 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
         if ($existingUser !== null) {
             $this->linkIdentity($existingUser, $command);
             $this->updateAvatarIfNeeded($existingUser, $command);
-            
+
             // Outbox Persistence
             $event = SocialIdentityLinked::now(
                 userId: (string) $existingUser->id(),
                 tenantId: $command->tenantId,
                 provider: $command->providerName->value,
             );
-            
+
             $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $existingUser->id());
-            
+
             return SocialLoginResult::success($existingUser);
         }
 
@@ -90,7 +91,7 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
             $this->userRepository->save($newUser);
 
             $this->linkIdentity($newUser, $command);
-            
+
             // Outbox Persistence
             $event = UserRegisteredViaSocial::now(
                 userId: (string) $newUser->id(),
@@ -116,15 +117,15 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
                     'recovery_action' => 'Returning existing user instance',
                 ]
             );
-            
+
             // Re-fetch with tenant scope
             $racedUser = $this->userRepository->findByEmail($command->email, $command->tenantId);
-            
+
             if ($racedUser instanceof UserEntity) {
                 // ATOMIC RECOVERY: Try to link, but ignore if already linked by competitor
                 try {
                     $this->linkIdentity($racedUser, $command);
-                    
+
                     // Outbox Persistence (Recovery)
                     $event = SocialIdentityLinked::now(
                         userId: (string) $racedUser->id(),
@@ -137,7 +138,7 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
                 } catch (DuplicateEntityException $innerException) {
                     // Already linked by the other winner.
                 }
-                
+
                 return SocialLoginResult::success($racedUser);
             }
             throw $e;
@@ -184,7 +185,7 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
 
     private function updateAvatarIfNeeded(UserEntity $user, LoginViaSocialProviderCommand $command): void
     {
-        if (empty($user->avatar()) && !empty($command->avatarUrl)) {
+        if (empty($user->avatar()) && ! empty($command->avatarUrl)) {
             $this->userRepository->updateAvatarIfMissing($user->id(), $command->avatarUrl);
         }
     }

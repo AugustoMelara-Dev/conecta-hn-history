@@ -28,12 +28,12 @@ final readonly class UpdateUserPasswordCommand implements \App\Application\Commo
 
         /** Current plain text password (for verification) */
         public string $currentPassword,
-        
+
         /** New plain text password (will be hashed) */
         public string $newPassword,
-        
+
         /** Whether to refresh remember token (forces re-login on other devices) */
-        public bool $refreshRememberToken = false,
+        public bool $refreshRememberToken,
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,

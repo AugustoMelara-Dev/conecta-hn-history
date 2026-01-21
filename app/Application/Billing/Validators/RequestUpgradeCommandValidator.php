@@ -31,16 +31,16 @@ final readonly class RequestUpgradeCommandValidator implements RequestUpgradeHan
         $this->validatorFactory->make($command->toArray(), [
             // Tenant isolation: Required string (UUID format)
             'tenantId' => ['required', 'string', 'uuid'],
-            
+
             // Plan identifier: Required, alphanumeric with underscores/hyphens
             'newPlanIdentifier' => ['required', 'string', 'max:50', 'regex:/^[a-z0-9_-]+$/i'],
-            
+
             // Payment method ID: Optional, must be string if present
             'paymentMethodId' => ['nullable', 'string', 'max:255'],
-            
+
             // Payment method name: Optional, must be string if present
             'paymentMethod' => ['nullable', 'string', 'max:100'],
-            
+
             // Idempotency key: Optional, must be valid UUID if present
             'idempotencyKey' => ['nullable', 'string', 'uuid'],
         ])->validate();

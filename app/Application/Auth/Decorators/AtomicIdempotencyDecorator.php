@@ -32,7 +32,7 @@ final readonly class AtomicIdempotencyDecorator implements GenerateOtpHandlerInt
             'type' => $command->type,
             'tenantId' => $command->tenantId,
             'ipAddress' => $command->ipAddress,
-            'userAgent' => $command->userAgent
+            'userAgent' => $command->userAgent,
         ]));
 
         $this->atomicService->execute(
@@ -41,6 +41,7 @@ final readonly class AtomicIdempotencyDecorator implements GenerateOtpHandlerInt
             commandHash: $payloadHash,
             operation: function () use ($command) {
                 $this->inner->handle($command);
+
                 // Return success marker for idempotency record
                 return ['status' => 'success', 'processed_at' => now()->toIso8601String()];
             }

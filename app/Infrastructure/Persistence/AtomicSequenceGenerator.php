@@ -22,13 +22,13 @@ final class AtomicSequenceGenerator
 
     /**
      * Get the next sequence number for an aggregate atomically.
-     * 
+     *
      * Uses INSERT ... ON DUPLICATE KEY UPDATE pattern for O(1) performance.
      * This is lock-free for new aggregates and minimal-lock for existing ones.
-     * 
+     *
      * PREREQUISITE: Must be called within an active database transaction.
-     * 
-     * @param string|null $aggregateId The aggregate root identifier
+     *
+     * @param  string|null  $aggregateId  The aggregate root identifier
      * @return int The next sequence number (1-indexed)
      */
     public function getNextSequence(?string $aggregateId): int
@@ -41,12 +41,12 @@ final class AtomicSequenceGenerator
         // Uses MySQL's INSERT ON DUPLICATE KEY UPDATE for atomic increment.
         // This is O(1) and does not require scanning existing messages.
         $now = now()->toDateTimeString();
-        
+
         // Attempt atomic upsert
         DB::statement(
-            "INSERT INTO " . self::TABLE . " (aggregate_id, last_sequence, created_at, updated_at) 
+            'INSERT INTO '.self::TABLE.' (aggregate_id, last_sequence, created_at, updated_at) 
              VALUES (?, 1, ?, ?)
-             ON DUPLICATE KEY UPDATE last_sequence = last_sequence + 1, updated_at = ?",
+             ON DUPLICATE KEY UPDATE last_sequence = last_sequence + 1, updated_at = ?',
             [$aggregateId, $now, $now, $now]
         );
 
@@ -84,13 +84,13 @@ final class AtomicSequenceGenerator
     public function pruneStaleSequences(int $daysOld = 30): int
     {
         $cutoff = now()->subDays($daysOld);
-        
+
         return DB::table(self::TABLE)
             ->where('updated_at', '<', $cutoff)
             ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('outbox_messages')
-                    ->whereColumn('outbox_messages.aggregate_id', self::TABLE . '.aggregate_id')
+                    ->whereColumn('outbox_messages.aggregate_id', self::TABLE.'.aggregate_id')
                     ->whereIn('outbox_messages.status', ['PENDING', 'PROCESSING']);
             })
             ->delete();

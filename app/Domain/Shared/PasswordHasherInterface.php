@@ -14,18 +14,11 @@ interface PasswordHasherInterface
 {
     /**
      * Hash the given plain text.
-     *
-     * @param string $plainText
-     * @return string
      */
     public function hash(string $plainText): string;
 
     /**
      * Verify that the given plain text matches the hash.
-     *
-     * @param string $plainText
-     * @param string $hash
-     * @return bool
      */
     public function verify(string $plainText, string $hash): bool;
 }

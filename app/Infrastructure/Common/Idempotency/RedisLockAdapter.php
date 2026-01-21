@@ -20,7 +20,7 @@ final readonly class RedisLockAdapter implements LockInterface
         $this->ownerToken = Str::random(64);
     }
 
-    public function get(callable|null $callback = null): bool
+    public function get(?callable $callback = null): bool
     {
         // ACQUIRE LOCK (LUA SCRIPT)
         // Uses Lua to guarantee behavior across different Redis drivers (Predis vs PhpRedis)
@@ -46,13 +46,14 @@ final readonly class RedisLockAdapter implements LockInterface
 
         try {
             $callback();
+
             return true;
         } finally {
             $this->release();
         }
     }
 
-    public function block(int $seconds, callable|null $callback = null): mixed
+    public function block(int $seconds, ?callable $callback = null): mixed
     {
         $starting = microtime(true);
 

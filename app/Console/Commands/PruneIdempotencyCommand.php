@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class PruneIdempotencyCommand extends Command
 {
@@ -61,7 +61,7 @@ class PruneIdempotencyCommand extends Command
 
                 if ($affected > 0) {
                     // Throttling to protect DB CPU
-                    usleep(50000); 
+                    usleep(50000);
                 }
 
             } while ($count >= $chunkSize);
@@ -70,11 +70,11 @@ class PruneIdempotencyCommand extends Command
 
             // Phase 3: Observability (Structured JSON Log)
             $this->output->writeln(json_encode([
-                "event" => "auth.idempotency.pruned",
-                "rows_deleted" => $totalDeleted,
-                "duration_ms" => round($durationMs, 2),
-                "strategy" => "chunked_select_delete",
-                "next_run_suggestion" => "now"
+                'event' => 'auth.idempotency.pruned',
+                'rows_deleted' => $totalDeleted,
+                'duration_ms' => round($durationMs, 2),
+                'strategy' => 'chunked_select_delete',
+                'next_run_suggestion' => 'now',
             ]));
 
             return Command::SUCCESS;
@@ -82,11 +82,11 @@ class PruneIdempotencyCommand extends Command
         } catch (\Throwable $e) {
             // Error Handling: Log Critical failure
             $this->error(json_encode([
-                "event" => "auth.idempotency.prune_failed",
-                "error" => $e->getMessage(),
-                "trace" => $e->getTraceAsString()
+                'event' => 'auth.idempotency.prune_failed',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]));
-            
+
             return Command::FAILURE;
         }
     }

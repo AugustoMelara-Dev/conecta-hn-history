@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace Tests\Contract;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use RuntimeException;
 use Tests\CreatesApplication;
 
 /**
  * ContractTestCase
- * 
+ *
  * Base class for Contract Testing.
  * Enforces JSON Schema compliance for API responses/View Models.
  */
@@ -20,15 +19,15 @@ abstract class ContractTestCase extends BaseTestCase
 
     /**
      * Assert that the given data matches the defined JSON Schema.
-     * 
-     * @param string $subject Logical schema name (e.g. 'user_profile')
-     * @param array $responseData The array representation of the object to validate
+     *
+     * @param  string  $subject  Logical schema name (e.g. 'user_profile')
+     * @param  array  $responseData  The array representation of the object to validate
      */
     protected function assertMatchesJsonSchema(string $subject, array $responseData): void
     {
         // 1. REGLA DE ABSTRACCIÓN: Usar el Registry, no el file system.
         $registry = $this->app->make(\App\Infrastructure\Common\SchemaRegistry\SchemaRegistryInterface::class);
-        
+
         $schema = $registry->getSchema($subject);
 
         $this->validateDataAgainstSchema($responseData, $schema, 'root');
@@ -42,32 +41,32 @@ abstract class ContractTestCase extends BaseTestCase
         // 1. Type Validation (Basic support for string, integer, boolean, object/array)
         if (isset($schema['type'])) {
             $expectedType = $schema['type'];
-            
+
             // Handle nullable types (e.g. ["string", "null"])
             if (is_array($expectedType)) {
                 if (is_null($data) && in_array('null', $expectedType)) {
                     return; // Valid null
                 }
                 // Filter out 'null' to check the actual type
-                $types = array_filter($expectedType, fn($t) => $t !== 'null');
-                $expectedType = reset($types); 
+                $types = array_filter($expectedType, fn ($t) => $t !== 'null');
+                $expectedType = reset($types);
             }
 
-            if ($expectedType === 'string' && !is_string($data)) {
-                $this->fail("Property [{$path}] expected string, got " . gettype($data));
+            if ($expectedType === 'string' && ! is_string($data)) {
+                $this->fail("Property [{$path}] expected string, got ".gettype($data));
             }
-            if ($expectedType === 'integer' && !is_int($data)) {
-                $this->fail("Property [{$path}] expected integer, got " . gettype($data));
+            if ($expectedType === 'integer' && ! is_int($data)) {
+                $this->fail("Property [{$path}] expected integer, got ".gettype($data));
             }
-            if ($expectedType === 'boolean' && !is_bool($data)) {
-                $this->fail("Property [{$path}] expected boolean, got " . gettype($data));
+            if ($expectedType === 'boolean' && ! is_bool($data)) {
+                $this->fail("Property [{$path}] expected boolean, got ".gettype($data));
             }
         }
 
         // 2. Required Properties Validation
         if (isset($schema['required']) && is_array($schema['required'])) {
             foreach ($schema['required'] as $requiredField) {
-                if (!array_key_exists($requiredField, $data)) {
+                if (! array_key_exists($requiredField, $data)) {
                     $this->fail("Missing required property [{$path}.{$requiredField}] in contract.");
                 }
             }

@@ -57,7 +57,7 @@ class PasswordResetTest extends TestCase
         $notification = $notifications->first();
         $token = $notification->token;
 
-        $response = $this->get('/reset-password/' . $token);
+        $response = $this->get('/reset-password/'.$token);
 
         $response->assertStatus(200);
     }
@@ -90,4 +90,3 @@ class PasswordResetTest extends TestCase
         $response->assertRedirect(route('login'));
     }
 }
-

@@ -36,11 +36,15 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     // DOMAIN CONSTANTS: Centralized business values
     // ═══════════════════════════════════════════════════════════════════════════
     public const PLAN_SEMILLA = 'semilla';
+
     public const PLAN_CRECIMIENTO = 'crecimiento';
+
     public const PLAN_COSECHA = 'cosecha';
 
     public const DEFAULT_PRODUCT_LIMIT = 12;
+
     public const DEFAULT_BRAND_COLOR = '#2563EB';
+
     public const DEFAULT_SUBSCRIPTION_STATUS = 'active';
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -208,7 +212,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     {
         // Handling Enum or String (if called before cast takes effect or legacy)
         $value = $this->plan_type instanceof TenantPlan ? $this->plan_type->value : $this->plan_type;
-        
+
         if (! in_array($value, ['pro', 'enterprise'])) {
             return false;
         }
@@ -276,7 +280,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function getPlanTypeLabelAttribute(): string
     {
         $value = $this->plan_type instanceof TenantPlan ? $this->plan_type->value : $this->plan_type;
-        
+
         $labels = [
             'semilla' => 'Plan Semilla',
             'pro' => 'Plan Pro',

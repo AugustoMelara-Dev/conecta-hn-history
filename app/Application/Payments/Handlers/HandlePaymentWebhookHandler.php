@@ -37,9 +37,6 @@ final class HandlePaymentWebhookHandler
 
     /**
      * Translate provider-specific event to internal domain event.
-     *
-     * @param HandlePaymentWebhookCommand $command
-     * @return object|null
      */
     private function translateToDomainEvent(HandlePaymentWebhookCommand $command): ?object
     {
@@ -65,11 +62,11 @@ final class HandlePaymentWebhookHandler
             'payment.failed' => new PaymentFailed(
                 transactionId: $transactionId,
                 providerReference: $payload['id'] ?? $command->externalEventId,
-                reason: $payload['failure_message'] 
-                    ?? $payload['data']['object']['failure_message'] 
+                reason: $payload['failure_message']
+                    ?? $payload['data']['object']['failure_message']
                     ?? 'Payment failed',
-                failureCode: $payload['failure_code'] 
-                    ?? $payload['data']['object']['failure_code'] 
+                failureCode: $payload['failure_code']
+                    ?? $payload['data']['object']['failure_code']
                     ?? null,
                 tenantId: $command->tenantId,
             ),
@@ -90,6 +87,7 @@ final class HandlePaymentWebhookHandler
                 'provider' => $command->provider,
                 'external_event_id' => $command->externalEventId,
             ]);
+
             return PaymentWebhookResult::duplicate($command->externalEventId);
         }
 
@@ -109,6 +107,7 @@ final class HandlePaymentWebhookHandler
                 'provider' => $command->provider,
                 'event_type' => $command->eventType,
             ]);
+
             // Ignored events usually don't have transaction ID relevant to us, or we use external ID
             return PaymentWebhookResult::processed(
                 transactionId: $command->externalEventId,
@@ -137,4 +136,3 @@ final class HandlePaymentWebhookHandler
         );
     }
 }
-

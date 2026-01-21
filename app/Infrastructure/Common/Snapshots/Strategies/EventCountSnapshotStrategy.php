@@ -8,7 +8,7 @@ use App\Domain\Common\Contracts\SnapshotStrategyInterface;
 
 /**
  * EventCountSnapshotStrategy - The Accountant
- * 
+ *
  * Triggers a snapshot every N versions.
  * Configured via constructor for maximum flexibility.
  */

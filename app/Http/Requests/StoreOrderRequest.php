@@ -93,8 +93,6 @@ final class StoreOrderRequest extends FormRequest
 
     /**
      * Factory: Create Command from Validated Data.
-     *
-     * @return \App\Application\Sales\Commands\CreateOrderCommand
      */
     public function toCommand(): \App\Application\Sales\Commands\CreateOrderCommand
     {
@@ -111,7 +109,7 @@ final class StoreOrderRequest extends FormRequest
             customerAddress: $validated['customer_address'] ?? null,
             customerNotes: $validated['customer_notes'] ?? null,
             currency: 'HNL', // Default or read from request if supported
-            items: array_map(fn($item) => [
+            items: array_map(fn ($item) => [
                 'product_id' => (int) $item['product_id'],
                 'quantity' => (int) $item['quantity'],
                 'price' => (float) $item['price'],

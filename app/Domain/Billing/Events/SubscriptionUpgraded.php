@@ -46,7 +46,7 @@ final readonly class SubscriptionUpgraded implements ShouldDispatchAfterCommit
             oldPlanId: $oldPlanId,
             newPlanId: $newPlanId,
             newPlanName: $newPlanName,
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
             transactionId: $transactionId,
         );
     }
@@ -58,7 +58,7 @@ final readonly class SubscriptionUpgraded implements ShouldDispatchAfterCommit
     {
         $occurredAt = isset($payload['occurred_at'])
             ? new DateTimeImmutable($payload['occurred_at'])
-            : new DateTimeImmutable();
+            : new DateTimeImmutable;
 
         return new self(
             tenantId: (string) ($payload['tenant_id'] ?? ''),

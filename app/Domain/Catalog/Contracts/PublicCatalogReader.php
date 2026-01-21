@@ -25,8 +25,6 @@ interface PublicCatalogReader
 
     /**
      * Get directory listing.
-     * 
-     * @return Collection
      */
     public function getDirectoryListing(): Collection;
 }

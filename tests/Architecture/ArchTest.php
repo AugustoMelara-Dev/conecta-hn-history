@@ -11,8 +11,6 @@ declare(strict_types=1);
  * @see https://pestphp.com/docs/arch-testing
  */
 
-use Illuminate\Support\Facades\Facade;
-
 /*
 |--------------------------------------------------------------------------
 | 1. Dynamic Component Discovery (Selectors)
@@ -20,8 +18,6 @@ use Illuminate\Support\Facades\Facade;
 | Defines strict sets of classes based on their namespace patterns.
 | This allows automatic discovery of new modules (e.g. Billing, Sales).
 */
-
-
 
 /*
 |--------------------------------------------------------------------------
@@ -101,7 +97,7 @@ arch('Application Layer must strictly isolate from Infrastructure and HTTP')
         'Illuminate\Http\Response',
         'Illuminate\Http\JsonResponse',
         'App\Http',
-        
+
         // ZERO DEBUGGING IN PRODUCTION
         'dd', 'dump', 'ray', 'var_dump',
 

@@ -32,19 +32,19 @@ final class RegisterRequest extends FormRequest
     public function toCommand(): RegisterUserCommand
     {
         $validated = $this->validated();
-        
+
         // IDEMPOTENCY Extraction
         // Support Header (Standard) or Body (Fallback)
         $idempotencyKey = $this->header('X-Idempotency-Key') ?? $this->input('idempotency_key');
 
         return new RegisterUserCommand(
-             name: $validated['name'],
-             email: $validated['email'],
-             password: $validated['password'],
-             tenantName: $validated['tenant_name'] ?? null,
-             slug: null, // Let Handler generate it
-             source: 'api_registration', // Traceability
-             idempotencyKey: $idempotencyKey
+            name: $validated['name'],
+            email: $validated['email'],
+            password: $validated['password'],
+            tenantName: $validated['tenant_name'] ?? null,
+            slug: null, // Let Handler generate it
+            source: 'api_registration', // Traceability
+            idempotencyKey: $idempotencyKey
         );
     }
 }

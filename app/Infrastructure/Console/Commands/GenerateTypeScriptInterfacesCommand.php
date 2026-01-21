@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 class GenerateTypeScriptInterfacesCommand extends Command
 {
     protected $signature = 'schema:generate-types';
+
     protected $description = 'Generate TypeScript definitions from JSON Schemas (Titanium Bridge)';
 
     public function handle(): int
@@ -18,19 +19,20 @@ class GenerateTypeScriptInterfacesCommand extends Command
         $schemaPath = resource_path('schemas');
         $outputPath = resource_path('js/Types/Generated');
 
-        if (!File::exists($schemaPath)) {
+        if (! File::exists($schemaPath)) {
             $this->error("Schema directory not found at [{$schemaPath}]");
+
             return Command::FAILURE;
         }
 
-        if (!File::exists($outputPath)) {
+        if (! File::exists($outputPath)) {
             File::makeDirectory($outputPath, 0755, true);
         }
 
         $files = File::files($schemaPath);
         $count = 0;
 
-        $this->info("Bridging Backend Schemas to Frontend Types...");
+        $this->info('Bridging Backend Schemas to Frontend Types...');
 
         foreach ($files as $file) {
             if ($file->getExtension() !== 'json') {
@@ -41,18 +43,19 @@ class GenerateTypeScriptInterfacesCommand extends Command
                 $this->processSchema($file, $outputPath);
                 $count++;
             } catch (\Throwable $e) {
-                $this->error("Failed to process {$file->getFilename()}: " . $e->getMessage());
+                $this->error("Failed to process {$file->getFilename()}: ".$e->getMessage());
             }
         }
 
         $this->info("Successfully generated {$count} TypeScript interfaces.");
+
         return Command::SUCCESS;
     }
 
     private function processSchema(\SplFileInfo $file, string $outputPath): void
     {
         $content = json_decode(file_get_contents($file->getPathname()), true);
-        
+
         // Strategy: Interface Name from Title or Filename
         $interfaceName = $content['title'] ?? Str::studly($file->getBasename('.json'));
         $requiredFields = $content['required'] ?? [];
@@ -61,16 +64,16 @@ class GenerateTypeScriptInterfacesCommand extends Command
         $tsProps = [];
 
         foreach ($properties as $field => $config) {
-            $isOptional = !in_array($field, $requiredFields);
+            $isOptional = ! in_array($field, $requiredFields);
             $tsType = $this->mapJsonTypeToTsType($config, $field);
-            
-            $tsProps[] = "    {$field}" . ($isOptional ? '?' : '') . ": {$tsType};";
+
+            $tsProps[] = "    {$field}".($isOptional ? '?' : '').": {$tsType};";
         }
 
         $tsContent = $this->buildTsFile($interfaceName, $tsProps);
-        
+
         file_put_contents(
-            $outputPath . DIRECTORY_SEPARATOR . "{$interfaceName}.d.ts",
+            $outputPath.DIRECTORY_SEPARATOR."{$interfaceName}.d.ts",
             $tsContent
         );
 
@@ -84,21 +87,24 @@ class GenerateTypeScriptInterfacesCommand extends Command
         // 1. Handle Nullable Unions: ["string", "null"]
         if (is_array($type)) {
             if (in_array('null', $type)) {
-                $nonNullTypes = array_values(array_filter($type, fn($t) => $t !== 'null'));
-                
+                $nonNullTypes = array_values(array_filter($type, fn ($t) => $t !== 'null'));
+
                 if (count($nonNullTypes) === 1) {
                     // Simple nullable: string | null
                     $baseType = $this->resolvePrimitive($nonNullTypes[0], $typeDefinition, $fieldName);
+
                     return "{$baseType} | null";
                 }
-                
+
                 // Complex union
-                $mapped = array_map(fn($t) => $this->resolvePrimitive($t, $typeDefinition, $fieldName), $nonNullTypes);
-                return implode(' | ', $mapped) . ' | null';
+                $mapped = array_map(fn ($t) => $this->resolvePrimitive($t, $typeDefinition, $fieldName), $nonNullTypes);
+
+                return implode(' | ', $mapped).' | null';
             }
-            
+
             // Non-nullable union
-            $mapped = array_map(fn($t) => $this->resolvePrimitive($t, $typeDefinition, $fieldName), $type);
+            $mapped = array_map(fn ($t) => $this->resolvePrimitive($t, $typeDefinition, $fieldName), $type);
+
             return implode(' | ', $mapped);
         }
 
@@ -120,13 +126,13 @@ class GenerateTypeScriptInterfacesCommand extends Command
     private function resolveArray(array $config, string $fieldName): string
     {
         $items = $config['items'] ?? null;
-        if (!$items) {
+        if (! $items) {
             return 'any[]';
         }
 
         // Recursive resolution
         $innerType = $this->mapJsonTypeToTsType($items, "{$fieldName}.items");
-        
+
         // Handle parentheses for union types in arrays
         if (str_contains($innerType, '|') || str_contains($innerType, ' ')) {
             return "({$innerType})[]";
@@ -138,13 +144,14 @@ class GenerateTypeScriptInterfacesCommand extends Command
     private function fallbackType(string $type, string $fieldName): string
     {
         $this->warn("Warning: Unknown type [{$type}] for field [{$fieldName}], defaulting to 'any'.");
+
         return 'any';
     }
 
     private function buildTsFile(string $interfaceName, array $props): string
     {
         $propsString = implode("\n", $props);
-        
+
         return <<<TS
 /* AUTO-GENERATED FILE. DO NOT EDIT. */
 

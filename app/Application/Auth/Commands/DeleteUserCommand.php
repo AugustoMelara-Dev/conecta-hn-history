@@ -18,8 +18,8 @@ final readonly class DeleteUserCommand implements \App\Application\Common\Contra
     public function __construct(
         /** User ID to delete (UUID string) */
         public string $userId,
-        
-        /** 
+
+        /**
          * Tenant ID from the requesting context.
          * CRITICAL: Used to verify ownership before deletion.
          */

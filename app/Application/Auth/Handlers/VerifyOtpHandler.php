@@ -6,19 +6,15 @@ namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\VerifyOtpCommand;
 use App\Application\Auth\Results\VerifyOtpResult;
-use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
-
 use App\Domain\Auth\Events\OtpVerified;
 use App\Domain\Auth\Exceptions\InvalidOtpException;
 use App\Domain\Auth\Exceptions\OtpExpiredException;
-use App\Domain\Auth\Exceptions\TooManyOtpRequestsException;
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Entities\DomainEventMessage;
-
 
 /**
  * VerifyOtpHandler - Atomic Protocol Edition
@@ -31,8 +27,6 @@ use App\Domain\Shared\Entities\DomainEventMessage;
  */
 final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
 {
-
-
     public function __construct(
         private OtpRepositoryInterface $otpRepository,
         private UserRepositoryInterface $userRepository,
@@ -52,23 +46,23 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
         );
 
         if ($otp === null) {
-            throw new InvalidOtpException();
+            throw new InvalidOtpException;
         }
 
         if ($otp->isExpired($this->clock->immutablenow())) {
             $this->otpRepository->invalidateByIdentifier($command->identifier, $command->tenantId);
-            throw new OtpExpiredException();
+            throw new OtpExpiredException;
         }
 
         // REMOVED LEGACY CHECK: if ($otp->maxAttemptsExceeded($this->maxOtpAttempts)) ...
         // Reason: Race Condition Vulnerability. We rely on Atomic DB increment below.
 
-        if (!$this->hasher->verify($command->code, $otp->hashedCode)) {
+        if (! $this->hasher->verify($command->code, $otp->hashedCode)) {
             // ATOMIC INCREMENT & GATEKEEPER
             // If the limit is reached during this transaction, this will throw MaxOtpAttemptsExceededException
             // and stop the flow immediately.
             $this->otpRepository->incrementAttemptsAtomically((string) $otp->id, $this->maxOtpAttempts);
-            
+
             throw new InvalidOtpException('Código incorrecto.');
         }
 
@@ -95,7 +89,7 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
                 'tenant_id' => $command->tenantId,
                 'causation_id' => $command->idempotencyKey,
                 'user_id' => $otp->userId,
-                'trace_id' => null 
+                'trace_id' => null,
             ]
         );
 
@@ -115,12 +109,12 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
         if ($user !== null) {
             return VerifyOtpResult::forUser($user);
         }
-        
+
         return VerifyOtpResult::forNewUser($identifier);
     }
-    
+
     private function maskIdentifier(string $identifier): string
     {
-        return substr($identifier, 0, 3) . '***'; 
+        return substr($identifier, 0, 3).'***';
     }
 }

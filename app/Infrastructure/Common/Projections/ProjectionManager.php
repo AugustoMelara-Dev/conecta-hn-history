@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace App\Infrastructure\Common\Projections;
 
 use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
-use App\Infrastructure\Common\EventStore\DatabaseEventStore;
 use App\Infrastructure\Identity\Projections\UserProjector;
-use Illuminate\Support\Facades\Log;
 
 /**
  * ProjectionManager - The Time Machine Operator
- * 
+ *
  * Orchestrates the "Reset & Replay" process for all registered projectors.
  * Handles bit-rot degradation and memory-efficient streaming.
  */
@@ -52,7 +50,7 @@ final class ProjectionManager
         }
 
         $projector = $this->projectors[$projectorClassName];
-        
+
         // 1. Reset specific projector
         $projector->reset();
 
@@ -69,19 +67,16 @@ final class ProjectionManager
 
     /**
      * The Heavy Lifter.
-     * 
-     * @param array $targetProjectors
-     * @param callable|null $onProgress
      */
     private function streamAndProject(array $targetProjectors, ?callable $onProgress = null): void
     {
         $count = 0;
-        
+
         // MEMORY CONSTANT O(1) Stream
         $stream = $this->eventStore->streamAll();
 
         foreach ($stream as $event) {
-            
+
             // Dispatch to interested projectors
             foreach ($targetProjectors as $projector) {
                 if ($projector->supports($event)) {
@@ -94,7 +89,7 @@ final class ProjectionManager
                 $onProgress($count);
             }
         }
-        
+
         // Final progress update
         if ($onProgress) {
             $onProgress($count);

@@ -35,7 +35,7 @@ final class FakePaymentGateway implements PaymentGatewayInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function charge(
         int $amountInCents,
@@ -46,23 +46,24 @@ final class FakePaymentGateway implements PaymentGatewayInterface
         if (isset($this->chargeResults['next'])) {
             $result = $this->chargeResults['next'];
             unset($this->chargeResults['next']);
+
             return $result;
         }
 
         // Default behavior: succeed
         return ChargeResult::success(
-            transactionId: 'fake_' . uniqid(),
-            receiptUrl: 'https://fake-receipts.example.com/' . uniqid(),
+            transactionId: 'fake_'.uniqid(),
+            receiptUrl: 'https://fake-receipts.example.com/'.uniqid(),
         );
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function refund(string $transactionId, ?int $amountInCents = null): ChargeResult
     {
         return ChargeResult::success(
-            transactionId: 'refund_' . uniqid(),
+            transactionId: 'refund_'.uniqid(),
         );
     }
 }

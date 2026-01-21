@@ -25,10 +25,10 @@ final readonly class UserProfileUpdated
     // use Dispatchable, InteractsWithSockets, SerializesModels; // Removed to keep it pure Domain Event DTO
 
     private const SCHEMA_VERSION = 1;
-    
+
     /** Canonical V2 Name */
     public const NAME = 'user.profile_updated';
-    
+
     /** Historical V1 Name (for Upcasting/Aliasing) */
     public const LEGACY_NAME = 'auth.user_profile_updated';
 
@@ -39,7 +39,7 @@ final readonly class UserProfileUpdated
         /** Tenant context for multi-tenant routing */
         public string $tenantId,
 
-        /** 
+        /**
          * Indicates if email address was changed.
          * CRITICAL: Listeners should trigger email re-verification if true.
          */
@@ -61,7 +61,7 @@ final readonly class UserProfileUpdated
             userId: $userId,
             tenantId: $tenantId,
             emailChanged: $emailChanged,
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
     }
 
@@ -107,7 +107,7 @@ final readonly class UserProfileUpdated
     /**
      * Hydrate from storage payload.
      *
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     public static function fromPayload(array $payload): self
     {

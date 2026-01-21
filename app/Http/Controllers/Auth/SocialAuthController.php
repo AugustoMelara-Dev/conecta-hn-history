@@ -57,8 +57,9 @@ final class SocialAuthController extends Controller
         } catch (\Exception $e) {
             // Error Handling (Log & Redirect)
             report($e);
+
             return redirect()->route('login')->withErrors([
-                'email' => 'Unable to login with ' . ucfirst($provider) . '. Please try again.',
+                'email' => 'Unable to login with '.ucfirst($provider).'. Please try again.',
             ]);
         }
     }

@@ -43,7 +43,7 @@ final class EloquentProductReader implements ProductReader
             ->when($filters['search'] ?? null, function (Builder $query, string $term) {
                 $query->where(function (Builder $q) use ($term) {
                     $q->where('name', 'like', "%{$term}%")
-                      ->orWhere('description', 'like', "%{$term}%");
+                        ->orWhere('description', 'like', "%{$term}%");
                 });
             })
             ->when($filters['category'] ?? null, function (Builder $query, string $category) {

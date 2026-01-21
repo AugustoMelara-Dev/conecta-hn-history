@@ -35,6 +35,7 @@ final class SendOtpNotificationListener implements ShouldQueue
 
     /**
      * Handle the event with resilience patterns.
+     *
      * @throws Throwable If notification fails (triggering queue retry).
      */
     public function handle(OtpGenerated $event): void
@@ -43,11 +44,12 @@ final class SendOtpNotificationListener implements ShouldQueue
         $maskedIdentifier = $this->maskIdentifier($event->identifier);
 
         // 1. FAIL FAST CHECK
-        if (!$this->circuitBreaker->isAvailable($serviceName)) {
+        if (! $this->circuitBreaker->isAvailable($serviceName)) {
             Log::warning('Circuit Open: Skipping SMS send', [
                 'identifier' => $maskedIdentifier,
-                'tenant_id' => $event->tenantId
+                'tenant_id' => $event->tenantId,
             ]);
+
             return; // Abort, do not retry blindly
         }
 
@@ -66,21 +68,21 @@ final class SendOtpNotificationListener implements ShouldQueue
 
             Log::info('OTP notification sent successfully', [
                 'identifier' => $maskedIdentifier,
-                'tenant_id' => $event->tenantId
+                'tenant_id' => $event->tenantId,
             ]);
 
         } catch (Throwable $e) {
             // 4. REPORT FAILURE & OBSERVE
             $this->circuitBreaker->reportFailure($serviceName);
-            
+
             Log::error('SMS Send Failed', [
                 'error' => $e->getMessage(),
                 'identifier' => $maskedIdentifier,
-                'tenant_id' => $event->tenantId
+                'tenant_id' => $event->tenantId,
             ]);
 
             // 5. RETRY STRATEGY (Let queue handle it via backoff)
-            throw $e; 
+            throw $e;
         }
     }
 
@@ -88,6 +90,7 @@ final class SendOtpNotificationListener implements ShouldQueue
      * Mask PII identifier for GDPR-compliant logging.
      *
      * Examples:
+     *
      * - Email: "user@example.com" → "us***@example.com"
      * - Phone: "+50412345678" → "+504****78"
      */
@@ -98,11 +101,11 @@ final class SendOtpNotificationListener implements ShouldQueue
             $parts = explode('@', $identifier);
             $local = $parts[0];
             $domain = $parts[1] ?? '';
-            
+
             $visibleChars = min(2, strlen($local));
-            $masked = substr($local, 0, $visibleChars) . '***';
-            
-            return $masked . '@' . $domain;
+            $masked = substr($local, 0, $visibleChars).'***';
+
+            return $masked.'@'.$domain;
         }
 
         // Phone masking (show first 4 and last 2 characters)
@@ -111,6 +114,6 @@ final class SendOtpNotificationListener implements ShouldQueue
             return str_repeat('*', $length);
         }
 
-        return substr($identifier, 0, 4) . '****' . substr($identifier, -2);
+        return substr($identifier, 0, 4).'****'.substr($identifier, -2);
     }
 }

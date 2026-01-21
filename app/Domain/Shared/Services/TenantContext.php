@@ -20,13 +20,14 @@ use LogicException;
 final class TenantContext
 {
     private ?int $tenantId = null;
+
     private bool $isSystemRoot = false;
+
     private bool $isInitialized = false;
 
     /**
      * Initialize context for a specific Tenant.
      *
-     * @param int $id
      * @throws TenantContextMutationException If attempting to switch tenants.
      */
     public function setTenant(int $id): void
@@ -36,7 +37,7 @@ final class TenantContext
         }
 
         if ($this->isInitialized && $this->isSystemRoot) {
-             throw TenantContextMutationException::alreadyInitialized();
+            throw TenantContextMutationException::alreadyInitialized();
         }
 
         $this->tenantId = $id;
@@ -53,7 +54,7 @@ final class TenantContext
         if ($this->isInitialized && ! $this->isSystemRoot) {
             throw TenantContextMutationException::alreadyInitialized();
         }
-        
+
         $this->isSystemRoot = true;
         $this->isInitialized = true;
     }
@@ -61,14 +62,13 @@ final class TenantContext
     /**
      * Get the current Tenant ID.
      *
-     * @return int
      * @throws LogicException If called in System Root mode (no ID exists).
      * @throws TenantContextMissingException If context is not initialized.
      */
     public function id(): int
     {
         if ($this->isSystemRoot) {
-            throw new LogicException("Root context has no specific ID. Use isRoot() to check mode.");
+            throw new LogicException('Root context has no specific ID. Use isRoot() to check mode.');
         }
 
         if (! $this->isInitialized || $this->tenantId === null) {
@@ -104,4 +104,3 @@ final class TenantContext
         $this->isInitialized = false;
     }
 }
-

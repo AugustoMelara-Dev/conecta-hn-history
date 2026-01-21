@@ -44,7 +44,7 @@ final class AnalyticsController extends Controller
         ]);
 
         // SECURE: Validate tenant exists and is public via resolver
-        if (!$this->tenantResolver->isPublic($validated['tenant_id'])) {
+        if (! $this->tenantResolver->isPublic($validated['tenant_id'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tenant not found or not available',
@@ -81,14 +81,14 @@ final class AnalyticsController extends Controller
             $event = $data['event'] ?? 'purchase';
             $timestamp = $data['timestamp'] ?? now()->toISOString();
 
-            if (!$tenantSlug) {
+            if (! $tenantSlug) {
                 return response()->json(['status' => 'skipped', 'reason' => 'no_tenant']);
             }
 
             // SECURE: Use TenantResolver instead of direct Tenant::where()
             $tenant = $this->tenantResolver->findPublicBySlug($tenantSlug);
 
-            if (!$tenant) {
+            if (! $tenant) {
                 return response()->json(['status' => 'skipped', 'reason' => 'tenant_not_found']);
             }
 
@@ -118,6 +118,7 @@ final class AnalyticsController extends Controller
             ]);
         } catch (\Throwable $e) {
             Log::warning('Analytics conversion error', ['error' => $e->getMessage()]);
+
             return response()->json(['status' => 'error']);
         }
     }

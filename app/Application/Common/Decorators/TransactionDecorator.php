@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
  * TransactionDecorator - Standardized ACID Compliance
  *
  * Wraps the inner handler execution in a Database Transaction.
- * 
+ *
  * 1. Blind Execution: Does not inspect the command.
  * 2. Auto-Rollback: On any Throwable.
  * 3. Commit: Only on success.

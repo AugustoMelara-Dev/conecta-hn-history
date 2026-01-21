@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Identity\QueryHandlers;
 
 use App\Application\Identity\Queries\GetUserProfileQuery;
-use App\Application\Identity\Results\UserProfileResult; // Assuming this exists or returns array/object
+// Assuming this exists or returns array/object
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use Illuminate\Database\ConnectionInterface;
 
@@ -30,7 +30,7 @@ final readonly class GetUserProfileHandler
             ->first();
 
         if ($user === null) {
-            throw new UserNotFoundException("User not found or access denied.");
+            throw new UserNotFoundException('User not found or access denied.');
         }
 
         return $user;

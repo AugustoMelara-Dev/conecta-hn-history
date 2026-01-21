@@ -8,23 +8,22 @@ use DateTimeImmutable;
 
 /**
  * DomainEventInterface - The Integrity Contract
- * 
+ *
  * Defines the essential behavior of any historical fact in the system.
  */
 interface DomainEventInterface
 {
     /**
      * Convert the event state to a primitive array for storage.
-     * 
+     *
      * @return array<string, mixed>
      */
     public function toPayload(): array;
 
     /**
      * Reconstruct the event from a primitive array.
-     * 
-     * @param array<string, mixed> $payload
-     * @return static
+     *
+     * @param  array<string, mixed>  $payload
      */
     public static function fromPayload(array $payload): static;
 

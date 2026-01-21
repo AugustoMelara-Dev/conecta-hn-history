@@ -8,7 +8,7 @@ use App\Domain\Identity\Entities\UserEntity;
 
 /**
  * SocialIdentityRepositoryInterface - Strict Typing Contract
- * 
+ *
  * Enforces UserEntity injection. No more 'object' weakness.
  */
 interface SocialIdentityRepositoryInterface

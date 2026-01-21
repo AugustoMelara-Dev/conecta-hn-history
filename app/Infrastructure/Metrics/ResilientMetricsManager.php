@@ -20,18 +20,21 @@ use Throwable;
 final class ResilientMetricsManager
 {
     private const CIRCUIT_BREAKER_KEY = 'metrics:circuit_breaker:open';
+
     private const CIRCUIT_BREAKER_TTL = 60; // seconds
+
     private const THROTTLE_KEY = 'metrics:log_throttle:last_warning';
+
     private const THROTTLE_INTERVAL = 300; // 5 minutes
 
     private bool $circuitOpen = false;
 
     /**
      * Record a metric with circuit breaker protection.
-     * 
-     * @param string $name Metric name
-     * @param mixed $value Metric value
-     * @param array<string, mixed> $tags Additional tags
+     *
+     * @param  string  $name  Metric name
+     * @param  mixed  $value  Metric value
+     * @param  array<string, mixed>  $tags  Additional tags
      */
     public function record(string $name, mixed $value, array $tags = []): void
     {
@@ -77,6 +80,7 @@ final class ResilientMetricsManager
         } catch (Throwable) {
             // Cache itself is down - assume circuit is open
             $this->circuitOpen = true;
+
             return true;
         }
     }
@@ -87,7 +91,7 @@ final class ResilientMetricsManager
     private function openCircuit(): void
     {
         $this->circuitOpen = true;
-        
+
         try {
             Cache::put(self::CIRCUIT_BREAKER_KEY, true, self::CIRCUIT_BREAKER_TTL);
         } catch (Throwable) {
@@ -110,7 +114,7 @@ final class ResilientMetricsManager
                 'circuit_ttl_seconds' => self::CIRCUIT_BREAKER_TTL,
                 'next_log_in_seconds' => self::THROTTLE_INTERVAL,
             ]);
-            
+
             $this->markWarningLogged();
         }
     }
@@ -122,11 +126,11 @@ final class ResilientMetricsManager
     {
         try {
             $lastWarning = Cache::get(self::THROTTLE_KEY);
-            
+
             if ($lastWarning === null) {
                 return true;
             }
-            
+
             return now()->timestamp - (int) $lastWarning >= self::THROTTLE_INTERVAL;
         } catch (Throwable) {
             // Cache is down, log conservatively
@@ -168,7 +172,7 @@ final class ResilientMetricsManager
     public function resetCircuit(): void
     {
         $this->circuitOpen = false;
-        
+
         try {
             Cache::forget(self::CIRCUIT_BREAKER_KEY);
             Cache::forget(self::THROTTLE_KEY);

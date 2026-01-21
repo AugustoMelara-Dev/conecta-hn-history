@@ -20,6 +20,7 @@ use Illuminate\Validation\ValidationException;
 final readonly class RateLimitedGenerateUploadUrlHandler implements GenerateUploadUrlHandlerInterface
 {
     private const MAX_ATTEMPTS = 20; // 20 files per minute seems reasonable
+
     private const DECAY_SECONDS = 60;
 
     public function __construct(
@@ -29,12 +30,12 @@ final readonly class RateLimitedGenerateUploadUrlHandler implements GenerateUplo
 
     public function handle(string $tenantId, string $mimeType, int $sizeBytes): array
     {
-        $key = 'billing:sign_upload:' . $tenantId;
+        $key = 'billing:sign_upload:'.$tenantId;
 
         try {
             if ($this->rateLimiter->tooManyAttempts($key, self::MAX_ATTEMPTS)) {
                 $seconds = $this->rateLimiter->availableIn($key);
-                
+
                 throw ValidationException::withMessages([
                     'tenant_id' => ["Upload rate limit exceeded. Please wait {$seconds} seconds."],
                 ]);
@@ -47,7 +48,7 @@ final readonly class RateLimitedGenerateUploadUrlHandler implements GenerateUplo
             // CIRCUIT BREAKER: Fail Open
             // If Redis/Cache is down, we do NOT want to block payments.
             // We log the critical failure but allow the request to proceed.
-            \Illuminate\Support\Facades\Log::critical("Rate Limiter FAILURE (Fail-Open active): " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::critical('Rate Limiter FAILURE (Fail-Open active): '.$e->getMessage());
         }
 
         return $this->inner->handle($tenantId, $mimeType, $sizeBytes);

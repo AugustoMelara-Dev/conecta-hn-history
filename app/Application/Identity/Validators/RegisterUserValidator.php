@@ -77,7 +77,7 @@ final readonly class RegisterUserValidator
                 'nullable',
                 'string',
                 'max:255',
-                new UniqueTenantSlugRule($this->tenantRepository)
+                new UniqueTenantSlugRule($this->tenantRepository),
             ],
         ];
     }

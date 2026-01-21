@@ -16,11 +16,11 @@ interface CouponReader
     /**
      * Get valid coupons for a tenant.
      * (Active = true, Not Expired)
-     * 
+     *
      * @return Collection<int, object>
      */
     public function getValidCoupons(int $tenantId): Collection;
-    
+
     /**
      * Find a specific coupon by code for a tenant.
      */

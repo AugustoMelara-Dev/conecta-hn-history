@@ -41,8 +41,8 @@ final readonly class OtpEntity
 
     /**
      * Check if maximum verification attempts have been exceeded.
-     * 
-     * @param int $maxAttempts Configurable max attempts (injected policy)
+     *
+     * @param  int  $maxAttempts  Configurable max attempts (injected policy)
      */
     public function maxAttemptsExceeded(int $maxAttempts = 5): bool
     {

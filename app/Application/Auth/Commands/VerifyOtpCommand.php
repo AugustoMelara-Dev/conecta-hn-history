@@ -21,10 +21,10 @@ final readonly class VerifyOtpCommand implements \App\Application\Common\Contrac
 
         /** Email or phone number associated with OTP */
         public string $identifier,
-        
+
         /** 6-digit OTP code entered by user (plain text) */
         public string $code,
-        
+
         /** Client IP for security audit and brute-force detection */
         public string $ipAddress,
 

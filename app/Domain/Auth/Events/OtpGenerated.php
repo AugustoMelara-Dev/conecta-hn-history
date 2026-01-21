@@ -19,6 +19,7 @@ use DateTimeImmutable;
 final readonly class OtpGenerated
 {
     private const SCHEMA_VERSION = 1;
+
     private const EVENT_NAME = 'auth.otp_generated';
 
     public function __construct(
@@ -47,7 +48,7 @@ final readonly class OtpGenerated
             otpId: $otpId,
             userId: $userId,
             tenantId: $tenantId,
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
     }
 
@@ -85,7 +86,7 @@ final readonly class OtpGenerated
     /**
      * Hydrate from storage payload.
      *
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     public static function fromPayload(array $payload): self
     {

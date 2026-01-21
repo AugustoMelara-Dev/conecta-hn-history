@@ -20,14 +20,16 @@ use Illuminate\Support\Str;
 final class OutboxLeaseManager
 {
     private const TABLE = 'outbox_shards';
-    
+
     // LEVEL 67: Configuration-driven values
     private readonly int $leaseDurationSeconds;
+
     private readonly int $heartbeatIntervalSeconds;
+
     private readonly int $partitionCount;
 
     private readonly string $workerId;
-    
+
     /** @var array<int> Shards currently owned by this worker */
     private array $ownedShards = [];
 
@@ -35,12 +37,12 @@ final class OutboxLeaseManager
     {
         // LEVEL 67: Configuration Injection (Dynamic Scaling)
         // LEVEL 73: Configurable TTL (Physics Constant Removal)
-        $this->leaseDurationSeconds = (int) config('outbox.leasing.ttl_seconds', 60); 
+        $this->leaseDurationSeconds = (int) config('outbox.leasing.ttl_seconds', 60);
         $this->heartbeatIntervalSeconds = (int) config('outbox.leasing.heartbeat_interval_seconds', 30);
         $this->partitionCount = (int) config('outbox.distribution.partition_count', 64);
-        
+
         // Generate unique worker ID for this process
-        $this->workerId = gethostname() . ':' . getmypid() . ':' . Str::random(8);
+        $this->workerId = gethostname().':'.getmypid().':'.Str::random(8);
     }
 
     /**
@@ -53,35 +55,35 @@ final class OutboxLeaseManager
 
     /**
      * Acquire available shards up to the specified limit.
-     * 
-     * @param int $maxShards Maximum number of shards to acquire
+     *
+     * @param  int  $maxShards  Maximum number of shards to acquire
      * @return array<int> Array of acquired shard IDs
      */
     public function acquireShards(int $maxShards = 4): array
     {
         // LEVEL 48: Acquisition Jitter - desynchronize workers
         $this->applyJitter();
-        
+
         $now = now();
         $expiresAt = $now->copy()->addSeconds($this->leaseDurationSeconds);
-        
+
         // LEVEL 49: O(1) SEED-BASED OFFSET SELECTION
         // Instead of inRandomOrder() which is O(N log N), we use a deterministic
         // seed derived from WorkerID + daily salt to calculate a starting offset.
         // This ensures distributed spread without expensive sorting.
         $seed = $this->calculateShardSeed();
         // LEVEL 67: DYNAMIC SCALABILITY (Config Injection)
-        $totalShards = $this->partitionCount; 
+        $totalShards = $this->partitionCount;
         $startOffset = $seed % $totalShards;
-        
+
         // LEVEL 49: Wrap entire acquire in transaction for atomicity
-        return DB::transaction(function () use ($now, $expiresAt, $maxShards, $startOffset, $totalShards) {
+        return DB::transaction(function () use ($now, $expiresAt, $maxShards, $startOffset) {
             // Try from startOffset to end, then wrap around from 0
             // This creates a deterministic but distributed selection pattern
             $availableShards = DB::table(self::TABLE)
                 ->where(function ($q) use ($now) {
                     $q->whereNull('owner_worker_id')
-                      ->orWhere('expires_at', '<', $now);
+                        ->orWhere('expires_at', '<', $now);
                 })
                 ->where('shard_id', '>=', $startOffset)
                 ->orderBy('shard_id', 'asc') // O(1) with primary key index
@@ -90,14 +92,14 @@ final class OutboxLeaseManager
                 ->skipLocked()
                 ->pluck('shard_id')
                 ->toArray();
-            
+
             // If we didn't get enough, wrap around to beginning
             if (count($availableShards) < $maxShards) {
                 $remaining = $maxShards - count($availableShards);
                 $wrapShards = DB::table(self::TABLE)
                     ->where(function ($q) use ($now) {
                         $q->whereNull('owner_worker_id')
-                          ->orWhere('expires_at', '<', $now);
+                            ->orWhere('expires_at', '<', $now);
                     })
                     ->where('shard_id', '<', $startOffset)
                     ->whereNotIn('shard_id', $availableShards)
@@ -107,7 +109,7 @@ final class OutboxLeaseManager
                     ->skipLocked()
                     ->pluck('shard_id')
                     ->toArray();
-                
+
                 $availableShards = array_merge($availableShards, $wrapShards);
             }
 
@@ -120,7 +122,7 @@ final class OutboxLeaseManager
                 ->whereIn('shard_id', $availableShards)
                 ->where(function ($q) use ($now) {
                     $q->whereNull('owner_worker_id')
-                      ->orWhere('expires_at', '<', $now);
+                        ->orWhere('expires_at', '<', $now);
                 })
                 ->update([
                     'owner_worker_id' => $this->workerId,
@@ -177,6 +179,7 @@ final class OutboxLeaseManager
                 'shards' => $this->ownedShards,
             ]);
             $this->ownedShards = [];
+
             return false;
         }
 
@@ -211,7 +214,7 @@ final class OutboxLeaseManager
 
     /**
      * Get currently owned shards.
-     * 
+     *
      * @return array<int>
      */
     public function getOwnedShards(): array
@@ -247,13 +250,13 @@ final class OutboxLeaseManager
     public function getClusterStatus(): array
     {
         $now = now();
-        
+
         $shards = DB::table(self::TABLE)->get();
-        
+
         $active = 0;
         $expired = 0;
         $available = 0;
-        
+
         foreach ($shards as $shard) {
             if ($shard->owner_worker_id === null) {
                 $available++;
@@ -284,8 +287,8 @@ final class OutboxLeaseManager
     {
         // LEVEL 50: Worker-Instance-Salt generated at boot, persisted in cache
         $instanceSalt = $this->getInstanceSalt();
-        $seedInput = $this->workerId . ':' . $instanceSalt;
-        
+        $seedInput = $this->workerId.':'.$instanceSalt;
+
         return abs(crc32($seedInput));
     }
 
@@ -295,8 +298,8 @@ final class OutboxLeaseManager
      */
     private function getInstanceSalt(): string
     {
-        $cacheKey = 'outbox:worker_salt:' . $this->workerId;
-        
+        $cacheKey = 'outbox:worker_salt:'.$this->workerId;
+
         return \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () {
             return Str::random(16);
         });
@@ -311,7 +314,7 @@ final class OutboxLeaseManager
         // Calculate ±15% of heartbeat interval (30s * 0.15 = 4.5s max jitter)
         $jitterRange = (int) (self::HEARTBEAT_INTERVAL_SECONDS * 0.15 * 1000); // milliseconds
         $jitter = random_int(0, $jitterRange);
-        
+
         usleep($jitter * 1000); // Convert to microseconds
     }
 }

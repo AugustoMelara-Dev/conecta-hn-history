@@ -11,7 +11,7 @@ class UpcasterChain
 {
     /**
      * @var array<string, array<string, UpcasterInterface>>
-     * [EventType => [SourceVersion => Upcaster]]
+     *                                                      [EventType => [SourceVersion => Upcaster]]
      */
     private array $upcasters = [];
 
@@ -32,17 +32,17 @@ class UpcasterChain
             }
 
             $upcaster = $this->upcasters[$eventType][$currentVersion];
-            
+
             // Apply transformation
             $payload = $upcaster->upcast($payload);
-            
+
             // Advance version pointer
             $oldVersion = $currentVersion;
             $currentVersion = $upcaster->getTargetVersion();
-            
+
             Log::info("Upcasted {$eventType} from {$oldVersion} to {$currentVersion}");
         }
-        
+
         // Return latest payload (and we could return latest version too if needed)
         return $payload;
     }

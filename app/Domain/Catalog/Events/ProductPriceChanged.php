@@ -13,7 +13,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 /**
  * ProductPriceChanged - Event fired when a product price is updated.
  */
-final readonly class ProductPriceChanged implements DomainEvent, TenantAwareEvent, ShouldDispatchAfterCommit
+final readonly class ProductPriceChanged implements DomainEvent, ShouldDispatchAfterCommit, TenantAwareEvent
 {
     use HasDomainMetadata;
 

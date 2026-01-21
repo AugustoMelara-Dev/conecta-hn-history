@@ -17,10 +17,11 @@ use Illuminate\Support\Str;
 final class LaravelDocumentStorageService implements DocumentStorageServiceInterface
 {
     private const DISK = 'public'; // Or 's3' for production
+
     private const BASE_PATH = 'payments/receipts';
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function storeProofOfPayment(string $sourcePath, string $paymentReference): string
     {
@@ -29,7 +30,7 @@ final class LaravelDocumentStorageService implements DocumentStorageServiceInter
         $month = now()->format('m');
         $extension = pathinfo($sourcePath, PATHINFO_EXTENSION) ?: 'pdf';
         $sanitizedRef = Str::slug($paymentReference);
-        
+
         $destinationPath = sprintf(
             '%s/%s/%s/%s_%s.%s',
             self::BASE_PATH,
@@ -57,7 +58,7 @@ final class LaravelDocumentStorageService implements DocumentStorageServiceInter
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function delete(string $path): void
     {
@@ -65,7 +66,7 @@ final class LaravelDocumentStorageService implements DocumentStorageServiceInter
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function deleteProofOfPayment(string $storagePath): bool
     {
@@ -76,12 +77,12 @@ final class LaravelDocumentStorageService implements DocumentStorageServiceInter
     {
         $disk = Storage::disk(self::DISK);
 
-        if (!$disk->exists($path)) {
+        if (! $disk->exists($path)) {
             throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::atPath($path);
         }
 
         if ($disk->size($path) === 0) {
-             throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::checkSumFailed($path);
+            throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::checkSumFailed($path);
         }
     }
 }

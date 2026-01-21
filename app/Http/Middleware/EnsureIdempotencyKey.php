@@ -24,7 +24,7 @@ class EnsureIdempotencyKey
             if (empty($key)) {
                 return response()->json([
                     'error' => 'Missing Idempotency-Key header',
-                    'message' => 'This operation requires an Idempotency-Key header for safe retries.'
+                    'message' => 'This operation requires an Idempotency-Key header for safe retries.',
                 ], 400);
             }
 

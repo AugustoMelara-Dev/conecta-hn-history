@@ -14,7 +14,7 @@ use Illuminate\Support\ServiceProvider;
 
 /**
  * TitaniumServiceProvider
- * 
+ *
  * Registers the critical infrastructure components for the Titanium Standard architecture.
  */
 class TitaniumServiceProvider extends ServiceProvider

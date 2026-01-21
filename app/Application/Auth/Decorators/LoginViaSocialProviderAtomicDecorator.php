@@ -6,9 +6,9 @@ namespace App\Application\Auth\Decorators;
 
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface;
-use App\Application\Auth\Results\LoginResult;
-use App\Application\Common\Decorators\AtomicIdempotencyDecorator;
+use App\Application\Auth\Results\SocialLoginResult;
 use App\Application\Common\Contracts\AtomicIdempotencyInterface;
+use App\Application\Common\Decorators\AtomicIdempotencyDecorator;
 
 final class LoginViaSocialProviderAtomicDecorator implements LoginViaSocialProviderHandlerInterface
 {
@@ -21,9 +21,9 @@ final class LoginViaSocialProviderAtomicDecorator implements LoginViaSocialProvi
         $this->genericDecorator = new AtomicIdempotencyDecorator($inner, $service);
     }
 
-    public function handle(LoginViaSocialProviderCommand $command): LoginResult
+    public function handle(LoginViaSocialProviderCommand $command): SocialLoginResult
     {
-        /** @var LoginResult */
+        /** @var SocialLoginResult */
         return $this->genericDecorator->handle($command);
     }
 }

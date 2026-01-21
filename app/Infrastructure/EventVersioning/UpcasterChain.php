@@ -16,7 +16,7 @@ namespace App\Infrastructure\EventVersioning;
 final readonly class UpcasterChain
 {
     /**
-     * @param iterable<UpcasterInterface> $upcasters Registry of available upcasters
+     * @param  iterable<UpcasterInterface>  $upcasters  Registry of available upcasters
      */
     public function __construct(
         private iterable $upcasters
@@ -25,9 +25,7 @@ final readonly class UpcasterChain
     /**
      * Upgrade a payload through all necessary versions for the target event.
      *
-     * @param string $eventType
-     * @param int $currentVersion The version stored in the event
-     * @param array $payload
+     * @param  int  $currentVersion  The version stored in the event
      * @return array The fully upgraded payload
      */
     public function upcast(string $eventType, int $currentVersion, array $payload): array
@@ -37,14 +35,14 @@ final readonly class UpcasterChain
         // Here we rely on the registry order or simply finding the next step.
         // Since we don't have a sophisticated graph solver, we assume upcasters
         // are stateless and check 'supports'.
-        
+
         // We act iteratively until no more upcasters verify 'supports'.
         // Warning: Infinite loop risk if upcaster doesn't satisfy 'supports' logic properly.
         // A safer approach:
-        
+
         $workingPayload = $payload;
         $workingVersion = $currentVersion;
-        
+
         $maxIterations = 50; // Safety brake
         $iteration = 0;
 
@@ -62,11 +60,11 @@ final readonly class UpcasterChain
                 }
             }
 
-            if (!$upcasterFound) {
+            if (! $upcasterFound) {
                 // No more upgrades available. We are done.
                 break;
             }
-            
+
             $iteration++;
         }
 

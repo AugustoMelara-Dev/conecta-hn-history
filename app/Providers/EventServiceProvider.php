@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use App\Infrastructure\Identity\Projections\ProjectionEventSubscriber;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -20,7 +20,7 @@ class EventServiceProvider extends ServiceProvider
 
     /**
      * The event listener mappings for the application.
-     * 
+     *
      * Mapped for Zero Downtime Migration (V1 -> V2).
      *
      * @var array

@@ -29,14 +29,15 @@ final class SmsOtpNotifier implements OtpNotifierInterface
         int $expiryMinutes
     ): void {
         // Check if production SMS service is configured
-        if (!$this->isSmsServiceConfigured()) {
+        if (! $this->isSmsServiceConfigured()) {
             $this->simulateSms($plainTextCode, $identifier, $tenantId);
+
             return;
         }
 
         // TODO: Real SMS implementation
         // $this->twilioClient->messages->create($identifier, [...]);
-        
+
         Log::info('SMS OTP sent', [
             'phone' => $this->maskPhone($identifier),
             'tenant_id' => $tenantId,
@@ -48,8 +49,8 @@ final class SmsOtpNotifier implements OtpNotifierInterface
      */
     private function isSmsServiceConfigured(): bool
     {
-        return !empty(config('services.twilio.sid')) 
-            || !empty(config('services.sns.key'));
+        return ! empty(config('services.twilio.sid'))
+            || ! empty(config('services.sns.key'));
     }
 
     /**
@@ -73,6 +74,7 @@ final class SmsOtpNotifier implements OtpNotifierInterface
         if ($length <= 4) {
             return '****';
         }
-        return substr($phone, 0, 3) . '****' . substr($phone, -2);
+
+        return substr($phone, 0, 3).'****'.substr($phone, -2);
     }
 }

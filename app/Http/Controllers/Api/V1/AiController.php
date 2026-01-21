@@ -42,12 +42,15 @@ final class AiController extends Controller
         $executed = RateLimiter::attempt(
             $key,
             $maxAttempts = 5,
-            function () { return true; },
+            function () {
+                return true;
+            },
             $decaySeconds = 3600
         );
 
         if (! $executed) {
             $seconds = RateLimiter::availableIn($key);
+
             return response()->json([
                 'message' => 'Límite de generación excedido. Intenta de nuevo en '.gmdate('i:s', $seconds).' minutos.',
             ], 429);

@@ -8,7 +8,7 @@ use App\Domain\Shared\Contracts\IdempotentCommandInterface;
 
 /**
  * ReportPaymentCommand - Immutable DTO
- * 
+ *
  * Enforcing strict Idempotency Key requirement for Level 11 Resilience.
  */
 final readonly class ReportPaymentCommand implements IdempotentCommandInterface

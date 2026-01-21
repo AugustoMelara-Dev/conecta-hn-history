@@ -17,16 +17,16 @@ final readonly class PaymentFailed implements ShouldDispatchAfterCommit
     public function __construct(
         /** Internal transaction reference */
         public string $transactionId,
-        
+
         /** External provider reference */
         public string $providerReference,
-        
+
         /** Human-readable failure reason */
         public string $reason,
-        
+
         /** Provider-specific failure code */
         public ?string $failureCode = null,
-        
+
         /** Tenant ID for multi-tenant context */
         public ?int $tenantId = null,
     ) {}

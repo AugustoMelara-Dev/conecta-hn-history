@@ -7,11 +7,10 @@ namespace Tests\Feature\Auth;
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
 use App\Infrastructure\Shared\Telemetry\TraceContext;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use Tests\TestCase;
 use Ramsey\Uuid\Uuid;
+use Tests\TestCase;
 
 class TelemetryIntegrationTest extends TestCase
 {
@@ -29,7 +28,7 @@ class TelemetryIntegrationTest extends TestCase
         $traceId = Uuid::uuid7()->toString();
         $tenantId = Uuid::uuid7()->toString();
         $idempotencyKey = Uuid::uuid7()->toString();
-        
+
         /** @var TraceContext $context */
         $context = $this->app->make(TraceContext::class);
         $context->setContext($traceId); // This logic might need to be verified if TraceContext handles this manually
@@ -55,12 +54,12 @@ class TelemetryIntegrationTest extends TestCase
         // OTP should be created
         $this->assertDatabaseHas('one_time_passwords', [
             'identifier' => 'test@example.com',
-            'tenant_id' => $tenantId
+            'tenant_id' => $tenantId,
         ]);
 
         $this->assertDatabaseHas('domain_outbox', [
             'type' => 'App\Domain\Auth\Events\OtpGenerated',
-            'metadata->trace_id' => $traceId
+            'metadata->trace_id' => $traceId,
         ]);
 
         // Outbox should be created
@@ -68,7 +67,7 @@ class TelemetryIntegrationTest extends TestCase
         // If not implemented yet, this test verifies core functionality first.
         // Assuming DomainEventMessage captures it or Context is passed.
         // For this refactor, we ensure the Pipeline executed successfully.
-        
+
         $this->assertDatabaseHas('processed_commands', [
             'idempotency_key' => $idempotencyKey,
             'status' => 'COMPLETED',
@@ -80,9 +79,9 @@ class TelemetryIntegrationTest extends TestCase
     {
         // 1. Arrange: Invalid Command
         $command = new GenerateOtpCommand(
-            identifier: 'not-an-email', 
-            type: 'telepathy', 
-            tenantId: 'bad-uuid', 
+            identifier: 'not-an-email',
+            type: 'telepathy',
+            tenantId: 'bad-uuid',
             ipAddress: '127.0.0.1',
             userAgent: 'TestAgent'
         );
@@ -97,7 +96,7 @@ class TelemetryIntegrationTest extends TestCase
 
         $handler = $this->app->make(GenerateOtpHandlerInterface::class);
         $handler->handle($command);
-        
+
         // 4. Verify No Side Effects (Database clean)
         $this->assertDatabaseCount('one_time_passwords', 0);
         $this->assertDatabaseCount('processed_commands', 0);

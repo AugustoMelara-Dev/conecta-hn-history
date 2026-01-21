@@ -26,21 +26,22 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 final readonly class UserDeleted implements ShouldDispatchAfterCommit
 {
     private const EVENT_NAME = 'identity.user_deleted';
+
     private const SCHEMA_VERSION = 2; // Bumped for UUID migration
 
     public function __construct(
         /** Historical user ID (UUID string, no longer in DB) */
         public string $userId,
-        
+
         /** Tenant context for cleanup scope (UUID string) */
         public string $tenantId,
-        
+
         /** Email for suppression lists and farewell notifications */
         public string $email,
-        
+
         /** User's display name for audit purposes */
         public string $name,
-        
+
         /** Timestamp of deletion moment */
         public DateTimeImmutable $deletedAt,
     ) {}
@@ -59,7 +60,7 @@ final readonly class UserDeleted implements ShouldDispatchAfterCommit
             tenantId: $tenantId,
             email: $email,
             name: $name,
-            deletedAt: new DateTimeImmutable(),
+            deletedAt: new DateTimeImmutable,
         );
     }
 

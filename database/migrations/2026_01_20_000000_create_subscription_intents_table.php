@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('status')->index()->comment('PENDING, PROCESSING, COMPLETED, FAILED');
             $table->string('gateway_transaction_id')->nullable();
             $table->text('error_reason')->nullable();
-            
+
             // Critical for Scavenger Worker
             $table->timestamp('created_at')->useCurrent()->index();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();

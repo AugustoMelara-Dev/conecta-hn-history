@@ -26,7 +26,7 @@ final class SyncAnalyticsJob implements ShouldQueue
     {
         $date = now()->subDay()->format('Y-m-d');
         Log::info("SyncAnalyticsJob: Starting for {$date}");
-        
+
         $processedCount = 0;
 
         Tenant::where('status', 'approved')
@@ -41,7 +41,7 @@ final class SyncAnalyticsJob implements ShouldQueue
         event(new \App\Domain\Analytics\Events\AnalyticsSynced(
             tenantId: 0, // System context or aggregate 0
             processedRecords: $processedCount,
-            occurredOn: new \DateTimeImmutable()
+            occurredOn: new \DateTimeImmutable
         ));
     }
 

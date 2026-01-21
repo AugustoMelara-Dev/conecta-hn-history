@@ -1,21 +1,19 @@
 <?php
 
-use App\Infrastructure\Common\Idempotency\IdempotencyService;
 use App\Application\Identity\Results\RegisterUserResult;
-use Illuminate\Support\Facades\Cache;
+use App\Infrastructure\Common\Idempotency\IdempotencyService;
 
 /**
  * 🧪 TEST UNITARIO DE INTEGRIDAD DE SERIALIZACIÓN
  * "Laws of Distributed Testing: Ley de Integridad de Payload (The Bitwise Check)"
  */
-
 it('guarantees bitwise serialization integrity for app DTOs', function () {
     // 1. Configuración del Entorno (Mock de Caché Array en Memoria)
-    $store = new \Illuminate\Cache\ArrayStore();
+    $store = new \Illuminate\Cache\ArrayStore;
     $repository = new \Illuminate\Cache\Repository($store);
-    
+
     $service = new IdempotencyService($repository);
-    
+
     // 2. Preparación del Sujeto (Real App DTO)
     // Usamos RegisterUserResult que ya implementa toArray/fromArray
     $original = new RegisterUserResult(
@@ -24,7 +22,7 @@ it('guarantees bitwise serialization integrity for app DTOs', function () {
         email: 'stress_test@titanium.io',
         requiresVerification: true
     );
-    
+
     $key = 'serialization_integrity_test_real';
 
     // 3. Persistencia Simulada
@@ -47,12 +45,12 @@ it('guarantees bitwise serialization integrity for app DTOs', function () {
 });
 
 it('rejects garbage payloads without crashing', function () {
-    $store = new \Illuminate\Cache\ArrayStore();
+    $store = new \Illuminate\Cache\ArrayStore;
     $repository = new \Illuminate\Cache\Repository($store);
     $service = new IdempotencyService($repository);
-    
+
     // Inyectamos basura manualmente para simular corrupción
-    $repository->put("idempotency_result:garbage_key", "NOT_JSON_DATA", 60);
+    $repository->put('idempotency_result:garbage_key', 'NOT_JSON_DATA', 60);
 
     $result = $service->get('garbage_key');
 
@@ -60,13 +58,13 @@ it('rejects garbage payloads without crashing', function () {
 });
 
 it('ignores payloads with missing class or data keys', function () {
-    $store = new \Illuminate\Cache\ArrayStore();
+    $store = new \Illuminate\Cache\ArrayStore;
     $repository = new \Illuminate\Cache\Repository($store);
     $service = new IdempotencyService($repository);
-    
+
     // JSON válido pero sin la estructura esperada
     $payload = json_encode(['foo' => 'bar']);
-    $repository->put("idempotency_result:incomplete_key", $payload, 60);
+    $repository->put('idempotency_result:incomplete_key', $payload, 60);
 
     $result = $service->get('incomplete_key');
 

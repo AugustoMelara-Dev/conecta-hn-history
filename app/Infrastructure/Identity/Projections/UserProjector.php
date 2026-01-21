@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * UserProjector - The Atomic Builder
- * 
+ *
  * Writes strictly to 'users' table using Query Builder (No Eloquent).
  * Performance Optimized for Replay.
  */
@@ -40,10 +40,10 @@ final readonly class UserProjector implements ProjectorInterface
 
         if ($class === UserRegistered::class) {
             /** @var UserRegistered $event */
-            
+
             // Time Fidelity Rule
             $timestamp = method_exists($event, 'occurredOn') ? $event->occurredOn() : now();
-            
+
             try {
                 // Replayable Rule: insertOrIgnore as requested.
                 // Ensures we don't overwrite if it exists (Immutability of first creation).
@@ -56,12 +56,12 @@ final readonly class UserProjector implements ProjectorInterface
                     'tenant_id' => $event->tenant_id,
                     'created_at' => $timestamp,
                     'updated_at' => $timestamp,
-                    'email_verified_at' => null, 
+                    'email_verified_at' => null,
                     'remember_token' => null,
                 ]);
 
             } catch (\Throwable $e) {
-                Log::error("UserProjector failed for [{$event->user_id}]: " . $e->getMessage());
+                Log::error("UserProjector failed for [{$event->user_id}]: ".$e->getMessage());
             }
         }
         // Future: elseif ($class === UserRoleChanged::class) ...

@@ -2,14 +2,13 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Application\Common\Contracts\AtomicIdempotencyInterface;
 use App\Application\Common\Exceptions\ConcurrentRequestException;
 use App\Application\Common\Exceptions\IdempotencyKeyReuseException;
 use App\Infrastructure\Common\Idempotency\AtomicIdempotencyService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
-use Tests\TestCase;
 use Ramsey\Uuid\Uuid;
+use Tests\TestCase;
 
 class AtomicIdempotencyIntegrationTest extends TestCase
 {
@@ -23,7 +22,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Resolve the service from container to ensure bindings are correct
         $this->service = $this->app->make(AtomicIdempotencyService::class);
     }
@@ -46,7 +45,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         $record = DB::table('processed_commands')->where('idempotency_key', $key)->first();
         $this->assertNotNull($record, 'Record not found in DB');
         $this->assertEquals('COMPLETED', $record->status);
-        
+
         $payload = json_decode($record->response_payload, true);
         $this->assertEquals(['status' => 'ok'], $payload['data'], 'Payload data mismatch');
         $this->assertEquals(1, $payload['v'], 'Payload version mismatch');
@@ -61,11 +60,11 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         $hash2 = hash('sha256', 'payload2');
 
         // First Execution
-        $this->service->execute($key, $tenantId, $hash1, fn() => "success");
+        $this->service->execute($key, $tenantId, $hash1, fn () => 'success');
 
         // Second Execution with altered payload/hash
         $this->expectException(IdempotencyKeyReuseException::class);
-        $this->service->execute($key, $tenantId, $hash2, fn() => "hacker");
+        $this->service->execute($key, $tenantId, $hash2, fn () => 'hacker');
     }
 
     /** @test */
@@ -84,7 +83,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
 
         // Second Execution (Replay)
         $result2 = $this->service->execute($key, $tenantId, $hash, function () {
-            $this->fail("Should not execute domain logic on replay");
+            $this->fail('Should not execute domain logic on replay');
         });
 
         $this->assertEquals($result1, $result2);
@@ -110,9 +109,9 @@ class AtomicIdempotencyIntegrationTest extends TestCase
 
         // Attempt to execute (Race Loser)
         $this->expectException(ConcurrentRequestException::class);
-        
+
         $this->service->execute($key, $tenantId, $hash, function () {
-            $this->fail("Should not execute domain logic when locked");
+            $this->fail('Should not execute domain logic when locked');
         });
     }
 
@@ -125,7 +124,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
 
         try {
             $this->service->execute($key, $tenantId, $hash, function () {
-                throw new \RuntimeException("Domain Failure");
+                throw new \RuntimeException('Domain Failure');
             });
         } catch (\RuntimeException $e) {
             // Expected
@@ -136,10 +135,10 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         $this->assertDatabaseMissing('processed_commands', [
             'idempotency_key' => $key,
         ]);
-        
+
         // Verify we can retry successfully
-        $result = $this->service->execute($key, $tenantId, $hash, fn() => "Success Retry");
-        
-        $this->assertEquals("Success Retry", $result);
+        $result = $this->service->execute($key, $tenantId, $hash, fn () => 'Success Retry');
+
+        $this->assertEquals('Success Retry', $result);
     }
 }

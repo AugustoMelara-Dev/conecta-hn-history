@@ -11,7 +11,7 @@ use App\Domain\TenantGovernance\Enums\TenantPlan;
 
 /**
  * ConfigPlanRepository - Immutable Plan Configuration
- * 
+ *
  * Sources plans directly from the Domain Enum/Config.
  */
 final class ConfigPlanRepository implements PlanRepositoryInterface
@@ -19,8 +19,8 @@ final class ConfigPlanRepository implements PlanRepositoryInterface
     public function findByIdentifier(string $planIdentifier): ?PlanEntity
     {
         $planEnum = TenantPlan::tryFrom($planIdentifier);
-        
-        if (!$planEnum) {
+
+        if (! $planEnum) {
             return null;
         }
 
@@ -30,7 +30,7 @@ final class ConfigPlanRepository implements PlanRepositoryInterface
     public function getAllActive(): array
     {
         return array_map(
-            fn(TenantPlan $plan) => $this->mapEnumToEntity($plan),
+            fn (TenantPlan $plan) => $this->mapEnumToEntity($plan),
             TenantPlan::cases()
         );
     }
@@ -47,10 +47,10 @@ final class ConfigPlanRepository implements PlanRepositoryInterface
             id: $plan->value,
             name: ucfirst($plan->value),
             price: new Money(
-                amount: $prices[$plan->value] ?? 9900, 
+                amount: $prices[$plan->value] ?? 9900,
                 currency: 'HNL'
             ),
-            externalGatewayId: 'plan_' . $plan->value 
+            externalGatewayId: 'plan_'.$plan->value
         );
     }
 }

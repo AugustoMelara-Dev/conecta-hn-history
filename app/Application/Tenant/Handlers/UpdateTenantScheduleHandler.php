@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
-use App\Application\Tenant\Commands\UpdateTenantScheduleCommand;
 use App\Application\Shared\Traits\LogSanitizer;
+use App\Application\Tenant\Commands\UpdateTenantScheduleCommand;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use DomainException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -30,8 +30,6 @@ final class UpdateTenantScheduleHandler
     /**
      * Handle schedule update command.
      *
-     * @param UpdateTenantScheduleCommand $command
-     * @return void
      * @throws ModelNotFoundException If tenant not found
      * @throws DomainException If no day is open
      */
@@ -61,15 +59,14 @@ final class UpdateTenantScheduleHandler
     /**
      * Validate that at least one day has open hours.
      *
-     * @param array $schedule
      * @throws DomainException
      */
     private function validateAtLeastOneDayOpen(array $schedule): void
     {
         $hasOpenDay = collect($schedule)
-            ->contains(fn(array $day) => ($day['isOpen'] ?? false) === true);
+            ->contains(fn (array $day) => ($day['isOpen'] ?? false) === true);
 
-        if (!$hasOpenDay) {
+        if (! $hasOpenDay) {
             throw new DomainException('El negocio debe tener al menos un día abierto.');
         }
     }

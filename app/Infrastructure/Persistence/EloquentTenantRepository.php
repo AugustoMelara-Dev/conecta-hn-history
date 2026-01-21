@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence;
 
-use App\Domain\TenantGovernance\Entities\TenantEntity;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\Shared\Exceptions\StaleObjectException;
+use App\Domain\TenantGovernance\Entities\TenantEntity;
+use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Models\Tenant as TenantModel;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -18,6 +18,7 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
         try {
             /** @var TenantModel $model */
             $model = TenantModel::query()->findOrFail($id);
+
             return $this->toEntity($model);
         } catch (ModelNotFoundException) {
             return null;
@@ -32,6 +33,7 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
         try {
             /** @var TenantModel $model */
             $model = TenantModel::query()->lockForUpdate()->findOrFail($id);
+
             return $this->toEntity($model);
         } catch (ModelNotFoundException) {
             return null;
@@ -42,11 +44,11 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
     {
         // Standard save (Last Write Wins) - Use only if concurrency is not a concern
         $model = TenantModel::query()->find($tenant->id());
-        if (!$model) {
-            $model = new TenantModel();
+        if (! $model) {
+            $model = new TenantModel;
             $model->id = $tenant->id();
         }
-        
+
         $this->hydrateModel($model, $tenant);
         $model->save();
     }
@@ -55,15 +57,14 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
      * ATOMIC OPTIMISTIC UPDATE
      * Securely updates the tenant ONLY if the version matches the snapshot.
      *
-     * @param TenantEntity $tenant
      * @throws StaleObjectException
      */
     public function updateOptimistically(TenantEntity $tenant): void
     {
         // 1. Prepare Update Query
-        // SQL: UPDATE tenants SET plan_id = ?, ..., version = version + 1 
+        // SQL: UPDATE tenants SET plan_id = ?, ..., version = version + 1
         // WHERE id = ? AND version = ?
-        
+
         $affected = TenantModel::query()
             ->where('id', $tenant->id())
             ->where('version', $tenant->version) // Optimistic Gate
@@ -79,9 +80,9 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
         if ($affected === 0) {
             // Case A: Row deleted
             // Case B: Version changed (Concurrency Conflict)
-            
+
             // Check if it exists at all
-            if (!TenantModel::query()->where('id', $tenant->id())->exists()) {
+            if (! TenantModel::query()->where('id', $tenant->id())->exists()) {
                 throw TenantNotFoundException::withId($tenant->id());
             }
 

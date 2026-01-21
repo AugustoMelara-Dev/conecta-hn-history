@@ -31,7 +31,7 @@ final class AnalyticsController extends Controller
         // SECURE: Tenant resolved via middleware, not manual query
         $tenant = $request->user()?->tenant;
 
-        if (!$tenant) {
+        if (! $tenant) {
             return response()->json(['error' => 'No tenant found'], 404);
         }
 

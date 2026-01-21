@@ -33,12 +33,13 @@ final class OrderEntity
         public float $discountAmount = 0.0,
         public ?string $couponCode = null,
         /** @var array<int, array> $items Raw item data for now, ideally LineItemEntity[] */
-        public array $items = [] 
+        public array $items = []
     ) {}
 
     public function setId(int $id): self
     {
         $this->id = $id;
+
         return $this;
     }
 }

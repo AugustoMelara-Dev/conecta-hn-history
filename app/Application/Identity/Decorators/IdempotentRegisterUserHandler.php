@@ -29,12 +29,12 @@ final readonly class IdempotentRegisterUserHandler implements RegisterUserHandle
     {
         // 1. RESOLVE KEY & HASH
         $key = $command->getIdempotencyKey();
-        
+
         // Hash payload to prevent reusing same key for different request
         $hash = hash('xxh128', json_encode([
             'email' => $command->email,
             'slug' => $command->slug,
-            'source' => $command->source
+            'source' => $command->source,
         ]));
 
         // 2. ATOMIC EXECUTION (The Reaper Protocol)
@@ -42,9 +42,9 @@ final readonly class IdempotentRegisterUserHandler implements RegisterUserHandle
         // before the tenant actually exists.
         return $this->service->execute(
             idempotencyKey: $key,
-            tenantId: '00000000-0000-0000-0000-000000000000', 
+            tenantId: '00000000-0000-0000-0000-000000000000',
             commandHash: $hash,
-            operation: fn() => $this->inner->handle($command)
+            operation: fn () => $this->inner->handle($command)
         );
     }
 }

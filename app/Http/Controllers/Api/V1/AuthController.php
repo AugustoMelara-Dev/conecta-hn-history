@@ -45,7 +45,7 @@ final class AuthController extends Controller
     }
 
     public function socialLogin(
-        Request $request, 
+        Request $request,
         LoginViaSocialProviderHandler $handler
     ): JsonResponse {
         $request->validate([
@@ -69,7 +69,7 @@ final class AuthController extends Controller
 
         $result = $handler->handle($command);
         $tokenData = $this->tokenService->createTokenForUser($result->userId, 'social-api-token');
-        
+
         $responsePayload = (object) [
             'user' => $tokenData['user'],
             'accessToken' => $tokenData['token'],

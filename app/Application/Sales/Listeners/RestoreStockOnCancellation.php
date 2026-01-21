@@ -25,6 +25,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 final class RestoreStockOnCancellation implements ShouldQueue
 {
     public int $tries = 3;
+
     public int $timeout = 60;
 
     public function __construct(
@@ -39,11 +40,12 @@ final class RestoreStockOnCancellation implements ShouldQueue
     {
         // Load order to get items (we need product_id and quantity)
         $order = \App\Models\Order::with('items')->find($event->aggregateId());
-        
+
         if ($order === null) {
             $this->logger->warning('RestoreStockOnCancellation: Order not found', [
                 'order_id' => $event->aggregateId(),
             ]);
+
             return;
         }
 

@@ -4,13 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Identity\Infrastructure;
 
-use App\Application\Common\Integration\IntegrationEventMapper;
-use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
-use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
-use App\Domain\Common\Contracts\SnapshotStrategyInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Events\TenantCreated;
-use App\Infrastructure\Common\Outbox\OutboxRepository;
 use App\Infrastructure\Tenancy\Repositories\EventSourcedTenantRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -33,7 +28,7 @@ class TenantPersistenceAuditTest extends TestCase
         $id = Str::uuid()->toString();
         $name = 'Titanium Corp';
         $domain = 'titanium-corp';
-        
+
         $tenant = TenantEntity::create($id, $name, $domain);
 
         // 2. Execution
@@ -45,7 +40,7 @@ class TenantPersistenceAuditTest extends TestCase
         $this->assertDatabaseHas('stored_events', [
             'aggregate_id' => $id,
             'aggregate_type' => 'Tenant',
-            'event_type' => TenantCreated::class
+            'event_type' => TenantCreated::class,
         ]);
 
         // 4. Audit Outbox
@@ -56,7 +51,7 @@ class TenantPersistenceAuditTest extends TestCase
         // Verify Payload content in Outbox
         $outboxEntry = \DB::table('outbox_messages')->where('type', 'Identity.TenantCreated.v1')->first();
         $this->assertNotNull($outboxEntry);
-        
+
         $payload = json_decode($outboxEntry->payload, true);
         $this->assertEquals($id, $payload['tenant_id']);
         $this->assertEquals($name, $payload['name']);

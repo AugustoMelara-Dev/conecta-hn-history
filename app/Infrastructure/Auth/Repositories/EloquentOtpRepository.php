@@ -24,7 +24,7 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
 {
     /**
      * Find a valid OTP by identifier within a specific tenant.
-     * 
+     *
      * SECURITY: Query MUST filter by both identifier AND tenantId.
      */
     public function findValidByIdentifier(string $identifier, string $tenantId): ?OtpEntity
@@ -46,7 +46,7 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
 
     /**
      * Create a new OTP record within a specific tenant context.
-     * 
+     *
      * SECURITY: OTP record MUST be associated with tenantId.
      */
     public function create(
@@ -98,13 +98,13 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
         if ($affected === 0) {
             // We assume it's exceeded because existence is usually checked prior, but even if not,
             // failing secure is better.
-            throw new \App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException();
+            throw new \App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
         }
     }
 
     /**
      * Invalidate OTPs by identifier within a specific tenant.
-     * 
+     *
      * SECURITY: Only affects rows matching BOTH identifier AND tenantId.
      * Prevents cross-tenant DoS attacks.
      */

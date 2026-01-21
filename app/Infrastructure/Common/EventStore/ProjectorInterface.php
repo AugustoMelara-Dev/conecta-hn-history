@@ -6,7 +6,7 @@ namespace App\Infrastructure\Common\EventStore;
 
 /**
  * ProjectorInterface - The Read Model Builder Contract
- * 
+ *
  * Enforces determinism in projecting events to SQL.
  */
 interface ProjectorInterface
@@ -18,8 +18,8 @@ interface ProjectorInterface
 
     /**
      * Project the event state into the Read Model.
-     * 
-     * @param object $event Domain Event
+     *
+     * @param  object  $event  Domain Event
      */
     public function project(object $event): void;
 

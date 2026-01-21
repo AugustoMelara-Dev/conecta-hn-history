@@ -82,7 +82,7 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
         // Returns 1 if set, 0 if not set (already exists)
         $acquired = $this->redis->setnx($this->formatKey($key), $payload);
 
-        if (!$acquired) {
+        if (! $acquired) {
             // Key exists. It might be PROCESSING or COMPLETED.
             throw ConcurrentRequestException::forKey($key);
         }

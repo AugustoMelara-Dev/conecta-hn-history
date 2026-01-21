@@ -19,21 +19,31 @@ use Illuminate\Support\Facades\Log;
 final class OutboxMessage extends Model
 {
     public const MAX_ATTEMPTS = 3;
+
     public const QUARANTINE_THRESHOLD = 5; // Poison pill threshold
+
     public const PARTITION_COUNT = 64; // Number of logical partitions (matches outbox_shards)
-    
+
     public const STATUS_PENDING = 'PENDING';
+
     public const STATUS_PROCESSING = 'PROCESSING';
+
     public const STATUS_COMPLETED = 'COMPLETED';
+
     public const STATUS_FAILED = 'FAILED';
+
     public const STATUS_QUARANTINED = 'QUARANTINED'; // Level 47: Poison pill isolation
+
     public const STATUS_PENDING_AUTOPSY = 'PENDING_AUTOPSY'; // Level 54: Asynchronous Forensic Analysis
+
     public const STATUS_DISPATCH_PENDING = 'DISPATCH_PENDING'; // Level 64: Deterministic Fail-Safe Journal
 
     protected $table = 'outbox_messages';
-    
+
     public $incrementing = false;
+
     protected $keyType = 'string';
+
     public $timestamps = true;
 
     protected $fillable = [
@@ -71,11 +81,11 @@ final class OutboxMessage extends Model
 
     /**
      * LEVEL 42: Atomic Attempt Increment with State Transition
-     * 
+     *
      * Encapsulates retry logic within the model. If attempts reach MAX_ATTEMPTS,
      * the message is automatically transitioned to FAILED state.
-     * 
-     * @param string $errorMessage The error that caused the failure
+     *
+     * @param  string  $errorMessage  The error that caused the failure
      * @return bool True if transitioned to FAILED, false if still retryable
      */
     public function incrementAttempt(string $errorMessage): bool
@@ -83,13 +93,13 @@ final class OutboxMessage extends Model
         $this->attempts++;
         $this->last_error = substr($errorMessage, 0, 6000); // Prevent text overflow
         $this->locked_at = null; // Release the lock
-        
+
         if ($this->attempts >= self::MAX_ATTEMPTS) {
             // TERMINAL FAILURE: Dead Letter State
             $this->status = self::STATUS_FAILED;
             $this->failed_at = now();
             $this->save();
-            
+
             Log::emergency('POISON PILL NEUTRALIZED: Outbox message exceeded max retries', [
                 'message_id' => $this->id,
                 'type' => $this->type,
@@ -97,20 +107,20 @@ final class OutboxMessage extends Model
                 'error' => $errorMessage,
                 'payload' => $this->payload,
             ]);
-            
+
             return true; // Indicates terminal failure
         }
-        
+
         // TRANSIENT FAILURE: Release for retry
         $this->status = self::STATUS_PENDING;
         $this->save();
-        
+
         Log::warning('Outbox message failed, will retry', [
             'message_id' => $this->id,
             'attempt' => $this->attempts,
             'max_attempts' => self::MAX_ATTEMPTS,
         ]);
-        
+
         return false; // Indicates retryable
     }
 
@@ -137,4 +147,3 @@ final class OutboxMessage extends Model
         ]);
     }
 }
-

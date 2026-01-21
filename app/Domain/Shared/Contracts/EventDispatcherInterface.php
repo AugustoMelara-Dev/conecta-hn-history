@@ -6,7 +6,7 @@ namespace App\Domain\Shared\Contracts;
 
 /**
  * EventDispatcherInterface - Framework Agnostic Contract
- * 
+ *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  PORT: Decouples Application Layer from Laravel's Event Dispatcher.     ║
  * ║  METHOD: dispatch(object $event): void                                  ║

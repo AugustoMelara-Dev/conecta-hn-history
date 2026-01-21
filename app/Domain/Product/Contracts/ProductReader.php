@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Product\Contracts;
 
 use App\Models\Product;
-use Illuminate\Support\Collection;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 /**
  * ProductReader - Domain Contract for Product Data Retrieval

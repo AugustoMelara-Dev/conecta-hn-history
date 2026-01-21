@@ -18,9 +18,9 @@ interface AnalyticsReader
     /**
      * Get analytics data for a tenant within a date range.
      *
-     * @param int $tenantId Tenant ID
-     * @param Carbon $startDate Range start
-     * @param Carbon $endDate Range end
+     * @param  int  $tenantId  Tenant ID
+     * @param  Carbon  $startDate  Range start
+     * @param  Carbon  $endDate  Range end
      * @return Collection Daily analytics records
      */
     public function getAnalyticsData(int $tenantId, Carbon $startDate, Carbon $endDate): Collection;
@@ -28,8 +28,8 @@ interface AnalyticsReader
     /**
      * Get filled analytics with zero-value gap filling.
      *
-     * @param int $tenantId Tenant ID
-     * @param int $days Number of days to retrieve
+     * @param  int  $tenantId  Tenant ID
+     * @param  int  $days  Number of days to retrieve
      * @return array{data: array, summary: array}
      */
     public function getFilledAnalytics(int $tenantId, int $days): array;

@@ -22,10 +22,9 @@ interface InteractionRepositoryInterface
      * CRITICAL: Segmented by visitorId to allow different visitors
      * to record the same interaction type in the same timeframe.
      *
-     * @param int $tenantId
-     * @param string $visitorId Unique visitor identifier (cookie/fingerprint)
-     * @param string $type Interaction type
-     * @param int $withinMinutes Time window in minutes
+     * @param  string  $visitorId  Unique visitor identifier (cookie/fingerprint)
+     * @param  string  $type  Interaction type
+     * @param  int  $withinMinutes  Time window in minutes
      * @return bool True if duplicate exists for THIS visitor
      */
     public function hasRecentInteraction(
@@ -38,15 +37,6 @@ interface InteractionRepositoryInterface
     /**
      * Create a new interaction record.
      *
-     * @param int $tenantId
-     * @param string $visitorId
-     * @param string $type
-     * @param int|null $productId
-     * @param string|null $ipAddress
-     * @param string|null $userAgent
-     * @param string|null $referrer
-     * @param string|null $url
-     * @param array $metadata
      * @return InteractionEntity Created interaction entity
      */
     public function create(

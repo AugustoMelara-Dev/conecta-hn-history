@@ -22,7 +22,7 @@ class ValidationMiddleware
         // Adjust logic to map App\Application\Commands\X -> App\Application\Validators\XValidator
         // Current: App\Application\Identity\Commands\RegisterUserCommand
         // Target:  App\Application\Identity\Validators\RegisterUserValidator
-        
+
         $commandClass = get_class($command);
         $validatorClass = str_replace(
             ['\\Commands\\', 'Command'],
@@ -48,7 +48,7 @@ class ValidationMiddleware
         // 5. Execute Validation
         // Convert strict DTO object to array for Validator compatibility
         $payload = json_decode(json_encode($command), true);
-        
+
         $validator = Validator::make($payload, $rules);
 
         if ($validator->fails()) {

@@ -24,24 +24,24 @@ final readonly class LoginViaSocialProviderCommand implements \App\Application\C
 
         /** Provider enum (google, github, linkedin, apple) */
         public ProviderName $providerName,
-        
+
         /** Provider's unique user ID (immutable) */
         public string $providerId,
-        
+
         /** Verified email address */
         public string $email,
-        
+
         /** Display name */
         public string $name,
-        
+
         /** Avatar URL */
-        public ?string $avatarUrl = null,
-        
+        public ?string $avatarUrl,
+
         /** OAuth access token (for API calls) */
-        public ?string $accessToken = null,
-        
+        public ?string $accessToken,
+
         /** OAuth refresh token */
-        public ?string $refreshToken = null,
+        public ?string $refreshToken,
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,

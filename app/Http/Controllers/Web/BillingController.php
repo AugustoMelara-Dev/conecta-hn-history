@@ -29,7 +29,7 @@ final class BillingController extends Controller
     {
         $result = $this->paymentRepository->findByIdWithTenant($paymentId);
 
-        if (!$result) {
+        if (! $result) {
             abort(404, 'Pago no encontrado.');
         }
 
@@ -92,7 +92,7 @@ final class BillingController extends Controller
 
         // Add country code if missing
         if (strlen($phone) === 8) {
-            $phone = '504' . $phone;
+            $phone = '504'.$phone;
         }
 
         $message = "Hola, acabo de registrar mi negocio *{$tenantName}* en Conecta HN.\n\n";
@@ -100,6 +100,6 @@ final class BillingController extends Controller
         $message .= "📋 Referencia: *{$reference}*\n";
         $message .= "💰 Monto: *{$formattedAmount}*";
 
-        return "https://wa.me/{$phone}?text=" . urlencode($message);
+        return "https://wa.me/{$phone}?text=".urlencode($message);
     }
 }

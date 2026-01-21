@@ -16,9 +16,9 @@ class UpdateProductValidator
     {
         return [
             'sku' => [
-                'required', 
-                'string', 
-                'max:100', 
+                'required',
+                'string',
+                'max:100',
                 Rule::unique('products')->ignore($command->productId),
             ],
             // Add other fields if command has them (Assuming Command mirrors params)

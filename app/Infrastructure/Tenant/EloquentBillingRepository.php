@@ -26,7 +26,7 @@ final class EloquentBillingRepository implements BillingRepository
     {
         $tenant = Tenant::find($tenantId);
 
-        if (!$tenant) {
+        if (! $tenant) {
             return [];
         }
 

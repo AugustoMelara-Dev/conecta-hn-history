@@ -23,7 +23,7 @@ final readonly class OtpVerified
             otpIdentifier: $otpIdentifier,
             userId: $userId,
             tenantId: $tenantId,
-            verifiedAt: new DateTimeImmutable()
+            verifiedAt: new DateTimeImmutable
         );
     }
 

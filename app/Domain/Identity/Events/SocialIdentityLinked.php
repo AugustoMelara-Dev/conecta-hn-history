@@ -14,11 +14,12 @@ use DateTimeImmutable;
 final readonly class SocialIdentityLinked
 {
     private const EVENT_NAME = 'identity.social_identity_linked';
+
     private const SCHEMA_VERSION = 1;
 
     public function __construct(
         public string $userId,
-        public string $tenantId, 
+        public string $tenantId,
         public string $provider,
         public DateTimeImmutable $occurredAt,
     ) {}
@@ -32,7 +33,7 @@ final readonly class SocialIdentityLinked
             userId: $userId,
             tenantId: $tenantId,
             provider: $provider,
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
     }
 

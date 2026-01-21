@@ -6,9 +6,8 @@ namespace App\Application\Auth\Decorators;
 
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface;
-use App\Application\Auth\Results\LoginResult;
+use App\Application\Auth\Results\SocialLoginResult;
 use App\Application\Auth\Validators\LoginViaSocialProviderCommandValidator;
-use InvalidArgumentException;
 
 final class LoginViaSocialProviderValidationDecorator implements LoginViaSocialProviderHandlerInterface
 {
@@ -17,9 +16,10 @@ final class LoginViaSocialProviderValidationDecorator implements LoginViaSocialP
         private LoginViaSocialProviderCommandValidator $validator
     ) {}
 
-    public function handle(LoginViaSocialProviderCommand $command): LoginResult
+    public function handle(LoginViaSocialProviderCommand $command): SocialLoginResult
     {
         $this->validator->validate($command);
+
         return $this->inner->handle($command);
     }
 }

@@ -43,7 +43,7 @@ final readonly class TelemetryRegisterUserHandler implements RegisterUserHandler
                 // P3 FIX: SHA-256 instead of MD5 for consistency
                 'email_hash' => hash('sha256', $command->email),
                 'command_id' => $command->idempotencyKey ?? 'N/A',
-                'status' => 'success'
+                'status' => 'success',
             ]);
 
             return $result;
@@ -58,7 +58,7 @@ final readonly class TelemetryRegisterUserHandler implements RegisterUserHandler
                 'email_hash' => hash('sha256', $command->email),
                 'command_id' => $command->idempotencyKey ?? 'N/A',
                 'status' => 'failure',
-                'exception' => $e->getMessage()
+                'exception' => $e->getMessage(),
             ]);
 
             throw $e;

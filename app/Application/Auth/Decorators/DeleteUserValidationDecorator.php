@@ -19,6 +19,7 @@ final class DeleteUserValidationDecorator implements DeleteUserHandlerInterface
     public function handle(DeleteUserCommand $command): DeleteUserResult
     {
         $this->validator->validate($command);
+
         return $this->inner->handle($command);
     }
 }

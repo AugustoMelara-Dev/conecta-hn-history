@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Infrastructure\Shared\Events;
 
 use App\Domain\Shared\Contracts\UpcasterInterface;
-use DateTimeImmutable;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -21,9 +20,9 @@ use RuntimeException;
 final readonly class EventSerializer
 {
     /**
-     * @param array<UpcasterInterface> $upcasters Registered upcasters for all event types
-     * @param array<string, class-string> $eventTypeMap Maps event type strings to FQCN
-     * @param array<string, int> $currentVersions Maps event type to current schema version
+     * @param  array<UpcasterInterface>  $upcasters  Registered upcasters for all event types
+     * @param  array<string, class-string>  $eventTypeMap  Maps event type strings to FQCN
+     * @param  array<string, int>  $currentVersions  Maps event type to current schema version
      */
     public function __construct(
         private array $upcasters = [],
@@ -34,26 +33,26 @@ final readonly class EventSerializer
     /**
      * Serialize a domain event to storage format.
      *
-     * @param object $event The domain event instance
+     * @param  object  $event  The domain event instance
      * @return array<string, mixed> JSON-encodable array for storage
      */
     public function serialize(object $event): array
     {
         $eventClass = $event::class;
-        
-        if (!method_exists($event, 'toPayload')) {
+
+        if (! method_exists($event, 'toPayload')) {
             throw new InvalidArgumentException(
                 "Event class {$eventClass} must implement toPayload() method"
             );
         }
 
-        if (!method_exists($event, 'eventName')) {
+        if (! method_exists($event, 'eventName')) {
             throw new InvalidArgumentException(
                 "Event class {$eventClass} must implement eventName() method"
             );
         }
 
-        if (!method_exists($event, 'schemaVersion')) {
+        if (! method_exists($event, 'schemaVersion')) {
             throw new InvalidArgumentException(
                 "Event class {$eventClass} must implement schemaVersion() method"
             );
@@ -70,9 +69,9 @@ final readonly class EventSerializer
     /**
      * Hydrate a domain event from storage, applying upcasting if needed.
      *
-     * @param string $eventType The canonical event type
-     * @param int $storedVersion The schema version from storage
-     * @param array<string, mixed> $rawPayload The raw payload from database
+     * @param  string  $eventType  The canonical event type
+     * @param  int  $storedVersion  The schema version from storage
+     * @param  array<string, mixed>  $rawPayload  The raw payload from database
      * @return object The fully hydrated domain event
      */
     public function hydrate(string $eventType, int $storedVersion, array $rawPayload): object
@@ -94,7 +93,7 @@ final readonly class EventSerializer
         }
 
         // Instantiate via fromPayload factory
-        if (!method_exists($eventClass, 'fromPayload')) {
+        if (! method_exists($eventClass, 'fromPayload')) {
             throw new RuntimeException(
                 "Event class {$eventClass} must implement static fromPayload() method"
             );
@@ -106,10 +105,10 @@ final readonly class EventSerializer
     /**
      * Apply sequential upcasters to evolve payload from old to current version.
      *
-     * @param string $eventType The event type being upcasted
-     * @param array<string, mixed> $envelope The full event envelope
-     * @param int $fromVersion Starting schema version
-     * @param int $toVersion Target schema version
+     * @param  string  $eventType  The event type being upcasted
+     * @param  array<string, mixed>  $envelope  The full event envelope
+     * @param  int  $fromVersion  Starting schema version
+     * @param  int  $toVersion  Target schema version
      * @return array<string, mixed> The evolved envelope
      */
     private function applyUpcastingChain(
@@ -125,7 +124,7 @@ final readonly class EventSerializer
 
             if ($upcaster === null) {
                 throw new RuntimeException(
-                    "No upcaster found for event '{$eventType}' version {$currentVersion}. " .
+                    "No upcaster found for event '{$eventType}' version {$currentVersion}. ".
                     "Cannot evolve from v{$fromVersion} to v{$toVersion}."
                 );
             }
@@ -156,7 +155,7 @@ final readonly class EventSerializer
      */
     private function resolveEventClass(string $eventType): string
     {
-        if (!isset($this->eventTypeMap[$eventType])) {
+        if (! isset($this->eventTypeMap[$eventType])) {
             throw new InvalidArgumentException(
                 "Unknown event type: '{$eventType}'. Register it in the eventTypeMap."
             );

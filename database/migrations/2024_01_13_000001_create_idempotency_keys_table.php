@@ -13,21 +13,21 @@ return new class extends Migration
     {
         Schema::create('idempotency_keys', function (Blueprint $table) {
             $table->id();
-            
+
             // Key: Unique identifier for the operation
             // Indexed/Unique for lock atomicity
             $table->string('key', 191)->unique();
-            
+
             // Checksum: Integrity Guard (MD5/SHA)
             $table->string('checksum', 64);
-            
+
             // Result: Nullable because it's empty during "Processing" phase
             // Mapped to 'response_payload' in Model/Repository
             $table->json('response_payload')->nullable();
-            
+
             // Timestamps: Created_at is critical for Zombie detection
             $table->timestamps();
-            
+
             // Optimization: Index for zombie cleanup (optional but good)
             $table->index('created_at');
         });

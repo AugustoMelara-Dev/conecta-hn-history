@@ -17,15 +17,16 @@ use Ramsey\Uuid\Uuid;
 final class TraceContext
 {
     private string $traceId;
+
     private ?string $causationId = null;
 
     public function __construct(Request $request)
     {
         // 1. Ingestion: Capture upstream trace or generate new root trace
-        $this->traceId = $request->header('X-Request-ID') 
-            ?? $request->header('X-Correlation-ID') 
+        $this->traceId = $request->header('X-Request-ID')
+            ?? $request->header('X-Correlation-ID')
             ?? Uuid::uuid7()->toString();
-            
+
         // 2. Causation: If triggered by another event/command
         $this->causationId = $request->header('X-Causation-ID');
     }
@@ -39,7 +40,7 @@ final class TraceContext
     {
         return $this->causationId;
     }
-    
+
     /**
      * For background jobs or tests to manually set context
      */

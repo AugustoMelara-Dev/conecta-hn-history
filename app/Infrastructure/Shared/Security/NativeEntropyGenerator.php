@@ -16,6 +16,7 @@ class NativeEntropyGenerator implements EntropyGeneratorInterface
     {
         $min = 10 ** ($length - 1);
         $max = (10 ** $length) - 1;
+
         return (string) random_int($min, $max);
     }
 

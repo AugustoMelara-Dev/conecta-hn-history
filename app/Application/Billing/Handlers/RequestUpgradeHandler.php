@@ -12,15 +12,14 @@ use App\Domain\Billing\Events\SubscriptionUpgraded;
 use App\Domain\Billing\Exceptions\PaymentFailedException;
 use App\Domain\Billing\Gateways\SubscriptionGatewayInterface;
 use App\Domain\Billing\Repositories\PlanRepositoryInterface;
-use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\Shared\Contracts\UuidGeneratorInterface;
 use App\Domain\Shared\Exceptions\StaleObjectException;
-use Illuminate\Support\Facades\DB;
+use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Psr\Log\LoggerInterface;
-use DateTimeImmutable;
 
 /**
  * RequestUpgradeHandler - Level 9 (Deterministic Resolution)
@@ -51,10 +50,14 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
     {
         // 1. VALIDATION
         $plan = $this->planRepository->findByIdentifier($command->newPlanIdentifier);
-        if ($plan === null) throw new \InvalidArgumentException("Invalid plan: {$command->newPlanIdentifier}");
+        if ($plan === null) {
+            throw new \InvalidArgumentException("Invalid plan: {$command->newPlanIdentifier}");
+        }
 
         $tenant = $this->tenantRepository->findById($command->tenantId);
-        if ($tenant === null) throw TenantNotFoundException::withId($command->tenantId);
+        if ($tenant === null) {
+            throw TenantNotFoundException::withId($command->tenantId);
+        }
 
         $subscriptionRef = $tenant->subscriptionReference() ?? "tenant_{$tenant->id()}";
         $oldPlanId = $tenant->planId();
@@ -62,7 +65,7 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
         // ═══════════════════════════════════════════════════════════════════
         // PHASE A: DETERMINISTIC RESOLUTION (Insert-or-Recover)
         // ═══════════════════════════════════════════════════════════════════
-        
+
         $generatedIntentId = $this->uuidGenerator->generate();
         $capturedIntentId = null;
 
@@ -78,14 +81,14 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            
+
             $capturedIntentId = $generatedIntentId;
 
         } catch (QueryException $e) {
             // TRAP: Integrity Constraint Violation (Duplicate Entry)
             if ($e->getCode() !== '23000' && $e->errorInfo[1] !== 1062) {
-                 // Not a duplicate error? Real crash. Rethrow.
-                 throw $e;
+                // Not a duplicate error? Real crash. Rethrow.
+                throw $e;
             }
 
             // ATTEMPT 2: We are the second (Race Condition or Retry).
@@ -95,19 +98,19 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
                 ->where('client_idempotency_key', $command->clientIdempotencyKey)
                 ->first();
 
-            if (!$existing) {
+            if (! $existing) {
                 // Should not happen logically unless delete race
-                throw new \RuntimeException("Race condition anomaly: Duplicate detected but row not found.");
+                throw new \RuntimeException('Race condition anomaly: Duplicate detected but row not found.');
             }
 
             // Critical: Use the EXISTING ID.
             $capturedIntentId = $existing->id;
-            
-            $this->logger->info("Recovered existing intent for double-submit protection", [
+
+            $this->logger->info('Recovered existing intent for double-submit protection', [
                 'client_key' => $command->clientIdempotencyKey,
-                'intent_id' => $capturedIntentId
+                'intent_id' => $capturedIntentId,
             ]);
-            
+
             // Check if already completed?
             if ($existing->status === SubscriptionIntent::STATUS_COMPLETED) {
                 // Optimization: If already done, we could return success immediately.
@@ -126,7 +129,7 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
                 idempotencyKey: $capturedIntentId // UNIFIED KEY: Always the same for this client request
             );
 
-            if (!$gatewayResult->success) {
+            if (! $gatewayResult->success) {
                 DB::table('subscription_intents')->where('id', $capturedIntentId)->update([
                     'status' => SubscriptionIntent::STATUS_FAILED,
                     'error_reason' => $gatewayResult->failureReason,
@@ -138,7 +141,7 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
             // ═══════════════════════════════════════════════════════════════════
             // PHASE C: THE ATOMIC SETTLEMENT (Optimistic Update)
             // ═══════════════════════════════════════════════════════════════════
-            
+
             DB::beginTransaction();
 
             try {
@@ -153,9 +156,9 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
                     subscriptionEndsAt: $gatewayResult->newPeriodEnd,
                     subscriptionReference: $subscriptionRef
                 );
-                
+
                 $this->tenantRepository->updateOptimistically($tenant);
-                
+
                 $this->eventDispatcher->dispatch(SubscriptionUpgraded::create(
                     tenantId: $command->tenantId,
                     oldPlanId: $oldPlanId ?? 'free',
@@ -175,7 +178,7 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
             } catch (StaleObjectException $e) {
                 DB::rollBack();
                 // Eventual Consistency via Reconciler
-                throw new \RuntimeException("System busy. Your upgrade is processing in the background.");
+                throw new \RuntimeException('System busy. Your upgrade is processing in the background.');
             } catch (\Throwable $innerEx) {
                 DB::rollBack();
                 throw $innerEx;

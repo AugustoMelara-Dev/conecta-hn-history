@@ -15,8 +15,11 @@ use DateTimeImmutable;
 final readonly class SubscriptionIntent
 {
     public const STATUS_PENDING = 'PENDING';
+
     public const STATUS_PROCESSING = 'PROCESSING';
+
     public const STATUS_COMPLETED = 'COMPLETED';
+
     public const STATUS_FAILED = 'FAILED';
 
     public function __construct(

@@ -56,9 +56,10 @@ final class RecordInteractionHandler
             if ($isDuplicate) {
                 $this->logger->debug('Interaction deduplicated', $this->sanitizePayload([
                     'tenant_id' => $command->tenantId,
-                    'visitor_id' => substr($command->visitorId, 0, 8) . '...',
+                    'visitor_id' => substr($command->visitorId, 0, 8).'...',
                     'type' => $command->type,
                 ]));
+
                 return;
             }
 

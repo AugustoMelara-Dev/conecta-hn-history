@@ -16,9 +16,9 @@ final class LogFailureNotifier implements FailureNotifierInterface
     {
         // In a real SRE setup, this would dispatch to Slack/PagerDuty via Http facade.
         // For now, it promotes the error to CRITICAL log channel which monitors pick up.
-        
+
         Log::critical("[{$subject}] {$message}", $metadata);
-        
+
         // Example Slack implementation (commented):
         // Http::post(config('services.slack.webhook_url'), ['text' => ...]);
     }

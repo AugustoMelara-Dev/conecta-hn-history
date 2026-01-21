@@ -16,7 +16,7 @@ use App\Models\Review;
 final class EloquentReviewRepository implements ReviewRepositoryInterface
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function create(array $data): object
     {
@@ -24,7 +24,7 @@ final class EloquentReviewRepository implements ReviewRepositoryInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function findById(int $id): ?object
     {
@@ -32,7 +32,7 @@ final class EloquentReviewRepository implements ReviewRepositoryInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      *
      * Uses SQL aggregate functions for efficient calculation.
      * NEVER loads all reviews into PHP memory.

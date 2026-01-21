@@ -100,7 +100,7 @@ final class OtpController extends Controller
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $seconds = RateLimiter::availableIn($key);
             throw ValidationException::withMessages([
-                'identifier' => ['Demasiados intentos. Intenta en ' . ceil($seconds / 60) . ' minutos.'],
+                'identifier' => ['Demasiados intentos. Intenta en '.ceil($seconds / 60).' minutos.'],
             ]);
         }
 
@@ -113,6 +113,7 @@ final class OtpController extends Controller
     private function rateLimitKey(Request $request, string $action): string
     {
         $identifier = $request->input('identifier') ?? $request->input('uuid');
+
         return "otp-{$action}:{$request->ip()}:{$identifier}";
     }
 }

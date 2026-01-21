@@ -19,7 +19,7 @@ final class UpdateScheduleRequest extends FormRequest
     public function rules(): array
     {
         $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-        
+
         $rules = [
             'schedule' => ['required', 'array'],
         ];

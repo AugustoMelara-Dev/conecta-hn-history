@@ -30,15 +30,15 @@ final readonly class VerifyOtpResult
     {
         return new self(
             user: $user,
-            verifiedAt: new DateTimeImmutable(),
+            verifiedAt: new DateTimeImmutable,
         );
     }
 
     public static function forNewUser(string $identifier): self
     {
         return new self(
-            user: null, 
-            verifiedAt: new DateTimeImmutable(),
+            user: null,
+            verifiedAt: new DateTimeImmutable,
             requiresRegistration: true,
             identifier: $identifier,
         );

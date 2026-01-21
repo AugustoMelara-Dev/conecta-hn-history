@@ -31,22 +31,22 @@ final readonly class ReportPaymentCommandValidator implements ReportPaymentHandl
         $this->validatorFactory->make($command->toArray(), [
             // Tenant isolation: Required string (UUID format)
             'tenantId' => ['required', 'string', 'uuid'],
-            
+
             // Bank reference: Required, limited to DB column size
             'paymentReference' => ['required', 'string', 'max:255'],
-            
+
             // Financial amount: Must be positive integer (cents)
             'amountInCents' => ['required', 'integer', 'min:1'],
-            
+
             // ISO 4217 Currency: Exactly 3 uppercase letters
             'currency' => ['required', 'string', 'size:3', 'regex:/^[A-Z]{3}$/'],
-            
+
             // Bank name: Limited to standard DB string column
             'bank' => ['required', 'string', 'max:255'],
-            
+
             // Idempotency: Optional but must be UUID if present
             'idempotencyKey' => ['nullable', 'uuid'],
-            
+
             // File path: Reasonable filesystem path limit
             'proofOfPaymentPath' => ['nullable', 'string', 'max:1024'],
 

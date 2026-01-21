@@ -7,7 +7,6 @@ namespace App\Application\Auth\Handlers;
 use App\Application\Auth\Commands\DeleteUserCommand;
 use App\Application\Auth\Results\DeleteUserResult;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
-
 use App\Domain\Identity\Events\UserDeleted;
 use App\Domain\Identity\Exceptions\CrossTenantAccessException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
@@ -21,8 +20,6 @@ use Ramsey\Uuid\Uuid;
  */
 final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
 {
-
-
     public function __construct(
         private UserRepositoryInterface $userRepository,
         private OutboxRepositoryInterface $outboxRepository,
@@ -76,8 +73,6 @@ final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
         );
 
         $this->outboxRepository->save($message);
-        
-
 
         return new DeleteUserResult('deleted', (string) $userId);
     }

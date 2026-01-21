@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Exports;
 
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Exceptions\InvalidBusinessRuleException;
 use App\Exports\Concerns\SanitizesOutput;
 use App\Exports\Criteria\SalesExportCriteria;
 use App\Exports\SalesExport;
-use App\Domain\Shared\ValueObjects\TenantId;
 use Tests\TestCase;
 
 /**
@@ -258,7 +258,7 @@ class SalesExportUnitTest extends TestCase
         {
             use SanitizesOutput;
 
-            public function testSanitize(mixed $input): mixed
+            public function test_sanitize(mixed $input): mixed
             {
                 return $this->sanitize($input);
             }
@@ -287,8 +287,6 @@ class SalesExportUnitTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         TenantId::fromString('invalid-uuid-string');
     }
-
-
 
     /**
      * @test

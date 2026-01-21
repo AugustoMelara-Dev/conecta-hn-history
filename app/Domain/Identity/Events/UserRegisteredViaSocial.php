@@ -15,6 +15,7 @@ use DateTimeImmutable;
 final readonly class UserRegisteredViaSocial
 {
     private const EVENT_NAME = 'identity.user_registered_social';
+
     private const SCHEMA_VERSION = 1;
 
     public function __construct(
@@ -36,7 +37,7 @@ final readonly class UserRegisteredViaSocial
             tenantId: $tenantId,
             email: $email,
             provider: $provider,
-            occurredAt: new DateTimeImmutable(),
+            occurredAt: new DateTimeImmutable,
         );
     }
 

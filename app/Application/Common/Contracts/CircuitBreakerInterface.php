@@ -17,7 +17,7 @@ interface CircuitBreakerInterface
     /**
      * Check if the service is available to accept requests.
      *
-     * @param string $serviceName Unique identifier for the external service
+     * @param  string  $serviceName  Unique identifier for the external service
      * @return bool True if Closed or Half-Open, False if Open
      */
     public function isAvailable(string $serviceName): bool;
@@ -26,7 +26,7 @@ interface CircuitBreakerInterface
      * Report a successful operation.
      * Resets failure counters or transitions to Closed state.
      *
-     * @param string $serviceName Unique identifier for the external service
+     * @param  string  $serviceName  Unique identifier for the external service
      */
     public function reportSuccess(string $serviceName): void;
 
@@ -34,7 +34,7 @@ interface CircuitBreakerInterface
      * Report a failed operation.
      * Increments counters and may trip the circuit to Open state.
      *
-     * @param string $serviceName Unique identifier for the external service
+     * @param  string  $serviceName  Unique identifier for the external service
      */
     public function reportFailure(string $serviceName): void;
 }

@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 /**
  * IntegrationEventMapper - The Diplomat
- * 
+ *
  * Transforms internal Domain Events into stable, versioned Public Events.
  * Filters sensitive data and decouples internal structure from external contract.
  */

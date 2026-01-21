@@ -19,12 +19,12 @@ interface OtpNotifierInterface
 {
     /**
      * Send OTP code to recipient.
-     * 
-     * @param UserEntity|null $recipient User entity if available (Login/Forgot Password). Null for new registrations.
-     * @param string $plainTextCode The secret code.
-     * @param string $identifier Fallback identifier (email/phone) if user entity is null.
-     * @param string $tenantId Tenant context.
-     * @param int $expiryMinutes Time until code expires.
+     *
+     * @param  UserEntity|null  $recipient  User entity if available (Login/Forgot Password). Null for new registrations.
+     * @param  string  $plainTextCode  The secret code.
+     * @param  string  $identifier  Fallback identifier (email/phone) if user entity is null.
+     * @param  string  $tenantId  Tenant context.
+     * @param  int  $expiryMinutes  Time until code expires.
      */
     public function send(
         ?UserEntity $recipient,

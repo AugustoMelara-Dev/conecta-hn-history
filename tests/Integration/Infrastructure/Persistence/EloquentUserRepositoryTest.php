@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Integration\Infrastructure\Persistence;
 
 use App\Domain\Identity\Entities\UserEntity;
-use App\Infrastructure\Persistence\Mappers\UserMapper;
 use App\Infrastructure\Persistence\EloquentUserRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -20,7 +19,7 @@ class EloquentUserRepositoryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // MANUAL SCHEMA PROVISIONING (Isolation Strategy)
         // We create only the table needed for this repository, bypassing broken migrations.
         \Illuminate\Support\Facades\Schema::create('users', function (\Illuminate\Database\Schema\Blueprint $table) {
@@ -37,7 +36,7 @@ class EloquentUserRepositoryTest extends TestCase
         });
 
         // REAL Integration: No Mocks allowed.
-        $this->repository = new EloquentUserRepository();
+        $this->repository = new EloquentUserRepository;
     }
 
     /** @test */
@@ -100,15 +99,15 @@ class EloquentUserRepositoryTest extends TestCase
         // 3. Assert: Verify Upsert Logic (Check-then-Act)
         // Should STILL be 1 row, but with updated values
         $this->assertDatabaseCount('users', 1);
-        
+
         $this->assertDatabaseHas('users', [
             'id' => $user->id(),
             'name' => 'Updated Name',
-            'email' => 'updated@example.com'
+            'email' => 'updated@example.com',
         ]);
 
         $this->assertDatabaseMissing('users', [
-            'name' => 'Original Name'
+            'name' => 'Original Name',
         ]);
     }
 
@@ -140,7 +139,7 @@ class EloquentUserRepositoryTest extends TestCase
         $this->assertSame($original->email(), $retrieved->email());
         $this->assertSame($original->name(), $retrieved->name());
         $this->assertSame($original->avatar(), $retrieved->avatar());
-        
+
         // Check Timestamps exist
         $this->assertNotNull($retrieved->createdAt());
     }

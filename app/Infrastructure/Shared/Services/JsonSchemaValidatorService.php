@@ -7,8 +7,8 @@ namespace App\Infrastructure\Shared\Services;
 use App\Application\Shared\Contracts\SchemaValidatorInterface;
 use App\Domain\Shared\Exceptions\SchemaViolationException;
 use App\Infrastructure\Common\SchemaRegistry\SchemaRegistryInterface;
-use Opis\JsonSchema\Validator;
 use Opis\JsonSchema\Errors\ErrorFormatter;
+use Opis\JsonSchema\Validator;
 
 final readonly class JsonSchemaValidatorService implements SchemaValidatorInterface
 {
@@ -17,8 +17,8 @@ final readonly class JsonSchemaValidatorService implements SchemaValidatorInterf
     public function __construct(
         private SchemaRegistryInterface $registry
     ) {
-        $this->validator = new \Opis\JsonSchema\Validator();
-        
+        $this->validator = new \Opis\JsonSchema\Validator;
+
         // Optimize: register a loader if needed, but for now we fetch manually via registry
         // To strictly use Opis with our Registry, we might need a custom loader adapter.
         // For simplicity in this iteration, we will load the schema array and pass it to Opis.
@@ -32,16 +32,16 @@ final readonly class JsonSchemaValidatorService implements SchemaValidatorInterf
 
         // 2. Encode/Decode to ensure we have stdClass/array structure Opis expects
         // (Opis generally works with json_decode'd objects)
-        $data = json_decode(json_encode($payload)); 
+        $data = json_decode(json_encode($payload));
         $schema = json_decode(json_encode($schemaData));
 
         // 3. Validate
         $result = $this->validator->validate($data, $schema);
 
-        if (!$result->isValid()) {
-            $formatter = new ErrorFormatter();
+        if (! $result->isValid()) {
+            $formatter = new ErrorFormatter;
             $errors = $formatter->format($result->error()); // Generic formatting
-            
+
             // Flatten errors for log/exception
             $errorMsg = json_encode($errors);
 

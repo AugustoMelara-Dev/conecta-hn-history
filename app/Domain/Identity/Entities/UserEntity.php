@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 
 /**
  * UserEntity - Aggregate Root (Titanium Immutable)
- * 
+ *
  * - Identity Pre-allocation (UUIDs).
  * - Full Immutability (No setters, no Event Patching).
  * - Valid Birth State (TenantID required at register).
@@ -22,33 +22,42 @@ final class UserEntity
     use EventSourcedAggregate;
 
     private string $id;
+
     private string $name;
+
     private string $email;
+
     private string $password;
+
     private UserRole $role;
+
     private string $tenantId;
+
     private ?string $rememberToken = null;
+
     private ?string $avatar = null;
+
     private ?DateTimeImmutable $createdAt = null;
+
     private ?DateTimeImmutable $updatedAt = null;
 
     private function __construct() {}
 
     /**
      * Factory: Register a new User with Pre-allocated Identity.
-     * 
-     * @param string $uuid Pre-allocated UUID v4/v7.
-     * @param string $tenantId Pre-allocated Tenant UUID.
+     *
+     * @param  string  $uuid  Pre-allocated UUID v4/v7.
+     * @param  string  $tenantId  Pre-allocated Tenant UUID.
      */
     public static function register(
         string $uuid,
-        string $name, 
-        string $email, 
-        string $passwordHash, 
+        string $name,
+        string $email,
+        string $passwordHash,
         UserRole $role,
         string $tenantId
     ): self {
-        $user = new self();
+        $user = new self;
 
         // The Event is recorded ONCE with the FINAL state.
         // No patching allowed.
@@ -68,7 +77,7 @@ final class UserEntity
 
     /**
      * Factory: Register via Social Provider (Named Constructor).
-     * 
+     *
      * Handles semantic creation for federated identities.
      * Uses Ordered UUIDs (v7) for Index Performance.
      */
@@ -80,7 +89,7 @@ final class UserEntity
         string $provider,
         string $providerId
     ): self {
-        $user = new self();
+        $user = new self;
         // OPTIMIZATION: Use Ordered UUID to prevent B-Tree fragmentation
         $user->id = (string) Str::orderedUuid();
         $user->tenantId = $tenantId;
@@ -89,9 +98,9 @@ final class UserEntity
         $user->password = ''; // No password for social users
         $user->avatar = $avatar;
         $user->role = UserRole::CUSTOMER; // Default role for social users
-        $user->createdAt = new DateTimeImmutable();
-        $user->updatedAt = new DateTimeImmutable();
-        
+        $user->createdAt = new DateTimeImmutable;
+        $user->updatedAt = new DateTimeImmutable;
+
         return $user;
     }
 
@@ -148,14 +157,14 @@ final class UserEntity
 
     public function hasPassword(): bool
     {
-        return !empty($this->password);
+        return ! empty($this->password);
     }
 
     public function avatar(): ?string
     {
         return $this->avatar;
     }
-    
+
     public function createdAt(): ?DateTimeImmutable
     {
         return $this->createdAt;
@@ -181,7 +190,7 @@ final class UserEntity
 
     public static function fromStateArray(array $state): self
     {
-        $user = new self();
+        $user = new self;
         $user->id = (string) ($state['id'] ?? '');
         $user->name = $state['name'] ?? '';
         $user->email = $state['email'] ?? '';
@@ -193,6 +202,7 @@ final class UserEntity
         $user->createdAt = isset($state['created_at']) ? new DateTimeImmutable($state['created_at']) : null;
         $user->updatedAt = isset($state['updated_at']) ? new DateTimeImmutable($state['updated_at']) : null;
         $user->version = 0;
+
         return $user;
     }
 
@@ -202,7 +212,7 @@ final class UserEntity
     {
         $this->name = $name;
         $this->email = $email;
-        $this->updatedAt = new DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable;
     }
 
     public function withPassword(string $hashedPassword): self
@@ -210,7 +220,8 @@ final class UserEntity
         // Clone for immutability
         $clone = clone $this;
         $clone->password = $hashedPassword;
-        $clone->updatedAt = new DateTimeImmutable();
+        $clone->updatedAt = new DateTimeImmutable;
+
         return $clone;
     }
 
@@ -218,6 +229,7 @@ final class UserEntity
     {
         $clone = clone $this;
         $clone->rememberToken = $token;
+
         // Token rotation doesn't necessarily update 'updated_at' but good practice.
         return $clone;
     }

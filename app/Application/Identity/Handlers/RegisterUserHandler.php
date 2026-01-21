@@ -5,17 +5,16 @@ declare(strict_types=1);
 namespace App\Application\Identity\Handlers;
 
 use App\Application\Identity\Commands\RegisterUserCommand;
-use App\Application\Identity\Handlers\RegisterUserHandlerInterface;
 use App\Application\Identity\Results\RegisterUserResult;
-use App\Domain\TenantGovernance\Entities\TenantEntity as Tenant;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Events\UserRegistered;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\OutboxRepositoryInterface;
 use App\Domain\Shared\PasswordHasherInterface;
-use App\Application\Shared\Contracts\TransactionManagerInterface;
+use App\Domain\TenantGovernance\Entities\TenantEntity as Tenant;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 
@@ -46,11 +45,11 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
         $passwordHash = $this->hasher->hash($command->password);
 
         return $this->transactionManager->transaction(function () use ($command, $userId, $tenantId, $passwordHash, $now) {
-            
+
             // 3. Create Pure Domain Entities
             // We use the new Physical Domain Classes, NOT Eloquent Models.
-            
-            $tenantName = $command->tenantName ?? $command->name . "'s Workspace";
+
+            $tenantName = $command->tenantName ?? $command->name."'s Workspace";
             $tenantDomain = $command->slug ?? Str::slug($tenantName);
 
             $tenant = Tenant::create(

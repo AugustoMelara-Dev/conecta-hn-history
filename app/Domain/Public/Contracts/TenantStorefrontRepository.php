@@ -13,9 +13,6 @@ interface TenantStorefrontRepository
 {
     /**
      * Find tenant by slug with all optimized relations for display.
-     *
-     * @param string $slug
-     * @return Tenant|null
      */
     public function findBySlug(string $slug): ?Tenant;
 }

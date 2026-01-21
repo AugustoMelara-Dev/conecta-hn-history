@@ -2,7 +2,6 @@
 
 namespace Tests\Infrastructure\Outbox;
 
-use App\Infrastructure\Console\Commands\ProcessOutboxCommand;
 use App\Infrastructure\Shared\Telemetry\TraceContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -19,7 +18,7 @@ class TracePropagationTest extends TestCase
         // 1. Arrange: Create a message with a specific Trace ID
         $traceId = 'FORENSIC-TRACE-12345';
         $eventId = Uuid::uuid7()->toString();
-        
+
         // We insert directly to bypass the repository for pure state setup
         DB::table('domain_outbox')->insert([
             'id' => $eventId,
@@ -40,11 +39,11 @@ class TracePropagationTest extends TestCase
         $mockContext->shouldReceive('setContext')
             ->with($traceId, \Mockery::any()) // Focus on TraceID, ignore causation format nuances
             ->once();
-            
+
         $this->app->instance(TraceContext::class, $mockContext);
 
         // 2. Act: Run the worker/command
-        // We use artisan() which resolves the command from the container, 
+        // We use artisan() which resolves the command from the container,
         // using our bound TraceContext mock.
         $this->artisan('outbox:process');
     }

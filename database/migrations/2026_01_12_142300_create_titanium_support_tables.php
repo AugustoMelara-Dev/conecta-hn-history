@@ -14,7 +14,7 @@ return new class extends Migration
                 $table->string('key', 64)->primary(); // Checksum/UUID
                 $table->json('response_payload'); // Serialized Result
                 $table->timestamps();
-                
+
                 // Optimization: Index for cleanup
                 $table->index('created_at');
             });

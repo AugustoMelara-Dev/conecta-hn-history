@@ -22,9 +22,9 @@ class LoginAlertMail extends Mailable
     /**
      * Create a new message instance.
      *
-     * @param UserMailData $user User snapshot at dispatch time
-     * @param string $ipAddress IP address of login attempt
-     * @param string $time Formatted timestamp of login attempt
+     * @param  UserMailData  $user  User snapshot at dispatch time
+     * @param  string  $ipAddress  IP address of login attempt
+     * @param  string  $time  Formatted timestamp of login attempt
      */
     public function __construct(
         public readonly UserMailData $user,

@@ -47,7 +47,7 @@ final class ResolveTenantFromRequest
         }
 
         if (! $tenant->is_active) {
-             abort(404); // Or specific suspended page
+            abort(404); // Or specific suspended page
         }
 
         // Bind to container - Single Source of Truth
@@ -75,6 +75,7 @@ final class ResolveTenantFromRequest
         // 2. Cache Hit Check
         if (Cache::has($cacheKey)) {
             $cached = Cache::get($cacheKey);
+
             // Check if it's a Negative Cache Hit
             return $cached === 'NOT_FOUND' ? null : $cached;
         }
@@ -86,7 +87,7 @@ final class ResolveTenantFromRequest
             ->take(1);
 
         $this->applyResolutionLogic($query, $request);
-        
+
         /** @var Tenant|null $tenant */
         $tenant = $query->first();
 
@@ -132,9 +133,8 @@ final class ResolveTenantFromRequest
 
     /**
      * Apply specific query logic based on available context.
-     * 
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param Request $request
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      */
     private function applyResolutionLogic($query, Request $request): void
     {
@@ -142,6 +142,7 @@ final class ResolveTenantFromRequest
         $routeParam = $this->getRouteParam($request);
         if ($routeParam) {
             $query->where('slug', $routeParam);
+
             return;
         }
 
@@ -149,6 +150,7 @@ final class ResolveTenantFromRequest
         $subdomain = $this->getSubdomain($request);
         if ($subdomain) {
             $query->where('slug', $subdomain);
+
             return;
         }
 
@@ -156,6 +158,7 @@ final class ResolveTenantFromRequest
         $headerId = $this->getHeaderId($request);
         if ($headerId) {
             $query->where('id', $headerId);
+
             return;
         }
 
@@ -172,9 +175,10 @@ final class ResolveTenantFromRequest
         $params = config('tenancy.resolution.route_parameters', ['tenant', 'tenant_slug']);
         foreach ($params as $param) {
             if ($value = $request->route($param)) {
-                 return (string) $value;
+                return (string) $value;
             }
         }
+
         return null;
     }
 
@@ -184,11 +188,13 @@ final class ResolveTenantFromRequest
         $base = config('tenancy.resolution.base_domain', 'localhost');
         $suffix = '.'.$base;
 
-        if (! str_ends_with($host, $suffix)) return null;
+        if (! str_ends_with($host, $suffix)) {
+            return null;
+        }
 
         $sub = \Illuminate\Support\Str::beforeLast($host, $suffix);
-        
-        return ($sub && $sub !== 'www' && !str_contains($sub, '.')) ? $sub : null;
+
+        return ($sub && $sub !== 'www' && ! str_contains($sub, '.')) ? $sub : null;
     }
 
     private function getHeaderId(Request $request): ?string

@@ -13,7 +13,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 /**
  * TenantUpdated - Event fired when a tenant updates their profile/slug.
  */
-final readonly class TenantUpdated implements DomainEvent, TenantAwareEvent, ShouldDispatchAfterCommit
+final readonly class TenantUpdated implements DomainEvent, ShouldDispatchAfterCommit, TenantAwareEvent
 {
     use HasDomainMetadata;
 
@@ -64,6 +64,4 @@ final readonly class TenantUpdated implements DomainEvent, TenantAwareEvent, Sho
             restoredOccurredAt: $primitives['occurred_at'] ?? null
         );
     }
-
-
 }

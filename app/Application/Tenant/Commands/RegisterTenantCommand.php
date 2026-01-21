@@ -32,14 +32,14 @@ final readonly class RegisterTenantCommand implements IdempotentCommandInterface
 
         // Metadata
         public ?string $logoPath = null,
-        
+
         // Explicit Idempotency
         public ?string $idempotencyKey = null
     ) {}
 
     public function getIdempotencyKey(): string
     {
-         if ($this->idempotencyKey) {
+        if ($this->idempotencyKey) {
             return $this->idempotencyKey;
         }
 

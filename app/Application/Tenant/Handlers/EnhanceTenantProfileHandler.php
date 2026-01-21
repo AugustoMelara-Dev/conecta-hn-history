@@ -61,10 +61,10 @@ final class EnhanceTenantProfileHandler
 
             // Phase 4: Persist
             $this->repository->save($tenant);
-            
-            $this->logger->info("Tenant Profile Enhanced via AI", $this->sanitizePayload([
+
+            $this->logger->info('Tenant Profile Enhanced via AI', $this->sanitizePayload([
                 'tenant_id' => $tenant->id,
-                'ai_tags' => $enhancedData['tags'] ?? []
+                'ai_tags' => $enhancedData['tags'] ?? [],
             ]));
         });
     }

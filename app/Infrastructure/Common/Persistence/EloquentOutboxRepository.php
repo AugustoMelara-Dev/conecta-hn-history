@@ -31,6 +31,7 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
 
     /**
      * Legacy alias for backward compatibility.
+     *
      * @deprecated Use append() instead.
      */
     public function store(DomainEventInterface $event): void
@@ -73,10 +74,10 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
                 // 2. SAFETY BLOCK: Decrypt & Decode
                 $decryptedJson = Crypt::decryptString($message->payload);
                 $payload = json_decode($decryptedJson, true, 512, JSON_THROW_ON_ERROR);
-            
-            } catch (DecryptException | JsonException $e) {
+
+            } catch (DecryptException|JsonException $e) {
                 // 3. PROTOCOL OF NEUTRALIZATION (The Dead Letter Rule)
-                Log::critical("Corrupt Outbox Message ID {$message->id} neutralized. Reason: " . $e->getMessage());
+                Log::critical("Corrupt Outbox Message ID {$message->id} neutralized. Reason: ".$e->getMessage());
 
                 // "Radioactive" - Kill it immediately so it doesn't block the queue
                 // We assume there's a JSON column 'error' or we just mark processed_at.
@@ -91,10 +92,11 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
                 continue;
             }
 
-            if (!class_exists($message->event_type)) {
+            if (! class_exists($message->event_type)) {
                 // Also neutralize messages with missing classes
                 Log::error("Unknown Event Class {$message->event_type} for Message ID {$message->id}. Neutralizing.");
                 $message->update(['processed' => true, 'processed_at' => now()]);
+
                 continue;
             }
 
@@ -108,7 +110,7 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
 
         return $events;
     }
-    
+
     public function markAsProcessed(int $messageId): void
     {
         OutboxMessage::where('id', $messageId)->update(['processed' => true, 'processed_at' => now()]);

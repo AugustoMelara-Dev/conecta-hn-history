@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Infrastructure\Monitoring;
 
 use App\Infrastructure\Models\OutboxMessage;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 /**
  * OutboxMetricsCollector - Level 44 (Real-Time Observability)
@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Cache;
 final class OutboxMetricsCollector
 {
     private const LAG_THRESHOLD_SECONDS = 30;
+
     private const CACHE_TTL_SECONDS = 60;
 
     /**
@@ -30,7 +31,7 @@ final class OutboxMetricsCollector
         $lagMs = now()->diffInMilliseconds($message->created_at);
         $lagSeconds = $lagMs / 1000;
         $partition = $message->partition_key ?? 0;
-        
+
         // Emit structured log for log aggregation (Datadog, ELK, etc.)
         Log::info('outbox_processing_lag', [
             'message_id' => $message->id,
@@ -40,10 +41,10 @@ final class OutboxMetricsCollector
             'lag_ms' => $lagMs,
             'lag_seconds' => $lagSeconds,
         ]);
-        
+
         // Update partition lag in cache for real-time monitoring
         $this->updatePartitionLag($partition, $lagSeconds);
-        
+
         // Check for saturation
         if ($lagSeconds > self::LAG_THRESHOLD_SECONDS) {
             $this->fireSaturationAlert($partition, $lagSeconds);
@@ -59,6 +60,7 @@ final class OutboxMetricsCollector
         for ($i = 0; $i < OutboxMessage::PARTITION_COUNT; $i++) {
             $lags[$i] = Cache::get("outbox:lag:partition:{$i}", 0.0);
         }
+
         return $lags;
     }
 
@@ -83,10 +85,10 @@ final class OutboxMetricsCollector
     {
         $key = "outbox:lag:partition:{$partition}";
         $current = Cache::get($key, 0.0);
-        
+
         // Exponential moving average (alpha = 0.3)
         $newLag = ($current * 0.7) + ($lagSeconds * 0.3);
-        
+
         Cache::put($key, $newLag, self::CACHE_TTL_SECONDS);
     }
 
@@ -101,6 +103,7 @@ final class OutboxMetricsCollector
                 $saturated[] = $partition;
             }
         }
+
         return $saturated;
     }
 
@@ -115,7 +118,7 @@ final class OutboxMetricsCollector
             'threshold_seconds' => self::LAG_THRESHOLD_SECONDS,
             'action_required' => 'Consider scaling Outbox workers or investigating slow consumers',
         ]);
-        
+
         // TODO: Dispatch SystemSaturationEvent for auto-scaling integration
         // event(new SystemSaturationEvent($partition, $lagSeconds));
     }

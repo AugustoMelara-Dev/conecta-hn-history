@@ -29,6 +29,7 @@ final readonly class DeleteUserCommandValidator implements DeleteUserHandlerInte
     public function handle(DeleteUserCommand $command): DeleteUserResult
     {
         $this->validate($command);
+
         return $this->inner->handle($command);
     }
 

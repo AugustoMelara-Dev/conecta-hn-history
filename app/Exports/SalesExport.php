@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Exports;
 
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Events\Audit\SalesExportCreated;
 use App\Exports\Concerns\SanitizesOutput;
 use App\Exports\Criteria\SalesExportCriteria;
 use App\Models\Order;
-use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;

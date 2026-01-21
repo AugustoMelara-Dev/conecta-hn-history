@@ -6,12 +6,11 @@ namespace App\Application\Sales\Handlers;
 
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Results\CreateOrderResult;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Sales\Factories\OrderFactory;
 use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Application\Shared\Contracts\TransactionManagerInterface;
-use App\Exceptions\InvalidCouponException;
 use App\Exceptions\TenantNotFoundException;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
 use App\Services\CouponValidatorService;
@@ -57,7 +56,7 @@ final class CreateOrderHandler implements CreateOrderHandlerInterface
     {
         // STEP 0: RESOLVE CUSTOMER
         $user = $this->userRepository->findById($command->customerId);
-        if (!$user) {
+        if (! $user) {
             throw new \App\Exceptions\UserNotFoundException("User {$command->customerId} not found");
         }
 
@@ -84,7 +83,7 @@ final class CreateOrderHandler implements CreateOrderHandlerInterface
         $couponCode = null;
         $coupon = null;
 
-        if (!empty($command->couponCode)) {
+        if (! empty($command->couponCode)) {
             $tenant = $this->tenantRepository->findById($command->tenantId);
             if ($tenant === null) {
                 throw new TenantNotFoundException("Tenant {$command->tenantId} not found");
@@ -92,7 +91,7 @@ final class CreateOrderHandler implements CreateOrderHandlerInterface
 
             $coupon = $this->couponValidator->validate(
                 $command->couponCode,
-                $user, 
+                $user,
                 $subtotal,
                 $tenant
             );
@@ -117,14 +116,14 @@ final class CreateOrderHandler implements CreateOrderHandlerInterface
             customerEmail: $user->email->value, // Value Object Access
             currency: $command->currency,
             subtotal: $subtotal,
-            total: (float)$total,
+            total: (float) $total,
             items: $calculatedItems,
             customerPhone: $command->customerPhone,
             customerAddress: $command->customerAddress,
             customerNotes: $command->customerNotes,
             deliveryType: $command->deliveryType,
             paymentMethod: $command->paymentMethod,
-            discountAmount: (float)$discountAmount,
+            discountAmount: (float) $discountAmount,
             couponCode: $couponCode
         );
 
@@ -140,9 +139,9 @@ final class CreateOrderHandler implements CreateOrderHandlerInterface
 
         // STEP 8: LINK COUPON TO ORDER (After ID generated/saved)
         if ($coupon && $orderEntity->id) {
-             // Assuming $orderEntity->id is populated by repository save (reference pass or return)
-             // Ideally save() should return the fresh entity with ID
-             $this->couponValidator->linkToOrder($coupon, $command->requestorId, $orderEntity->id);
+            // Assuming $orderEntity->id is populated by repository save (reference pass or return)
+            // Ideally save() should return the fresh entity with ID
+            $this->couponValidator->linkToOrder($coupon, $command->requestorId, $orderEntity->id);
         }
 
         // STEP 9: DISPATCH EVENT

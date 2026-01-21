@@ -12,7 +12,7 @@ use Illuminate\Routing\Controller;
 
 /**
  * RegisterUserController - The Diplomat
- * 
+ *
  * Orchestrates HTTP Request -> Domain Command -> HTTP Response.
  * Strictly "Skinny": No business logic allowed.
  */
@@ -47,12 +47,12 @@ class RegisterUserController extends Controller
                         'email' => $result->email,
                         'tenant_id' => $result->tenantId,
                         'requires_verification' => $result->requiresVerification,
-                    ]
-                ]
+                    ],
+                ],
             ],
             status: 201,
             headers: [
-                'Location' => route('api.users.show', ['user' => $result->id]) // Placeholder strict convention
+                'Location' => route('api.users.show', ['user' => $result->id]), // Placeholder strict convention
             ]
         );
     }

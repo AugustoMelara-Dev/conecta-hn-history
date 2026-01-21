@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Factories;
 
 use App\Domain\Identity\Entities\UserEntity;
+use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
-use App\Domain\Shared\Contracts\ClockInterface;
-use Illuminate\Support\Str;
 use DateTimeImmutable;
+use Illuminate\Support\Str;
 
 final readonly class TenantFactory
 {
@@ -18,17 +18,16 @@ final readonly class TenantFactory
     ) {}
 
     public function createTrialTenant(
-        UserEntity $owner, 
+        UserEntity $owner,
         string $source,
         ?string $businessName = null,
         ?string $customSlug = null
-    ): TenantEntity
-    {
+    ): TenantEntity {
         // 1. Fallback Logic for Business Name
-        $finalName = ($businessName !== null && $businessName !== '') 
-            ? $businessName 
-            : ($owner->name . "'s Store");
-        
+        $finalName = ($businessName !== null && $businessName !== '')
+            ? $businessName
+            : ($owner->name."'s Store");
+
         // 2. Fallback Logic for Slug (Collision check in Handler)
         $finalSlug = ($customSlug !== null && $customSlug !== '')
             ? $customSlug
@@ -40,12 +39,12 @@ final readonly class TenantFactory
             userId: $owner->id,
             name: $finalName,
             slug: $finalSlug,
-            source: $source, 
+            source: $source,
             planType: TenantPlan::SEMILLA, // PASSED AS OBJECT
             subscriptionStatus: 'active',
             isActive: true,
-            createdAt: new DateTimeImmutable(),
-            updatedAt: new DateTimeImmutable(),
+            createdAt: new DateTimeImmutable,
+            updatedAt: new DateTimeImmutable,
         );
     }
 
@@ -56,7 +55,7 @@ final readonly class TenantFactory
         TenantPlan $planType // STRICTLY ENUM
     ): TenantEntity {
         return new TenantEntity(
-            id: 0, 
+            id: 0,
             userId: $userId,
             name: $name,
             slug: $slug,

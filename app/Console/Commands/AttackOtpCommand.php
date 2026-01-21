@@ -14,6 +14,7 @@ use Ramsey\Uuid\Uuid;
 class AttackOtpCommand extends Command
 {
     protected $signature = 'security:attack-otp {identifier} {tenantId} {code}';
+
     protected $description = 'Simulate an OTP attack attempt';
 
     public function handle(VerifyOtpHandlerInterface $handler): int
@@ -34,15 +35,19 @@ class AttackOtpCommand extends Command
         try {
             $handler->handle($command);
             $this->info('SUCCESS');
+
             return 0; // Should not happen with wrong code
         } catch (MaxOtpAttemptsExceededException $e) {
             $this->error('BLOCKED');
+
             return 429;
         } catch (InvalidOtpException $e) {
             $this->error('INVALID');
+
             return 401;
         } catch (\Throwable $e) {
-            $this->error('ERROR: ' . $e->getMessage());
+            $this->error('ERROR: '.$e->getMessage());
+
             return 500;
         }
     }

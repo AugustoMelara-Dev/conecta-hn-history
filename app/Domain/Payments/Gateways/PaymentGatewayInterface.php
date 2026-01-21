@@ -21,12 +21,11 @@ interface PaymentGatewayInterface
     /**
      * Charge a payment method.
      *
-     * @param int $amountInCents Amount in smallest currency unit
-     * @param string $currency ISO currency code (e.g., 'USD', 'HNL')
-     * @param string $paymentMethodId Provider-specific payment method identifier
-     * @param array<string, mixed> $metadata Additional transaction metadata
-     * @return ChargeResult
-     * 
+     * @param  int  $amountInCents  Amount in smallest currency unit
+     * @param  string  $currency  ISO currency code (e.g., 'USD', 'HNL')
+     * @param  string  $paymentMethodId  Provider-specific payment method identifier
+     * @param  array<string, mixed>  $metadata  Additional transaction metadata
+     *
      * @throws \App\Domain\Payments\Exceptions\PaymentDeclinedException
      * @throws \App\Domain\Payments\Exceptions\PaymentGatewayUnavailableException
      * @throws \App\Domain\Payments\Exceptions\UnknownPaymentException
@@ -41,9 +40,8 @@ interface PaymentGatewayInterface
     /**
      * Refund a previous charge.
      *
-     * @param string $transactionId The original transaction identifier
-     * @param int|null $amountInCents Amount to refund (null = full refund)
-     * @return ChargeResult
+     * @param  string  $transactionId  The original transaction identifier
+     * @param  int|null  $amountInCents  Amount to refund (null = full refund)
      */
     public function refund(string $transactionId, ?int $amountInCents = null): ChargeResult;
 }

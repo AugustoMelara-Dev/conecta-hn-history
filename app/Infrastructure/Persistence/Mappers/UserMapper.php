@@ -33,7 +33,7 @@ final class UserMapper
     }
 
     /**
-     * Note: toEloquent is handled explicitly in Repository save() 
+     * Note: toEloquent is handled explicitly in Repository save()
      * to allow granular control over "New vs Existing" state.
      */
 }

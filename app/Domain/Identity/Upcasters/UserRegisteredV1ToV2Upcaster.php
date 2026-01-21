@@ -18,13 +18,13 @@ final class UserRegisteredV1ToV2Upcaster implements EventUpcaster
     {
         // Transformation Logic: Split fullname into first_name and last_name
         $fullName = $payload['fullname'] ?? '';
-        
+
         // cleanup old field
         unset($payload['fullname']);
 
         // Separate logically
         $parts = explode(' ', $fullName, 2);
-        
+
         $payload['first_name'] = $parts[0] ?? '';
         $payload['last_name'] = $parts[1] ?? '';
 

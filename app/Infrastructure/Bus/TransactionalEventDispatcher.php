@@ -6,7 +6,6 @@ namespace App\Infrastructure\Bus;
 
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Support\Facades\DB;
 
 /**
  * TransactionalEventDispatcher - Outbox Pattern Implementation
@@ -23,9 +22,6 @@ final readonly class TransactionalEventDispatcher implements EventDispatcherInte
 
     /**
      * Dispatch an event with transactional safety.
-     *
-     * @param object $event
-     * @return void
      */
     public function dispatch(object $event): void
     {

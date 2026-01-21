@@ -29,8 +29,6 @@ final class ToggleProductVisibilityHandler
     /**
      * Handle visibility toggle command.
      *
-     * @param ToggleProductVisibilityCommand $command
-     * @return void
      * @throws ModelNotFoundException If product not found or tenant mismatch
      */
     public function handle(ToggleProductVisibilityCommand $command): void
@@ -52,8 +50,8 @@ final class ToggleProductVisibilityHandler
         }
 
         // 3. Toggle visibility
-        $product->is_visible = !$product->is_visible;
-        
+        $product->is_visible = ! $product->is_visible;
+
         // 4. Persist via Repository
         $this->productRepository->save($product);
 

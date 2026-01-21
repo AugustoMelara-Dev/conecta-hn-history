@@ -15,25 +15,26 @@ use Spatie\Activitylog\Traits\LogsActivity;
  */
 class Payment extends Model
 {
-    use BelongsToTenant, LogsActivity, \Illuminate\Database\Eloquent\Factories\HasFactory;
+    use BelongsToTenant, \Illuminate\Database\Eloquent\Factories\HasFactory, LogsActivity;
 
-    protected $table = 'subscription_payments'; 
+    protected $table = 'subscription_payments';
 
     // UUID CONFIGURATION
     public $incrementing = false;     // Disable Auto-Increment
+
     protected $keyType = 'string';    // ID is String (UUID)
 
     protected $fillable = [
         'id',             // Explicitly fillable for UUIDs
         'tenant_id',
         'amount',
-        'proof_path', 
+        'proof_path',
         'bank',
         'reference_number',
         'status',
         'reviewed_at',
         'admin_notes',
-        'idempotency_key', 
+        'idempotency_key',
         'version',
     ];
 
@@ -53,9 +54,9 @@ class Payment extends Model
                 'tenant_id',
                 'amount',
                 'status',
-                'bank',             
-                'reference_number', 
-                'proof_path', 
+                'bank',
+                'reference_number',
+                'proof_path',
                 'reviewed_at',
                 'admin_notes',
             ])
@@ -68,7 +69,7 @@ class Payment extends Model
     {
         return $this->attributes['proof_path'] ?? null;
     }
-    
+
     public function setProofUrlAttribute(?string $value): void
     {
         $this->attributes['proof_path'] = $value;

@@ -35,6 +35,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * UUID Configuration: Disable Auto-Increment
      */
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     /**
@@ -73,23 +74,23 @@ class User extends Authenticatable implements MustVerifyEmail
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
-     * 
+     *
      * ═══════════════════════════════════════════════════════════════════════════
      * ⚠️  ARQUITECTURA DDD - NO MODIFICAR SIN AUTORIZACIÓN DEL ARQUITECTO  ⚠️
      * ═══════════════════════════════════════════════════════════════════════════
-     * 
+     *
      * PROHIBIDO: 'password' => 'hashed'
-     * 
+     *
      * El hashing de contraseñas es responsabilidad EXCLUSIVA de los Handlers
      * de la Capa de Aplicación (RegisterUserHandler, UpdatePasswordHandler).
-     * 
+     *
      * Este modelo Eloquent debe actuar como un "Dumb Data Mapper" (Mapeador
      * de Datos Tonto) que persiste EXACTAMENTE lo que el Dominio le entrega,
      * sin transformaciones implícitas.
-     * 
+     *
      * Reactivar el cast 'hashed' causará DOBLE HASHING y corromperá todas
      * las credenciales, haciendo imposible el login.
-     * 
+     *
      * @see App\Application\Identity\Handlers\RegisterUserHandler
      * @see App\Domain\Shared\PasswordHasherInterface
      * ═══════════════════════════════════════════════════════════════════════════

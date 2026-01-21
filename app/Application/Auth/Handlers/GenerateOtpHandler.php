@@ -9,15 +9,15 @@ use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Application\Shared\Interfaces\EntropyGeneratorInterface;
 use App\Application\Shared\Traits\LogSanitizer;
-use App\Domain\Shared\Contracts\ClockInterface;
-use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Auth\Events\OtpGenerated;
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
+use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Shared\Exceptions\SecurityException;
-use Psr\Log\LoggerInterface;
 use App\Infrastructure\Shared\Telemetry\TraceContext;
+use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
 
 /**
@@ -53,7 +53,7 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         // PHASE 1: LOAD AGGREGATE (User Context)
         // ═══════════════════════════════════════════════════════════════════
         $user = $this->userRepository->findByEmail($command->identifier, $command->tenantId);
-        
+
         if ($user !== null && $user->tenantId !== $command->tenantId) {
             throw SecurityException::crossTenantAccess($user->id ?? 'unknown', $command->tenantId);
         }
@@ -63,10 +63,10 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         // ═══════════════════════════════════════════════════════════════════
         $plainCode = $this->entropyGenerator->generateNumeric($this->otpLength);
         $hashedCode = $this->hasher->hash($plainCode);
-        
+
         // Invalidate previous OTPs for this identifier
         $this->otpRepository->invalidateByIdentifier($command->identifier, $command->tenantId);
-        
+
         // Create new OTP
         $otpEntity = $this->otpRepository->create(
             userId: $user?->id,
@@ -92,7 +92,7 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         $outboxPayload = array_merge($event->toPayload(), [
             'plain_text_code' => $plainCode, // REQUIRED for delivery
             'identifier' => $command->identifier,
-            'expiry_minutes' => $this->otpExpiryMinutes
+            'expiry_minutes' => $this->otpExpiryMinutes,
         ]);
 
         $message = new DomainEventMessage(
@@ -110,11 +110,11 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         );
 
         $this->outboxRepository->save($message);
-        
+
         $this->logger->info('OTP generated and persisted to Outbox', $this->sanitizePayload([
             'identifier' => $command->identifier,
             'tenant_id' => $command->tenantId,
-            'outbox_id' => $message->eventId
+            'outbox_id' => $message->eventId,
         ]));
         // Idempotency result captured by decorator via closure return
         // No explicit return needed from pure handler

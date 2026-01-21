@@ -17,9 +17,10 @@ interface AuthTokenServiceInterface
     /**
      * Create an API token for a user by their ID.
      *
-     * @param int|string $userId User's primary identifier
-     * @param string $tokenName Name for the token (e.g., 'api-token')
+     * @param  int|string  $userId  User's primary identifier
+     * @param  string  $tokenName  Name for the token (e.g., 'api-token')
      * @return array{user: object, token: string} User data and plain text token
+     *
      * @throws \RuntimeException If user not found
      */
     public function createTokenForUser(int|string $userId, string $tokenName = 'api-token'): array;

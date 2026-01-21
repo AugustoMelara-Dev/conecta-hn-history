@@ -14,12 +14,14 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
     public function findById(int $id): ?TenantEntity
     {
         $model = Tenant::find($id);
+
         return $model ? $this->toEntity($model) : null;
     }
 
     public function findBySlug(string $slug): ?TenantEntity
     {
         $model = Tenant::where('slug', $slug)->first();
+
         return $model ? $this->toEntity($model) : null;
     }
 
@@ -32,12 +34,14 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
     {
         // Assuming 'domain' column or relationship exists. Minimal impl for now.
         $model = Tenant::where('domain', $domain)->first();
+
         return $model ? $this->toEntity($model) : null;
     }
 
     public function create(array $attributes): TenantEntity
     {
         $model = Tenant::create($attributes);
+
         return $this->toEntity($model);
     }
 
@@ -45,24 +49,24 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
     {
         // PATRÓN DATA MAPPER: Mapeo manual explícito
         // TenantEntity usa UUIDs como strings, no integers
-        
+
         // 1. DETERMINACIÓN INSERT/UPDATE
         // La entidad tiene id() como string UUID
-        $model = Tenant::find($entity->id()) ?? new Tenant();
-        
+        $model = Tenant::find($entity->id()) ?? new Tenant;
+
         // 2. MAPEO MANUAL EXPLÍCITO
         // Usar los métodos de la entidad, NO propiedades públicas
         $model->id = $entity->id();
         $model->name = $entity->name();
         $model->slug = $entity->domain(); // domain en Entity = slug en DB
         $model->is_active = $entity->isActive();
-        
+
         // 3. VALORES POR DEFECTO (Business Rules)
         // El plan por defecto para nuevos tenants es 'SEED'
-        if (!$model->exists) {
+        if (! $model->exists) {
             $model->plan = 'SEED';
         }
-        
+
         // 4. PERSISTENCIA ATÓMICA
         $model->save();
 
