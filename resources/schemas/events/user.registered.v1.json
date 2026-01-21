@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://conecta-hn.com/schemas/events/user.registered.v1.json",
+  "title": "User Registered Event",
+  "description": "Event emitted when a new user completes the registration process.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "userId",
+    "tenantId",
+    "email",
+    "provider"
+  ],
+  "properties": {
+    "userId": {
+      "type": "string",
+      "description": "Unique identifier of the user (UUID v7)"
+    },
+    "tenantId": {
+      "type": "string",
+      "description": "UUID of the tenant the user belongs to"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "User's email address"
+    },
+    "provider": {
+      "type": "string",
+      "description": "Auth provider (email, google, etc.)"
+    }
+  }
+}
