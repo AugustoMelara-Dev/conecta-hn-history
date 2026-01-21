@@ -6,30 +6,27 @@ namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
-use App\Application\Shared\Contracts\TransactionManagerInterface;
+use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Application\Shared\Interfaces\EntropyGeneratorInterface;
 use App\Application\Shared\Traits\LogSanitizer;
-use App\Application\Shared\Contracts\OutboxRepositoryInterface;
-use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Auth\Events\OtpGenerated;
-use App\Domain\Auth\Exceptions\TooManyOtpRequestsException;
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Domain\Shared\Contracts\RateLimitServiceInterface;
 use App\Domain\Shared\Exceptions\SecurityException;
 use Psr\Log\LoggerInterface;
+use App\Infrastructure\Shared\Telemetry\TraceContext;
 use Ramsey\Uuid\Uuid;
 
 /**
- * GenerateOtpHandler - Master Reference Implementation
+ * GenerateOtpHandler - Pure Business Logic Handler
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  RISK LEVEL: NULL (Certified Green)                                     ║
- * ║  STANDARD: Defensive, Agnostic & Minimalist                             ║
- * ║  CONSISTENCY: Transactional Outbox & Idempotency Barrier                ║
+ * ║  PURE CORE: No infrastructure concerns (DB transactions, idempotency).  ║
+ * ║  SINGLE RESPONSIBILITY: Generate OTP, persist, and record event.        ║
+ * ║  DECORATOR-WRAPPED: Idempotency & Validation are applied externally.    ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
@@ -39,58 +36,22 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
     public function __construct(
         private UserRepositoryInterface $userRepository,
         private OtpRepositoryInterface $otpRepository,
-        // REMOVED: OtpNotifierInterface (Side Effect Isolation)
-        private RateLimitServiceInterface $rateLimiter,
-        private TransactionManagerInterface $transactionManager,
         private OutboxRepositoryInterface $outboxRepository,
-        private IdempotencyServiceInterface $idempotencyService,
         private ClockInterface $clock,
         private LoggerInterface $logger,
         private EntropyGeneratorInterface $entropyGenerator,
         private OtpHasherInterface $hasher,
+        private TraceContext $traceContext,
+        private \App\Infrastructure\Shared\Context\IdempotencyContext $idempotencyContext,
         private int $otpExpiryMinutes,
-        private int $maxOtpRequestsPerHour,
         private int $otpLength,
-        private int $rateLimitDecaySeconds,
     ) {}
 
     public function handle(GenerateOtpCommand $command): void
     {
         // ═══════════════════════════════════════════════════════════════════
-        // PHASE 1: IDEMPOTENCY BARRIER (Concurrency Control)
+        // PHASE 1: LOAD AGGREGATE (User Context)
         // ═══════════════════════════════════════════════════════════════════
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 1: IDEMPOTENCY BARRIER (The Gatekeeper)
-        // ═══════════════════════════════════════════════════════════════════
-        // Protocol: 
-        // 1. If COMPLETED -> Return Cached Result
-        // 2. If PROCESSING -> Throw ConcurrentRequestException
-        // 3. If NULL -> Register PROCESSING and Continue
-        
-        $state = $this->idempotencyService->getState($command->idempotencyKey);
-
-        if ($state === 'COMPLETED') {
-            $this->logger->info('Idempotency hit: Returning cached result', ['key' => $command->idempotencyKey]);
-            return;
-        }
-
-        if ($state === 'PROCESSING') {
-            throw \App\Application\Common\Exceptions\ConcurrentRequestException::forKey($command->idempotencyKey);
-        }
-
-        // Atomic Reservation
-        $this->idempotencyService->registerProcessing($command->idempotencyKey);
-
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 2: VALIDATION & GUARD
-        // ═══════════════════════════════════════════════════════════════════
-        $rateLimitKey = "otp_generation:{$command->tenantId}:{$command->identifier}";
-        
-        if ($this->rateLimiter->hitAndCheck($rateLimitKey, $this->maxOtpRequestsPerHour, $this->rateLimitDecaySeconds)) {
-            $retryAfter = $this->rateLimiter->availableIn($rateLimitKey);
-            throw TooManyOtpRequestsException::forUser($command->identifier, $retryAfter);
-        }
-
         $user = $this->userRepository->findByEmail($command->identifier, $command->tenantId);
         
         if ($user !== null && $user->tenantId !== $command->tenantId) {
@@ -98,67 +59,64 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // PHASE 3: BUSINESS LOGIC (Unit of Work)
+        // PHASE 2: BUSINESS LOGIC (Pure Domain)
         // ═══════════════════════════════════════════════════════════════════
         $plainCode = $this->entropyGenerator->generateNumeric($this->otpLength);
         $hashedCode = $this->hasher->hash($plainCode);
         
-        $this->transactionManager->transaction(function () use ($command, $user, $hashedCode, $plainCode) {
-            // 3.1. Persistence (State Mutation)
-            $this->otpRepository->invalidateByIdentifier($command->identifier, $command->tenantId);
-            
-            $otpId = $this->otpRepository->create(
-                userId: $user?->id,
-                identifier: $command->identifier,
-                tenantId: $command->tenantId,
-                hashedCode: $hashedCode,
-                type: $command->type,
-                ipAddress: $command->ipAddress,
-                userAgent: $command->userAgent,
-                expiryMinutes: $this->otpExpiryMinutes,
-            );
+        // Invalidate previous OTPs for this identifier
+        $this->otpRepository->invalidateByIdentifier($command->identifier, $command->tenantId);
+        
+        // Create new OTP
+        $otpEntity = $this->otpRepository->create(
+            userId: $user?->id,
+            identifier: $command->identifier,
+            tenantId: $command->tenantId,
+            hashedCode: $hashedCode,
+            type: $command->type,
+            ipAddress: $command->ipAddress,
+            userAgent: $command->userAgent,
+            expiryMinutes: $this->otpExpiryMinutes,
+        );
 
-            // 3.2. Outbox Persistence (The "Real" Event Dispatch)
-            // Note: plainCode is included in payload so Notifier can send it.
-            // CAUTION: This payload is sensitive, but stored in secured DB table.
-            $event = OtpGenerated::now(
-                otpId: $otpId,
-                userId: $user?->id,
-                tenantId: $command->tenantId,
-            );
+        // ═══════════════════════════════════════════════════════════════════
+        // PHASE 3: EVENT PERSISTENCE (Transactional Outbox)
+        // ═══════════════════════════════════════════════════════════════════
+        $event = OtpGenerated::now(
+            otpId: $otpEntity->id,
+            userId: $user?->id,
+            tenantId: $command->tenantId,
+        );
 
-            // Enriched payload for the Notifier (Relay will pick this up)
-            $outboxPayload = array_merge($event->toPayload(), [
-                'plain_text_code' => $plainCode, // REQUIRED for delivery
-                'identifier' => $command->identifier,
-                'expiry_minutes' => $this->otpExpiryMinutes
-            ]);
+        // Enriched payload for the Notifier (Relay will pick this up)
+        $outboxPayload = array_merge($event->toPayload(), [
+            'plain_text_code' => $plainCode, // REQUIRED for delivery
+            'identifier' => $command->identifier,
+            'expiry_minutes' => $this->otpExpiryMinutes
+        ]);
 
-            $message = new DomainEventMessage(
-                eventId: Uuid::uuid7()->toString(),
-                type: OtpGenerated::class,
-                aggregateId: $otpId,
-                payload: json_encode($outboxPayload),
-                occurredAt: $this->clock->now(),
-                metadata: [
-                    'tenant_id' => $command->tenantId,
-                    'causation_id' => $command->idempotencyKey,
-                    'ip_address' => $command->ipAddress,
-                ]
-            );
-
-            $this->outboxRepository->save($message);
-            
-            $this->logger->info('OTP generated and persisted to Outbox', $this->sanitizePayload([
-                'identifier' => $command->identifier,
+        $message = new DomainEventMessage(
+            eventId: Uuid::uuid7()->toString(),
+            type: OtpGenerated::class,
+            aggregateId: $otpEntity->id,
+            payload: json_encode($outboxPayload),
+            occurredAt: $this->clock->now(),
+            metadata: [
                 'tenant_id' => $command->tenantId,
-                'outbox_id' => $message->eventId
-            ]));
-        });
+                'causation_id' => $this->idempotencyContext->getKey(),
+                'ip_address' => $command->ipAddress,
+                'trace_id' => $this->traceContext->getTraceId(),
+            ]
+        );
 
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 4: IDEMPOTENCY RECORDING
-        // ═══════════════════════════════════════════════════════════════════
-        $this->idempotencyService->store($command->idempotencyKey, ['status' => 'success']);
+        $this->outboxRepository->save($message);
+        
+        $this->logger->info('OTP generated and persisted to Outbox', $this->sanitizePayload([
+            'identifier' => $command->identifier,
+            'tenant_id' => $command->tenantId,
+            'outbox_id' => $message->eventId
+        ]));
+        // Idempotency result captured by decorator via closure return
+        // No explicit return needed from pure handler
     }
 }
