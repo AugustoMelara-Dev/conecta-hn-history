@@ -13,6 +13,7 @@ namespace App\Models;
 
 use App\Domain\Identity\Enums\UserRole;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -28,7 +29,13 @@ use Illuminate\Notifications\Notifiable;
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory, Notifiable;
+    use HasFactory, HasUuids, Notifiable;
+
+    /**
+     * UUID Configuration: Disable Auto-Increment
+     */
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     /**
      * Filament Panel Identifiers - Single Source of Truth
@@ -66,13 +73,32 @@ class User extends Authenticatable implements MustVerifyEmail
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
+     * 
+     * ═══════════════════════════════════════════════════════════════════════════
+     * ⚠️  ARQUITECTURA DDD - NO MODIFICAR SIN AUTORIZACIÓN DEL ARQUITECTO  ⚠️
+     * ═══════════════════════════════════════════════════════════════════════════
+     * 
+     * PROHIBIDO: 'password' => 'hashed'
+     * 
+     * El hashing de contraseñas es responsabilidad EXCLUSIVA de los Handlers
+     * de la Capa de Aplicación (RegisterUserHandler, UpdatePasswordHandler).
+     * 
+     * Este modelo Eloquent debe actuar como un "Dumb Data Mapper" (Mapeador
+     * de Datos Tonto) que persiste EXACTAMENTE lo que el Dominio le entrega,
+     * sin transformaciones implícitas.
+     * 
+     * Reactivar el cast 'hashed' causará DOBLE HASHING y corromperá todas
+     * las credenciales, haciendo imposible el login.
+     * 
+     * @see App\Application\Identity\Handlers\RegisterUserHandler
+     * @see App\Domain\Shared\PasswordHasherInterface
+     * ═══════════════════════════════════════════════════════════════════════════
      */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'banned_at' => 'datetime',
-            'password' => 'hashed',
             'role' => UserRole::class,
             'tenant_id' => \App\Infrastructure\Persistence\Eloquent\Casts\TenantIdCast::class,
         ];
