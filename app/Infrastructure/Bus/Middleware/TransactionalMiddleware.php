@@ -4,29 +4,39 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Bus\Middleware;
 
-use Illuminate\Support\Facades\DB;
 use Closure;
+use Illuminate\Database\ConnectionInterface;
+use Throwable;
 
 /**
- * TransactionalMiddleware
- * 
- * DECORATOR: Wraps the command execution in a Database Transaction.
- * Ensures strict atomicity for all Write Operations (Commands).
+ * TransactionalMiddleware - Automated ACID Boundary
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  STRATEGY A: AUTOMATED ACIDITY                                           ║
+ * ║  Wraps execution in Database Transaction.                                ║
+ * ║  FAIL-SAFE: Automatically rolls back on any exception.                   ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class TransactionalMiddleware
+final readonly class TransactionalMiddleware
 {
-    /**
-     * Handle the command.
-     *
-     * @param  object  $command
-     * @param  \Closure  $next
-     * @return mixed
-     */
-    public function handle($command, Closure $next)
+    public function __construct(
+        private ConnectionInterface $connection,
+    ) {}
+
+    public function handle(object $command, Closure $next): mixed
     {
-        // Execute the handler within a transaction
-        // If an exception triggers, rollback occurs automatically.
-        // If success, commit occurs automatically.
-        return DB::transaction(fn () => $next($command));
+        $this->connection->beginTransaction();
+
+        try {
+            $result = $next($command);
+
+            $this->connection->commit();
+
+            return $result;
+        } catch (Throwable $e) {
+            $this->connection->rollBack();
+
+            throw $e;
+        }
     }
 }
