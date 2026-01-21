@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\StockStatus;
-use App\Events\LowStockThresholdReached;
+use App\Events\Inventory\LowStockThresholdReached;
 use App\Models\Product;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
