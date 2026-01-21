@@ -7,47 +7,35 @@ namespace App\Infrastructure\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Infrastructure\Models\OutboxMessage;
 
 /**
- * PruneOutboxCommand - Storage Health Automation
+ * PruneOutboxCommand - Level 42 True (Lifecycle Management)
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  RETENTION POLICY: Removes events older than X days.                    ║
- * ║  NON-BLOCKING: Deletes in small chunks to avoid locking the table.      ║
- * ║  MAINTENANCE: Prevents "Storage Time Bomb" (Table Bloat).               ║
+ * ║  RETENTION: 7 days for COMPLETED, 30 days for FAILED                     ║
+ * ║  PERFORMANCE: Chunked deletion to prevent table locks                     ║
+ * ║  DETERMINISM: Ordered by ID for replication safety                       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final class PruneOutboxCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'outbox:prune 
-                            {--days=7 : Retention period in days for published events}
+                            {--days=7 : Retention period in days for completed events}
                             {--failed-days=30 : Retention period in days for failed events}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Prune old events from the outbox table to prevent table bloat';
 
-    /**
-     * Execute the console command.
-     */
     public function handle(): int
     {
         $days = (int) $this->option('days');
         $failedDays = (int) $this->option('failed-days');
 
-        $this->info("Pruning PUBLISHED events older than {$days} days...");
-        $this->pruneByStatus('PUBLISHED', $days);
+        $this->info("Pruning COMPLETED events older than {$days} days...");
+        $this->pruneByStatus(OutboxMessage::STATUS_COMPLETED, $days);
 
         $this->info("Pruning FAILED events older than {$failedDays} days...");
-        $this->pruneByStatus('FAILED', $failedDays);
+        $this->pruneByStatus(OutboxMessage::STATUS_FAILED, $failedDays);
 
         $this->info("Outbox pruning completed successfully.");
 
@@ -58,21 +46,21 @@ final class PruneOutboxCommand extends Command
     {
         $cutoffDate = now()->subDays($days)->toDateTimeString();
         $totalDeleted = 0;
-        $batchSize = 1000; // Small batch to avoid long locks
+        $batchSize = 1000;
 
+        // Uses explicit table name 'outbox_messages' instead of 'domain_outbox_events'
         do {
-            // Delete in chunks
-            $rowsAffected = DB::table('domain_outbox_events')
+            $rowsAffected = DB::table('outbox_messages')
                 ->where('status', $status)
                 ->where('created_at', '<', $cutoffDate)
+                ->orderBy('id', 'asc') // Deterministic Sorting for Replication Safety
                 ->limit($batchSize)
                 ->delete();
 
             $totalDeleted += $rowsAffected;
 
             if ($rowsAffected > 0) {
-                // Sleep to let other transactions drift through (High Load Env)
-                usleep(100000); // 100ms pause
+                usleep(100000); 
                 $this->output->write('.');
             }
 
