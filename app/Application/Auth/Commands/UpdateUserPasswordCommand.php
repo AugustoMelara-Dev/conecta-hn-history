@@ -13,7 +13,7 @@ namespace App\Application\Auth\Commands;
  * ║  IMMUTABLE: final readonly prevents tampering after dispatch.           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class UpdateUserPasswordCommand
+final readonly class UpdateUserPasswordCommand implements \App\Application\Common\Contracts\HashableCommand
 {
     public function __construct(
         /** User ID to update (UUID string) */
@@ -38,4 +38,25 @@ final readonly class UpdateUserPasswordCommand
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
     ) {}
+
+    public function getIdempotencyKey(): string
+    {
+        return $this->idempotencyKey;
+    }
+
+    public function getTenantId(): string
+    {
+        return $this->requestingTenantId;
+    }
+
+    public function getCommandHash(): string
+    {
+        return hash('sha256', json_encode([
+            'userId' => $this->userId,
+            'requestingTenantId' => $this->requestingTenantId,
+            'newPasswordHash' => md5($this->newPassword), // Avoid logging plain password in hash if debugged
+            // We include md5 of new password to discriminate specific change attempts
+            // MD5 is fast and "good enough" for identifying if payload changed, we don't store this hash as password.
+        ]));
+    }
 }
