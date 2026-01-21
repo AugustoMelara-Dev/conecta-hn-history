@@ -23,5 +23,5 @@ interface TransactionManagerInterface
      *
      * @throws \Throwable If the operation fails, the transaction is rolled back.
      */
-    public function transaction(\Closure $operation): mixed;
+    public function transaction(callable $callback): mixed;
 }

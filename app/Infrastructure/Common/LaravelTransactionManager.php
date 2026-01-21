@@ -20,8 +20,8 @@ final class LaravelTransactionManager implements TransactionManagerInterface
         private readonly DatabaseManager $database
     ) {}
 
-    public function transaction(Closure $operation): mixed
+    public function transaction(callable $operation): mixed
     {
-        return $this->database->transaction($operation);
+        return $this->database->transaction($operation instanceof Closure ? $operation : Closure::fromCallable($operation));
     }
 }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Identity\Repositories;
 
 use App\Application\Common\Integration\IntegrationEventMapper;
-use App\Application\Identity\Interfaces\UserRepositoryInterface;
+use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotStrategyInterface;
@@ -85,12 +85,27 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
 
     // Explicit Read Methods
 
-    public function findById(string $userId): ?UserEntity
+    public function findById(string $id, string $tenantId): ?UserEntity
     {
-        // Implement Replay Logic like Tenant Repo (Simplified for brevity as prompt focused on Write Side fix)
-        // But Interface mandates return ?UserEntity.
-        // We will return null for now if not implementing full replay here yet.
+        // TODO: Implement Read Model lookup
         return null;
+    }
+
+    public function findByEmail(string $email, string $tenantId): ?UserEntity
+    {
+        // TODO: Implement Read Model lookup
+        return null;
+    }
+
+    public function updateAvatarIfMissing(string $userId, string $avatarUrl): bool
+    {
+        // TODO: Implement update logic
+        return false;
+    }
+
+    public function delete(UserEntity $user): void
+    {
+        // TODO: Implement delete logic (tombstone event?)
     }
 
     public function existsByEmail(string $email): bool
