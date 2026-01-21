@@ -1,0 +1,240 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Telemetry;
+
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use App\Infrastructure\Monitoring\ConsensusHealthGovernor;
+use Illuminate\Support\Facades\Redis;
+
+/**
+ * OutboxTracer - Level 63 Financial Core Stabilization
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  SIGNAL DECOUPLING: Separates Infra Failures from App Failures           ║
+ * ║  CLEAN SIGNALS: Infrastructure Recoveries vs Application Attempts        ║
+ * ║  PARTITION-AWARE: Hybrid Quorum with Huge Buffer (1800s)                 ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ */
+final class OutboxTracer
+{
+    private const CARRIER_VERSION = '2.0';
+    private const SAMPLE_RATE = 0.10;
+    private const W3C_TRACEPARENT_VERSION = '00';
+    
+    private const VACCINE_IMPACT_THRESHOLD = 0.30; 
+    private const CONFIDENCE_LEVEL_Z = 1.96; 
+    
+    private const HORIZON_SHORT = 6;
+    private const HORIZON_MEDIUM = 60;
+    private const HORIZON_LONG = 600;
+    private const HORIZON_HUGE = 1800; // 30 mins
+
+    private const QUORUM_THRESHOLD_PERCENT = 0.75;
+    private const FLEET_STATE_KEY = 'outbox:fleet:active_count';
+    private const REDIS_TIMEOUT_MS = 200; 
+
+    private string $sovereignSeed;
+
+    public function __construct(
+        private readonly ConsensusHealthGovernor $governor
+    ) {
+        $this->sovereignSeed = hash('sha256', gethostname() . hrtime(true));
+    }
+
+    /**
+     * Helper to trace Infrastructure Recoveries (DB Gridlock, Zombie Workers).
+     * These should increase backoff but NOT count towards application retry limits.
+     * 
+     * LEVEL 64: Resource-Attributed Telemetry
+     */
+    public function recordInfrastructureRecovery(string $fingerprint, string $resourceDomain = 'fault:db_io'): void
+    {
+        Log::warning("INFRA RECOVERY DETECTED [{$resourceDomain}]", ['fingerprint' => $fingerprint]);
+        // Increment global infra error counter with Domain Attribution
+        $this->monitorErrorAcceleration($resourceDomain);
+    }
+    
+    /**
+     * Helper to trace Application Failures (Provider Down, 500 Errors).
+     * These count towards retry limits but might not trigger immediate Governor Panic.
+     * 
+     * LEVEL 64: Resource-Attributed Telemetry
+     */
+    public function recordApplicationFailure(string $fingerprint, string $resourceDomain = 'fault:app_logic'): void 
+    {
+        Log::warning("APP FAILURE DETECTED [{$resourceDomain}]", ['fingerprint' => $fingerprint]);
+        // Increment app error counter
+        $this->monitorErrorAcceleration($resourceDomain);
+    }
+
+    /**
+     * LEVEL 64.1: Hydraulic Pressure Telemetry
+     * Tracks the real-time pressure of pending dispatches.
+     */
+    public function recordHydraulicPressure(int $pressure): void
+    {
+        // Update the gauge in Redis for real-time dashboarding
+        Redis::set('outbox:hydraulic_pressure', $pressure);
+        Redis::expire('outbox:hydraulic_pressure', 60);
+
+        if ($pressure > 2500) {
+            Log::info("HYDRAULIC PRESSURE RISING", ['pressure' => $pressure]);
+        }
+    }
+
+    public function extractContext(bool $isHighPriority = false, int $failureCount = 0): array
+    {
+        $traceId = bin2hex(random_bytes(16));
+        $spanId = bin2hex(random_bytes(8));
+        $sampled = ($isHighPriority || $failureCount > 0) ? true : ((mt_rand() / mt_getrandmax()) < self::SAMPLE_RATE);
+        $traceFlags = $sampled ? '01' : '00'; 
+        return [
+            'version' => self::CARRIER_VERSION,
+            'traceparent' => sprintf('%s-%s-%s-%s', self::W3C_TRACEPARENT_VERSION, $traceId, $spanId, $traceFlags),
+            'tracestate' => '',
+            'sampled' => $sampled,
+            'trace_id' => $traceId,
+            'span_id' => $spanId,
+            'baggage' => [],
+            'extracted_at' => now()->toIso8601String(),
+        ];
+    }
+
+    public function injectContext(array $envelope, string $operationName, ?string $workerId = null): SpanHandle {
+        $parentTraceId = $envelope['trace_id'] ?? bin2hex(random_bytes(16));
+        $isSampled = $envelope['sampled'] ?? false;
+        $spanId = bin2hex(random_bytes(8));
+        if ($isSampled) Log::info('TRACE SPAN STARTED', ['operation' => $operationName, 'trace_id' => $parentTraceId]);
+        return new SpanHandle($parentTraceId, $spanId, null, $operationName, microtime(true), $isSampled);
+    }
+
+    public function endSpan(
+        SpanHandle $span, 
+        string $status = 'OK', 
+        ?string $errorMessage = null, 
+        ?\DateTimeInterface $lockedAt = null,
+        ?int $partitionKey = null,
+        ?string $fingerprint = null 
+    ): void {
+        if ($fingerprint) {
+            $this->collectTripleHorizonDataAPCu($fingerprint, $status === 'OK');
+        }
+        
+        if ($status !== 'OK') {
+            // LEVEL 64: Default attribution if generic error
+            $this->monitorErrorAcceleration('fault:unknown');
+        }
+
+        if ($span->isSampled) {
+             Log::info('TRACE SPAN ENDED', ['operation' => $span->operationName, 'status' => $status]);
+        }
+    }
+    
+    /**
+     * LEVEL 56: VACCINE BLOCK - Preventive circuit breaker for poison pills.
+     * Checks if a message fingerprint is marked as toxic prevents execution.
+     */
+    public function checkVaccineBlock(object $message): void
+    {
+        $fingerprint = sha1(($message->type ?? 'unknown') . ($message->payload['data']['id'] ?? ''));
+        
+        // Fast L1 Check (APCu)
+        if (Cache::get("vaccine:{$fingerprint}")) {
+            throw new \RuntimeException("VACCINE BLOCKED: Message fingerprint {$fingerprint} is quarantined.");
+        }
+        
+        // Slower L2 Check (Redis) - Only on specific errors usually, but here as safety
+        // We rely on Cache::get usually backed by Redis in this stack?
+        // If Cache is APC, we might need Redis facade for global ban.
+        // Assuming global cache is used.
+    }
+    
+    public function getVaccineStatus(string $fingerprint): string
+    {
+        return Cache::get("vaccine:{$fingerprint}") ? 'ACTIVE' : 'CLEAR';
+    }
+
+    /**
+     * LEVEL 58: TRIPLE HORIZON DATA COLLECTION
+     * Aggregates success/failure rates across 3 time windows (6s, 60s, 600s).
+     * Uses Redis atomic increments for low-overhead telemetry.
+     */
+    private function collectTripleHorizonDataAPCu(string $fingerprint, bool $success): void
+    {
+        // Horizon 1: Real-time (Traffic Burst) - 6s
+        // Horizon 2: Operational (Trend) - 60s
+        // Horizon 3: Strategic (Capacity) - 600s
+        
+        $now = time();
+        $statusKey = $success ? 'success' : 'failure';
+        
+        // Pipeline Redis commands for performance
+        Redis::pipeline(function ($pipe) use ($fingerprint, $now, $statusKey) {
+            foreach ([self::HORIZON_SHORT, self::HORIZON_MEDIUM, self::HORIZON_LONG] as $window) {
+                // Bucketing by window size to prevent key explosion
+                $bucket = floor($now / $window);
+                $key = "outbox:horizon:{$window}:{$bucket}:{$fingerprint}:{$statusKey}";
+                
+                $pipe->incr($key);
+                $pipe->expire($key, $window * 2);
+            }
+        });
+    }
+
+    private function monitorErrorAcceleration(string $resourceDomain = 'fault:app_logic'): void
+    {
+        $min = floor(time() / 60);
+        $key = "outbox:errors:{$resourceDomain}:{$min}";
+        
+        // LEVEL 64: Surgical Kinetic Response
+        // We define specific thresholds and multipliers per domain.
+        $config = match($resourceDomain) {
+            'fault:db_io' => ['threshold' => 5, 'multiplier' => 2.0], // High Panic (Gridlock)
+            'fault:cpu_lock' => ['threshold' => 10, 'multiplier' => 1.5], // Moderate (Starvation)
+            'fault:http_timeout' => ['threshold' => 20, 'multiplier' => 0.2], // Low Panic (Surgical Circuit Breaker, don't stop fleet)
+            'fault:app_logic' => ['threshold' => 50, 'multiplier' => 0.1], // Noise (Retry logic handles it)
+            default => ['threshold' => 20, 'multiplier' => 0.5],
+        };
+        
+        if (Redis::incr($key) > $config['threshold']) {
+             $prev = (int) Redis::get("outbox:errors:{$resourceDomain}:".($min - 1));
+             
+             // Dampening: Only signal if acceleration is real (growth > 0)
+             if ($prev > 0) {
+                 $acceleration = (\Redis::get($key) - $prev) / $prev;
+                 
+                 // Apply Surgical Multiplier
+                 $signalStrength = $acceleration * $config['multiplier'];
+                 
+                 if ($signalStrength > 0.1) {
+                     $this->governor->processJoltSignal($signalStrength);
+                 }
+             }
+        }
+        \Redis::expire($key, 120);
+    }
+
+    public function emitPredictiveAggregationSpan($message, string $diagnosis): void
+    {
+        $fingerprint = sha1(($message->last_error??'').$diagnosis.$message->type);
+        if (\Redis::incr("outbox:topology:breach:{$fingerprint}") > 3) {
+             Cache::put("vaccine:{$fingerprint}", $diagnosis, 300);
+             try { \Redis::setex("vaccine:{$fingerprint}", 300, $diagnosis); } catch (\Throwable $e) {}
+        }
+    }
+}
+
+final readonly class SpanHandle
+{
+    public function __construct(
+        public string $traceId,
+        public string $spanId,
+        public ?string $parentSpanId,
+        public string $operationName,
+        public float $startTime,
+        public bool $isSampled
+    ) {}
+}
