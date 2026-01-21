@@ -5,42 +5,32 @@ declare(strict_types=1);
 namespace App\Domain\Billing\Repositories;
 
 use App\Domain\Billing\Entities\PaymentEntity;
+use Illuminate\Support\Collection;
 
-/**
- * PaymentRepositoryInterface - Port for Payment Persistence
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  HEXAGONAL COMPLIANT: No Eloquent or Infrastructure dependencies.       ║
- * ║  DOMAIN PURE: Uses PaymentEntity, not Eloquent Model.                   ║
- * ║  CLEAN CONTRACT: No legacy array methods permitted.                     ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- */
 interface PaymentRepositoryInterface
 {
+    public function save(PaymentEntity $payment): void;
+    
     /**
-     * Find a payment by primary identifier.
-     * @throws \App\Domain\Billing\Exceptions\PaymentNotFoundException
+     * Update payment with Optimistic Concurrency Control.
+     * Throws StaleObjectException if version mismatch.
      */
+    public function updateOptimistically(PaymentEntity $payment): void;
+
     public function findById(string $id): ?PaymentEntity;
 
     /**
-     * Find payments by tenant ID.
-     *
-     * @return PaymentEntity[]
+     * LEVEL 38: STRONG CONSISTENCY - Writer-Pinned Fetching
+     * 
+     * Forces the query to the PRIMARY (Writer) node, bypassing all read replicas.
+     * MUST be used by async workers that require "Read-Your-Own-Writes" consistency.
+     * 
+     * @param string $id The Payment ID
+     * @return PaymentEntity|null The Payment Entity or null if truly non-existent
      */
-    public function findByTenantId(string $tenantId): array;
+    public function findByIdOnWriteConnection(string $id): ?PaymentEntity;
 
-    /**
-     * Persist a payment entity.
-     * Handles both creation and updates (Upsert).
-     */
-    public function save(PaymentEntity $payment): void;
+    public function findByIdempotencyKey(string $tenantId, string $idempotencyKey): ?PaymentEntity;
 
-    /**
-     * Find a payment by ID with eager-loaded tenant.
-     * For display purposes (e.g., billing pages).
-     *
-     * @return array{payment: PaymentEntity, tenant_name: string, tenant_user_id: int|string}|null
-     */
-    public function findByIdWithTenant(string $id): ?array;
+    public function findPaymentsWithTemporaryProofs(int $limit = 50): Collection;
 }
