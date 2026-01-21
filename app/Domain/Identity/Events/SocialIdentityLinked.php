@@ -4,45 +4,55 @@ declare(strict_types=1);
 
 namespace App\Domain\Identity\Events;
 
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use DateTimeImmutable;
 
 /**
- * SocialIdentityLinked - Domain Event for Account Linking
+ * SocialIdentityLinked - Domain Event
  *
- * Fired when an existing user links a new social identity.
- * Used for security audit and notifications.
+ * Emitted when an existing user links a new social identity.
  */
-final readonly class SocialIdentityLinked implements ShouldDispatchAfterCommit
+final readonly class SocialIdentityLinked
 {
+    private const EVENT_NAME = 'identity.social_identity_linked';
+    private const SCHEMA_VERSION = 1;
+
     public function __construct(
-        public int $userId,
-        public string $providerName,
-        public \DateTimeImmutable $occurredAt,
+        public string $userId,
+        public string $tenantId, 
+        public string $provider,
+        public DateTimeImmutable $occurredAt,
     ) {}
 
-    /**
-     * Create from context.
-     */
-    public static function create(int $userId, string $providerName): self
-    {
+    public static function now(
+        string $userId,
+        string $tenantId,
+        string $provider,
+    ): self {
         return new self(
             userId: $userId,
-            providerName: $providerName,
-            occurredAt: new \DateTimeImmutable(),
+            tenantId: $tenantId,
+            provider: $provider,
+            occurredAt: new DateTimeImmutable(),
         );
     }
 
-    /**
-     * Serialize to safe payload for Outbox storage.
-     *
-     * @return array<string, mixed>
-     */
+    public function eventName(): string
+    {
+        return self::EVENT_NAME;
+    }
+
+    public function schemaVersion(): int
+    {
+        return self::SCHEMA_VERSION;
+    }
+
     public function toPayload(): array
     {
         return [
             'user_id' => $this->userId,
-            'provider_name' => $this->providerName,
-            'occurred_at' => $this->occurredAt->format(\DATE_ATOM),
+            'tenant_id' => $this->tenantId,
+            'provider' => $this->provider,
+            'occurred_at' => $this->occurredAt->format(DateTimeImmutable::ATOM),
         ];
     }
 }
