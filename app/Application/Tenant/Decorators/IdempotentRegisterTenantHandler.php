@@ -7,7 +7,7 @@ namespace App\Application\Tenant\Decorators;
 use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Application\Tenant\Handlers\RegisterTenantHandlerInterface;
 use App\Application\Tenant\Results\RegisterTenantResult;
-use App\Infrastructure\Common\Idempotency\IdempotencyService;
+use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use App\Domain\Common\Exceptions\ConcurrencyException;
 
 /**
@@ -19,7 +19,7 @@ final readonly class IdempotentRegisterTenantHandler implements RegisterTenantHa
 {
     public function __construct(
         private RegisterTenantHandlerInterface $inner,
-        private IdempotencyService $service
+        private IdempotencyServiceInterface $service
     ) {}
 
     public function handle(RegisterTenantCommand $command): RegisterTenantResult
