@@ -32,7 +32,7 @@ Route::prefix('v1')->group(function () {
     // ═══════════════════════════════════════════════════════════════════════════
     Route::prefix('otp')->group(function () {
         Route::post('/generate', [OtpController::class, 'generate'])
-            ->middleware('throttle:api.otp-generation');
+            ->middleware(['throttle:api.otp-generation', 'idempotency']);
 
         Route::post('/verify', [OtpController::class, 'verify'])
             ->middleware('throttle:api.verification');
