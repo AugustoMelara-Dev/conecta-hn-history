@@ -131,4 +131,38 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | OTP (One-Time Password) Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for OTP-based authentication including passwordless login,
+    | two-factor authentication, and verification flows. All values are
+    | configurable via environment variables for 12-Factor compliance.
+    |
+    | CRITICAL: These values are required by the Application Layer.
+    | Missing values will cause a RuntimeException during service resolution.
+    |
+    */
+
+    'otp' => [
+        // How long before an OTP expires (minutes)
+        'expiry_minutes' => env('AUTH_OTP_EXPIRY_MINUTES', 10),
+
+        // Maximum OTP requests allowed per hour per identifier
+        'max_requests_per_hour' => env('AUTH_OTP_MAX_REQUESTS_PER_HOUR', 3),
+
+        // Length of the numeric OTP code
+        'length' => env('AUTH_OTP_LENGTH', 6),
+
+        // Rate limit decay window in seconds (1 hour = 3600)
+        'rate_limit_decay_seconds' => env('AUTH_OTP_RATE_LIMIT_DECAY', 3600),
+
+        // Maximum failed verification attempts before OTP is invalidated
+        'max_attempts' => env('AUTH_OTP_MAX_ATTEMPTS', 5),
+
+        // Idempotency TTL for OTP generation (24 hours = 86400)
+        'idempotency_ttl_seconds' => env('AUTH_OTP_IDEMPOTENCY_TTL', 86400),
+    ],
+
 ];
