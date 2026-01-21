@@ -23,6 +23,7 @@
         "laravel/socialite": "^5.0",
         "laravel/tinker": "^2.9",
         "maatwebsite/excel": "^3.1",
+        "opis/json-schema": "^2.6",
         "predis/predis": "^3.3",
         "spatie/laravel-activitylog": "^4.8",
         "spatie/laravel-health": "^1.29",
