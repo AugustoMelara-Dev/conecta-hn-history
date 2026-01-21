@@ -8,10 +8,26 @@ use App\Domain\TenantGovernance\Entities\TenantEntity;
 
 /**
  * TenantRepositoryInterface - Diamond Standard Port
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  CONCURRENCY SAFE: Includes pessimistic locking method for ACID ops.    ║
+ * ║  UUID COMPATIBLE: Uses string IDs throughout.                           ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 interface TenantRepositoryInterface
 {
-    public function findById(int $id): ?TenantEntity;
+    /**
+     * Find tenant by ID without locking.
+     */
+    public function findById(string $id): ?TenantEntity;
+
+    /**
+     * Find tenant by ID with pessimistic lock (SELECT ... FOR UPDATE).
+     * 
+     * CRITICAL: Use this within a transaction when performing
+     * read-modify-write operations to prevent race conditions.
+     */
+    public function findByIdForUpdate(string $id): ?TenantEntity;
 
     public function findBySlug(string $slug): ?TenantEntity;
 
