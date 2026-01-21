@@ -8,7 +8,7 @@ use App\Exceptions\InvalidBusinessRuleException;
 use App\Exports\Concerns\SanitizesOutput;
 use App\Exports\Criteria\SalesExportCriteria;
 use App\Exports\SalesExport;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Tests\TestCase;
 
 /**
@@ -119,7 +119,7 @@ class SalesExportUnitTest extends TestCase
     public function criteria_rejects_date_range_exceeding_365_days(): void
     {
         $this->expectException(InvalidBusinessRuleException::class);
-        $this->expectExceptionMessage('cannot exceed 365 days');
+        $this->expectExceptionMessage('El rango de fechas no puede exceder 365 días');
 
         SalesExportCriteria::create(
             startDate: '2023-01-01',
@@ -189,7 +189,7 @@ class SalesExportUnitTest extends TestCase
     public function criteria_rejects_invalid_status(): void
     {
         $this->expectException(InvalidBusinessRuleException::class);
-        $this->expectExceptionMessage('Invalid status');
+        $this->expectExceptionMessage('Estado inválido');
 
         SalesExportCriteria::create(
             startDate: '2025-01-01',
@@ -258,7 +258,7 @@ class SalesExportUnitTest extends TestCase
         {
             use SanitizesOutput;
 
-            public function test_sanitize(mixed $input): mixed
+            public function testSanitize(mixed $input): mixed
             {
                 return $this->sanitize($input);
             }
@@ -280,34 +280,27 @@ class SalesExportUnitTest extends TestCase
 
     /**
      * @test
-     * TenantId rejects zero or negative values
+     * TenantId rejects invalid UUIDs
      */
-    public function tenant_id_rejects_invalid_values(): void
+    public function tenant_id_rejects_invalid_uuid(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        new TenantId(0);
+        TenantId::fromString('invalid-uuid-string');
     }
+
+
 
     /**
      * @test
-     * TenantId rejects negative values
+     * TenantId accepts valid UUID
      */
-    public function tenant_id_rejects_negative_values(): void
+    public function tenant_id_accepts_valid_uuid(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        new TenantId(-1);
-    }
+        $uuid = '550e8400-e29b-41d4-a716-446655440000';
+        $tenantId = TenantId::fromString($uuid);
 
-    /**
-     * @test
-     * TenantId accepts positive values
-     */
-    public function tenant_id_accepts_positive_values(): void
-    {
-        $tenantId = new TenantId(123);
-
-        $this->assertEquals(123, $tenantId->toInt());
-        $this->assertEquals(123, $tenantId->value);
+        $this->assertEquals($uuid, $tenantId->toString());
+        $this->assertEquals($uuid, $tenantId->value);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -321,7 +314,7 @@ class SalesExportUnitTest extends TestCase
     public function criteria_rejects_start_after_end(): void
     {
         $this->expectException(InvalidBusinessRuleException::class);
-        $this->expectExceptionMessage('Start date must be before');
+        $this->expectExceptionMessage('La fecha de inicio debe ser anterior o igual a la fecha de fin');
 
         SalesExportCriteria::create(
             startDate: '2025-12-31',

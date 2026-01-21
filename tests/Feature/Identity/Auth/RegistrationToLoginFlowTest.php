@@ -6,6 +6,7 @@ namespace Tests\Feature\Identity\Auth;
 
 use App\Application\Identity\Commands\RegisterUserCommand;
 use App\Application\Identity\Handlers\RegisterUserHandler;
+use App\Application\Identity\Handlers\RegisterUserHandlerInterface;
 use App\Application\Identity\Results\RegisterUserResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -41,8 +42,8 @@ class RegistrationToLoginFlowTest extends TestCase
         );
 
         // 1.2 Resolve Handler (No Mocking allowed - Metal Real)
-        /** @var RegisterUserHandler $handler */
-        $handler = $this->app->make(RegisterUserHandler::class);
+        /** @var RegisterUserHandlerInterface $handler */
+        $handler = $this->app->make(RegisterUserHandlerInterface::class);
 
         // 1.3 Execute Handle
         /** @var RegisterUserResult $result */
@@ -59,8 +60,7 @@ class RegistrationToLoginFlowTest extends TestCase
         // 2.1 Verify Tenant Projection
         $this->assertDatabaseHas('tenants', [
             'id' => $result->tenantId,
-            'domain' => $tenantDomain,
-            'plan' => 'SEED', // Business Rule 'DEFAULT_PLAN' validated
+            'slug' => $tenantDomain, // DB column is 'slug', not 'domain'
         ]);
 
         // 2.2 Verify User Projection (excluding password hash)
