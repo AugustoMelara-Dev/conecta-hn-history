@@ -29,7 +29,7 @@ class TenantIdCast implements CastsAttributes
             return null;
         }
 
-        return new TenantId((string) $value);
+        return TenantId::fromString((string) $value);
     }
 
     /**
@@ -49,7 +49,7 @@ class TenantIdCast implements CastsAttributes
         }
 
         if (is_string($value)) {
-            return (new TenantId($value))->value;
+            return TenantId::fromString($value)->value;
         }
 
         throw new InvalidArgumentException('The given value is not a valid TenantId instance or UUID string.');
