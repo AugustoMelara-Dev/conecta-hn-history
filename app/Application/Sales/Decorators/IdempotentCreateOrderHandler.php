@@ -7,7 +7,7 @@ namespace App\Application\Sales\Decorators;
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
 use App\Application\Sales\Results\CreateOrderResult;
-use App\Infrastructure\Common\Idempotency\IdempotencyService;
+use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use App\Domain\Common\Exceptions\ConcurrencyException;
 
 /**
@@ -19,7 +19,7 @@ final readonly class IdempotentCreateOrderHandler implements CreateOrderHandlerI
 {
     public function __construct(
         private CreateOrderHandlerInterface $inner,
-        private IdempotencyService $service
+        private IdempotencyServiceInterface $service
     ) {}
 
     public function handle(CreateOrderCommand $command): CreateOrderResult
