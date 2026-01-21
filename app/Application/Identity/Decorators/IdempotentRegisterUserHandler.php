@@ -22,39 +22,29 @@ final readonly class IdempotentRegisterUserHandler implements RegisterUserHandle
 {
     public function __construct(
         private RegisterUserHandlerInterface $inner,
-        private IdempotencyServiceInterface $service
+        private \App\Application\Common\Contracts\AtomicIdempotencyInterface $service
     ) {}
 
     public function handle(RegisterUserCommand $command): RegisterUserResult
     {
-        // 1. KEY RESOLUTION
+        // 1. RESOLVE KEY & HASH
         $key = $command->getIdempotencyKey();
+        
+        // Hash payload to prevent reusing same key for different request
+        $hash = hash('xxh128', json_encode([
+            'email' => $command->email,
+            'slug' => $command->slug,
+            'source' => $command->source
+        ]));
 
-        // 2. SHORT-CIRCUIT (Cache Hit)
-        // If we already processed this exact key, return the saved result.
-        $cached = $this->service->get($key);
-        if ($cached instanceof RegisterUserResult) {
-            return $cached;
-        }
-
-        // 3. ATOMIC EXECUTION WITH LOCKING
-        // Uses framework-agnostic atomic() method instead of Lock object
-        return $this->service->atomic($key, 5, function () use ($key, $command): RegisterUserResult {
-            
-            // 4. DOUBLE CHECK LOCKING
-            // Another process might have finished while we waited for the lock.
-            $doubleCheck = $this->service->get($key);
-            if ($doubleCheck instanceof RegisterUserResult) {
-                return $doubleCheck;
-            }
-
-            // 5. EXECUTION (The Core Handler)
-            $result = $this->inner->handle($command);
-
-            // 6. STORAGE (Result Caching)
-            $this->service->store($key, $result, 86400); // 24h TTL
-
-            return $result;
-        });
+        // 2. ATOMIC EXECUTION (The Reaper Protocol)
+        // We use a NIL UUID for Tenant ID since registration is a Public/Global action
+        // before the tenant actually exists.
+        return $this->service->execute(
+            idempotencyKey: $key,
+            tenantId: '00000000-0000-0000-0000-000000000000', 
+            commandHash: $hash,
+            operation: fn() => $this->inner->handle($command)
+        );
     }
 }

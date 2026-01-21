@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Application\Identity\Handlers;
 
 use App\Application\Identity\Commands\RegisterUserCommand;
+use App\Application\Identity\Handlers\RegisterUserHandlerInterface;
 use App\Application\Identity\Results\RegisterUserResult;
-use App\Domain\Identity\Entities\Tenant;
-use App\Domain\Identity\Entities\User;
+use App\Domain\TenantGovernance\Entities\TenantEntity as Tenant;
+use App\Domain\Identity\Entities\UserEntity;
+use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Events\UserRegistered;
-use App\Domain\Identity\Repositories\TenantRepositoryInterface;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\OutboxRepositoryInterface;
 use App\Domain\Shared\PasswordHasherInterface;
@@ -23,7 +25,7 @@ use Illuminate\Support\Str;
  * Orchestrates user registration with strict atomic guarantees and security by design.
  * Now specifically properly constructing Domain Entities and hashing passwords.
  */
-final readonly class RegisterUserHandler
+final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
 {
     public function __construct(
         private UserRepositoryInterface $userRepository,
@@ -43,25 +45,27 @@ final readonly class RegisterUserHandler
         // 2. Security Hardening (Hashing BEFORE Domain/Persistence)
         $passwordHash = $this->hasher->hash($command->password);
 
-        return $this->transactionManager->transactional(function () use ($command, $userId, $tenantId, $passwordHash, $now) {
+        return $this->transactionManager->transaction(function () use ($command, $userId, $tenantId, $passwordHash, $now) {
             
             // 3. Create Pure Domain Entities
             // We use the new Physical Domain Classes, NOT Eloquent Models.
             
-            $tenant = new Tenant(
+            $tenantName = $command->tenantName ?? $command->name . "'s Workspace";
+            $tenantDomain = $command->slug ?? Str::slug($tenantName);
+
+            $tenant = Tenant::create(
                 id: $tenantId,
-                name: $command->tenantName,
-                createdAt: $now
+                name: $tenantName,
+                domain: $tenantDomain
             );
 
-            $user = new User(
-                id: $userId,
-                tenantId: $tenantId,
+            $user = UserEntity::register(
+                uuid: $userId,
+                name: $command->name,
                 email: $command->email,
                 passwordHash: $passwordHash, // Injected safe hash
-                name: $command->name,
-                role: 'owner', // Defaulting role as ownership implies initial user
-                createdAt: $now
+                role: UserRole::TENANT_OWNER,
+                tenantId: $tenantId
             );
 
             // 4. Persist State via Repositories (Data Mapper Pattern)
