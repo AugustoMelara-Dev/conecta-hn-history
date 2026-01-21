@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Application\Common\Decorators;
 
 use App\Application\Common\Contracts\AtomicIdempotencyInterface;
-use App\Application\Common\Contracts\HashableCommandInterface;
 use InvalidArgumentException;
 
 /**

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Common\Contracts;
 
-interface HashableCommand
+interface HashableCommandInterface
 {
     /**
      * Unique Idempotency Key (UUID v7 or similar)

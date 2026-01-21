@@ -1,7 +1,5 @@
 <?php
 
-use App\Infrastructure\Shared\Services\AtomicIdempotencyService;
-
 /**
  * 🔓 TEST DE INTEGRACIÓN DE BLOQUEO ATÓMICO
  * "Laws of Distributed Testing: Ley de Simulación de Carrera"
