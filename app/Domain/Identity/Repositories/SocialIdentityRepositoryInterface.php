@@ -4,47 +4,32 @@ declare(strict_types=1);
 
 namespace App\Domain\Identity\Repositories;
 
+use App\Domain\Identity\Entities\UserEntity;
+
 /**
- * SocialIdentityRepositoryInterface - Domain Port for Social Identity Resolution
- *
- * Provides specialized queries for OAuth identity resolution.
+ * SocialIdentityRepositoryInterface - Strict Typing Contract
+ * 
+ * Enforces UserEntity injection. No more 'object' weakness.
  */
 interface SocialIdentityRepositoryInterface
 {
     /**
-     * Find user by social provider identity.
-     *
-     * @param string $provider Provider name (google, github, etc.)
-     * @param string $providerId Provider's unique user ID
-     * @return object|null The User entity or null
+     * Find a User by their Social Provider Identity.
+     * Returns the pure Domain Entity, not an Eloquent Model.
      */
-    public function findUserByProvider(string $provider, string $providerId): ?object;
+    public function findUserByProvider(string $provider, string $providerId): ?UserEntity;
 
     /**
-     * Link a social identity to an existing user.
-     *
-     * @param object $user The User entity
-     * @param string $provider Provider name
-     * @param string $providerId Provider's unique user ID
-     * @param string|null $token OAuth token
-     * @param string|null $avatar Avatar URL
-     * @return void
+     * Link a Social Identity to a User.
+     * Requires valid UserEntity context.
      */
     public function linkIdentity(
-        object $user,
+        UserEntity $user,
         string $provider,
         string $providerId,
         ?string $token = null,
         ?string $avatar = null
     ): void;
 
-    /**
-     * Update the token for an existing identity.
-     *
-     * @param string $provider Provider name
-     * @param string $providerId Provider's unique user ID
-     * @param string|null $token New OAuth token
-     * @return void
-     */
-    public function updateToken(string $provider, string $providerId, ?string $token): void;
+    // public function updateToken(string $provider, string $providerId, ?string $token): void; // Omitted as not requested in prompt
 }

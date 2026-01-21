@@ -7,25 +7,25 @@ namespace App\Domain\Identity\Repositories;
 use App\Domain\Identity\Entities\UserEntity;
 
 /**
- * UserRepositoryInterface - Mutation Capable Contract
+ * UserRepositoryInterface - Strict Type Contracts
+ * 
+ * Enforces String UUIDs and Entity Encapsulation.
+ * The "Int ID" era is over.
  */
 interface UserRepositoryInterface
 {
-    public function findById(int $id): ?UserEntity;
+    public function save(UserEntity $user): void;
 
-    public function findByEmail(string $email): ?UserEntity;
+    public function findById(string $id, string $tenantId): ?UserEntity;
 
-    public function existsByEmail(string $email): bool;
-
-    public function create(array $attributes): UserEntity;
+    public function findByEmail(string $email, string $tenantId): ?UserEntity;
 
     /**
-     * Persist changes to an existing user entity.
-     * Required for Bi-Directional Integrity (linking user to tenant).
+     * Updates avatar if missing.
+     * @param string $userId UUID
      */
-    public function update(UserEntity $user): void;
-
-    public function save(UserEntity $entity): UserEntity;
-
-    public function updateAvatarIfMissing(int $userId, string $avatarUrl): bool;
+    public function updateAvatarIfMissing(string $userId, string $avatarUrl): bool;
+    
+    // Legacy support removal: delete(int) -> delete(UserEntity)
+    public function delete(UserEntity $user): void;
 }
