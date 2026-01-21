@@ -7,9 +7,10 @@ namespace App\Domain\Auth\Entities;
 use DateTimeImmutable;
 
 /**
- * OtpEntity - Pure Domain Object
+ * OtpEntity - Tenant-Aware Domain Object
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  MULTI-TENANT: Includes tenantId for complete context in memory.        ║
  * ║  POPO: Plain Old PHP Object. Zero Framework Coupling.                   ║
  * ║  IMMUTABLE: Readonly state ensures predictability.                      ║
  * ║  NATIVE: Uses DateTimeImmutable for time, strict scalar types.          ║
@@ -17,12 +18,11 @@ use DateTimeImmutable;
  */
 final readonly class OtpEntity
 {
-    private const MAX_ATTEMPTS = 5;
-
     public function __construct(
         public string $id,
         public ?int $userId,
         public string $identifier,
+        public string $tenantId,
         public string $hashedCode,
         public string $type,
         public DateTimeImmutable $expiresAt,
@@ -41,9 +41,11 @@ final readonly class OtpEntity
 
     /**
      * Check if maximum verification attempts have been exceeded.
+     * 
+     * @param int $maxAttempts Configurable max attempts (injected policy)
      */
-    public function maxAttemptsExceeded(): bool
+    public function maxAttemptsExceeded(int $maxAttempts = 5): bool
     {
-        return $this->attempts >= self::MAX_ATTEMPTS;
+        return $this->attempts >= $maxAttempts;
     }
 }
