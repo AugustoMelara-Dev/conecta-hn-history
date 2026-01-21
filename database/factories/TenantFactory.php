@@ -46,14 +46,7 @@ class TenantFactory extends Factory
             'user_id' => null, // CRITICAL: No auto-creation to prevent recursion
             'name' => $name,
             'slug' => Str::slug($name) . '-' . Str::random(6),
-            'description' => fake()->paragraph(),
-            'address' => fake()->address(),
-            'whatsapp_number' => fake()->phoneNumber(),
-            'phone' => fake()->phoneNumber(),
-            'email' => fake()->companyEmail(),
             'is_active' => true,
-            'plan_type' => 'semilla',
-            'subscription_status' => 'active',
         ];
     }
 
