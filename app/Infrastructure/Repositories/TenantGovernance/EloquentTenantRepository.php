@@ -16,9 +16,15 @@ use App\Domain\TenantGovernance\Enums\TenantPlan;
  */
 final class EloquentTenantRepository implements TenantRepositoryInterface
 {
-    public function findById(int $id): ?TenantEntity
+    public function findById(string $id): ?TenantEntity
     {
         $model = Tenant::find($id);
+        return $model ? $this->toEntity($model) : null;
+    }
+
+    public function findByIdForUpdate(string $id): ?TenantEntity
+    {
+        $model = Tenant::lockForUpdate()->find($id);
         return $model ? $this->toEntity($model) : null;
     }
 
@@ -54,24 +60,21 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
 
     public function save(TenantEntity $tenant): TenantEntity
     {
-        $data = [
-            'user_id' => $tenant->userId,
-            'name' => $tenant->name,
-            'slug' => $tenant->slug,
-            'plan_type' => $tenant->planType->value, // LOWERING TO SCALAR
-            'subscription_status' => $tenant->subscriptionStatus,
-            'is_active' => $tenant->isActive,
-            'source' => $tenant->source,
-        ];
+        // Find existing or create new model instance
+        $model = Tenant::find($tenant->id()) ?? new Tenant();
+        
+        // Use forceFill to bypass mass assignment protection for guarded fields
+        $model->forceFill([
+            'id' => $tenant->id(),
+            'name' => $tenant->name(),
+            'slug' => $tenant->domain(), // TenantEntity uses "domain" for what Eloquent calls "slug"
+            'plan' => 'SEED', // Default plan for new registrations
+            'is_active' => $tenant->isActive(),
+        ]);
+        
+        $model->save();
 
-        if ($tenant->id) {
-            $model = Tenant::findOrFail($tenant->id);
-            $model->update($data);
-        } else {
-            $model = Tenant::create($data);
-        }
-
-        return $this->toEntity($model);
+        return $tenant;
     }
 
     public function delete(TenantEntity $tenant): void

@@ -43,25 +43,27 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
 
     public function save(TenantEntity $entity): TenantEntity
     {
-        // Persistence logic mapping Entity -> Model
-        // CRITICAL: Ensure 'source' is saved if logic permits (e.g. if creating from entity)
-        // Usually save() implies update if ID exists, or create if not.
+        // PATRÓN DATA MAPPER: Mapeo manual explícito
+        // TenantEntity usa UUIDs como strings, no integers
         
-        $model = $entity->id > 0 ? Tenant::find($entity->id) : new Tenant();
+        // 1. DETERMINACIÓN INSERT/UPDATE
+        // La entidad tiene id() como string UUID
+        $model = Tenant::find($entity->id()) ?? new Tenant();
         
-        if (!$model) {
-            // Fallback for weird edge case
-            $model = new Tenant();
+        // 2. MAPEO MANUAL EXPLÍCITO
+        // Usar los métodos de la entidad, NO propiedades públicas
+        $model->id = $entity->id();
+        $model->name = $entity->name();
+        $model->slug = $entity->domain(); // domain en Entity = slug en DB
+        $model->is_active = $entity->isActive();
+        
+        // 3. VALORES POR DEFECTO (Business Rules)
+        // El plan por defecto para nuevos tenants es 'SEED'
+        if (!$model->exists) {
+            $model->plan = 'SEED';
         }
-
-        $model->user_id = $entity->userId;
-        $model->name = $entity->name;
-        $model->slug = $entity->slug;
-        $model->source = $entity->source; // CRITICAL: Persist Source
-        $model->plan_type = $entity->planType;
-        $model->subscription_status = $entity->subscriptionStatus;
-        $model->is_active = $entity->isActive;
-
+        
+        // 4. PERSISTENCIA ATÓMICA
         $model->save();
 
         return $this->toEntity($model);
@@ -69,22 +71,19 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
 
     public function delete(TenantEntity $entity): void
     {
-        Tenant::destroy($entity->id);
+        Tenant::destroy($entity->id());
     }
 
     private function toEntity(Tenant $model): TenantEntity
     {
-        return new TenantEntity(
-            id: $model->id,
-            userId: $model->user_id,
-            name: $model->name,
-            slug: $model->slug,
-            source: $model->source ?? 'unknown', // Handle legacy data
-            planType: $model->plan_type ?? 'semilla',
-            subscriptionStatus: $model->subscription_status ?? 'active',
-            isActive: (bool) $model->is_active,
-            createdAt: $model->created_at instanceof \DateTime ? DateTimeImmutable::createFromMutable($model->created_at) : new DateTimeImmutable((string)($model->created_at ?? 'now')),
-            updatedAt: $model->updated_at instanceof \DateTime ? DateTimeImmutable::createFromMutable($model->updated_at) : new DateTimeImmutable((string)($model->updated_at ?? 'now')),
-        );
+        // TenantEntity tiene constructor privado, usar fromStateArray
+        return TenantEntity::fromStateArray([
+            'id' => (string) $model->id,
+            'name' => $model->name,
+            'domain' => $model->slug, // DB slug = Entity domain
+            'is_active' => (bool) $model->is_active,
+            'created_at' => $model->created_at?->format(DateTimeImmutable::ATOM),
+            'updated_at' => $model->updated_at?->format(DateTimeImmutable::ATOM),
+        ]);
     }
 }
