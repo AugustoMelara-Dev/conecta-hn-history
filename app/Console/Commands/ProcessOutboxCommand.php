@@ -11,7 +11,11 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * ProcessOutboxCommand - The Heartbeat Daemon
+ * @deprecated Use App\Infrastructure\Console\Commands\ProcessOutboxCommand instead.
+ *             This legacy version does NOT support horizontal scaling (no SKIP LOCKED).
+ *             Will be removed in v2.0.
+ *
+ * ProcessOutboxCommand - The Heartbeat Daemon (LEGACY)
  * 
  * Responsibilities:
  * - FIFO Processing (Strict Order)
