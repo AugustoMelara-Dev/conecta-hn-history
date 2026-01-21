@@ -137,7 +137,7 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
     }
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     public function create(array $attributes): TenantEntity
     {

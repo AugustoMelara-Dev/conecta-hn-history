@@ -12,4 +12,14 @@ final class MaxOtpAttemptsExceededException extends DomainException
     {
         parent::__construct($message, $code);
     }
+
+    public function context(): array
+    {
+        return [];
+    }
+
+    public function getErrorCode(): string
+    {
+        return 'MAX_OTP_ATTEMPTS_EXCEEDED';
+    }
 }
