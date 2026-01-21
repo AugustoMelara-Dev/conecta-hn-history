@@ -47,7 +47,7 @@ class InfrastructureServiceProvider extends ServiceProvider
 
         $this->app->bind(
             \App\Domain\Identity\Repositories\UserRepositoryInterface::class,
-            \App\Infrastructure\Persistence\EloquentUserRepository::class
+            \App\Infrastructure\Identity\Persistence\EloquentUserRepository::class
         );
 
         $this->app->bind(
@@ -69,6 +69,26 @@ class InfrastructureServiceProvider extends ServiceProvider
                 : new \App\Infrastructure\Payments\Stripe\StripePaymentGateway()
         );
 
+        $this->app->singleton(\App\Infrastructure\Shared\Context\IdempotencyContext::class);
+
+        $this->app->bind(
+            \App\Application\Shared\Contracts\SchemaValidatorInterface::class,
+            \App\Infrastructure\Shared\Services\JsonSchemaValidatorService::class
+        );
+
+        $this->app->bind(
+            \App\Application\Shared\Contracts\OutboxRepositoryInterface::class,
+            function ($app) {
+                $inner = $app->make(\App\Infrastructure\Shared\Persistence\EloquentOutboxRepository::class);
+                $validator = $app->make(\App\Application\Shared\Contracts\SchemaValidatorInterface::class);
+
+                return new \App\Infrastructure\Shared\Persistence\Decorators\SchemaValidatingOutboxRepository(
+                    $inner,
+                    $validator
+                );
+            }
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
         // CONTROLLER DECOUPLING BINDINGS (Hexagonal Architecture)
         // ═══════════════════════════════════════════════════════════════════════
@@ -77,9 +97,23 @@ class InfrastructureServiceProvider extends ServiceProvider
             \App\Infrastructure\Persistence\Readers\EloquentReferenceDataReader::class
         );
 
+        // ═══════════════════════════════════════════════════════════════════════
+        // UPCASTING INFRASTRUCTURE (Resilient Read)
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->singleton(\App\Infrastructure\Shared\Services\Upcasting\UpcasterChain::class);
+
+        // Register Upcasters (Ideally this should be in a dedicated config or provider)
+        $this->app->resolving(\App\Infrastructure\Shared\Services\Upcasting\UpcasterChain::class, function ($chain) {
+            $chain->register(
+                'App\Domain\Identity\Events\UserRegistered',
+                '1.0',
+                new \App\Infrastructure\Shared\Services\Upcasting\Upcasters\UserRegisteredV1toV2Upcaster()
+            );
+        });
+
         $this->app->bind(
             \App\Domain\Billing\Repositories\PaymentRepositoryInterface::class,
-            \App\Infrastructure\Repositories\Billing\EloquentPaymentRepository::class
+            \App\Infrastructure\Persistence\EloquentPaymentRepository::class
         );
 
         $this->app->bind(
