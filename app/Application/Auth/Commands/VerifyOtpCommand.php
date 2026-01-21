@@ -13,7 +13,7 @@ namespace App\Application\Auth\Commands;
  * ║  TENANT AWARE: Mandatory tenantId to prevent cross-tenant verification. ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class VerifyOtpCommand
+final readonly class VerifyOtpCommand implements \App\Application\Common\Contracts\HashableCommand
 {
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) */
@@ -31,4 +31,23 @@ final readonly class VerifyOtpCommand
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
     ) {}
+
+    public function getIdempotencyKey(): string
+    {
+        return $this->idempotencyKey;
+    }
+
+    public function getTenantId(): string
+    {
+        return $this->tenantId;
+    }
+
+    public function getCommandHash(): string
+    {
+        return hash('sha256', json_encode([
+            'identifier' => $this->identifier,
+            'code' => $this->code,
+            'tenantId' => $this->tenantId,
+        ]));
+    }
 }
