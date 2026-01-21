@@ -13,7 +13,7 @@ namespace App\Application\Auth\Commands;
  * ║  PRIMITIVES ONLY: No Eloquent models - just scalar types.               ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class DeleteUserCommand
+final readonly class DeleteUserCommand implements \App\Application\Common\Contracts\HashableCommand
 {
     public function __construct(
         /** User ID to delete (UUID string) */
@@ -28,4 +28,23 @@ final readonly class DeleteUserCommand
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
     ) {}
+
+    public function getIdempotencyKey(): string
+    {
+        return $this->idempotencyKey;
+    }
+
+    public function getTenantId(): string
+    {
+        return $this->requestingTenantId;
+    }
+
+    public function getCommandHash(): string
+    {
+        return hash('sha256', json_encode([
+            'userId' => $this->userId,
+            'requestingTenantId' => $this->requestingTenantId,
+            'action' => 'DELETE', // Explicit action discriminator
+        ]));
+    }
 }

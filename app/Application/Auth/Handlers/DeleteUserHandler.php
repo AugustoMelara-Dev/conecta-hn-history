@@ -5,75 +5,33 @@ declare(strict_types=1);
 namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\DeleteUserCommand;
-use App\Application\Shared\Contracts\TransactionManagerInterface;
-use App\Application\Shared\Traits\LogSanitizer;
+use App\Application\Auth\Results\DeleteUserResult;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
-use App\Application\Common\Contracts\IdempotencyServiceInterface;
-use App\Domain\Shared\Entities\DomainEventMessage;
-use App\Domain\Shared\Contracts\ClockInterface;
+
 use App\Domain\Identity\Events\UserDeleted;
 use App\Domain\Identity\Exceptions\CrossTenantAccessException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use Psr\Log\LoggerInterface;
+use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Entities\DomainEventMessage;
 use Ramsey\Uuid\Uuid;
 
 /**
- * DeleteUserHandler - Secure User Deletion Orchestrator
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  CRASH FIXED: Corrected findById signature (requires tenantId).          ║
- * ║  CONSISTENCY: Transactional Outbox & Idempotency Barrier.               ║
- * ║  ATOMICITY: Explicit transaction management via Contract.                ║
- * ║  DEPENDENCY INVERSION: Uses standard Interfaces Only.                    ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * DeleteUserHandler - Pure Core Edition (Russian Doll Pattern)
  */
-final readonly class DeleteUserHandler
+final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
 {
-    use LogSanitizer;
+
 
     public function __construct(
         private UserRepositoryInterface $userRepository,
-        private TransactionManagerInterface $transactionManager,
         private OutboxRepositoryInterface $outboxRepository,
-        private IdempotencyServiceInterface $idempotencyService,
         private ClockInterface $clock,
-        private LoggerInterface $logger,
     ) {}
 
-    /**
-     * Handle user deletion command.
-     *
-     * @param DeleteUserCommand $command
-     * @return void
-     * @throws UserNotFoundException If user not found (Domain Exception)
-     * @throws CrossTenantAccessException If tenant mismatch (IDOR attack)
-     */
-    public function handle(DeleteUserCommand $command): void
+    public function handle(DeleteUserCommand $command): DeleteUserResult
     {
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 1: IDEMPOTENCY BARRIER
-        // ═══════════════════════════════════════════════════════════════════
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 1: IDEMPOTENCY BARRIER (The Gatekeeper)
-        // ═══════════════════════════════════════════════════════════════════
-        $state = $this->idempotencyService->getState($command->idempotencyKey);
-
-        if ($state === 'COMPLETED') {
-            $this->logger->info('Idempotency hit: Returning cached result (void)', ['key' => $command->idempotencyKey]);
-            return;
-        }
-
-        if ($state === 'PROCESSING') {
-            throw \App\Application\Common\Exceptions\ConcurrentRequestException::forKey($command->idempotencyKey);
-        }
-
-        // Atomic Reservation
-        $this->idempotencyService->registerProcessing($command->idempotencyKey);
-
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 2: READ - Load Target User
-        // ═══════════════════════════════════════════════════════════════════
+        // 1. Load Target User
         $user = $this->userRepository->findById($command->userId, $command->requestingTenantId);
 
         if ($user === null) {
@@ -83,64 +41,44 @@ final readonly class DeleteUserHandler
             );
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 3: GUARD - IDOR PROTECTION
-        // ═══════════════════════════════════════════════════════════════════
+        // 2. IDOR Protection (Redundant but Safe)
         if ($user->tenantId !== $command->requestingTenantId) {
-            $this->logger->warning('SECURITY: Cross-tenant user deletion attempt blocked', $this->sanitizePayload([
-                'target_user_id' => $command->userId,
-                'target_tenant_id' => $user->tenantId,
-                'requesting_tenant_id' => $command->requestingTenantId,
-            ]));
-
             throw CrossTenantAccessException::forUserDeletion($command->userId);
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 4: WRITE - ATOMIC DELETION AND OUTBOX
-        // ═══════════════════════════════════════════════════════════════════
-        
-        $this->transactionManager->transaction(function () use ($user, $command) {
-            $userId = $user->id;
-            $tenantId = $user->tenantId;
-            $email = $user->email;
-            $name = $user->name;
+        // 3. Domain Logic: Delete
+        $userId = $user->id;
+        $tenantId = $user->tenantId;
+        $email = $user->email;
+        $name = $user->name;
 
-            // 1. Delete (Persistence)
-            $this->userRepository->delete($user);
+        $this->userRepository->delete($user);
 
-            // 2. Outbox Persistence
-            $event = UserDeleted::fromSnapshot(
-                userId: $userId,
-                tenantId: $tenantId,
-                email: $email,
-                name: $name,
-            );
+        // 4. Outbox Persistence
+        $event = UserDeleted::fromSnapshot(
+            userId: $userId,
+            tenantId: $tenantId,
+            email: $email,
+            name: $name,
+        );
 
-            $message = new DomainEventMessage(
-                eventId: Uuid::uuid7()->toString(),
-                type: UserDeleted::class,
-                aggregateId: (string) $userId,
-                payload: json_encode($event->toPayload()), // Assuming toPayload() exists or similar serialization
-                occurredAt: $this->clock->now(),
-                metadata: [
-                    'tenant_id' => $tenantId,
-                    'causation_id' => $command->idempotencyKey,
-                    'requesting_tenant_id' => $command->requestingTenantId,
-                ]
-            );
-
-            $this->outboxRepository->save($message);
-            
-            $this->logger->info('User deleted and persisted to Outbox', $this->sanitizePayload([
-                'user_id' => $userId,
+        $message = new DomainEventMessage(
+            eventId: Uuid::uuid7()->toString(),
+            type: UserDeleted::class,
+            aggregateId: (string) $userId,
+            payload: json_encode($event->toPayload()),
+            occurredAt: $this->clock->now(),
+            metadata: [
                 'tenant_id' => $tenantId,
-            ]));
-        });
+                'causation_id' => $command->idempotencyKey,
+                'requesting_tenant_id' => $command->requestingTenantId,
+            ]
+        );
 
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 5: IDEMPOTENCY RECORDING
-        // ═══════════════════════════════════════════════════════════════════
-        $this->idempotencyService->store($command->idempotencyKey, ['status' => 'deleted']);
+        $this->outboxRepository->save($message);
+        
+
+
+        return new DeleteUserResult('deleted', (string) $userId);
     }
 }
