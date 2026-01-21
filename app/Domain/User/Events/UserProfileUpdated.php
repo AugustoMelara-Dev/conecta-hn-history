@@ -26,11 +26,11 @@ final readonly class UserProfileUpdated
 
     private const SCHEMA_VERSION = 1;
 
-    /** Canonical V2 Name */
-    public const NAME = 'user.profile_updated';
+    /** Canonical Event Name (matches JSON Schema) */
+    public const NAME = 'auth.user_profile_updated';
 
     /** Historical V1 Name (for Upcasting/Aliasing) */
-    public const LEGACY_NAME = 'auth.user_profile_updated';
+    public const LEGACY_NAME = 'user.profile_updated';
 
     public function __construct(
         /** User whose profile was updated (UUID string) */

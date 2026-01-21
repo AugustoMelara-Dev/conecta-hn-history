@@ -40,7 +40,7 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
         }
     }
 
-    public function save(TenantEntity $tenant): void
+    public function save(TenantEntity $tenant): TenantEntity
     {
         // Standard save (Last Write Wins) - Use only if concurrency is not a concern
         $model = TenantModel::query()->find($tenant->id());
@@ -51,6 +51,8 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
 
         $this->hydrateModel($model, $tenant);
         $model->save();
+
+        return $this->toEntity($model);
     }
 
     /**
@@ -111,5 +113,42 @@ final readonly class EloquentTenantRepository implements TenantRepositoryInterfa
         $model->subscription_ends_at = $tenant->subscriptionEndsAt();
         $model->subscription_reference = $tenant->subscriptionReference();
         // Do not manually set version here for save(), only for updateOptimistically
+    }
+
+    public function findBySlug(string $slug): ?TenantEntity
+    {
+        /** @var TenantModel|null $model */
+        $model = TenantModel::query()->where('slug', $slug)->first();
+
+        return $model ? $this->toEntity($model) : null;
+    }
+
+    public function existsBySlug(string $slug): bool
+    {
+        return TenantModel::query()->where('slug', $slug)->exists();
+    }
+
+    public function findByDomain(string $domain): ?TenantEntity
+    {
+        /** @var TenantModel|null $model */
+        $model = TenantModel::query()->where('domain', $domain)->first();
+
+        return $model ? $this->toEntity($model) : null;
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    public function create(array $attributes): TenantEntity
+    {
+        /** @var TenantModel $model */
+        $model = TenantModel::query()->create($attributes);
+
+        return $this->toEntity($model);
+    }
+
+    public function delete(TenantEntity $tenant): void
+    {
+        TenantModel::query()->where('id', $tenant->id())->delete();
     }
 }
