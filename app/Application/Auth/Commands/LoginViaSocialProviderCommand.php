@@ -16,7 +16,7 @@ use App\Domain\Shared\Enums\ProviderName;
  * ║  TYPE SAFETY: Enforced via ProviderName Enum.                           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class LoginViaSocialProviderCommand
+final readonly class LoginViaSocialProviderCommand implements \App\Application\Common\Contracts\HashableCommand
 {
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) - Social login is always INTO a specific tenant */
@@ -46,4 +46,24 @@ final readonly class LoginViaSocialProviderCommand
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
     ) {}
+
+    public function getIdempotencyKey(): string
+    {
+        return $this->idempotencyKey;
+    }
+
+    public function getTenantId(): string
+    {
+        return $this->tenantId;
+    }
+
+    public function getCommandHash(): string
+    {
+        return hash('sha256', json_encode([
+            'tenantId' => $this->tenantId,
+            'providerName' => $this->providerName->value,
+            'providerId' => $this->providerId,
+            'email' => $this->email, // Hashing email prevents spoofing if providerId collides (unlikely but safe)
+        ]));
+    }
 }

@@ -7,177 +7,141 @@ namespace App\Application\Auth\Handlers;
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Results\SocialLoginResult;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
-use App\Application\Common\Contracts\IdempotencyServiceInterface;
-use App\Domain\Shared\Entities\DomainEventMessage;
-use App\Application\Shared\Interfaces\EntropyGeneratorInterface;
-use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Events\SocialIdentityLinked;
 use App\Domain\Identity\Events\UserRegisteredViaSocial;
 use App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Domain\Security\Contracts\HasherInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
-use App\Application\Shared\Contracts\TransactionManagerInterface;
+use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Shared\Exceptions\DuplicateEntityException;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
 
 /**
- * LoginViaSocialProviderHandler - Tenant-Scoped Identity Orchestrator
+ * LoginViaSocialProviderHandler - Atomic Protocol Edition
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  NO SILENT WRITES: Dispatches UserRegistered/UserIdentityLinked events. ║
- * ║  CONSISTENCY: Transactional Outbox & Idempotency Barrier.               ║
- * ║  RESILIENT: Handles concurrency via try/catch strategies.               ║
- * ║  HIGH PERFORMANCE: Short Transactions & Ordered UUIDs.                  ║
+ * ║  ATOMIC PROTOCOL: "Insert-or-Die" Gatekeeper                            ║
+ * ║  CONSISTENCY: Transactional Outbox within Atomic Lock                   ║
+ * ║  RESILIENT: Handles User Email Collisions (Unique Index) Gracefully     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class LoginViaSocialProviderHandler
+final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProviderHandlerInterface
 {
-    use LogSanitizer;
-
     public function __construct(
         private SocialIdentityRepositoryInterface $socialIdentityRepository,
         private UserRepositoryInterface $userRepository,
-        private TransactionManagerInterface $transactionManager,
-        private HasherInterface $hasher,
-        private ClockInterface $clock,
-        private EntropyGeneratorInterface $entropyGenerator,
         private OutboxRepositoryInterface $outboxRepository,
-        private IdempotencyServiceInterface $idempotencyService,
+        private ClockInterface $clock,
         private LoggerInterface $logger,
     ) {}
 
     public function handle(LoginViaSocialProviderCommand $command): SocialLoginResult
     {
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 1: IDEMPOTENCY BARRIER (Concurrency Control)
-        // ═══════════════════════════════════════════════════════════════════
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 1: IDEMPOTENCY BARRIER (The Gatekeeper)
-        // ═══════════════════════════════════════════════════════════════════
-        $state = $this->idempotencyService->getState($command->idempotencyKey);
+        // 1. Strategy: Direct Social Identity Match (Login)
+        $user = $this->socialIdentityRepository->findUserByProvider(
+            $command->providerName->value,
+            $command->providerId,
+            $command->tenantId
+        );
 
-        if ($state === 'COMPLETED') {
-            $cachedResult = $this->idempotencyService->get($command->idempotencyKey);
-            if ($cachedResult instanceof SocialLoginResult) {
-                return $cachedResult;
-            }
+        if ($user instanceof UserEntity) {
+            $this->updateSocialToken($user, $command);
+            return SocialLoginResult::success($user);
         }
 
-        if ($state === 'PROCESSING') {
-            throw \App\Application\Common\Exceptions\ConcurrentRequestException::forKey($command->idempotencyKey);
-        }
+        return $this->processRegistrationOrLink($command);
+    }
 
-        // Atomic Reservation
-        $this->idempotencyService->registerProcessing($command->idempotencyKey);
+    private function processRegistrationOrLink(LoginViaSocialProviderCommand $command): SocialLoginResult
+    {
 
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 2: TRANSACTIONAL ORCHESTRATION (Unit of Work)
-        // ═══════════════════════════════════════════════════════════════════
-        
-        /** @var SocialLoginResult $result */
-        $result = $this->transactionManager->transaction(function () use ($command) {
+        // 2. Strategy: Link Existing Account (Trust on First Use)
+        $existingUser = $this->userRepository->findByEmail($command->email, $command->tenantId);
+
+        if ($existingUser !== null) {
+            $this->linkIdentity($existingUser, $command);
+            $this->updateAvatarIfNeeded($existingUser, $command);
             
-            // 1. Strategy: Direct Social Identity Match (Login)
-            $user = $this->socialIdentityRepository->findUserByProvider(
+            // Outbox Persistence
+            $event = SocialIdentityLinked::now(
+                userId: (string) $existingUser->id(),
+                tenantId: $command->tenantId,
+                provider: $command->providerName->value,
+            );
+            
+            $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $existingUser->id());
+            
+            return SocialLoginResult::success($existingUser);
+        }
+
+        // 3. Strategy: New User Provisioning (Registration)
+        try {
+            $newUser = UserEntity::registerViaSocial(
+                $command->tenantId,
+                $command->name,
+                $command->email,
+                $command->avatarUrl,
                 $command->providerName->value,
-                $command->providerId,
-                $command->tenantId
+                $command->providerId
             );
 
-            if ($user instanceof UserEntity) {
-                $this->updateSocialToken($user, $command);
-                return SocialLoginResult::success($user);
-            }
+            $this->userRepository->save($newUser);
 
-            // 2. Strategy: Link Existing Account (Trust on First Use)
-            $existingUser = $this->userRepository->findByEmail($command->email, $command->tenantId);
+            $this->linkIdentity($newUser, $command);
+            
+            // Outbox Persistence
+            $event = UserRegisteredViaSocial::now(
+                userId: (string) $newUser->id(),
+                tenantId: $command->tenantId,
+                email: $newUser->email(),
+                provider: $command->providerName->value,
+            );
 
-            if ($existingUser !== null) {
-                $this->linkIdentity($existingUser, $command);
-                $this->updateAvatarIfNeeded($existingUser, $command);
-                
-                // Outbox Persistence
-                $event = SocialIdentityLinked::now(
-                    userId: (string) $existingUser->id(),
-                    tenantId: $command->tenantId,
-                    provider: $command->providerName->value,
-                );
-                
-                $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $existingUser->id());
-                
-                return SocialLoginResult::success($existingUser);
-            }
+            $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $newUser->id());
 
-            // 3. Strategy: New User Provisioning (Registration)
-            try {
-                $newUser = UserEntity::registerViaSocial(
-                    $command->tenantId,
-                    $command->name,
-                    $command->email,
-                    $command->avatarUrl,
-                    $command->providerName->value,
-                    $command->providerId
-                );
+            return SocialLoginResult::newUser($newUser);
 
-                $this->userRepository->save($newUser);
-
-                $this->linkIdentity($newUser, $command);
-                
-                // Outbox Persistence
-                $event = UserRegisteredViaSocial::now(
-                    userId: (string) $newUser->id(),
-                    tenantId: $command->tenantId,
-                    email: $newUser->email(),
-                    provider: $command->providerName->value,
-                );
-
-                $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $newUser->id());
-
-                return SocialLoginResult::newUser($newUser);
-
-            } catch (DuplicateEntityException $e) {
-                // RESILIENCE: Handle Race Condition (User created by another process)
-                $this->logger->warning("Race condition detected in social login provisioning", $this->sanitizePayload([
+        } catch (DuplicateEntityException $e) {
+            // RESILIENCE: Handle Race Condition (User created by another process but with different Idempotency Key)
+            // OBSERVABILITY: Log the collision for forensic analysis and alerting
+            $this->logger->warning(
+                'Social Login Race Condition: Duplicate user detected during atomic creation attempt.',
+                [
                     'email' => $command->email,
-                    'tenant_id' => $command->tenantId
-                ]));
-                
-                // Re-fetch with tenant scope
-                $racedUser = $this->userRepository->findByEmail($command->email, $command->tenantId);
-                
-                if ($racedUser instanceof UserEntity) {
-                    // ATOMIC RECOVERY: Try to link, but ignore if already linked by competitor
-                    try {
-                        $this->linkIdentity($racedUser, $command);
-                        
-                        // Outbox Persistence (Recovery)
-                        $event = SocialIdentityLinked::now(
-                            userId: (string) $racedUser->id(),
-                            tenantId: $command->tenantId,
-                            provider: $command->providerName->value,
-                        );
-
-                        $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $racedUser->id());
-
-                    } catch (DuplicateEntityException $innerException) {
-                        // Idempotency: Identity already linked.
-                    }
+                    'provider' => $command->providerName->value,
+                    'tenant_id' => $command->tenantId,
+                    'exception_message' => $e->getMessage(),
+                    'recovery_action' => 'Returning existing user instance',
+                ]
+            );
+            
+            // Re-fetch with tenant scope
+            $racedUser = $this->userRepository->findByEmail($command->email, $command->tenantId);
+            
+            if ($racedUser instanceof UserEntity) {
+                // ATOMIC RECOVERY: Try to link, but ignore if already linked by competitor
+                try {
+                    $this->linkIdentity($racedUser, $command);
                     
-                    return SocialLoginResult::success($racedUser);
+                    // Outbox Persistence (Recovery)
+                    $event = SocialIdentityLinked::now(
+                        userId: (string) $racedUser->id(),
+                        tenantId: $command->tenantId,
+                        provider: $command->providerName->value,
+                    );
+
+                    $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $racedUser->id());
+
+                } catch (DuplicateEntityException $innerException) {
+                    // Already linked by the other winner.
                 }
-                throw $e;
+                
+                return SocialLoginResult::success($racedUser);
             }
-        });
-
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 3: IDEMPOTENCY RECORDING
-        // ═══════════════════════════════════════════════════════════════════
-        $this->idempotencyService->store($command->idempotencyKey, $result);
-
-        return $result;
+            throw $e;
+        }
     }
 
     private function persistToOutbox(object $event, string $idempotencyKey, string $tenantId, ?int $aggregateId): void
