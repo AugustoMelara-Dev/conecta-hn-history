@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package identity.v1;
+
+option php_namespace = "App\\Infrastructure\\Identity\\Delivery\\Grpc\\Generated";
+
+// IdentityService - The Binary Highway
+// STRICT CONTRACT: Changes here require versioning.
+service IdentityService {
+  rpc RegisterUser (RegisterUserRequest) returns (RegisterUserResponse);
+}
+
+message RegisterUserRequest {
+  string email = 1;
+  string password = 2;
+  string role = 3;
+  string tenant_id = 4;
+  string name = 5; // Added to match RegisterUserCommand requirements
+}
+
+message RegisterUserResponse {
+  string user_id = 1;
+  // Status: "registered", "pending_verification", etc.
+  string status = 2;
+}
