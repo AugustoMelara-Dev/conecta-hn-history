@@ -15,12 +15,15 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('type');
             $table->uuid('aggregate_id')->nullable();
+            $table->uuid('correlation_id')->index();
+            $table->uuid('causation_id')->nullable();
             $table->json('payload');
             $table->json('metadata')->nullable();
             $table->string('status')->default('PENDING')->index();
             $table->integer('attempts')->default(0);
             $table->text('last_error')->nullable();
             $table->timestamp('processed_at')->nullable();
+            $table->timestamp('occurred_at')->nullable();
             $table->timestamps();
         });
     }
