@@ -60,6 +60,16 @@ final class LaravelDocumentStorageService implements DocumentStorageServiceInter
     /**
      * {@inheritDoc}
      */
+    public function promote(string $tempPath): string
+    {
+        // For now, treat storeProofOfPayment as direct-to-permanent, so promote is a no-op loopback.
+        // In a strict refactor, store would save to /temp and this would move to /permanent.
+        return $tempPath;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function delete(string $path): void
     {
         Storage::disk(self::DISK)->delete($path);
