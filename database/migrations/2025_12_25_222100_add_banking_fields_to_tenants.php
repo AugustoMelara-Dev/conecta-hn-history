@@ -32,7 +32,7 @@ return new class extends Migration
             // separate from their primary contact number.
             if (! Schema::hasColumn('tenants', 'whatsapp_number')) {
                 $table->string('whatsapp_number', 20)->nullable()
-                    ->after('whatsapp')
+                    ->after('plan')
                     ->comment('Dedicated WhatsApp for payment verification');
             }
 

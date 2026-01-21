@@ -41,7 +41,7 @@ return new class extends Migration
             $table->id();
 
             // Business isolation
-            $table->foreignId('business_id')
+            $table->foreignUuid('business_id')
                 ->constrained('tenants')
                 ->cascadeOnDelete();
 

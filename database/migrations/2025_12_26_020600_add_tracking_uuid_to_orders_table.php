@@ -27,6 +27,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('orders', 'tracking_uuid')) {
+            return; // Column already exists (created in initial migration)
+        }
+
         Schema::table('orders', function (Blueprint $table) {
             $table->uuid('tracking_uuid')
                 ->nullable()

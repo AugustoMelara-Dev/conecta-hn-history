@@ -21,7 +21,8 @@ return new class extends Migration
     {
         Schema::table('tenants', function (Blueprint $table) {
             // NULLABLE JSON - Safe schema evolution
-            $table->json('landing_page_data')->nullable()->after('theme_config');
+            // Removed ->after('theme_config') - column may not exist in all environments
+            $table->json('landing_page_data')->nullable();
         });
     }
 

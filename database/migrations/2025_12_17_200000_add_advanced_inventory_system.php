@@ -24,9 +24,7 @@ return new class extends Migration
         if (! Schema::hasTable('menu_sections')) {
             Schema::create('menu_sections', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('tenant_id')
-                    ->constrained()
-                    ->cascadeOnDelete();
+                $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
                 $table->string('name', 255);
                 $table->boolean('is_active')->default(true);
                 $table->integer('sort_order')->default(0);

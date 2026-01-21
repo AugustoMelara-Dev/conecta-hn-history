@@ -24,7 +24,7 @@ return new class extends Migration
     {
         Schema::create('coupons', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained()->onDelete('cascade');
+            $table->foreignUuid('tenant_id')->constrained()->onDelete('cascade');
 
             // ═══════════════════════════════════════════════════════════════════════
             // COUPON IDENTIFICATION

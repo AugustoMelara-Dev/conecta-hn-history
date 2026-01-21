@@ -17,11 +17,11 @@ return new class extends Migration
     {
         Schema::table('tenants', function (Blueprint $table) {
             if (! Schema::hasColumn('tenants', 'cover_path')) {
-                $table->string('cover_path', 2048)->nullable()->after('logo_path');
+                $table->string('cover_path', 2048)->nullable()->after('slug');
             }
 
             if (! Schema::hasColumn('tenants', 'about')) {
-                $table->text('about')->nullable()->after('description');
+                $table->text('about')->nullable()->after('cover_path');
             }
         });
     }

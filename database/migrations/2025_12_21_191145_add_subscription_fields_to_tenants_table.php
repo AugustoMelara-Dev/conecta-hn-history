@@ -62,44 +62,7 @@ return new class extends Migration
             }
         });
 
-        // ═══════════════════════════════════════════════════════════════
-        // DATA MIGRATION: Preserve existing is_pro values
-        // Convert boolean is_pro to string plan_type
-        // ═══════════════════════════════════════════════════════════════
-        \DB::statement("
-            UPDATE tenants 
-            SET plan_type = 'pro',
-                subscription_status = 'active'
-            WHERE is_pro = 1 OR is_pro = true
-        ");
-
-        // Set expiry 30 days from now for Pro tenants (can be adjusted)
-        // NOTE: Use driver-agnostic syntax
-        $driver = \DB::connection()->getDriverName();
-
-        if ($driver === 'mysql') {
-            \DB::statement("
-                UPDATE tenants 
-                SET subscription_ends_at = DATE_ADD(NOW(), INTERVAL 30 DAY)
-                WHERE plan_type = 'pro' 
-                AND subscription_ends_at IS NULL
-            ");
-        } elseif ($driver === 'sqlite') {
-            \DB::statement("
-                UPDATE tenants 
-                SET subscription_ends_at = datetime('now', '+30 days')
-                WHERE plan_type = 'pro' 
-                AND subscription_ends_at IS NULL
-            ");
-        } else {
-            // PostgreSQL and others: use CURRENT_TIMESTAMP + interval
-            \DB::statement("
-                UPDATE tenants 
-                SET subscription_ends_at = CURRENT_TIMESTAMP + INTERVAL '30 day'
-                WHERE plan_type = 'pro' 
-                AND subscription_ends_at IS NULL
-            ");
-        }
+        // Legacy data migration logic removed (is_pro does not exist in fresh schema)
     }
 
     public function down(): void

@@ -17,7 +17,7 @@ return new class extends Migration
     {
         Schema::create('opening_hours', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
 
             // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
             $table->unsignedTinyInteger('day_of_week');

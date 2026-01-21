@@ -58,7 +58,7 @@ return new class extends Migration
         // ═══════════════════════════════════════════════════════════════════
         Schema::table('tenants', function (Blueprint $table) {
             if (! Schema::hasColumn('tenants', 'seo_title')) {
-                $table->string('seo_title', 70)->nullable()->after('description');
+                $table->string('seo_title', 70)->nullable()->after('slug');
             }
             if (! Schema::hasColumn('tenants', 'seo_description')) {
                 $table->string('seo_description', 170)->nullable()->after('seo_title');

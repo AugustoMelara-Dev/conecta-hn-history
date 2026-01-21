@@ -27,7 +27,7 @@ return new class extends Migration
         if (! Schema::hasTable('tenant_visits')) {
             Schema::create('tenant_visits', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('tenant_id')->constrained()->onDelete('cascade');
+                $table->foreignUuid('tenant_id')->constrained()->onDelete('cascade');
 
                 // Privacy-compliant tracking (no raw IPs)
                 // Hash = sha256(IP + User-Agent + Tenant ID + Daily Salt)
@@ -68,7 +68,7 @@ return new class extends Migration
         if (! Schema::hasTable('interactions')) {
             Schema::create('interactions', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('tenant_id')->constrained()->onDelete('cascade');
+                $table->foreignUuid('tenant_id')->constrained()->onDelete('cascade');
                 $table->foreignId('product_id')->nullable()->constrained()->onDelete('set null');
 
                 // Event type (hard conversions)
