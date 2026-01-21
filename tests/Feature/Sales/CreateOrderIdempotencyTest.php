@@ -4,7 +4,7 @@ use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Decorators\IdempotentCreateOrderHandler;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
 use App\Application\Sales\Results\CreateOrderResult;
-use App\Infrastructure\Common\Idempotency\IdempotencyService;
+use App\Infrastructure\Common\Idempotency\RedisIdempotencyService;
 
 /**
  * ⚔️ TEST DE ATAQUE DE REPETICIÓN (Stress Test)
@@ -36,7 +36,7 @@ it('survives a synthetic replay attack ensuring single execution of core logic',
     // Usamos ArrayStore para simular Redis en memoria con comportamiento real de Cache
     $store = new \Illuminate\Cache\ArrayStore;
     $repo = new \Illuminate\Cache\Repository($store);
-    $service = new IdempotencyService($repo);
+    $service = new RedisIdempotencyService($repo);
 
     $decorator = new IdempotentCreateOrderHandler($mockCore, $service);
 

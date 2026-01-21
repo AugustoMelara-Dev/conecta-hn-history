@@ -13,7 +13,7 @@ namespace App\Application\Auth\Commands;
  * ║  IMMUTABLE: final readonly prevents tampering after dispatch.           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class UpdateUserPasswordCommand implements \App\Application\Common\Contracts\HashableCommand
+final readonly class UpdateUserPasswordCommand implements \App\Application\Common\Contracts\HashableCommandInterface
 {
     public function __construct(
         /** User ID to update (UUID string) */

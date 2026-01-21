@@ -27,21 +27,18 @@ declare(strict_types=1);
 */
 
 arch('Handlers must be named with suffix Handler')
-    ->expect('App\Application')
+    ->expect('App\Application\*\Handlers')
     ->classes()
-    ->where(fn (string $class) => str_contains($class, '\\Handlers\\'))
     ->toHaveSuffix('Handler');
 
 arch('Commands must be named with suffix Command')
-    ->expect('App\Application')
+    ->expect('App\Application\*\Commands')
     ->classes()
-    ->where(fn (string $class) => str_contains($class, '\\Commands\\'))
     ->toHaveSuffix('Command');
 
 arch('Results must be named with suffix Result')
-    ->expect('App\Application')
+    ->expect('App\Application\*\Results')
     ->classes()
-    ->where(fn (string $class) => str_contains($class, '\\Results\\'))
     ->toHaveSuffix('Result');
 
 arch('Interfaces must be named with suffix Interface')
@@ -58,22 +55,19 @@ arch('Interfaces must be named with suffix Interface')
 */
 
 arch('Handlers must be final (Composition over Inheritance)')
-    ->expect('App\Application')
+    ->expect('App\Application\*\Handlers')
     ->classes()
-    ->where(fn (string $class) => str_contains($class, '\\Handlers\\'))
     ->toBeFinal();
 
 arch('Commands must be final readonly (Immutable Data Carriers)')
-    ->expect('App\Application')
+    ->expect('App\Application\*\Commands')
     ->classes()
-    ->where(fn (string $class) => str_contains($class, '\\Commands\\'))
     ->toBeFinal()
     ->toBeReadonly();
 
 arch('Results must be final readonly (Immutable Data Carriers)')
-    ->expect('App\Application')
+    ->expect('App\Application\*\Results')
     ->classes()
-    ->where(fn (string $class) => str_contains($class, '\\Results\\'))
     ->toBeFinal()
     ->toBeReadonly();
 

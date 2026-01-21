@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Commands;
 
-use App\Application\Common\Contracts\HashableCommand;
+use App\Application\Common\Contracts\HashableCommandInterface;
 
 /**
  * GenerateOtpCommand - Immutable OTP Request Contract
@@ -15,7 +15,7 @@ use App\Application\Common\Contracts\HashableCommand;
  * ║  AUDIT METADATA: Carries IP/UserAgent for security logging.             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class GenerateOtpCommand implements HashableCommand
+final readonly class GenerateOtpCommand implements HashableCommandInterface
 {
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) */

@@ -1,6 +1,6 @@
 <?php
 
-use App\Infrastructure\Common\Idempotency\IdempotencyService;
+use App\Infrastructure\Shared\Services\AtomicIdempotencyService;
 
 /**
  * 🔓 TEST DE INTEGRACIÓN DE BLOQUEO ATÓMICO
