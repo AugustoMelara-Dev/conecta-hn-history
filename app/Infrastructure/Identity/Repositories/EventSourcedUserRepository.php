@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Infrastructure\Identity\Repositories;
 
 use App\Application\Common\Integration\IntegrationEventMapper;
-use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotStrategyInterface;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Exceptions\UserAlreadyExistsException;
+use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Infrastructure\Common\Outbox\OutboxRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;

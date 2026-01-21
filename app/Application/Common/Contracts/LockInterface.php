@@ -20,6 +20,7 @@ interface LockInterface
      * @param  int  $seconds  Maximum seconds to wait
      * @param  callable|null  $callback  Optional callback
      * @return mixed Return value of callback or true
+     *
      * @throws \App\Application\Common\Exceptions\LockTimeoutException
      */
     public function block(int $seconds, ?callable $callback = null): mixed;

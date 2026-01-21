@@ -23,9 +23,14 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
         return $model ? $this->toEntity($model) : null;
     }
 
+    /**
+     * Find tenant by ID with a pessimistic lock (SELECT ... FOR UPDATE).
+     * Use inside a DB transaction when performing read-modify-write operations.
+     */
     public function findByIdForUpdate(string $id): ?TenantEntity
     {
-        $model = Tenant::lockForUpdate()->find($id);
+        // Use whereKey + lockForUpdate; caller should wrap this in a transaction.
+        $model = Tenant::whereKey($id)->lockForUpdate()->first();
 
         return $model ? $this->toEntity($model) : null;
     }
