@@ -31,6 +31,11 @@ class EventServiceProvider extends ServiceProvider
             \App\Infrastructure\User\Listeners\SendProfileUpdateNotificationListener::class,
         ],
 
+        // BILLING MODULE (Level 27 - Wired)
+        \App\Domain\Billing\Events\PaymentReported::class => [
+            \App\Application\Billing\Listeners\PromotePaymentEvidence::class,
+        ],
+
         /**
          * @deprecated LEGACY ALIAS SUPPORT (V1 -> V2 MIGRATION)
          * Policy: Monitor application logs for event tag 'auth.user_profile_updated'.
