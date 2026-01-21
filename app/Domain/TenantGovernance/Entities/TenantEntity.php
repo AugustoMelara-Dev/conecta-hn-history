@@ -26,6 +26,11 @@ final class TenantEntity
     private bool $isActive = true;
     private DateTimeImmutable $createdAt;
     private DateTimeImmutable $updatedAt;
+    
+    // Subscription Properties (Billing Bounded Context)
+    private ?string $planId = null;
+    private ?\DateTimeImmutable $subscriptionEndsAt = null;
+    private ?string $subscriptionReference = null;
 
     private function __construct() {}
 
@@ -90,31 +95,119 @@ final class TenantEntity
         return $this->createdAt;
     }
 
-    // -- SNAPSHOT COMPATIBILITY --
+    // -- DOMAIN BEHAVIOR --
+
+    /**
+     * Upgrade tenant to a new subscription plan.
+     * 
+     * Encapsulates the business logic of plan transition.
+     * Handler should "tell" the entity what to do, not "ask" and mutate.
+     */
+    public function upgradeToPlan(
+        string $newPlanId,
+        ?\DateTimeImmutable $subscriptionEndsAt = null,
+        ?string $subscriptionReference = null
+    ): void {
+        // Note: In a full Event Sourced model, this would record a PlanUpgraded event.
+        // For now, we mutate internal state directly for CRUD compatibility.
+        $this->planId = $newPlanId;
+        $this->subscriptionEndsAt = $subscriptionEndsAt;
+        $this->subscriptionReference = $subscriptionReference;
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    /**
+     * Get current plan identifier.
+     */
+    public function planId(): ?string
+    {
+        return $this->planId ?? null;
+    }
+
+    /**
+     * Get subscription end date.
+     */
+    public function subscriptionEndsAt(): ?\DateTimeImmutable
+    {
+        return $this->subscriptionEndsAt ?? null;
+    }
+
+    /**
+     * Get subscription reference (external gateway ID).
+     */
+    public function subscriptionReference(): ?string
+    {
+        return $this->subscriptionReference ?? null;
+    }
+
+    // -- SNAPSHOT COMPATIBILITY (Memento Pattern) --
     
+    /**
+     * Serialize entity state for snapshot storage.
+     * 
+     * CRITICAL: Every property MUST be included to prevent data loss.
+     * Temporal values use ISO-8601 (ATOM) format for consistency.
+     *
+     * @return array<string, mixed>
+     */
     public function toStateArray(): array
     {
         return [
+            // Core Identity
             'id' => $this->id,
             'name' => $this->name,
             'domain' => $this->domain,
             'is_active' => $this->isActive,
-            'created_at' => $this->createdAt->format(DateTimeImmutable::ATOM),
-            'updated_at' => $this->updatedAt->format(DateTimeImmutable::ATOM),
+            
+            // Temporal Markers (ISO-8601)
+            'created_at' => $this->createdAt->format(\DateTimeInterface::ATOM),
+            'updated_at' => $this->updatedAt->format(\DateTimeInterface::ATOM),
+            
+            // Subscription State (Billing Context) - CRITICAL FOR PERSISTENCE
+            'plan_id' => $this->planId,
+            'subscription_ends_at' => $this->subscriptionEndsAt?->format(\DateTimeInterface::ATOM),
+            'subscription_reference' => $this->subscriptionReference,
         ];
     }
 
-    // Assuming we might need this for hydration from DB if not dealing with Event Store for reads yet
+    /**
+     * Rehydrate entity from snapshot array.
+     * 
+     * CRITICAL: Must restore ALL properties including subscription state.
+     * Failure to do so causes "Premium Amnesia" - users silently downgraded.
+     *
+     * @param array<string, mixed> $state
+     */
     public static function fromStateArray(array $state): self
     {
         $tenant = new self();
+        
+        // Core Identity
         $tenant->id = (string) ($state['id'] ?? '');
-        $tenant->name = $state['name'] ?? '';
-        $tenant->domain = $state['domain'] ?? '';
+        $tenant->name = (string) ($state['name'] ?? '');
+        $tenant->domain = (string) ($state['domain'] ?? '');
         $tenant->isActive = (bool) ($state['is_active'] ?? true);
-        $tenant->createdAt = isset($state['created_at']) ? new DateTimeImmutable($state['created_at']) : new DateTimeImmutable();
-        $tenant->updatedAt = isset($state['updated_at']) ? new DateTimeImmutable($state['updated_at']) : new DateTimeImmutable();
-        $tenant->version = 0;
+        
+        // Temporal Markers (robust parsing)
+        $tenant->createdAt = isset($state['created_at']) 
+            ? new DateTimeImmutable($state['created_at']) 
+            : new DateTimeImmutable();
+        $tenant->updatedAt = isset($state['updated_at']) 
+            ? new DateTimeImmutable($state['updated_at']) 
+            : new DateTimeImmutable();
+        
+        // Subscription State (CRITICAL - prevents Premium Amnesia)
+        $tenant->planId = isset($state['plan_id']) ? (string) $state['plan_id'] : null;
+        $tenant->subscriptionEndsAt = isset($state['subscription_ends_at']) && $state['subscription_ends_at'] !== null
+            ? new DateTimeImmutable($state['subscription_ends_at'])
+            : null;
+        $tenant->subscriptionReference = isset($state['subscription_reference']) 
+            ? (string) $state['subscription_reference'] 
+            : null;
+        
+        // Event Sourcing compatibility
+        $tenant->version = (int) ($state['version'] ?? 0);
+        
         return $tenant;
     }
 }
