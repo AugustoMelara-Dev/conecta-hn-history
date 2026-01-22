@@ -63,7 +63,7 @@ return new class extends Migration
             // ACTOR TRACKING (Who triggered this event?)
             // ═══════════════════════════════════════════════════════════════
             // NULL = system-generated event (e.g., auto-cancel after timeout)
-            $table->foreignId('actor_id')
+            $table->foreignUuid('actor_id')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Events;
 
-use App\Domain\Shared\Events\DomainEvent; // Assuming a base abstract class or interface exists, or just standalone
+// Assuming a base abstract class or interface exists, or just standalone
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**

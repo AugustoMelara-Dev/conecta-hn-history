@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Transformers;
 
-use App\Models\Tenant;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
 use App\Models\OpeningHour;
+use App\Models\Tenant;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -36,7 +36,7 @@ final class TenantMicrositeTransformer
     /**
      * Transform complete tenant for microsite rendering.
      *
-     * @param Tenant $tenant Eager-loaded tenant model
+     * @param  Tenant  $tenant  Eager-loaded tenant model
      * @return array<string, mixed> Inertia-ready props
      */
     public function transform(Tenant $tenant): array
@@ -116,7 +116,7 @@ final class TenantMicrositeTransformer
     {
         $products = $tenant->products;
 
-        if (!$products || $products->isEmpty()) {
+        if (! $products || $products->isEmpty()) {
             return [];
         }
 
@@ -129,7 +129,7 @@ final class TenantMicrositeTransformer
                 'slug' => $product->slug ?? Str::slug($product->name),
                 'description' => $product->description ?? '',
                 'price' => (float) ($product->price ?? 0),
-                'formatted_price' => 'L. ' . number_format((float) ($product->price ?? 0), 2),
+                'formatted_price' => 'L. '.number_format((float) ($product->price ?? 0), 2),
                 'image' => $this->resolveImageUrl($product->image ?? null, 'product'),
                 'is_visible' => (bool) ($product->is_visible ?? true),
                 'is_featured' => (bool) ($product->is_featured ?? false),
@@ -142,7 +142,7 @@ final class TenantMicrositeTransformer
             ];
 
             // FEATURE FLAG: Modifiers only for Pro/Enterprise
-            if (!$canShowModifiers) {
+            if (! $canShowModifiers) {
                 $baseProduct['modifiers'] = [];
                 $baseProduct['modifier_groups'] = [];
                 $baseProduct['has_modifiers'] = false;
@@ -159,7 +159,7 @@ final class TenantMicrositeTransformer
                         'id' => $opt->id,
                         'name' => $opt->name,
                         'price' => (float) ($opt->price ?? 0),
-                        'formatted_price' => $opt->price > 0 ? '+L. ' . number_format((float) $opt->price, 2) : 'Gratis',
+                        'formatted_price' => $opt->price > 0 ? '+L. '.number_format((float) $opt->price, 2) : 'Gratis',
                         'is_default' => (bool) ($opt->is_default ?? false),
                     ])->toArray(),
                 ])->toArray();
@@ -182,7 +182,7 @@ final class TenantMicrositeTransformer
         $culturalDayOrder = [1, 2, 3, 4, 5, 6, 0];
 
         $hoursMap = [];
-        if ($hours !== null && !$hours->isEmpty()) {
+        if ($hours !== null && ! $hours->isEmpty()) {
             foreach ($hours as $hour) {
                 $hoursMap[$hour->day_of_week] = $hour;
             }
@@ -267,7 +267,7 @@ final class TenantMicrositeTransformer
      */
     private function transformCategory(Tenant $tenant): array
     {
-        if (!$tenant->category) {
+        if (! $tenant->category) {
             return ['id' => 0, 'name' => 'General', 'slug' => 'general'];
         }
 

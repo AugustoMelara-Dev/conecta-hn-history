@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Cache;
 final class EloquentCityReader implements CityReader
 {
     private const CACHE_KEY = 'cities_list';
+
     private const CACHE_TTL = 86400; // 24 hours
 
     /**

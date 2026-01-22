@@ -409,9 +409,9 @@ class Order extends Model
      * - Cannot cancel orders that are already shipped/delivered/completed
      * - Idempotent: Cancelling an already cancelled order is a no-op
      *
-     * @param string $reason Mandatory cancellation reason (audited)
-     * @param int $cancelledByUserId User who initiated the cancellation
-     * @return void
+     * @param  string  $reason  Mandatory cancellation reason (audited)
+     * @param  int  $cancelledByUserId  User who initiated the cancellation
+     *
      * @throws \App\Domain\Sales\Exceptions\OrderCannotBeCancelledException
      */
     public function cancel(string $reason, int $cancelledByUserId): void
@@ -438,12 +438,10 @@ class Order extends Model
 
     /**
      * Check if this order can be cancelled.
-     *
-     * @return bool
      */
     public function canBeCancelled(): bool
     {
-        return !in_array($this->status, [
+        return ! in_array($this->status, [
             self::STATUS_DELIVERED,
             self::STATUS_CANCELLED,
         ], true);
@@ -451,8 +449,6 @@ class Order extends Model
 
     /**
      * Check if payment was made for this order.
-     *
-     * @return bool
      */
     public function wasPaid(): bool
     {

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('tenant_visits', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->string('ip_address')->nullable();
             $table->text('user_agent')->nullable();
             $table->timestamp('visited_at')->nullable();

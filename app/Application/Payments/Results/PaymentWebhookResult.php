@@ -39,8 +39,8 @@ final readonly class PaymentWebhookResult
      * Factory for successfully processed processed webhooks (PAID/FAILED).
      */
     public static function processed(
-        string $transactionId, 
-        string $status, 
+        string $transactionId,
+        string $status,
         bool $updatedOrder = true,
         ?string $receiptUrl = null
     ): self {

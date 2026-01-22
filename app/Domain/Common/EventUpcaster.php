@@ -9,7 +9,7 @@ interface EventUpcaster
     public function supports(string $eventType, int $sourceVersion): bool;
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
     public function upcast(array $payload): array;

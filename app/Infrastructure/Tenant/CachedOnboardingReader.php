@@ -16,8 +16,6 @@ final class CachedOnboardingReader implements OnboardingReader
 
     /**
      * Get available cities with caching strategy.
-     *
-     * @return Collection
      */
     public function getAvailableCities(): Collection
     {
@@ -30,8 +28,6 @@ final class CachedOnboardingReader implements OnboardingReader
 
     /**
      * Get business categories with caching strategy.
-     *
-     * @return Collection
      */
     public function getBusinessCategories(): Collection
     {

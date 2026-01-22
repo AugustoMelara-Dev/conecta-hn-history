@@ -6,8 +6,6 @@ namespace App\Domain\TenantGovernance\Services;
 
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 
-
-
 /**
  * TenantResolver - Secure Tenant Discovery Service
  *
@@ -35,7 +33,7 @@ final class TenantResolver
         // Cache responsibility delegated to Infrastructure (Repository Decorator)
         $tenant = $this->repository->findById($tenantId);
 
-        if (!$tenant) {
+        if (! $tenant) {
             return null;
         }
 
@@ -43,7 +41,7 @@ final class TenantResolver
         // We assume the entity has these properties/methods.
         // In a pure domain, these would be methods like $tenant->isActive().
         // For now, accessing properties dynamically or via the interface contract.
-        
+
         if ($tenant->is_active === true && in_array($tenant->subscription_status, ['active', 'trial'])) {
             return $tenant;
         }
@@ -59,7 +57,7 @@ final class TenantResolver
         // Cache responsibility delegated to Infrastructure
         $tenant = $this->repository->findBySlug($slug);
 
-        if (!$tenant) {
+        if (! $tenant) {
             return null;
         }
 
@@ -67,7 +65,7 @@ final class TenantResolver
             return $tenant;
         }
 
-        return null; 
+        return null;
     }
 
     /**
@@ -77,7 +75,7 @@ final class TenantResolver
     {
         $tenant = $this->repository->findByDomain($domain);
 
-        if (!$tenant) {
+        if (! $tenant) {
             return null;
         }
 

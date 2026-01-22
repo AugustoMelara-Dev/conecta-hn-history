@@ -31,7 +31,9 @@ final class PlanFeatureFlagService
      * Plan tier constants.
      */
     public const PLAN_SEMILLA = 'semilla';
+
     public const PLAN_PRO = 'pro';
+
     public const PLAN_ENTERPRISE = 'enterprise';
 
     /**
@@ -93,7 +95,7 @@ final class PlanFeatureFlagService
      */
     public function canShowModifiers(Tenant $tenant): bool
     {
-        return !$this->isSemilla($tenant);
+        return ! $this->isSemilla($tenant);
     }
 
     /**
@@ -103,7 +105,7 @@ final class PlanFeatureFlagService
      */
     public function canShowReviews(Tenant $tenant): bool
     {
-        return !$this->isSemilla($tenant);
+        return ! $this->isSemilla($tenant);
     }
 
     /**
@@ -113,7 +115,7 @@ final class PlanFeatureFlagService
      */
     public function canShowSocialGraph(Tenant $tenant): bool
     {
-        return !$this->isSemilla($tenant);
+        return ! $this->isSemilla($tenant);
     }
 
     /**
@@ -123,7 +125,7 @@ final class PlanFeatureFlagService
      */
     public function canUseCart(Tenant $tenant): bool
     {
-        return !$this->isSemilla($tenant);
+        return ! $this->isSemilla($tenant);
     }
 
     /**
@@ -133,7 +135,7 @@ final class PlanFeatureFlagService
      */
     public function canAccessAnalytics(Tenant $tenant): bool
     {
-        return !$this->isSemilla($tenant);
+        return ! $this->isSemilla($tenant);
     }
 
     /**
@@ -143,7 +145,7 @@ final class PlanFeatureFlagService
      */
     public function canCustomizeHero(Tenant $tenant): bool
     {
-        return !$this->isSemilla($tenant);
+        return ! $this->isSemilla($tenant);
     }
 
     /**
@@ -153,7 +155,7 @@ final class PlanFeatureFlagService
      */
     public function canUseCoupons(Tenant $tenant): bool
     {
-        return !$this->isSemilla($tenant);
+        return ! $this->isSemilla($tenant);
     }
 
     /**
@@ -169,6 +171,7 @@ final class PlanFeatureFlagService
         }
 
         $plan = $this->determinePlan($tenant);
+
         return self::PRODUCT_LIMITS[$plan] ?? self::PRODUCT_LIMITS[self::PLAN_SEMILLA];
     }
 
@@ -212,12 +215,12 @@ final class PlanFeatureFlagService
 
         // If 8 digits, add Honduras prefix
         if (strlen($cleaned) === 8) {
-            return '+504' . $cleaned;
+            return '+504'.$cleaned;
         }
 
         // If already has country code, ensure + prefix
-        if (strlen($cleaned) > 8 && !str_starts_with($phone, '+')) {
-            return '+' . $cleaned;
+        if (strlen($cleaned) > 8 && ! str_starts_with($phone, '+')) {
+            return '+'.$cleaned;
         }
 
         return $phone;

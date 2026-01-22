@@ -57,9 +57,9 @@ final readonly class CreateOrderResult
         // Reconstruct OrderItemData objects if possible, or keep as array
         // For simple idempotency return, keeping as array is often sufficient for API response
         $items = array_map(function ($item) {
-             // Assuming OrderItemData could be reconstructed if needed, but for now array is safe
-             // return is_array($item) ? OrderItemData::fromArray($item) : $item;
-             return $item; // Keep as array for now to avoid dependency depth issues
+            // Assuming OrderItemData could be reconstructed if needed, but for now array is safe
+            // return is_array($item) ? OrderItemData::fromArray($item) : $item;
+            return $item; // Keep as array for now to avoid dependency depth issues
         }, $data['items'] ?? []);
 
         return new self(
@@ -76,8 +76,7 @@ final readonly class CreateOrderResult
     /**
      * Factory method to hydrate from Domain Entity / Eloquent Model.
      *
-     * @param object $order The Order entity (Model or Domain Entity)
-     * @return self
+     * @param  object  $order  The Order entity (Model or Domain Entity)
      */
     public static function fromEntity(object $order): self
     {
@@ -89,7 +88,7 @@ final readonly class CreateOrderResult
             itemsCount: method_exists($order, 'items') ? $order->items()->count() : 0,
             currency: $order->currency ?? 'HNL',
             // Ideally map items here too
-            items: [] 
+            items: []
         );
     }
 }

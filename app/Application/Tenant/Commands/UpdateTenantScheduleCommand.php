@@ -16,8 +16,8 @@ final readonly class UpdateTenantScheduleCommand
     public function __construct(
         /** Tenant ID to update */
         public int $tenantId,
-        
-        /** 
+
+        /**
          * Weekly schedule data structure.
          * Expected format: [['day' => 'monday', 'isOpen' => true, 'open' => '08:00', 'close' => '17:00'], ...]
          */

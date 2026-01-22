@@ -5,91 +5,75 @@ declare(strict_types=1);
 namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\DeleteUserCommand;
-use App\Application\Shared\Traits\LogSanitizer;
+use App\Application\Auth\Results\DeleteUserResult;
+use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Identity\Events\UserDeleted;
 use App\Domain\Identity\Exceptions\CrossTenantAccessException;
+use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Infrastructure\Bus\TransactionalEventDispatcher;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
+use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Entities\DomainEventMessage;
+use Ramsey\Uuid\Uuid;
 
 /**
- * DeleteUserHandler - Secure User Deletion Orchestrator
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  PIPELINE ARCHITECTURE: Manual DB::transaction removed.                  ║
- * ║  TransactionMiddleware handles ACID atomicity.                           ║
- * ║  ValidationMiddleware handles input validity.                            ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * DeleteUserHandler - Pure Core Edition (Russian Doll Pattern)
  */
-final class DeleteUserHandler
+final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
 {
-    use LogSanitizer;
-
     public function __construct(
-        private readonly UserRepositoryInterface $userRepository,
-        private readonly TransactionalEventDispatcher $eventDispatcher,
+        private UserRepositoryInterface $userRepository,
+        private OutboxRepositoryInterface $outboxRepository,
+        private ClockInterface $clock,
     ) {}
 
-    /**
-     * Handle user deletion command.
-     *
-     * @param DeleteUserCommand $command
-     * @return void
-     * @throws ModelNotFoundException If user not found
-     * @throws CrossTenantAccessException If tenant mismatch (IDOR attack)
-     */
-    public function handle(DeleteUserCommand $command): void
+    public function handle(DeleteUserCommand $command): DeleteUserResult
     {
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 1: Load Target User
-        // ═══════════════════════════════════════════════════════════════════
-        $user = $this->userRepository->findById($command->userId);
+        // 1. Load Target User
+        $user = $this->userRepository->findById($command->userId, $command->requestingTenantId);
 
         if ($user === null) {
-            throw new ModelNotFoundException("User not found: {$command->userId}");
+            throw UserNotFoundException::withIdAndTenant(
+                (string) $command->userId,
+                $command->requestingTenantId
+            );
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 2: IDOR PROTECTION - Tenant Ownership Validation
-        // ═══════════════════════════════════════════════════════════════════
-        if ($user->tenant_id !== $command->requestingTenantId) {
-            Log::warning('SECURITY: Cross-tenant user deletion attempt blocked', [
-                'target_user_id' => $command->userId,
-                'target_tenant_id' => $user->tenant_id,
-                'requesting_tenant_id' => $command->requestingTenantId,
-            ]);
-
+        // 2. IDOR Protection (Redundant but Safe)
+        if ($user->tenantId !== $command->requestingTenantId) {
             throw CrossTenantAccessException::forUserDeletion($command->userId);
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 3: SNAPSHOT - Capture Data Before Destruction
-        // ═══════════════════════════════════════════════════════════════════
+        // 3. Domain Logic: Delete
         $userId = $user->id;
-        $tenantId = $user->tenant_id;
+        $tenantId = $user->tenantId;
         $email = $user->email;
         $name = $user->name;
 
-        // ═══════════════════════════════════════════════════════════════════
-        // PHASE 4 & 5: DELETE + EVENT DISPATCH
-        // NOTE: TransactionMiddleware ensures this entire method is atomic.
-        // ═══════════════════════════════════════════════════════════════════
-        
         $this->userRepository->delete($user);
 
-        Log::info('User deleted', $this->sanitizePayload([
-            'user_id' => $userId,
-            'tenant_id' => $tenantId,
-        ]));
-
-        // Dispatch via Outbox Wrapper
-        // This writes to 'domain_outbox_events' inside the current transaction
-        $this->eventDispatcher->dispatch(UserDeleted::fromSnapshot(
+        // 4. Outbox Persistence
+        $event = UserDeleted::fromSnapshot(
             userId: $userId,
             tenantId: $tenantId,
             email: $email,
             name: $name,
-        ));
+        );
+
+        $message = new DomainEventMessage(
+            eventId: Uuid::uuid7()->toString(),
+            type: UserDeleted::class,
+            aggregateId: (string) $userId,
+            payload: json_encode($event->toPayload()),
+            occurredAt: $this->clock->now(),
+            metadata: [
+                'tenant_id' => $tenantId,
+                'causation_id' => $command->idempotencyKey,
+                'requesting_tenant_id' => $command->requestingTenantId,
+            ]
+        );
+
+        $this->outboxRepository->save($message);
+
+        return new DeleteUserResult('deleted', (string) $userId);
     }
 }

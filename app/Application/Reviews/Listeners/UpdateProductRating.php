@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Log;
 final class UpdateProductRating implements ShouldQueue
 {
     public int $tries = 3;
+
     public int $timeout = 60;
 
     public function __construct(
@@ -34,9 +35,6 @@ final class UpdateProductRating implements ShouldQueue
 
     /**
      * Handle the event.
-     *
-     * @param ReviewCreated $event
-     * @return void
      */
     public function handle(ReviewCreated $event): void
     {
@@ -45,12 +43,13 @@ final class UpdateProductRating implements ShouldQueue
 
         // 2. Load Product Aggregate Root
         $product = $this->productRepository->findById($event->productId);
-        
+
         if ($product === null) {
             Log::warning('UpdateProductRating: Product not found', [
                 'product_id' => $event->productId,
                 'review_id' => $event->reviewId,
             ]);
+
             return;
         }
 
@@ -74,7 +73,6 @@ final class UpdateProductRating implements ShouldQueue
      * SECURITY CRITICAL: Ensures the listener runs in the correct tenant context.
      * Without this, database writes could target the wrong tenant.
      *
-     * @param ReviewCreated $event
      * @return array<int, object>
      */
     public function middleware(ReviewCreated $event): array

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetPasswordAction;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
@@ -37,23 +36,23 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
         Fortify::resetUserPasswordsUsing(ResetPasswordAction::class);
 
-
         // Rate Limiters
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+
             return Limit::perMinute(5)->by($throttleKey);
         });
 
         // Views (if needed, but actions are the priority)
         // Checks if views exist or basic registration
         if (config('fortify.views', true)) {
-             Fortify::registerView(fn () => view('auth.register'));
-             Fortify::loginView(fn () => view('auth.login'));
-             Fortify::verifyEmailView(fn () => view('auth.verify-email'));
-             Fortify::confirmPasswordView(fn () => view('auth.confirm-password'));
-             Fortify::twoFactorChallengeView(fn () => view('auth.two-factor-challenge'));
-             Fortify::requestPasswordResetLinkView(fn () => view('auth.forgot-password'));
-             Fortify::resetPasswordView(fn ($request) => view('auth.reset-password', ['request' => $request]));
+            Fortify::registerView(fn () => view('auth.register'));
+            Fortify::loginView(fn () => view('auth.login'));
+            Fortify::verifyEmailView(fn () => view('auth.verify-email'));
+            Fortify::confirmPasswordView(fn () => view('auth.confirm-password'));
+            Fortify::twoFactorChallengeView(fn () => view('auth.two-factor-challenge'));
+            Fortify::requestPasswordResetLinkView(fn () => view('auth.forgot-password'));
+            Fortify::resetPasswordView(fn ($request) => view('auth.reset-password', ['request' => $request]));
         }
     }
 }

@@ -23,9 +23,13 @@ use Inertia\Middleware;
 class HandleInertiaRequests extends Middleware
 {
     private const ANNOUNCEMENTS_CACHE_TTL = 300;
+
     private const HEX_COLOR_PATTERN = '/^#[0-9A-Fa-f]{6}$/';
+
     private const DEFAULT_BRAND_COLOR = '#111827';
+
     private const LOGO_PATH_PREFIX = 'tenants/';
+
     private const ALLOWED_LOGO_EXTENSIONS = '/\.(png|jpg|jpeg|webp)$/i';
 
     protected $rootView = 'app';
@@ -114,7 +118,7 @@ class HandleInertiaRequests extends Middleware
 
     private function getGuardedTenantData(Request $request): ?array
     {
-        if (!$this->isWithinTenantContext($request)) {
+        if (! $this->isWithinTenantContext($request)) {
             return null;
         }
 
@@ -123,7 +127,7 @@ class HandleInertiaRequests extends Middleware
 
     private function getGuardedAnnouncements(Request $request): array
     {
-        if (!$this->isWithinTenantContext($request)) {
+        if (! $this->isWithinTenantContext($request)) {
             return [];
         }
 
@@ -136,17 +140,17 @@ class HandleInertiaRequests extends Middleware
 
     protected function resolveTenant(Request $request): ?Tenant
     {
-        if (!app()->has('currentTenant')) {
+        if (! app()->has('currentTenant')) {
             return null;
         }
 
         $tenant = app('currentTenant');
 
-        if (!$tenant instanceof Tenant) {
+        if (! $tenant instanceof Tenant) {
             return null;
         }
 
-        if (!$tenant->exists) {
+        if (! $tenant->exists) {
             return null;
         }
 
@@ -157,7 +161,7 @@ class HandleInertiaRequests extends Middleware
     {
         $tenant = $this->resolveTenant($request);
 
-        if (!$tenant) {
+        if (! $tenant) {
             return null;
         }
 
@@ -225,8 +229,9 @@ class HandleInertiaRequests extends Middleware
         return Cache::remember('app_build_version', 3600, function (): string {
             $file = public_path('build/manifest.json');
             if (file_exists($file) && ($mtime = filemtime($file)) !== false) {
-                return 'v' . $mtime;
+                return 'v'.$mtime;
             }
+
             return '1.0.0';
         });
     }
@@ -237,7 +242,7 @@ class HandleInertiaRequests extends Middleware
 
     private function sanitizeHexColor(?string $color): string
     {
-        if ($color === null || !preg_match(self::HEX_COLOR_PATTERN, $color)) {
+        if ($color === null || ! preg_match(self::HEX_COLOR_PATTERN, $color)) {
             return self::DEFAULT_BRAND_COLOR;
         }
 
@@ -250,7 +255,7 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
-        if (!str_starts_with($path, self::LOGO_PATH_PREFIX)) {
+        if (! str_starts_with($path, self::LOGO_PATH_PREFIX)) {
             return null;
         }
 
@@ -258,11 +263,11 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
-        if (!preg_match(self::ALLOWED_LOGO_EXTENSIONS, $path)) {
+        if (! preg_match(self::ALLOWED_LOGO_EXTENSIONS, $path)) {
             return null;
         }
 
-        if (!Storage::exists($path)) {
+        if (! Storage::exists($path)) {
             return null;
         }
 

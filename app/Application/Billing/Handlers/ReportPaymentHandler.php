@@ -8,107 +8,160 @@ use App\Application\Billing\Commands\ReportPaymentCommand;
 use App\Application\Billing\Results\ReportPaymentResult;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Billing\Entities\PaymentEntity;
-use App\Domain\Billing\Events\PaymentReported;
 use App\Domain\Billing\Enums\PaymentStatus;
+use App\Domain\Billing\Events\PaymentReported;
 use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Domain\Billing\Services\DocumentStorageServiceInterface;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
+use App\Domain\Shared\Contracts\UuidGeneratorInterface;
 use App\Domain\Shared\ValueObjects\Money;
-use App\Infrastructure\Bus\TransactionalEventDispatcher;
 use DateTimeImmutable;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use Psr\Log\LoggerInterface;
 
 /**
- * ReportPaymentHandler - Command Handler for Manual Payment Reporting
+ * ReportPaymentHandler - Zero-Waste Architecture (Level 12)
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ENTITY HYDRATION: Handler is responsible for constructing domain objects║
- * ║  TYPE SAFE: Uses Money VO and string UUIDs throughout.                   ║
- * ║  HEXAGONAL: No Eloquent or Infrastructure leakage.                       ║
+ * ║  STRATEGY: PURIFIED INSERT-OR-RECOVER                                    ║
+ * ║  1. Upload Temp (Quarantine) - Fast                                      ║
+ * ║  2. Insert-or-Recover (Try/Catch) - Atomic                               ║
+ * ║  3. Dispatch Event (PaymentReported)                                     ║
+ * ║  4. EXIT (No Promotion)                                                  ║
+ * ║  RESULT: Fast User Response. Promotion is Async via Listener.            ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class ReportPaymentHandler
+final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterface
 {
     use LogSanitizer;
 
+    private const MAX_ATTEMPTS = 20; // 20 reports per minute (High Throughput)
+
+    private const DECAY_SECONDS = 60;
+
     public function __construct(
-        private readonly PaymentRepositoryInterface $paymentRepository,
-        private readonly DocumentStorageServiceInterface $documentStorage,
-        private readonly TransactionalEventDispatcher $eventDispatcher,
+        private PaymentRepositoryInterface $paymentRepository,
+        private DocumentStorageServiceInterface $documentStorage,
+        private EventDispatcherInterface $eventDispatcher,
+        private UuidGeneratorInterface $uuidGenerator,
+        private LoggerInterface $logger,
+        private \App\Infrastructure\Security\ResilientRateLimiter $rateLimiter
     ) {}
 
-    /**
-     * Handle the payment reporting command.
-     *
-     * @param ReportPaymentCommand $command
-     * @return ReportPaymentResult
-     */
     public function handle(ReportPaymentCommand $command): ReportPaymentResult
     {
-        // ═══════════════════════════════════════════════════════════════════
-        // STEP 1: FILE STORAGE (Delegate to Infrastructure)
-        // ═══════════════════════════════════════════════════════════════════
-        $receiptPath = null;
-        if ($command->proofOfPaymentPath !== null) {
-            $receiptPath = $this->documentStorage->storeProofOfPayment(
-                $command->proofOfPaymentPath,
-                $command->paymentReference
+        $limitKey = 'billing:report_payment:'.$command->tenantId;
+
+        // STRATEGY: FAIL-OPEN
+        // If Redis dies, we ACCEPT the payment. We prioritize Revenue over Traffic Control.
+        return $this->rateLimiter->attempt($limitKey, self::MAX_ATTEMPTS, self::DECAY_SECONDS, function () use ($command) {
+
+            // 1. GENERATE IDENTITY
+            $paymentId = $this->uuidGenerator->generate();
+
+            // 2. VERIFY PRESENCE (Trust But Verify) - *OUTSIDE TRANSACTION*
+            // CRITICAL HYGIENE: Never perform HTTP I/O inside a DB Transaction.
+            // This prevents holding Row Locks while waiting for S3.
+            $tempPath = $command->proofOfPaymentPath;
+            if ($tempPath) {
+                // SECURITY: Enforce Tenant Isolation
+                $expectedPrefix = sprintf('temp/%s/', $command->tenantId);
+                if (! str_starts_with($tempPath, $expectedPrefix)) {
+                    throw new \InvalidArgumentException('Security Violation: Storage key does not belong to this tenant.');
+                }
+
+                // "HeadObject" check
+                $this->documentStorage->verifyPresence($tempPath);
+            }
+
+            // 3. PREPARE ENTITY
+            $payment = new PaymentEntity(
+                id: $paymentId,
+                tenantId: $command->tenantId,
+                amount: new Money($command->amountInCents, $command->currency),
+                bank: $command->bank,
+                referenceNumber: $command->paymentReference,
+                status: PaymentStatus::PENDING,
+                proofUrl: $tempPath,
+                createdAt: new DateTimeImmutable,
+                idempotencyKey: $command->idempotencyKey
             );
-        }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // STEP 2: ENTITY HYDRATION (Handler Responsibility)
-        // ═══════════════════════════════════════════════════════════════════
-        
-        // 2a. Generate unique identity (UUID v4)
-        $paymentId = Str::uuid()->toString();
+            try {
+                // 4. ATOMIC TRAP (Insert-or-Recover)
+                // Retries: 3 (Handle Deadlocks automatically)
+                DB::transaction(function () use ($payment, $command) {
+                    $this->paymentRepository->save($payment);
 
-        // 2b. Construct Money Value Object
-        $amount = Money::of($command->amountInCents, $command->currency);
+                    // Dispatch Event
+                    $this->eventDispatcher->dispatch(new PaymentReported(
+                        paymentId: $payment->id,
+                        tenantId: $payment->tenantId,
+                        amount: $payment->amount->amount,
+                        currency: $payment->amount->currency,
+                        status: $payment->status->value,
+                        idempotencyKey: $command->idempotencyKey,
+                        occurredAt: new DateTimeImmutable
+                    ));
+                }, 3); // Auto-Retry on Deadlock (Error 1213)
 
-        // 2c. Assemble PaymentEntity (Pure Domain Object)
-        $paymentEntity = new PaymentEntity(
-            id: $paymentId,
-            tenantId: (string) $command->tenantId,
-            amount: $amount,
-            bank: $command->bank,
-            referenceNumber: $command->paymentReference,
-            status: PaymentStatus::PENDING,
-            proofUrl: $receiptPath,
-            createdAt: new DateTimeImmutable(),
+                return ReportPaymentResult::fromEntity($payment);
+
+            } catch (QueryException $e) {
+                // SCENARIO 2: COLLISION (We Lost)
+                // Code 23000 = Integrity Constraint Violation (Duplicate Key)
+                if ($e->getCode() !== '23000' && $e->errorInfo[1] !== 1062) {
+                    throw $e; // Real error
+                }
+
+                // RECOVERY LOGIC
+                return $this->handleDuplicate($command, $e);
+            }
+        }, failOpen: true); // <--- CRITICAL: FAIL-OPEN
+    }
+
+    private function handleDuplicate(ReportPaymentCommand $command, QueryException $e): ReportPaymentResult
+    {
+        $existingPayment = $this->paymentRepository->findByIdempotencyKey(
+            $command->tenantId,
+            $command->idempotencyKey
         );
 
-        // ═══════════════════════════════════════════════════════════════════
-        // STEP 3: PERSIST VIA REPOSITORY
-        // ═══════════════════════════════════════════════════════════════════
-        $this->paymentRepository->save($paymentEntity);
+        if (! $existingPayment) {
+            throw new \RuntimeException('Concurrency anomaly: Duplicate detected but record missing.', 0, $e);
+        }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // STEP 4: DISPATCH DOMAIN EVENT (Transactional Outbox)
-        // ═══════════════════════════════════════════════════════════════════
-        $this->eventDispatcher->dispatch(new PaymentReported(
-            paymentId: $paymentEntity->id,
-            tenantId: $command->tenantId,
-            amountInCents: $command->amountInCents,
-            currency: $command->currency,
-            reference: $command->paymentReference,
-            idempotencyKey: $command->idempotencyKey,
-        ));
-
-        // ═══════════════════════════════════════════════════════════════════
-        // STEP 5: AUDIT LOG (PII Scrubbed)
-        // ═══════════════════════════════════════════════════════════════════
-        Log::info('Payment reported successfully', $this->sanitizePayload([
-            'payment_id' => $paymentEntity->id,
+        $this->logger->info('Recovered existing payment for duplicate report', [
             'tenant_id' => $command->tenantId,
-            'reference' => $command->paymentReference,
-            'amount_cents' => $command->amountInCents,
-            'currency' => $command->currency,
-        ]));
+            'key' => $command->idempotencyKey,
+            'existing_id' => $existingPayment->id,
+        ]);
 
-        // ═══════════════════════════════════════════════════════════════════
-        // STEP 6: RETURN RESULT DTO
-        // ═══════════════════════════════════════════════════════════════════
-        return ReportPaymentResult::fromEntity($paymentEntity);
+        // LIVENESS FIX: Kick the machine if it's stuck.
+        // LEVEL 34: TIME-GATED LIVENESS (Thundering Herd Protection)
+        // Only re-dispatch if the payment is older than 5 minutes.
+        // This prevents "Impatience Floods" where users spam retry immediately.
+        $stuckThreshold = new DateTimeImmutable('-5 minutes');
+
+        if (
+            $existingPayment->proofUrl
+            && str_starts_with($existingPayment->proofUrl, 'temp/')
+            && $existingPayment->createdAt < $stuckThreshold
+        ) {
+            $this->logger->warning('Re-dispatching Promotion for stuck payment (Stale > 5m)', ['id' => $existingPayment->id]);
+
+            $this->eventDispatcher->dispatch(new PaymentReported(
+                paymentId: $existingPayment->id,
+                tenantId: $existingPayment->tenantId,
+                amount: $existingPayment->amount->amount,
+                currency: $existingPayment->amount->currency,
+                status: $existingPayment->status->value,
+                idempotencyKey: $command->idempotencyKey,
+                occurredAt: new DateTimeImmutable
+            ));
+        }
+
+        return ReportPaymentResult::fromEntity($existingPayment);
     }
 }

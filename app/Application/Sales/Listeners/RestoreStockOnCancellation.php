@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Application\Sales\Listeners;
 
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
 use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use App\Events\Order\OrderCancelled;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Facades\Log;
 
 /**
  * RestoreStockOnCancellation - Async Listener for Inventory Restoration
@@ -19,32 +19,33 @@ use Illuminate\Support\Facades\Log;
  * ║  - Decouples Sales domain from Inventory domain                         ║
  * ║  - Tenant-aware via TenantQueueMiddleware                               ║
  * ║  - Retryable: If it fails, the queue will retry automatically          ║
+ * ║  - FRAMEWORK AGNOSTIC: Uses LoggerInterface instead of Log facade      ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final class RestoreStockOnCancellation implements ShouldQueue
 {
     public int $tries = 3;
+
     public int $timeout = 60;
 
     public function __construct(
         private readonly ProductRepositoryInterface $productRepository,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
      * Handle the event.
-     *
-     * @param OrderCancelled $event
-     * @return void
      */
     public function handle(OrderCancelled $event): void
     {
         // Load order to get items (we need product_id and quantity)
         $order = \App\Models\Order::with('items')->find($event->aggregateId());
-        
+
         if ($order === null) {
-            Log::warning('RestoreStockOnCancellation: Order not found', [
+            $this->logger->warning('RestoreStockOnCancellation: Order not found', [
                 'order_id' => $event->aggregateId(),
             ]);
+
             return;
         }
 
@@ -56,7 +57,7 @@ final class RestoreStockOnCancellation implements ShouldQueue
             );
         }
 
-        Log::info('Stock restored after order cancellation', [
+        $this->logger->info('Stock restored after order cancellation', [
             'order_id' => $event->aggregateId(),
             'items_count' => $order->items->count(),
         ]);
@@ -65,13 +66,13 @@ final class RestoreStockOnCancellation implements ShouldQueue
     /**
      * Middleware for tenant-aware queue processing.
      *
-     * @param OrderCancelled $event
      * @return array<int, object>
      */
     public function middleware(OrderCancelled $event): array
     {
+        // UUID STRING: Use toString() for tenant context
         return [
-            new TenantQueueMiddleware($event->tenantId()->toInt()),
+            new TenantQueueMiddleware($event->tenantId()->toString()),
         ];
     }
 }

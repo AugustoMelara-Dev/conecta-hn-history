@@ -16,7 +16,7 @@ final class EloquentSearchRepository implements SearchRepository
             ->where('is_active', true) // Always filter active tenants
             ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('description', 'like', "%{$query}%");
+                    ->orWhere('description', 'like', "%{$query}%");
             })
             ->when($citySlug, function ($q, $slug) {
                 $q->whereHas('city', fn ($sq) => $sq->where('slug', $slug));

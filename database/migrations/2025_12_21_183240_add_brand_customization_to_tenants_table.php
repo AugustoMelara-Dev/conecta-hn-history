@@ -25,7 +25,7 @@ return new class extends Migration
             if (! Schema::hasColumn('tenants', 'brand_color')) {
                 $table->string('brand_color', 9)
                     ->default('#2563EB')
-                    ->after('primary_color')
+                    ->after('plan')
                     ->comment('Hex color for brand theming');
             }
 
@@ -55,13 +55,7 @@ return new class extends Migration
 
         // Sync primary_color to brand_color for existing records
         // This ensures UI shows correct color immediately
-        \DB::statement("
-            UPDATE tenants 
-            SET brand_color = COALESCE(primary_color, '#2563EB')
-            WHERE brand_color = '#2563EB' 
-            AND primary_color IS NOT NULL 
-            AND primary_color != ''
-        ");
+        // Legacy migration logic removed (primary_color does not exist)
     }
 
     public function down(): void

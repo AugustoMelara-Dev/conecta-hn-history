@@ -11,8 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Skip if column already exists (handles fresh migration where users table has FK already)
+        if (Schema::hasColumn('users', 'tenant_id')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('tenant_id')->nullable()->constrained()->nullOnDelete()->after('email');
+            $table->foreignUuid('tenant_id')->nullable()->constrained()->nullOnDelete()->after('email');
         });
     }
 
@@ -22,7 +27,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('tenant_id');
+            $table->dropForeign(['tenant_id']);
+            $table->dropColumn('tenant_id');
         });
     }
 };

@@ -9,7 +9,7 @@ use App\Application\Identity\Results\RegisterUserResult;
 
 /**
  * RegisterUserHandlerInterface - The Titanium Contract
- * 
+ *
  * Defines the strict signature for user registration to allow
  * transparent decoration (Security, Telemetry, Caching).
  */

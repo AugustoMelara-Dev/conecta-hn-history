@@ -17,19 +17,19 @@ final readonly class PaymentReceived implements ShouldDispatchAfterCommit
     public function __construct(
         /** Internal transaction reference */
         public string $transactionId,
-        
+
         /** External provider reference (stripe_pi_xxx, paypal_xxx) */
         public string $providerReference,
-        
+
         /** Amount in cents (integer for precision) */
         public int $amount,
-        
+
         /** ISO 4217 currency code */
         public string $currency,
-        
+
         /** Payer's email for notification */
         public ?string $payerEmail = null,
-        
+
         /** Tenant ID for multi-tenant context */
         public ?int $tenantId = null,
     ) {}

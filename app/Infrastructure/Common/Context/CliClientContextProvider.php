@@ -8,7 +8,7 @@ use App\Application\Common\Interfaces\ClientContextProviderInterface;
 
 /**
  * CliClientContextProvider - Console Transport Adapter
- * 
+ *
  * Resolves client identity for CLI commands, Seeders, and Tests.
  */
 final readonly class CliClientContextProvider implements ClientContextProviderInterface

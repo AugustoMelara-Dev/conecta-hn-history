@@ -39,7 +39,7 @@ return new class extends Migration
             // CONCURRENCY SHIELD:
             // Prevents branching histories.
             $table->unique(['aggregate_uuid', 'aggregate_version'], 'stored_events_optimistic_lock_unique');
-            
+
             // PERFORMANCE INDEX:
             // Allows rapid filtering of a tenant's history.
             $table->index(['tenant_id', 'aggregate_type']);

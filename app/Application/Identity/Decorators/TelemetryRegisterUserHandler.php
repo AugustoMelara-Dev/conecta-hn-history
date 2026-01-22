@@ -11,10 +11,15 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * TelemetryRegisterUserHandler - The Watcher
- * 
+ * TelemetryRegisterUserHandler - The Secure Watcher
+ *
+ * P3 FIX: Changed email hashing from MD5 to SHA-256.
+ * MD5 is cryptographically broken and should not be used
+ * even for non-security purposes like logging, to maintain
+ * consistency with security standards.
+ *
  * Measures precise latency and outcome of the operation.
- * Adheres to "Structured Telemetry" rule.
+ * Adheres to "Structured Telemetry" and "PII Protection" rules.
  */
 final readonly class TelemetryRegisterUserHandler implements RegisterUserHandlerInterface
 {
@@ -35,9 +40,10 @@ final readonly class TelemetryRegisterUserHandler implements RegisterUserHandler
             $this->logger->info('RegisterUser command executed', [
                 'latency_ms' => round($duration, 2),
                 'success' => true,
-                'email_hash' => md5($command->email), // Privacy Preservation
+                // P3 FIX: SHA-256 instead of MD5 for consistency
+                'email_hash' => hash('sha256', $command->email),
                 'command_id' => $command->idempotencyKey ?? 'N/A',
-                'status' => 'success'
+                'status' => 'success',
             ]);
 
             return $result;
@@ -48,10 +54,11 @@ final readonly class TelemetryRegisterUserHandler implements RegisterUserHandler
             $this->logger->error('RegisterUser command failed', [
                 'latency_ms' => round($duration, 2),
                 'success' => false,
-                'email_hash' => md5($command->email),
+                // P3 FIX: SHA-256 instead of MD5 for consistency
+                'email_hash' => hash('sha256', $command->email),
                 'command_id' => $command->idempotencyKey ?? 'N/A',
                 'status' => 'failure',
-                'exception' => $e->getMessage()
+                'exception' => $e->getMessage(),
             ]);
 
             throw $e;

@@ -26,7 +26,7 @@ return new class extends Migration
 
             // Caso 3 (Safety): Si ninguno existe, creamos el estándar
             elseif (! Schema::hasColumn('tenants', 'cover_image_path') && ! Schema::hasColumn('tenants', 'cover_path')) {
-                $table->string('cover_image_path', 2048)->nullable()->after('banner_path');
+                $table->string('cover_image_path', 2048)->nullable()->after('slug');
             }
         });
     }

@@ -38,7 +38,7 @@ final readonly class OrderFactory
             subtotal: $subtotal,
             total: $total,
             status: 'pending',
-            createdAt: new DateTimeImmutable(),
+            createdAt: new DateTimeImmutable,
             customerPhone: $customerPhone,
             customerAddress: $customerAddress,
             customerNotes: $customerNotes,

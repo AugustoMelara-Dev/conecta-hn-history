@@ -18,6 +18,7 @@ use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Scopes\LocationScope;
 use App\Traits\CanBeFavorited;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,17 +30,21 @@ use Spatie\Activitylog\Traits\LogsActivity;
 #[ObservedBy(\App\Observers\TenantObserver::class)]
 class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 {
-    use CanBeFavorited, HasDomainEvents, HasFactory, LogsActivity, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
+    use CanBeFavorited, HasDomainEvents, HasFactory, HasUuids, LogsActivity, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // DOMAIN CONSTANTS: Centralized business values
     // ═══════════════════════════════════════════════════════════════════════════
     public const PLAN_SEMILLA = 'semilla';
+
     public const PLAN_CRECIMIENTO = 'crecimiento';
+
     public const PLAN_COSECHA = 'cosecha';
 
     public const DEFAULT_PRODUCT_LIMIT = 12;
+
     public const DEFAULT_BRAND_COLOR = '#2563EB';
+
     public const DEFAULT_SUBSCRIPTION_STATUS = 'active';
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -207,7 +212,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     {
         // Handling Enum or String (if called before cast takes effect or legacy)
         $value = $this->plan_type instanceof TenantPlan ? $this->plan_type->value : $this->plan_type;
-        
+
         if (! in_array($value, ['pro', 'enterprise'])) {
             return false;
         }
@@ -275,7 +280,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function getPlanTypeLabelAttribute(): string
     {
         $value = $this->plan_type instanceof TenantPlan ? $this->plan_type->value : $this->plan_type;
-        
+
         $labels = [
             'semilla' => 'Plan Semilla',
             'pro' => 'Plan Pro',

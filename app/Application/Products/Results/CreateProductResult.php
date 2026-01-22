@@ -26,8 +26,7 @@ final readonly class CreateProductResult
     /**
      * Factory method to hydrate from Domain Entity / Eloquent Model.
      *
-     * @param object $product The Product entity
-     * @return self
+     * @param  object  $product  The Product entity
      */
     public static function fromEntity(object $product): self
     {

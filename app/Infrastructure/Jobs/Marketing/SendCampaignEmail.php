@@ -57,7 +57,7 @@ final class SendCampaignEmail implements ShouldBeUnique, ShouldQueue
                 'campaign_found' => (bool) $campaign,
                 'user_found' => (bool) $user,
             ]);
-            
+
             return;
         }
 

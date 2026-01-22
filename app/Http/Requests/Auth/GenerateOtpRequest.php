@@ -45,7 +45,7 @@ final class GenerateOtpRequest extends FormRequest
             $isEmail = filter_var($value, FILTER_VALIDATE_EMAIL) !== false;
             $isPhone = preg_match('/^\+[1-9]\d{1,14}$/', (string) $value) === 1;
 
-            if (!$isEmail && !$isPhone) {
+            if (! $isEmail && ! $isPhone) {
                 $fail('Debe ser un email válido o teléfono en formato internacional (+504...).');
             }
         };

@@ -31,6 +31,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
  * ║    - ✅ Only primitives and Value Objects                               ║
  * ║    - ✅ toPrimitives() for safe queue serialization                     ║
  * ║    - ✅ eventId() for idempotency                                       ║
+ * ║    - ✅ All IDs use STRING (UUID v7 compliant)                          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * LISTENERS:
@@ -48,7 +49,7 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
 
     /**
      * @param  TenantId  $tenantId  Tenant context for queue middleware
-     * @param  int  $orderId  The order aggregate root ID
+     * @param  string  $orderId  The order aggregate root ID (UUID v7 string)
      * @param  OrderNumber  $orderNumber  Human-readable order reference
      * @param  string  $transactionId  Payment gateway transaction ID
      * @param  string  $paymentMethod  Payment method used (e.g., 'card', 'transfer')
@@ -56,7 +57,7 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
      */
     public function __construct(
         private TenantId $tenantId,
-        private int $orderId,
+        private string $orderId,
         public OrderNumber $orderNumber,
         public string $transactionId,
         public string $paymentMethod,
@@ -77,8 +78,8 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
      * Factory: Create from order data (snapshotted at creation time).
      */
     public static function create(
-        int $tenantId,
-        int $orderId,
+        string $tenantId,
+        string $orderId,
         string $orderNumber,
         string $transactionId,
         string $paymentMethod,
@@ -86,7 +87,7 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
         string $currency = 'HNL'
     ): self {
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
+            tenantId: TenantId::fromInt((int) $tenantId),
             orderId: $orderId,
             orderNumber: OrderNumber::fromString($orderNumber),
             transactionId: $transactionId,
@@ -106,7 +107,7 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
 
     public function aggregateId(): int
     {
-        return $this->orderId;
+        return (int) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -117,7 +118,7 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
     {
         return [
             'event_id' => $this->eventId,
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'order_id' => $this->orderId,
             'order_number' => $this->orderNumber->toString(),
             'transaction_id' => $this->transactionId,
@@ -152,8 +153,8 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
         }
 
         return new self(
-            tenantId: TenantId::fromInt($primitives['tenant_id']),
-            orderId: $primitives['order_id'],
+            tenantId: TenantId::fromInt((int) $primitives['tenant_id']),
+            orderId: (string) $primitives['order_id'],
             orderNumber: OrderNumber::fromString($primitives['order_number']),
             transactionId: $primitives['transaction_id'],
             paymentMethod: $primitives['payment_method'],

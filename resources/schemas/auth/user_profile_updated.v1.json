@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://conecta-hn.com/schemas/auth/user_profile_updated.v1.json",
+  "title": "UserProfileUpdated Event v1",
+  "description": "Domain event emitted when a user updates their profile information",
+  "type": "object",
+  "required": ["event_id", "type", "schema_version", "payload"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this event instance"
+    },
+    "type": {
+      "type": "string",
+      "const": "auth.user_profile_updated",
+      "description": "Canonical event type identifier"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Version of the event schema"
+    },
+    "payload": {
+      "type": "object",
+      "required": ["user_id", "tenant_id", "occurred_at", "email_changed"],
+      "additionalProperties": false,
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of the user whose profile was updated"
+        },
+        "tenant_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Tenant context for multi-tenant isolation"
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO8601 timestamp when the event occurred"
+        },
+        "email_changed": {
+          "type": "boolean",
+          "description": "Whether the email address was changed (triggers re-verification flow)"
+        }
+      }
+    }
+  }
+}

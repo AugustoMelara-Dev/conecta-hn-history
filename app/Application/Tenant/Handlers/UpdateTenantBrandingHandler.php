@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
-use App\Application\Tenant\Commands\UpdateTenantBrandingCommand;
 use App\Application\Shared\Traits\LogSanitizer;
+use App\Application\Tenant\Commands\UpdateTenantBrandingCommand;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use App\Domain\Shared\Contracts\MediaStorageServiceInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -32,8 +32,6 @@ final class UpdateTenantBrandingHandler
     /**
      * Handle branding update command.
      *
-     * @param UpdateTenantBrandingCommand $command
-     * @return void
      * @throws ModelNotFoundException If tenant not found
      */
     public function handle(UpdateTenantBrandingCommand $command): void

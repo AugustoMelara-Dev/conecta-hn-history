@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Models\Tenant;
 use App\Models\Product;
 use App\Models\Review;
+use App\Models\Tenant;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 /**
  * RecalculateStatsCommand - Data Migration & Integrity Tool
@@ -67,7 +66,7 @@ final class RecalculateStatsCommand extends Command
         Product::chunk(100, function ($products) use ($bar) {
             foreach ($products as $product) {
                 $stats = Review::where('product_id', $product->id)
-                    ->where('is_approved', true) 
+                    ->where('is_approved', true)
                     ->selectRaw('count(*) as count, avg(rating) as avg_rating')
                     ->first();
 
@@ -98,7 +97,7 @@ final class RecalculateStatsCommand extends Command
                 // Determine tenant-level reviews
                 $stats = Review::where('tenant_id', $tenant->id)
                     ->whereNull('product_id')
-                    ->where('is_approved', true) 
+                    ->where('is_approved', true)
                     ->selectRaw('count(*) as count, avg(rating) as avg_rating')
                     ->first();
 

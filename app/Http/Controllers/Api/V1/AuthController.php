@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Application\Auth\Contracts\AuthTokenServiceInterface;
 use App\Application\Auth\Handlers\LoginViaSocialProviderHandler;
 use App\Application\Identity\Handlers\RegisterUserHandler;
 use App\Http\Controllers\Controller;
@@ -15,47 +16,36 @@ use Illuminate\Http\Request;
 /**
  * AuthController - API Authentication
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  THIN CONTROLLER PATTERN: Orchestration only. No Business Logic.        ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * THIN CONTROLLER PATTERN: Orchestration only. No Business Logic.
+ * REFACTORED: Uses AuthTokenServiceInterface instead of User model.
  */
 final class AuthController extends Controller
 {
+    public function __construct(
+        private readonly AuthTokenServiceInterface $tokenService,
+    ) {}
+
     public function register(
         RegisterRequest $request,
         RegisterUserHandler $handler
     ): JsonResponse {
-        // 1. Factory
         $command = $request->toCommand();
-
-        // 2. Delegate
         $result = $handler->handle($command);
 
-        // 3. Auto-Login Interaction (Orchestration)
-        // Since Result doesn't return Token, we issue one here for UX.
-        $user = \App\Models\User::find($result->id);
-        $token = $user->createToken('api-token')->plainTextToken;
+        // Create token via service (no direct model access)
+        $tokenData = $this->tokenService->createTokenForUser($result->id, 'api-token');
 
-        // Wrap for Resource
         $responsePayload = (object) [
-            'user' => $user,
-            'accessToken' => $token,
+            'user' => $tokenData['user'],
+            'accessToken' => $tokenData['token'],
             'redirectUrl' => '/dashboard',
         ];
 
         return response()->json(new AuthResource($responsePayload), 201);
     }
 
-    // Note: Social Login endpoint usually requires Request with provider token
-    // We assume a SocialLoginRequest exists or we rely on generic Request if not strictly typed yet.
-    // Given scope "Refactorizar Controladores", I stick to Register for now, 
-    // or if user wants Social Login here, I implement it.
-    // The prompt explicitly mentioned "LoginViaSocialProviderHandler".
-    // I need a Request that maps to `LoginViaSocialProviderCommand`.
-    // I'll assume standard inputs: provider, token.
-    
     public function socialLogin(
-        Request $request, 
+        Request $request,
         LoginViaSocialProviderHandler $handler
     ): JsonResponse {
         $request->validate([
@@ -70,24 +60,19 @@ final class AuthController extends Controller
         $command = new \App\Application\Auth\Commands\LoginViaSocialProviderCommand(
             providerName: $request->input('provider'),
             providerId: $request->input('provider_id'),
-            token: $request->input('token'), // Access Token from provider
+            token: $request->input('token'),
             email: $request->input('email'),
             name: $request->input('name') ?? 'User',
             avatarUrl: $request->input('avatar'),
-            accessToken: $request->input('token') // Redundant but consistent with command
+            accessToken: $request->input('token')
         );
 
         $result = $handler->handle($command);
+        $tokenData = $this->tokenService->createTokenForUser($result->userId, 'social-api-token');
 
-        // Fetch User (Result only contains ID)
-        $user = \App\Models\User::findOrFail($result->userId);
-        
-        // Generate Token
-        $token = $user->createToken('social-api-token')->plainTextToken;
-        
-         $responsePayload = (object) [
-            'user' => $user,
-            'accessToken' => $token,
+        $responsePayload = (object) [
+            'user' => $tokenData['user'],
+            'accessToken' => $tokenData['token'],
             'redirectUrl' => $result->redirectUrl,
         ];
 

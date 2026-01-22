@@ -17,7 +17,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 final class EloquentCouponRepository implements CouponRepository
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function getDashboardList(int $tenantId, int $perPage = 10): LengthAwarePaginator
     {

@@ -20,6 +20,17 @@ use Illuminate\Support\ServiceProvider;
 final class BusServiceProvider extends ServiceProvider
 {
     /**
+     * Register services.
+     */
+    public function register(): void
+    {
+        $this->app->bind(
+            \App\Application\Shared\Contracts\EventBusInterface::class,
+            \App\Infrastructure\Bus\LaravelEventBus::class
+        );
+    }
+
+    /**
      * Bootstrap any application services.
      */
     public function boot(): void

@@ -44,6 +44,7 @@ class OneTimePassword extends Model
 
     /**
      * Verify the code against the hashed value
+     *
      * @deprecated Use OtpHasherInterface::verify() instead.
      */
     // public function verifyCode(string $code): bool ...

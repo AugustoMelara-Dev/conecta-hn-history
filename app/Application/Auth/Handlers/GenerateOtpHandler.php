@@ -5,89 +5,118 @@ declare(strict_types=1);
 namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\GenerateOtpCommand;
+use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
+use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Application\Shared\Interfaces\EntropyGeneratorInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Auth\Events\OtpGenerated;
-use App\Domain\Auth\Exceptions\TooManyOtpRequestsException;
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Domain\Shared\Contracts\RateLimitServiceInterface;
-use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Support\Facades\Log;
+use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Entities\DomainEventMessage;
+use App\Domain\Shared\Exceptions\SecurityException;
+use App\Infrastructure\Shared\Telemetry\TraceContext;
+use Psr\Log\LoggerInterface;
+use Ramsey\Uuid\Uuid;
 
 /**
- * GenerateOtpHandler - Secure OTP Factory
+ * GenerateOtpHandler - Pure Business Logic Handler
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  SECURE PERSISTENCE: Hashes OTP before storage (HMAC-SHA256).           ║
- * ║  ZERO KNOWLEDGE DB: Database admins cannot read OTP codes.              ║
- * ║  ASYNC DELIVERY: Dispatches plain code ONLY via event to private queue. ║
+ * ║  PURE CORE: No infrastructure concerns (DB transactions, idempotency).  ║
+ * ║  SINGLE RESPONSIBILITY: Generate OTP, persist, and record event.        ║
+ * ║  DECORATOR-WRAPPED: Idempotency & Validation are applied externally.    ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class GenerateOtpHandler
+final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
 {
     use LogSanitizer;
 
-    private const OTP_EXPIRY_MINUTES = 10;
-    private const MAX_OTP_REQUESTS_PER_HOUR = 3;
-    private const RATE_LIMIT_DECAY_SECONDS = 3600;
-    private const OTP_LENGTH = 6;
-
     public function __construct(
-        private readonly UserRepositoryInterface $userRepository,
-        private readonly OtpRepositoryInterface $otpRepository,
-        private readonly RateLimitServiceInterface $rateLimiter,
-        private readonly Dispatcher $eventDispatcher,
-        private readonly EntropyGeneratorInterface $entropyGenerator,
-        private readonly OtpHasherInterface $hasher,
+        private UserRepositoryInterface $userRepository,
+        private OtpRepositoryInterface $otpRepository,
+        private OutboxRepositoryInterface $outboxRepository,
+        private ClockInterface $clock,
+        private LoggerInterface $logger,
+        private EntropyGeneratorInterface $entropyGenerator,
+        private OtpHasherInterface $hasher,
+        private TraceContext $traceContext,
+        private \App\Infrastructure\Shared\Context\IdempotencyContext $idempotencyContext,
+        private int $otpExpiryMinutes,
+        private int $otpLength,
     ) {}
 
     public function handle(GenerateOtpCommand $command): void
     {
-        $rateLimitKey = "otp_generation:{$command->identifier}";
-        
-        // 1. RATE LIMIT CHECK
-        if ($this->rateLimiter->checkTooManyAttempts($rateLimitKey, self::MAX_OTP_REQUESTS_PER_HOUR)) {
-            $retryAfter = $this->rateLimiter->availableIn($rateLimitKey);
-            throw TooManyOtpRequestsException::forUser($command->identifier, $retryAfter);
+        // ═══════════════════════════════════════════════════════════════════
+        // PHASE 1: LOAD AGGREGATE (User Context)
+        // ═══════════════════════════════════════════════════════════════════
+        $user = $this->userRepository->findByEmail($command->identifier, $command->tenantId);
+
+        if ($user !== null && $user->tenantId !== $command->tenantId) {
+            throw SecurityException::crossTenantAccess($user->id ?? 'unknown', $command->tenantId);
         }
 
-        // 2. GENERATION
-        $user = $this->userRepository->findByEmail($command->identifier);
-        $plainCode = $this->entropyGenerator->generateNumeric(self::OTP_LENGTH);
-
-        // 3. SECURITY HARDENING (Hash before save)
+        // ═══════════════════════════════════════════════════════════════════
+        // PHASE 2: BUSINESS LOGIC (Pure Domain)
+        // ═══════════════════════════════════════════════════════════════════
+        $plainCode = $this->entropyGenerator->generateNumeric($this->otpLength);
         $hashedCode = $this->hasher->hash($plainCode);
 
-        // 4. PERSISTENCE (Clean & Atomic)
-        $this->otpRepository->invalidateByIdentifier($command->identifier);
-        
-        $this->otpRepository->create(
+        // Invalidate previous OTPs for this identifier
+        $this->otpRepository->invalidateByIdentifier($command->identifier, $command->tenantId);
+
+        // Create new OTP
+        $otpEntity = $this->otpRepository->create(
             userId: $user?->id,
             identifier: $command->identifier,
-            hashedCode: $hashedCode, // Storing HMAC
+            tenantId: $command->tenantId,
+            hashedCode: $hashedCode,
             type: $command->type,
             ipAddress: $command->ipAddress,
             userAgent: $command->userAgent,
-            expiryMinutes: self::OTP_EXPIRY_MINUTES,
+            expiryMinutes: $this->otpExpiryMinutes,
         );
 
-        // 5. UPDATE RATE LIMIT
-        $this->rateLimiter->hit($rateLimitKey, self::RATE_LIMIT_DECAY_SECONDS);
+        // ═══════════════════════════════════════════════════════════════════
+        // PHASE 3: EVENT PERSISTENCE (Transactional Outbox)
+        // ═══════════════════════════════════════════════════════════════════
+        $event = OtpGenerated::now(
+            otpId: $otpEntity->id,
+            userId: $user?->id,
+            tenantId: $command->tenantId,
+        );
 
-        // 6. NOTIFICATION (Async Dispatch)
-        // Only the ephemeral event carries the plain code
-        $this->eventDispatcher->dispatch(new OtpGenerated(
-            identifier: $command->identifier,
-            code: $plainCode,
-            recipientName: $user?->name ?? 'Usuario',
-            expiryMinutes: self::OTP_EXPIRY_MINUTES
-        ));
-
-        Log::info('OTP generated and dispatched safely', $this->sanitizePayload([
+        // Enriched payload for the Notifier (Relay will pick this up)
+        $outboxPayload = array_merge($event->toPayload(), [
+            'plain_text_code' => $plainCode, // REQUIRED for delivery
             'identifier' => $command->identifier,
-            'type' => $command->type
+            'expiry_minutes' => $this->otpExpiryMinutes,
+        ]);
+
+        $message = new DomainEventMessage(
+            eventId: Uuid::uuid7()->toString(),
+            type: OtpGenerated::class,
+            aggregateId: $otpEntity->id,
+            payload: json_encode($outboxPayload),
+            occurredAt: $this->clock->now(),
+            metadata: [
+                'tenant_id' => $command->tenantId,
+                'causation_id' => $this->idempotencyContext->getKey(),
+                'ip_address' => $command->ipAddress,
+                'trace_id' => $this->traceContext->getTraceId(),
+            ]
+        );
+
+        $this->outboxRepository->save($message);
+
+        $this->logger->info('OTP generated and persisted to Outbox', $this->sanitizePayload([
+            'identifier' => $command->identifier,
+            'tenant_id' => $command->tenantId,
+            'outbox_id' => $message->eventId,
         ]));
+        // Idempotency result captured by decorator via closure return
+        // No explicit return needed from pure handler
     }
 }

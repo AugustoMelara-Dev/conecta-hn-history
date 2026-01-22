@@ -22,9 +22,9 @@ interface ReportReader
     /**
      * Get sales data for a tenant within a date range.
      *
-     * @param int $tenantId Tenant ID
-     * @param Carbon $startDate Range start (inclusive)
-     * @param Carbon $endDate Range end (inclusive)
+     * @param  int  $tenantId  Tenant ID
+     * @param  Carbon  $startDate  Range start (inclusive)
+     * @param  Carbon  $endDate  Range end (inclusive)
      * @return Collection Orders with items eager loaded
      */
     public function getSalesData(int $tenantId, Carbon $startDate, Carbon $endDate): Collection;
@@ -34,10 +34,10 @@ interface ReportReader
      *
      * OPTIMIZATION: Pass $preloadedOrders from getSalesData() to avoid re-querying.
      *
-     * @param int $tenantId Tenant ID
-     * @param Carbon $startDate Range start
-     * @param Carbon $endDate Range end
-     * @param Collection|null $preloadedOrders Optional - reuse data from getSalesData()
+     * @param  int  $tenantId  Tenant ID
+     * @param  Carbon  $startDate  Range start
+     * @param  Carbon  $endDate  Range end
+     * @param  Collection|null  $preloadedOrders  Optional - reuse data from getSalesData()
      * @return array{total_revenue: float, order_count: int, average_order: float}
      */
     public function getSalesSummary(

@@ -11,156 +11,67 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * Payment - Subscription payment records
- *
- * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
+ * Matches table: subscription_payments
  */
 class Payment extends Model
 {
-    use BelongsToTenant, LogsActivity, \Illuminate\Database\Eloquent\Factories\HasFactory;
+    use BelongsToTenant, \Illuminate\Database\Eloquent\Factories\HasFactory, LogsActivity;
+
+    protected $table = 'subscription_payments';
+
+    // UUID CONFIGURATION
+    public $incrementing = false;     // Disable Auto-Increment
+
+    protected $keyType = 'string';    // ID is String (UUID)
 
     protected $fillable = [
+        'id',             // Explicitly fillable for UUIDs
         'tenant_id',
         'amount',
-        'proof_image_path',
+        'proof_path',
         'bank',
-        'bank_reference',
         'reference_number',
         'status',
         'reviewed_at',
-        'notes',
+        'admin_notes',
+        'idempotency_key',
+        'version',
     ];
 
-    /**
-     * SECURITY: Immutable ownership fields.
-     * Note: tenant_id is in $fillable for explicit mass assignment,
-     * but BelongsToTenant trait auto-sets it on creation as well.
-     */
-    protected $guarded = ['id', 'created_at', 'updated_at'];
+    protected $guarded = ['created_at', 'updated_at'];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'reviewed_at' => 'datetime',
+        'version' => 'integer',
+        'id' => 'string', // Ensure cast
     ];
 
-    /**
-     * Configuracion de Activity Log - Registro Forense
-     *
-     * DIRECTIVE 3 COMPLIANCE: Full financial observability.
-     * All monetary fields must generate audit trail entries.
-     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            // AUDIT TRAIL: All financial fields explicitly logged
             ->logOnly([
                 'tenant_id',
                 'amount',
                 'status',
-                'bank',              // Financial institution
-                'bank_reference',
-                'reference_number',  // Transaction reference
-                'proof_image_path',  // FORENSIC: Payment proof evidence
+                'bank',
+                'reference_number',
+                'proof_path',
                 'reviewed_at',
-                'notes',             // Administrative notes
+                'admin_notes',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn (string $eventName) => match ($eventName) {
-                'created' => "Pago de L. {$this->amount} registrado para {$this->tenant?->name}",
-                'updated' => "Pago #{$this->id} actualizado (estado: {$this->status})",
-                'deleted' => "Pago #{$this->id} eliminado",
-                default => "Pago #{$this->id} {$eventName}",
-            })
             ->useLogName('pagos');
     }
 
-    /**
-     * Capturar IP del usuario que realiza la accion
-     */
-    public function tapActivity(\Spatie\Activitylog\Contracts\Activity $activity, string $eventName)
+    public function getProofUrlAttribute(): ?string
     {
-        $activity->properties = $activity->properties->merge([
-            'ip' => request()->ip(),
-        ]);
+        return $this->attributes['proof_path'] ?? null;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // RELATIONSHIPS
-    // Note: tenant() relationship is provided by BelongsToTenant trait
-    // ═══════════════════════════════════════════════════════════════════════
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // SCOPES
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Scope to get pending payments.
-     */
-    public function scopePending($query)
+    public function setProofUrlAttribute(?string $value): void
     {
-        return $query->where('status', 'pending');
-    }
-
-    /**
-     * Scope to get approved payments.
-     */
-    public function scopeApproved($query)
-    {
-        return $query->where('status', 'approved');
-    }
-
-    /**
-     * Check if payment is pending.
-     */
-    public function isPending(): bool
-    {
-        return $this->status === 'pending';
-    }
-
-    /**
-     * Check if payment is approved.
-     */
-    public function isApproved(): bool
-    {
-        return $this->status === 'approved';
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // ACCESSORS & MUTATORS (Schema Adapter)
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Map 'bank' to 'provider' column.
-     */
-    public function getBankAttribute(): ?string
-    {
-        return $this->attributes['provider'] ?? null;
-    }
-
-    public function setBankAttribute(?string $value): void
-    {
-        $this->attributes['provider'] = $value;
-    }
-
-    /**
-     * Map 'reference_number' to 'reference_id' column.
-     */
-    public function getReferenceNumberAttribute(): ?string
-    {
-        return $this->attributes['reference_id'] ?? null;
-    }
-
-    public function setReferenceNumberAttribute(?string $value): void
-    {
-        $this->attributes['reference_id'] = $value;
-    }
-    
-    /**
-     * Map 'receipt_path' to null (Schema has no column).
-     * Prevents logic errors in Controller.
-     */
-    public function getReceiptPathAttribute(): ?string
-    {
-        return null; // Feature disabled due to schema limitation
+        $this->attributes['proof_path'] = $value;
     }
 }

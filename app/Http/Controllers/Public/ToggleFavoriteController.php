@@ -38,7 +38,7 @@ final class ToggleFavoriteController extends Controller
         // SECURE: Use TenantResolver - only returns public, active tenants
         $tenant = $this->tenantResolver->findPublicById($validated['tenant_id']);
 
-        if (!$tenant) {
+        if (! $tenant) {
             return back()
                 ->setStatusCode(303)
                 ->withErrors(['tenant_id' => 'Negocio no encontrado o no disponible.']);

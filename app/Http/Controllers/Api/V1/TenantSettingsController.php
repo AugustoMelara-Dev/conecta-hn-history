@@ -32,7 +32,7 @@ final class TenantSettingsController extends Controller
         UpdateTenantSettingsRequest $request,
         UpdateTenantBrandingAction $action
     ): TenantSettingsResource {
-        
+
         // 1. DTO Hydration (Factory)
         $data = UpdateBrandingResult::fromRequest($request);
 
@@ -54,7 +54,7 @@ final class TenantSettingsController extends Controller
         // But for safety in strict mode, we retrieve from user.
         $tenant = auth()->user()->tenant;
 
-        if (!$tenant) {
+        if (! $tenant) {
             abort(403, 'No tenant associated with user.');
         }
 

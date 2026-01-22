@@ -35,7 +35,7 @@ final class UpgradeController extends Controller
         $methods = $this->config->get('subscriptions.payment_methods', []);
 
         // 3. Render View
-        // Note: Passing empty tenant context or relying on shared props. 
+        // Note: Passing empty tenant context or relying on shared props.
         // Controller remains clean.
         return Inertia::render('Tenant/Upgrade', [
             'plans' => $plans,

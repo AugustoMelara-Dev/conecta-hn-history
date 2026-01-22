@@ -13,8 +13,8 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Models\User;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -45,15 +45,8 @@ class TenantFactory extends Factory
         return [
             'user_id' => null, // CRITICAL: No auto-creation to prevent recursion
             'name' => $name,
-            'slug' => Str::slug($name) . '-' . Str::random(6),
-            'description' => fake()->paragraph(),
-            'address' => fake()->address(),
-            'whatsapp_number' => fake()->phoneNumber(),
-            'phone' => fake()->phoneNumber(),
-            'email' => fake()->companyEmail(),
+            'slug' => Str::slug($name).'-'.Str::random(6),
             'is_active' => true,
-            'plan_type' => 'semilla',
-            'subscription_status' => 'active',
         ];
     }
 

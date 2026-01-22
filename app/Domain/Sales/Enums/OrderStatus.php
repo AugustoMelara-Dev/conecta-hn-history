@@ -8,7 +8,7 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * OrderStatus - Domain State Definition
- * 
+ *
  * Maps to App\Models\Order constants.
  * Exposed to Frontend for type-safe Status Badges.
  */

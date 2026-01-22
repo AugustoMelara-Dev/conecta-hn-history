@@ -3,7 +3,6 @@
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Tenant;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -114,4 +113,3 @@ Route::get('/directory', function (\Illuminate\Http\Request $request) {
 // ═══════════════════════════════════════════════════════════════════════════
 Route::get('/{tenant:slug}', [\App\Http\Controllers\Public\TenantMicrositeController::class, 'show'])
     ->name('tenant.microsite.show');
-

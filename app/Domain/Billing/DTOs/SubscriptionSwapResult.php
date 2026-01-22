@@ -14,13 +14,13 @@ final readonly class SubscriptionSwapResult
     public function __construct(
         /** Whether the swap was successful */
         public bool $success,
-        
+
         /** New subscription period end date */
         public ?\DateTimeImmutable $newPeriodEnd = null,
-        
+
         /** Transaction ID from gateway */
         public ?string $transactionId = null,
-        
+
         /** Failure reason if not successful */
         public ?string $failureReason = null,
     ) {}

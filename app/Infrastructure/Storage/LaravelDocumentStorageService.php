@@ -17,10 +17,11 @@ use Illuminate\Support\Str;
 final class LaravelDocumentStorageService implements DocumentStorageServiceInterface
 {
     private const DISK = 'public'; // Or 's3' for production
+
     private const BASE_PATH = 'payments/receipts';
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function storeProofOfPayment(string $sourcePath, string $paymentReference): string
     {
@@ -29,7 +30,7 @@ final class LaravelDocumentStorageService implements DocumentStorageServiceInter
         $month = now()->format('m');
         $extension = pathinfo($sourcePath, PATHINFO_EXTENSION) ?: 'pdf';
         $sanitizedRef = Str::slug($paymentReference);
-        
+
         $destinationPath = sprintf(
             '%s/%s/%s/%s_%s.%s',
             self::BASE_PATH,
@@ -57,10 +58,41 @@ final class LaravelDocumentStorageService implements DocumentStorageServiceInter
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
+     */
+    public function promote(string $tempPath): string
+    {
+        // For now, treat storeProofOfPayment as direct-to-permanent, so promote is a no-op loopback.
+        // In a strict refactor, store would save to /temp and this would move to /permanent.
+        return $tempPath;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function delete(string $path): void
+    {
+        Storage::disk(self::DISK)->delete($path);
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public function deleteProofOfPayment(string $storagePath): bool
     {
         return Storage::disk(self::DISK)->delete($storagePath);
+    }
+
+    public function verifyPresence(string $path): void
+    {
+        $disk = Storage::disk(self::DISK);
+
+        if (! $disk->exists($path)) {
+            throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::atPath($path);
+        }
+
+        if ($disk->size($path) === 0) {
+            throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::checkSumFailed($path);
+        }
     }
 }

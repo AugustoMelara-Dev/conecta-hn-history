@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Audit Logged Impersonation Exit Controller.
- * 
+ *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  SECURITY CRITICAL: Forensic Audit & Session Isolation                   ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
@@ -43,7 +43,7 @@ final class ImpersonationController extends Controller
                 'ip' => $request->ip(),
                 'user_id' => $request->user()?->id,
             ]);
-            
+
             return redirect()->route('home');
         }
 
@@ -68,26 +68,26 @@ final class ImpersonationController extends Controller
         try {
             // DIP COMPLIANT: Uses repository interface instead of User::findOrFail()
             $admin = $this->userRepository->findById($impersonatorId);
-            
-            if (!$admin) {
+
+            if (! $admin) {
                 throw new \RuntimeException("Admin user with ID {$impersonatorId} not found");
             }
-            
+
             Auth::login($admin);
-            
+
             // 5. Session Fixation Mitigation (Rotate Session ID)
             $request->session()->regenerate();
 
             return redirect('/admin');
 
         } catch (\Throwable $e) {
-            // Serious Failure: Admin ID from session invalid/deleted. 
+            // Serious Failure: Admin ID from session invalid/deleted.
             // Fallback to complete logout for safety.
             Log::emergency('Security: Failed to restore admin session after impersonation.', [
                 'admin_id' => $impersonatorId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            
+
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

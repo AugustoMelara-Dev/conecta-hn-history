@@ -8,7 +8,7 @@ use ReflectionClass;
 
 /**
  * EventSourcedAggregate - The Behavior Engine
- * 
+ *
  * Centralizes Event Sourcing plumbing: recording, applying, and reconstituting.
  */
 trait EventSourcedAggregate
@@ -35,7 +35,7 @@ trait EventSourcedAggregate
     protected function apply(object $event): void
     {
         $eventClass = (new ReflectionClass($event))->getShortName();
-        $method = 'apply' . $eventClass;
+        $method = 'apply'.$eventClass;
 
         if (method_exists($this, $method)) {
             $this->$method($event);
@@ -50,6 +50,7 @@ trait EventSourcedAggregate
     {
         $events = $this->recordedEvents;
         $this->recordedEvents = [];
+
         return $events;
     }
 
@@ -60,12 +61,12 @@ trait EventSourcedAggregate
     {
         // Bypass constructor to create empty shell
         $instance = (new ReflectionClass(static::class))->newInstanceWithoutConstructor();
-        
+
         foreach ($events as $event) {
             $instance->apply($event);
             // We assume history events increment version too?
             // Usually yes, to track optimistic concurrency.
-            $instance->version++; 
+            $instance->version++;
         }
 
         return $instance;

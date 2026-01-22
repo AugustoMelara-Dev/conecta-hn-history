@@ -10,15 +10,11 @@ interface OnboardingReader
 {
     /**
      * Get available cities for registration.
-     *
-     * @return Collection
      */
     public function getAvailableCities(): Collection;
 
     /**
      * Get business categories for registration.
-     *
-     * @return Collection
      */
     public function getBusinessCategories(): Collection;
 }

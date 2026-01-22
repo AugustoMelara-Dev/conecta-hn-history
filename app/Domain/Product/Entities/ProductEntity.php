@@ -8,7 +8,7 @@ use DateTimeImmutable;
 
 /**
  * ProductEntity - Rich Domain Model for E-Commerce Product
- * 
+ *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  IMMUTABILITY RADICAL:                                                  ║
  * ║  - 'final readonly class' enforces immutability on all properties.      ║

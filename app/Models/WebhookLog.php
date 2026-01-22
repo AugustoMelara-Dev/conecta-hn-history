@@ -41,7 +41,7 @@ class WebhookLog extends Model
     protected static function boot(): void
     {
         parent::boot();
-        
+
         static::creating(function (WebhookLog $model) {
             $model->created_at = now();
         });

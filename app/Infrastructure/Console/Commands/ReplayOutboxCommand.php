@@ -7,7 +7,6 @@ namespace App\Infrastructure\Console\Commands;
 use App\Infrastructure\Common\Models\OutboxMessage;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use App\Infrastructure\Common\LaravelTransactionManager;
 
 class ReplayOutboxCommand extends Command
 {
@@ -35,10 +34,11 @@ class ReplayOutboxCommand extends Command
         $hours = $this->option('hours');
 
         // Safety Valve: Prevent accidental full replay
-        if (!$id && !$type && !$hours) {
+        if (! $id && ! $type && ! $hours) {
             $this->warn('WARNING: You are about to replay ALL historical events.');
-            if (!$this->confirm('Are you absolutely sure you want to replay ALL messages? This may cause massive side effects.')) {
+            if (! $this->confirm('Are you absolutely sure you want to replay ALL messages? This may cause massive side effects.')) {
                 $this->info('Operation Aborted.');
+
                 return Command::FAILURE;
             }
         }
@@ -46,14 +46,15 @@ class ReplayOutboxCommand extends Command
         $query = OutboxMessage::query();
 
         // Apply Filters
-        $query->when($id, fn($q) => $q->where('id', $id));
-        $query->when($type, fn($q) => $q->where('type', 'LIKE', "%{$type}%"));
-        $query->when($hours, fn($q) => $q->where('created_at', '>=', now()->subHours((int)$hours)));
+        $query->when($id, fn ($q) => $q->where('id', $id));
+        $query->when($type, fn ($q) => $q->where('type', 'LIKE', "%{$type}%"));
+        $query->when($hours, fn ($q) => $q->where('created_at', '>=', now()->subHours((int) $hours)));
 
         $count = $query->count();
 
         if ($count === 0) {
             $this->info('No messages found matching criteria.');
+
             return Command::SUCCESS;
         }
 
@@ -71,7 +72,7 @@ class ReplayOutboxCommand extends Command
         });
 
         $this->success("Successfully queued {$count} events for replay.");
-        
+
         return Command::SUCCESS;
     }
 }

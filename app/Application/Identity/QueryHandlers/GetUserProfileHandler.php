@@ -5,40 +5,34 @@ declare(strict_types=1);
 namespace App\Application\Identity\QueryHandlers;
 
 use App\Application\Identity\Queries\GetUserProfileQuery;
-use App\Application\Identity\ViewModels\UserProfileViewModel;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\DB;
+// Assuming this exists or returns array/object
+use App\Domain\Identity\Exceptions\UserNotFoundException;
+use Illuminate\Database\ConnectionInterface;
 
 /**
- * GetUserProfileHandler - Fast Track Read (O(1))
- * 
- * Bypasses Domain Layer and Eloquent Models.
- * Reads directly from DB and projects to ViewModel.
+ * Class GetUserProfileHandler
+ *
+ * Handles the retrieval of user profiles with strict tenant isolation.
+ * Uses optimized query builder strictly scoped by tenant_id.
  */
 final readonly class GetUserProfileHandler
 {
-    public function handle(GetUserProfileQuery $query): UserProfileViewModel
+    public function __construct(
+        private ConnectionInterface $db
+    ) {}
+
+    public function handle(GetUserProfileQuery $query): object
     {
-        // Refactored to LEFT JOIN to support Users without Tenants (Platform Admins / Partial States)
-        $row = DB::table('users')
-            ->leftJoin('tenants', 'users.tenant_id', '=', 'tenants.id')
-            ->select([
-                'users.id', 
-                'users.name', 
-                'users.email', 
-                'users.created_at',
-                'tenants.name as tenant_name',
-                'tenants.slug as tenant_slug',
-            ])
-            ->where('users.id', $query->userId)
+        $user = $this->db->table('users')
+            ->where('id', '=', $query->id)
+            ->where('tenant_id', '=', $query->tenantId) // Tenant Firewall
+            ->select(['id', 'name', 'email', 'created_at']) // Explicit columns
             ->first();
 
-        // 404 Guard Clause - Only if USER itself is missing
-        if (!$row) {
-            throw new ModelNotFoundException("User not found via Fast Track.");
+        if ($user === null) {
+            throw new UserNotFoundException('User not found or access denied.');
         }
 
-        // Project to ViewModel
-        return UserProfileViewModel::fromRow($row);
+        return $user;
     }
 }

@@ -9,7 +9,7 @@ use DateTimeImmutable;
 
 /**
  * UserRegistered Event - Scalar Payload Guard
- * 
+ *
  * adheres to "The Scalar Payload Rule":
  * Carries primitive data only. No Enums allowed in constructor.
  */
@@ -21,12 +21,12 @@ final class UserRegistered implements DomainEventInterface
         public readonly string $user_id,
         public readonly string $name, // Added for Read Model Completeness
         public readonly string $email,
-        public readonly string $password_hash, 
+        public readonly string $password_hash,
         public readonly string $role,
         public readonly string $tenant_id,
         ?DateTimeImmutable $occurredOn = null
     ) {
-        $this->occurredOn = $occurredOn ?? new DateTimeImmutable();
+        $this->occurredOn = $occurredOn ?? new DateTimeImmutable;
     }
 
     public static function fromPayload(array $payload): static
@@ -38,9 +38,9 @@ final class UserRegistered implements DomainEventInterface
             password_hash: (string) ($payload['password_hash'] ?? ''),
             role: (string) ($payload['role'] ?? 'customer'),
             tenant_id: (string) ($payload['tenant_id'] ?? ''),
-            occurredOn: isset($payload['occurred_on']) 
-                ? new DateTimeImmutable($payload['occurred_on']) 
-                : new DateTimeImmutable()
+            occurredOn: isset($payload['occurred_on'])
+                ? new DateTimeImmutable($payload['occurred_on'])
+                : new DateTimeImmutable
         );
     }
 

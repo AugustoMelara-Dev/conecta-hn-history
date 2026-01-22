@@ -31,8 +31,9 @@ final class SendLowStockNotification implements ShouldQueue
      */
     public function middleware(LowStockThresholdReached $event): array
     {
+        // UUID STRING: Use toString() for tenant context
         return [
-            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()->toInt())
+            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()->toString()),
         ];
     }
 
@@ -41,24 +42,15 @@ final class SendLowStockNotification implements ShouldQueue
      */
     public function handle(LowStockThresholdReached $event): void
     {
-        $product = $event->product; // Wait, product wasn't in event? LowStockThresholdReached doesn't have public $product property!
-        // In the view_file output for LowStockThresholdReached (Step 101), it does NOT have public $product.
-        // It has private $productId, public $productName.
-        // The original SendLowStockNotification (Step 72) had "$product = $event->product;"
-        // BUT the event definition (Step 101) says: "// ❌ NO Product model (was using SerializesModels)".
-        // So the listener is BROKEN if it tries to access $event->product!
-        // The listener needs to be refactored to NOT rely on $event->product if it's not there.
-        // OR the event has a magic getter? "use HasDomainMetadata". Maybe?
-        // But the event doc says "✅ Only primitives and Value Objects".
-        // So I must refactor the listener to re-hydrate the product using $event->aggregateId() (productId).
-        
         $productId = $event->aggregateId();
-        // Since we are in Tenant Context (thanks to Middleware), we can resolve Product.
+
+        // Fresh Fetch: Re-hydrate product within tenant context
         $product = \App\Models\Product::find($productId);
 
         if (! $product) {
-             Log::warning("LowStockNotification: Product #{$productId} not found (could be deleted)");
-             return;
+            Log::warning("LowStockNotification: Product #{$productId} not found (could be deleted)");
+
+            return;
         }
 
         $newStock = $event->currentStock;
@@ -67,9 +59,6 @@ final class SendLowStockNotification implements ShouldQueue
         // ═══════════════════════════════════════════════════════════════════════
         // ATOMIC LOCK: Prevents race condition duplicates
         // ═══════════════════════════════════════════════════════════════════════
-        // Cache::add() is atomic: write-if-not-exists in a single operation.
-        // If key exists → returns false (another process already sent alert today)
-        // If key doesn't exist → writes and returns true (we have the lock)
         $cacheKey = "low_stock_alert_sent_{$productId}_".now()->format('Y-m-d');
         $secondsUntilMidnight = now()->endOfDay()->diffInSeconds(now());
 
@@ -95,13 +84,12 @@ final class SendLowStockNotification implements ShouldQueue
 
         $owner = $tenant->user;
 
-        // Send notification (Log for now - can be replaced with Notification class)
         Log::info("🚨 LOW STOCK ALERT: {$product->name}", [
             'product_id' => $product->id,
             'product_name' => $product->name,
             'current_stock' => $newStock,
             'threshold' => $threshold,
-            'tenant_id' => $tenant->id,
+            'tenant_id' => $event->tenantId()->toString(),
             'owner_email' => $owner->email,
         ]);
 

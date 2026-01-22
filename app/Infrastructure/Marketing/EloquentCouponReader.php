@@ -19,14 +19,14 @@ final class EloquentCouponReader implements CouponReader
     {
         return Coupon::where('tenant_id', $tenantId)
             ->where('is_active', true)
-            ->where(fn($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->select(['code', 'name', 'description', 'type', 'value', 'min_spend', 'expires_at'])
             ->get();
     }
 
     public function findByCode(int $tenantId, string $code): ?object
     {
-         return Coupon::where('tenant_id', $tenantId)
+        return Coupon::where('tenant_id', $tenantId)
             ->where('code', $code)
             ->first();
     }

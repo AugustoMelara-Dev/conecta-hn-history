@@ -6,10 +6,10 @@ namespace App\Application\Products\Handlers;
 
 use App\Application\Products\Commands\CreateProductCommand;
 use App\Application\Products\Results\CreateProductResult;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Product\Factories\ProductFactory;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
-use App\Domain\Shared\Contracts\TransactionManagerInterface;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
 use Illuminate\Support\Facades\Log;
 
@@ -45,7 +45,7 @@ final readonly class CreateProductHandler
     private function processCreation(CreateProductCommand $command): CreateProductResult
     {
         // 1. Factory Creation (Domain Logic: SKU generation, Price validation)
-        // Note: Command price is likely in cents or float? 
+        // Note: Command price is likely in cents or float?
         // Logic in previous handler was: $command->price / 100.
         // This suggests command->price was in ... wait.
         // Previous handler: 'price' => $command->price / 100.
@@ -58,17 +58,17 @@ final readonly class CreateProductHandler
         // Previous handler divided by 100. This implies DB might store Dollars/Lempiras as Float, OR Command holds Cents and DB holds Float.
         // Strict Approach: Entity holds Cents (Int). Repository maps to DB.
         // If Command->price is 1000 (10.00), Entity gets 1000.
-        // I will assume Command passes Cents or Unit. 
-        // I will look at CreateProductCommand to be sure? 
+        // I will assume Command passes Cents or Unit.
+        // I will look at CreateProductCommand to be sure?
         // I'll check the User Request again: "$command->price / 100" was in the "Current State" snippet.
         // If I use int in Entity, I should pass int.
-        // I will assume Command has the raw value. 
-        
+        // I will assume Command has the raw value.
+
         $productEntity = $this->productFactory->createNew(
             tenantId: $command->tenantId,
             name: $command->name,
             description: $command->description,
-            price: (int)$command->price, // Passing raw value. Factory expects int.
+            price: (int) $command->price, // Passing raw value. Factory expects int.
             stock: $command->stock,
             sku: $command->sku,
             categoryId: $command->categoryId,

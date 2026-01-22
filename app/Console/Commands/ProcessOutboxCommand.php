@@ -11,8 +11,12 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * ProcessOutboxCommand - The Heartbeat Daemon
- * 
+ * @deprecated Use App\Infrastructure\Console\Commands\ProcessOutboxCommand instead.
+ *             This legacy version does NOT support horizontal scaling (no SKIP LOCKED).
+ *             Will be removed in v2.0.
+ *
+ * ProcessOutboxCommand - The Heartbeat Daemon (LEGACY)
+ *
  * Responsibilities:
  * - FIFO Processing (Strict Order)
  * - At-Least-Once Delivery (Pessimistic Ack)
@@ -64,7 +68,8 @@ class ProcessOutboxCommand extends Command
             if ($messages->isEmpty()) {
                 // Sleep to release CPU cycles when idle.
                 // 1 second pause.
-                sleep(1); 
+                sleep(1);
+
                 continue;
             }
 
@@ -81,7 +86,7 @@ class ProcessOutboxCommand extends Command
                     DB::table('outbox_messages')
                         ->where('id', $message->id)
                         ->update(['published_at' => now()]);
-                    
+
                     $this->info("Published message ID: {$message->id}");
                     $count++;
 
@@ -89,19 +94,19 @@ class ProcessOutboxCommand extends Command
                     // C. FAILURE HANDLING (Retry Strategy)
                     // We DO NOT mark as published. It will be retried endlessly until fixed.
                     // This guarantees "At-Least-Once" Delivery.
-                    Log::error("Failed to publish message ID {$message->id}: " . $e->getMessage());
-                    
+                    Log::error("Failed to publish message ID {$message->id}: ".$e->getMessage());
+
                     // Optional: Break loop to avoid spamming logs if Broker is down?
-                    // For now, we continue trying subsequent messages (though FIFO might imply blocking? 
+                    // For now, we continue trying subsequent messages (though FIFO might imply blocking?
                     // Usually blocking the specific message is enough, but strictly FIFO means we should stop?
                     // The prompt implies "Retry Infinito por defecto" -> next iteration picks it up.
                     // If strict FIFO is required universally, a failure should perhaps halt the batch.
-                    // However, stopping the daemon might require supervisor restart. 
-                    // Continuing allows temporary glitches to self-heal. 
+                    // However, stopping the daemon might require supervisor restart.
+                    // Continuing allows temporary glitches to self-heal.
                     // Implementation follows prompt: "Next iteration" implied.
                 }
             }
-            
+
             $this->info("Processed batch of {$count} messages.");
         }
     }

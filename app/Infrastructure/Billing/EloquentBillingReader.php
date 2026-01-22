@@ -12,10 +12,6 @@ final class EloquentBillingReader implements BillingReader
 {
     /**
      * Get payment history for a specific tenant using Eloquent.
-     *
-     * @param int $tenantId
-     * @param int $limit
-     * @return Collection
      */
     public function getPaymentHistory(int $tenantId, int $limit = 20): Collection
     {

@@ -27,7 +27,7 @@ final readonly class Money
             throw new InvalidArgumentException("Money amount cannot be negative: {$amount}");
         }
 
-        if (!in_array($currency, self::VALID_CURRENCIES, true)) {
+        if (! in_array($currency, self::VALID_CURRENCIES, true)) {
             throw new InvalidArgumentException("Invalid ISO 4217 currency code: {$currency}");
         }
     }
@@ -73,6 +73,7 @@ final readonly class Money
     public function add(Money $other): self
     {
         $this->assertSameCurrency($other);
+
         return new self($this->amount + $other->amount, $this->currency);
     }
 
@@ -89,7 +90,7 @@ final readonly class Money
             'EUR' => '€',
             'MXN' => '$',
             'GTQ' => 'Q',
-            default => $this->currency . ' ',
+            default => $this->currency.' ',
         };
 
         return sprintf('%s%d.%02d', $symbol, $major, $minor);

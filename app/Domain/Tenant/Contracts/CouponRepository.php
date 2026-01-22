@@ -16,10 +16,6 @@ interface CouponRepository
 {
     /**
      * Get paginated list of coupons for dashboard.
-     *
-     * @param int $tenantId
-     * @param int $perPage
-     * @return LengthAwarePaginator
      */
     public function getDashboardList(int $tenantId, int $perPage = 10): LengthAwarePaginator;
 }

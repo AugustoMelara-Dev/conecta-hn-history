@@ -10,6 +10,6 @@ final class TenantContextMissingException extends RuntimeException
 {
     public static function uninitialized(): self
     {
-        return new self("Critical Error: Tenant Context not initialized. Protected resource access denied (Zero Trust).");
+        return new self('Critical Error: Tenant Context not initialized. Protected resource access denied (Zero Trust).');
     }
 }

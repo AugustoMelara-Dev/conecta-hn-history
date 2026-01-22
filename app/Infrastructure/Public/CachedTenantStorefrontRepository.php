@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * CachedTenantStorefrontRepository - Transparent Cache Decorator
- * 
+ *
  * ARCHITECTURE:
  * - Decorator Pattern: Wraps the inner repository.
  * - SRP: Handles Caching logic only. Inner repository handles Eloquent.

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
-use App\Application\Tenant\Commands\UpdateLandingPageCommand;
 use App\Application\Shared\Traits\LogSanitizer;
+use App\Application\Tenant\Commands\UpdateLandingPageCommand;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use App\Domain\Tenant\Exceptions\FeatureRequiresProException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -30,8 +30,6 @@ final class UpdateLandingPageHandler
     /**
      * Handle landing page update command.
      *
-     * @param UpdateLandingPageCommand $command
-     * @return void
      * @throws ModelNotFoundException If tenant not found
      * @throws FeatureRequiresProException If tenant is not PRO
      */
@@ -45,7 +43,7 @@ final class UpdateLandingPageHandler
         }
 
         // 2. FEATURE GATING: PRO subscription required
-        if (!$tenant->is_pro) {
+        if (! $tenant->is_pro) {
             throw FeatureRequiresProException::forLandingPage();
         }
 

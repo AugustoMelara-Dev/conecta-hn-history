@@ -28,7 +28,7 @@ final class ReportDownloadController extends Controller
         // Additional check: Does valid user belong to tenant?
         // Note: Signed routes often bypass auth checks if the link is meant to be portable (e.g. email).
         // But prompt says: "PROHIBIDO: $request->input('tenant_id'). OBLIGATORIO: user->tenant"
-        
+
         // HOWEVER: This is a 'download' endpoint often accessed via click from email/dashboard.
         // If authenticated, we check. If strictly signed url (public access allowed via signature), we rely on signature.
         // The Prompt specification says:
@@ -38,7 +38,7 @@ final class ReportDownloadController extends Controller
         // The existing code serves pre-generated files from Storage.
         // I will adhere to: "Refactorización de Seguridad... Versión Segura."
         // I will keep the signed mechanism but make the class final and strict.
-        
+
         // SECURITY: Validate path
         $safePath = $this->validateAndSanitizePath($path);
 

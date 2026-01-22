@@ -25,25 +25,25 @@ interface AdminNotifierInterface
     /**
      * Notify tenant owner about a new lead.
      *
-     * @param LeadEntity $lead The newly created lead (domain entity)
+     * @param  LeadEntity  $lead  The newly created lead (domain entity)
      */
     public function notifyNewLead(LeadEntity $lead): void;
 
     /**
      * Notify tenant owner about a new order.
      *
-     * @param int $tenantId The tenant ID
-     * @param int $orderId The order ID
-     * @param float $total The order total
+     * @param  int  $tenantId  The tenant ID
+     * @param  int  $orderId  The order ID
+     * @param  float  $total  The order total
      */
     public function notifyNewOrder(int $tenantId, int $orderId, float $total): void;
 
     /**
      * Notify tenant owner about payment status update.
      *
-     * @param int $tenantId The tenant ID
-     * @param string $status The payment status
-     * @param float $amount The payment amount
+     * @param  int  $tenantId  The tenant ID
+     * @param  string  $status  The payment status
+     * @param  float  $amount  The payment amount
      */
     public function notifyPaymentUpdate(int $tenantId, string $status, float $amount): void;
 }

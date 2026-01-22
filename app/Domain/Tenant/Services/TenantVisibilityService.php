@@ -20,12 +20,12 @@ final class TenantVisibilityService
     public function check(Tenant $tenant): void
     {
         // Layer 1: Administrative approval
-        if (!$tenant->is_active) {
+        if (! $tenant->is_active) {
             abort(404, 'Este negocio no está disponible.');
         }
 
         // Layer 2: Subscription status (no morosos in public directory)
-        if (!in_array($tenant->subscription_status, ['active', 'trial'], true)) {
+        if (! in_array($tenant->subscription_status, ['active', 'trial'], true)) {
             abort(404, 'Este negocio no está disponible.');
         }
     }

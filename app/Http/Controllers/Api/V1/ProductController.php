@@ -26,15 +26,15 @@ final class ProductController extends Controller
     ) {}
 
     #[OA\Get(
-        path: "/api/products",
-        summary: "Get tenant products",
-        tags: ["Catalog"],
+        path: '/api/products',
+        summary: 'Get tenant products',
+        tags: ['Catalog'],
         parameters: [
-            new OA\Parameter(name: "category", in: "query", schema: new OA\Schema(type: "string")),
-            new OA\Parameter(name: "search", in: "query", schema: new OA\Schema(type: "string"))
+            new OA\Parameter(name: 'category', in: 'query', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'search', in: 'query', schema: new OA\Schema(type: 'string')),
         ],
         responses: [
-            new OA\Response(response: 200, description: "List of products")
+            new OA\Response(response: 200, description: 'List of products'),
         ]
     )]
     public function index(Request $request): AnonymousResourceCollection
@@ -42,10 +42,10 @@ final class ProductController extends Controller
         // 1. Resolve Tenant safely (Public API context)
         $tenantId = (int) $request->input('tenant_id');
 
-        if (!$tenantId) {
+        if (! $tenantId) {
             abort(400, 'tenant_id is required');
         }
-        
+
         // 2. Delegate to Reader (Hexagonal)
         $products = $this->reader->search(
             tenantId: $tenantId,
@@ -61,33 +61,34 @@ final class ProductController extends Controller
     }
 
     #[OA\Get(
-        path: "/api/products/{id}",
-        summary: "Get product details",
-        tags: ["Catalog"],
+        path: '/api/products/{id}',
+        summary: 'Get product details',
+        tags: ['Catalog'],
         parameters: [
-             new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "integer"))
+            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
         ],
         responses: [
-             new OA\Response(response: 200, description: "Product details"),
-             new OA\Response(response: 404, description: "Not Found")
+            new OA\Response(response: 200, description: 'Product details'),
+            new OA\Response(response: 404, description: 'Not Found'),
         ]
     )]
     public function show(int $id, Request $request): ProductResource
     {
         $tenantId = (int) $request->input('tenant_id');
-        
-        if (!$tenantId) {
-             abort(400, 'tenant_id is required');
+
+        if (! $tenantId) {
+            abort(400, 'tenant_id is required');
         }
 
         $product = $this->reader->find($tenantId, $id);
 
-        if (!$product) {
-            abort(404, "Product not found");
+        if (! $product) {
+            abort(404, 'Product not found');
         }
 
         return new ProductResource($product);
     }
+
     /**
      * Store a newly created product.
      */
@@ -110,13 +111,13 @@ final class ProductController extends Controller
         int $id
     ): \Illuminate\Http\JsonResponse {
         // Resolve tenant ownership logic handled by Middleware/Request
-        // But we need to ensure ID matches or is validated? 
+        // But we need to ensure ID matches or is validated?
         // Middleware `EnsureTenantOwnership` already checked `Product` model binding?
         // If route is /products/{product}, and model binding is on, $id might be object.
         // But signature says `int $id`. Laravel adapts.
         // Step 4404 `EnsureTenantOwnership` checks model binding.
         // If we use `int $id`, ensure we are safe. Handler checks ID usually.
-        
+
         $command = $request->toCommand($id);
         $result = $handler->handle($command);
 

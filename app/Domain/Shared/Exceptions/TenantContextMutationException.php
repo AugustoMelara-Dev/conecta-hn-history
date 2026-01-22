@@ -15,6 +15,6 @@ final class TenantContextMutationException extends RuntimeException
 
     public static function alreadyInitialized(): self
     {
-        return new self("Security Violation: Context already initialized. Cannot overwrite.");
+        return new self('Security Violation: Context already initialized. Cannot overwrite.');
     }
 }

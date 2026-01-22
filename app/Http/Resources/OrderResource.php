@@ -10,19 +10,19 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use OpenApi\Attributes as OA;
 
 #[OA\Schema(
-    schema: "Order",
-    title: "Order Resource",
-    description: "Transaction details",
+    schema: 'Order',
+    title: 'Order Resource',
+    description: 'Transaction details',
     readOnly: true,
     properties: [
-        new OA\Property(property: "id", type: "integer", example: 1001),
-        new OA\Property(property: "code", type: "string", format: "uuid", description: "Tracking UUID", example: "550e8400-e29b-41d4-a716-446655440000"),
-        new OA\Property(property: "status_label", type: "string", example: "Completada"),
-        new OA\Property(property: "total", type: "number", format: "float", example: 150.00),
-        new OA\Property(property: "formatted_total", type: "string", example: "L. 150.00"),
-        new OA\Property(property: "items_count", type: "integer", example: 3),
-        new OA\Property(property: "items", type: "array", items: new OA\Items(ref: "#/components/schemas/OrderItem")),
-        new OA\Property(property: "payment_instructions", type: "object", nullable: true, description: "Dynamic limits for UI rendering"),
+        new OA\Property(property: 'id', type: 'integer', example: 1001),
+        new OA\Property(property: 'code', type: 'string', format: 'uuid', description: 'Tracking UUID', example: '550e8400-e29b-41d4-a716-446655440000'),
+        new OA\Property(property: 'status_label', type: 'string', example: 'Completada'),
+        new OA\Property(property: 'total', type: 'number', format: 'float', example: 150.00),
+        new OA\Property(property: 'formatted_total', type: 'string', example: 'L. 150.00'),
+        new OA\Property(property: 'items_count', type: 'integer', example: 3),
+        new OA\Property(property: 'items', type: 'array', items: new OA\Items(ref: '#/components/schemas/OrderItem')),
+        new OA\Property(property: 'payment_instructions', type: 'object', nullable: true, description: 'Dynamic limits for UI rendering'),
     ]
 )]
 class OrderResource extends JsonResource
@@ -41,7 +41,7 @@ class OrderResource extends JsonResource
             'total' => (float) $this->total,
             'formatted_total' => $this->formatted_total,
             'items_count' => $this->items->count(),
-            
+
             // Conditional Relations
             'items' => $this->whenLoaded('items'),
 
@@ -85,7 +85,7 @@ class OrderResource extends JsonResource
                 'title' => 'Pago en Efectivo',
                 'instruction' => 'Por favor ten el cambio exacto listo para el repartidor.',
                 'amount_due' => $this->total,
-                'formatted_amount' => 'L. '.number_format((float)$this->total, 2),
+                'formatted_amount' => 'L. '.number_format((float) $this->total, 2),
             ],
             PaymentMethod::Card => null,
             PaymentMethod::Pending => [

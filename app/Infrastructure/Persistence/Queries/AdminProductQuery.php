@@ -30,17 +30,17 @@ final class AdminProductQuery
      */
     public function getAllSystemProducts(): Collection
     {
-        // Enforce System Mode Requirement? 
+        // Enforce System Mode Requirement?
         // Or simply act as the trusted caller.
-        
+
         // Option 1: Switch context temporarily (Dangerous)
         // Option 2: Use Model Bypass (Explicit Scope Removal)
-        
+
         return Product::withoutGlobalScope(\App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope::class)
             ->with(['tenant']) // Admin usually needs to know who owns what
             ->get();
     }
-    
+
     /**
      * Find specific product ignoring tenant.
      */

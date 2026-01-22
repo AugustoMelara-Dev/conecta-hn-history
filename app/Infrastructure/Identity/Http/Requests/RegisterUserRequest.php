@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * RegisterUserRequest - The Shield
- * 
+ *
  * Validates data integrity before it reaches the Domain.
  * Leverages SQL Projections for high-performance uniqueness checks.
  */

@@ -8,7 +8,6 @@ use App\Infrastructure\Common\SchemaRegistry\SchemaRegistryInterface;
 use Faker\Factory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
-use RuntimeException;
 
 class MockApiController extends Controller
 {
@@ -44,7 +43,7 @@ class MockApiController extends Controller
                 return null;
             }
             // Fallback to first non-null type
-            $types = array_values(array_filter($type, fn($t) => $t !== 'null'));
+            $types = array_values(array_filter($type, fn ($t) => $t !== 'null'));
             $type = $types[0] ?? 'string';
         }
 
@@ -87,16 +86,22 @@ class MockApiController extends Controller
     private function fakeString(array $schema): string
     {
         // Heuristic Inference based on field context if available
-        // Note: In a real recursion, we might pass the field name. 
+        // Note: In a real recursion, we might pass the field name.
         // Here we rely on basic Faker fallback or generic strings.
-        
-        // Ideally we would pass the key name down. 
+
+        // Ideally we would pass the key name down.
         // For Titanium Standard, let's keep it simple but functional.
-        
+
         if (isset($schema['format'])) {
-            if ($schema['format'] === 'email') return $this->faker->email();
-            if ($schema['format'] === 'date-time') return $this->faker->iso8601();
-            if ($schema['format'] === 'uuid') return $this->faker->uuid();
+            if ($schema['format'] === 'email') {
+                return $this->faker->email();
+            }
+            if ($schema['format'] === 'date-time') {
+                return $this->faker->iso8601();
+            }
+            if ($schema['format'] === 'uuid') {
+                return $this->faker->uuid();
+            }
         }
 
         return $this->faker->word();

@@ -65,4 +65,14 @@ Schedule::command('outbox:process')
 // ═══════════════════════════════════════════════════════════════════════════════
 Schedule::command('model:prune')->daily()->at('04:00');
 
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA LIFECYCLE MANAGEMENT - Idempotency Pruning (DBRE Mandate)
+// ═══════════════════════════════════════════════════════════════════════════════
+// Removes 'COMPLETED' idempotency records older than 30 days.
+// Uses "Nibbling" strategy (chunked deletes) to prevent index locking.
+// ═══════════════════════════════════════════════════════════════════════════════
+Schedule::command('auth:prune-idempotency', ['--days=30', '--chunk=1000'])
+    ->dailyAt('03:30') // Run before model:prune
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/idempotency-pruner.log'));

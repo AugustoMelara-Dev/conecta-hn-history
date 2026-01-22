@@ -31,7 +31,7 @@ return new class extends Migration
         if (! Schema::hasTable('orders')) {
             Schema::create('orders', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('tenant_id')->constrained()->onDelete('cascade');
+                $table->foreignUuid('tenant_id')->constrained()->onDelete('cascade');
 
                 // ═══════════════════════════════════════════════════════════════════
                 // ORDER IDENTIFICATION

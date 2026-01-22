@@ -13,7 +13,7 @@ use InvalidArgumentException;
  * TenantId Custom Cast
  *
  * Bridges the gap between Eloquent's hydration engine and
- * strict Domain Value Objects. Ensures Crash-on-Read safety.
+ * strict Domain Value Objects (UUIDs).
  */
 class TenantIdCast implements CastsAttributes
 {
@@ -29,16 +29,16 @@ class TenantIdCast implements CastsAttributes
             return null;
         }
 
-        return new TenantId((int) $value);
+        return TenantId::fromString((string) $value);
     }
 
     /**
      * Transform the attribute to its underlying model values.
      *
      * @param  Model  $model
-     * @param  TenantId|int|string|null  $value
+     * @param  TenantId|string|null  $value
      */
-    public function set($model, string $key, $value, array $attributes): ?int
+    public function set($model, string $key, $value, array $attributes): ?string
     {
         if ($value === null) {
             return null;
@@ -48,11 +48,10 @@ class TenantIdCast implements CastsAttributes
             return $value->value;
         }
 
-        // TOLERANCE: Accept numeric strings from HTTP payloads (Forms/APIs)
-        if (is_numeric($value)) {
-            return (new TenantId((int) $value))->value;
+        if (is_string($value)) {
+            return TenantId::fromString($value)->value;
         }
 
-        throw new InvalidArgumentException('The given value is not a valid TenantId instance or integer.');
+        throw new InvalidArgumentException('The given value is not a valid TenantId instance or UUID string.');
     }
 }

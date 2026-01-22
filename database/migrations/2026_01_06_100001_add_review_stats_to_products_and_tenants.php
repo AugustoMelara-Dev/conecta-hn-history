@@ -12,19 +12,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            if (!Schema::hasColumn('products', 'reviews_count')) {
+            if (! Schema::hasColumn('products', 'reviews_count')) {
                 $table->unsignedInteger('reviews_count')->default(0);
             }
-            if (!Schema::hasColumn('products', 'rating_avg')) {
+            if (! Schema::hasColumn('products', 'rating_avg')) {
                 $table->decimal('rating_avg', 3, 2)->default(0);
             }
         });
 
         Schema::table('tenants', function (Blueprint $table) {
-            if (!Schema::hasColumn('tenants', 'reviews_count')) {
+            if (! Schema::hasColumn('tenants', 'reviews_count')) {
                 $table->unsignedInteger('reviews_count')->default(0);
             }
-            if (!Schema::hasColumn('tenants', 'rating_avg')) {
+            if (! Schema::hasColumn('tenants', 'rating_avg')) {
                 $table->decimal('rating_avg', 3, 2)->default(0);
             }
         });

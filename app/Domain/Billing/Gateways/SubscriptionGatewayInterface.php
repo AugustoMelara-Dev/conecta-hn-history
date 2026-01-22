@@ -17,17 +17,16 @@ interface SubscriptionGatewayInterface
     /**
      * Swap the subscription to a new plan.
      *
-     * @param string $subscriptionReference Provider's subscription ID
-     * @param string $newPlanExternalId Provider's plan/price ID
-     * @return SubscriptionSwapResult
+     * @param  string  $subscriptionReference  Provider's subscription ID
+     * @param  string  $newPlanExternalId  Provider's plan/price ID
      */
     public function swapPlan(string $subscriptionReference, string $newPlanExternalId): SubscriptionSwapResult;
 
     /**
      * Cancel a subscription.
      *
-     * @param string $subscriptionReference Provider's subscription ID
-     * @param bool $immediately Cancel immediately or at period end
+     * @param  string  $subscriptionReference  Provider's subscription ID
+     * @param  bool  $immediately  Cancel immediately or at period end
      * @return bool Success status
      */
     public function cancel(string $subscriptionReference, bool $immediately = false): bool;

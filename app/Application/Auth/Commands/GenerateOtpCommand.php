@@ -4,27 +4,61 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Commands;
 
+use App\Application\Common\Contracts\HashableCommandInterface;
+
 /**
- * GenerateOtpCommand - Immutable Input Contract for OTP Generation
+ * GenerateOtpCommand - Immutable OTP Request Contract
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  SECURITY METADATA: Carries IP and User-Agent for audit and rate limit. ║
- * ║  TRANSPORT ONLY: No validation logic - Handler validates.               ║
+ * ║  TENANT AWARE: Mandatory tenantId to prevent cross-tenant OTP abuse.    ║
+ * ║  HASHABLE: Implements HashableCommand for integrity verification.       ║
+ * ║  AUDIT METADATA: Carries IP/UserAgent for security logging.             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class GenerateOtpCommand
+final readonly class GenerateOtpCommand implements HashableCommandInterface
 {
     public function __construct(
-        /** Email or phone number (raw input) */
+        /** Mandatory Tenant Context (Axiom A) */
+        public string $tenantId,
+
+        /** Email or phone number to send OTP */
         public string $identifier,
-        
-        /** Client IP address (for rate limiting and audit) */
+
+        /** OTP type (email, sms) */
+        public string $type,
+
+        /** Client IP for security audit */
         public string $ipAddress,
-        
-        /** Client User-Agent (for device fingerprinting) */
+
+        /** Client User-Agent for fingerprinting */
         public string $userAgent,
-        
-        /** OTP purpose: 'login', 'password_reset', 'verify_contact' */
-        public string $type = 'login',
+
+        /** Unique Receipt ID (UUID v7) for transactional idempotency */
+        public string $idempotencyKey = '',
     ) {}
+
+    public function getIdempotencyKey(): string
+    {
+        // If not provided, generate deterministic key from payload
+        if ($this->idempotencyKey === '') {
+            return $this->getCommandHash();
+        }
+
+        return $this->idempotencyKey;
+    }
+
+    public function getTenantId(): string
+    {
+        return $this->tenantId;
+    }
+
+    public function getCommandHash(): string
+    {
+        return hash('sha256', json_encode([
+            'tenantId' => $this->tenantId,
+            'identifier' => $this->identifier,
+            'type' => $this->type,
+            'ipAddress' => $this->ipAddress,
+        ]));
+    }
 }

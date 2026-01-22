@@ -29,12 +29,12 @@ class TenantRepositoryCycleTest extends TestCase
         $id = Str::uuid()->toString();
         $name = 'Phoenix Industries';
         $domain = 'phoenix-labs';
-        
+
         $tenant = TenantEntity::create($id, $name, $domain);
-        
+
         /** @var TenantRepositoryInterface $repo */
         $repo = $this->app->make(TenantRepositoryInterface::class);
-        
+
         // 2. Act (Persist)
         $repo->save($tenant);
 
@@ -55,7 +55,7 @@ class TenantRepositoryCycleTest extends TestCase
     {
         $repo = $this->app->make(TenantRepositoryInterface::class);
         $result = $repo->findById(Str::uuid()->toString());
-        
+
         $this->assertNull($result);
     }
 }

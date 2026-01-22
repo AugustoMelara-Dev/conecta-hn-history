@@ -15,6 +15,6 @@ namespace App\Application\Shared\Interfaces;
 interface EntropyGeneratorInterface
 {
     public function generateNumeric(int $digits): string;
-    
+
     public function generateString(int $length): string;
 }

@@ -17,37 +17,39 @@ use App\Models\Product;
 final class EloquentProductRepository implements ProductRepositoryInterface
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function findById(int $id): ?\App\Domain\Product\Entities\ProductEntity
     {
         $model = Product::find($id);
+
         return $model ? $this->toEntity($model) : null;
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function create(array $data): \App\Domain\Product\Entities\ProductEntity
     {
         $model = Product::create($data);
+
         return $this->toEntity($model);
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function save(\App\Domain\Product\Entities\ProductEntity $product): \App\Domain\Product\Entities\ProductEntity
     {
         // Update or Create based on basic check or ID presence
         // Since Entity is immutable, we map properties to model.
-        
+
         $data = [
             'tenant_id' => $product->tenantId,
             'sku' => $product->sku,
@@ -69,7 +71,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
                 // But generally ID non-null implies existing.
                 // For safety in this "Emergency" context, if not found, we create (upsert behavior) or fail.
                 // Given standard Eloquent:
-                 $model = Product::updateOrCreate(['id' => $product->id], $data);
+                $model = Product::updateOrCreate(['id' => $product->id], $data);
             }
         } else {
             $model = Product::create($data);
@@ -79,7 +81,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function delete(\App\Domain\Product\Entities\ProductEntity $product): void
     {
@@ -96,18 +98,18 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             sku: $model->sku,
             name: $model->name,
             description: $model->description ?? '',
-            price: (int)($model->price * 100), // Convert Float (DB) to Cents (Entity)
+            price: (int) ($model->price * 100), // Convert Float (DB) to Cents (Entity)
             stockQuantity: $model->stock,
             categoryId: $model->category_id,
             imagePath: $model->image_path,
-            isVisible: (bool)$model->is_visible,
+            isVisible: (bool) $model->is_visible,
             createdAt: $model->created_at instanceof \Carbon\Carbon ? \DateTimeImmutable::createFromMutable($model->created_at) : null,
             updatedAt: $model->updated_at instanceof \Carbon\Carbon ? \DateTimeImmutable::createFromMutable($model->updated_at) : null,
         );
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      *
      * Direct column update to prevent race conditions.
      * Does NOT load the model into memory.
@@ -121,7 +123,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      *
      * Atomic increment to prevent race conditions.
      */
@@ -130,4 +132,3 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         Product::where('id', $productId)->increment('stock', $quantity);
     }
 }
-

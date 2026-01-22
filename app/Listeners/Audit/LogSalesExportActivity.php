@@ -21,22 +21,11 @@ use Illuminate\Support\Facades\Log;
  * ║    - SOC 2: Security event logging                                     ║
  * ║    - PCI-DSS Requirement 10: Track access to sensitive data            ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * REGISTRATION (EventServiceProvider.php):
- *   protected $listen = [
- *       \App\Events\Audit\SalesExportCreated::class => [
- *           \App\Listeners\Audit\LogSalesExportActivity::class,
- *       ],
- *   ];
  */
 class LogSalesExportActivity
 {
     /**
      * Handle the SalesExportCreated event.
-     *
-     * Persists the audit record to the configured log channel.
-     * In production, this should write to a tamper-proof audit log
-     * (e.g., CloudWatch, Elasticsearch, or database audit table).
      */
     public function handle(SalesExportCreated $event): void
     {
@@ -57,9 +46,6 @@ class LogSalesExportActivity
 
     /**
      * Get the audit log channel name.
-     *
-     * Override this in production to use a dedicated audit channel
-     * (e.g., 'audit', 'cloudwatch', 'elasticsearch').
      */
     protected function getAuditChannel(): string
     {
@@ -75,10 +61,10 @@ class LogSalesExportActivity
             \Spatie\Activitylog\Facades\Activity::withoutLogs(function () use ($event) {
                 activity('export')
                     ->causedBy($event->userId)
-                    ->performedOn(null) // No specific model
+                    ->performedOn(null)
                     ->withProperties([
                         'export_id' => $event->exportId,
-                        'tenant_id' => $event->tenantId->toInt(),
+                        'tenant_id' => $event->tenantId->toString(),
                         'format' => $event->format,
                         'criteria_hash' => $event->criteriaHash,
                         'criteria' => $event->criteriaDetails,
@@ -86,7 +72,6 @@ class LogSalesExportActivity
                     ->log('sales_export_created');
             });
         } catch (\Throwable $e) {
-            // Don't let activity log failures break the export
             Log::warning('Failed to persist export audit to activity log', [
                 'error' => $e->getMessage(),
                 'export_id' => $event->exportId,
@@ -96,14 +81,12 @@ class LogSalesExportActivity
 
     /**
      * Handle a job failure.
-     *
-     * If this listener runs async and fails, we need to know about it.
      */
     public function failed(SalesExportCreated $event, \Throwable $exception): void
     {
         Log::error('Failed to log sales export activity', [
             'export_id' => $event->exportId,
-            'tenant_id' => $event->tenantId->toInt(),
+            'tenant_id' => $event->tenantId->toString(),
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString(),
         ]);

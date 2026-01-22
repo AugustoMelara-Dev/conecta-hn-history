@@ -11,6 +11,6 @@ enum RegistrationSource: string
 
     public static function fromProvider(string $providerName): string
     {
-        return self::Social->value . ':' . $providerName;
+        return self::Social->value.':'.$providerName;
     }
 }

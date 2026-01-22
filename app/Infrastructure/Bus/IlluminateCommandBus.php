@@ -9,7 +9,7 @@ use Illuminate\Bus\Dispatcher;
 
 /**
  * IlluminateCommandBus
- * 
+ *
  * ADAPTER: Implementation of the CommandBus Port using Laravel's native Bus.
  */
 final class IlluminateCommandBus implements CommandBus
@@ -19,7 +19,7 @@ final class IlluminateCommandBus implements CommandBus
     ) {}
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function dispatch(object $command): mixed
     {

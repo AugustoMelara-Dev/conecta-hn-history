@@ -41,15 +41,15 @@ final class SettingsController extends Controller
         // We should fetch it via Repository.
         // Note: Code snippet shows usage of `App\Http\Resources\TenantResource`.
         // I will assume we can get the tenant via context + repo if needed, OR just pass what's needed.
-        
-        // Since I cannot import App\Models\Tenant (clean architecture target), 
+
+        // Since I cannot import App\Models\Tenant (clean architecture target),
         // I should use a Contract to get the Tenant Data DTO/Resource.
         // For this refactor, I will assume the Repository returns it.
-        // However, I don't have a `TenantRepository::getSettings` method. 
+        // However, I don't have a `TenantRepository::getSettings` method.
         // I will trust the previous implementation pattern but strictly remove the Constants.
-        
+
         return Inertia::render('Tenant/Settings/Index', [
-            // Assuming global shared props cover the tenant object itself for now, 
+            // Assuming global shared props cover the tenant object itself for now,
             // OR we'd need to fetch it.
             // Leaving "schedule" empty or relying on frontend defaults if backend doesn't send.
             // Actually, best practice: pass null, let frontend handle default.
@@ -65,13 +65,13 @@ final class SettingsController extends Controller
         // PRE-PROCESS: File uploads handled in Controller (Infrastructure Layer)
         $logoPath = $request->file('logo')?->store('tenants/logos', 'public');
         $bannerPath = $request->file('cover')?->store('tenants/banners', 'public');
-        
+
         // Hydrate DTO with serializable primitives
         $data = UpdateBrandingResult::fromRequest($request, $logoPath, $bannerPath);
-        
+
         // Context-aware execution
         $tenantId = $this->tenantContext->getTenantId();
-        
+
         $updater->execute($data);
 
         return back()->with('success', 'Perfil actualizado.');
@@ -82,20 +82,20 @@ final class SettingsController extends Controller
         UpdateTenantScheduleAction $action
     ): RedirectResponse {
         $tenantId = $this->tenantContext->getTenantId();
-        
+
         $data = UpdateScheduleResult::fromRequest($request);
-        
+
         // We pass ID and Data. Action should find tenant.
         // Previous code passed `Tenant $tenant` model.
         // Ideally Action signature changes to `execute(int $tenantId, ...)` or we find model here.
         // Since we can't import Model, we rely on Action to support ID or we accept that Action Layer handles Model.
         // Purest way: $action->execute($tenantId, $data);
-        
-        // I'll assume Action is updated or capable. 
+
+        // I'll assume Action is updated or capable.
         // If strict, I'd need to find model via Repo here.
         // BUT strict requirement is "No App\Models in Controller".
         // So I delegate finding to Action.
-        
+
         $action->execute($tenantId, $data);
 
         return back()->with('success', 'Horarios actualizados.');

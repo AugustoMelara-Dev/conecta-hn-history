@@ -17,13 +17,13 @@ final readonly class CancelOrderCommand
     public function __construct(
         /** Tenant ID for ownership verification */
         public int $tenantId,
-        
+
         /** Order ID to cancel */
         public int $orderId,
-        
+
         /** Mandatory cancellation reason (audited) */
         public string $reason,
-        
+
         /** User ID performing the cancellation (audit trail) */
         public int $userId,
     ) {}

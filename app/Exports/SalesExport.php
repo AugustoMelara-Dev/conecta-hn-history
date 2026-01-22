@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Exports;
 
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Events\Audit\SalesExportCreated;
 use App\Exports\Concerns\SanitizesOutput;
 use App\Exports\Criteria\SalesExportCriteria;
 use App\Models\Order;
-use App\ValueObjects\TenantId;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
@@ -189,7 +189,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
     {
         $query = Order::query()
             // CRITICAL: Tenant filter FIRST - non-negotiable
-            ->where('tenant_id', $this->tenantId->toInt())
+            ->where('tenant_id', $this->tenantId->toString())
             // Eager load for N+1 prevention
             ->with(['items:id,order_id,quantity,product_name,total_price'])
             // Date range from Criteria (always present - DoS prevention)
@@ -291,7 +291,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
         } catch (\Throwable $e) {
             Log::error('Export map failed for order', [
                 'order_id' => $order->id ?? 'unknown',
-                'tenant_id' => $this->tenantId->toInt(),
+                'tenant_id' => $this->tenantId->toString(),
                 'error' => $e->getMessage(),
             ]);
 
@@ -401,7 +401,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
 
             Log::info('Sales export created', [
                 'export_id' => $this->exportId,
-                'tenant_id' => $this->tenantId->toInt(),
+                'tenant_id' => $this->tenantId->toString(),
                 'user_id' => $this->userId,
                 'criteria' => $this->criteria->toArray(),
             ]);
@@ -410,7 +410,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
             // CRITICAL: Log with full details for forensics
             Log::critical('Sales export audit failed - POTENTIAL COMPLIANCE ISSUE', [
                 'export_id' => $this->exportId,
-                'tenant_id' => $this->tenantId->toInt(),
+                'tenant_id' => $this->tenantId->toString(),
                 'user_id' => $this->userId,
                 'error' => $e->getMessage(),
                 'exception' => get_class($e),

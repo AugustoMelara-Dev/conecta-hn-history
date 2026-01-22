@@ -17,22 +17,22 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 final class EloquentTenantProductRepository implements TenantProductRepository
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function getDashboardList(int $tenantId, string $search = '', int $perPage = 12): LengthAwarePaginator
     {
         return Product::query()
             ->where('tenant_id', $tenantId)
-            ->when($search, fn($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
             ->with(['category', 'images'])
             ->orderBy('name')
             ->paginate($perPage);
     }
-    
-    // Include other methods from interface if they exist, assuming interface was defined previously 
+
+    // Include other methods from interface if they exist, assuming interface was defined previously
     // or reusing existing methods. Based on context, I am "Updating Infrastructure".
     // I will stick to what is needed for the dashboard list fix.
-    
+
     public function countByTenant(int $tenantId): int
     {
         return Product::where('tenant_id', $tenantId)->count();

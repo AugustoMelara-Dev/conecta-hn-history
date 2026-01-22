@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * OutboxMessage Model - Titanium Standard
- * 
+ *
  * Supports privacy (encrypted payload) and dead-letter handling (error column).
  */
 class OutboxMessage extends Model

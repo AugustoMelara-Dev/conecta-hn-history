@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Application\Actions\Orders\CancelOrderAction;
-use App\Services\OrderStateService;
 use App\Domain\Sales\Contracts\OrderReader;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
+use App\Services\OrderStateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use OpenApi\Attributes as OA;
 
 /**
  * OrderController - Transaction Management
@@ -34,7 +33,9 @@ final class OrderController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $tenantId = (int) $request->user()?->tenant_id;
-        if (!$tenantId) abort(403);
+        if (! $tenantId) {
+            abort(403);
+        }
 
         return OrderResource::collection(
             $this->reader->search(
@@ -60,14 +61,19 @@ final class OrderController extends Controller
     public function show(int $id): OrderResource
     {
         $order = $this->reader->find($id);
-        if (!$order) abort(404, 'Order not found');
+        if (! $order) {
+            abort(404, 'Order not found');
+        }
+
         return new OrderResource($order);
     }
 
     public function updateStatus(UpdateOrderStatusRequest $request, int $orderId): OrderResource
     {
         $order = $this->reader->find($orderId);
-        if (!$order) abort(404);
+        if (! $order) {
+            abort(404);
+        }
 
         $this->orderStateService->transition(
             $order,
@@ -83,7 +89,7 @@ final class OrderController extends Controller
         // DELEGATED: Action handles lookup and deletion
         // We use request->user()->tenant_id to authorize ownership in action
         $tenantId = (int) $request->user()?->tenant_id;
-        
+
         $this->cancelOrderAction->execute($orderId, $tenantId);
 
         return response()->json(null, 204);

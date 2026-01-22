@@ -6,7 +6,6 @@ namespace App\Domain\Sales\Events;
 
 use App\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldBeStoredInOutbox;
-use App\Domain\Shared\Contracts\TenantAwareEvent;
 use App\Models\Order;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\TenantId;
@@ -14,14 +13,11 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * OrderCreated - Domain Event with Transactional Outbox Support
- * 
+ *
  * Fired when a new Order is successfully placed and persisted.
  * This event is stored in the Outbox for guaranteed at-least-once delivery.
  */
-final readonly class OrderCreated implements 
-    DomainEvent, 
-    ShouldDispatchAfterCommit,
-    ShouldBeStoredInOutbox
+final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox, ShouldDispatchAfterCommit
 {
     use HasDomainMetadata;
 
@@ -72,7 +68,7 @@ final readonly class OrderCreated implements
     {
         $order = Order::find($payload['order_id']);
 
-        if (!$order) {
+        if (! $order) {
             throw new \RuntimeException(
                 "Failed to rehydrate OrderCreated event: Order {$payload['order_id']} not found."
             );

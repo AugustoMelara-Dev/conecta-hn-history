@@ -5,104 +5,116 @@ declare(strict_types=1);
 namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\VerifyOtpCommand;
-use App\Application\DTOs\Auth\VerifyOtpResult;
-use App\Application\Shared\Traits\LogSanitizer;
+use App\Application\Auth\Results\VerifyOtpResult;
+use App\Application\Shared\Contracts\OutboxRepositoryInterface;
+use App\Domain\Auth\Events\OtpVerified;
 use App\Domain\Auth\Exceptions\InvalidOtpException;
 use App\Domain\Auth\Exceptions\OtpExpiredException;
-use App\Domain\Auth\Exceptions\TooManyOtpRequestsException;
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
-use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
-use Illuminate\Support\Facades\Log;
+use App\Domain\Shared\Entities\DomainEventMessage;
 
 /**
- * VerifyOtpHandler - Domain Orchestrator
+ * VerifyOtpHandler - Atomic Protocol Edition
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  INFRASTRUCTURE AGNOSTIC: Zero coupling to Framework or DB details.     ║
- * ║  DECLARATIVE FLOW: Reads like a story. Readable logic.                  ║
- * ║  ATOMIC SAFE: Delegates concurrent writes to Repository atomic methods. ║
+ * ║  ATOMIC PROTOCOL: "Insert-or-Die" Gatekeeper                            ║
+ * ║  CONSISTENCY: Transactional Outbox within Atomic Lock                   ║
+ * ║  PURITY: No side effects (Events/Mailers) outside Outbox                ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class VerifyOtpHandler
+final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
 {
-    use LogSanitizer;
-
     public function __construct(
-        private readonly OtpRepositoryInterface $otpRepository,
-        private readonly UserRepositoryInterface $userRepository,
-        private readonly OtpHasherInterface $hasher,
-        private readonly ClockInterface $clock,
+        private OtpRepositoryInterface $otpRepository,
+        private UserRepositoryInterface $userRepository,
+        private OutboxRepositoryInterface $outboxRepository,
+        private OtpHasherInterface $hasher,
+        private ClockInterface $clock,
+        /** @required Injected from config('auth.otp.max_attempts') */
+        private int $maxOtpAttempts,
     ) {}
 
-    /**
-     * Handle verification orchestration.
-     */
     public function handle(VerifyOtpCommand $command): VerifyOtpResult
     {
-        // 1. RETRIEVAL (Data Mapper)
-        $otp = $this->otpRepository->findValidByIdentifier($command->identifier);
+        // 1. Domain Validation
+        $otp = $this->otpRepository->findValidByIdentifier(
+            $command->identifier,
+            $command->tenantId
+        );
 
         if ($otp === null) {
-            throw new InvalidOtpException();
+            throw new InvalidOtpException;
         }
 
-        // 2. DOMAIN GUARD CLAUSES (In-Memory Check)
-        // Note: isExpired uses injected Clock time, ensuring testability
         if ($otp->isExpired($this->clock->immutablenow())) {
-            $this->otpRepository->invalidateByIdentifier($command->identifier);
-            throw new OtpExpiredException();
+            $this->otpRepository->invalidateByIdentifier($command->identifier, $command->tenantId);
+            throw new OtpExpiredException;
         }
 
-        if ($otp->maxAttemptsExceeded()) {
-            throw new TooManyOtpRequestsException(60, 'Demasiados intentos.');
-        }
+        // REMOVED LEGACY CHECK: if ($otp->maxAttemptsExceeded($this->maxOtpAttempts)) ...
+        // Reason: Race Condition Vulnerability. We rely on Atomic DB increment below.
 
-        // 3. CRYPTOGRAPHIC VERIFICATION (via Abstraction)
-        if (!$this->hasher->verify($command->code, $otp->hashedCode)) {
-            // ATOMIC PENALTY: Delegate race-safe increment to DB layer
-            $this->otpRepository->incrementAttempts($otp->id);
-            
-            Log::warning('OTP code mismatch', [
-                'identifier' => $this->maskIdentifier($command->identifier),
-                'ip' => $command->ipAddress
-            ]);
-            
+        if (! $this->hasher->verify($command->code, $otp->hashedCode)) {
+            // ATOMIC INCREMENT & GATEKEEPER
+            // If the limit is reached during this transaction, this will throw MaxOtpAttemptsExceededException
+            // and stop the flow immediately.
+            $this->otpRepository->incrementAttemptsAtomically((string) $otp->id, $this->maxOtpAttempts);
+
             throw new InvalidOtpException('Código incorrecto.');
         }
 
-        // 4. SUCCESS CLEANUP
+        // 2. Consume OTP (Effect)
         $this->otpRepository->delete($otp);
 
-        Log::info('OTP verified successfully', $this->sanitizePayload([
-            'identifier' => $command->identifier,
-            'user_id' => $otp->userId
-        ]));
+        // 3. Resolve Result
+        $result = $this->resolveUserOrNew($otp->userId, $command->identifier, $command->tenantId);
 
-        // 5. RESOLVE RESULT
-        return $this->resolveUserOrNew($otp->userId, $command->identifier);
+        // 4. Persist Outbox Event
+        $event = OtpVerified::now(
+            otpIdentifier: $command->identifier,
+            userId: $otp->userId,
+            tenantId: $command->tenantId
+        );
+
+        $message = new DomainEventMessage(
+            eventId: $event->eventId,
+            type: OtpVerified::class,
+            aggregateId: (string) $otp->id,
+            payload: json_encode($event->toPayload()),
+            occurredAt: $this->clock->now(),
+            metadata: [
+                'tenant_id' => $command->tenantId,
+                'causation_id' => $command->idempotencyKey,
+                'user_id' => $otp->userId,
+                'trace_id' => null,
+            ]
+        );
+
+        $this->outboxRepository->save($message);
+
+        return $result;
     }
 
-    private function resolveUserOrNew(?int $userId, string $identifier): VerifyOtpResult
+    private function resolveUserOrNew(?int $userId, string $identifier, string $tenantId): VerifyOtpResult
     {
-        if ($userId !== null) {
-            $user = $this->userRepository->findById($userId);
-            if ($user !== null) {
-            if ($user !== null) {
-                // $user is strictly typed as ?UserEntity via strict repository contract
-                return VerifyOtpResult::forUser($user);
-            }
-            }
+        if ($userId === null) {
+            return VerifyOtpResult::forNewUser($identifier);
         }
-        
+
+        $user = $this->userRepository->findById($userId, $tenantId);
+
+        if ($user !== null) {
+            return VerifyOtpResult::forUser($user);
+        }
+
         return VerifyOtpResult::forNewUser($identifier);
     }
-    
+
     private function maskIdentifier(string $identifier): string
     {
-        // Simple masking logic to avoid external dependencies
-        return substr($identifier, 0, 3) . '***'; 
+        return substr($identifier, 0, 3).'***';
     }
 }

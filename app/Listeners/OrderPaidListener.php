@@ -36,7 +36,7 @@ use App\Events\Order\OrderPaid;
  * ║    - BroadcastOrderPaid                                                ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class OrderPaidListener
+final readonly class OrderPaidListener
 {
     /**
      * Handle the OrderPaid domain event.
@@ -59,7 +59,7 @@ final class OrderPaidListener
         // ─────────────────────────────────────────────────────────────────────
         logger()->info('Payment received', [
             'order_id' => $event->aggregateId(),
-            'tenant_id' => $event->tenantId()->toInt(),
+            'tenant_id' => $event->tenantId()->toString(),
             'amount_cents' => $event->amountPaid->inCents(),
             'payment_method' => $event->paymentMethod,
         ]);
@@ -68,7 +68,7 @@ final class OrderPaidListener
         // STEP 4: Real-Time UI Update - Broadcast to tenant dashboard
         // ─────────────────────────────────────────────────────────────────────
         broadcast(OrderPaidBroadcast::fromDomainData(
-            tenantId: $event->tenantId()->toInt(),
+            tenantId: $event->tenantId()->toString(),
             orderId: $event->aggregateId(),
             orderNumber: $event->orderNumber->toString(),
             amountCents: $event->amountPaid->inCents(),

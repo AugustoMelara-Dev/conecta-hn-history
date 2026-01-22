@@ -32,8 +32,6 @@ final class DeleteProductHandler
     /**
      * Handle product deletion command.
      *
-     * @param DeleteProductCommand $command
-     * @return void
      * @throws ModelNotFoundException If product not found or tenant mismatch
      */
     public function handle(DeleteProductCommand $command): void

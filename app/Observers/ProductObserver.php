@@ -40,6 +40,6 @@ class ProductObserver
     private function clearCache(Product $product): void
     {
         // Surgical cache clearing using Tags
-        Cache::tags(["products", "products_tenant_{$product->tenant_id}"])->flush();
+        Cache::tags(['products', "products_tenant_{$product->tenant_id}"])->flush();
     }
 }

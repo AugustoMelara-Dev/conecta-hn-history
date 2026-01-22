@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Identity\Http;
 
 use Illuminate\Foundation\Testing\DatabaseMigrations;
-use Illuminate\Testing\Fluent\AssertableJson;
 use Tests\TestCase;
 
 class RegisterUserEndpointTest extends TestCase
@@ -47,8 +46,8 @@ class RegisterUserEndpointTest extends TestCase
                     'email',
                     'tenant_id',
                     'requires_verification',
-                ]
-            ]
+                ],
+            ],
         ]);
 
         // Physical Persistence Audit (Real Disk Write verification)
@@ -65,12 +64,12 @@ class RegisterUserEndpointTest extends TestCase
     public function it_rejects_invalid_input_formats()
     {
         // Critical: Exception Handling MUST be active (Implicit) here.
-        
+
         // 1. Preparation (Dirty Payload)
         $payload = [
             'name' => 'John',
             'email' => 'not-an-email',
-            'password' => 'short', 
+            'password' => 'short',
             'password_confirmation' => 'short',
             'tenant_name' => 'Titanium Inc',
             'tenant_domain' => 'invalid domain space',
@@ -92,7 +91,7 @@ class RegisterUserEndpointTest extends TestCase
     /** @test */
     public function it_rejects_duplicate_registration_proving_sql_projection()
     {
-        // Fase 1: Siembra (Verbose Mode for Debugging) 
+        // Fase 1: Siembra (Verbose Mode for Debugging)
         // Desactivamos excepciones para asegurar que el primer usuario entre limpiamente.
         $this->withoutExceptionHandling();
 

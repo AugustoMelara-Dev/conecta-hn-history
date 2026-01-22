@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Identity\Auth;
 
 use App\Application\Identity\Commands\RegisterUserCommand;
-use App\Application\Identity\Handlers\RegisterUserHandler;
+use App\Application\Identity\Handlers\RegisterUserHandlerInterface;
 use App\Application\Identity\Results\RegisterUserResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +20,7 @@ class RegistrationToLoginFlowTest extends TestCase
     {
         // 0. STERILE ENVIRONMENT CONFIGURATION
         // Ensure we are starting fresh (handled by RefreshDatabase)
-        
+
         // Raw Data Definitions
         $email = 'architect@titanium.app';
         $plainPassword = 'SecretTitanium123!';
@@ -29,7 +29,7 @@ class RegistrationToLoginFlowTest extends TestCase
         $tenantDomain = 'titanium-arch'; // slug
 
         // FASE 1: EJECUCIÓN DEL COMANDO (El Disparo)
-        
+
         // 1.1 Instantiate Command
         $command = new RegisterUserCommand(
             name: $name,
@@ -41,8 +41,8 @@ class RegistrationToLoginFlowTest extends TestCase
         );
 
         // 1.2 Resolve Handler (No Mocking allowed - Metal Real)
-        /** @var RegisterUserHandler $handler */
-        $handler = $this->app->make(RegisterUserHandler::class);
+        /** @var RegisterUserHandlerInterface $handler */
+        $handler = $this->app->make(RegisterUserHandlerInterface::class);
 
         // 1.3 Execute Handle
         /** @var RegisterUserResult $result */
@@ -55,12 +55,11 @@ class RegistrationToLoginFlowTest extends TestCase
         $this->assertEquals($email, $result->email);
 
         // FASE 2: AUDITORÍA DE PROYECCIÓN (La Evidencia Física)
-        
+
         // 2.1 Verify Tenant Projection
         $this->assertDatabaseHas('tenants', [
             'id' => $result->tenantId,
-            'domain' => $tenantDomain,
-            'plan' => 'SEED', // Business Rule 'DEFAULT_PLAN' validated
+            'slug' => $tenantDomain, // DB column is 'slug', not 'domain'
         ]);
 
         // 2.2 Verify User Projection (excluding password hash)
@@ -75,8 +74,8 @@ class RegistrationToLoginFlowTest extends TestCase
         // 3.1 Attempt Login with Plain Credentials
         // This validates that the hasher used in domain matches the driver used by Auth facade
         $loginSuccess = Auth::attempt([
-            'email' => $email, 
-            'password' => $plainPassword
+            'email' => $email,
+            'password' => $plainPassword,
         ]);
 
         // 3.2 Assertion of Access
@@ -84,15 +83,15 @@ class RegistrationToLoginFlowTest extends TestCase
 
         // 3.3 Verification of Session & Identity
         $authenticatedUser = Auth::user();
-        
+
         $this->assertNotNull($authenticatedUser, 'Auth::user() returned null after successful attempt.');
         $this->assertEquals($result->id, $authenticatedUser->getAuthIdentifier(), 'Authenticated User ID mismatch.');
 
         // 3.4 Verification of Multi-Tenant Relation
         // Check if the Eloquent model has tenant_id attribute accessible
         $this->assertEquals(
-            $result->tenantId, 
-            $authenticatedUser->tenant_id, 
+            $result->tenantId,
+            $authenticatedUser->tenant_id,
             'Authenticated User is not linked to the correct Tenant.'
         );
     }

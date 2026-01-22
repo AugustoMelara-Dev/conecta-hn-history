@@ -11,7 +11,7 @@ use App\Domain\Product\Entities\ProductEntity;
  *
  * Defines the contract for product storage operations.
  * Serves both Products domain (CRUD) and Reviews domain (metrics).
- * 
+ *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  CONTRACT HARDENING:                                                    ║
  * ║  - Strict Typing: Inputs and Outputs must be ProductEntity.             ║
@@ -24,7 +24,8 @@ interface ProductRepositoryInterface
     public function findById(int $id): ?ProductEntity;
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
+     *
      * @deprecated Use Factory + save() instead for strictly typed creation.
      */
     public function create(array $data): ProductEntity;

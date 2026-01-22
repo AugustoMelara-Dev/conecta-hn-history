@@ -133,7 +133,7 @@ final readonly class OrderShipped implements DomainEvent, ShouldDispatchAfterCom
         return [
             'event_id' => $this->eventId,
             'correlation_id' => $this->correlationId,
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'order_id' => $this->orderId,
             'order_number' => $this->orderNumber->toString(),
             'carrier' => $this->carrier,

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->decimal('amount', 10, 2);
             $table->string('currency')->default('HNL');
             $table->string('status')->default('pending');
@@ -25,7 +25,7 @@ return new class extends Migration
 
         Schema::create('tenant_analytics', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->date('date');
             $table->integer('views')->default(0);
             $table->integer('whatsapp_clicks')->default(0);
@@ -34,6 +34,7 @@ return new class extends Migration
             $table->unique(['tenant_id', 'date']);
         });
 
+        /*
         Schema::create('one_time_passwords', function (Blueprint $table) {
             $table->id();
             $table->string('identifier');
@@ -41,6 +42,7 @@ return new class extends Migration
             $table->timestamp('expires_at');
             $table->timestamps();
         });
+        */
     }
 
     /**
@@ -48,7 +50,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('one_time_passwords');
+        // Schema::dropIfExists('one_time_passwords');
         Schema::dropIfExists('tenant_analytics');
         Schema::dropIfExists('payments');
     }

@@ -53,8 +53,8 @@ final readonly class RegisterTenantResult
         ?string $appUrl = null
     ): self {
         // Domain construction logic
-        $domain = $tenant->slug . '.' . parse_url($appUrl ?? config('app.url'), PHP_URL_HOST);
-        $setupUrl = ($appUrl ?? config('app.url')) . "/tenant/{$tenant->slug}/setup";
+        $domain = $tenant->slug.'.'.parse_url($appUrl ?? config('app.url'), PHP_URL_HOST);
+        $setupUrl = ($appUrl ?? config('app.url'))."/tenant/{$tenant->slug}/setup";
 
         return new self(
             tenantId: $tenant->id,

@@ -37,14 +37,16 @@ final class UpdateUserPassword implements UpdatesUserPasswords
             'password' => ['required', 'string', Password::default(), 'confirmed'],
         ], [
             'current_password.current_password' => __('The provided password does not match your current password.'),
-        ])->validateWithBag('updatePassword');
+        ])->validate();
 
         $this->commandBus->dispatch(
             new UpdateUserPasswordCommand(
-                userId: (int) $user->id,
+                userId: (string) $user->id,
+                requestingTenantId: (string) $user->tenant_id,
                 currentPassword: $input['current_password'],
                 newPassword: $input['password'],
                 refreshRememberToken: true,
+                idempotencyKey: (string) \Illuminate\Support\Str::uuid(),
             )
         );
     }

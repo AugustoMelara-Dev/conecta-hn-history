@@ -12,6 +12,6 @@ use App\Domain\Common\ValueObjects\Snapshot;
 interface SnapshotRepositoryInterface
 {
     public function save(string $aggregateId, int $version, array $state): void;
-    
+
     public function get(string $aggregateId): ?Snapshot;
 }

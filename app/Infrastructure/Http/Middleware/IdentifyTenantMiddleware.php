@@ -39,17 +39,17 @@ final class IdentifyTenantMiddleware
             $user = Auth::user();
             // Assuming 'tenant_id' is a direct property on User model.
             $tenantId = $user->tenant_id ?? null;
-        } 
-        
+        }
+
         // 2. Fallback: Public Routes (e.g. Microsites via Subdomain/Path)
         // If not logged in, we check if the route or request implies a tenant.
         // Implementation depends on routing strategy (domain mapping vs path).
         // For now, we focus on the requirement: "Si es ruta pública... resuelve basándote en Subdominio".
-        if (!$tenantId) {
-             // Basic Subdomain Resolution Logic (Placeholder)
-             // $host = $request->getHost(); ...
-             // For strict B2B mostly, we might enforce Auth.
-             // But if we fail to resolve, we MUST NOT set context to null/garbage.
+        if (! $tenantId) {
+            // Basic Subdomain Resolution Logic (Placeholder)
+            // $host = $request->getHost(); ...
+            // For strict B2B mostly, we might enforce Auth.
+            // But if we fail to resolve, we MUST NOT set context to null/garbage.
         }
 
         // 3. Set Context or Fail
@@ -61,12 +61,12 @@ final class IdentifyTenantMiddleware
             // or we need a way to say "No Tenant Context" (Global/System Context).
             // However, the prompt says: "Nunca permitas que la petición continúe sin contexto."
             // Assuming this middleware is for Tenant-Aware routes group.
-            
-            // Allow bypassing for specific "central" routes if needed, 
+
+            // Allow bypassing for specific "central" routes if needed,
             // but normally we abort.
             // abort(404, 'Tenant not found.');
-            
-            // For now, if we can't resolve, we don't set it. 
+
+            // For now, if we can't resolve, we don't set it.
             // Accessing TenantScope-protected models will throw RuntimeException as desired.
         }
 

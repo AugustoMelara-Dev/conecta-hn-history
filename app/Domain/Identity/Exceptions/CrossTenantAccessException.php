@@ -19,11 +19,11 @@ final class CrossTenantAccessException extends DomainException
         ?int $requestedId = null,
     ) {
         $message = "Access denied: Cannot modify {$resource} from a different tenant.";
-        
+
         if ($requestedId !== null) {
             $message .= " Requested ID: {$requestedId}";
         }
-        
+
         parent::__construct($message);
     }
 

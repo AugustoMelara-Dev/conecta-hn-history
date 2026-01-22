@@ -11,7 +11,7 @@ use DateTimeImmutable;
 
 /**
  * AnalyticsSynced - Observability Event
- * 
+ *
  * Fired when the nightly analytics sync job completes a batch.
  */
 final readonly class AnalyticsSynced implements DomainEvent
@@ -41,7 +41,7 @@ final readonly class AnalyticsSynced implements DomainEvent
 
     public function aggregateId(): int
     {
-        return $this->tenantId->toInt();
+        return (int) $this->tenantId->toString();
     }
 
     public function occurredAt(): DateTimeImmutable
@@ -52,7 +52,7 @@ final readonly class AnalyticsSynced implements DomainEvent
     public function toPrimitives(): array
     {
         return [
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'processed_records' => $this->processedRecords,
             'occurred_on' => $this->occurredOn->format(DATE_ATOM),
             'event_id' => $this->eventId,

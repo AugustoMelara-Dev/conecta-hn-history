@@ -13,7 +13,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 /**
  * ProductPriceChanged - Event fired when a product price is updated.
  */
-final readonly class ProductPriceChanged implements DomainEvent, TenantAwareEvent, ShouldDispatchAfterCommit
+final readonly class ProductPriceChanged implements DomainEvent, ShouldDispatchAfterCommit, TenantAwareEvent
 {
     use HasDomainMetadata;
 
@@ -47,7 +47,7 @@ final readonly class ProductPriceChanged implements DomainEvent, TenantAwareEven
     public function toPrimitives(): array
     {
         return [
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'product_id' => $this->productId,
             'old_price' => $this->oldPrice,
             'new_price' => $this->newPrice,

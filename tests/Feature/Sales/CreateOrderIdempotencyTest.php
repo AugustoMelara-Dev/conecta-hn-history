@@ -4,18 +4,17 @@ use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Decorators\IdempotentCreateOrderHandler;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
 use App\Application\Sales\Results\CreateOrderResult;
-use App\Infrastructure\Common\Idempotency\IdempotencyService;
+use App\Infrastructure\Common\Idempotency\RedisIdempotencyService;
 
 /**
  * ⚔️ TEST DE ATAQUE DE REPETICIÓN (Stress Test)
  * "Laws of Distributed Testing: Ley de Simulación de Carrera & Caja Negra"
  */
-
 it('survives a synthetic replay attack ensuring single execution of core logic', function () {
     // 1. Mocking del Núcleo (The Inner Barrier)
     // El núcleo DEBE ser intocable después de la primera ejecución.
     $mockCore = Mockery::mock(CreateOrderHandlerInterface::class);
-    
+
     // Generamos un resultado válido simulado
     $expectedResult = new CreateOrderResult(
         id: 999,
@@ -35,9 +34,9 @@ it('survives a synthetic replay attack ensuring single execution of core logic',
 
     // 2. Ensamblaje de la Defensa (The Onion)
     // Usamos ArrayStore para simular Redis en memoria con comportamiento real de Cache
-    $store = new \Illuminate\Cache\ArrayStore();
+    $store = new \Illuminate\Cache\ArrayStore;
     $repo = new \Illuminate\Cache\Repository($store);
-    $service = new IdempotencyService($repo);
+    $service = new RedisIdempotencyService($repo);
 
     $decorator = new IdempotentCreateOrderHandler($mockCore, $service);
 
@@ -51,13 +50,13 @@ it('survives a synthetic replay attack ensuring single execution of core logic',
     );
 
     // 4. Ejecución del Ataque (Burst Fire)
-    
+
     // Disparo 1 (Cache Miss -> Lock -> Core -> Store)
     $resultA = $decorator->handle($command);
-    
+
     // Disparo 2 (Replay -> Cache Hit)
     $resultB = $decorator->handle($command);
-    
+
     // Disparo 3 (Replay -> Cache Hit)
     $resultC = $decorator->handle($command);
 

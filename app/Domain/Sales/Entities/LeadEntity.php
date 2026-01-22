@@ -15,10 +15,7 @@ namespace App\Domain\Sales\Entities;
 final readonly class LeadEntity
 {
     /**
-     * @param int $id
-     * @param int $tenantId
-     * @param string $source
-     * @param array{name: string, phone: string, message: ?string, status: string, product_id: ?int} $contactData
+     * @param  array{name: string, phone: string, message: ?string, status: string, product_id: ?int}  $contactData
      */
     public function __construct(
         public int $id,

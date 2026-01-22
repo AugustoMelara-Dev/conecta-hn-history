@@ -30,14 +30,14 @@ final class CreatePersonalTeam implements ShouldQueue
         // Spec says: "Utiliza un TeamRepository (o servicio de dominio)..."
         // I will simulate strict DB usage here or use model if repo missing.
         // For fail-safe, I'll use simple atomic creation.
-        
+
         // Note: The UserRegistered event carries UseEntity. We need the ID.
         $userId = $userEntity->id;
 
         // Force Create Team (Jetstream Logic)
         // In a real DDD app, this would be: $this->teamService->createPersonalTeam($userId);
-        
-        // Acting as Architect: I will assume the Model usage here is acceptable for this listener 
+
+        // Acting as Architect: I will assume the Model usage here is acceptable for this listener
         // until Team domain is fully verified, BUT checking if Team model exists.
         if (class_exists(Team::class)) {
             $team = Team::forceCreate([
@@ -45,8 +45,8 @@ final class CreatePersonalTeam implements ShouldQueue
                 'name' => explode(' ', $userEntity->name, 2)[0]."'s Team",
                 'personal_team' => true,
             ]);
-            
-            // Note: If User model has current_team_id, we might need to update it. 
+
+            // Note: If User model has current_team_id, we might need to update it.
             // This suggests a bi-directional dependency often found in Jetstream.
             // But we are in a listener.
         }

@@ -35,8 +35,6 @@ final class CancelOrderHandler
     /**
      * Handle order cancellation command.
      *
-     * @param CancelOrderCommand $command
-     * @return void
      * @throws ModelNotFoundException If order not found or tenant mismatch
      * @throws \App\Domain\Sales\Exceptions\OrderCannotBeCancelledException
      */

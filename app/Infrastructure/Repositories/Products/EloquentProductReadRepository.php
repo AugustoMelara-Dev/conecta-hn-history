@@ -21,7 +21,7 @@ use App\Models\Product;
 final class EloquentProductReadRepository implements ProductReadRepositoryInterface
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function search(int $tenantId, array $filters = [], int $page = 1, int $perPage = 20): array
     {
@@ -32,11 +32,11 @@ final class EloquentProductReadRepository implements ProductReadRepositoryInterf
             ->orderBy('name');
 
         // Apply optional filters
-        if (!empty($filters['menu_section_id'])) {
+        if (! empty($filters['menu_section_id'])) {
             $query->where('menu_section_id', $filters['menu_section_id']);
         }
 
-        if (!empty($filters['is_featured'])) {
+        if (! empty($filters['is_featured'])) {
             $query->where('is_featured', true);
         }
 
@@ -69,7 +69,7 @@ final class EloquentProductReadRepository implements ProductReadRepositoryInterf
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function findForDisplay(int $tenantId, int $productId): ?array
     {
@@ -80,7 +80,7 @@ final class EloquentProductReadRepository implements ProductReadRepositoryInterf
             ->with(['menuSection:id,name', 'optionGroups.options'])
             ->first();
 
-        if (!$product) {
+        if (! $product) {
             return null;
         }
 
@@ -89,7 +89,7 @@ final class EloquentProductReadRepository implements ProductReadRepositoryInterf
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price,
-            'formatted_price' => 'L. ' . number_format($product->price, 2),
+            'formatted_price' => 'L. '.number_format($product->price, 2),
             'compare_at_price' => $product->compare_at_price,
             'has_discount' => $product->compare_at_price && $product->compare_at_price > $product->price,
             'image_url' => $product->image_url,
@@ -122,7 +122,7 @@ final class EloquentProductReadRepository implements ProductReadRepositoryInterf
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price,
-            'formatted_price' => 'L. ' . number_format($product->price, 2),
+            'formatted_price' => 'L. '.number_format($product->price, 2),
             'compare_at_price' => $product->compare_at_price,
             'has_discount' => $product->compare_at_price && $product->compare_at_price > $product->price,
             'image_url' => $product->image_url,

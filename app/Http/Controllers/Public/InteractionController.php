@@ -35,13 +35,13 @@ final class InteractionController extends Controller
     {
         $tenant = $this->tenantResolver->findPublicBySlug($tenantSlug);
 
-        if (!$tenant) {
+        if (! $tenant) {
             abort(404, 'Negocio no encontrado.');
         }
 
         $phone = new PhoneNumber($tenant->whatsapp_number ?? $tenant->phone);
 
-        if (!$phone->isValid()) {
+        if (! $phone->isValid()) {
             return redirect()->back()->with('error', 'Este negocio no tiene WhatsApp configurado.');
         }
 
@@ -51,7 +51,7 @@ final class InteractionController extends Controller
             tenantId: $tenant->id,
             type: InteractionType::WHATSAPP_CLICK->value,
             request: $request,
-            metadata: !empty($text) ? ['message' => substr($text, 0, 200)] : null
+            metadata: ! empty($text) ? ['message' => substr($text, 0, 200)] : null
         );
         $this->recordAction->execute($dto);
 
@@ -62,13 +62,13 @@ final class InteractionController extends Controller
     {
         $tenant = $this->tenantResolver->findPublicBySlug($tenantSlug);
 
-        if (!$tenant) {
+        if (! $tenant) {
             abort(404, 'Negocio no encontrado.');
         }
 
         $phone = new PhoneNumber($tenant->phone ?? $tenant->whatsapp_number);
 
-        if (!$phone->isValid()) {
+        if (! $phone->isValid()) {
             return redirect()->back()->with('error', 'Este negocio no tiene teléfono configurado.');
         }
 
@@ -86,14 +86,14 @@ final class InteractionController extends Controller
     {
         $tenant = $this->tenantResolver->findPublicBySlug($tenantSlug);
 
-        if (!$tenant) {
+        if (! $tenant) {
             abort(404, 'Negocio no encontrado.');
         }
 
-        if (!empty($tenant->latitude) && !empty($tenant->longitude)) {
+        if (! empty($tenant->latitude) && ! empty($tenant->longitude)) {
             $url = "https://www.google.com/maps/dir/?api=1&destination={$tenant->latitude},{$tenant->longitude}";
-        } elseif (!empty($tenant->address)) {
-            $url = 'https://www.google.com/maps/search/?api=1&query=' . urlencode($tenant->address);
+        } elseif (! empty($tenant->address)) {
+            $url = 'https://www.google.com/maps/search/?api=1&query='.urlencode($tenant->address);
         } else {
             return redirect()->back()->with('error', 'Este negocio no tiene ubicación configurada.');
         }

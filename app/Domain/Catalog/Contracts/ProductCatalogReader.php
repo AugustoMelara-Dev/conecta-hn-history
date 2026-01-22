@@ -24,7 +24,7 @@ interface ProductCatalogReader
     /**
      * Search products with filters.
      *
-     * @param array $filters ['category_id', 'search', 'min_price', 'max_price', 'sort']
+     * @param  array  $filters  ['category_id', 'search', 'min_price', 'max_price', 'sort']
      */
     public function searchProducts(int $tenantId, array $filters, int $perPage = 20): LengthAwarePaginator;
 }

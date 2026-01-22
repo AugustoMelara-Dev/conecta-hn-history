@@ -1,0 +1,12 @@
+{
+    "Rules": [
+        {
+            "ID": "PruneQuarantineFiles",
+            "Prefix": "temp/",
+            "Status": "Enabled",
+            "Expiration": {
+                "Days": 1
+            }
+        }
+    ]
+}

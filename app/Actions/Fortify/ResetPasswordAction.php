@@ -20,8 +20,8 @@ class ResetPasswordAction implements ResetsUserPasswords
     /**
      * Reset the user's forgotten password.
      *
-     * @param mixed $user
-     * @param array<string, string> $input
+     * @param  mixed  $user
+     * @param  array<string, string>  $input
      */
     public function reset($user, array $input): void
     {

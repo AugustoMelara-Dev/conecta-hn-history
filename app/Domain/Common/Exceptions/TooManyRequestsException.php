@@ -11,9 +11,8 @@ class TooManyRequestsException extends Exception
 {
     /**
      * Render the exception into an HTTP response.
-     * 
+     *
      * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function render($request): JsonResponse
     {
@@ -21,7 +20,7 @@ class TooManyRequestsException extends Exception
             'error' => 'Too Many Requests',
             'message' => 'Rate limit exceeded. Please try again later.',
         ], 429, [
-            'Retry-After' => 60
+            'Retry-After' => 60,
         ]);
     }
 }

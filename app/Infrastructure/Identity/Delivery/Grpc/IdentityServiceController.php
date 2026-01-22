@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 
 /**
  * IdentityServiceController - The Binary Highway Adapter
- * 
+ *
  * STRICT RULE: NO BUSINESS LOGIC. TRANSLATION ONLY.
  */
 final class IdentityServiceController implements IdentityServiceInterface
@@ -40,9 +40,9 @@ final class IdentityServiceController implements IdentityServiceInterface
         $result = $this->handler->handle($command);
 
         // 3. LOWERING (Translation: Domain Result -> Proto Response)
-        $response = new RegisterUserResponse();
+        $response = new RegisterUserResponse;
         $response->setUserId((string) $result->id);
-        
+
         // Map Result Status to Proto String
         // Assuming Result has logic for "requiresVerification" mapping to a status string
         $status = $result->requiresVerification ? 'pending_verification' : 'active';

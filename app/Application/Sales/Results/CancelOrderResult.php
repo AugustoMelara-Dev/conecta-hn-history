@@ -25,9 +25,8 @@ final readonly class CancelOrderResult
     /**
      * Factory method to hydrate from Domain Entity.
      *
-     * @param object $order The cancelled Order entity
-     * @param string|null $reason Cancellation reason
-     * @return self
+     * @param  object  $order  The cancelled Order entity
+     * @param  string|null  $reason  Cancellation reason
      */
     public static function fromEntity(object $order, ?string $reason = null): self
     {

@@ -14,20 +14,18 @@ interface WebhookLogRepositoryInterface
     /**
      * Check if a webhook event has already been processed.
      *
-     * @param string $provider External provider (stripe, paypal, etc.)
-     * @param string $externalEventId Provider's unique event ID
-     * @return bool
+     * @param  string  $provider  External provider (stripe, paypal, etc.)
+     * @param  string  $externalEventId  Provider's unique event ID
      */
     public function hasBeenProcessed(string $provider, string $externalEventId): bool;
 
     /**
      * Log a webhook event for audit trail.
      *
-     * @param string $provider External provider
-     * @param string $externalEventId Provider's unique event ID
-     * @param string $eventType Event type (payment.succeeded, etc.)
-     * @param array<string, mixed> $payload Full payload for forensic audit
-     * @return void
+     * @param  string  $provider  External provider
+     * @param  string  $externalEventId  Provider's unique event ID
+     * @param  string  $eventType  Event type (payment.succeeded, etc.)
+     * @param  array<string, mixed>  $payload  Full payload for forensic audit
      */
     public function log(string $provider, string $externalEventId, string $eventType, array $payload): void;
 }

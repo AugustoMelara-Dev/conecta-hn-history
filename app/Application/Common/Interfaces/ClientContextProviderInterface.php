@@ -6,7 +6,7 @@ namespace App\Application\Common\Interfaces;
 
 /**
  * ClientContextProviderInterface - Protocol Agnostic Identity
- * 
+ *
  * Abstraction layer to identify the client initiator regardless
  * of the transport protocol (HTTP, CLI, Queue, WebSocket).
  */

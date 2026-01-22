@@ -125,7 +125,7 @@ final readonly class PaymentApproved implements DomainEvent, ShouldDispatchAfter
     {
         return [
             'event_id' => $this->eventId,
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'order_id' => $this->orderId,
             'order_number' => $this->orderNumber->toString(),
             'transaction_id' => $this->transactionId,

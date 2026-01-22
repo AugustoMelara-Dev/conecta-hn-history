@@ -37,7 +37,7 @@ final class StripePaymentGateway implements PaymentGatewayInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function charge(
         int $amountInCents,
@@ -64,7 +64,7 @@ final class StripePaymentGateway implements PaymentGatewayInterface
                     'intent_id' => $intent->id,
                     'client_secret' => $intent->client_secret,
                 ]);
-                
+
                 return ChargeResult::failure('Payment requires additional authentication');
             }
 
@@ -151,7 +151,7 @@ final class StripePaymentGateway implements PaymentGatewayInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function refund(string $transactionId, ?int $amountInCents = null): ChargeResult
     {
@@ -177,7 +177,7 @@ final class StripePaymentGateway implements PaymentGatewayInterface
             ]);
 
             throw new UnknownPaymentException(
-                message: 'Unable to process refund: ' . $e->getMessage(),
+                message: 'Unable to process refund: '.$e->getMessage(),
                 previous: $e
             );
 

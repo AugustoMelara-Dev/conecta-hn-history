@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Shared\Resilience;
 
 use App\Domain\Auth\Contracts\OtpNotifierInterface;
+use App\Domain\Identity\Entities\UserEntity;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use RuntimeException;
 use Throwable;
@@ -15,13 +16,15 @@ use Throwable;
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  FAIL FAST: Prevents cascading failures when providers (Twilio/SES) die.║
  * ║  DISTRIBUTED STATE: Uses Cache (Redis) to sync state across workers.    ║
- * ║  TRANSPARENT: Wraps any OtpNotifierInterface without changing client.   ║
+ * ║  FIXED: Updated send() signature to match OtpNotifierInterface.         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final class CircuitBreakerDecorator implements OtpNotifierInterface
 {
     private const FAILURE_THRESHOLD = 5;
+
     private const OPEN_TTL_SECONDS = 60;
+
     private const CACHE_PREFIX = 'circuit_breaker:otp_notifier';
 
     public function __construct(
@@ -30,28 +33,32 @@ final class CircuitBreakerDecorator implements OtpNotifierInterface
         private readonly string $serviceName = 'default'
     ) {}
 
+    /**
+     * {@inheritDoc}
+     *
+     * FIXED: Updated signature to match OtpNotifierInterface contract.
+     */
     public function send(
-        string $otpCode,
-        string $recipientIdentifier,
-        string $recipientName,
-        int $expiryMinutes = 10
+        ?UserEntity $recipient,
+        string $plainTextCode,
+        string $identifier,
+        string $tenantId,
+        int $expiryMinutes
     ): void {
         // 1. FAIL FAST CHECK
         if ($this->isOpen()) {
-            // Throw specific exception to release worker immediately
             throw new RuntimeException("Circuit Opened: OTP Service [{$this->serviceName}] is currently unavailable.");
         }
 
         try {
             // 2. DELEGATE EXECUTION
-            $this->innerService->send($otpCode, $recipientIdentifier, $recipientName, $expiryMinutes);
-            
-            // 3. SUCCESS - Reset local failure count if needed (optional optimization)
-            // Ideally we don't hit cache on every success to be faster
+            $this->innerService->send($recipient, $plainTextCode, $identifier, $tenantId, $expiryMinutes);
+
+            // 3. SUCCESS - Reset local failure count if needed
         } catch (Throwable $e) {
             // 4. ON FAILURE - Record and Trip
             $this->recordFailure();
-            throw $e; // Re-throw to ensure job fails
+            throw $e;
         }
     }
 
@@ -63,13 +70,11 @@ final class CircuitBreakerDecorator implements OtpNotifierInterface
     private function recordFailure(): void
     {
         $key = $this->getFailureKey();
-        
-        // Atomic increment
+
         $failures = $this->cache->increment($key);
-        
-        // Set short expiry for the failure window (rolling window approx)
+
         if ($failures === 1) {
-            $this->cache->put($key, 1, 120); // Window of 2 minutes
+            $this->cache->put($key, 1, 120);
         }
 
         if ($failures >= self::FAILURE_THRESHOLD) {
@@ -80,16 +85,16 @@ final class CircuitBreakerDecorator implements OtpNotifierInterface
     private function tripCircuit(): void
     {
         $this->cache->put($this->getOpenKey(), true, self::OPEN_TTL_SECONDS);
-        $this->cache->forget($this->getFailureKey()); // Reset counter
+        $this->cache->forget($this->getFailureKey());
     }
 
     private function getOpenKey(): string
     {
-        return self::CACHE_PREFIX . ":{$this->serviceName}:open";
+        return self::CACHE_PREFIX.":{$this->serviceName}:open";
     }
 
     private function getFailureKey(): string
     {
-        return self::CACHE_PREFIX . ":{$this->serviceName}:failures";
+        return self::CACHE_PREFIX.":{$this->serviceName}:failures";
     }
 }

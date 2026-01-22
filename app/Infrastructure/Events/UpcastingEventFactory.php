@@ -13,7 +13,7 @@ final class UpcastingEventFactory
     private array $upcasters = [];
 
     /**
-     * @param iterable<EventUpcaster> $upcasters
+     * @param  iterable<EventUpcaster>  $upcasters
      */
     public function __construct(iterable $upcasters)
     {
@@ -24,8 +24,9 @@ final class UpcastingEventFactory
 
     /**
      * @template T
-     * @param class-string<T> $eventClass
-     * @param array<string, mixed> $payload
+     *
+     * @param  class-string<T>  $eventClass
+     * @param  array<string, mixed>  $payload
      */
     public function fromPayload(string $eventClass, array $payload, int $payloadVersion): object
     {
@@ -33,7 +34,7 @@ final class UpcastingEventFactory
         // For compliance with "The Always-Current Law", we assume the class represents the LATEST version.
         // We need to know the target version. Assuming a convention or constant.
         // If not defined, we assume strict match required.
-        
+
         $targetVersion = defined("{$eventClass}::VERSION") ? constant("{$eventClass}::VERSION") : 1;
 
         while ($payloadVersion < $targetVersion) {
@@ -48,9 +49,9 @@ final class UpcastingEventFactory
                 }
             }
 
-            if (!$upcasterFound) {
+            if (! $upcasterFound) {
                 throw new RuntimeException(
-                    "Data Integrity Violation: No upcaster found for event {$eventClass} from v{$payloadVersion} to v" . ($payloadVersion + 1)
+                    "Data Integrity Violation: No upcaster found for event {$eventClass} from v{$payloadVersion} to v".($payloadVersion + 1)
                 );
             }
         }
@@ -59,9 +60,9 @@ final class UpcastingEventFactory
         // Assuming the event class has a static fromPayload or constructor that takes the array.
         // Direct instantiation or static factory method call.
         if (method_exists($eventClass, 'fromPayload')) {
-             return $eventClass::fromPayload($payload);
+            return $eventClass::fromPayload($payload);
         }
-        
+
         // Fallback to constructor unpacking (simple events)
         return new $eventClass(...$payload);
     }

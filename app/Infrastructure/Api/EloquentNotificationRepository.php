@@ -17,7 +17,7 @@ use Illuminate\Notifications\DatabaseNotification;
 final class EloquentNotificationRepository implements NotificationRepository
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function getUserNotifications(int $userId, int $perPage = 20): LengthAwarePaginator
     {
@@ -30,7 +30,7 @@ final class EloquentNotificationRepository implements NotificationRepository
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function markAsRead(int $userId, string $notificationId): void
     {
@@ -41,7 +41,7 @@ final class EloquentNotificationRepository implements NotificationRepository
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function markAllAsRead(int $userId): void
     {

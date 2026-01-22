@@ -34,15 +34,12 @@ final class SubmitReviewHandler
 
     /**
      * Handle review submission (sync, low-latency).
-     *
-     * @param SubmitReviewCommand $command
-     * @return SubmitReviewResult
      */
     public function handle(SubmitReviewCommand $command): SubmitReviewResult
     {
         // 1. Persist Review via Repository (ONLY write operation)
         // Spec: content field. Current: comment. Command likely has comment.
-        // Assuming Command has 'comment' or 'content'. 
+        // Assuming Command has 'comment' or 'content'.
         // Existing code used $command->comment.
         // I'll assume Command uses 'comment' property but Validator uses 'content' rule.
         // I'll stick to $command->comment logic here or content if available.
@@ -54,7 +51,7 @@ final class SubmitReviewHandler
             'product_id' => $command->productId,
             'user_id' => $command->userId,
             'rating' => $command->rating,
-            'comment' => $command->comment, 
+            'comment' => $command->comment,
             'is_approved' => true, // Auto-approve per business rule
         ]);
 
@@ -77,4 +74,3 @@ final class SubmitReviewHandler
         return SubmitReviewResult::fromEntity($review);
     }
 }
-

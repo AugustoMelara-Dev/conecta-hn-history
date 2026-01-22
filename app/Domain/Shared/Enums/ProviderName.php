@@ -14,6 +14,6 @@ enum ProviderName: string
 
     public static function has(string $value): bool
     {
-        return !is_null(self::tryFrom($value));
+        return ! is_null(self::tryFrom($value));
     }
 }

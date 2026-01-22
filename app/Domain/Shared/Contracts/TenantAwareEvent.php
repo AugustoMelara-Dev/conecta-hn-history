@@ -10,4 +10,3 @@ interface TenantAwareEvent
 {
     public function tenantId(): TenantId;
 }
-

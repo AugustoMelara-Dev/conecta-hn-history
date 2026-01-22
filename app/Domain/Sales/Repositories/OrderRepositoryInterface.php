@@ -19,26 +19,17 @@ interface OrderRepositoryInterface
 {
     /**
      * Find an order by primary identifier.
-     *
-     * @param int $id
-     * @return OrderEntity|null
      */
     public function findById(int $id): ?OrderEntity;
 
     /**
      * Persist a new or updated order aggregate.
      * Replaces createWithItems(array).
-     *
-     * @param OrderEntity $order
-     * @return void
      */
     public function save(OrderEntity $order): void;
 
     /**
      * Generate a unique order number for a tenant.
-     *
-     * @param int $tenantId
-     * @return string
      */
     public function generateOrderNumber(int $tenantId): string;
 }

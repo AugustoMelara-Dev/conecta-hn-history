@@ -6,6 +6,4 @@ namespace App\Domain\Common\Exceptions;
 
 use Exception;
 
-final class ConcurrentRequestException extends Exception
-{
-}
+final class ConcurrentRequestException extends Exception {}

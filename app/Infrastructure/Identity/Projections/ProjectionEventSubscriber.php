@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace App\Infrastructure\Identity\Projections;
 
 use App\Domain\Identity\Events\UserRegistered;
-use App\Infrastructure\Identity\Projections\UserProjector;
 use Illuminate\Events\Dispatcher;
 
 /**
  * ProjectionEventSubscriber - The Synchronous Bridge
- * 
+ *
  * Intercepts Domain Events synchronously and delegates WRITES (SQL) to Projectors.
  * Laws:
  * 1. Synchronous (No Queues): Instant Consistency.
@@ -19,7 +18,7 @@ use Illuminate\Events\Dispatcher;
 class ProjectionEventSubscriber
 {
     /**
-     * @param UserProjector $userProjector Injected Projector (The Worker)
+     * @param  UserProjector  $userProjector  Injected Projector (The Worker)
      */
     public function __construct(
         private readonly UserProjector $userProjector
@@ -27,8 +26,6 @@ class ProjectionEventSubscriber
 
     /**
      * Handle UserRegistered Event.
-     * 
-     * @param UserRegistered $event
      */
     public function handleUserRegistered(UserRegistered $event): void
     {
@@ -39,8 +36,6 @@ class ProjectionEventSubscriber
 
     /**
      * Register the listeners for the subscriber.
-     *
-     * @param  Dispatcher  $events
      */
     public function subscribe(Dispatcher $events): array
     {

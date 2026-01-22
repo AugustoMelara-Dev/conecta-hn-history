@@ -22,7 +22,7 @@ use Illuminate\Support\Collection;
 final class EloquentOrderRepository implements OrderRepository
 {
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function getDashboardKanban(int $tenantId, array $filters = []): Collection
     {
@@ -47,7 +47,7 @@ final class EloquentOrderRepository implements OrderRepository
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function getDashboardList(int $tenantId, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
@@ -64,7 +64,7 @@ final class EloquentOrderRepository implements OrderRepository
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function findForDetails(int $tenantId, int $orderId): mixed
     {
@@ -75,7 +75,7 @@ final class EloquentOrderRepository implements OrderRepository
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function updateStatus(int $tenantId, int $orderId, string $status): bool
     {

@@ -17,7 +17,7 @@ final readonly class DeleteProductCommand
     public function __construct(
         /** Tenant ID for ownership verification */
         public int $tenantId,
-        
+
         /** Product ID to delete */
         public int $productId,
     ) {}

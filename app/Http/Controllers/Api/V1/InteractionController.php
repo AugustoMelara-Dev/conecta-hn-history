@@ -40,9 +40,9 @@ final class InteractionController extends Controller
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Interaction Error', [
                 'error' => $e->getMessage(),
-                'payload' => $request->all()
+                'payload' => $request->all(),
             ]);
-            
+
             return response()->json(['status' => 'accepted'], 202);
         }
     }

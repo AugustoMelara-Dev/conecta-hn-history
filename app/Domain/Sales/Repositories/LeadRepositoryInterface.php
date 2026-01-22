@@ -18,10 +18,8 @@ interface LeadRepositoryInterface
     /**
      * Create a lead from an interaction conversion.
      *
-     * @param int $tenantId
-     * @param int|null $productId
-     * @param string $source Conversion source (whatsapp_click, etc.)
-     * @param string|null $message Initial message/context
+     * @param  string  $source  Conversion source (whatsapp_click, etc.)
+     * @param  string|null  $message  Initial message/context
      * @return LeadEntity Created lead domain entity
      */
     public function createFromInteraction(
@@ -33,9 +31,6 @@ interface LeadRepositoryInterface
 
     /**
      * Find lead by ID.
-     *
-     * @param int $id
-     * @return LeadEntity|null
      */
     public function findById(int $id): ?LeadEntity;
 }

@@ -8,7 +8,6 @@ use App\Domain\Tenant\Contracts\DashboardMetricsRepository;
 use App\Models\Order;
 use App\Models\Tenant;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * EloquentDashboardMetricsRepository - Logic Concentration
@@ -55,17 +54,17 @@ final class EloquentDashboardMetricsRepository implements DashboardMetricsReposi
     public function getOnboardingStatus(int $tenantId): array
     {
         $tenant = Tenant::find($tenantId);
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return ['progress' => 0, 'steps' => []];
         }
 
-        // Check if steps definitions should be in Config/Domain vs hidden here. 
+        // Check if steps definitions should be in Config/Domain vs hidden here.
         // For now, Repository is a better place than Controller.
         $steps = [
             ['id' => 'logo', 'title' => 'Subir logo', 'completed' => (bool) $tenant->logo_path, 'href' => route('tenant.settings.index')],
             ['id' => 'product', 'title' => 'Agregar producto', 'completed' => $tenant->products()->exists(), 'href' => route('tenant.products.create')],
-            ['id' => 'schedule', 'title' => 'Definir horarios', 'completed' => !empty($tenant->schedule), 'href' => route('tenant.settings.index')],
+            ['id' => 'schedule', 'title' => 'Definir horarios', 'completed' => ! empty($tenant->schedule), 'href' => route('tenant.settings.index')],
             ['id' => 'phone', 'title' => 'Agregar teléfono', 'completed' => (bool) $tenant->phone, 'href' => route('tenant.settings.index')],
         ];
 

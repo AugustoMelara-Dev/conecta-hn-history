@@ -18,7 +18,7 @@ final class LaravelMediaStorageService implements MediaStorageServiceInterface
     private const DISK = 'public';
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function storeLogo(int $tenantId, FileTransferObject $file): string
     {
@@ -26,7 +26,7 @@ final class LaravelMediaStorageService implements MediaStorageServiceInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function storeBanner(int $tenantId, FileTransferObject $file): string
     {
@@ -34,7 +34,7 @@ final class LaravelMediaStorageService implements MediaStorageServiceInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function delete(string $path): bool
     {
@@ -51,7 +51,7 @@ final class LaravelMediaStorageService implements MediaStorageServiceInterface
     private function storeFile(int $tenantId, string $subfolder, FileTransferObject $file): string
     {
         $directory = "tenants/{$tenantId}/{$subfolder}";
-        $filename = time() . '_' . $file->originalName;
+        $filename = time().'_'.$file->originalName;
 
         Storage::disk(self::DISK)->putFileAs(
             $directory,

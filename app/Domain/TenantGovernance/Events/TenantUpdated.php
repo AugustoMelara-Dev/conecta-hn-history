@@ -13,7 +13,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 /**
  * TenantUpdated - Event fired when a tenant updates their profile/slug.
  */
-final readonly class TenantUpdated implements DomainEvent, TenantAwareEvent, ShouldDispatchAfterCommit
+final readonly class TenantUpdated implements DomainEvent, ShouldDispatchAfterCommit, TenantAwareEvent
 {
     use HasDomainMetadata;
 
@@ -40,13 +40,13 @@ final readonly class TenantUpdated implements DomainEvent, TenantAwareEvent, Sho
 
     public function aggregateId(): int
     {
-        return $this->tenantId->toInt();
+        return (int) $this->tenantId->toString();
     }
 
     public function toPrimitives(): array
     {
         return [
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             'old_slug' => $this->oldSlug,
             'new_slug' => $this->newSlug,
             'event_id' => $this->eventId,
@@ -64,6 +64,4 @@ final readonly class TenantUpdated implements DomainEvent, TenantAwareEvent, Sho
             restoredOccurredAt: $primitives['occurred_at'] ?? null
         );
     }
-
-
 }

@@ -13,22 +13,22 @@ interface EventStoreRepositoryInterface
 {
     /**
      * Append events to the store with full security context.
-     * 
-     * @param string $tenantId The Isolation Context (Who owns data).
-     * @param string $aggregateId The Entity ID.
-     * @param string $aggregateType The Entity Class/Alias.
-     * @param array<DomainEventInterface> $events The facts to record.
-     * @param int $expectedVersion Optimistic Concurrency Guard.
-     * @param array $metaData Audit Trail (IP, User, RequestId).
-     * 
+     *
+     * @param  string  $tenantId  The Isolation Context (Who owns data).
+     * @param  string  $aggregateId  The Entity ID.
+     * @param  string  $aggregateType  The Entity Class/Alias.
+     * @param  array<DomainEventInterface>  $events  The facts to record.
+     * @param  int  $expectedVersion  Optimistic Concurrency Guard.
+     * @param  array  $metaData  Audit Trail (IP, User, RequestId).
+     *
      * @throws ConcurrencyException
      */
     public function append(
-        string $tenantId, 
-        string $aggregateId, 
-        string $aggregateType, 
-        array $events, 
-        int $expectedVersion, 
+        string $tenantId,
+        string $aggregateId,
+        string $aggregateType,
+        array $events,
+        int $expectedVersion,
         array $metaData = []
     ): void;
 
@@ -36,11 +36,10 @@ interface EventStoreRepositoryInterface
      * Reclaim history from a specific point (Delta Loading).
      */
     public function getEventsFrom(string $aggregateId, int $fromVersion): \Generator;
+
     /**
      * Stream ALL events from the beginning of time.
      * Used for Replays and Migrations.
-     * 
-     * @return \Generator
      */
     public function streamAll(): \Generator;
 }

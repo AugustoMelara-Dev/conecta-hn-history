@@ -22,10 +22,6 @@ final class BusinessProfilePromptBuilder
     /**
      * Build the structured prompt for the AI.
      *
-     * @param string $businessName
-     * @param string $activity
-     * @param string $location
-     * @param string|null $extraDetails
      * @return AiPromptPayload Validated prompt object ready for LLM ingestion
      */
     public static function build(
@@ -34,9 +30,9 @@ final class BusinessProfilePromptBuilder
         string $location,
         ?string $extraDetails = null
     ): AiPromptPayload {
-        $context = $extraDetails 
+        $context = $extraDetails
             ? "Contexto Adicional Proporcionado: \"{$extraDetails}\""
-            : "Contexto Adicional: Ninguno.";
+            : 'Contexto Adicional: Ninguno.';
 
         $promptContent = <<<PROMPT
 Role: Expert Business Consultant & Copywriter.

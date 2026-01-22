@@ -36,8 +36,6 @@ final class UpdateProductHandler
     /**
      * Handle product update command.
      *
-     * @param UpdateProductCommand $command
-     * @return UpdateProductResult
      * @throws ModelNotFoundException If product not found or tenant mismatch
      */
     public function handle(UpdateProductCommand $command): UpdateProductResult
@@ -69,15 +67,15 @@ final class UpdateProductHandler
         $product->stock = $command->stock;
         $product->category_id = $command->categoryId;
         $product->is_visible = $command->isVisible;
-        
+
         // Only update image if a new one was provided
         if ($command->imagePath !== null) {
             $product->image = $command->imagePath;
         }
 
         // 5. Capture dirty attributes BEFORE save
-        $changedAttributes = method_exists($product, 'getDirty') 
-            ? array_keys($product->getDirty()) 
+        $changedAttributes = method_exists($product, 'getDirty')
+            ? array_keys($product->getDirty())
             : [];
 
         // 6. Persist via Repository
@@ -100,4 +98,3 @@ final class UpdateProductHandler
         return UpdateProductResult::fromEntity($product, $changedAttributes);
     }
 }
-

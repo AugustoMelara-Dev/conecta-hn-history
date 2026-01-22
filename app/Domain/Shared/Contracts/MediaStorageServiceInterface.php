@@ -17,8 +17,6 @@ interface MediaStorageServiceInterface
     /**
      * Store a logo file for a tenant.
      *
-     * @param int $tenantId
-     * @param FileTransferObject $file
      * @return string The stored file path
      */
     public function storeLogo(int $tenantId, FileTransferObject $file): string;
@@ -26,8 +24,6 @@ interface MediaStorageServiceInterface
     /**
      * Store a banner/cover file for a tenant.
      *
-     * @param int $tenantId
-     * @param FileTransferObject $file
      * @return string The stored file path
      */
     public function storeBanner(int $tenantId, FileTransferObject $file): string;
@@ -35,7 +31,6 @@ interface MediaStorageServiceInterface
     /**
      * Delete a file by path.
      *
-     * @param string $path
      * @return bool Success status
      */
     public function delete(string $path): bool;

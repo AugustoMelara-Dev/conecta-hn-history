@@ -15,7 +15,7 @@ namespace App\Application\Billing\Results;
 final readonly class RequestUpgradeResult
 {
     public function __construct(
-        public int $tenantId,
+        public string $tenantId,
         public string $newPlanId,
         public string $status,
         public ?string $validUntil
@@ -24,7 +24,7 @@ final readonly class RequestUpgradeResult
     /**
      * Factory method to create DTO from updated Tenant state.
      */
-    public static function fromTenantState(int $tenantId, string $newPlanId, \DateTimeImmutable|string|null $endsAt): self
+    public static function fromTenantState(string $tenantId, string $newPlanId, \DateTimeImmutable|string|null $endsAt): self
     {
         return new self(
             tenantId: $tenantId,

@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('reviews', function (Blueprint $table) {
-            if (!Schema::hasColumn('reviews', 'product_id')) {
+            if (! Schema::hasColumn('reviews', 'product_id')) {
                 $table->foreignId('product_id')->nullable()->after('tenant_id')->constrained()->cascadeOnDelete();
             }
-            if (!Schema::hasColumn('reviews', 'is_approved')) {
+            if (! Schema::hasColumn('reviews', 'is_approved')) {
                 $table->boolean('is_approved')->default(true)->after('comment');
             }
         });

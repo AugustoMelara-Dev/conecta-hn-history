@@ -69,7 +69,7 @@ final class OrderController extends Controller
             status: $validated['status']
         );
 
-        if (!$updated) {
+        if (! $updated) {
             abort(404, 'Order not found.');
         }
 
@@ -86,7 +86,7 @@ final class OrderController extends Controller
         // DELEGATED: Query via Repository
         $order = $this->orderRepository->findForDetails($tenantId, $orderId);
 
-        if (!$order) {
+        if (! $order) {
             abort(404, 'Order not found.');
         }
 
@@ -106,7 +106,7 @@ final class OrderController extends Controller
         // DELEGATED: Query via Repository
         $order = $this->orderRepository->findForDetails($tenantId, $orderId);
 
-        if (!$order) {
+        if (! $order) {
             abort(404, 'Order not found.');
         }
 

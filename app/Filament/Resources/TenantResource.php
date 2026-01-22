@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources;
 
-use App\Models\Tenant;
-// MIGRATION: Updated to Domain namespace (2026-01-05)
 use App\Filament\Resources\TenantResource\Pages;
+// MIGRATION: Updated to Domain namespace (2026-01-05)
+use App\Models\Tenant;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;

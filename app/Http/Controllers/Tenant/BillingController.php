@@ -42,7 +42,7 @@ final class BillingController extends Controller
         $invoices = $this->billingRepository->getInvoices($tenantId);
         $subscription = $this->billingRepository->getSubscriptionStatus($tenantId);
 
-        // Simple Transform 
+        // Simple Transform
         $paymentsFormatted = $invoices->through(fn ($payment) => [
             'id' => $payment->id,
             'bank' => $payment->bank,
@@ -68,10 +68,10 @@ final class BillingController extends Controller
         ReportPaymentAction $action
     ): RedirectResponse {
         $tenantId = $this->tenantContext->getTenantId();
-        
+
         // PRE-PROCESS: File upload handled in Controller (Infrastructure Layer)
         $receiptPath = $request->file('receipt')?->store('tenants/receipts', 'public');
-        
+
         $dto = ReportPaymentResult::fromRequest($request, $tenantId, $receiptPath);
         $action->execute($dto);
 

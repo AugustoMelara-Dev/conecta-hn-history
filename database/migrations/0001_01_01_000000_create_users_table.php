@@ -18,7 +18,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('role')->default('user'); // admin, tenant, user
-            $table->foreignUuid('tenant_id')->nullable()->index(); // Added for Multi-tenancy
+            $table->foreignUuid('tenant_id')->nullable()->constrained('tenants')->nullOnDelete();
             $table->string('phone')->nullable();
             $table->timestamp('banned_at')->nullable();
             $table->rememberToken();

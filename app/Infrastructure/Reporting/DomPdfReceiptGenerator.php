@@ -25,13 +25,15 @@ use Illuminate\Support\Facades\Log;
 final class DomPdfReceiptGenerator implements ReceiptGeneratorInterface
 {
     private const PAPER_SIZE = 'A4';
+
     private const PAPER_ORIENTATION = 'portrait';
 
     /**
      * Generate PDF receipt from pre-hydrated Order.
      *
-     * @param Order $order Must have items and tenant relations already loaded
+     * @param  Order  $order  Must have items and tenant relations already loaded
      * @return string Raw binary PDF content
+     *
      * @throws PdfGenerationException On render failure
      */
     public function generate(Order $order): string

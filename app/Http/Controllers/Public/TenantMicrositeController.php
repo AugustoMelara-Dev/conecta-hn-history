@@ -8,7 +8,7 @@ use App\Application\Tenant\Transformers\TenantMicrositeTransformer;
 use App\Domain\Public\Contracts\TenantStorefrontRepository;
 use App\Domain\Tenant\Services\TenantVisibilityService;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
-use App\Events\Analytics\MicrositeViewed; // Assumed Event exists or will be created
+// Assumed Event exists or will be created
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -36,7 +36,7 @@ final class TenantMicrositeController extends Controller
         // 1. Resolve Tenant (Optimized Query)
         $tenant = $this->repository->findBySlug($slug);
 
-        if (!$tenant) {
+        if (! $tenant) {
             abort(404);
         }
 
@@ -53,7 +53,7 @@ final class TenantMicrositeController extends Controller
         // 4. Transform & Respond
         $totalProductsCount = $tenant->products()->where('is_visible', true)->count();
         $productLimit = $this->planService->getMaxProductLimit($tenant);
-        
+
         $tenantData = $this->transformer->transform($tenant);
         $visibleProductsCount = count($tenantData['products']);
 

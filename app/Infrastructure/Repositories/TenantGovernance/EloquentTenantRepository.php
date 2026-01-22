@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Repositories\TenantGovernance;
 
-use App\Models\Tenant;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Models\Tenant;
 
 /**
  * EloquentTenantRepository - Infrastructure Adapter for Tenant Persistence
@@ -16,18 +16,32 @@ use App\Domain\TenantGovernance\Enums\TenantPlan;
  */
 final class EloquentTenantRepository implements TenantRepositoryInterface
 {
-    public function findById(int $id): ?TenantEntity
+    public function findById(string $id): ?TenantEntity
     {
         $model = Tenant::find($id);
+
+        return $model ? $this->toEntity($model) : null;
+    }
+
+    /**
+     * Find tenant by ID with a pessimistic lock (SELECT ... FOR UPDATE).
+     * Use inside a DB transaction when performing read-modify-write operations.
+     */
+    public function findByIdForUpdate(string $id): ?TenantEntity
+    {
+        // Use whereKey + lockForUpdate; caller should wrap this in a transaction.
+        $model = Tenant::whereKey($id)->lockForUpdate()->first();
+
         return $model ? $this->toEntity($model) : null;
     }
 
     public function findBySlug(string $slug): ?TenantEntity
     {
         $model = Tenant::where('slug', $slug)->first();
+
         return $model ? $this->toEntity($model) : null;
     }
-    
+
     /**
      * Efficient O(1) existence check.
      */
@@ -39,39 +53,38 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
     public function findByDomain(string $domain): ?TenantEntity
     {
         $model = Tenant::where('domain', $domain)->first();
+
         return $model ? $this->toEntity($model) : null;
     }
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     public function create(array $attributes): TenantEntity
     {
         // Direct model creation for legacy/factory support, though ideally we use factories
         $model = Tenant::create($attributes);
+
         return $this->toEntity($model);
     }
 
     public function save(TenantEntity $tenant): TenantEntity
     {
-        $data = [
-            'user_id' => $tenant->userId,
-            'name' => $tenant->name,
-            'slug' => $tenant->slug,
-            'plan_type' => $tenant->planType->value, // LOWERING TO SCALAR
-            'subscription_status' => $tenant->subscriptionStatus,
-            'is_active' => $tenant->isActive,
-            'source' => $tenant->source,
-        ];
+        // Find existing or create new model instance
+        $model = Tenant::find($tenant->id()) ?? new Tenant;
 
-        if ($tenant->id) {
-            $model = Tenant::findOrFail($tenant->id);
-            $model->update($data);
-        } else {
-            $model = Tenant::create($data);
-        }
+        // Use forceFill to bypass mass assignment protection for guarded fields
+        $model->forceFill([
+            'id' => $tenant->id(),
+            'name' => $tenant->name(),
+            'slug' => $tenant->domain(), // TenantEntity uses "domain" for what Eloquent calls "slug"
+            'plan' => 'SEED', // Default plan for new registrations
+            'is_active' => $tenant->isActive(),
+        ]);
 
-        return $this->toEntity($model);
+        $model->save();
+
+        return $tenant;
     }
 
     public function delete(TenantEntity $tenant): void
@@ -86,7 +99,7 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
         // LIFTING TO DOMAIN
         // We rely on Eloquent Casting ($casts) for 'plan_type'.
         // However, for defense in depth, we verify or fallback safely.
-        
+
         $plan = $model->plan_type;
         if (! $plan instanceof TenantPlan) {
             // Should not happen if Model casts are correct, but handling legacy strings:
@@ -101,9 +114,9 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             source: $model->source ?? 'SYSTEM', // FALLBACK
             planType: $plan,
             subscriptionStatus: $model->subscription_status ?? 'active',
-            isActive: (bool)$model->is_active,
-            createdAt: $model->created_at instanceof \Carbon\Carbon ? \DateTimeImmutable::createFromMutable($model->created_at) : new \DateTimeImmutable(),
-            updatedAt: $model->updated_at instanceof \Carbon\Carbon ? \DateTimeImmutable::createFromMutable($model->updated_at) : new \DateTimeImmutable(),
+            isActive: (bool) $model->is_active,
+            createdAt: $model->created_at instanceof \Carbon\Carbon ? \DateTimeImmutable::createFromMutable($model->created_at) : new \DateTimeImmutable,
+            updatedAt: $model->updated_at instanceof \Carbon\Carbon ? \DateTimeImmutable::createFromMutable($model->updated_at) : new \DateTimeImmutable,
         );
     }
 }
