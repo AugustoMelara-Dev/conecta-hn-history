@@ -24,7 +24,7 @@ final class TransactionMiddleware
     public function handle(object $command, Closure $next): mixed
     {
         // PERFORMANCE OPTIMIZATION: Skip transaction for Read-Only operations
-        if ($command instanceof \App\Application\Shared\Contracts\ReadOnlyCommand) {
+        if ($command instanceof \App\Application\Shared\Contracts\ReadOnlyCommandInterface) {
             return $next($command);
         }
 
