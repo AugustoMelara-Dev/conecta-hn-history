@@ -56,7 +56,7 @@ final class EloquentProductReader implements ProductReader
             ->paginate($perPage);
     }
 
-    public function find(int $tenantId, int $productId): ?Product
+    public function find(int $tenantId, int $productId): ?object
     {
         return Product::where('tenant_id', (int) $tenantId)
             ->where('id', $productId)
