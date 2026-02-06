@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
-use App\Models\Tenant;
+// use App\Models\Tenant; // REMOVED
 
 /**
  * PlanFeatureFlagService - Domain Service for SaaS Plan Capabilities
@@ -53,7 +53,7 @@ final class PlanFeatureFlagService
      * - is_pro = true  → 'pro' (Paid tier, stateful cart)
      * - Future: enterprise based on subscription table
      */
-    public function determinePlan(Tenant $tenant): string
+    public function determinePlan(object $tenant): string
     {
         // Future: Check subscription relationship for enterprise tier
         // if ($tenant->subscription?->plan === 'enterprise') {
@@ -66,7 +66,7 @@ final class PlanFeatureFlagService
     /**
      * Check if tenant is on the free (Semilla) plan.
      */
-    public function isSemilla(Tenant $tenant): bool
+    public function isSemilla(object $tenant): bool
     {
         return $this->determinePlan($tenant) === self::PLAN_SEMILLA;
     }
@@ -74,7 +74,7 @@ final class PlanFeatureFlagService
     /**
      * Check if tenant is on the Pro plan.
      */
-    public function isPro(Tenant $tenant): bool
+    public function isPro(object $tenant): bool
     {
         return $this->determinePlan($tenant) === self::PLAN_PRO;
     }
@@ -82,7 +82,7 @@ final class PlanFeatureFlagService
     /**
      * Check if tenant is on the Enterprise plan.
      */
-    public function isEnterprise(Tenant $tenant): bool
+    public function isEnterprise(object $tenant): bool
     {
         return $this->determinePlan($tenant) === self::PLAN_ENTERPRISE;
     }
@@ -93,7 +93,7 @@ final class PlanFeatureFlagService
      * BUSINESS RULE: Modifiers are a Pro feature.
      * Semilla tenants NEVER see modifiers (even if data exists in DB).
      */
-    public function canShowModifiers(Tenant $tenant): bool
+    public function canShowModifiers(object $tenant): bool
     {
         return ! $this->isSemilla($tenant);
     }
@@ -103,7 +103,7 @@ final class PlanFeatureFlagService
      *
      * BUSINESS RULE: Reviews are a Pro feature.
      */
-    public function canShowReviews(Tenant $tenant): bool
+    public function canShowReviews(object $tenant): bool
     {
         return ! $this->isSemilla($tenant);
     }
@@ -113,7 +113,7 @@ final class PlanFeatureFlagService
      *
      * BUSINESS RULE: Social features are Pro+ only.
      */
-    public function canShowSocialGraph(Tenant $tenant): bool
+    public function canShowSocialGraph(object $tenant): bool
     {
         return ! $this->isSemilla($tenant);
     }
@@ -123,7 +123,7 @@ final class PlanFeatureFlagService
      *
      * BUSINESS RULE: Cart is Pro feature. Semilla uses WhatsApp only.
      */
-    public function canUseCart(Tenant $tenant): bool
+    public function canUseCart(object $tenant): bool
     {
         return ! $this->isSemilla($tenant);
     }
@@ -133,7 +133,7 @@ final class PlanFeatureFlagService
      *
      * BUSINESS RULE: Analytics are Pro+ feature.
      */
-    public function canAccessAnalytics(Tenant $tenant): bool
+    public function canAccessAnalytics(object $tenant): bool
     {
         return ! $this->isSemilla($tenant);
     }
@@ -143,7 +143,7 @@ final class PlanFeatureFlagService
      *
      * BUSINESS RULE: Custom branding is Pro feature.
      */
-    public function canCustomizeHero(Tenant $tenant): bool
+    public function canCustomizeHero(object $tenant): bool
     {
         return ! $this->isSemilla($tenant);
     }
@@ -153,7 +153,7 @@ final class PlanFeatureFlagService
      *
      * BUSINESS RULE: Coupons are Pro feature.
      */
-    public function canUseCoupons(Tenant $tenant): bool
+    public function canUseCoupons(object $tenant): bool
     {
         return ! $this->isSemilla($tenant);
     }
@@ -163,7 +163,7 @@ final class PlanFeatureFlagService
      *
      * @return int Maximum number of visible products
      */
-    public function getMaxProductLimit(Tenant $tenant): int
+    public function getMaxProductLimit(object $tenant): int
     {
         // If tenant has custom limit set, use that (for upgrades/promotions)
         if ($tenant->product_limit !== null) {
@@ -178,7 +178,7 @@ final class PlanFeatureFlagService
     /**
      * Get maximum menu sections for tenant's plan.
      */
-    public function getMaxMenuSections(Tenant $tenant): int
+    public function getMaxMenuSections(object $tenant): int
     {
         return match ($this->determinePlan($tenant)) {
             self::PLAN_SEMILLA => 3,
@@ -190,7 +190,7 @@ final class PlanFeatureFlagService
     /**
      * Get maximum media uploads (images) for tenant's plan.
      */
-    public function getMaxMediaUploads(Tenant $tenant): int
+    public function getMaxMediaUploads(object $tenant): int
     {
         return match ($this->determinePlan($tenant)) {
             self::PLAN_SEMILLA => 5,

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Product\Contracts;
 
-use App\Models\Product;
+// use App\Models\Product; // REMOVED
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
@@ -25,5 +25,5 @@ interface ProductReader
     /**
      * Find a product by ID, ensuring tenant scope.
      */
-    public function find(int $tenantId, int $productId): ?Product;
+    public function find(int $tenantId, int $productId): ?object;
 }

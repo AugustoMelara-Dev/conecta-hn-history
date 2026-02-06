@@ -111,8 +111,8 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
 
         // 7. Dispatch Event
         $this->eventDispatcher->dispatch(new \App\Domain\Identity\Events\TenantRegistered(
-            tenant: $tenantEntity,
-            user: $userEntity,
+            tenantId: $tenantEntity->id,
+            userId: $userEntity->id,
         ));
 
         // 8. Log

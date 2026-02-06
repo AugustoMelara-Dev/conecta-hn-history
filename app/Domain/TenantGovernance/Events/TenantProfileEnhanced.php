@@ -25,6 +25,7 @@ final class TenantProfileEnhanced implements ShouldDispatchAfterCommit
         public readonly array $enhanced_fields // Array is scalar-ish enough for JSON
     ) {}
 
+    /*
     public static function fromTenant(
         \App\Models\Tenant $tenant,
         array $enhancedFields
@@ -36,6 +37,7 @@ final class TenantProfileEnhanced implements ShouldDispatchAfterCommit
             enhanced_fields: $enhancedFields
         );
     }
+    */
 
     public static function fromPayload(array $payload): self
     {

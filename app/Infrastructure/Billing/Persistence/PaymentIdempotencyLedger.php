@@ -6,7 +6,8 @@ namespace App\Infrastructure\Billing\Persistence;
 
 use App\Domain\Shared\Contracts\IdempotencyLedgerInterface;
 use App\Models\Payment;
-use Illuminate\Http\Request;
+
+// use Illuminate\Http\Request; // REMOVED
 
 /**
  * PaymentIdempotencyLedger
@@ -15,10 +16,8 @@ use Illuminate\Http\Request;
  */
 final class PaymentIdempotencyLedger implements IdempotencyLedgerInterface
 {
-    public function hasProcessed(Request $request, string $idempotencyKey): bool
+    public function hasProcessed(string $tenantId, string $idempotencyKey): bool
     {
-        $tenantId = $request->input('tenant_id'); // Assumes validated request or middleware order
-
         if (! $tenantId) {
             return false;
         }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Public\Contracts;
 
-use App\Models\Tenant;
+// use App\Models\Tenant; // REMOVED
 
 /**
  * TenantStorefrontRepository - Public Read Contract
@@ -14,5 +14,5 @@ interface TenantStorefrontRepository
     /**
      * Find tenant by slug with all optimized relations for display.
      */
-    public function findBySlug(string $slug): ?Tenant;
+    public function findBySlug(string $slug): ?object;
 }

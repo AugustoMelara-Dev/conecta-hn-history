@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Tenant\Services;
 
-use App\Models\Tenant;
+// use App\Models\Tenant; // REMOVED
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -17,7 +17,7 @@ final class TenantVisibilityService
      *
      * @throws NotFoundHttpException
      */
-    public function check(Tenant $tenant): void
+    public function check(object $tenant): void
     {
         // Layer 1: Administrative approval
         if (! $tenant->is_active) {

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Identity\Events;
 
 use App\Contracts\Events\DomainEvent;
-use App\Models\Tenant;
-use App\Models\User;
+// use App\Models\Tenant; // REMOVED
+// use App\Models\User; // REMOVED
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
@@ -22,8 +22,8 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
     use HasDomainMetadata;
 
     public function __construct(
-        public Tenant $tenant,
-        public User $user,
+        public int $tenantId,
+        public int $userId,
         // Restoration parameters
         ?string $restoredEventId = null,
         ?string $restoredOccurredAt = null,
@@ -38,19 +38,19 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
 
     public function tenantId(): TenantId
     {
-        return TenantId::fromInt($this->tenant->id);
+        return TenantId::fromInt($this->tenantId);
     }
 
     public function aggregateId(): int
     {
-        return $this->tenant->id;
+        return $this->tenantId;
     }
 
     public function toPrimitives(): array
     {
         return [
-            'tenant_id' => $this->tenant->id,
-            'user_id' => $this->user->id,
+            'tenant_id' => $this->tenantId,
+            'user_id' => $this->userId,
             'event_id' => $this->eventId,
             'occurred_at' => $this->occurredAt->format(DATE_ATOM),
         ];
@@ -62,16 +62,9 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
         // For this synchronous/internal event, we might not strictly need full hydration implementation
         // if used only in-process, but for correctness:
 
-        $tenant = Tenant::find($primitives['tenant_id']);
-        $user = User::find($primitives['user_id']); // Assuming User exists
-
-        if (! $tenant || ! $user) {
-            throw new \RuntimeException('Failed to rehydrate TenantRegistered event: Resources missing.');
-        }
-
         return new self(
-            tenant: $tenant,
-            user: $user,
+            tenantId: (int) $primitives['tenant_id'],
+            userId: (int) $primitives['user_id'],
             restoredEventId: $primitives['event_id'] ?? null,
             restoredOccurredAt: $primitives['occurred_at'] ?? null
         );
