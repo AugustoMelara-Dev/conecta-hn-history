@@ -26,7 +26,7 @@ final readonly class CreateOrderResult
         public string $status,
         public int $itemsCount,
         public string $currency,
-        /** @var array<int, OrderItemData|array> */
+        /** @var array<int, OrderItemData> */
         public array $items = [],
     ) {}
 
