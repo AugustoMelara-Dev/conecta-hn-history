@@ -42,7 +42,7 @@ final class RegisterTenantController extends Controller
      */
     public function store(
         Request $request,
-        \App\Application\Shared\Contracts\CommandBus $bus
+        \App\Application\Shared\Contracts\CommandBusInterface $bus
     ): RedirectResponse {
         // Validation
         $request->validate([
