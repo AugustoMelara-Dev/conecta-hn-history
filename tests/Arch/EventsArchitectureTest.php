@@ -6,7 +6,7 @@ namespace Tests\Arch;
 
 use App\Contracts\Events\AuditEvent;
 use App\Contracts\Events\DomainEvent;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Database\Eloquent\Model;

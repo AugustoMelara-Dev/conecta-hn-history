@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Exports;
 
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Events\Audit\SalesExportCreated;
 use App\Exports\Criteria\SalesExportCriteria;
 use App\Exports\SalesExport;
 use App\Models\Order;
 use App\Models\Tenant;
 use App\Models\User;
-use App\ValueObjects\TenantId;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -86,7 +86,7 @@ class SalesExportTest extends TestCase
 
         // Ejecución bajo el contexto del Tenant A
         $export = SalesExport::create(
-            tenantId: new TenantId($data['tenantA']->id),
+            tenantId: TenantId::fromString($data['tenantA']->id),
             criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
             ipAddress: '127.0.0.1',
@@ -117,7 +117,7 @@ class SalesExportTest extends TestCase
         $this->createOrdersWithoutEvents(2, ['tenant_id' => $data['tenantA']->id]);
 
         SalesExport::create(
-            tenantId: new TenantId($data['tenantA']->id),
+            tenantId: TenantId::fromString($data['tenantA']->id),
             criteria: SalesExportCriteria::create('2025-01-01', '2025-12-31'),
             userId: 42,
             ipAddress: '192.168.1.100',
@@ -174,7 +174,7 @@ class SalesExportTest extends TestCase
         });
 
         $export = SalesExport::create(
-            tenantId: new TenantId($data['tenantA']->id),
+            tenantId: TenantId::fromString($data['tenantA']->id),
             criteria: SalesExportCriteria::forLastDays(45),
             userId: 1,
         );
@@ -211,7 +211,7 @@ class SalesExportTest extends TestCase
         });
 
         $export = SalesExport::create(
-            tenantId: new TenantId($data['tenantA']->id),
+            tenantId: TenantId::fromString($data['tenantA']->id),
             criteria: SalesExportCriteria::create(status: Order::STATUS_DELIVERED),
             userId: 1,
         );
@@ -235,7 +235,7 @@ class SalesExportTest extends TestCase
 
         // Export for Tenant B (which has no orders)
         $export = SalesExport::create(
-            tenantId: new TenantId($data['tenantB']->id),
+            tenantId: TenantId::fromString($data['tenantB']->id),
             criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
         );
@@ -255,13 +255,13 @@ class SalesExportTest extends TestCase
         $data = $this->createTestData();
 
         $export1 = SalesExport::create(
-            tenantId: new TenantId($data['tenantA']->id),
+            tenantId: TenantId::fromString($data['tenantA']->id),
             criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
         );
 
         $export2 = SalesExport::create(
-            tenantId: new TenantId($data['tenantA']->id),
+            tenantId: TenantId::fromString($data['tenantA']->id),
             criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
         );

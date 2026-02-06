@@ -43,15 +43,42 @@ final class SendLowStockNotification implements ShouldQueue
     public function handle(LowStockThresholdReached $event): void
     {
         $productId = $event->aggregateId();
+        $tenantIdString = $event->tenantId()->toString();
 
-        // Fresh Fetch: Re-hydrate product within tenant context
-        $product = \App\Models\Product::find($productId);
+        // ═══════════════════════════════════════════════════════════════════════
+        // SECURITY: EXPLICIT TENANT-SCOPED FETCH (NO GLOBAL SCOPE RELIANCE)
+        // ═══════════════════════════════════════════════════════════════════════
+        // CRITICAL: We NEVER use Product::find() in background jobs.
+        // Background workers may not have the global tenant scope booted.
+        // We always enforce tenant isolation at the SQL WHERE clause level.
+        $product = \App\Models\Product::query()
+            ->where('id', $productId)
+            ->where('tenant_id', $tenantIdString) // THE IMMUTABLE FIREWALL
+            ->first();
 
         if (! $product) {
-            Log::warning("LowStockNotification: Product #{$productId} not found (could be deleted)");
+            // Check if product exists but belongs to different tenant (security probe)
+            $existsElsewhere = \App\Models\Product::where('id', $productId)->exists();
 
-            return;
+            if ($existsElsewhere) {
+                // SECURITY ALERT: Cross-tenant access attempt blocked
+                Log::channel('security')->critical('🚨 Cross-Tenant Access Attempt BLOCKED', [
+                    'event' => 'LowStockNotification',
+                    'resource_type' => 'Product',
+                    'resource_id' => $productId,
+                    'requested_tenant_context' => $tenantIdString,
+                    'severity' => 'CRITICAL',
+                    'action' => 'BLOCKED',
+                ]);
+            } else {
+                Log::warning("LowStockNotification: Product #{$productId} not found (could be deleted)", [
+                    'tenant_id' => $tenantIdString,
+                ]);
+            }
+
+            return; // Graceful termination - do not retry malicious jobs
         }
+
 
         $newStock = $event->currentStock;
         $threshold = $event->threshold;

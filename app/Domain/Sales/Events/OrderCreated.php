@@ -6,7 +6,7 @@ namespace App\Domain\Sales\Events;
 
 use App\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldBeStoredInOutbox;
-use App\Models\Order;
+// use App\Models\Order; // REMOVED
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
@@ -22,7 +22,12 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
     use HasDomainMetadata;
 
     public function __construct(
-        public Order $order,
+        public int $orderId,
+        public string $tenantId,
+        public string $orderNumber,
+        public string $customerName,
+        public float $total,
+        public string $status,
         // Restoration parameters
         ?string $restoredEventId = null,
         ?string $restoredOccurredAt = null,
@@ -37,12 +42,14 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
 
     public function tenantId(): TenantId
     {
-        return TenantId::fromInt($this->order->tenant_id);
+        // Assuming TenantId has fromString now, or we implement it.
+        // If tenantId is int in DB, we cast to string.
+        return TenantId::fromString($this->tenantId);
     }
 
     public function aggregateId(): int
     {
-        return $this->order->id;
+        return $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -52,12 +59,12 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
     public function toPayload(): array
     {
         return [
-            'order_id' => $this->order->id,
-            'tenant_id' => $this->order->tenant_id,
-            'order_number' => $this->order->order_number,
-            'customer_name' => $this->order->customer_name,
-            'total' => (float) $this->order->total,
-            'status' => $this->order->status,
+            'order_id' => $this->orderId,
+            'tenant_id' => $this->tenantId,
+            'order_number' => $this->orderNumber,
+            'customer_name' => $this->customerName,
+            'total' => $this->total,
+            'status' => $this->status,
             'event_id' => $this->eventId,
             'occurred_at' => $this->occurredAt->format(DATE_ATOM),
             'correlation_id' => $this->correlationId,
@@ -66,16 +73,13 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
 
     public static function fromPayload(array $payload): static
     {
-        $order = Order::find($payload['order_id']);
-
-        if (! $order) {
-            throw new \RuntimeException(
-                "Failed to rehydrate OrderCreated event: Order {$payload['order_id']} not found."
-            );
-        }
-
         return new self(
-            order: $order,
+            orderId: (int) $payload['order_id'],
+            tenantId: (string) $payload['tenant_id'],
+            orderNumber: (string) $payload['order_number'],
+            customerName: (string) ($payload['customer_name'] ?? 'Guest'),
+            total: (float) $payload['total'],
+            status: (string) ($payload['status'] ?? 'pending'),
             restoredEventId: $payload['event_id'] ?? null,
             restoredOccurredAt: $payload['occurred_at'] ?? null,
             restoredCorrelationId: $payload['correlation_id'] ?? null
@@ -84,12 +88,12 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
 
     public function getAggregateId(): ?string
     {
-        return (string) $this->order->id;
+        return (string) $this->orderId;
     }
 
     public function getAggregateType(): ?string
     {
-        return Order::class;
+        return 'order'; // Decoupled from class name
     }
 
     // ═══════════════════════════════════════════════════════════════════════

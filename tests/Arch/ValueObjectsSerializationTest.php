@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Arch;
 
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
-use App\ValueObjects\TenantId;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -25,7 +25,7 @@ class ValueObjectsSerializationTest extends TestCase
      */
     public function test_tenant_id_is_json_serializable(): void
     {
-        $tenantId = TenantId::fromInt(42);
+        $tenantId = TenantId::fromString('00000000-0000-0000-0000-000000000042');
 
         // Verify implements JsonSerializable
         $this->assertInstanceOf(\JsonSerializable::class, $tenantId);
@@ -39,11 +39,11 @@ class ValueObjectsSerializationTest extends TestCase
         $decoded = json_decode($json, true);
         $this->assertIsArray($decoded);
         $this->assertArrayHasKey('tenant_id', $decoded);
-        $this->assertEquals(42, $decoded['tenant_id']);
+        $this->assertEquals('00000000-0000-0000-0000-000000000042', $decoded['tenant_id']);
 
         // Reconstruct
         $restored = TenantId::fromArray($decoded);
-        $this->assertEquals($tenantId->toInt(), $restored->toInt());
+        $this->assertEquals($tenantId->toString(), $restored->toString());
     }
 
     /**

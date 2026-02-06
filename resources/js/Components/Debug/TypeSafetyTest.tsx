@@ -3,7 +3,7 @@ import React from 'react';
 // NOTA: Usamos los tipos globales generados en resources/js/types/generated.d.ts
 // No importamos 'OrderStatus' porque es un type definition, no un valor en runtime.
 
-export default function TypeSafetyTest({ order }: { order: App.Application.DTOs.Sales.CreateOrderResult }) {
+export default function TypeSafetyTest({ order }: { order: App.Application.Sales.Results.CreateOrderResult }) {
 
     return (
         <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg">
