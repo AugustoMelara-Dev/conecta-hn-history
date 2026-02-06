@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\Middleware;
 
-use App\Models\Tenant;
 use Closure;
 
 /**
@@ -34,6 +33,10 @@ use Closure;
  */
 class TenantQueueMiddleware
 {
+    public function __construct(
+        private readonly TenantRepositoryInterface $tenantRepository
+    ) {}
+
     public function handle(object $job, Closure $next): void
     {
         // Extract tenant ID from the event/job
@@ -72,9 +75,10 @@ class TenantQueueMiddleware
     /**
      * Switch application context to the specified tenant.
      */
-    protected function switchToTenant(int $tenantId): void
+    protected function switchToTenant(int|string $tenantId): void
     {
-        $tenant = Tenant::find($tenantId);
+        // $tenant = Tenant::find($tenantId); // Replaced by Repository
+        $tenant = $this->tenantRepository->findById((string) $tenantId);
 
         if (! $tenant) {
             throw new \RuntimeException("Tenant {$tenantId} not found. Cannot process queued job.");

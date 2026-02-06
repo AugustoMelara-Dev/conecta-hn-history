@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Infrastructure\Public;
 
 use App\Domain\Public\Contracts\TenantStorefrontRepository;
-use App\Models\Tenant;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -24,7 +23,7 @@ final class CachedTenantStorefrontRepository implements TenantStorefrontReposito
         private readonly TenantStorefrontRepository $inner
     ) {}
 
-    public function findBySlug(string $slug): ?Tenant
+    public function findBySlug(string $slug): ?object
     {
         // Cache Key Strategy: storefront:{slug}
         $key = "storefront:{$slug}";

@@ -145,7 +145,14 @@ final class CreateOrderHandler implements CreateOrderHandlerInterface
         }
 
         // STEP 9: DISPATCH EVENT
-        $this->eventDispatcher->dispatch(new \App\Domain\Sales\Events\OrderCreated($orderEntity));
+        $this->eventDispatcher->dispatch(new \App\Domain\Sales\Events\OrderCreated(
+            orderId: $orderEntity->id,
+            tenantId: $command->tenantId, // or $orderEntity->tenantId if available
+            orderNumber: $orderEntity->orderNumber->toString(), // Assuming VO or string
+            customerName: $orderEntity->customerName,
+            total: (float) $total,
+            status: 'pending' // Default status for new orders
+        ));
 
         Log::info('Order created via Command Bus', $this->sanitizePayload([
             'order_id' => $orderEntity->id,

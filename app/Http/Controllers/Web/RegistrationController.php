@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web;
 
-use App\Application\Shared\Contracts\CommandBus;
+use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
@@ -26,7 +26,7 @@ use Inertia\Response;
 final class RegistrationController extends Controller
 {
     public function __construct(
-        private readonly CommandBus $bus,
+        private readonly CommandBusInterface $bus,
         private readonly ReferenceDataReaderInterface $referenceDataReader,
         private readonly TenantRepositoryInterface $tenantRepository,
     ) {}

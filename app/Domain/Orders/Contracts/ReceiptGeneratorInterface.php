@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Orders\Contracts;
 
-use App\Models\Order;
+// use App\Models\Order; // REMOVED
 
 /**
  * ReceiptGeneratorInterface - Domain Port for Receipt Generation
@@ -25,5 +25,5 @@ interface ReceiptGeneratorInterface
      *
      * @throws \App\Domain\Orders\Exceptions\PdfGenerationException On render failure
      */
-    public function generate(Order $order): string;
+    public function generate(object $order): string;
 }

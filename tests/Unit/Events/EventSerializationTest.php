@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Events;
 
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Events\Audit\SalesExportCreated;
 use App\Events\Order\OrderShipped;
 use App\Events\Security\FailedLoginAttempt;
@@ -11,7 +12,6 @@ use App\Events\Security\SensitiveDataAccessed;
 use App\Events\Security\TenantSuspended;
 use App\ValueObjects\AuditContext;
 use App\ValueObjects\IpAddress;
-use App\ValueObjects\TenantId;
 use DateTimeImmutable;
 use Tests\TestCase;
 
@@ -43,7 +43,7 @@ class EventSerializationTest extends TestCase
      */
     public function sales_export_created_survives_serialization(): void
     {
-        $tenantId = TenantId::fromInt(42);
+        $tenantId = TenantId::fromString('00000000-0000-0000-0000-000000000042');
         $occurredAt = new DateTimeImmutable('2026-01-01T12:00:00+00:00');
 
         $original = new SalesExportCreated(
@@ -66,7 +66,7 @@ class EventSerializationTest extends TestCase
         $reconstituted = SalesExportCreated::fromPrimitives($primitives);
 
         $this->assertEquals($original->exportId, $reconstituted->exportId);
-        $this->assertEquals($original->tenantId->toInt(), $reconstituted->tenantId->toInt());
+        $this->assertEquals($original->tenantId->toString(), $reconstituted->tenantId->toString());
         $this->assertEquals($original->userId, $reconstituted->userId);
         $this->assertEquals($original->format, $reconstituted->format);
         $this->assertEquals($original->criteriaHash, $reconstituted->criteriaHash);

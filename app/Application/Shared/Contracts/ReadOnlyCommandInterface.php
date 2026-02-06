@@ -12,7 +12,7 @@ namespace App\Application\Shared\Contracts;
  * ║  USE CASE: Pure data retrieval commands (CQRS Query side).              ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-interface ReadOnlyCommand
+interface ReadOnlyCommandInterface
 {
     // Marker interface - no methods required
 }

@@ -56,7 +56,7 @@ final readonly class SmartIdempotencyMiddleware
             /** @var IdempotencyLedgerInterface $ledger */
             $ledger = app($ledgerService);
 
-            if ($ledger->hasProcessed($request, $key)) {
+            if ($ledger->hasProcessed($request->input('tenant_id') ?? '', $key)) {
                 // RECOVERY: It was already done. The lock expire was a fluke.
                 // Release the new lock (we don't need it) and return Success.
                 $this->lockStore->release($lockKey);
@@ -93,7 +93,7 @@ final readonly class SmartIdempotencyMiddleware
         /** @var IdempotencyLedgerInterface $ledger */
         $ledger = app($ledgerService);
 
-        if ($ledger->hasProcessed($request, $key)) {
+        if ($ledger->hasProcessed($request->input('tenant_id') ?? '', $key)) {
             // RECOVERY: It is done. Return Success.
             return response()->json([
                 'message' => 'Operation already processed.',

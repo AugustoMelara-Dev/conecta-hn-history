@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Fortify;
 
 use App\Application\Auth\Commands\UpdateUserPasswordCommand;
-use App\Application\Shared\Contracts\CommandBus;
+use App\Application\Shared\Contracts\CommandBusInterface;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
@@ -21,7 +21,7 @@ use Laravel\Fortify\Contracts\UpdatesUserPasswords;
 final class UpdateUserPassword implements UpdatesUserPasswords
 {
     public function __construct(
-        private readonly CommandBus $commandBus,
+        private readonly CommandBusInterface $commandBus,
     ) {}
 
     /**

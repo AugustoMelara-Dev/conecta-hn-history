@@ -10,7 +10,7 @@ namespace App\Application\Shared\Contracts;
  * Defines the contract for dispatching commands.
  * Decouples Controllers from the concrete Bus implementation (Laravel, Tactician, etc).
  */
-interface CommandBus
+interface CommandBusInterface
 {
     /**
      * Dispatch a command to its handler.

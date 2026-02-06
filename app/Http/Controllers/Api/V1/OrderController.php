@@ -22,7 +22,7 @@ final class OrderController extends Controller
 {
     public function __construct(
         private readonly OrderReader $reader,
-        private readonly \App\Application\Shared\Contracts\CommandBus $bus,
+        private readonly \App\Application\Shared\Contracts\CommandBusInterface $bus,
         private readonly OrderStateService $orderStateService,
         private readonly CancelOrderAction $cancelOrderAction
     ) {}

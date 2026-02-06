@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Listeners\Identity;
 
 use App\Domain\Identity\Events\TenantRegistered;
+use App\Models\User; // Added for fetching
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Log;
 
@@ -23,11 +24,15 @@ final class BridgeLaravelAuthEvents
     public function handle(TenantRegistered $event): void
     {
         Log::info('Bridge: Mapping TenantRegistered to Laravel Registered event', [
-            'user_id' => $event->user->id,
-            'tenant_id' => $event->tenant->id,
+            'user_id' => $event->userId,
+            'tenant_id' => $event->tenantId,
         ]);
 
-        // Dispatch the framework event
-        event(new Registered($event->user));
+        $user = User::find($event->userId);
+
+        if ($user) {
+            // Dispatch the framework event
+            event(new Registered($user));
+        }
     }
 }

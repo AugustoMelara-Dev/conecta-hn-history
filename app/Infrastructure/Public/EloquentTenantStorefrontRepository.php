@@ -17,7 +17,7 @@ final class EloquentTenantStorefrontRepository implements TenantStorefrontReposi
         private readonly PlanFeatureFlagService $planService
     ) {}
 
-    public function findBySlug(string $slug): ?Tenant
+    public function findBySlug(string $slug): ?object
     {
         $tenant = Tenant::where('slug', $slug)->first();
 

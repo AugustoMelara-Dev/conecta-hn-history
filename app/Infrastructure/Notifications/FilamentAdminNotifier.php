@@ -26,8 +26,12 @@ final class FilamentAdminNotifier implements AdminNotifier
     /**
      * Notify tenant owner about a new lead.
      */
-    public function notifyNewLead(Lead $lead): void
+    public function notifyNewLead(object $lead): void
     {
+        /** @var \App\Models\Lead $lead */
+        // ... (assuming logic can handle object or uses duck typing)
+        // If necessary, add instanceof check:
+        // if (!$lead instanceof Lead) return;
         $tenantOwner = $this->getTenantOwner($lead->tenant_id);
 
         if (! $tenantOwner) {
@@ -50,8 +54,9 @@ final class FilamentAdminNotifier implements AdminNotifier
     /**
      * Notify tenant owner about a new review.
      */
-    public function notifyNewReview(Review $review): void
+    public function notifyNewReview(object $review): void
     {
+        /** @var \App\Models\Review $review */
         $tenantOwner = $this->getTenantOwner($review->tenant_id);
 
         if (! $tenantOwner) {

@@ -36,7 +36,7 @@ totalAmount: number;
 status: string;
 itemsCount: number;
 currency: string;
-items: { [key: number]: App.Application.Sales.DTOs.OrderItemData | Array<any> };
+items: { [key: number]: App.Application.Sales.DTOs.OrderItemData };
 };
 }
 declare namespace App.Application.Tenant.Results {

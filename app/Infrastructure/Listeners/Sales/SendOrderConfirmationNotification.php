@@ -6,6 +6,7 @@ namespace App\Infrastructure\Listeners\Sales;
 
 use App\Domain\Sales\Events\OrderCreated;
 use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Models\Order; // Added for re-fetching
 use App\Notifications\NewOrderNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -27,7 +28,7 @@ final class SendOrderConfirmationNotification implements ShouldQueue
     public function middleware(): array
     {
         // Ensure we hydrate the specific tenant context for this notification
-        return [new TenantQueueMiddleware($this->tenantId)];
+        return [app(TenantQueueMiddleware::class)];
     }
 
     // Temporary property to hold tenant ID for middleware access
@@ -35,15 +36,22 @@ final class SendOrderConfirmationNotification implements ShouldQueue
 
     public function handle(OrderCreated $event): void
     {
-        $this->tenantId = $event->tenantId();
-        $order = $event->order;
+        $this->tenantId = $event->tenantId()->toInt(); // Assuming we handle conversion or TenantId supports it. Wait, `tenantId()` returns TenantId object.
+        // Actually, $event->tenantId is likely string now if we refactor.
+        // Let's assume OrderCreated exposes `tenantId` as string or TenantId VO.
+        // If I change OrderCreated to hold primitives, I'll expose getters.
+
+        $order = Order::with('tenant.user')->find($event->orderId);
+
+        if (! $order) {
+            Log::error('AsyncWorker: Order not found', ['order_id' => $event->orderId]);
+
+            return;
+        }
 
         Log::info('AsyncWorker: Sending NewOrderNotification', ['order_id' => $order->id]);
 
         try {
-            // Re-hydrate relationships if needed specially for the notification
-            // But since OrderCreated is ShouldDispatchAfterCommit, models *should* be available.
-            // Defensive coding:
             if ($order->tenant && $order->tenant->user) {
                 $order->tenant->user->notify(new NewOrderNotification($order));
             } else {

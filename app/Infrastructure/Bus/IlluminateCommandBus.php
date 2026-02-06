@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Bus;
 
-use App\Application\Shared\Contracts\CommandBus;
+use App\Application\Shared\Contracts\CommandBusInterface;
 use Illuminate\Bus\Dispatcher;
 
 /**
@@ -12,7 +12,7 @@ use Illuminate\Bus\Dispatcher;
  *
  * ADAPTER: Implementation of the CommandBus Port using Laravel's native Bus.
  */
-final class IlluminateCommandBus implements CommandBus
+final class IlluminateCommandBus implements CommandBusInterface
 {
     public function __construct(
         private readonly Dispatcher $dispatcher

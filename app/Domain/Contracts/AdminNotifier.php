@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Contracts;
 
-use App\Models\Lead;
-use App\Models\Review;
+// use App\Models\Lead; // REMOVED
+// use App\Models\Review; // REMOVED
 
 /**
  * AdminNotifier - Domain Contract for Administrative Notifications
@@ -29,14 +29,14 @@ interface AdminNotifier
      *
      * @param  Lead  $lead  The newly created lead
      */
-    public function notifyNewLead(Lead $lead): void;
+    public function notifyNewLead(object $lead): void;
 
     /**
      * Notify tenant owner about a new review.
      *
      * @param  Review  $review  The newly submitted review
      */
-    public function notifyNewReview(Review $review): void;
+    public function notifyNewReview(object $review): void;
 
     /**
      * Notify tenant owner about a new order.

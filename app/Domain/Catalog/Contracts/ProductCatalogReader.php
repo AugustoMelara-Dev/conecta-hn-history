@@ -12,14 +12,14 @@ interface ProductCatalogReader
     /**
      * Get featured products for a tenant.
      *
-     * @return Collection<int, \App\Models\Product>
+     * @return Collection<int, object>
      */
     public function getFeaturedProducts(int $tenantId, int $limit = 10): Collection;
 
     /**
      * Get a single product by slug and tenant.
      */
-    public function getProductBySlug(int $tenantId, string $slug): ?\App\Models\Product;
+    public function getProductBySlug(int $tenantId, string $slug): ?object;
 
     /**
      * Search products with filters.

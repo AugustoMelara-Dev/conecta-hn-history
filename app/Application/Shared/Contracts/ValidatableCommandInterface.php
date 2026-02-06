@@ -7,7 +7,7 @@ namespace App\Application\Shared\Contracts;
 /**
  * ValidatableCommand - Contract for commands requiring validation
  */
-interface ValidatableCommand
+interface ValidatableCommandInterface
 {
     /**
      * Get the validation rules that apply to the command.
