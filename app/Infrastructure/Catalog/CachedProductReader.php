@@ -34,6 +34,19 @@ final class CachedProductReader implements ProductCatalogReader
         );
     }
 
+    public function find(int $tenantId, int $productId): ?object
+    {
+        return Cache::tags(["tenant_{$tenantId}_products"])->remember(
+            "tenant_{$tenantId}_product_id_{$productId}",
+            self::TTL_SECONDS,
+            fn () => Product::where('tenant_id', $tenantId)
+                ->where('id', $productId)
+                ->where('is_visible', true)
+                ->with(['category', 'images']) // Eager load minimal relations
+                ->first()
+        );
+    }
+
     public function getProductBySlug(int $tenantId, string $slug): ?Product
     {
         return Cache::tags(["tenant_{$tenantId}_products"])->remember(
