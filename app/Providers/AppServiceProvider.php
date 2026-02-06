@@ -233,7 +233,7 @@ class AppServiceProvider extends ServiceProvider
         // COMMAND BUS: Synchronous Execution Pipeline
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Application\Shared\Contracts\CommandBus::class,
+            \App\Application\Shared\Contracts\CommandBusInterface::class,
             \App\Infrastructure\Bus\IlluminateCommandBus::class
         );
 

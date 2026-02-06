@@ -13,7 +13,6 @@ namespace App\Models;
 
 use App\Domain\Shared\Traits\HasDomainEvents;
 use App\Domain\TenantGovernance\Enums\TenantPlan; // IMPORT ENUM
-use App\Domain\TenantGovernance\Events\TenantProfileEnhanced;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Scopes\LocationScope;
 use App\Traits\CanBeFavorited;
@@ -182,7 +181,12 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         }
 
         $this->is_ai_enhanced = true;
-        $this->record(TenantProfileEnhanced::fromTenant($this, $enhancedFields));
+        $this->record(new \App\Domain\TenantGovernance\Events\TenantProfileEnhanced(
+            tenant_id: (string) $this->id,
+            user_id: (int) $this->user_id,
+            occurred_at: now()->toIso8601String(),
+            enhanced_fields: $enhancedFields
+        ));
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
