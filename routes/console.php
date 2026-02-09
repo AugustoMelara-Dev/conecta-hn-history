@@ -76,3 +76,16 @@ Schedule::command('auth:prune-idempotency', ['--days=30', '--chunk=1000'])
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/idempotency-pruner.log'));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// APPOINTMENT REMINDERS - 24h Pre-Notification Engine
+// ═══════════════════════════════════════════════════════════════════════════════
+// Runs hourly to poll for appointments scheduled within the next 23–24 hours.
+// Sends a reminder email to customers with valid customer_email addresses.
+// Idempotent: Uses reminder_sent_at column to prevent duplicates.
+// NOTE: Schedule::job dispatches to queue (async). Do NOT use runInBackground().
+// ═══════════════════════════════════════════════════════════════════════════════
+Schedule::job(new \App\Jobs\SendAppointmentReminders)
+    ->hourly()
+    ->withoutOverlapping();
+
