@@ -141,6 +141,8 @@ class CityResource extends Resource
                     ->schema([
                         FileUpload::make('hero_image')
                             ->label('Imagen Hero (Portada)')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->maxSize(4096)
                             ->image()
                             ->directory('cities/hero')
                             ->imageEditor()
@@ -148,7 +150,7 @@ class CityResource extends Resource
                             ->imageCropAspectRatio('16:9')
                             ->imageResizeTargetWidth('1920')
                             ->imageResizeTargetHeight('1080')
-                            ->helperText('Imagen panoramica de alta resolucion (16:9). Recomendado: 1920x1080px'),
+                            ->helperText('Imagen panoramica de alta resolucion (16:9). Recomendado: 1920x1080px. Máximo 4MB.'),
 
                         RichEditor::make('welcome_text')
                             ->label('Texto de Bienvenida (SEO)')

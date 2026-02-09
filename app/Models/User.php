@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 /**
  * User Model - Identity & Access Authority
@@ -29,7 +30,7 @@ use Illuminate\Notifications\Notifiable;
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory, HasUuids, Notifiable;
+    use HasFactory, HasPushSubscriptions, HasUuids, Notifiable;
 
     /**
      * UUID Configuration: Disable Auto-Increment
@@ -57,7 +58,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role',
         'banned_at',
-        'tenant_id',
+        // SECURITY: tenant_id is GUARDED. Must be set explicitly via $user->tenant_id = X
     ];
 
     /**
@@ -222,5 +223,53 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->belongsToMany(Tenant::class, 'follows')
             ->withTimestamps();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LOYALTY SYSTEM
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Get all loyalty ledger entries for this user.
+     */
+    public function loyaltyLedger(): HasMany
+    {
+        return $this->hasMany(LoyaltyLedger::class);
+    }
+
+    /**
+     * Get loyalty points balance for a specific tenant.
+     * 
+     * O(1) complexity via Sum Aggregation.
+     * Balance = SUM(amount) for this user at this tenant.
+     * 
+     * INVARIANT: Points are tenant-isolated. Points from Tenant A
+     * cannot be used at Tenant B.
+     * 
+     * @param int $tenantId The tenant to check balance for
+     * @return int Current point balance (can be negative if over-redeemed)
+     */
+    public function loyaltyBalance(int $tenantId): int
+    {
+        return (int) $this->loyaltyLedger()
+            ->where('tenant_id', $tenantId)
+            ->sum('amount');
+    }
+
+    /**
+     * Get active (non-expired) loyalty points balance for a tenant.
+     * 
+     * @param int $tenantId The tenant to check balance for
+     * @return int Active point balance
+     */
+    public function activeLoyaltyBalance(int $tenantId): int
+    {
+        return (int) $this->loyaltyLedger()
+            ->where('tenant_id', $tenantId)
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                      ->orWhere('expires_at', '>', now());
+            })
+            ->sum('amount');
     }
 }

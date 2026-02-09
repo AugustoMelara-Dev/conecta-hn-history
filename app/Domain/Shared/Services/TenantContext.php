@@ -51,6 +51,11 @@ final class TenantContext
      */
     public function setAsSystemRoot(): void
     {
+        // SECURITY FIX (VC-AUDIT-008): Prevent HTTP-based privilege escalation
+        if (! app()->runningInConsole() && ! app()->environment('testing')) {
+            throw new \RuntimeException('Security Violation: setAsSystemRoot() cannot be invoked from HTTP context.');
+        }
+
         if ($this->isInitialized && ! $this->isSystemRoot) {
             throw TenantContextMutationException::alreadyInitialized();
         }

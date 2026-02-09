@@ -1,0 +1,72 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Jobs\GenerateBusinessProfileJob;
+use App\Services\AI\OpenAIService;
+use Illuminate\Support\Facades\Queue;
+use Tests\TestCase;
+
+uses(TestCase::class);
+
+describe('GenerateBusinessProfileJob', function () {
+
+    it('can be dispatched to the queue', function () {
+        Queue::fake();
+
+        GenerateBusinessProfileJob::dispatch(
+            businessName: 'Test Business',
+            description: 'A sample business description',
+            userId: 1,
+            tenantId: 100
+        );
+
+        Queue::assertPushed(GenerateBusinessProfileJob::class, function ($job) {
+            return $job->businessName === 'Test Business'
+                && $job->description === 'A sample business description'
+                && $job->userId === 1
+                && $job->tenantId === 100;
+        });
+    });
+
+    it('has correct timeout and tries configuration', function () {
+        $job = new GenerateBusinessProfileJob(
+            businessName: 'Test',
+            description: 'Desc',
+            userId: 1,
+            tenantId: 1
+        );
+
+        expect($job->timeout)->toBe(60);
+        expect($job->tries)->toBe(1);
+    });
+
+    it('has scalar properties for safe serialization', function () {
+        $job = new GenerateBusinessProfileJob(
+            businessName: 'My Business',
+            description: 'My Description',
+            userId: 999,
+            tenantId: 888
+        );
+
+        // Verify all properties are scalars (safe for Redis/DB queue)
+        expect($job->businessName)->toBeString();
+        expect($job->description)->toBeString();
+        expect($job->userId)->toBeInt();
+        expect($job->tenantId)->toBeInt();
+    });
+
+    it('preserves tenant ID for isolation', function () {
+        $tenantId = 12345;
+        
+        $job = new GenerateBusinessProfileJob(
+            businessName: 'Tenant Business',
+            description: 'Description',
+            userId: 1,
+            tenantId: $tenantId
+        );
+
+        expect($job->tenantId)->toBe($tenantId);
+    });
+
+});

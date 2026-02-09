@@ -143,6 +143,8 @@ class ProductResource extends Resource
                         Forms\Components\FileUpload::make('image_path')
                             ->label('')
                             ->image()
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp']) // Security Hardening
+                            ->maxSize(2048) // 2MB Limit
                             ->directory('products')
                             ->visibility('public')
                             // Instagram-style: Editor con aspect ratio 1:1

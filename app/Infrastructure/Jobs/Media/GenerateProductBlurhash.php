@@ -7,6 +7,7 @@ namespace App\Infrastructure\Jobs\Media;
 use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use App\Models\Product;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -16,8 +17,9 @@ use Illuminate\Queue\InteractsWithQueue;
  *
  * INFRASTRUCTURE JOB: Requires direct ORM access for media operations.
  * Uses withoutGlobalScopes() for cross-tenant product access in queue context.
+ * IDEMPOTENCY: Uses ShouldBeUnique with tenant-product composite key.
  */
-final class GenerateProductBlurhash implements ShouldQueue
+final class GenerateProductBlurhash implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
@@ -30,9 +32,20 @@ final class GenerateProductBlurhash implements ShouldQueue
         public readonly int $tenantId
     ) {}
 
+    /**
+     * Unique job identifier (tenant + product composite).
+     */
+    public function uniqueId(): string
+    {
+        return 'blurhash_' . $this->tenantId . '_' . $this->productId;
+    }
+
     public function handle(): void
     {
-        $product = Product::findOrFail($this->productId);
+        // SECURITY: Verify product belongs to this tenant (VC-AUDIT-003 fix)
+        $product = Product::where('id', $this->productId)
+            ->where('tenant_id', $this->tenantId)
+            ->firstOrFail();
 
         if (! $product->image_path) {
             return;

@@ -60,7 +60,7 @@ final class InsufficientAiCreditsException extends DomainException
      * Factory: Crear para operación de generación de perfiles
      */
     public static function forProfileGeneration(
-        int $tenantId,
+        int|string $tenantId,
         float $estimatedCost,
         float $availableBalance
     ): self {
@@ -79,7 +79,7 @@ final class InsufficientAiCreditsException extends DomainException
      * Factory: Crear para operación genérica de IA
      */
     public static function forOperation(
-        int $tenantId,
+        int|string $tenantId,
         string $operation,
         float $estimatedCost,
         float $availableBalance

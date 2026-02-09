@@ -75,6 +75,8 @@ class SeoFields
                 // ═══════════════════════════════════════════════════════════
                 FileUpload::make('og_image')
                     ->label('Imagen para Redes Sociales')
+                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                    ->maxSize(2048)
                     ->image()
                     ->disk('public')
                     ->directory($imageDirectory)

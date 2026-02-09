@@ -160,4 +160,39 @@ class TenantResolutionTest extends TestCase
         $response->assertOk();
         $response->assertJson(['tenant_id' => $tenant->id]);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CASE 5: VC-AUDIT-108 - Header Authorization Security
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * @test
+     * VC-AUDIT-108: Authenticated user cannot access unauthorized tenant via header.
+     */
+    public function authenticated_user_cannot_access_unauthorized_tenant_via_header(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $user = User::factory()->create(); // User NOT attached to this tenant
+
+        $response = $this->actingAs($user)
+            ->withHeaders(['X-Tenant-ID' => (string) $tenant->id])
+            ->get('/__test/api-tenant');
+
+        $response->assertStatus(403);
+    }
+
+    /**
+     * @test
+     * VC-AUDIT-108: Guest users are not blocked by header authorization (handled by auth middleware).
+     */
+    public function guest_users_can_use_header_resolution(): void
+    {
+        $tenant = Tenant::factory()->create();
+
+        $response = $this->withHeaders(['X-Tenant-ID' => (string) $tenant->id])
+            ->get('/__test/api-tenant');
+
+        $response->assertOk();
+        $response->assertJson(['tenant_id' => $tenant->id]);
+    }
 }

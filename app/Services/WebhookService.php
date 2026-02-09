@@ -52,6 +52,15 @@ class WebhookService
                     ->lockForUpdate()
                     ->first();
 
+                // VC-AUDIT-101: Audit trail for global order lookup
+                if ($rawOrder) {
+                    Log::info('PaymentWebhook: Processing order', [
+                        'order_number' => $orderNumber,
+                        'tenant_id' => $rawOrder->tenant_id,
+                        'transaction_id' => $transactionId,
+                    ]);
+                }
+
                 if (! $rawOrder) {
                     Log::warning('PaymentWebhook: Order not found', [
                         'order_number' => $orderNumber,

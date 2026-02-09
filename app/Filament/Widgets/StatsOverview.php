@@ -43,6 +43,7 @@ class StatsOverview extends BaseWidget
 
             // --- KPI 1: FINANCIAL - Gross Revenue ---
             $revenue = Order::query()
+                ->where('tenant_id', $tenant->id)
                 ->where('status', '!=', 'cancelled')
                 ->sum('total');
 

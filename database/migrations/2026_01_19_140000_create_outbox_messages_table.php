@@ -8,6 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Skip if table already exists (created by earlier migrations)
+        if (Schema::hasTable('outbox_messages')) {
+            return;
+        }
+
         Schema::create('outbox_messages', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('type'); // Event Class Name

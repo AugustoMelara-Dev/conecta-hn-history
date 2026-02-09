@@ -6,6 +6,7 @@ namespace App\Infrastructure\Jobs\Analytics;
 
 use App\Models\Tenant;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -15,12 +16,21 @@ use Illuminate\Support\Facades\Log;
  * SyncAnalyticsJob - Batch Analytics Coordinator
  *
  * INFRASTRUCTURE JOB: Coordinates batch analytics sync across all tenants.
+ * IDEMPOTENCY: Uses ShouldBeUnique with daily date key to prevent duplicate runs.
  */
-final class SyncAnalyticsJob implements ShouldQueue
+final class SyncAnalyticsJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
     public int $timeout = 120;
+
+    /**
+     * Unique job identifier (daily granularity).
+     */
+    public function uniqueId(): string
+    {
+        return 'sync_analytics_' . now()->subDay()->format('Y-m-d');
+    }
 
     public function handle(): void
     {

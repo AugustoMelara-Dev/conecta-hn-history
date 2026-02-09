@@ -395,7 +395,7 @@ const FeaturedTenants = ({ tenants }) => (
 
             <div className="grid md:grid-cols-4 gap-6">
                 {tenants && tenants.slice(0, 4).map((tenant, idx) => (
-                    <Link key={tenant.id || idx} href={`/${tenant.slug}`} className="group block h-full">
+                    <Link key={tenant.id || idx} href={`/@${tenant.slug}`} className="group block h-full">
                         <div className="rounded-2xl border border-white/5 overflow-hidden bg-slate-900/50 hover:border-indigo-500/30 transition-all duration-300 h-full flex flex-col group-hover:-translate-y-1">
                             <div className="aspect-[4/3] bg-slate-800 relative overflow-hidden">
                                 <img

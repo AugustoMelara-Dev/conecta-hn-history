@@ -58,9 +58,14 @@ final class OrderController extends Controller
         return response()->json(new OrderResource($order->load('items')), 201);
     }
 
-    public function show(int $id): OrderResource
+    public function show(Request $request, int $id): OrderResource
     {
-        $order = $this->reader->find($id);
+        $tenantId = (int) $request->user()?->tenant_id;
+        if (! $tenantId) {
+            abort(403, 'Tenant context required');
+        }
+
+        $order = $this->reader->find($tenantId, $id);
         if (! $order) {
             abort(404, 'Order not found');
         }
@@ -70,7 +75,12 @@ final class OrderController extends Controller
 
     public function updateStatus(UpdateOrderStatusRequest $request, int $orderId): OrderResource
     {
-        $order = $this->reader->find($orderId);
+        $tenantId = (int) $request->user()?->tenant_id;
+        if (! $tenantId) {
+            abort(403, 'Tenant context required');
+        }
+
+        $order = $this->reader->find($tenantId, $orderId);
         if (! $order) {
             abort(404);
         }
@@ -81,7 +91,7 @@ final class OrderController extends Controller
             $request->user()->id
         );
 
-        return new OrderResource($this->reader->find($orderId));
+        return new OrderResource($this->reader->find($tenantId, $orderId));
     }
 
     public function destroy(Request $request, int $orderId): JsonResponse

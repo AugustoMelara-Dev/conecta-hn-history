@@ -36,6 +36,11 @@ class EventServiceProvider extends ServiceProvider
             \App\Application\Billing\Listeners\PromotePaymentEvidence::class,
         ],
 
+        // APPOINTMENT NOTIFICATIONS
+        \App\Events\Appointment\AppointmentCreated::class => [
+            \App\Listeners\SendAppointmentConfirmation::class,
+        ],
+
         /**
          * @deprecated LEGACY ALIAS SUPPORT (V1 -> V2 MIGRATION)
          * Policy: Monitor application logs for event tag 'auth.user_profile_updated'.

@@ -14,6 +14,11 @@
         <!-- Favicon -->
         <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
 
+        <!-- PWA Meta Tags -->
+        <meta name="theme-color" content="#000000">
+        <link rel="apple-touch-icon" href="/icon-192x192.png">
+        <link rel="manifest" href="/build/manifest.webmanifest">
+
         <!-- Inertia Head -->
         @inertiaHead
 

@@ -36,14 +36,14 @@ final class BudgetEnforcer
     /**
      * Reserva créditos estimados ANTES de ejecutar operación IA.
      *
-     * @param  int   $tenantId       ID del tenant
+     * @param  int|string $tenantId  ID del tenant (UUID o int)
      * @param  float $estimatedCost  Costo estimado en USD (con margen de seguridad)
      * @param  string $operation     Nombre de la operación para auditoría
      * @return string                ID de reserva para tracking
      *
      * @throws InsufficientAiCreditsException Si no hay créditos disponibles
      */
-    public function reserve(int $tenantId, float $estimatedCost, string $operation): string
+    public function reserve(int|string $tenantId, float $estimatedCost, string $operation): string
     {
         $reservationId = bin2hex(random_bytes(8)); // 16-char hex ID
 
@@ -99,14 +99,14 @@ final class BudgetEnforcer
     /**
      * Liquida la reserva después de operación exitosa.
      *
-     * @param  int    $tenantId       ID del tenant
+     * @param  int|string $tenantId   ID del tenant (UUID o int)
      * @param  float  $estimatedCost  Costo estimado original (para liberar reserva)
      * @param  float  $actualCost     Costo real reportado por OpenAI
      * @param  string $reservationId  ID de reserva original
      * @param  array  $usageMetadata  Metadata de uso para auditoría
      */
     public function settle(
-        int $tenantId,
+        int|string $tenantId,
         float $estimatedCost,
         float $actualCost,
         string $reservationId,
@@ -151,13 +151,13 @@ final class BudgetEnforcer
     /**
      * Reembolsa una reserva si la operación falló.
      *
-     * @param  int    $tenantId       ID del tenant
+     * @param  int|string $tenantId   ID del tenant (UUID o int)
      * @param  float  $estimatedCost  Costo estimado que se reservó
      * @param  string $reservationId  ID de reserva original
      * @param  string $failureReason  Razón del fallo para auditoría
      */
     public function refund(
-        int $tenantId,
+        int|string $tenantId,
         float $estimatedCost,
         string $reservationId,
         string $failureReason
@@ -193,7 +193,7 @@ final class BudgetEnforcer
     /**
      * Obtiene el balance disponible del tenant (balance - reservado).
      */
-    public function getAvailableBalance(int $tenantId): float
+    public function getAvailableBalance(int|string $tenantId): float
     {
         $tenant = Tenant::find($tenantId);
 

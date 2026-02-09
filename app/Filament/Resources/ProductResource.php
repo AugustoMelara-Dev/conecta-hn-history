@@ -68,6 +68,7 @@ class ProductResource extends Resource
                                     ->image()
                                     ->imageEditor()
                                     ->reorderable()
+                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp']) // Security Hardening (VC-AUDIT-003)
                                     ->maxSize(2048) // 2MB Limit
                                     ->maxFiles(5)
                                     ->columnSpan('full'),

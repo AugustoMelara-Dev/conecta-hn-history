@@ -129,7 +129,7 @@ return [
 
         /*
         |--------------------------------------------------------------------------
-        | Security Audit Channel
+        | Security Audit Channel (SIEM Integration)
         |--------------------------------------------------------------------------
         |
         | Dedicated channel for security events including:
@@ -142,14 +142,32 @@ return [
         | - Easy ingestion by SIEM tools (Datadog, Splunk, etc.)
         | - Fail2Ban integration for IP blocking
         | - Compliance audit trail (90-day retention)
+        | - Real-time Slack/Discord alerts for CRITICAL events
         |
         */
 
         'security' => [
+            'driver' => 'stack',
+            'channels' => ['security_file', 'security_slack'],
+            'ignore_exceptions' => false,
+        ],
+
+        'security_file' => [
             'driver' => 'daily',
             'path' => storage_path('logs/security.log'),
             'level' => 'warning',
             'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
+        // SIEM Webhook for real-time alerts (Slack, Discord, or custom endpoint)
+        // Configure via: SECURITY_SLACK_WEBHOOK_URL in .env
+        'security_slack' => [
+            'driver' => 'slack',
+            'url' => env('SECURITY_SLACK_WEBHOOK_URL'),
+            'username' => env('SECURITY_SLACK_USERNAME', '🔒 ConectaHN Security'),
+            'emoji' => ':rotating_light:',
+            'level' => 'critical', // Only CRITICAL events go to Slack
             'replace_placeholders' => true,
         ],
 

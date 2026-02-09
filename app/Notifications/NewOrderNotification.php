@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\Order;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -15,15 +18,17 @@ use Illuminate\Notifications\Notification;
  *
  * ARCHITECTURE: Asynchronous by Design
  * Implements ShouldQueue to offload email delivery to background workers.
+ * Implements ShouldBroadcast for real-time WebSocket notifications via Reverb.
  * Never blocks the HTTP request cycle.
  *
  * DELIVERY CHANNELS:
  * - database: Powers the notification bell in Filament Admin Panel
  * - mail: Transactional email with order summary and CTA
+ * - broadcast: Real-time push to tenant admins via WebSocket
  *
  * TRIGGER: Dispatched after Order::create() transaction commits in OrderController::store()
  */
-class NewOrderNotification extends Notification implements ShouldQueue
+class NewOrderNotification extends Notification implements ShouldQueue, ShouldBroadcast
 {
     use Queueable;
 
@@ -47,7 +52,39 @@ class NewOrderNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return ['database', 'mail', 'broadcast'];
+    }
+
+    /**
+     * Get the channels the notification should broadcast on.
+     *
+     * SECURITY: Broadcasts to tenant-scoped admin channel only.
+     * Maps to ChannelRegistry::TENANT_ADMIN_CHANNEL_PATTERN.
+     *
+     * @return array<int, PrivateChannel>
+     */
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('tenant.' . $this->order->tenant_id . '.admins'),
+        ];
+    }
+
+    /**
+     * Get the broadcastable representation of the notification.
+     *
+     * PERFORMANCE: Lightweight payload with IDs only, no full models.
+     */
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage([
+            'order_id' => $this->order->id,
+            'order_number' => $this->order->order_number ?? 'N/A',
+            'amount' => $this->order->total ?? 0,
+            'tenant_id' => $this->order->tenant_id,
+            'customer_name' => $this->order->customer_name ?? 'Cliente',
+            'created_at' => $this->order->created_at?->toIso8601String(),
+        ]);
     }
 
     /**

@@ -27,20 +27,24 @@ interface OrderReader
      * @return LengthAwarePaginator Paginated order results with eager-loaded relations
      */
     public function search(
-        int $tenantId,
+        int|string $tenantId,
         ?string $status = null,
         int $perPage = 20
     ): LengthAwarePaginator;
 
     /**
-     * Find a single order by ID.
+     * Find a single order by ID within a specific tenant.
      *
+     * SECURITY: Requires explicit tenant context to prevent IDOR.
+     *
+     * @param  int|string  $tenantId  The tenant context (REQUIRED for multi-tenancy)
+     * @param  int  $orderId   The order identifier
      * @return object|null Order entity or null
      */
-    public function find(int $orderId): ?object;
+    public function find(int|string $tenantId, int $orderId): ?object;
 
     /**
      * Get orders by status for a tenant.
      */
-    public function findByStatus(int $tenantId, string $status, int $limit = 50): iterable;
+    public function findByStatus(int|string $tenantId, string $status, int $limit = 50): iterable;
 }

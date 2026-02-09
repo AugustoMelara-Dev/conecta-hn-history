@@ -75,7 +75,7 @@ final class EloquentDirectoryReader implements DirectoryReader
 
     public function getCitiesWithTenants(): Collection
     {
-        return Cache::remember('directory_cities', now()->addHours(self::LONG_CACHE_TTL_HOURS), function () {
+        return Cache::remember("v".config('app.version')."_directory_cities", now()->addHours(self::LONG_CACHE_TTL_HOURS), function () {
             return City::query()
                 ->select(['id', 'name', 'slug'])
                 ->orderBy('name')
@@ -85,7 +85,7 @@ final class EloquentDirectoryReader implements DirectoryReader
 
     public function getCategoriesWithTenants(): Collection
     {
-        return Cache::remember('directory_categories', now()->addHours(self::LONG_CACHE_TTL_HOURS), function () {
+        return Cache::remember("v".config('app.version')."_directory_categories", now()->addHours(self::LONG_CACHE_TTL_HOURS), function () {
             return Category::query()
                 ->where('is_active', true)
                 ->select(['id', 'name', 'slug', 'icon'])

@@ -56,6 +56,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Domain (Subdomain Routing)
+    |--------------------------------------------------------------------------
+    |
+    | The base domain used for subdomain-based multi-tenancy. Tenant microsites
+    | will be accessible at {tenant-slug}.{domain}. Example: barberia.vito.io
+    |
+    */
+
+    'domain' => env('APP_DOMAIN', 'localhost'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
@@ -78,11 +90,11 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    'locale' => env('APP_LOCALE', 'es'),
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
-    'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
+    'faker_locale' => env('APP_FAKER_LOCALE', 'es_ES'),
 
     /*
     |--------------------------------------------------------------------------

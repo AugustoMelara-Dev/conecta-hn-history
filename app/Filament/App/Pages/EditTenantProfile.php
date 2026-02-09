@@ -103,7 +103,9 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->image()
                                             ->imageEditor()
                                             ->imageCropAspectRatio('1:1')
-                                            ->directory('tenants/logos'),
+                                            ->directory('tenants/logos')
+                                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                                            ->maxSize(2048),
                                     ]),
 
                                 Forms\Components\Section::make('Personalización de Marca')
@@ -138,6 +140,8 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->imageEditor()
                                             ->imageCropAspectRatio('16:9')
                                             ->directory('tenants/banners')
+                                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                                            ->maxSize(2048)
                                             ->disabled(! $isPro)
                                             ->hint(! $isPro ? '🔒 PRO' : null),
 

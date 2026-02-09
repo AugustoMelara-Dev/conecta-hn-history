@@ -105,6 +105,8 @@ class PaymentResource extends Resource
 
                         Forms\Components\FileUpload::make('proof_image_path')
                             ->label('Comprobante de Pago')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                            ->maxSize(5120)
                             ->image()
                             ->disabled()
                             ->columnSpanFull(),
@@ -372,6 +374,10 @@ class PaymentResource extends Resource
     {
         return parent::getEloquentQuery()
             ->with(['tenant.user']) // Eager load para performance
-            ->orderByRaw("FIELD(status, 'pending', 'approved', 'rejected')");
+            ->orderByRaw("CASE status
+                WHEN 'pending' THEN 1
+                WHEN 'approved' THEN 2
+                WHEN 'rejected' THEN 3
+                ELSE 4 END");
     }
 }

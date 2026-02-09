@@ -87,7 +87,15 @@ final class OpenAIService
      * @throws AiMalformedResponseException
      * @throws \App\Exceptions\InsufficientAiCreditsException
      */
-    public function generateStructuredProfile(string $businessName, string $description, int $userId, int $tenantId): array
+    public function generateStructuredProfile(
+        string $businessName,
+        string $description,
+        int $userId,
+        int $tenantId,
+        ?string $targetAudience = null,
+        ?string $tone = null,
+        ?array $keywords = []
+    ): array
     {
         $estimatedCost = $this->estimateCost();
 
@@ -114,6 +122,20 @@ Genera un objeto JSON con:
 - tags: Array de 5-7 etiquetas.
 - category_suggestion: Categoría de negocio.
 EOT;
+
+            // ═══════════════════════════════════════════════════════════════════════════
+            // MARKETING CONTEXT INJECTION (Optional Parameters)
+            // ═══════════════════════════════════════════════════════════════════════════
+            if ($targetAudience !== null) {
+                $userPrompt .= "\n\nPúblico objetivo: {$targetAudience}";
+            }
+            if ($tone !== null) {
+                $userPrompt .= "\nTono de comunicación: {$tone}";
+            }
+            if (! empty($keywords)) {
+                $keywordsList = implode(', ', $keywords);
+                $userPrompt .= "\nPalabras clave a incluir: {$keywordsList}";
+            }
 
             // ═══════════════════════════════════════════════════════════════════
             // PHASE 1: HTTP Request with Resilient Backoff

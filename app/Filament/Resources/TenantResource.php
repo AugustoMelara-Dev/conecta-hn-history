@@ -69,6 +69,13 @@ class TenantResource extends Resource
                             ->preload()
                             ->required(),
 
+                        Forms\Components\Select::make('business_type')
+                            ->label('Modelo de Negocio')
+                            ->options(\App\Domain\TenantGovernance\Enums\BusinessType::class)
+                            ->required()
+                            ->default(\App\Domain\TenantGovernance\Enums\BusinessType::RETAIL)
+                            ->native(false),
+
                         Forms\Components\Select::make('city_id')
                             ->label('Ciudad')
                             ->relationship('city', 'name')
@@ -115,12 +122,16 @@ class TenantResource extends Resource
                     ->schema([
                         Forms\Components\FileUpload::make('logo_path')
                             ->label('Logo')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
+                            ->maxSize(2048)
                             ->image()
                             ->directory('tenants/logos')
                             ->imageEditor(),
 
                         Forms\Components\FileUpload::make('banner_path')
                             ->label('Banner de Portada')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->maxSize(2048)
                             ->image()
                             ->directory('tenants/banners')
                             ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
@@ -435,9 +446,29 @@ class TenantResource extends Resource
                     ->modalDescription(fn ($record) => "Seras autenticado como '{$record->user->name}' ({$record->user->email}). Podras ver su panel exactamente como el lo ve. Usa el banner superior para regresar.")
                     ->modalSubmitActionLabel('Iniciar Sesion como Cliente')
                     ->action(function ($record) {
+                        // VC-AUDIT-107: Rate limit impersonation (max 5/hour per admin)
+                        $rateLimitKey = 'impersonate:' . auth()->id();
+                        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Límite de seguridad alcanzado')
+                                ->body('Demasiados intentos de suplantación. Espere 1 hora.')
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+                        \Illuminate\Support\Facades\RateLimiter::hit($rateLimitKey, 3600);
+
+                        // Audit Log: Non-repudiation for administrative actions
+                        activity('security')
+                            ->causedBy(auth()->user())
+                            ->performedOn($record->user)
+                            ->withProperties(['tenant_id' => $record->id])
+                            ->log('admin_impersonation_started');
+
                         session(['impersonator_id' => auth()->id()]);
                         session(['impersonator_name' => auth()->user()->name]);
                         \Illuminate\Support\Facades\Auth::login($record->user);
+                        session()->regenerate(); // Session Fixation Prevention
 
                         return redirect('/app');
                     }),

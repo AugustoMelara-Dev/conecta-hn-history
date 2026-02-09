@@ -45,26 +45,23 @@ final class AuthController extends Controller
     }
 
     public function socialLogin(
-        Request $request,
+        \App\Http\Requests\Auth\SocialLoginRequest $request,
         LoginViaSocialProviderHandler $handler
     ): JsonResponse {
-        $request->validate([
-            'provider' => 'required|string',
-            'token' => 'required|string',
-            'email' => 'required|email',
-            'name' => 'nullable|string',
-            'provider_id' => 'required|string',
-            'avatar' => 'nullable|url',
-        ]);
+        // ═══════════════════════════════════════════════════════════════════════
+        // VALIDATION: Already performed by SocialLoginRequest FormRequest
+        // No inline validation needed - data is guaranteed valid and safe
+        // ═══════════════════════════════════════════════════════════════════════
+        $validated = $request->validated();
 
         $command = new \App\Application\Auth\Commands\LoginViaSocialProviderCommand(
-            providerName: $request->input('provider'),
-            providerId: $request->input('provider_id'),
-            token: $request->input('token'),
-            email: $request->input('email'),
-            name: $request->input('name') ?? 'User',
-            avatarUrl: $request->input('avatar'),
-            accessToken: $request->input('token')
+            providerName: $validated['provider'],
+            providerId: $validated['provider_id'],
+            token: $validated['token'],
+            email: $validated['email'],
+            name: $validated['name'] ?? 'User',
+            avatarUrl: $validated['avatar'] ?? null,
+            accessToken: $validated['token']
         );
 
         $result = $handler->handle($command);

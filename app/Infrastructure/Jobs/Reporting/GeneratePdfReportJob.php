@@ -13,6 +13,7 @@ use App\Notifications\ReportReadyNotification;
 use App\Traits\GeneratesSignedDownloadUrls;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -23,8 +24,9 @@ use Illuminate\Support\Str;
  * GeneratePdfReportJob - PDF Report Generation Use Case
  *
  * APPLICATION JOB: Uses Repository pattern for entity hydration.
+ * IDEMPOTENCY: Uses ShouldBeUnique with tenant-type-date composite key.
  */
-final class GeneratePdfReportJob implements ShouldQueue
+final class GeneratePdfReportJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable;
     use GeneratesSignedDownloadUrls;
@@ -39,6 +41,18 @@ final class GeneratePdfReportJob implements ShouldQueue
         public readonly \App\Application\DTOs\ReportRequestData $data,
         public readonly int $requestorId
     ) {}
+
+    /**
+     * Unique job identifier (tenant + report type + date composite).
+     */
+    public function uniqueId(): string
+    {
+        return sprintf('pdf_%d_%s_%s',
+            $this->data->tenantId,
+            $this->data->reportType,
+            $this->data->startDate->format('Y-m-d')
+        );
+    }
 
     public function handle(
         TenantRepositoryInterface $tenantRepository,

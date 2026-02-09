@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Public\DirectoryController;
+use App\Http\Controllers\Public\ExploreController;
 use App\Http\Controllers\Public\InteractionController;
 use App\Http\Controllers\Public\LocationController;
+use App\Http\Controllers\Public\TenantMicrositeController;
 use App\Http\Controllers\Public\WelcomeController;
 use App\Http\Controllers\Tenant\AnalyticsController;
 use Illuminate\Support\Facades\Route;
@@ -33,7 +35,12 @@ Route::get('/', WelcomeController::class)->name('home');
 // Route::get('/explorar', \App\Livewire\Pages\Home::class)->name('explore');
 
 // ═══════════════════════════════════════════════════════════════════════
-// 2. DIRECTORIO: React/Inertia (Directory/Index.jsx)
+// 2. EXPLORE: Marketplace Discovery (Luxury Entrance Strategy)
+// ═══════════════════════════════════════════════════════════════════════
+Route::get('/explore', ExploreController::class)->name('public.explore');
+
+// ═══════════════════════════════════════════════════════════════════════
+// 3. DIRECTORIO: React/Inertia (Directory/Index.jsx)
 // ═══════════════════════════════════════════════════════════════════════
 Route::get('/directorio', [DirectoryController::class, 'index'])->name('directory.index');
 
@@ -61,7 +68,7 @@ Route::get('/registro/pago-pendiente/{payment}', [\App\Http\Controllers\Web\Bill
 Route::post('/location/set', [LocationController::class, 'setCity'])->name('location.set');
 Route::post('/location/clear', [LocationController::class, 'clearCity'])->name('location.clear');
 Route::get('/api/cities', [LocationController::class, 'getCities'])->name('cities.all');
-Route::get('/api/search', [\App\Http\Controllers\Api\SearchController::class, 'index'])->name('api.search');
+// [REMOVED] Dead code: SearchController was never created. Future search → ExploreController.
 Route::get('/api/check-slug', [\App\Http\Controllers\Web\RegistrationController::class, 'checkSlug'])->name('api.check-slug');
 
 // ... (Skip lines)
@@ -69,7 +76,9 @@ Route::get('/api/check-slug', [\App\Http\Controllers\Web\RegistrationController:
 // ═══════════════════════════════════════════════════════════════════════
 // TRACKING ROUTES - Analytics Middleware
 // ═══════════════════════════════════════════════════════════════════════
-Route::prefix('track')->group(function () {
+Route::prefix('track')
+    ->middleware(['throttle:60,1']) // 60 requests per minute per IP
+    ->group(function () {
     Route::get('/wa/{tenant:slug}', [InteractionController::class, 'whatsapp'])->name('track.whatsapp');
     Route::get('/call/{tenant:slug}', [InteractionController::class, 'call'])->name('track.call');
     Route::get('/maps/{tenant:slug}', [InteractionController::class, 'maps'])->name('track.maps');
@@ -179,13 +188,8 @@ Route::middleware('auth')->group(function () {
     // Reviews
     Route::post('/reviews', [\App\Http\Controllers\Public\ReviewController::class, 'store'])->name('reviews.store');
 
-    // Follow/Unfollow
-    Route::post('/tenants/{tenant}/toggle-follow', [\App\Http\Controllers\Api\FollowController::class, 'toggle'])->name('tenant.toggle-follow'); // Assume Api for FollowController if not moved yet? Wait, FollowController was orphan. I didn't move it? I should move it to Api or Public. I'll assume Api/FollowController.
-    // Wait, I forgot to move FollowController in the Move Step. I'll add a move step for it now.
-    // I put it in Api? Or Public?
-    // Follow is authenticated usually.
-    // I will checking FollowController... it's small.
-    // I will move it to Api\FollowController for now.
+    // [REMOVED] Follow/Unfollow feature - FollowController was never created.
+    // TODO: Implement follow functionality when needed via dedicated controller.
 
     // ═══════════════════════════════════════════════════════════════════
     // SHADOW LOGIN - Impersonation Exit Route (SECURED)
@@ -198,19 +202,15 @@ require __DIR__.'/auth.php';
 
 /*
 |--------------------------------------------------------------------------
-| Tenant Microsite Routes (Wildcard - MUST BE LAST!)
+| Subdomain Routing Note
 |--------------------------------------------------------------------------
 |
-| REGLA CRÍTICA: Esta ruta usa un "wildcard" que captura cualquier slug.
-| DEBE IR AL FINAL del archivo para no bloquear rutas específicas como
-| /directorio, /ciudad, /registrar-negocio, etc.
+| Tenant microsites are now served via subdomain routing:
+| - {tenant}.vito.io → TenantMicrositeController
+|
+| Routes defined in: routes/public.php (Route::domain group)
+|
+| DEPRECATED: The old /@{slug} prefix routing has been removed.
+| All legacy URLs will return 404.
 |
 */
-
-// ═══════════════════════════════════════════════════════════════════════════
-// FIX #5: REMOVED DUPLICATE tenant.show route
-// Principle: DRY (Don't Repeat Yourself) - Route defined in routes/public.php
-// The public.php version includes full product/schedule data for React frontend
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Tenant routes moved to top to avoid wildcard shadowing

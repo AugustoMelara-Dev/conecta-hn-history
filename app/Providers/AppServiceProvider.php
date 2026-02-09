@@ -740,6 +740,14 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // ═══════════════════════════════════════════════════════════════════════
+        // LOCALIZATION: Sync Carbon locale with Laravel app.locale
+        // ═══════════════════════════════════════════════════════════════════════
+        // Carbon does NOT auto-sync with config('app.locale'). This ensures all
+        // date formatting (diffForHumans, translatedFormat) respects the locale.
+        // ═══════════════════════════════════════════════════════════════════════
+        \Carbon\Carbon::setLocale(config('app.locale'));
+
+        // ═══════════════════════════════════════════════════════════════════════
         // POLYMORPHIC INTEGRITY: Morph Map for Domain Migration
         // ═══════════════════════════════════════════════════════════════════════
         // CRITICAL: This mapping MUST be registered BEFORE moving model files.

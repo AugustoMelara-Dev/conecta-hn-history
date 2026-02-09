@@ -14,27 +14,31 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // 1. Create atomic sequence table
-        Schema::create('outbox_sequences', function (Blueprint $table) {
-            $table->string('aggregate_id', 36)->primary()
-                ->comment('Business entity ID (e.g., payment_id)');
+        // 1. Create atomic sequence table (skip if exists)
+        if (! Schema::hasTable('outbox_sequences')) {
+            Schema::create('outbox_sequences', function (Blueprint $table) {
+                $table->string('aggregate_id', 36)->primary()
+                    ->comment('Business entity ID (e.g., payment_id)');
 
-            $table->unsignedBigInteger('last_sequence')->default(0)
-                ->comment('Last assigned sequence number for this aggregate');
+                $table->unsignedBigInteger('last_sequence')->default(0)
+                    ->comment('Last assigned sequence number for this aggregate');
 
-            $table->timestamps();
+                $table->timestamps();
 
-            // Engine hint for InnoDB row-level locking
-            $table->engine = 'InnoDB';
-        });
+                // Engine hint for InnoDB row-level locking
+                $table->engine = 'InnoDB';
+            });
+        }
 
-        // 2. Add recovery_count to outbox_messages
-        Schema::table('outbox_messages', function (Blueprint $table) {
-            if (! Schema::hasColumn('outbox_messages', 'recovery_count')) {
-                $table->unsignedSmallInteger('recovery_count')->default(0)->after('attempts')
-                    ->comment('Number of times this message was recovered from stale lock');
-            }
-        });
+        // 2. Add recovery_count to outbox_messages (skip if table doesn't exist or column exists)
+        if (Schema::hasTable('outbox_messages')) {
+            Schema::table('outbox_messages', function (Blueprint $table) {
+                if (! Schema::hasColumn('outbox_messages', 'recovery_count')) {
+                    $table->unsignedSmallInteger('recovery_count')->default(0)
+                        ->comment('Number of times this message was recovered from stale lock');
+                }
+            });
+        }
     }
 
     public function down(): void

@@ -48,6 +48,7 @@ final class TenantMicrositeTransformer
             'name' => $tenant->name,
             'slug' => $tenant->slug,
             'description' => $tenant->description ?? 'Bienvenido a nuestro negocio.',
+            'about' => $tenant->about, // Premium: Extended storytelling "Our Story"
 
             // Images with Storage URLs and fallbacks
             'logo' => $this->resolveImageUrl($tenant->logo_path, 'logo'),
@@ -70,11 +71,17 @@ final class TenantMicrositeTransformer
             'email' => $tenant->email,
             'address' => $tenant->address ?? 'Honduras',
 
-            // Location
+            // Location (flat legacy + structured for Map component)
             'city' => $tenant->city?->name ?? 'Honduras',
             'city_id' => $tenant->city_id,
             'latitude' => $tenant->latitude,
             'longitude' => $tenant->longitude,
+            'location' => [ // Premium: Structured for Map components
+                'lat' => $tenant->latitude !== null ? (float) $tenant->latitude : null,
+                'lng' => $tenant->longitude !== null ? (float) $tenant->longitude : null,
+                'address' => $tenant->address ?? 'Honduras',
+                'city' => $tenant->city?->name ?? 'Honduras',
+            ],
 
             // Category
             'category' => $this->transformCategory($tenant),
@@ -84,11 +91,17 @@ final class TenantMicrositeTransformer
             'is_active' => (bool) $tenant->is_active,
             'plan' => $plan,
 
-            // Social links (only for Pro+)
+            // Social links (legacy flat + structured grouping)
             'facebook_url' => $this->planService->canShowSocialGraph($tenant) ? $tenant->facebook_url : null,
             'instagram_url' => $this->planService->canShowSocialGraph($tenant) ? $tenant->instagram_url : null,
             'tiktok_url' => $this->planService->canShowSocialGraph($tenant) ? $tenant->tiktok_url : null,
             'website_url' => $tenant->website_url,
+            'social' => $this->planService->canShowSocialGraph($tenant) ? [ // Premium: Grouped for frontend
+                'facebook' => $tenant->facebook_url,
+                'instagram' => $tenant->instagram_url,
+                'tiktok' => $tenant->tiktok_url,
+                'website' => $tenant->website_url,
+            ] : null,
 
             // Products embedded in tenant
             'products' => $this->transformProducts($tenant),

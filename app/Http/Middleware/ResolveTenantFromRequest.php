@@ -50,6 +50,17 @@ final class ResolveTenantFromRequest
             abort(404); // Or specific suspended page
         }
 
+        // VC-AUDIT-108: Prevent unauthorized header-based context switching
+        if ($this->isHeaderBasedResolution($request) && auth()->check()) {
+            if (! auth()->user()->tenants()->where('tenants.id', $tenant->id)->exists()) {
+                \Illuminate\Support\Facades\Log::warning('TenantResolution: Unauthorized header access', [
+                    'user_id' => auth()->id(),
+                    'target_tenant' => $tenant->id,
+                ]);
+                abort(403, 'Unauthorized access to this tenant context.');
+            }
+        }
+
         // Bind to container - Single Source of Truth
         app()->instance('currentTenant', $tenant);
 
@@ -77,7 +88,19 @@ final class ResolveTenantFromRequest
             $cached = Cache::get($cacheKey);
 
             // Check if it's a Negative Cache Hit
-            return $cached === 'NOT_FOUND' ? null : $cached;
+            if ($cached === 'NOT_FOUND') {
+                return null;
+            }
+
+            // VC-AUDIT-106: Rehydrate from lightweight array
+            if (is_array($cached)) {
+                $tenant = new Tenant();
+                $tenant->forceFill($cached);
+                $tenant->exists = true;
+                return $tenant;
+            }
+
+            return $cached; // Backwards compatibility for old cache entries
         }
 
         // 3. Cache Miss - Database Query (Optimized Memory Footprint)
@@ -93,8 +116,17 @@ final class ResolveTenantFromRequest
 
         // 4. Store Result (Cache-Aside)
         if ($tenant) {
-            // Positive Cache: 1 Hour
-            Cache::put($cacheKey, $tenant, self::TTL_VALID);
+            // VC-AUDIT-106: Cache lightweight array instead of full Eloquent model
+            $payload = [
+                'id' => $tenant->id,
+                'slug' => $tenant->slug,
+                'domain' => $tenant->domain,
+                'name' => $tenant->name,
+                'is_active' => $tenant->is_active,
+                'is_pro' => $tenant->is_pro,
+                'logo_path' => $tenant->logo_path,
+            ];
+            Cache::put($cacheKey, $payload, self::TTL_VALID);
         } else {
             // Negative Cache: 5 Minutes (DoS Protection)
             // Stores a lightweight sentinel value
@@ -200,5 +232,16 @@ final class ResolveTenantFromRequest
     private function getHeaderId(Request $request): ?string
     {
         return $request->header(config('tenancy.resolution.header_name', 'X-Tenant-ID'));
+    }
+
+    /**
+     * VC-AUDIT-108: Check if tenant was resolved via header strategy.
+     */
+    private function isHeaderBasedResolution(Request $request): bool
+    {
+        // Header-based if no route param or subdomain, but header is present
+        return $this->getRouteParam($request) === null
+            && $this->getSubdomain($request) === null
+            && $this->getHeaderId($request) !== null;
     }
 }

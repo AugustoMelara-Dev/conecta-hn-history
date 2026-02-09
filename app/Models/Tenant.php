@@ -12,7 +12,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Domain\Shared\Traits\HasDomainEvents;
-use App\Domain\TenantGovernance\Enums\TenantPlan; // IMPORT ENUM
+use App\Domain\TenantGovernance\Enums\BusinessType;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Scopes\LocationScope;
 use App\Traits\CanBeFavorited;
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\OpeningHours\OpeningHours;
 
 #[ObservedBy(\App\Observers\TenantObserver::class)]
 class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
@@ -75,7 +77,13 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'delivery_enabled',
         'pickup_enabled',
         'minimum_order',
-        // 'plan_type', 'subscription_status' handled via guarded or explicit logic
+        'business_type',
+        // Premium Profile Fields (unlocked for microsite customization)
+        'about',
+        'hero_image',
+        'latitude',
+        'longitude',
+        'cover_path',
     ];
 
     protected $guarded = [
@@ -108,6 +116,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'landing_page_data' => 'array',
         // TITANIUM UPGRADE: STRICT CASTING
         'plan_type' => TenantPlan::class,
+        'business_type' => BusinessType::class,
     ];
 
     protected $appends = [
@@ -367,23 +376,16 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public function getActivitylogOptions(): LogOptions
     {
+        // FIXED: Only log attributes that are always present during model lifecycle.
+        // Removed: status (doesn't exist), plan_expires_at, subscription_ends_at, 
+        // is_pro (computed accessor), and other nullable/conditional fields that
+        // cause MissingAttributeException during factory creation.
         return LogOptions::defaults()
             ->logOnly([
                 'name',
-                'status',
-                'user_id',
-                'is_pro',
                 'is_active',
-                'plan_expires_at',
                 'plan_type',
                 'subscription_status',
-                'subscription_ends_at',
-                'primary_color',
-                'brand_color',
-                'payment_methods',
-                'delivery_enabled',
-                'pickup_enabled',
-                'minimum_order',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
@@ -476,6 +478,67 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function openingHours(): HasMany
     {
         return $this->hasMany(OpeningHour::class)->orderBy('day_of_week');
+    }
+
+    /**
+     * Get a Spatie OpeningHours object from the DB records.
+     *
+     * Converts the OpeningHour models into a format consumable by
+     * spatie/opening-hours for availability calculations.
+     *
+     * @return OpeningHours
+     */
+    public function getOpeningHours(): OpeningHours
+    {
+        $hours = [];
+        $dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+        foreach ($this->openingHours as $openingHour) {
+            $dayName = $dayMap[$openingHour->day_of_week] ?? null;
+            if ($dayName === null) {
+                continue;
+            }
+
+            $open = $openingHour->getRawOpeningTime();
+            $close = $openingHour->getRawClosingTime();
+
+            if ($open && $close) {
+                // Convert H:i:s to H:i format for Spatie
+                $hours[$dayName][] = substr($open, 0, 5).'-'.substr($close, 0, 5);
+            }
+        }
+
+        // Fallback to default 9-5 M-F if no hours defined
+        if (empty($hours)) {
+            return OpeningHours::create([
+                'monday' => ['09:00-17:00'],
+                'tuesday' => ['09:00-17:00'],
+                'wednesday' => ['09:00-17:00'],
+                'thursday' => ['09:00-17:00'],
+                'friday' => ['09:00-17:00'],
+            ]);
+        }
+
+        return OpeningHours::create($hours);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SERVICE DOMAIN RELATIONSHIPS (Appointments System)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    public function services(): HasMany
+    {
+        return $this->hasMany(Service::class);
+    }
+
+    public function serviceProviders(): HasMany
+    {
+        return $this->hasMany(ServiceProvider::class);
+    }
+
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
     }
 
     public function getThemeConfigAttribute($value): array

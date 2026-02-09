@@ -16,16 +16,31 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('outbox_messages')) {
+            return;
+        }
+
         Schema::table('outbox_messages', function (Blueprint $table) {
             // Worker ID for atomic ownership assignment
-            $table->string('worker_id', 128)->nullable()->after('locked_at');
+            if (! Schema::hasColumn('outbox_messages', 'worker_id')) {
+                $table->string('worker_id', 128)->nullable();
+            }
 
             // Batch correlation ID for telemetric proof of ownership
-            $table->uuid('batch_correlation_id')->nullable()->after('worker_id');
-
-            // Index for fast worker-specific lookups
-            $table->index(['worker_id', 'status'], 'idx_outbox_worker_status');
+            if (! Schema::hasColumn('outbox_messages', 'batch_correlation_id')) {
+                $table->uuid('batch_correlation_id')->nullable();
+            }
         });
+
+        // Add index only if it doesn't exist
+        $indexExists = collect(Schema::getIndexes('outbox_messages'))
+            ->contains(fn($idx) => $idx['name'] === 'idx_outbox_worker_status');
+
+        if (! $indexExists) {
+            Schema::table('outbox_messages', function (Blueprint $table) {
+                $table->index(['worker_id', 'status'], 'idx_outbox_worker_status');
+            });
+        }
     }
 
     public function down(): void

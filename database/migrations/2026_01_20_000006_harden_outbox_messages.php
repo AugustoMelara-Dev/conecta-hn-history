@@ -8,10 +8,20 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('outbox_messages')) {
+            return;
+        }
+
         Schema::table('outbox_messages', function (Blueprint $table) {
-            $table->unsignedInteger('attempts')->default(0)->after('status');
-            $table->timestamp('failed_at')->nullable()->after('published_at');
-            $table->text('last_error')->nullable()->after('failed_at');
+            if (! Schema::hasColumn('outbox_messages', 'attempts')) {
+                $table->unsignedInteger('attempts')->default(0);
+            }
+            if (! Schema::hasColumn('outbox_messages', 'failed_at')) {
+                $table->timestamp('failed_at')->nullable();
+            }
+            if (! Schema::hasColumn('outbox_messages', 'last_error')) {
+                $table->text('last_error')->nullable();
+            }
         });
     }
 
