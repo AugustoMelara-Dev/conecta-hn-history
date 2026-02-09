@@ -26,7 +26,6 @@ class Payment extends Model
 
     protected $fillable = [
         'id',             // Explicitly fillable for UUIDs
-        'tenant_id',
         'amount',
         'proof_path',
         'bank',
@@ -38,7 +37,7 @@ class Payment extends Model
         'version',
     ];
 
-    protected $guarded = ['created_at', 'updated_at'];
+    protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
 
     protected $casts = [
         'amount' => 'decimal:2',

@@ -71,7 +71,8 @@ abstract class TenantAwarePolicy
      */
     protected function getUserTenantIds(User $user): array
     {
-        return $user->tenants()->pluck('id')->toArray();
+        // PERFORMANCE FIX (VC-AUDIT-005): Memoize to prevent N+1 queries during multiple policy checks
+        return $user->_memoized_tenant_ids ??= $user->tenants()->pluck('id')->toArray();
     }
 
     /**

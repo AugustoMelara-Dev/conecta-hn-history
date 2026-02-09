@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('domain_outbox')) {
+            return;
+        }
+
         Schema::create('domain_outbox', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('type');

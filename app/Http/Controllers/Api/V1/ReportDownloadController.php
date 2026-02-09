@@ -61,7 +61,7 @@ final class ReportDownloadController extends Controller
 
     protected function validateAndSanitizePath(string $path): ?string
     {
-        $path = urnDecode($path);
+        $path = urldecode($path);
 
         // Block traversal
         if (str_contains($path, '..') || str_contains($path, '\\..')) {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\TenantProfileResource\Pages;
+use App\Filament\App\Resources\TenantProfileResource\RelationManagers;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -188,6 +189,13 @@ class TenantProfileResource extends Resource
             ])
             // INTEGRITY: No creation or deletion allowed from here
             ->bulkActions([]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            RelationManagers\OpeningHoursRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

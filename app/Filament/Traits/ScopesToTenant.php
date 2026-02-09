@@ -6,7 +6,6 @@ namespace App\Filament\Traits;
 
 use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 /**
  * Trait ScopesToTenant
@@ -14,6 +13,9 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
  * ARCHITECTURAL GOAL: DRY & Security
  * Centralizes the "Defense in Depth" logic for ensuring resources are strictly
  * scoped to the current tenant, even if the global scope fails or is bypassed.
+ *
+ * VISIBILITY: Respects SoftDeletes - deleted records remain hidden in listings.
+ * Use withTrashed() in specific resource methods if restore functionality is needed.
  */
 trait ScopesToTenant
 {
@@ -23,13 +25,6 @@ trait ScopesToTenant
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
-
-        // Apply SoftDeletes if the model uses it
-        if (in_array(SoftDeletingScope::class, class_uses_recursive(static::getModel()))) {
-            $query->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-        }
 
         // STRICT TENANCY ENFORCEMENT
         $tenant = Filament::getTenant();

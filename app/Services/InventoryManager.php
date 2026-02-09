@@ -175,12 +175,18 @@ class InventoryManager
      *
      * ╔══════════════════════════════════════════════════════════════════════════╗
      * ║  INVENTORY RESTORATION: Reverse the stock consumption from an order     ║
+     * ║  PATCHED 2026-02-06: Added lockForUpdate() to prevent TOCTOU race       ║
      * ╚══════════════════════════════════════════════════════════════════════════╝
      *
      * RESPONSIBILITIES:
      * - Restore stock_quantity for each managed product
      * - Transition stock_status back to 'in_stock' if applicable
      * - Handle products that may have been deleted since order creation
+     *
+     * CONCURRENCY SAFETY:
+     * - DB::transaction ensures ACID compliance
+     * - lockForUpdate() prevents "Lost Update" race condition
+     * - Canonical ordering (sorted IDs) prevents deadlocks
      *
      * @param  \App\Models\Order  $order  The order to restore inventory from
      */
@@ -189,54 +195,118 @@ class InventoryManager
         // Load order items if not already loaded
         $order->loadMissing('items');
 
-        foreach ($order->items as $item) {
-            if (! $item->product_id) {
-                continue; // Custom item without product reference
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 1: EXTRACTION - Extract unique product IDs with canonical ordering
+        // ═══════════════════════════════════════════════════════════════════════
+        $productIds = $order->items
+            ->pluck('product_id')
+            ->filter()
+            ->unique()
+            ->sort()  // Canonical ordering prevents deadlocks
+            ->values()
+            ->toArray();
+
+        if (empty($productIds)) {
+            return; // No products to restock
+        }
+
+        // Build quantity map per product (aggregate same-product items)
+        $quantityMap = $order->items
+            ->filter(fn ($item) => ! empty($item->product_id))
+            ->groupBy('product_id')
+            ->map(fn ($items) => $items->sum('quantity'))
+            ->toArray();
+
+        // Telemetry buffer (RAM-only, zero disk I/O during locks)
+        $telemetryBuffer = [];
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 2: TRANSACTIONAL BATCH PROCESSING WITH PESSIMISTIC LOCKING
+        // ═══════════════════════════════════════════════════════════════════════
+        DB::transaction(function () use ($productIds, $quantityMap, $order, &$telemetryBuffer) {
+
+            // ═══════════════════════════════════════════════════════════════════
+            // SINGLE BATCH QUERY with PESSIMISTIC LOCK + TENANT ISOLATION
+            // ═══════════════════════════════════════════════════════════════════
+            // lockForUpdate() creates SELECT ... FOR UPDATE
+            // Holds exclusive row locks until transaction commits
+            // 
+            // CRITICAL: Use Eloquent query builder (not DB::table) to enable
+            // proper enum casting. DB::table + hydrate fails with backed enums.
+            
+            // VC-AUDIT-102: Prevent scope bypass if tenant_id is missing
+            if ($order->tenant_id === null) {
+                throw new \LogicException('Cannot restock inventory: Order tenant_id is missing.');
             }
 
-            // Fetch product with manual tenant isolation (Use DB Facade for Architecture Compliance)
-            $rawProduct = DB::table('products')
-                ->where('id', $item->product_id)
+            $lockedProducts = Product::query()
+                ->withoutGlobalScopes() // Bypass visibility scopes for admin operation
+                ->whereIn('id', $productIds)
                 ->where('tenant_id', $order->tenant_id)
                 ->whereNull('deleted_at')
-                ->first();
+                ->orderBy('id')  // Canonical order prevents deadlocks
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
 
-            if (! $rawProduct) {
-                continue; // Product was hard-deleted, skip
+            // ═══════════════════════════════════════════════════════════════════
+            // PHASE 3: IN-MEMORY COMPUTATION & ATOMIC WRITE MERGING
+            // ═══════════════════════════════════════════════════════════════════
+            foreach ($quantityMap as $productId => $restoreQty) {
+                // O(1) retrieval from in-memory map
+                $product = $lockedProducts->get($productId);
+
+                if (! $product) {
+                    continue; // Product was hard-deleted, skip gracefully
+                }
+
+                // Skip unmanaged stock products
+                if (! $product->manage_stock) {
+                    continue;
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // ATOMIC STATE COMPUTATION (under lock - no race possible)
+                // ═══════════════════════════════════════════════════════════════
+                $currentStock = (int) ($product->stock_quantity ?? 0);
+                $newStock = $currentStock + $restoreQty;
+
+                // ═══════════════════════════════════════════════════════════════
+                // ATOMIC WRITE MERGING: Single UPDATE per product
+                // ═══════════════════════════════════════════════════════════════
+                $updatePayload = ['stock_quantity' => $newStock];
+
+                // State recovery: If product was out_of_stock, restore to in_stock
+                if ($product->stock_status === StockStatus::OutOfStock && $newStock > 0) {
+                    $updatePayload['stock_status'] = StockStatus::InStock;
+                }
+
+                $product->update($updatePayload);
+
+                // ═══════════════════════════════════════════════════════════════
+                // BUFFER TELEMETRY (Zero disk I/O during lock)
+                // ═══════════════════════════════════════════════════════════════
+                $telemetryBuffer[] = [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'quantity_restored' => $restoreQty,
+                    'previous_stock' => $currentStock,
+                    'new_stock' => $newStock,
+                    'order_id' => $order->id,
+                ];
             }
 
-            $product = Product::hydrate([$rawProduct])->first();
-
-            // Only restore for managed stock products
-            if (! $product->manage_stock) {
-                continue;
-            }
-
-            // ═══════════════════════════════════════════════════════════════
-            // ATOMIC INCREMENT: Restore reserved stock
-            // ═══════════════════════════════════════════════════════════════
-            $product->increment('stock_quantity', $item->quantity);
-
-            // ═══════════════════════════════════════════════════════════════
-            // STATE RECOVERY: If product was out_of_stock, restore to in_stock
-            // ═══════════════════════════════════════════════════════════════
-            // Only transition if:
-            // 1. Current status is 'out_of_stock'
-            // 2. New stock quantity is > 0
-            $newStock = $product->fresh()->stock_quantity;
-
-            if ($product->stock_status === StockStatus::OutOfStock && $newStock > 0) {
-                $product->update(['stock_status' => StockStatus::InStock]);
-            }
-
-            \Illuminate\Support\Facades\Log::debug("Inventory restored for product #{$product->id}", [
-                'product_name' => $product->name,
-                'quantity_restored' => $item->quantity,
-                'new_stock' => $newStock,
-                'order_id' => $order->id,
-            ]);
-        }
+            // ═══════════════════════════════════════════════════════════════════
+            // TRANSACTIONAL SCOPE: afterCommit INSIDE transaction
+            // ═══════════════════════════════════════════════════════════════════
+            DB::afterCommit(function () use ($telemetryBuffer) {
+                foreach ($telemetryBuffer as $logEntry) {
+                    \Illuminate\Support\Facades\Log::debug('Inventory restored from cancelled order', $logEntry);
+                }
+            });
+        });
     }
+
 
     /**
      * Consume inventory for a restored order (Reverse of restock).
@@ -308,17 +378,16 @@ class InventoryManager
             // SINGLE BATCH QUERY with PESSIMISTIC LOCK + TENANT ISOLATION
             // ═══════════════════════════════════════════════════════════════
             // lockForUpdate() holds exclusive row locks until transaction ends.
-            // lockForUpdate() holds exclusive row locks until transaction ends.
-            // REFACTOR: Use DB Facade to avoid "Scope Evasion" architecture violation
-            $rawLockedProducts = DB::table('products')
+            // VC-AUDIT-104: Use Eloquent to ensure Enum casting (not DB::table+hydrate)
+            $lockedProducts = Product::query()
+                ->withoutGlobalScopes()
                 ->whereIn('id', $productIds)
                 ->where('tenant_id', $order->tenant_id)
                 ->whereNull('deleted_at')
                 ->orderBy('id')  // Canonical order prevents deadlocks
                 ->lockForUpdate()
-                ->get();
-
-            $lockedProducts = Product::hydrate($rawLockedProducts->toArray())->keyBy('id');
+                ->get()
+                ->keyBy('id');
 
             // ═══════════════════════════════════════════════════════════════
             // PHASE 3: IN-MEMORY COMPUTATION & ATOMIC WRITE MERGING

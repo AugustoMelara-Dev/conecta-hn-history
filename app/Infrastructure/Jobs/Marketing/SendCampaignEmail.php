@@ -45,8 +45,13 @@ final class SendCampaignEmail implements ShouldBeUnique, ShouldQueue
         // Note: Middleware handles DB connection, but we just verify we have IDs.
 
         // 2. Hydration with Fail Fast/Silent Pattern
-        $campaign = Campaign::find($this->campaignId);
-        $user = User::find($this->userId);
+        // SECURITY: Verify resources belong to this tenant (VC-AUDIT-004 fix)
+        $campaign = Campaign::where('id', $this->campaignId)
+            ->where('tenant_id', $this->tenantId)
+            ->first();
+        $user = User::where('id', $this->userId)
+            ->where('tenant_id', $this->tenantId)
+            ->first();
 
         // 3. Guard Clause: Fail Silently if resources are gone (prevent retry spirals)
         if (! $campaign || ! $user) {

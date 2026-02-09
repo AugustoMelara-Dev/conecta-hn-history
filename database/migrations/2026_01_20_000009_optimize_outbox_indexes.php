@@ -11,14 +11,23 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (! Schema::hasTable('outbox_messages')) {
+            return;
+        }
+
+        // Check if index already exists
+        $indexExists = collect(Schema::getIndexes('outbox_messages'))
+            ->contains(fn($idx) => $idx['name'] === 'idx_outbox_claim_optimization');
+
+        if ($indexExists) {
+            return;
+        }
+
         // LEVEL 69: GAP LOCK NEUTRALIZATION
         // We use raw SQL to enforce specific index algorithm and locking strategy if supported by the driver.
         // The composite index is strictly ordered for the "Pivot" query in claimBatch.
 
         Schema::table('outbox_messages', function (Blueprint $table) {
-            // Drop existing index if it conflicts or is redundant (optional, assuming clean state or defensive)
-            // $table->dropIndex(['partition_key', 'sequence_number']);
-
             // Create the "Pivot Index"
             // 1. status: Equality check ('PENDING')
             // 2. partition_key: Equality check (IN list)

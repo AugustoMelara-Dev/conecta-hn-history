@@ -23,7 +23,7 @@ final class EloquentOrderReader implements OrderReader
      * {@inheritdoc}
      */
     public function search(
-        int $tenantId,
+        int|string $tenantId,
         ?string $status = null,
         int $perPage = 20
     ): LengthAwarePaginator {
@@ -38,9 +38,10 @@ final class EloquentOrderReader implements OrderReader
     /**
      * {@inheritdoc}
      */
-    public function find(int $orderId): ?object
+    public function find(int|string $tenantId, int $orderId): ?object
     {
         return Order::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)  // ✅ IDOR FIX: Tenant Isolation
             ->with(['items', 'tenant'])
             ->find($orderId);
     }
@@ -48,7 +49,7 @@ final class EloquentOrderReader implements OrderReader
     /**
      * {@inheritdoc}
      */
-    public function findByStatus(int $tenantId, string $status, int $limit = 50): iterable
+    public function findByStatus(int|string $tenantId, string $status, int $limit = 50): iterable
     {
         return Order::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)

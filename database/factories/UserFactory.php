@@ -59,7 +59,10 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             'role' => UserRole::CUSTOMER,
-            'tenant_id' => Tenant::factory(), // FK requires valid tenant
+            // CRITICAL: tenant_id is NULL to avoid Tenant::factory() recursion
+            // which triggers LogsActivity and causes MissingAttributeException.
+            // Tests should use forTenant() state method or create Tenant separately.
+            'tenant_id' => null,
         ];
     }
 

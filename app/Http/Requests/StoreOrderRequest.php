@@ -42,7 +42,7 @@ final class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tenant_id' => 'required|exists:tenants,id',
+            // NOTE: tenant_id REMOVED - Must be derived from route/context, never user input
             'customer_name' => 'required|string|max:255',
             'customer_phone' => 'required|string|max:20',
             'customer_email' => 'nullable|email|max:255',
@@ -67,8 +67,6 @@ final class StoreOrderRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'tenant_id.required' => 'El ID del negocio es requerido.',
-            'tenant_id.exists' => 'El negocio especificado no existe.',
             'customer_name.required' => 'El nombre del cliente es requerido.',
             'customer_phone.required' => 'El teléfono del cliente es requerido.',
             'items.required' => 'El pedido debe contener al menos un producto.',
@@ -99,9 +97,13 @@ final class StoreOrderRequest extends FormRequest
         // 1. Get validated data (clean, type-safe)
         $validated = $this->validated();
 
-        // 2. Map HTTP Input (snake_case) to Domain Command (camelCase)
+        // 2. Get tenant from route binding (CONTEXT OVER INPUT)
+        $tenant = $this->route('tenant');
+        $tenantId = $tenant instanceof \App\Models\Tenant ? $tenant->id : (int) $tenant;
+
+        // 3. Map HTTP Input (snake_case) to Domain Command (camelCase)
         return new \App\Application\Sales\Commands\CreateOrderCommand(
-            tenantId: (int) $validated['tenant_id'],
+            tenantId: $tenantId,
             customerId: isset($validated['customer_id']) ? (int) $validated['customer_id'] : null, // Handle conditional ID
             customerName: $validated['customer_name'] ?? null,
             customerEmail: $validated['customer_email'] ?? null,

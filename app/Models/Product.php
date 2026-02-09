@@ -342,7 +342,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      */
     public function getIsInStockAttribute(): bool
     {
-        return $this->stock_status === StockStatus::IN_STOCK;
+        return $this->stock_status === StockStatus::InStock;
     }
 
     /**
@@ -407,7 +407,14 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Get paginated products for admin view (ignoring visibility).
-     * Uses DB Facade to comply with Architecture Rules prohibiting withoutGlobalScopes.
+     *
+     * ⚠️ VC-AUDIT-105: SCOPE BYPASS WARNING
+     * This method uses DB::table() which bypasses:
+     * - TenantScope (explicit tenant_id filter added manually)
+     * - PublicVisibilityScope (intentional for admin)
+     * - SoftDeletes (explicit deleted_at filter added manually)
+     *
+     * DO NOT use in public-facing code.
      */
     public static function getAdminList(int $tenantId, string $search = '')
     {
@@ -429,6 +436,12 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Count all products for a tenant (ignoring visibility).
+     *
+     * ⚠️ VC-AUDIT-105: SCOPE BYPASS WARNING
+     * This method uses DB::table() which bypasses Eloquent scopes.
+     * Manual tenant_id and deleted_at filters are applied.
+     *
+     * DO NOT use in public-facing code.
      */
     public static function countAllForTenant(int $tenantId): int
     {
@@ -440,6 +453,12 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Find a product within a tenant (ignoring scopes).
+     *
+     * ⚠️ VC-AUDIT-105: SCOPE BYPASS WARNING
+     * This method uses DB::table() which bypasses Eloquent scopes.
+     * Manual tenant_id and deleted_at filters are applied.
+     *
+     * DO NOT use in public-facing code.
      */
     public static function findInTenant(int $id, int $tenantId): ?self
     {
@@ -454,6 +473,12 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 
     /**
      * Search products for POS (lightweight).
+     *
+     * ⚠️ VC-AUDIT-105: SCOPE BYPASS WARNING
+     * This method uses DB::table() which bypasses Eloquent scopes.
+     * Visibility is enforced via explicit is_visible filter.
+     *
+     * Safe for public use (applies visibility filter).
      */
     public static function searchForPos(int $tenantId, string $term)
     {

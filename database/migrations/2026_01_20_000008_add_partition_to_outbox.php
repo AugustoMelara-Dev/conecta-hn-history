@@ -16,24 +16,42 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('outbox_messages')) {
+            return;
+        }
+
         Schema::table('outbox_messages', function (Blueprint $table) {
             // LEVEL 44: Aggregate Affinity Columns
-            $table->string('aggregate_id', 36)->nullable()->after('type')
-                ->comment('Business entity ID for sequence grouping');
+            if (! Schema::hasColumn('outbox_messages', 'aggregate_id')) {
+                $table->string('aggregate_id', 36)->nullable()
+                    ->comment('Business entity ID for sequence grouping');
+            }
 
-            $table->unsignedSmallInteger('partition_key')->default(0)->after('aggregate_id')
-                ->comment('Deterministic partition for worker sharding (crc32 % N)');
+            if (! Schema::hasColumn('outbox_messages', 'partition_key')) {
+                $table->unsignedSmallInteger('partition_key')->default(0)
+                    ->comment('Deterministic partition for worker sharding (crc32 % N)');
+            }
 
-            $table->unsignedBigInteger('sequence_number')->default(0)->after('partition_key')
-                ->comment('Monotonic sequence per aggregate for ordering');
-
-            // Composite index for partition-aware queries and Level 54 Sequence Barrier
-            // Optimized for: WHERE partition_key=? AND status=? ORDER BY sequence_number
-            $table->index(['partition_key', 'status', 'sequence_number'], 'idx_outbox_partition_sequence');
-
-            // Index for aggregate sequence verification
-            $table->index(['aggregate_id', 'status'], 'idx_outbox_aggregate_status');
+            if (! Schema::hasColumn('outbox_messages', 'sequence_number')) {
+                $table->unsignedBigInteger('sequence_number')->default(0)
+                    ->comment('Monotonic sequence per aggregate for ordering');
+            }
         });
+
+        // Add indexes only if they don't exist
+        $indexes = collect(Schema::getIndexes('outbox_messages'))->pluck('name');
+
+        if (! $indexes->contains('idx_outbox_partition_sequence')) {
+            Schema::table('outbox_messages', function (Blueprint $table) {
+                $table->index(['partition_key', 'status', 'sequence_number'], 'idx_outbox_partition_sequence');
+            });
+        }
+
+        if (! $indexes->contains('idx_outbox_aggregate_status')) {
+            Schema::table('outbox_messages', function (Blueprint $table) {
+                $table->index(['aggregate_id', 'status'], 'idx_outbox_aggregate_status');
+            });
+        }
     }
 
     public function down(): void

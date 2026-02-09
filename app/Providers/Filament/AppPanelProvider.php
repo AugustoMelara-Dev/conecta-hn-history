@@ -148,6 +148,8 @@ class AppPanelProvider extends PanelProvider
             // ═══════════════════════════════════════════════════════════════
             ->widgets([
                 \App\Filament\App\Widgets\TenantStatsWidget::class, // Nuevo: Bento Grid con Growth Hacking
+                \App\Filament\App\Widgets\RevenueChart::class, // 30-day revenue trend
+                \App\Filament\App\Widgets\OrdersChart::class, // 7-day appointment volume
                 \App\Filament\App\Widgets\ProductLimitWidget::class,
                 \App\Filament\App\Widgets\AccountCompletenessWidget::class,
                 \App\Filament\App\Widgets\QuickActionsWidget::class,

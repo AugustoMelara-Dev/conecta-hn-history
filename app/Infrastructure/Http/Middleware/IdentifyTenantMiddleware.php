@@ -56,18 +56,9 @@ final class IdentifyTenantMiddleware
         if ($tenantId) {
             $this->context->setTenant((int) $tenantId);
         } else {
-            // Strict Mode: If this middleware is applied, we expect a Tenant.
-            // If it's a public landing page (no tenant), this middleware should NOT be applied,
-            // or we need a way to say "No Tenant Context" (Global/System Context).
-            // However, the prompt says: "Nunca permitas que la petición continúe sin contexto."
-            // Assuming this middleware is for Tenant-Aware routes group.
-
-            // Allow bypassing for specific "central" routes if needed,
-            // but normally we abort.
-            // abort(404, 'Tenant not found.');
-
-            // For now, if we can't resolve, we don't set it.
-            // Accessing TenantScope-protected models will throw RuntimeException as desired.
+            // STRICT MODE: Tenant-aware routes MUST have resolved context.
+            // Public routes (landing page, directory) should NOT use this middleware.
+            abort(404, 'Tenant not found.');
         }
 
         return $next($request);

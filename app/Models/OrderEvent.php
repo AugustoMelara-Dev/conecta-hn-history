@@ -34,9 +34,10 @@ class OrderEvent extends Model
     public $timestamps = false;
 
     /**
-     * Allow mass assignment for factory method.
+     * Guard critical audit fields from mass assignment.
+     * Protects: id (immutability), occurred_at (timestamp integrity).
      */
-    protected $guarded = [];
+    protected $guarded = ['id', 'occurred_at'];
 
     /**
      * Attribute casting for type safety.
