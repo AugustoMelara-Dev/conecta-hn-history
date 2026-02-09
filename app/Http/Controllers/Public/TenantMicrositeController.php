@@ -31,13 +31,13 @@ final class TenantMicrositeController extends Controller
         private readonly TenantVisibilityService $visibilityService
     ) {}
 
-    public function show(Request $request, string $slug): Response
+    public function show(Request $request): Response
     {
-        // 1. Resolve Tenant (Optimized Query)
-        $tenant = $this->repository->findBySlug($slug);
+        // 1. Resolve Tenant from Container (set by IdentifyTenantBySubdomain middleware)
+        $tenant = app('current_tenant');
 
         if (! $tenant) {
-            abort(404);
+            abort(404, 'Business not found');
         }
 
         // 2. Gatekeeper Logic (Domain Service)

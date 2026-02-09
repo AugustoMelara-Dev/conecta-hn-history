@@ -28,7 +28,7 @@ final class WelcomeController extends Controller
      */
     public function __invoke(): Response
     {
-        $data = Cache::remember('homepage_data_v1', 3600, function () {
+        $data = Cache::remember("v".config('app.version')."_homepage_data", 3600, function () {
             return [
                 // ═══════════════════════════════════════════════════════════
                 // CATEGORIES: For navigation pills (sorted by sort_order)
