@@ -301,6 +301,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Repositories\Analytics\EloquentInteractionRepository::class
         );
 
+        $this->app->bind(
+            \App\Domain\Interactions\Repositories\InteractionRepositoryInterface::class,
+            \App\Infrastructure\Interactions\Persistence\EloquentInteractionRepository::class
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
         // SALES DOMAIN: Lead Repository
         // ═══════════════════════════════════════════════════════════════════════

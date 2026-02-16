@@ -155,6 +155,8 @@ Route::prefix('v1')->group(function () {
     // ═══════════════════════════════════════════════════════════════════════════
     Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('ai')->group(function () {
         Route::post('/generate', [\App\Http\Controllers\Api\V1\AiController::class, 'generate']);
+        Route::post('/optimize-profile', [\App\Http\Controllers\Api\V1\AiOptimizationController::class, 'optimizeProfile'])
+            ->name('api.ai.optimize-profile');
     });
 });
 

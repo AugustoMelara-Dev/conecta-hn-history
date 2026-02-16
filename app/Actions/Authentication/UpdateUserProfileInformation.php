@@ -2,23 +2,26 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Fortify;
+namespace App\Actions\Authentication;
 
 use App\Application\Auth\Commands\UpdateUserProfileCommand;
 use App\Application\Shared\Contracts\CommandBusInterface;
+use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
 
 /**
- * UpdateUserProfileInformation - Infrastructure Adapter for Fortify
+ * UpdateUserProfileInformation - Infrastructure Adapter for Authentication
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  GATEWAY ONLY: Validates HTTP input and delegates to Application Layer. ║
  * ║  PURE: No Eloquent logic, no side-effects here.                         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * Moved from Fortify/ to Authentication/ for Screaming Architecture compliance.
  */
-final class UpdateUserProfileInformation implements UpdatesUserProfileInformation
+final readonly class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
@@ -38,7 +41,7 @@ final class UpdateUserProfileInformation implements UpdatesUserProfileInformatio
                 'required',
                 'email',
                 'max:255',
-                Rule::unique('users')->ignore($user->id),
+                Rule::unique(User::class)->ignore($user->id),
             ],
             'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:1024'],
         ])->validateWithBag('updateProfileInformation');

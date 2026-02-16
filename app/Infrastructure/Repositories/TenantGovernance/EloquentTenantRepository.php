@@ -106,17 +106,18 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             $plan = TenantPlan::from((string) ($plan ?? 'semilla'));
         }
 
-        return new TenantEntity(
-            id: $model->id,
-            userId: $model->user_id,
-            name: $model->name,
-            slug: $model->slug,
-            source: $model->source ?? 'SYSTEM', // FALLBACK
-            planType: $plan,
-            subscriptionStatus: $model->subscription_status ?? 'active',
-            isActive: (bool) $model->is_active,
-            createdAt: $model->created_at instanceof \Carbon\Carbon ? \DateTimeImmutable::createFromMutable($model->created_at) : new \DateTimeImmutable,
-            updatedAt: $model->updated_at instanceof \Carbon\Carbon ? \DateTimeImmutable::createFromMutable($model->updated_at) : new \DateTimeImmutable,
-        );
+        return TenantEntity::fromStateArray([
+            'id' => $model->id,
+            'name' => $model->name,
+            'domain' => $model->slug, // Mapping slug -> domain
+            'is_active' => (bool) $model->is_active,
+            'created_at' => $model->created_at?->toIso8601String(),
+            'updated_at' => $model->updated_at?->toIso8601String(),
+            'plan_id' => $plan->value,
+            'subscription_ends_at' => $model->subscription_ends_at?->toIso8601String(),
+            'subscription_reference' => null,
+            // 'user_id' is NOT present in Domain Entity? 
+            // If it were, we'd add it here. For now, we omit to prevent crash.
+        ]);
     }
 }

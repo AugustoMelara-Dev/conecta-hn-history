@@ -19,6 +19,8 @@ final readonly class RegisterUserCommand implements IdempotentCommandInterface
         public string $password,
         public ?string $tenantName = null,
         public ?string $slug = null,
+        public ?string $tenantId = null,
+        public ?string $role = null, // Defaults handled in Handler/Action
 
         /**
          * Origin of the registration.

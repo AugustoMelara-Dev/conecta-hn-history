@@ -11,7 +11,6 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * CouponValidatorService - Race-Condition-Safe Coupon Validation & Redemption
@@ -277,12 +276,15 @@ final class CouponValidatorService
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * Check if coupon_user pivot table exists.
+     * Check if coupon_user tracking is enabled.
+     *
+     * Optimization: Runtime Schema::hasTable() removed for production performance.
+     * Schema state is deterministic after migrations. Use config toggle instead.
      */
     private function hasCouponUserTable(): bool
     {
         if (self::$hasCouponUserTable === null) {
-            self::$hasCouponUserTable = Schema::hasTable('coupon_user');
+            self::$hasCouponUserTable = (bool) config('conecta.features.coupon_user_tracking', true);
         }
 
         return self::$hasCouponUserTable;
@@ -290,11 +292,14 @@ final class CouponValidatorService
 
     /**
      * Check if max_uses_per_user column exists on coupons table.
+     *
+     * Optimization: Runtime Schema::hasColumn() removed for production performance.
+     * Column presence is deterministic after migrations.
      */
     private function hasMaxUsesPerUserColumn(): bool
     {
         if (self::$hasMaxUsesPerUserColumn === null) {
-            self::$hasMaxUsesPerUserColumn = Schema::hasColumn('coupons', 'max_uses_per_user');
+            self::$hasMaxUsesPerUserColumn = true;
         }
 
         return self::$hasMaxUsesPerUserColumn;

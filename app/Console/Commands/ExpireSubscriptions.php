@@ -103,7 +103,7 @@ class ExpireSubscriptions extends Command
             $nextDay = $targetDate->copy()->endOfDay();
 
             $tenants = Tenant::where('is_pro', true)
-                ->whereBetween('plan_expires_at', [$targetDate, $nextDay])
+                ->whereBetween('subscription_ends_at', [$targetDate, $nextDay])
                 ->with('user')
                 ->get();
 
@@ -138,7 +138,7 @@ class ExpireSubscriptions extends Command
         $cutoffDate = now()->subDays($graceDays);
 
         $expiredTenants = Tenant::where('is_pro', true)
-            ->where('plan_expires_at', '<', $cutoffDate)
+            ->where('subscription_ends_at', '<', $cutoffDate)
             ->with('user')
             ->get();
 
@@ -155,7 +155,7 @@ class ExpireSubscriptions extends Command
         $errors = 0;
 
         foreach ($expiredTenants as $tenant) {
-            $expiredDaysAgo = $tenant->plan_expires_at->diffInDays(now());
+            $expiredDaysAgo = $tenant->subscription_ends_at->diffInDays(now());
 
             $this->warn("  [{$tenant->id}] {$tenant->name}");
             $this->line("      Expiro hace: {$expiredDaysAgo} dias");

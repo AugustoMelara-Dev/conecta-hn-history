@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
-use App\Enums\UserRole;
+use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
 use App\Services\TenantCacheManager;
 use Illuminate\Support\Facades\Log;

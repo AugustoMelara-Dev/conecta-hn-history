@@ -161,6 +161,26 @@ class User extends Authenticatable implements MustVerifyEmail
         $this->banned_at = null;
     }
 
+    /**
+     * Domain Action: Update Password
+     *
+     * Encapsulates the password persistence and remember_token rotation.
+     * Accepts a PRE-HASHED password string. Hashing policy is owned
+     * by the Application Layer, NOT this model.
+     *
+     * @param string $hashedPassword The already-hashed password string.
+     *
+     * @see App\Application\Identity\Handlers\RegisterUserHandler
+     * @see App\Domain\Shared\PasswordHasherInterface
+     */
+    public function updatePassword(string $hashedPassword): void
+    {
+        $this->forceFill([
+            'password' => $hashedPassword,
+            'remember_token' => \Illuminate\Support\Str::random(60),
+        ])->save();
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // TENANCY RELATIONSHIPS
     // ═══════════════════════════════════════════════════════════════════════

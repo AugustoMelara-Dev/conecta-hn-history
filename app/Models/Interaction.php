@@ -43,15 +43,41 @@ class Interaction extends Model
      * - Standard actions: whatsapp, call, location, cart, share
      * - Conversion events: conversion (generic), purchase (specific)
      */
+    public const TYPE_WHATSAPP_CLICK = 'whatsapp_click';
+    public const TYPE_CALL_CLICK = 'call';
+    public const TYPE_LOCATION_VIEW = 'location_view';
+    public const TYPE_CART_ADD = 'cart_add';
+    public const TYPE_SOCIAL_SHARE = 'social_share';
+    public const TYPE_CONVERSION = 'conversion';
+    public const TYPE_PURCHASE = 'purchase';
+
+    /**
+     * Available interaction types.
+     *
+     * IMPORTANT: Keep in sync with AnalyticsController event types.
+     * - Standard actions: whatsapp, call, location, cart, share
+     * - Conversion events: conversion (generic), purchase (specific)
+     */
     public const TYPES = [
-        'whatsapp_click' => 'WhatsApp Click',
-        'call' => 'Phone Call',
-        'location_view' => 'Location View',
-        'cart_add' => 'Add to Cart',
-        'social_share' => 'Social Share',
-        'conversion' => 'Conversion',
-        'purchase' => 'Purchase',
+        self::TYPE_WHATSAPP_CLICK => 'WhatsApp Click',
+        self::TYPE_CALL_CLICK => 'Phone Call',
+        self::TYPE_LOCATION_VIEW => 'Location View',
+        self::TYPE_CART_ADD => 'Add to Cart',
+        self::TYPE_SOCIAL_SHARE => 'Social Share',
+        self::TYPE_CONVERSION => 'Conversion',
+        self::TYPE_PURCHASE => 'Purchase',
     ];
+
+    /**
+     * Determine if the interaction represents high purchase intent.
+     */
+    public function isHighIntent(): bool
+    {
+        return in_array($this->type, [
+            self::TYPE_WHATSAPP_CLICK,
+            self::TYPE_CALL_CLICK,
+        ], true);
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // RELATIONSHIPS

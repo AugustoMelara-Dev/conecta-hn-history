@@ -2,23 +2,26 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Fortify;
+namespace App\Actions\Authentication;
 
 use App\Application\Auth\Commands\UpdateUserPasswordCommand;
 use App\Application\Shared\Contracts\CommandBusInterface;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
 
 /**
- * UpdateUserPassword - Infrastructure Adapter for Fortify
+ * UpdateUserPassword - Infrastructure Adapter for Authentication
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  GATEWAY ONLY: Validates HTTP input and delegates to Application Layer. ║
  * ║  PURE: No Eloquent logic, no hashing here.                              ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * Moved from Fortify/ to Authentication/ for Screaming Architecture compliance.
  */
-final class UpdateUserPassword implements UpdatesUserPasswords
+final readonly class UpdateUserPassword implements UpdatesUserPasswords
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
@@ -46,7 +49,7 @@ final class UpdateUserPassword implements UpdatesUserPasswords
                 currentPassword: $input['current_password'],
                 newPassword: $input['password'],
                 refreshRememberToken: true,
-                idempotencyKey: (string) \Illuminate\Support\Str::uuid(),
+                idempotencyKey: (string) Str::uuid(),
             )
         );
     }

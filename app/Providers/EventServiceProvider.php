@@ -41,6 +41,11 @@ class EventServiceProvider extends ServiceProvider
             \App\Listeners\SendAppointmentConfirmation::class,
         ],
 
+        // INTERACTIONS DOMAIN
+        \App\Domain\Interactions\Events\InteractionRecorded::class => [
+            \App\Listeners\Interactions\ProcessInteractionSideEffects::class,
+        ],
+
         /**
          * @deprecated LEGACY ALIAS SUPPORT (V1 -> V2 MIGRATION)
          * Policy: Monitor application logs for event tag 'auth.user_profile_updated'.
