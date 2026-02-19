@@ -25,7 +25,8 @@ Route::prefix('v1')->group(function () {
     // ═══════════════════════════════════════════════════════════════════════════
     Route::get('/user', function (Request $request) {
         return $request->user();
-    })->middleware(['auth:sanctum', 'throttle:api']);
+    })->middleware(['auth:sanctum', 'throttle:api'])
+      ->name('api.users.show'); // Maps to /user (profile) for now, ignoring parameter if passed, or we can add specific route
 
     // ═══════════════════════════════════════════════════════════════════════════
     // AUTHENTICATION: OTP Routes

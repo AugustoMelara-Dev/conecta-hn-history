@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Application\Billing\Decorators;
 
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Billing\Commands\ReportPaymentCommand;
 use App\Application\Billing\Handlers\ReportPaymentHandlerInterface;
 use App\Application\Billing\Results\ReportPaymentResult;
-use App\Application\Common\Contracts\RateLimiterInterface;
+use App\Application\Shared\Common\Contracts\RateLimiterInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -51,7 +52,7 @@ final readonly class RateLimitedReportPaymentHandler implements ReportPaymentHan
             // CIRCUIT BREAKER: Fail Open (Level 33)
             // If Redis is down, we MUST NOT block payment reporting (Revenue).
             // We log the failure as critical but allow the request to pass.
-            \Illuminate\Support\Facades\Log::critical('Rate Limiter FAILURE in ReportPayment (Fail-Open active): '.$e->getMessage());
+            \Illuminate\Support\Facades->logger->critical('Rate Limiter FAILURE in ReportPayment (Fail-Open active): '.$e->getMessage());
         }
 
         return $this->inner->handle($command);

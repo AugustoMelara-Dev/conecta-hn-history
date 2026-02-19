@@ -1,0 +1,105 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "UpdateTenantBrandingCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "integer"
+        },
+        "logo": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "banner": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "name": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "description": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "about": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "phone": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "whatsapp": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "address": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "website": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "instagram": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "facebook": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "tiktok": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "primaryColor": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        }
+    },
+    "required": [
+        "tenantId"
+    ],
+    "additionalProperties": false
+}

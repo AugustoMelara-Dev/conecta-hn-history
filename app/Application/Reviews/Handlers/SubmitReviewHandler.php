@@ -6,10 +6,11 @@ namespace App\Application\Reviews\Handlers;
 
 use App\Application\Reviews\Commands\SubmitReviewCommand;
 use App\Application\Reviews\Results\SubmitReviewResult;
+use App\Application\Shared\Contracts\DataScrubberInterface;
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Reviews\Repositories\ReviewRepositoryInterface;
-use App\Infrastructure\Bus\TransactionalEventDispatcher;
-use Illuminate\Support\Facades\Log;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
 
 /**
  * SubmitReviewHandler - Minimalist Command Handler for Review Submission
@@ -23,13 +24,15 @@ use Illuminate\Support\Facades\Log;
  * ║  - STRICT RETURN: SubmitReviewResult DTO (no object/array leak)         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class SubmitReviewHandler
+final readonly class SubmitReviewHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private readonly ReviewRepositoryInterface $reviewRepository,
-        private readonly TransactionalEventDispatcher $eventDispatcher,
+        private ReviewRepositoryInterface $reviewRepository,
+        private EventDispatcherInterface $eventDispatcher,
+        private LoggerInterface $logger,
+        private DataScrubberInterface $scrubber,
     ) {}
 
     /**
@@ -64,12 +67,12 @@ final class SubmitReviewHandler
         ));
 
         // 3. Audit Log (PII Scrubbed)
-        Log::info('Review submitted successfully', $this->sanitizePayload([
+        $this->logger->info('Review submitted successfully', $this->sanitizePayload([
             'review_id' => $review->id,
             'product_id' => $command->productId,
             'tenant_id' => $command->tenantId,
             'rating' => $command->rating,
-        ]));
+        ], $this->scrubber));
 
         return SubmitReviewResult::fromEntity($review);
     }

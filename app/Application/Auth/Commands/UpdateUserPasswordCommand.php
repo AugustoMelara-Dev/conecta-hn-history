@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Commands;
 
+use App\Application\Shared\Contracts\SensitiveDataInterface;
+
 /**
  * UpdateUserPasswordCommand - Secure Password Change Contract
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  IDOR PROTECTION: Carries requestingTenantId for ownership validation.  ║
- * ║  SECURITY: Plain password is hashed in Handler, never stored in logs.   ║
+ * ║  SEC-01 FIX: Passwords scrubbed from stack traces via SensitiveParameter║
  * ║  IMMUTABLE: final readonly prevents tampering after dispatch.           ║
+ * ║  P1-REDACT: SensitiveDataInterface for Outbox/log sanitization.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class UpdateUserPasswordCommand implements \App\Application\Common\Contracts\HashableCommandInterface
+final readonly class UpdateUserPasswordCommand implements \App\Application\Shared\Common\Contracts\HashableCommandInterface, SensitiveDataInterface
 {
     public function __construct(
         /** User ID to update (UUID string) */
@@ -26,11 +29,11 @@ final readonly class UpdateUserPasswordCommand implements \App\Application\Commo
          */
         public string $requestingTenantId,
 
-        /** Current plain text password (for verification) */
-        public string $currentPassword,
+        /** Current password for verification (scrubbed from stack traces) */
+        #[\SensitiveParameter] public string $currentPassword,
 
-        /** New plain text password (will be hashed) */
-        public string $newPassword,
+        /** New password (scrubbed from stack traces, hashed by Handler) */
+        #[\SensitiveParameter] public string $newPassword,
 
         /** Whether to refresh remember token (forces re-login on other devices) */
         public bool $refreshRememberToken,
@@ -51,12 +54,13 @@ final readonly class UpdateUserPasswordCommand implements \App\Application\Commo
 
     public function getCommandHash(): string
     {
-        return hash('sha256', json_encode([
-            'userId' => $this->userId,
-            'requestingTenantId' => $this->requestingTenantId,
-            'newPasswordHash' => md5($this->newPassword), // Avoid logging plain password in hash if debugged
-            // We include md5 of new password to discriminate specific change attempts
-            // MD5 is fast and "good enough" for identifying if payload changed, we don't store this hash as password.
-        ]));
+        // SEC-01 FIX: No password derivatives in command hash.
+        // Discriminate by user + idempotency key only.
+        return hash('xxh128', 'update_pwd_' . $this->userId . '_' . $this->idempotencyKey);
+    }
+
+    public function getSensitiveProperties(): array
+    {
+        return ['currentPassword', 'newPassword'];
     }
 }

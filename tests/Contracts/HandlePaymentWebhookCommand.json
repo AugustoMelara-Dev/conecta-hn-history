@@ -1,0 +1,33 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "HandlePaymentWebhookCommand",
+    "type": "object",
+    "properties": {
+        "provider": {
+            "type": "string"
+        },
+        "externalEventId": {
+            "type": "string"
+        },
+        "eventType": {
+            "type": "string"
+        },
+        "payload": {
+            "type": "array"
+        },
+        "tenantId": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "default": null
+        }
+    },
+    "required": [
+        "provider",
+        "externalEventId",
+        "eventType",
+        "payload"
+    ],
+    "additionalProperties": false
+}

@@ -8,7 +8,7 @@ use App\Models\Interaction;
 
 interface InteractionRepositoryInterface
 {
-    public function create(array $data, int $tenantId): Interaction;
+    public function create(array $data, string $tenantId): Interaction;
 
-    public function exists(int $tenantId, array $criteria): bool;
+    public function exists(string $tenantId, array $criteria): bool;
 }

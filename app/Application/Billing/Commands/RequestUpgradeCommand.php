@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Billing\Commands;
 
-use App\Domain\Shared\Contracts\IdempotentCommandInterface;
+use App\Application\Shared\Contracts\IdempotentCommandInterface;
 
 final readonly class RequestUpgradeCommand implements IdempotentCommandInterface
 {
@@ -13,7 +13,8 @@ final readonly class RequestUpgradeCommand implements IdempotentCommandInterface
         public string $newPlanIdentifier,
         public string $currency,
         public string $idempotencyKey, // Used for Middleware (Redis)
-        public string $clientIdempotencyKey // Used for Deterministic Resolution (MySQL) - Usually same source
+        public string $clientIdempotencyKey, // Used for Deterministic Resolution (MySQL) - Usually same source
+        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string

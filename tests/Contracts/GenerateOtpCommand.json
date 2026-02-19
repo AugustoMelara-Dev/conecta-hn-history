@@ -1,0 +1,34 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "GenerateOtpCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "identifier": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "ipAddress": {
+            "type": "string"
+        },
+        "userAgent": {
+            "type": "string"
+        },
+        "idempotencyKey": {
+            "type": "string",
+            "default": ""
+        }
+    },
+    "required": [
+        "tenantId",
+        "identifier",
+        "type",
+        "ipAddress",
+        "userAgent"
+    ],
+    "additionalProperties": false
+}

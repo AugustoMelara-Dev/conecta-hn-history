@@ -58,5 +58,8 @@ final readonly class UpdateTenantBrandingCommand
 
         /** Primary brand color (hex) */
         public ?string $primaryColor = null,
+
+        /** Schema Version for Upcasting */
+        public int $schemaVersion = 1,
     ) {}
 }

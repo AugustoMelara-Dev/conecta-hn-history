@@ -9,7 +9,7 @@ use App\Models\Interaction;
 
 final readonly class EloquentInteractionRepository implements InteractionRepositoryInterface
 {
-    public function create(array $data, int $tenantId): Interaction
+    public function create(array $data, string $tenantId): Interaction
     {
         // Enforce strict tenant isolation
         return Interaction::query()->create([
@@ -18,7 +18,7 @@ final readonly class EloquentInteractionRepository implements InteractionReposit
         ]);
     }
 
-    public function exists(int $tenantId, array $criteria): bool
+    public function exists(string $tenantId, array $criteria): bool
     {
         // Enforce strict tenant isolation
         $query = Interaction::query()->where('tenant_id', $tenantId);

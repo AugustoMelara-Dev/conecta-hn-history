@@ -1,0 +1,18 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "ReactivateUserCommand",
+    "type": "object",
+    "properties": {
+        "userId": {
+            "type": "string"
+        },
+        "tenantId": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "userId",
+        "tenantId"
+    ],
+    "additionalProperties": false
+}

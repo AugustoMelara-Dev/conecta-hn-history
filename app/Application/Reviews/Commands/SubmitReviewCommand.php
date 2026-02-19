@@ -29,5 +29,8 @@ final readonly class SubmitReviewCommand
 
         /** Review comment text */
         public ?string $comment = null,
+
+        /** Schema Version for Upcasting */
+        public int $schemaVersion = 1,
     ) {}
 }

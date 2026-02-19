@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Commands;
 
-use App\Application\Common\Contracts\HashableCommandInterface;
+use App\Application\Shared\Common\Contracts\HashableCommandInterface;
 
 /**
  * GenerateOtpCommand - Immutable OTP Request Contract

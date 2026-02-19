@@ -89,3 +89,13 @@ Schedule::job(new \App\Jobs\SendAppointmentReminders)
     ->hourly()
     ->withoutOverlapping();
 
+
+// -------------------------------------------------------------------------------
+// BILLING RECONCILIATION - Self-Healing for Zombie Transactions
+// -------------------------------------------------------------------------------
+// Runs hourly to cleanup 'PENDING' subscription intents older than 1 hour.
+// Queries the gateway to verify final status (PAID/FAILED) and updates DB.
+// -------------------------------------------------------------------------------
+Schedule::job(new \App\Application\Billing\Jobs\ReconcilePendingSubscriptionsJob)
+    ->hourly()
+    ->withoutOverlapping();

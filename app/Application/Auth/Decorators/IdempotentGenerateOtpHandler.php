@@ -6,7 +6,7 @@ namespace App\Application\Auth\Decorators;
 
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
-use App\Application\Common\Contracts\IdempotencyServiceInterface;
+use App\Application\Shared\Common\Contracts\IdempotencyServiceInterface;
 
 /**
  * IdempotentGenerateOtpHandler - Distributed State Protection Decorator
@@ -46,7 +46,7 @@ final readonly class IdempotentGenerateOtpHandler implements GenerateOtpHandlerI
         }
 
         if ($state === 'PROCESSING') {
-            throw \App\Application\Common\Exceptions\ConcurrentRequestException::forKey($key);
+            throw \App\Application\Shared\Common\Exceptions\ConcurrentRequestException::forKey($key);
         }
 
         // 3. ATOMIC RESERVATION

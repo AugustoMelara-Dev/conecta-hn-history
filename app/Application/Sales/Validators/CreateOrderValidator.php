@@ -14,7 +14,7 @@ use App\Application\Sales\Commands\CreateOrderCommand;
  * ║  DOMAIN RULES: Stock availability checked in InventoryManager.          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-class CreateOrderValidator
+final class CreateOrderValidator
 {
     /**
      * Get the validation rules that apply to the command.

@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Billing\Decorators;
 
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Billing\Handlers\GenerateUploadUrlHandlerInterface;
-use App\Application\Common\Contracts\RateLimiterInterface;
+use App\Application\Shared\Common\Contracts\RateLimiterInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -48,7 +49,7 @@ final readonly class RateLimitedGenerateUploadUrlHandler implements GenerateUplo
             // CIRCUIT BREAKER: Fail Open
             // If Redis/Cache is down, we do NOT want to block payments.
             // We log the critical failure but allow the request to proceed.
-            \Illuminate\Support\Facades\Log::critical('Rate Limiter FAILURE (Fail-Open active): '.$e->getMessage());
+            \Illuminate\Support\Facades->logger->critical('Rate Limiter FAILURE (Fail-Open active): '.$e->getMessage());
         }
 
         return $this->inner->handle($tenantId, $mimeType, $sizeBytes);

@@ -1,0 +1,52 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "CreateProductCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "integer"
+        },
+        "sku": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "price": {
+            "type": "integer"
+        },
+        "stock": {
+            "type": "integer",
+            "default": 0
+        },
+        "categoryId": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "default": null
+        },
+        "imagePath": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "isVisible": {
+            "type": "boolean",
+            "default": true
+        }
+    },
+    "required": [
+        "tenantId",
+        "sku",
+        "name",
+        "description",
+        "price"
+    ],
+    "additionalProperties": false
+}

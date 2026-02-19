@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Services;
 
+use App\Application\Shared\Contracts\PresignedUrlGeneratorInterface;
 use Aws\S3\S3Client;
 use Illuminate\Support\Facades\Config;
 
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\Config;
  * ║  3. Deterministic Keys (Tenant Scope)                                    ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class S3PresignerService
+final class S3PresignerService implements PresignedUrlGeneratorInterface
 {
     private S3Client $client;
 

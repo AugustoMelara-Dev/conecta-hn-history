@@ -1,0 +1,22 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "DeleteUserCommand",
+    "type": "object",
+    "properties": {
+        "userId": {
+            "type": "string"
+        },
+        "requestingTenantId": {
+            "type": "string"
+        },
+        "idempotencyKey": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "userId",
+        "requestingTenantId",
+        "idempotencyKey"
+    ],
+    "additionalProperties": false
+}

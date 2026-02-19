@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Webhook;
 
-use App\Application\Actions\Payment\HandlePaymentWebhookAction;
+use App\Application\Billing\Actions\HandlePaymentWebhookAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Interactions\Handlers;
 
 use App\Application\Interactions\Commands\RecordInteractionCommand;
+use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
@@ -23,18 +24,19 @@ use App\Domain\Shared\Contracts\AdminNotifierInterface;
  * ║  FRAMEWORK AGNOSTIC: Uses injected interfaces for DB & Log.             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class RecordInteractionHandler
+final readonly class RecordInteractionHandler
 {
     use LogSanitizer;
 
     private const DEDUPLICATION_WINDOW_MINUTES = 5;
 
     public function __construct(
-        private readonly InteractionRepositoryInterface $interactionRepository,
-        private readonly LeadRepositoryInterface $leadRepository,
-        private readonly AdminNotifierInterface $adminNotifier,
-        private readonly TransactionManagerInterface $transactionManager,
-        private readonly LoggerInterface $logger,
+        private InteractionRepositoryInterface $interactionRepository,
+        private LeadRepositoryInterface $leadRepository,
+        private AdminNotifierInterface $adminNotifier,
+        private TransactionManagerInterface $transactionManager,
+        private LoggerInterface $logger,
+        private DataScrubberInterface $scrubber,
     ) {}
 
     /**
@@ -58,7 +60,7 @@ final class RecordInteractionHandler
                     'tenant_id' => $command->tenantId,
                     'visitor_id' => substr($command->visitorId, 0, 8).'...',
                     'type' => $command->type,
-                ]));
+                ], $this->scrubber));
 
                 return;
             }
@@ -82,7 +84,7 @@ final class RecordInteractionHandler
                 'tenant_id' => $command->tenantId,
                 'type' => $command->type,
                 'interaction_id' => $interaction->id,
-            ]));
+            ], $this->scrubber));
 
             // ═══════════════════════════════════════════════════════════════
             // PHASE 3: Business Rule - WhatsApp Click → Lead Conversion

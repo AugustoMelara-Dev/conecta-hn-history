@@ -6,8 +6,9 @@ namespace App\Actions\Authentication;
 
 use App\Application\Auth\Commands\UpdateUserPasswordCommand;
 use App\Application\Shared\Contracts\CommandBusInterface;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
+use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
+use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
 
@@ -24,7 +25,10 @@ use Laravel\Fortify\Contracts\UpdatesUserPasswords;
 final readonly class UpdateUserPassword implements UpdatesUserPasswords
 {
     public function __construct(
-        private readonly CommandBusInterface $commandBus,
+        private CommandBusInterface $commandBus,
+        private ValidatorFactory $validatorFactory,
+        private IdGeneratorInterface $idGenerator,
+        private \App\Application\Shared\Contracts\TenantRateLimiterInterface $tenantRateLimiter,
     ) {}
 
     /**
@@ -35,7 +39,25 @@ final readonly class UpdateUserPassword implements UpdatesUserPasswords
      */
     public function update($user, array $input): void
     {
-        Validator::make($input, [
+        // PRODUCTION SAFETY: Explicit guard replaces assert() which is compiled
+        // out in production (zend.assertions = -1). SEC-01 hardening.
+        if (! $user instanceof TenantAwareAuthenticatable) {
+            throw new \InvalidArgumentException('User must implement TenantAwareAuthenticatable.');
+        }
+
+        if (! $user->getTenantId()) {
+            throw new \RuntimeException('Cannot update password: user has no tenant context.');
+        }
+
+        // RATE LIMITING: 5 updates per minute per tenant
+        $this->tenantRateLimiter->ensureNotExceeded(
+            actionName: self::class,
+            tenantId: (string) $user->getTenantId(),
+            maxAttempts: 5,
+            decayMinutes: 1
+        );
+
+        $this->validatorFactory->make($input, [
             'current_password' => ['required', 'string', 'current_password:web'],
             'password' => ['required', 'string', Password::default(), 'confirmed'],
         ], [
@@ -44,12 +66,12 @@ final readonly class UpdateUserPassword implements UpdatesUserPasswords
 
         $this->commandBus->dispatch(
             new UpdateUserPasswordCommand(
-                userId: (string) $user->id,
-                requestingTenantId: (string) $user->tenant_id,
+                userId: (string) $user->getAuthIdentifier(),
+                requestingTenantId: (string) $user->getTenantId(),
                 currentPassword: $input['current_password'],
                 newPassword: $input['password'],
                 refreshRememberToken: true,
-                idempotencyKey: (string) Str::uuid(),
+                idempotencyKey: $this->idGenerator->generate(),
             )
         );
     }

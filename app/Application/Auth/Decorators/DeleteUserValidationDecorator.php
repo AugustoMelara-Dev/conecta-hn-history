@@ -9,7 +9,7 @@ use App\Application\Auth\Handlers\DeleteUserHandlerInterface;
 use App\Application\Auth\Results\DeleteUserResult;
 use App\Application\Auth\Validators\DeleteUserCommandValidator;
 
-final class DeleteUserValidationDecorator implements DeleteUserHandlerInterface
+final readonly class DeleteUserValidationDecorator implements DeleteUserHandlerInterface
 {
     public function __construct(
         private DeleteUserHandlerInterface $inner,

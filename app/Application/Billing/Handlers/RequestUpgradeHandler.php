@@ -6,6 +6,7 @@ namespace App\Application\Billing\Handlers;
 
 use App\Application\Billing\Commands\RequestUpgradeCommand;
 use App\Application\Billing\Results\RequestUpgradeResult;
+use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Billing\Entities\SubscriptionIntent;
 use App\Domain\Billing\Events\SubscriptionUpgraded;
@@ -17,8 +18,9 @@ use App\Domain\Shared\Contracts\UuidGeneratorInterface;
 use App\Domain\Shared\Exceptions\StaleObjectException;
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -44,6 +46,9 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
         private PlanRepositoryInterface $planRepository,
         private UuidGeneratorInterface $uuidGenerator,
         private LoggerInterface $logger,
+        private TransactionManagerInterface $transactionManager,
+        private ConnectionInterface $connection,
+        private DataScrubberInterface $scrubber,
     ) {}
 
     public function handle(RequestUpgradeCommand $command): RequestUpgradeResult
@@ -71,7 +76,7 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
 
         try {
             // ATTEMPT 1: We are the first.
-            DB::table('subscription_intents')->insert([
+            $this->connection->table('subscription_intents')->insert([
                 'id' => $generatedIntentId,
                 'tenant_id' => $tenant->id(),
                 'client_idempotency_key' => $command->clientIdempotencyKey, // The Safety Index
@@ -93,7 +98,7 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
 
             // ATTEMPT 2: We are the second (Race Condition or Retry).
             // RECOVER the existing ID.
-            $existing = DB::table('subscription_intents')
+            $existing = $this->connection->table('subscription_intents')
                 ->where('tenant_id', $tenant->id())
                 ->where('client_idempotency_key', $command->clientIdempotencyKey)
                 ->first();
@@ -130,7 +135,7 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
             );
 
             if (! $gatewayResult->success) {
-                DB::table('subscription_intents')->where('id', $capturedIntentId)->update([
+                $this->connection->table('subscription_intents')->where('id', $capturedIntentId)->update([
                     'status' => SubscriptionIntent::STATUS_FAILED,
                     'error_reason' => $gatewayResult->failureReason,
                     'updated_at' => now(),
@@ -142,10 +147,8 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
             // PHASE C: THE ATOMIC SETTLEMENT (Optimistic Update)
             // ═══════════════════════════════════════════════════════════════════
 
-            DB::beginTransaction();
-
-            try {
-                DB::table('subscription_intents')->where('id', $capturedIntentId)->update([
+            return $this->transactionManager->transaction(function () use ($capturedIntentId, $command, $tenant, $plan, $gatewayResult, $oldPlanId, $subscriptionRef) {
+                $this->connection->table('subscription_intents')->where('id', $capturedIntentId)->update([
                     'status' => SubscriptionIntent::STATUS_COMPLETED,
                     'gateway_transaction_id' => $gatewayResult->transactionId,
                     'updated_at' => now(),
@@ -167,22 +170,12 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
                     transactionId: $gatewayResult->transactionId,
                 ));
 
-                DB::commit();
-
                 return RequestUpgradeResult::fromTenantState(
                     tenantId: $command->tenantId,
                     newPlanId: $plan->id,
                     endsAt: $gatewayResult->newPeriodEnd
                 );
-
-            } catch (StaleObjectException $e) {
-                DB::rollBack();
-                // Eventual Consistency via Reconciler
-                throw new \RuntimeException('System busy. Your upgrade is processing in the background.');
-            } catch (\Throwable $innerEx) {
-                DB::rollBack();
-                throw $innerEx;
-            }
+            });
 
         } catch (\Throwable $e) {
             $this->logger->error('RequestUpgradeHandler failed', [

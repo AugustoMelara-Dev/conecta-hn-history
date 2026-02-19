@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\Interactions\RecordInteractionAction;
-use App\Domain\Interactions\DTOs\InteractionData;
+use App\Application\Interactions\DTOs\InteractionData;
 use App\Domain\Shared\Contracts\TenantReadRepository;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
@@ -22,7 +22,17 @@ final class InteractionController extends Controller
     public function store(\App\Http\Requests\StoreInteractionRequest $request, RecordInteractionAction $action): JsonResponse
     {
         try {
-            $dto = InteractionData::fromRequest($request);
+            // ARCHITECTURAL FIX: Request→DTO mapping belongs in the Controller (Infrastructure),
+            // not in the Application Layer DTO. This restores the Dependency Rule.
+            $dto = new InteractionData(
+                tenantId: (string) $request->input('tenant_id'),
+                type: (string) $request->input('type'),
+                ipAddress: $request->ip(),
+                userAgent: $request->userAgent(),
+                sessionId: $request->session()->getId(),
+                productId: $request->filled('product_id') ? (string) $request->input('product_id') : null,
+                metadata: $request->input('metadata'),
+            );
 
             // 1. Check Existence via Repository (No Model used here)
             if (! $this->tenantReader->exists($dto->tenantId)) {

@@ -16,7 +16,7 @@ use App\Domain\Shared\Enums\ProviderName;
  * ║  TYPE SAFETY: Enforced via ProviderName Enum.                           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class LoginViaSocialProviderCommand implements \App\Application\Common\Contracts\HashableCommandInterface
+final readonly class LoginViaSocialProviderCommand implements \App\Application\Shared\Common\Contracts\HashableCommandInterface
 {
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) - Social login is always INTO a specific tenant */

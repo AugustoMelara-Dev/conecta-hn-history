@@ -4,86 +4,73 @@ declare(strict_types=1);
 
 namespace App\Actions\Interactions;
 
-use App\Domain\Interactions\Events\InteractionRecorded;
-use App\Domain\Interactions\Repositories\InteractionRepositoryInterface;
-use App\Models\Interaction;
-use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Support\Facades\DB;
+use App\Application\Interactions\Commands\RecordInteractionCommand;
+use App\Application\Shared\Contracts\CommandBusInterface;
+use App\Application\Interactions\DTOs\InteractionData;
+use App\Infrastructure\Security\MetadataSanitizer;
 
 /**
- * RecordInteractionAction - Domain Orchestrator
+ * RecordInteractionAction - Infrastructure Adapter
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  SINGLE RESPONSIBILITY: Record interaction & Side effects (Leads)       ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  This action coordinates persistence and notification logic without     ║
- * ║  context of HTTP or specific Notification libraries.                    ║
+ * ║  ADAPTER PATTERN: Maps InteractionData DTO → Command → CommandBus.     ║
+ * ║  PURE DELEGATION: Zero business logic, zero persistence, zero events.  ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * REFACTORED: Extracted all orchestration logic to RecordInteractionHandler.
+ * Deduplication, persistence, lead conversion, and event dispatch now live
+ * in the Application Layer handler.
  */
 final readonly class RecordInteractionAction
 {
+    /** Maximum metadata payload size in bytes (10KB). */
+    private const MAX_METADATA_BYTES = 10240;
+
     public function __construct(
-        private readonly InteractionRepositoryInterface $repository,
-        private readonly Dispatcher $dispatcher,
+        private CommandBusInterface $commandBus,
+        private \App\Application\Shared\Contracts\TenantRateLimiterInterface $tenantRateLimiter,
     ) {}
 
     /**
-     * Execute interaction recording.
+     * Dispatch interaction recording command.
      *
-     * @return Interaction|null Returns null if duplicate (idempotency)
+     * @throws \InvalidArgumentException If metadata exceeds MAX_METADATA_BYTES.
      */
-    public function execute(InteractionData $data): ?Interaction
+    public function execute(InteractionData $data): void
     {
-        // TENANT ISOLATION GUARD: Validate tenant_id exists to prevent injection attacks
-        // Ideally this should be in the repository or a separate service, but keeping here for safety layer.
-        // Actually, the request should be validated before reaching here.
-        // For now, we trust the TenantMiddleware or similar, but the original code had it.
-        // We will delegate tenant existence check to the repository if needed, or keep it strict here.
-        // Since we are refactoring, let's keep the guard but optimize if possible.
-        // For now, removing the manual Tenant::where check as it is an infrastructure concern
-        // that should be handled by the specialized repository if strictly needed,
-        // OR we assume upstream validation.
-        // However, to strictly follow "Safety Check", let's keep a check or rely on Foreign Key constraints?
-        // The Plan says: "Repository methods MUST accept tenant_id and apply where('tenant_id', ...) scope strictly."
-        // So the Repo handles the scope.
-        // The original check `if (!Tenant::where...)` was about existence.
-        // We will proceed with the core logic.
+        if (empty($data->tenantId)) {
+            throw new \RuntimeException('Cannot record interaction: missing tenant context.');
+        }
 
-        return DB::transaction(function () use ($data) {
-            // 1. Check Idempotency (Prevent duplicate counting in session)
-            if ($this->isDuplicate($data)) {
-                return null;
-            }
+        // RATE LIMITING: Tenant-Aware Protection (1000 requests per minute per tenant)
+        $this->tenantRateLimiter->ensureNotExceeded(
+            actionName: self::class,
+            tenantId: $data->tenantId,
+            maxAttempts: 1000,
+            decayMinutes: 1
+        );
 
-            // 2. SANITIZATION: Strip HTML tags from metadata to prevent XSS
-            $sanitizedMetadata = is_array($data->metadata)
-                ? array_map(fn ($value) => is_string($value) ? strip_tags($value) : $value, $data->metadata)
-                : [];
+        // RISK MITIGATION: Cap 'metadata' payload to prevent Queue/DB DoS.
+        $encodedMetadata = json_encode($data->metadata ?? []);
+        if ($encodedMetadata !== false && strlen($encodedMetadata) > self::MAX_METADATA_BYTES) {
+            throw new \InvalidArgumentException(
+                'The metadata exceeds the maximum allowed size of 10KB.'
+            );
+        }
 
-            // 3. Persist Interaction via Repository
-            $interaction = $this->repository->create([
-                'type' => $data->type,
-                'product_id' => $data->productId,
-                'ip_address' => $data->ipAddress,
-                'user_agent' => $data->userAgent,
-                'session_id' => $data->sessionId,
-                'metadata' => $sanitizedMetadata,
-            ], $data->tenantId);
+        // SECURITY: Sanitize metadata to neutralize XSS payloads, depth bombs, and oversized strings.
+        $cleanMetadata = MetadataSanitizer::clean($data->metadata ?? []);
 
-            // 4. Dispatch Domain Event (Side Effects handled asynchronously)
-            $this->dispatcher->dispatch(new InteractionRecorded($interaction->id, $data->tenantId));
-
-            return $interaction;
-        });
-    }
-
-    private function isDuplicate(InteractionData $data): bool
-    {
-        return $this->repository->exists($data->tenantId, [
-            'session_id' => $data->sessionId,
-            'type' => $data->type,
-            'product_id' => $data->productId,
-            'created_at' => today(),
-        ]);
+        $this->commandBus->dispatch(
+            new RecordInteractionCommand(
+                tenantId: $data->tenantId,
+                visitorId: $data->sessionId ?? '',
+                type: $data->type,
+                productId: $data->productId,
+                ipAddress: $data->ipAddress,
+                userAgent: $data->userAgent,
+                metadata: $cleanMetadata,
+            )
+        );
     }
 }

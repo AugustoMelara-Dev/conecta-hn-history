@@ -52,7 +52,7 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
 
     public function findByDomain(string $domain): ?TenantEntity
     {
-        $model = Tenant::where('domain', $domain)->first();
+        $model = Tenant::where('slug', $domain)->first();
 
         return $model ? $this->toEntity($model) : null;
     }

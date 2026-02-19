@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Application\Common\Contracts\IdempotencyServiceInterface;
+use App\Application\Shared\Common\Contracts\IdempotencyServiceInterface;
 use App\Application\Shared\Contracts\EventBusInterface;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 

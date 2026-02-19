@@ -19,7 +19,7 @@ use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
  * ║  GATEWAY AGNOSTIC: Validates intent, not payment provider specifics.    ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class RequestUpgradeCommandValidator implements RequestUpgradeHandlerInterface
+final class RequestUpgradeCommandValidator implements RequestUpgradeHandlerInterface
 {
     public function __construct(
         private RequestUpgradeHandlerInterface $inner,

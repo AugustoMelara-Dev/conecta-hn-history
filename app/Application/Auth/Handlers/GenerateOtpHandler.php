@@ -6,6 +6,7 @@ namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
+use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Application\Shared\Interfaces\EntropyGeneratorInterface;
 use App\Application\Shared\Traits\LogSanitizer;
@@ -16,7 +17,8 @@ use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Shared\Exceptions\SecurityException;
-use App\Infrastructure\Shared\Telemetry\TraceContext;
+use App\Application\Shared\Contracts\IdempotencyContextInterface;
+use App\Application\Shared\Contracts\TraceContextInterface;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
 
@@ -41,8 +43,9 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         private LoggerInterface $logger,
         private EntropyGeneratorInterface $entropyGenerator,
         private OtpHasherInterface $hasher,
-        private TraceContext $traceContext,
-        private \App\Infrastructure\Shared\Context\IdempotencyContext $idempotencyContext,
+        private TraceContextInterface $traceContext,
+        private IdempotencyContextInterface $idempotencyContext,
+        private DataScrubberInterface $scrubber,
         private int $otpExpiryMinutes,
         private int $otpLength,
     ) {}
@@ -115,7 +118,7 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
             'identifier' => $command->identifier,
             'tenant_id' => $command->tenantId,
             'outbox_id' => $message->eventId,
-        ]));
+        ], $this->scrubber));
         // Idempotency result captured by decorator via closure return
         // No explicit return needed from pure handler
     }

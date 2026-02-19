@@ -25,5 +25,8 @@ final readonly class EnhanceTenantProfileCommand
         public ?string $description = null,
         public array $tags = [],
         public bool $isAiGenerated = false,
+
+        /** Schema Version for Upcasting */
+        public int $schemaVersion = 1,
     ) {}
 }

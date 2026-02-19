@@ -6,6 +6,7 @@ namespace App\Application\Billing\Handlers;
 
 use App\Application\Billing\Commands\ReportPaymentCommand;
 use App\Application\Billing\Results\ReportPaymentResult;
+use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Billing\Entities\PaymentEntity;
 use App\Domain\Billing\Enums\PaymentStatus;
@@ -15,9 +16,9 @@ use App\Domain\Billing\Services\DocumentStorageServiceInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\Shared\Contracts\UuidGeneratorInterface;
 use App\Domain\Shared\ValueObjects\Money;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use DateTimeImmutable;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -36,89 +37,79 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
 {
     use LogSanitizer;
 
-    private const MAX_ATTEMPTS = 20; // 20 reports per minute (High Throughput)
-
-    private const DECAY_SECONDS = 60;
-
     public function __construct(
         private PaymentRepositoryInterface $paymentRepository,
         private DocumentStorageServiceInterface $documentStorage,
         private EventDispatcherInterface $eventDispatcher,
         private UuidGeneratorInterface $uuidGenerator,
         private LoggerInterface $logger,
-        private \App\Infrastructure\Security\ResilientRateLimiter $rateLimiter
+        private TransactionManagerInterface $transactionManager,
+        private DataScrubberInterface $scrubber,
     ) {}
 
     public function handle(ReportPaymentCommand $command): ReportPaymentResult
     {
-        $limitKey = 'billing:report_payment:'.$command->tenantId;
+        // 1. GENERATE IDENTITY
+        $paymentId = $this->uuidGenerator->generate();
 
-        // STRATEGY: FAIL-OPEN
-        // If Redis dies, we ACCEPT the payment. We prioritize Revenue over Traffic Control.
-        return $this->rateLimiter->attempt($limitKey, self::MAX_ATTEMPTS, self::DECAY_SECONDS, function () use ($command) {
-
-            // 1. GENERATE IDENTITY
-            $paymentId = $this->uuidGenerator->generate();
-
-            // 2. VERIFY PRESENCE (Trust But Verify) - *OUTSIDE TRANSACTION*
-            // CRITICAL HYGIENE: Never perform HTTP I/O inside a DB Transaction.
-            // This prevents holding Row Locks while waiting for S3.
-            $tempPath = $command->proofOfPaymentPath;
-            if ($tempPath) {
-                // SECURITY: Enforce Tenant Isolation
-                $expectedPrefix = sprintf('temp/%s/', $command->tenantId);
-                if (! str_starts_with($tempPath, $expectedPrefix)) {
-                    throw new \InvalidArgumentException('Security Violation: Storage key does not belong to this tenant.');
-                }
-
-                // "HeadObject" check
-                $this->documentStorage->verifyPresence($tempPath);
+        // 2. VERIFY PRESENCE (Trust But Verify) - *OUTSIDE TRANSACTION*
+        // CRITICAL HYGIENE: Never perform HTTP I/O inside a DB Transaction.
+        // This prevents holding Row Locks while waiting for S3.
+        $tempPath = $command->proofOfPaymentPath;
+        if ($tempPath) {
+            // SECURITY: Enforce Tenant Isolation
+            $expectedPrefix = sprintf('temp/%s/', $command->tenantId);
+            if (! str_starts_with($tempPath, $expectedPrefix)) {
+                throw new \InvalidArgumentException('Security Violation: Storage key does not belong to this tenant.');
             }
 
-            // 3. PREPARE ENTITY
-            $payment = new PaymentEntity(
-                id: $paymentId,
-                tenantId: $command->tenantId,
-                amount: new Money($command->amountInCents, $command->currency),
-                bank: $command->bank,
-                referenceNumber: $command->paymentReference,
-                status: PaymentStatus::PENDING,
-                proofUrl: $tempPath,
-                createdAt: new DateTimeImmutable,
-                idempotencyKey: $command->idempotencyKey
-            );
+            // "HeadObject" check
+            $this->documentStorage->verifyPresence($tempPath);
+        }
 
-            try {
-                // 4. ATOMIC TRAP (Insert-or-Recover)
-                // Retries: 3 (Handle Deadlocks automatically)
-                DB::transaction(function () use ($payment, $command) {
-                    $this->paymentRepository->save($payment);
+        // 3. PREPARE ENTITY
+        $payment = new PaymentEntity(
+            id: $paymentId,
+            tenantId: $command->tenantId,
+            amount: new Money($command->amountInCents, $command->currency),
+            bank: $command->bank,
+            referenceNumber: $command->paymentReference,
+            status: PaymentStatus::PENDING,
+            proofUrl: $tempPath,
+            createdAt: new DateTimeImmutable,
+            idempotencyKey: $command->idempotencyKey
+        );
 
-                    // Dispatch Event
-                    $this->eventDispatcher->dispatch(new PaymentReported(
-                        paymentId: $payment->id,
-                        tenantId: $payment->tenantId,
-                        amount: $payment->amount->amount,
-                        currency: $payment->amount->currency,
-                        status: $payment->status->value,
-                        idempotencyKey: $command->idempotencyKey,
-                        occurredAt: new DateTimeImmutable
-                    ));
-                }, 3); // Auto-Retry on Deadlock (Error 1213)
+        try {
+            // 4. ATOMIC TRAP (Insert-or-Recover)
+            // Atomic Insert + Event Dispatch (retry handled by outer decorators)
+            $this->transactionManager->transaction(function () use ($payment, $command) {
+                $this->paymentRepository->save($payment);
 
-                return ReportPaymentResult::fromEntity($payment);
+                // Dispatch Event
+                $this->eventDispatcher->dispatch(new PaymentReported(
+                    paymentId: $payment->id,
+                    tenantId: $payment->tenantId,
+                    amountInCents: $payment->amount->amount,
+                    currency: $payment->amount->currency,
+                    reference: $payment->referenceNumber,
+                    idempotencyKey: $command->idempotencyKey,
+                    occurredAt: new DateTimeImmutable
+                ));
+            });
 
-            } catch (QueryException $e) {
-                // SCENARIO 2: COLLISION (We Lost)
-                // Code 23000 = Integrity Constraint Violation (Duplicate Key)
-                if ($e->getCode() !== '23000' && $e->errorInfo[1] !== 1062) {
-                    throw $e; // Real error
-                }
+            return ReportPaymentResult::fromEntity($payment);
 
-                // RECOVERY LOGIC
-                return $this->handleDuplicate($command, $e);
+        } catch (QueryException $e) {
+            // SCENARIO 2: COLLISION (We Lost)
+            // Code 23000 = Integrity Constraint Violation (Duplicate Key)
+            if ($e->getCode() !== '23000' && $e->errorInfo[1] !== 1062) {
+                throw $e; // Real error
             }
-        }, failOpen: true); // <--- CRITICAL: FAIL-OPEN
+
+            // RECOVERY LOGIC
+            return $this->handleDuplicate($command, $e);
+        }
     }
 
     private function handleDuplicate(ReportPaymentCommand $command, QueryException $e): ReportPaymentResult
@@ -154,9 +145,9 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
             $this->eventDispatcher->dispatch(new PaymentReported(
                 paymentId: $existingPayment->id,
                 tenantId: $existingPayment->tenantId,
-                amount: $existingPayment->amount->amount,
+                amountInCents: $existingPayment->amount->amount,
                 currency: $existingPayment->amount->currency,
-                status: $existingPayment->status->value,
+                reference: $existingPayment->referenceNumber,
                 idempotencyKey: $command->idempotencyKey,
                 occurredAt: new DateTimeImmutable
             ));

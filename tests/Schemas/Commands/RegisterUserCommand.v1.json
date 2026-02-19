@@ -1,0 +1,49 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "RegisterUserCommand",
+    "type": "object",
+    "required": [
+        "name",
+        "email",
+        "password",
+        "source",
+        "tenantId"
+    ],
+    "properties": {
+        "name": {
+            "type": "string",
+            "minLength": 1
+        },
+        "email": {
+            "type": "string",
+            "format": "email"
+        },
+        "password": {
+            "type": "string",
+            "minLength": 8
+        },
+        "tenantName": {
+            "type": ["string", "null"]
+        },
+        "slug": {
+            "type": ["string", "null"]
+        },
+        "tenantId": {
+            "type": ["string", "null"]
+        },
+        "role": {
+            "type": ["string", "null"]
+        },
+        "source": {
+            "type": "string",
+            "const": "user_registration"
+        },
+        "idempotencyKey": {
+            "type": ["string", "null"]
+        },
+        "schemaVersion": {
+            "type": "integer"
+        }
+    },
+    "additionalProperties": false
+}

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Common\Context;
 
-use App\Application\Common\Interfaces\ClientContextProviderInterface;
+use App\Application\Shared\Common\Interfaces\ClientContextProviderInterface;
 
 /**
  * WebClientContextProvider - HTTP Transport Adapter

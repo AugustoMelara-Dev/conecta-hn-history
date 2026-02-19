@@ -9,7 +9,7 @@ use App\Application\Tenant\Commands\RegisterTenantCommand;
 /**
  * RegisterTenantValidator - Structural Validation
  */
-class RegisterTenantValidator
+final class RegisterTenantValidator
 {
     public function rules(RegisterTenantCommand $command): array
     {

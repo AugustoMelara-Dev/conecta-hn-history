@@ -31,7 +31,7 @@ interface TenantContextInterface
     /**
      * Resolve the current tenant ID from the execution context.
      *
-     * @return int|null The tenant ID, or null if no tenant context is available
+     * @return string|int|null The tenant ID, or null if no tenant context is available
      */
-    public function getTenantId(): ?int;
+    public function getTenantId(): string|int|null;
 }

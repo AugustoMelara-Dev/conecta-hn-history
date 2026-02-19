@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Tenancy\Repositories;
 
-use App\Application\Common\Integration\IntegrationEventMapper;
-use App\Application\Tenancy\Interfaces\TenantRepositoryInterface;
+use App\Application\Shared\Common\Integration\IntegrationEventMapper;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotStrategyInterface;
@@ -43,18 +43,44 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
         return TenantEntity::reconstituteFromHistory($events);
     }
 
-    public function existsByDomain(string $domain): bool
+    public function findByIdForUpdate(string $id): ?TenantEntity
     {
-        // REAL SQL CHECK
-        return DB::table('tenants')->where('domain', $domain)->exists();
+        return $this->findById($id);
     }
 
-    public function save(TenantEntity $tenant): void
+    public function findBySlug(string $slug): ?TenantEntity
+    {
+        $id = DB::table('tenants')->where('slug', $slug)->value('id');
+        return $id ? $this->findById($id) : null;
+    }
+
+    public function existsBySlug(string $slug): bool
+    {
+        return DB::table('tenants')->where('slug', $slug)->exists();
+    }
+
+    public function findByDomain(string $domain): ?TenantEntity
+    {
+        // Domain is mapped to slug in this architecture
+        return $this->findBySlug($domain);
+    }
+
+    public function create(array $attributes): TenantEntity
+    {
+        throw new \BadMethodCallException('EventSourced repository does not support array-based create. Use save() with new Entity.');
+    }
+
+    public function delete(TenantEntity $tenant): void
+    {
+        // To be implemented: Soft delete event or similar
+    }
+
+    public function save(TenantEntity $tenant): TenantEntity
     {
         $events = method_exists($tenant, 'getUncommittedEvents') ? $tenant->getUncommittedEvents() : [];
 
         if (empty($events)) {
-            return;
+            return $tenant;
         }
 
         try {
@@ -85,6 +111,8 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
                 $tenant->toStateArray()
             );
         }
+
+        return $tenant;
     }
 
     private function projectState(TenantEntity $tenant): void
@@ -93,14 +121,13 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
             [
                 'id' => $tenant->id(),
                 'name' => $tenant->name(),
-                'domain' => $tenant->domain(),
+                // 'domain' column does not exist
                 'created_at' => $tenant->createdAt(),
                 'updated_at' => $tenant->updatedAt(),
-                // Assumed fields based on SQL table definition
-                'slug' => $tenant->domain(), // Mapping domain to slug if 1:1, or entity should expose slug
+                'slug' => $tenant->domain(), // Mapping domain to slug
             ],
             ['id'],
-            ['name', 'domain', 'updated_at']
+            ['name', 'slug', 'updated_at'] // Update slug instead of domain
         );
     }
 }

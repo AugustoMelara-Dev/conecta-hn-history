@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
+use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Application\Tenant\Results\RegisterTenantResult;
@@ -12,11 +14,10 @@ use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Domain\Identity\Factories\UserFactory;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Security\Contracts\HasherInterface;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\TenantGovernance\Factories\TenantFactory;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
-use App\Infrastructure\Bus\TransactionalEventDispatcher;
-use Illuminate\Support\Facades\Log;
 
 /**
  * RegisterTenantHandler - Command Handler for Tenant Registration
@@ -39,10 +40,12 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         private UserRepositoryInterface $userRepository,
         private TenantRepositoryInterface $tenantRepository,
         private PaymentRepositoryInterface $paymentRepository,
-        private TransactionalEventDispatcher $eventDispatcher,
+        private EventDispatcherInterface $eventDispatcher,
         private SubscriptionPricingService $pricingService,
         private HasherInterface $hasher,
         private TransactionManagerInterface $transactionManager,
+        private LoggerInterface $logger,
+        private DataScrubberInterface $scrubber,
     ) {}
 
     public function handle(RegisterTenantCommand $command): RegisterTenantResult
@@ -116,11 +119,11 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         ));
 
         // 8. Log
-        Log::info('Tenant registered', $this->sanitizePayload([
+        $this->logger->info('Tenant registered', $this->sanitizePayload([
             'user_id' => $userEntity->id,
             'tenant_id' => $tenantEntity->id,
             'slug' => $tenantEntity->slug,
-        ]));
+        ], $this->scrubber));
 
         return RegisterTenantResult::fromEntities($tenantEntity, $userEntity);
     }

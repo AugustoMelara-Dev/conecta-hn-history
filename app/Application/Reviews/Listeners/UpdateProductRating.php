@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Application\Reviews\Listeners;
 
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
 use App\Domain\Reviews\Events\ReviewCreated;
 use App\Domain\Reviews\Repositories\ReviewRepositoryInterface;
 use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Facades\Log;
 
 /**
  * UpdateProductRating - Async Listener for Product Aggregate Recalculation
@@ -31,6 +31,7 @@ final class UpdateProductRating implements ShouldQueue
     public function __construct(
         private readonly ProductRepositoryInterface $productRepository,
         private readonly ReviewRepositoryInterface $reviewRepository,
+        private LoggerInterface $logger,
     ) {}
 
     /**
@@ -45,7 +46,7 @@ final class UpdateProductRating implements ShouldQueue
         $product = $this->productRepository->findById($event->productId);
 
         if ($product === null) {
-            Log::warning('UpdateProductRating: Product not found', [
+            $this->logger->warning('UpdateProductRating: Product not found', [
                 'product_id' => $event->productId,
                 'review_id' => $event->reviewId,
             ]);
@@ -60,7 +61,7 @@ final class UpdateProductRating implements ShouldQueue
             $metrics['total_reviews'] ?? 0
         );
 
-        Log::info('Product rating updated via eventual consistency', [
+        $this->logger->info('Product rating updated via eventual consistency', [
             'product_id' => $event->productId,
             'new_average' => $metrics['average_rating'] ?? 0,
             'total_reviews' => $metrics['total_reviews'] ?? 0,

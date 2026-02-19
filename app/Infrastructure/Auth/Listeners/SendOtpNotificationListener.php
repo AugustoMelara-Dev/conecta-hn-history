@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Listeners;
 
-use App\Application\Common\Contracts\CircuitBreakerInterface;
-use App\Application\Shared\Traits\LogSanitizer;
+use App\Application\Shared\Common\Contracts\CircuitBreakerInterface;
 use App\Domain\Auth\Contracts\OtpNotifierInterface;
 use App\Domain\Auth\Events\OtpGenerated;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,7 +25,6 @@ use Throwable;
 final class SendOtpNotificationListener implements ShouldQueue
 {
     use InteractsWithQueue;
-    use LogSanitizer;
 
     public function __construct(
         private OtpNotifierInterface $notifier,

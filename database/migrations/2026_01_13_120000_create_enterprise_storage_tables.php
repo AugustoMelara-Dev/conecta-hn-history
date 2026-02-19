@@ -22,29 +22,12 @@ return new class extends Migration
             });
         }
 
-        // 2. TRANSACTIONAL OUTBOX (The Outbox Rule)
-        // NOTE: Canonical schema created in 2026_01_12_142300_create_titanium_support_tables.php
-        // This migration is kept for backward compatibility but does nothing if table exists.
-        if (Schema::hasTable('outbox_messages')) {
-            return; // Table already exists with canonical schema
-        }
 
-        // Fallback: Create if somehow titanium migration was skipped
-        Schema::create('outbox_messages', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->string('type');
-            $table->json('payload');
-            $table->timestamp('occurred_at')->nullable();
-            $table->timestamp('published_at')->nullable()->index();
-            $table->string('status')->default('PENDING')->index();
-            $table->timestamps();
-            $table->index(['status', 'occurred_at']);
-        });
     }
 
     public function down(): void
     {
         Schema::dropIfExists('snapshots');
-        Schema::dropIfExists('outbox_messages');
+
     }
 };

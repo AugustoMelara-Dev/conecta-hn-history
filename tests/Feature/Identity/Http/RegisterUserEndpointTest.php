@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Identity\Http;
 
-use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class RegisterUserEndpointTest extends TestCase
 {
     // USO DE MIGRACIONES REALES PARA EVITAR DEADLOCKS TRANSACCIONALES
     // Esto destruye y recrea las tablas por cada test, eliminando conflictos de bloqueo.
-    use DatabaseMigrations;
+    use RefreshDatabase;
 
     private string $endpoint = '/api/v1/register';
 
@@ -56,7 +56,7 @@ class RegisterUserEndpointTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('tenants', [
-            'domain' => $payload['tenant_domain'],
+            'slug' => $payload['tenant_domain'],
         ]);
     }
 

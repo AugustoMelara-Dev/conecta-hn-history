@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Shared\Events;
 
-use App\Domain\Shared\Contracts\UpcasterInterface;
+use App\Application\Shared\Contracts\UpcasterInterface;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -25,10 +25,12 @@ final readonly class EventSerializer
      * @param  array<string, int>  $currentVersions  Maps event type to current schema version
      */
     public function __construct(
+        private readonly \App\Application\Shared\Contracts\IdGeneratorInterface $idGenerator,
         private array $upcasters = [],
         private array $eventTypeMap = [],
         private array $currentVersions = [],
     ) {}
+
 
     /**
      * Serialize a domain event to storage format.
@@ -177,6 +179,6 @@ final readonly class EventSerializer
      */
     private function generateEventId(): string
     {
-        return (string) \Illuminate\Support\Str::uuid();
+        return $this->idGenerator->generate();
     }
 }

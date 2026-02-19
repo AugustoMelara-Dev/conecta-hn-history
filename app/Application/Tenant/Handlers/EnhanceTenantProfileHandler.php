@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
+use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
@@ -23,15 +24,16 @@ use App\Services\AiProfileGeneratorService;
  * ║  - NO Illuminate imports (uses injected interfaces)                     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class EnhanceTenantProfileHandler
+final readonly class EnhanceTenantProfileHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private readonly TenantRepositoryInterface $repository,
-        private readonly AiProfileGeneratorService $aiService,
-        private readonly TransactionManagerInterface $transactionManager,
-        private readonly LoggerInterface $logger,
+        private TenantRepositoryInterface $repository,
+        private AiProfileGeneratorService $aiService,
+        private TransactionManagerInterface $transactionManager,
+        private LoggerInterface $logger,
+        private DataScrubberInterface $scrubber,
     ) {}
 
     /**
@@ -65,7 +67,7 @@ final class EnhanceTenantProfileHandler
             $this->logger->info('Tenant Profile Enhanced via AI', $this->sanitizePayload([
                 'tenant_id' => $tenant->id,
                 'ai_tags' => $enhancedData['tags'] ?? [],
-            ]));
+            ], $this->scrubber));
         });
     }
 }

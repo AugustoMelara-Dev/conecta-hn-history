@@ -1,0 +1,33 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "SubmitReviewCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "integer"
+        },
+        "userId": {
+            "type": "integer"
+        },
+        "productId": {
+            "type": "integer"
+        },
+        "rating": {
+            "type": "integer"
+        },
+        "comment": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        }
+    },
+    "required": [
+        "tenantId",
+        "userId",
+        "productId",
+        "rating"
+    ],
+    "additionalProperties": false
+}

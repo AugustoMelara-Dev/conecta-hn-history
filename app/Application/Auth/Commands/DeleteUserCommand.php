@@ -13,7 +13,7 @@ namespace App\Application\Auth\Commands;
  * ║  PRIMITIVES ONLY: No Eloquent models - just scalar types.               ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class DeleteUserCommand implements \App\Application\Common\Contracts\HashableCommandInterface
+final readonly class DeleteUserCommand implements \App\Application\Shared\Common\Contracts\HashableCommandInterface
 {
     public function __construct(
         /** User ID to delete (UUID string) */

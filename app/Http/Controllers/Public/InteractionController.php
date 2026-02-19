@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
-use App\Application\Actions\Interactions\RecordInteractionAction;
-use App\Application\Interactions\Results\RecordInteractionResult;
+use App\Actions\Interactions\RecordInteractionAction;
 use App\Domain\Analytics\Enums\InteractionType;
+use App\Application\Interactions\DTOs\InteractionData;
 use App\Domain\Shared\ValueObjects\PhoneNumber;
 use App\Domain\TenantGovernance\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -47,11 +47,13 @@ final class InteractionController extends Controller
 
         $text = $request->input('text', '');
 
-        $dto = RecordInteractionResult::forRedirect(
-            tenantId: $tenant->id,
+        $dto = new InteractionData(
+            tenantId: (string) $tenant->id,
             type: InteractionType::WHATSAPP_CLICK->value,
-            request: $request,
-            metadata: ! empty($text) ? ['message' => substr($text, 0, 200)] : null
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+            sessionId: $request->session()->getId(),
+            metadata: ! empty($text) ? ['message' => substr($text, 0, 200)] : null,
         );
         $this->recordAction->execute($dto);
 
@@ -72,10 +74,12 @@ final class InteractionController extends Controller
             return redirect()->back()->with('error', 'Este negocio no tiene teléfono configurado.');
         }
 
-        $dto = RecordInteractionResult::forRedirect(
-            tenantId: $tenant->id,
+        $dto = new InteractionData(
+            tenantId: (string) $tenant->id,
             type: InteractionType::CALL->value,
-            request: $request
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+            sessionId: $request->session()->getId(),
         );
         $this->recordAction->execute($dto);
 
@@ -98,13 +102,16 @@ final class InteractionController extends Controller
             return redirect()->back()->with('error', 'Este negocio no tiene ubicación configurada.');
         }
 
-        $dto = RecordInteractionResult::forRedirect(
-            tenantId: $tenant->id,
+        $dto = new InteractionData(
+            tenantId: (string) $tenant->id,
             type: InteractionType::LOCATION_VIEW->value,
-            request: $request
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+            sessionId: $request->session()->getId(),
         );
         $this->recordAction->execute($dto);
 
         return redirect()->away($url);
     }
 }
+

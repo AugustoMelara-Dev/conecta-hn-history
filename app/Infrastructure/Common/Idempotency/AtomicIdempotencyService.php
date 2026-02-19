@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Common\Idempotency;
 
-use App\Application\Common\Contracts\AtomicIdempotencyInterface;
-use App\Application\Common\Exceptions\ConcurrentRequestException;
-use App\Application\Common\Exceptions\IdempotencyKeyReuseException;
+use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
+use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
+use App\Application\Shared\Common\Exceptions\IdempotencyKeyReuseException;
 use Closure;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\QueryException;

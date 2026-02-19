@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Identity\Repositories;
 
-use App\Application\Common\Integration\IntegrationEventMapper;
+use App\Application\Shared\Common\Integration\IntegrationEventMapper;
 use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotStrategyInterface;

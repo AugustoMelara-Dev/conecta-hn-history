@@ -2,97 +2,122 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Actions;
-
 use App\Actions\Interactions\RecordInteractionAction;
-use App\Domain\Interactions\DTOs\InteractionData;
-use App\Domain\Interactions\Events\InteractionRecorded;
-use App\Domain\Interactions\Repositories\InteractionRepositoryInterface;
-use App\Models\Interaction;
-use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Event;
-use Mockery;
-use Tests\TestCase;
+use App\Application\Interactions\Commands\RecordInteractionCommand;
+use App\Application\Interactions\DTOs\InteractionData;
+use App\Application\Shared\Contracts\CommandBusInterface;
 
-class RecordInteractionActionTest extends TestCase
-{
-    use RefreshDatabase;
+/**
+ * RecordInteractionActionTest - CommandBus Delegation Verification
+ *
+ * Tests the Action as a pure Infrastructure Adapter:
+ * DTO → Command mapping → Bus dispatch.
+ * No Repositories, no Models, no database.
+ */
 
-    public function test_persists_interaction_via_repository_and_dispatches_event()
-    {
-        Event::fake([InteractionRecorded::class]);
+test('record interaction action dispatches command via bus', function () {
+    // Arrange: Input DTO
+    $dto = new InteractionData(
+        tenantId: 'tenant-uuid-001',
+        type: 'whatsapp_click',
+        ipAddress: '127.0.0.1',
+        userAgent: 'TestAgent/1.0',
+        sessionId: 'session-abc-123',
+        productId: '456',
+        metadata: ['source' => 'web'],
+    );
 
-        $tenant = Tenant::factory()->create();
-        
-        $data = new InteractionData(
-            $tenant->id,
-            Interaction::TYPE_WHATSAPP_CLICK,
-            '127.0.0.1',
-            'TestAgent',
-            'test-session-id',
-            123,
-            ['foo' => 'bar']
-        );
+    // Arrange: Mock Bus — expect exactly one dispatch with correct Command payload
+    $busMock = Mockery::mock(CommandBusInterface::class);
+    $busMock->shouldReceive('dispatch')
+        ->once()
+        ->with(Mockery::on(function (RecordInteractionCommand $command) use ($dto) {
+            return $command->tenantId === $dto->tenantId
+                && $command->visitorId === $dto->sessionId
+                && $command->type === $dto->type
+                && $command->productId === $dto->productId
+                && $command->ipAddress === $dto->ipAddress
+                && $command->userAgent === $dto->userAgent
+                && $command->metadata === $dto->metadata;
+        }));
 
-        // Mock Repository
-        $mockRepo = Mockery::mock(InteractionRepositoryInterface::class);
-        $mockRepo->shouldReceive('exists')
-            ->once()
-            ->andReturn(false);
-            
-        $mockRepo->shouldReceive('create')
-            ->once()
-            ->with(Mockery::on(function ($arg) use ($tenant) {
-                 return $arg['type'] === Interaction::TYPE_WHATSAPP_CLICK &&
-                        $arg['session_id'] === 'test-session-id';
-            }), $tenant->id)
-            ->andReturn(new Interaction([
-                'id' => 1, 
-                'tenant_id' => $tenant->id,
-                'type' => Interaction::TYPE_WHATSAPP_CLICK
-            ]));
+    // Act
+    $action = new RecordInteractionAction($busMock);
+    $action->execute($dto);
+});
 
-        $this->instance(InteractionRepositoryInterface::class, $mockRepo);
+test('record interaction action rejects missing tenant context', function () {
+    $dto = new InteractionData(
+        tenantId: '',
+        type: 'product_view',
+        ipAddress: '10.0.0.1',
+        userAgent: 'Bot/2.0',
+        sessionId: 'session-xyz',
+    );
 
-        $action = app(RecordInteractionAction::class);
-        $result = $action->execute($data);
+    $busMock = Mockery::mock(CommandBusInterface::class);
+    $busMock->shouldNotReceive('dispatch');
 
-        // Assertions
-        $this->assertNotNull($result);
-        Event::assertDispatched(InteractionRecorded::class, function ($event) use ($result) {
-            return $event->interaction->type === $result->type;
-        });
-    }
+    $action = new RecordInteractionAction($busMock);
+    $action->execute($dto);
+})->throws(\RuntimeException::class, 'missing tenant context');
 
-    public function test_idempotency_prevents_duplicates()
-    {
-        Event::fake();
+test('record interaction action rejects oversized metadata', function () {
+    $oversizedMetadata = array_fill(0, 500, str_repeat('x', 100));
 
-        $tenant = Tenant::factory()->create();
-        $data = new InteractionData(
-            $tenant->id,
-            Interaction::TYPE_WHATSAPP_CLICK,
-            '127.0.0.1',
-            'TestAgent',
-            'test-session-id',
-            123,
-            []
-        );
+    $dto = new InteractionData(
+        tenantId: 'tenant-uuid-002',
+        type: 'product_view',
+        ipAddress: '10.0.0.1',
+        userAgent: 'Bot/2.0',
+        sessionId: 'session-xyz',
+        metadata: $oversizedMetadata,
+    );
 
-        $mockRepo = Mockery::mock(InteractionRepositoryInterface::class);
-        $mockRepo->shouldReceive('exists')
-            ->once()
-            ->andReturn(true); // Simulate duplicate
-            
-        $mockRepo->shouldNotReceive('create');
-        
-        $this->instance(InteractionRepositoryInterface::class, $mockRepo);
+    $busMock = Mockery::mock(CommandBusInterface::class);
+    $busMock->shouldNotReceive('dispatch');
 
-        $action = app(RecordInteractionAction::class);
-        $result = $action->execute($data);
+    $action = new RecordInteractionAction($busMock);
+    $action->execute($dto);
+})->throws(\InvalidArgumentException::class, 'maximum allowed size');
 
-        $this->assertNull($result);
-        Event::assertNotDispatched(InteractionRecorded::class);
-    }
-}
+test('record interaction action maps null optional fields correctly', function () {
+    $dto = new InteractionData(
+        tenantId: 'tenant-uuid-003',
+        type: 'page_view',
+        ipAddress: null,
+        userAgent: null,
+        sessionId: null,
+    );
+
+    $busMock = Mockery::mock(CommandBusInterface::class);
+    $busMock->shouldReceive('dispatch')
+        ->once()
+        ->with(Mockery::on(function (RecordInteractionCommand $command) {
+            return $command->tenantId === 'tenant-uuid-003'
+                && $command->visitorId === ''  // sessionId null → empty string
+                && $command->type === 'page_view'
+                && $command->productId === null
+                && $command->ipAddress === null
+                && $command->userAgent === null
+                && $command->metadata === [];
+        }));
+
+    $action = new RecordInteractionAction($busMock);
+    $action->execute($dto);
+});
+
+test('RecordInteractionCommand complies with the v1 JSON schema contract', function () {
+    $command = new RecordInteractionCommand(
+        tenantId: 'tenant-uuid-schema-check',
+        visitorId: 'visitor-001',
+        type: 'schema_validation',
+        metadata: ['valid' => true]
+    );
+
+    // json_encode -> json_decode to simulate serialization and return object for validation
+    // The Validator wants an object (stdClass) or array
+    $serialized = json_decode(json_encode($command));
+
+    expect($serialized)->toMatchJsonSchema('tests/Schemas/Commands/RecordInteractionCommand.v1.json');
+});

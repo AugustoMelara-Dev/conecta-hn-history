@@ -23,7 +23,7 @@ final class EloquentInteractionRepository implements InteractionRepositoryInterf
      * {@inheritDoc}
      */
     public function hasRecentInteraction(
-        int $tenantId,
+        string $tenantId,
         string $visitorId,
         string $type,
         int $withinMinutes = 5
@@ -40,10 +40,10 @@ final class EloquentInteractionRepository implements InteractionRepositoryInterf
      * {@inheritDoc}
      */
     public function create(
-        int $tenantId,
+        string $tenantId,
         string $visitorId,
         string $type,
-        ?int $productId = null,
+        ?string $productId = null,
         ?string $ipAddress = null,
         ?string $userAgent = null,
         ?string $referrer = null,

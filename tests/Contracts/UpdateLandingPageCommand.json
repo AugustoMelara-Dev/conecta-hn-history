@@ -1,0 +1,18 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "UpdateLandingPageCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "integer"
+        },
+        "landingData": {
+            "type": "array"
+        }
+    },
+    "required": [
+        "tenantId",
+        "landingData"
+    ],
+    "additionalProperties": false
+}

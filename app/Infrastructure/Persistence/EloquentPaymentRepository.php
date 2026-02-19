@@ -152,14 +152,14 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
         return new PaymentEntity(
             id: (string) $model->id,
             tenantId: (string) $model->tenant_id,
-            amount: new Money($model->amount, 'HNL'), // Default Currency
-            bank: $model->bank,
-            referenceNumber: $model->reference_number,
+            amount: new Money((int) $model->amount, 'HNL'), // Default Currency
+            bank: (string) $model->bank,
+            referenceNumber: (string) $model->reference_number,
             status: PaymentStatus::tryFrom($model->status) ?? PaymentStatus::PENDING,
             proofUrl: $model->proof_path, // MAPPED
             createdAt: new DateTimeImmutable($model->created_at->toIso8601String()),
-            idempotencyKey: $model->idempotency_key ?? '',
-            version: $model->version ?? 1
+            idempotencyKey: (string) ($model->idempotency_key ?? ''),
+            version: (int) ($model->version ?? 1)
         );
     }
 }

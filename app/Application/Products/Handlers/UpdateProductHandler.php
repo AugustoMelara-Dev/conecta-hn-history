@@ -6,11 +6,12 @@ namespace App\Application\Products\Handlers;
 
 use App\Application\Products\Commands\UpdateProductCommand;
 use App\Application\Products\Results\UpdateProductResult;
+use App\Application\Shared\Contracts\DataScrubberInterface;
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
-use App\Infrastructure\Bus\TransactionalEventDispatcher;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
 
 /**
  * UpdateProductHandler - Command Handler for Product Update
@@ -24,13 +25,15 @@ use Illuminate\Support\Facades\Log;
  * ║  - STRICT RETURN: UpdateProductResult DTO with dirty tracking           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class UpdateProductHandler
+final readonly class UpdateProductHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private readonly ProductRepositoryInterface $productRepository,
-        private readonly TransactionalEventDispatcher $eventDispatcher,
+        private ProductRepositoryInterface $productRepository,
+        private EventDispatcherInterface $eventDispatcher,
+        private LoggerInterface $logger,
+        private DataScrubberInterface $scrubber,
     ) {}
 
     /**
@@ -51,7 +54,7 @@ final class UpdateProductHandler
         // 3. SECURITY GUARD: Tenant Ownership Verification (IDOR Protection)
         // We hide the existence of the resource to prevent enumeration attacks
         if ($product->tenant_id !== $command->tenantId) {
-            Log::warning('SECURITY: Cross-tenant product access attempt', [
+            $this->logger->warning('SECURITY: Cross-tenant product access attempt', [
                 'requested_product_id' => $command->productId,
                 'requesting_tenant_id' => $command->tenantId,
                 'actual_tenant_id' => $product->tenant_id,
@@ -89,11 +92,11 @@ final class UpdateProductHandler
         ));
 
         // 8. Audit Log (PII Scrubbed)
-        Log::info('Product updated successfully', $this->sanitizePayload([
+        $this->logger->info('Product updated successfully', $this->sanitizePayload([
             'product_id' => $product->id,
             'tenant_id' => $command->tenantId,
             'changed_fields' => $changedAttributes,
-        ]));
+        ], $this->scrubber));
 
         return UpdateProductResult::fromEntity($product, $changedAttributes);
     }

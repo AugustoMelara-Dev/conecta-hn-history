@@ -13,7 +13,7 @@ namespace App\Application\Auth\Commands;
  * ║  TENANT AWARE: Mandatory tenantId to prevent cross-tenant verification. ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class VerifyOtpCommand implements \App\Application\Common\Contracts\HashableCommandInterface
+final readonly class VerifyOtpCommand implements \App\Application\Shared\Common\Contracts\HashableCommandInterface
 {
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) */

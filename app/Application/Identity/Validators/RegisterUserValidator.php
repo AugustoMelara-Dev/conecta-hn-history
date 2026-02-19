@@ -25,7 +25,7 @@ use Illuminate\Validation\ValidationException;
  * - Unit testing with mocks
  * - DIP compliance
  */
-final readonly class RegisterUserValidator
+final class RegisterUserValidator
 {
     public function __construct(
         private ValidatorFactory $validatorFactory,

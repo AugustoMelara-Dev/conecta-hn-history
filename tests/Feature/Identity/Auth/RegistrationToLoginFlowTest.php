@@ -95,4 +95,19 @@ class RegistrationToLoginFlowTest extends TestCase
             'Authenticated User is not linked to the correct Tenant.'
         );
     }
+    /** @test */
+    public function it_complies_with_the_v1_json_schema_contract()
+    {
+        $command = new RegisterUserCommand(
+            name: 'Schema Compliant User',
+            email: 'schema@titanium.app',
+            password: 'StrongPassword123!',
+            source: 'user_registration',
+            tenantId: null // Explicitly present as null
+        );
+
+        $serialized = json_decode(json_encode($command));
+
+        expect($serialized)->toMatchJsonSchema('tests/Schemas/Commands/RegisterUserCommand.v1.json');
+    }
 }

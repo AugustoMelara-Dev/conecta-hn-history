@@ -7,10 +7,10 @@ namespace App\Application\Auth\Decorators;
 use App\Application\Auth\Commands\DeleteUserCommand;
 use App\Application\Auth\Handlers\DeleteUserHandlerInterface;
 use App\Application\Auth\Results\DeleteUserResult;
-use App\Application\Common\Contracts\AtomicIdempotencyInterface;
-use App\Application\Common\Decorators\AtomicIdempotencyDecorator;
+use App\Application\Shared\Common\Contracts\AtomicIdempotencyInterface;
+use App\Application\Shared\Common\Decorators\AtomicIdempotencyDecorator;
 
-final class DeleteUserAtomicDecorator implements DeleteUserHandlerInterface
+final readonly class DeleteUserAtomicDecorator implements DeleteUserHandlerInterface
 {
     private AtomicIdempotencyDecorator $genericDecorator;
 

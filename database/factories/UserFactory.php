@@ -105,7 +105,8 @@ class UserFactory extends Factory
     {
         return $this->afterCreating(function (User $user) {
             $tenant = Tenant::factory()->create(['user_id' => $user->id]);
-            $user->update(['tenant_id' => $tenant->id]);
+            $user->tenant_id = $tenant->id;
+            $user->save();
         });
     }
 }

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Commands;
 
-use App\Application\Common\Interfaces\IdempotentCommandInterface;
+use App\Application\Shared\Contracts\IdempotentCommandInterface;
+use App\Application\Shared\Contracts\SensitiveDataInterface;
+use SensitiveParameter;
 
 /**
  * RegisterTenantCommand - Intent for Tenant + User Registration
@@ -12,7 +14,7 @@ use App\Application\Common\Interfaces\IdempotentCommandInterface;
  * Encapsulates all data required for the registration use case.
  * Dispatched via CommandBus, handled by RegisterTenantHandler.
  */
-final readonly class RegisterTenantCommand implements IdempotentCommandInterface
+final readonly class RegisterTenantCommand implements IdempotentCommandInterface, SensitiveDataInterface
 {
     public function __construct(
         // Identity
@@ -22,6 +24,7 @@ final readonly class RegisterTenantCommand implements IdempotentCommandInterface
         // Credentials
         public string $ownerName,
         public string $email,
+        #[SensitiveParameter]
         public string $password,
 
         // Profile
@@ -34,7 +37,10 @@ final readonly class RegisterTenantCommand implements IdempotentCommandInterface
         public ?string $logoPath = null,
 
         // Explicit Idempotency
-        public ?string $idempotencyKey = null
+        public ?string $idempotencyKey = null,
+
+        // Schema Version for Upcasting
+        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string
@@ -44,6 +50,11 @@ final readonly class RegisterTenantCommand implements IdempotentCommandInterface
         }
 
         // Dedicated Hash: Tenant Name + Owner Email
-        return md5("register_tenant_{$this->businessName}_{$this->email}");
+        return hash('xxh128', "register_tenant_{$this->businessName}_{$this->email}");
+    }
+
+    public function getSensitiveProperties(): array
+    {
+        return ['password'];
     }
 }

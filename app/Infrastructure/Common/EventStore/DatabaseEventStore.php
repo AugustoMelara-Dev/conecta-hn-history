@@ -23,6 +23,10 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class DatabaseEventStore implements EventStoreRepositoryInterface
 {
+    public function __construct(
+        private \App\Application\Shared\Contracts\IdGeneratorInterface $idGenerator,
+    ) {}
+
     public function append(
         string $tenantId,
         string $aggregateId,
@@ -58,7 +62,7 @@ final readonly class DatabaseEventStore implements EventStoreRepositoryInterface
                     // 2. TRANSACTIONAL OUTBOX (Guaranteed Delivery)
                     // 2. TRANSACTIONAL OUTBOX (Guaranteed Delivery)
                     DB::table('domain_outbox_messages')->insert([
-                        'id' => (string) \Illuminate\Support\Str::uuid(),
+                        'id' => $this->idGenerator->generate(),
                         'type' => $eventClass,
                         'aggregate_id' => $aggregateId, // Debug context
                         'aggregate_type' => $aggregateType,

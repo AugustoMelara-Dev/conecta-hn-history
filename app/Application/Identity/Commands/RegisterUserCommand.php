@@ -4,21 +4,24 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Commands;
 
-use App\Application\Common\Interfaces\IdempotentCommandInterface;
+use App\Application\Shared\Contracts\IdempotentCommandInterface;
+use App\Application\Shared\Contracts\SensitiveDataInterface;
 
 /**
  * RegisterUserCommand - Titanium Standard Input
  *
  * Includes Idempotency Key for robust distributed processing.
+ * P1-REDACT: SensitiveDataInterface for Outbox/log sanitization.
  */
-final readonly class RegisterUserCommand implements IdempotentCommandInterface
+final readonly class RegisterUserCommand implements IdempotentCommandInterface, SensitiveDataInterface
 {
     public function __construct(
         public string $name,
         public string $email,
-        public string $password,
+        #[\SensitiveParameter] public string $password,
         public ?string $tenantName = null,
         public ?string $slug = null,
+        /** @param string|null $tenantId Null is valid for seller registrations (role = seller). Must not be null for tenant-bound staff registrations. */
         public ?string $tenantId = null,
         public ?string $role = null, // Defaults handled in Handler/Action
 
@@ -33,6 +36,11 @@ final readonly class RegisterUserCommand implements IdempotentCommandInterface
          * Prevents duplicate processing in unstable networks.
          */
         public ?string $idempotencyKey = null,
+
+        /**
+         * Schema Version for Upcasting.
+         */
+        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string
@@ -46,5 +54,10 @@ final readonly class RegisterUserCommand implements IdempotentCommandInterface
         // P3 FIX: Changed md5 → xxh128 for modern, collision-resistant hashing
         // xxh128 is faster and has better distribution than MD5
         return hash('xxh128', 'register_user_'.$this->email);
+    }
+
+    public function getSensitiveProperties(): array
+    {
+        return ['password'];
     }
 }

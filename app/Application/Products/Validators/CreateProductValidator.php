@@ -14,7 +14,7 @@ use App\Application\Products\Commands\CreateProductCommand;
  * ║  UNIQUE RULE: Pragmatically included here for SKU/name collision.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-class CreateProductValidator
+final class CreateProductValidator
 {
     /**
      * Get the validation rules that apply to the command.

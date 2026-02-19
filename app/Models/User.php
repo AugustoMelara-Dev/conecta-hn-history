@@ -17,9 +17,11 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use NotificationChannels\WebPush\HasPushSubscriptions;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * User Model - Identity & Access Authority
@@ -28,9 +30,9 @@ use NotificationChannels\WebPush\HasPushSubscriptions;
  * 1. Authorization (via Enum-based Identity Helpers)
  * 2. Multi-tenancy Context Resolution (Strict Ownership)
  */
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthenticatable
 {
-    use HasFactory, HasPushSubscriptions, HasUuids, Notifiable;
+    use HasApiTokens, HasFactory, HasPushSubscriptions, HasUuids, Notifiable;
 
     /**
      * UUID Configuration: Disable Auto-Increment
@@ -102,7 +104,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'banned_at' => 'datetime',
             'role' => UserRole::class,
-            'tenant_id' => \App\Infrastructure\Persistence\Eloquent\Casts\TenantIdCast::class,
+            // 'tenant_id' => \App\Infrastructure\Persistence\Eloquent\Casts\TenantIdCast::class,
         ];
     }
 
@@ -185,6 +187,17 @@ class User extends Authenticatable implements MustVerifyEmail
     // TENANCY RELATIONSHIPS
     // ═══════════════════════════════════════════════════════════════════════
 
+    /**
+     * TenantAware Contract: Explicit tenant identity resolution.
+     *
+     * Replaces implicit $user->tenant_id access with a type-safe getter,
+     * decoupling Actions from the concrete Eloquent schema.
+     */
+    public function getTenantId(): int|string|null
+    {
+        return $this->tenant_id;
+    }
+
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
@@ -266,10 +279,10 @@ class User extends Authenticatable implements MustVerifyEmail
      * INVARIANT: Points are tenant-isolated. Points from Tenant A
      * cannot be used at Tenant B.
      * 
-     * @param int $tenantId The tenant to check balance for
+     * @param string $tenantId The tenant to check balance for
      * @return int Current point balance (can be negative if over-redeemed)
      */
-    public function loyaltyBalance(int $tenantId): int
+    public function loyaltyBalance(string $tenantId): int
     {
         return (int) $this->loyaltyLedger()
             ->where('tenant_id', $tenantId)
@@ -279,10 +292,10 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Get active (non-expired) loyalty points balance for a tenant.
      * 
-     * @param int $tenantId The tenant to check balance for
+     * @param string $tenantId The tenant to check balance for
      * @return int Active point balance
      */
-    public function activeLoyaltyBalance(int $tenantId): int
+    public function activeLoyaltyBalance(string $tenantId): int
     {
         return (int) $this->loyaltyLedger()
             ->where('tenant_id', $tenantId)

@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Application\Common\Exceptions\ConcurrentRequestException;
-use App\Application\Common\Exceptions\IdempotencyKeyReuseException;
+use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
+use App\Application\Shared\Common\Exceptions\IdempotencyKeyReuseException;
 use App\Infrastructure\Common\Idempotency\AtomicIdempotencyService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;

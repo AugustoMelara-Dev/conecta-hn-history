@@ -1,0 +1,90 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "CreateOrderCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "integer"
+        },
+        "customerId": {
+            "type": "integer"
+        },
+        "currency": {
+            "type": "string"
+        },
+        "customerName": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "customerPhone": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "customerEmail": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "customerAddress": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "customerNotes": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "deliveryType": {
+            "type": "string",
+            "default": "pickup"
+        },
+        "paymentMethod": {
+            "type": "string",
+            "default": "pending"
+        },
+        "items": {
+            "type": "array",
+            "default": []
+        },
+        "couponCode": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "requestorId": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "default": null
+        },
+        "idempotencyKey": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        }
+    },
+    "required": [
+        "tenantId",
+        "customerId",
+        "currency"
+    ],
+    "additionalProperties": false
+}

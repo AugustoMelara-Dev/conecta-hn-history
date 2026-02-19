@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Shared\Context;
 
+use App\Application\Shared\Contracts\IdempotencyContextInterface;
 use RuntimeException;
 
 /**
@@ -12,7 +13,7 @@ use RuntimeException;
  * Holds the Idempotency Key for the current operation/request.
  * This decouples the Domain/Application layer from HTTP Headers.
  */
-class IdempotencyContext
+class IdempotencyContext implements IdempotencyContextInterface
 {
     private ?string $key = null;
 

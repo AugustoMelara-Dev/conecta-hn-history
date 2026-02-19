@@ -11,12 +11,14 @@ use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Events\UserRegistered;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Domain\Shared\OutboxRepositoryInterface;
+use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Shared\PasswordHasherInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity as Tenant;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Str;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
+use App\Application\Shared\Contracts\SlugGeneratorInterface;
+
 
 /**
  * Class RegisterUserHandler
@@ -31,13 +33,22 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
         private TenantRepositoryInterface $tenantRepository,
         private TransactionManagerInterface $transactionManager,
         private OutboxRepositoryInterface $outboxRepository,
+
         private PasswordHasherInterface $hasher,
+        private IdGeneratorInterface $idGenerator,
+        private SlugGeneratorInterface $slugGenerator,
     ) {}
 
     public function handle(RegisterUserCommand $command): RegisterUserResult
     {
+        // Guard: Staff registration requires an explicit Tenant ID.
+        // Prevents accidental "New Tenant" creation if ID is omitted for a Staff user.
+        if ($command->tenantId === null && $command->role === UserRole::STAFF->value) {
+            throw new \DomainException('tenantId is required for tenant-bound user registration.');
+        }
+
         // 1. Generate Deterministic IDs & Time
-        $userId = (string) Str::uuid();
+        $userId = $this->idGenerator->generate();
         $now = CarbonImmutable::now();
 
         // 2. Security Hardening (Hashing BEFORE Domain/Persistence)
@@ -75,9 +86,9 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
 
             } else {
                 // FLOW A: Create New Tenant (Greenfield)
-                $tenantId = (string) Str::uuid();
+                $tenantId = $this->idGenerator->generate();
                 $tenantName = $command->tenantName ?? $command->name."'s Workspace";
-                $tenantDomain = $command->slug ?? Str::slug($tenantName);
+                $tenantDomain = $command->slug ?? $this->slugGenerator->generate($tenantName);
 
                 $tenant = Tenant::create(
                     id: $tenantId,
@@ -123,7 +134,8 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
                 id: $userId,
                 tenantId: $tenantId,
                 email: $command->email,
-                registeredAt: $now
+                registeredAt: $now,
+                requiresVerification: true
             );
         });
     }
