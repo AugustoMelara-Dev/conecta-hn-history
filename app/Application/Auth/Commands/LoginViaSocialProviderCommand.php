@@ -9,14 +9,14 @@ use App\Domain\Shared\Enums\ProviderName;
 /**
  * LoginViaSocialProviderCommand - Provider-Agnostic Social Identity Contract
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  TENANT AWARE: Mandatory tenantId to prevent cross-tenant account hijack║
- * ║  SOCIALITE AGNOSTIC: No Laravel\Socialite references - normalized data. ║
- * ║  UNIVERSAL: Works for Google, GitHub, LinkedIn, Apple, etc.             ║
- * ║  TYPE SAFETY: Enforced via ProviderName Enum.                           ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  TENANT AWARE: Mandatory tenantId to prevent cross-tenant account hijackâ•‘
+ * â•‘  SOCIALITE AGNOSTIC: No Laravel\Socialite references - normalized data. â•‘
+ * â•‘  UNIVERSAL: Works for Google, GitHub, LinkedIn, Apple, etc.             â•‘
+ * â•‘  TYPE SAFETY: Enforced via ProviderName Enum.                           â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class LoginViaSocialProviderCommand implements \App\Application\Shared\Common\Contracts\HashableCommandInterface
+final readonly class LoginViaSocialProviderCommand implements \App\Application\Shared\Contracts\HashableCommandInterface
 {
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) - Social login is always INTO a specific tenant */

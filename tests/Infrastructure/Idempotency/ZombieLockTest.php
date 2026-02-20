@@ -2,7 +2,7 @@
 
 namespace Tests\Infrastructure\Idempotency;
 
-use App\Infrastructure\Shared\Services\AtomicIdempotencyService;
+use App\Infrastructure\Common\Idempotency\AtomicIdempotencyService;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 

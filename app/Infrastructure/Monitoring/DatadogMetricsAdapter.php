@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Monitoring;
 
-use App\Application\Shared\Common\Contracts\MetricsCollectorInterface;
+use App\Application\Shared\Contracts\MetricsCollectorInterface;
 use Illuminate\Support\Facades\Log;
 
 /**
  * DatadogMetricsAdapter - Observability Adapter
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  INFRASTRUCTURE ISOLATION: Decouples app from 'dogstatsd' binaries.     ║
- * ║  PRODUCTION READY: Uses UDP transport via library (simulated here).    ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  INFRASTRUCTURE ISOLATION: Decouples app from 'dogstatsd' binaries.     â•‘
+ * â•‘  PRODUCTION READY: Uses UDP transport via library (simulated here).    â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final readonly class DatadogMetricsAdapter implements MetricsCollectorInterface
 {

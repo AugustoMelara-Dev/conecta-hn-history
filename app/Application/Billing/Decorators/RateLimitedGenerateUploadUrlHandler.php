@@ -6,17 +6,17 @@ namespace App\Application\Billing\Decorators;
 
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Billing\Handlers\GenerateUploadUrlHandlerInterface;
-use App\Application\Shared\Common\Contracts\RateLimiterInterface;
+use App\Application\Shared\Contracts\RateLimiterInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
  * RateLimitedGenerateUploadUrlHandler - DoS Protection (Level 30)
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  DEFENSE: SIGNING ENDPOINT PROTECTION                                    ║
- * ║  1. Limits: 20 requests per minute per tenant (Higher burst for uploads).║
- * ║  2. Protects: CPU (Signing) & Disk/S3 Metadata Spam.                     ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  DEFENSE: SIGNING ENDPOINT PROTECTION                                    â•‘
+ * â•‘  1. Limits: 20 requests per minute per tenant (Higher burst for uploads).â•‘
+ * â•‘  2. Protects: CPU (Signing) & Disk/S3 Metadata Spam.                     â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final readonly class RateLimitedGenerateUploadUrlHandler implements GenerateUploadUrlHandlerInterface
 {

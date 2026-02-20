@@ -6,16 +6,16 @@ namespace App\Application\Auth\Decorators;
 
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
-use App\Application\Shared\Common\Contracts\AtomicIdempotencyInterface;
+use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
 
 /**
  * GenerateOtpIdempotencyDecorator - Concurrency Control Layer
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  RUSSIAN DOLL: This decorator wraps the core handler with idempotency.  ║
- * ║  RESPONSIBILITY: Prevent duplicate processing of the same command.      ║
- * ║  TRANSPARENCY: The core handler is completely unaware of this layer.    ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  RUSSIAN DOLL: This decorator wraps the core handler with idempotency.  â•‘
+ * â•‘  RESPONSIBILITY: Prevent duplicate processing of the same command.      â•‘
+ * â•‘  TRANSPARENCY: The core handler is completely unaware of this layer.    â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final readonly class GenerateOtpIdempotencyDecorator implements GenerateOtpHandlerInterface
 {

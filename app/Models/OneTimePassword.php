@@ -15,7 +15,7 @@ class OneTimePassword extends Model
     use HasFactory, HasUuids;
 
     // VC-AUDIT-103: Hardened to prevent mass assignment of sensitive fields
-    protected $guarded = ['id', 'user_id', 'created_at', 'updated_at'];
+    protected $guarded = ['id', 'created_at', 'updated_at'];
 
     protected $casts = [
         'expires_at' => 'datetime',

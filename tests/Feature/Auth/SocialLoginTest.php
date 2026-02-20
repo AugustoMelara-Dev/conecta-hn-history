@@ -96,9 +96,9 @@ class SocialLoginTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['token']);
 
-        // Verify specific error mentions size limit
+        // Verify specific error mentions size limit (Spanish translation)
         $this->assertStringContainsStringIgnoringCase(
-            'limit',
+            'límite',
             $response->json('errors.token.0') ?? $response->json('message'),
             'Error message should mention size/character limit'
         );

@@ -39,6 +39,7 @@
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
+        "dg/bypass-finals": "^1.9",
         "fakerphp/faker": "^1.23",
         "justinrainbow/json-schema": "^6.7",
         "larastan/larastan": "*",

@@ -23,7 +23,7 @@ use Illuminate\Validation\ValidationException;
 final class UpdateUserPasswordCommandValidator implements UpdateUserPasswordHandlerInterface
 {
     public function __construct(
-        private UpdateUserPasswordHandlerInterface $inner,
+        private object $inner,
         private ValidatorFactory $validatorFactory,
     ) {}
 

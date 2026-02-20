@@ -13,6 +13,7 @@ declare(strict_types=1);
  */
 
 use App\Application\Shared\Contracts\CommandBusInterface;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Application\Shared\Contracts\SensitiveDataInterface;
 use App\Infrastructure\Bus\TransactionalCommandBus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,9 +31,13 @@ test('transactional bus persists redacted payload and marks as published', funct
     $mockDispatcher = Mockery::mock(\Illuminate\Contracts\Bus\Dispatcher::class);
     $mockDispatcher->shouldReceive('dispatchSync')->once()->andReturn('handler-result');
 
+    $mockIdGenerator = Mockery::mock(IdGeneratorInterface::class);
+    $mockIdGenerator->shouldReceive('generate')->andReturn('test-uuid-001');
+
     $bus = new TransactionalCommandBus(
         $mockDispatcher,
-        app('db.connection')
+        app('db.connection'),
+        $mockIdGenerator,
     );
 
     // Create a command implementing SensitiveDataInterface
@@ -76,9 +81,13 @@ test('transactional bus rolls back outbox on handler failure', function () {
         new \RuntimeException('Handler exploded')
     );
 
+    $mockIdGenerator = Mockery::mock(IdGeneratorInterface::class);
+    $mockIdGenerator->shouldReceive('generate')->andReturn('test-uuid-002');
+
     $bus = new TransactionalCommandBus(
         $mockDispatcher,
-        app('db.connection')
+        app('db.connection'),
+        $mockIdGenerator,
     );
 
     $command = new class('data') {
@@ -105,9 +114,13 @@ test('transactional bus persists non-sensitive command without redaction', funct
     $mockDispatcher = Mockery::mock(\Illuminate\Contracts\Bus\Dispatcher::class);
     $mockDispatcher->shouldReceive('dispatchSync')->once()->andReturn(42);
 
+    $mockIdGenerator = Mockery::mock(IdGeneratorInterface::class);
+    $mockIdGenerator->shouldReceive('generate')->andReturn('test-uuid-003');
+
     $bus = new TransactionalCommandBus(
         $mockDispatcher,
-        app('db.connection')
+        app('db.connection'),
+        $mockIdGenerator,
     );
 
     $command = new class('hello', 123) {

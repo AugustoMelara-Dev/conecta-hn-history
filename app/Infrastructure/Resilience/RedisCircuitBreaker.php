@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Resilience;
 
-use App\Application\Shared\Common\Contracts\CircuitBreakerInterface;
-use App\Application\Shared\Common\Contracts\MetricsCollectorInterface;
+use App\Application\Shared\Contracts\CircuitBreakerInterface;
+use App\Application\Shared\Contracts\MetricsCollectorInterface;
 use Illuminate\Redis\Connections\Connection;
 use Illuminate\Support\Facades\Log;
 

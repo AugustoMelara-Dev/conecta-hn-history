@@ -56,7 +56,7 @@ class OutboxScalingTest extends TestCase
 
         $results = Process::pool(function (Pool $pool) use ($workerCount, $limitPerWorker) {
             for ($i = 0; $i < $workerCount; $i++) {
-                $pool->command("php artisan outbox:process --once --limit={$limitPerWorker}")
+                $pool->command("php artisan infrastructure:process-outbox --batch-size={$limitPerWorker} --max-loops=1")
                     ->timeout(60);
             }
         })->wait();
@@ -106,7 +106,7 @@ class OutboxScalingTest extends TestCase
         OutboxMessage::query()->delete();
 
         // Run with a timeout (should sleep and exit cleanly)
-        $result = Process::timeout(5)->run('php artisan outbox:process --once');
+        $result = Process::timeout(5)->run('php artisan infrastructure:process-outbox --max-loops=1');
 
         $this->assertTrue($result->successful(), 'Command should complete successfully on empty queue');
         $this->assertStringContainsString('Total processed: 0', $result->output());
@@ -119,7 +119,7 @@ class OutboxScalingTest extends TestCase
         $this->seedPendingMessages(50);
 
         // Process with limit=20
-        $result = Process::run('php artisan outbox:process --once --limit=20');
+        $result = Process::run('php artisan infrastructure:process-outbox --batch-size=20 --max-loops=1');
 
         $this->assertTrue($result->successful());
 

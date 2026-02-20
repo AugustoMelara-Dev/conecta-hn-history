@@ -6,6 +6,7 @@ use App\Actions\Interactions\RecordInteractionAction;
 use App\Application\Interactions\Commands\RecordInteractionCommand;
 use App\Application\Interactions\DTOs\InteractionData;
 use App\Application\Shared\Contracts\CommandBusInterface;
+use App\Application\Shared\Contracts\TenantRateLimiterInterface;
 
 /**
  * RecordInteractionActionTest - CommandBus Delegation Verification
@@ -42,7 +43,10 @@ test('record interaction action dispatches command via bus', function () {
         }));
 
     // Act
-    $action = new RecordInteractionAction($busMock);
+    $rateLimiterMock = Mockery::mock(TenantRateLimiterInterface::class);
+    $rateLimiterMock->shouldReceive('ensureNotExceeded')->once();
+
+    $action = new RecordInteractionAction($busMock, $rateLimiterMock);
     $action->execute($dto);
 });
 
@@ -58,7 +62,9 @@ test('record interaction action rejects missing tenant context', function () {
     $busMock = Mockery::mock(CommandBusInterface::class);
     $busMock->shouldNotReceive('dispatch');
 
-    $action = new RecordInteractionAction($busMock);
+    $rateLimiterMock = Mockery::mock(TenantRateLimiterInterface::class);
+
+    $action = new RecordInteractionAction($busMock, $rateLimiterMock);
     $action->execute($dto);
 })->throws(\RuntimeException::class, 'missing tenant context');
 
@@ -77,7 +83,10 @@ test('record interaction action rejects oversized metadata', function () {
     $busMock = Mockery::mock(CommandBusInterface::class);
     $busMock->shouldNotReceive('dispatch');
 
-    $action = new RecordInteractionAction($busMock);
+    $rateLimiterMock = Mockery::mock(TenantRateLimiterInterface::class);
+    $rateLimiterMock->shouldReceive('ensureNotExceeded')->once();
+
+    $action = new RecordInteractionAction($busMock, $rateLimiterMock);
     $action->execute($dto);
 })->throws(\InvalidArgumentException::class, 'maximum allowed size');
 
@@ -103,7 +112,10 @@ test('record interaction action maps null optional fields correctly', function (
                 && $command->metadata === [];
         }));
 
-    $action = new RecordInteractionAction($busMock);
+    $rateLimiterMock = Mockery::mock(TenantRateLimiterInterface::class);
+    $rateLimiterMock->shouldReceive('ensureNotExceeded')->once();
+
+    $action = new RecordInteractionAction($busMock, $rateLimiterMock);
     $action->execute($dto);
 });
 

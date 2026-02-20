@@ -27,7 +27,7 @@ final class OutboxMessage extends Model
 {
     use HasUuids;
 
-    protected $table = 'domain_outbox_messages';
+    protected $table = 'outbox_messages';
 
     public $timestamps = false;
 

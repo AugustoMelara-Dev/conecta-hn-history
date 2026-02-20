@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Listeners;
 
-use App\Application\Shared\Common\Contracts\CircuitBreakerInterface;
+use App\Application\Shared\Contracts\CircuitBreakerInterface;
 use App\Domain\Auth\Contracts\OtpNotifierInterface;
 use App\Domain\Auth\Events\OtpGenerated;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,12 +15,12 @@ use Throwable;
 /**
  * SendOtpNotificationListener - Infrastructure Layer Async Worker
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  INFRASTRUCTURE LAYER: ShouldQueue is permitted here (framework edge).  ║
- * ║  TENANT AWARE: Passes tenantId to notifier for branding/routing.        ║
- * ║  CIRCUIT BREAKER: Fails fast if external provider is down.              ║
- * ║  PII PROTECTED: All identifiers masked before logging (GDPR compliant). ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  INFRASTRUCTURE LAYER: ShouldQueue is permitted here (framework edge).  â•‘
+ * â•‘  TENANT AWARE: Passes tenantId to notifier for branding/routing.        â•‘
+ * â•‘  CIRCUIT BREAKER: Fails fast if external provider is down.              â•‘
+ * â•‘  PII PROTECTED: All identifiers masked before logging (GDPR compliant). â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final class SendOtpNotificationListener implements ShouldQueue
 {
@@ -89,8 +89,8 @@ final class SendOtpNotificationListener implements ShouldQueue
      *
      * Examples:
      *
-     * - Email: "user@example.com" → "us***@example.com"
-     * - Phone: "+50412345678" → "+504****78"
+     * - Email: "user@example.com" â†’ "us***@example.com"
+     * - Phone: "+50412345678" â†’ "+504****78"
      */
     private function maskIdentifier(string $identifier): string
     {

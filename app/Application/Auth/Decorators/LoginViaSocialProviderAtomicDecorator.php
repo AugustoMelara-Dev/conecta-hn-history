@@ -7,7 +7,7 @@ namespace App\Application\Auth\Decorators;
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface;
 use App\Application\Auth\Results\SocialLoginResult;
-use App\Application\Shared\Common\Contracts\AtomicIdempotencyInterface;
+use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
 use App\Application\Shared\Common\Decorators\AtomicIdempotencyDecorator;
 
 final readonly class LoginViaSocialProviderAtomicDecorator implements LoginViaSocialProviderHandlerInterface

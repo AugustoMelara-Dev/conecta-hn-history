@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Common\Idempotency;
 
-use App\Application\Shared\Common\Contracts\LockInterface;
+use App\Application\Shared\Contracts\LockInterface;
 use App\Application\Shared\Common\Exceptions\LockTimeoutException;
 use Illuminate\Redis\Connections\Connection;
 use Illuminate\Support\Str;

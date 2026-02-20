@@ -6,17 +6,17 @@ namespace App\Application\Auth\Decorators;
 
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
-use App\Application\Shared\Common\Contracts\IdempotencyServiceInterface;
+use App\Application\Shared\Contracts\IdempotencyServiceInterface;
 
 /**
  * IdempotentGenerateOtpHandler - Distributed State Protection Decorator
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  LISKOV COMPLIANT: Implements same interface as decorated Handler.      ║
- * ║  ATOMIC LOCKING: Check-inside-lock pattern prevents TOCTOU race.        ║
- * ║  12-FACTOR: TTL injected via constructor, not hardcoded.                ║
- * ║  TENANT PARTITIONED: Cache key includes TenantID for isolation.         ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  LISKOV COMPLIANT: Implements same interface as decorated Handler.      â•‘
+ * â•‘  ATOMIC LOCKING: Check-inside-lock pattern prevents TOCTOU race.        â•‘
+ * â•‘  12-FACTOR: TTL injected via constructor, not hardcoded.                â•‘
+ * â•‘  TENANT PARTITIONED: Cache key includes TenantID for isolation.         â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final readonly class IdempotentGenerateOtpHandler implements GenerateOtpHandlerInterface
 {
@@ -35,9 +35,9 @@ final readonly class IdempotentGenerateOtpHandler implements GenerateOtpHandlerI
         // We resolve the key from the Transport Context (Headers)
         $key = $this->idempotencyContext->getKey();
 
-        // ═══════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // 2. THE GATEKEEPER (3-State Protocol)
-        // ═══════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         $state = $this->idempotencyService->getState($key);
 
         if ($state === 'COMPLETED') {

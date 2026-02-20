@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Interactions\Commands;
 
-use App\Application\Shared\Common\Interfaces\IdempotentCommandInterface;
+use App\Application\Shared\Contracts\IdempotentCommandInterface;
 use App\Application\Shared\Contracts\SensitiveDataInterface;
 
 /**

@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\Common\Decorators;
 
-use App\Application\Shared\Common\Contracts\AtomicIdempotencyInterface;
+use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
+use App\Application\Shared\Contracts\HashableCommandInterface;
 use InvalidArgumentException;
 
 /**
@@ -22,7 +23,7 @@ final class AtomicIdempotencyDecorator
 
     public function handle(object $command): mixed
     {
-        if (! ($command instanceof HashableCommand)) {
+        if (! ($command instanceof HashableCommandInterface)) {
             // Fallback or Error?
             // For standard hardening, we enforce the contract.
             throw new InvalidArgumentException('Command must implement HashableCommand to use AtomicIdempotencyDecorator.');

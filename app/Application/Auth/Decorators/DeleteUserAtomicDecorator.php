@@ -7,7 +7,7 @@ namespace App\Application\Auth\Decorators;
 use App\Application\Auth\Commands\DeleteUserCommand;
 use App\Application\Auth\Handlers\DeleteUserHandlerInterface;
 use App\Application\Auth\Results\DeleteUserResult;
-use App\Application\Shared\Common\Contracts\AtomicIdempotencyInterface;
+use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
 use App\Application\Shared\Common\Decorators\AtomicIdempotencyDecorator;
 
 final readonly class DeleteUserAtomicDecorator implements DeleteUserHandlerInterface

@@ -646,6 +646,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Application\Shared\Contracts\ValidationServiceInterface::class,
+            \App\Infrastructure\Shared\Services\LaravelValidationService::class
+        );
+
+        $this->app->bind(
             \App\Domain\Shared\Contracts\UuidGeneratorInterface::class,
             \App\Infrastructure\Identity\RamseyUuidGenerator::class
         );

@@ -8,18 +8,18 @@ use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Billing\Commands\ReportPaymentCommand;
 use App\Application\Billing\Handlers\ReportPaymentHandlerInterface;
 use App\Application\Billing\Results\ReportPaymentResult;
-use App\Application\Shared\Common\Contracts\RateLimiterInterface;
+use App\Application\Shared\Contracts\RateLimiterInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
  * RateLimitedReportPaymentHandler - DoS Protection (Level 28)
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  DEFENSE: TENANT-AWARE RATE LIMITING                                     ║
- * ║  1. Limits: 10 requests per minute per tenant.                           ║
- * ║  2. Protects: S3 Upload Bandwidth & Database Connections.                ║
- * ║  3. Storage: Redis (Atomic).                                             ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  DEFENSE: TENANT-AWARE RATE LIMITING                                     â•‘
+ * â•‘  1. Limits: 10 requests per minute per tenant.                           â•‘
+ * â•‘  2. Protects: S3 Upload Bandwidth & Database Connections.                â•‘
+ * â•‘  3. Storage: Redis (Atomic).                                             â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final readonly class RateLimitedReportPaymentHandler implements ReportPaymentHandlerInterface
 {

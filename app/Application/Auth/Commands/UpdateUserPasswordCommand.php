@@ -9,14 +9,14 @@ use App\Application\Shared\Contracts\SensitiveDataInterface;
 /**
  * UpdateUserPasswordCommand - Secure Password Change Contract
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  IDOR PROTECTION: Carries requestingTenantId for ownership validation.  ║
- * ║  SEC-01 FIX: Passwords scrubbed from stack traces via SensitiveParameter║
- * ║  IMMUTABLE: final readonly prevents tampering after dispatch.           ║
- * ║  P1-REDACT: SensitiveDataInterface for Outbox/log sanitization.        ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  IDOR PROTECTION: Carries requestingTenantId for ownership validation.  â•‘
+ * â•‘  SEC-01 FIX: Passwords scrubbed from stack traces via SensitiveParameterâ•‘
+ * â•‘  IMMUTABLE: final readonly prevents tampering after dispatch.           â•‘
+ * â•‘  P1-REDACT: SensitiveDataInterface for Outbox/log sanitization.        â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class UpdateUserPasswordCommand implements \App\Application\Shared\Common\Contracts\HashableCommandInterface, SensitiveDataInterface
+final readonly class UpdateUserPasswordCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, SensitiveDataInterface
 {
     public function __construct(
         /** User ID to update (UUID string) */

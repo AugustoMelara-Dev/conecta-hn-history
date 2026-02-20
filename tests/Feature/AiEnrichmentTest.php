@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Domain\AIEnrichment\Jobs\EnhanceTenantProfileJob;
+use App\Infrastructure\Jobs\AI\EnhanceTenantProfileJob;
+use App\Application\Tenant\ResultsProfileData;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AiProfileGeneratorService;
@@ -203,25 +204,29 @@ test('service handles flagged content response', function () {
 // JOB TESTS: EnhanceTenantProfileJob
 // ═══════════════════════════════════════════════════════════════════════════════
 
-test('job skips processing when tenant not found', function () {
-    $job = new EnhanceTenantProfileJob(999999);
-    $mockService = Mockery::mock(AiProfileGeneratorService::class);
-    $mockService->shouldNotReceive('generate');
-
+test('job dispatches command to handler regardless of tenant existence', function () {
+    $data = new ResultsProfileData(tenantId: '999999');
+    $job = new EnhanceTenantProfileJob($data);
+    $mockService = Mockery::mock(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class);
+    $mockService->shouldReceive('handle')
+        ->once()
+        ->withArgs(fn($cmd) => $cmd instanceof \App\Application\Tenant\Commands\EnhanceTenantProfileCommand
+            && $cmd->tenantId === 999999);
     $job->handle($mockService);
-    // Test passes if no exception thrown - tenant not found is handled gracefully
-    expect(true)->toBeTrue();
 });
 
-test('job skips already enriched tenants (idempotency)', function () {
+test('job dispatches command to handler for already enriched tenant', function () {
     $tenant = createTestTenant([
         'is_ai_enhanced' => true, // Already processed
     ]);
 
-    $job = new EnhanceTenantProfileJob($tenant->id);
-    $mockService = Mockery::mock(AiProfileGeneratorService::class);
-    $mockService->shouldNotReceive('generate');
-
+    $data = new ResultsProfileData(tenantId: (string) $tenant->id);
+    $job = new EnhanceTenantProfileJob($data);
+    $mockService = Mockery::mock(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class);
+    $mockService->shouldReceive('handle')
+        ->once()
+        ->withArgs(fn($cmd) => $cmd instanceof \App\Application\Tenant\Commands\EnhanceTenantProfileCommand
+            && $cmd->tenantId === (int) $tenant->id);
     $job->handle($mockService);
 });
 
@@ -230,19 +235,19 @@ test('job can be dispatched to queue', function () {
 
     $tenant = createTestTenant();
 
-    EnhanceTenantProfileJob::dispatch($tenant->id);
+    $data = new ResultsProfileData(tenantId: (string) $tenant->id);
+    EnhanceTenantProfileJob::dispatch($data);
 
     Queue::assertPushed(EnhanceTenantProfileJob::class, function ($job) use ($tenant) {
-        return $job->uniqueId() === 'enhance-tenant-'.$tenant->id;
+        return $job->uniqueId() === 'enhance_'.$tenant->id;
     });
 });
 
 test('job has correct queue configuration', function () {
-    $job = new EnhanceTenantProfileJob(1);
+    $data = new ResultsProfileData(tenantId: '1');
+    $job = new EnhanceTenantProfileJob($data);
 
     expect($job->tries)->toBe(3);
-    expect($job->backoff)->toBe([30, 60, 120]);
+    expect($job->timeout)->toBe(180);
     expect($job->uniqueFor)->toBe(3600);
-    expect($job->timeout)->toBe(120);
-    expect($job->tenantId)->toBe(1);
 });

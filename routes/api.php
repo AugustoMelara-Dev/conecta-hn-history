@@ -40,6 +40,14 @@ Route::prefix('v1')->group(function () {
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // AUTHENTICATION: Social Login
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::prefix('auth')->group(function () {
+        Route::post('/social', [\App\Http\Controllers\Api\V1\AuthController::class, 'socialLogin'])
+            ->middleware('throttle:api');
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC ANALYTICS: Tenant-Aware Protection
     // ═══════════════════════════════════════════════════════════════════════════
     Route::post('/interactions', [InteractionController::class, 'store'])
