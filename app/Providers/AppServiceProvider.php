@@ -584,6 +584,14 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // ═══════════════════════════════════════════════════════════════════════
+        // INVENTORY DOMAIN: Contracts
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Contracts\InventoryManagerInterface::class,
+            \App\Services\InventoryManager::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
         // ORDERS DOMAIN: Receipt PDF Generator
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(

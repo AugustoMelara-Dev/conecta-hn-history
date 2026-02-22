@@ -5,15 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Routing\Router;
 use Inertia\Inertia;
 use Inertia\Response;
 
 final class WelcomeController extends Controller
 {
     public function __construct(
-        private readonly \App\Domain\Public\Contracts\LandingPageRepository $repository
+        private \App\Domain\Public\Contracts\LandingPageRepository $repository,
+        private CacheRepository $cache,
+        private Router $router
     ) {}
 
     /**
@@ -28,7 +30,7 @@ final class WelcomeController extends Controller
      */
     public function __invoke(): Response
     {
-        $data = Cache::remember("v".config('app.version')."_homepage_data", 3600, function () {
+        $data = $this->cache->remember("v".config('app.version')."_homepage_data", 3600, function () {
             return [
                 // ═══════════════════════════════════════════════════════════
                 // CATEGORIES: For navigation pills (sorted by sort_order)
@@ -58,8 +60,8 @@ final class WelcomeController extends Controller
         });
 
         return Inertia::render('Welcome', array_merge($data, [
-            'canLogin' => Route::has('login'),
-            'canRegister' => Route::has('register'),
+            'canLogin' => $this->router->has('login'),
+            'canRegister' => $this->router->has('register'),
         ]));
     }
 }

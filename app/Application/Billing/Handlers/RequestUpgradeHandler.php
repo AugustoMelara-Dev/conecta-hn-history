@@ -13,14 +13,13 @@ use App\Domain\Billing\Events\SubscriptionUpgraded;
 use App\Domain\Billing\Exceptions\PaymentFailedException;
 use App\Domain\Billing\Gateways\SubscriptionGatewayInterface;
 use App\Domain\Billing\Repositories\PlanRepositoryInterface;
+use App\Domain\Billing\Repositories\SubscriptionIntentRepositoryInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\Shared\Contracts\UuidGeneratorInterface;
 use App\Domain\Shared\Exceptions\StaleObjectException;
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
-use Illuminate\Database\ConnectionInterface;
-use Illuminate\Database\QueryException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -28,12 +27,16 @@ use Psr\Log\LoggerInterface;
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  RESILIENCE: DETERMINISTIC IDENTITY RESOLUTION                           ║
- * ║  1. Insert-or-Recover Pattern (MySQL Guard)                              ║
- * ║     - Try to Insert Intent (Unique Index Trap)                           ║
- * ║     - Catch Duplicate -> Recover Existing Intent ID                      ║
+ * ║  1. Insert-or-Recover Pattern (via SubscriptionIntentRepository)         ║
+ * ║     - Try to Insert Intent (Repository handles Unique Index Trap)        ║
+ * ║     - If duplicate → Recover Existing Intent ID                          ║
  * ║  2. Gateway Call using RECOVERED ID (Stripe sees same key)               ║
  * ║  RESULT: 100% Protection against Double Billing even in Fail-Open mode.  ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * REFACTORED: Replaced ConnectionInterface + QueryException with
+ * SubscriptionIntentRepositoryInterface. All raw DB access now lives in
+ * the Infrastructure layer's repository implementation.
  */
 final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInterface
 {
@@ -47,7 +50,7 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
         private UuidGeneratorInterface $uuidGenerator,
         private LoggerInterface $logger,
         private TransactionManagerInterface $transactionManager,
-        private ConnectionInterface $connection,
+        private SubscriptionIntentRepositoryInterface $intentRepository,
         private DataScrubberInterface $scrubber,
     ) {}
 
@@ -74,54 +77,36 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
         $generatedIntentId = $this->uuidGenerator->generate();
         $capturedIntentId = null;
 
-        try {
-            // ATTEMPT 1: We are the first.
-            $this->connection->table('subscription_intents')->insert([
-                'id' => $generatedIntentId,
-                'tenant_id' => $tenant->id(),
-                'client_idempotency_key' => $command->clientIdempotencyKey, // The Safety Index
-                'plan_identifier' => $plan->identifier,
-                'gateway_provider' => 'stripe',
-                'status' => SubscriptionIntent::STATUS_PENDING,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        $inserted = $this->intentRepository->insertOrIgnore([
+            'id' => $generatedIntentId,
+            'tenant_id' => $tenant->id(),
+            'client_idempotency_key' => $command->clientIdempotencyKey,
+            'plan_identifier' => $plan->identifier,
+            'gateway_provider' => 'stripe',
+            'status' => SubscriptionIntent::STATUS_PENDING,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
+        if ($inserted) {
             $capturedIntentId = $generatedIntentId;
-
-        } catch (QueryException $e) {
-            // TRAP: Integrity Constraint Violation (Duplicate Entry)
-            if ($e->getCode() !== '23000' && $e->errorInfo[1] !== 1062) {
-                // Not a duplicate error? Real crash. Rethrow.
-                throw $e;
-            }
-
-            // ATTEMPT 2: We are the second (Race Condition or Retry).
-            // RECOVER the existing ID.
-            $existing = $this->connection->table('subscription_intents')
-                ->where('tenant_id', $tenant->id())
-                ->where('client_idempotency_key', $command->clientIdempotencyKey)
-                ->first();
+        } else {
+            // RECOVER: We are the second (Race Condition or Retry).
+            $existing = $this->intentRepository->findByTenantAndIdempotencyKey(
+                $tenant->id(),
+                $command->clientIdempotencyKey,
+            );
 
             if (! $existing) {
-                // Should not happen logically unless delete race
                 throw new \RuntimeException('Race condition anomaly: Duplicate detected but row not found.');
             }
 
-            // Critical: Use the EXISTING ID.
             $capturedIntentId = $existing->id;
 
             $this->logger->info('Recovered existing intent for double-submit protection', [
                 'client_key' => $command->clientIdempotencyKey,
                 'intent_id' => $capturedIntentId,
             ]);
-
-            // Check if already completed?
-            if ($existing->status === SubscriptionIntent::STATUS_COMPLETED) {
-                // Optimization: If already done, we could return success immediately.
-                // But normally we let it flow to verify state / check OCC.
-                // Let's proceed to ensure idempotent return response.
-            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -131,14 +116,13 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
             $gatewayResult = $this->subscriptionGateway->swapPlan(
                 subscriptionReference: $subscriptionRef,
                 newPlanId: $plan->externalGatewayId,
-                idempotencyKey: $capturedIntentId // UNIFIED KEY: Always the same for this client request
+                idempotencyKey: $capturedIntentId
             );
 
             if (! $gatewayResult->success) {
-                $this->connection->table('subscription_intents')->where('id', $capturedIntentId)->update([
+                $this->intentRepository->updateStatus($capturedIntentId, [
                     'status' => SubscriptionIntent::STATUS_FAILED,
                     'error_reason' => $gatewayResult->failureReason,
-                    'updated_at' => now(),
                 ]);
                 throw PaymentFailedException::fromGateway($gatewayResult->failureReason ?? 'Unknown error');
             }
@@ -148,10 +132,9 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
             // ═══════════════════════════════════════════════════════════════════
 
             return $this->transactionManager->transaction(function () use ($capturedIntentId, $command, $tenant, $plan, $gatewayResult, $oldPlanId, $subscriptionRef) {
-                $this->connection->table('subscription_intents')->where('id', $capturedIntentId)->update([
+                $this->intentRepository->updateStatus($capturedIntentId, [
                     'status' => SubscriptionIntent::STATUS_COMPLETED,
                     'gateway_transaction_id' => $gatewayResult->transactionId,
-                    'updated_at' => now(),
                 ]);
 
                 $tenant->upgradeToPlan(

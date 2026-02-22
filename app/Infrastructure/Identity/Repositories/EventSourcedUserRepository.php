@@ -108,6 +108,20 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
         // TODO: Implement delete logic (tombstone event?)
     }
 
+    public function resetPassword(string $userId, string $tenantId, string $passwordHash, string $rememberToken): void
+    {
+        // TODO: Implement via PasswordReset domain event
+        // For now, delegate to inline projection update
+        DB::table('users')
+            ->where('id', $userId)
+            ->where('tenant_id', $tenantId)
+            ->update([
+                'password' => $passwordHash,
+                'remember_token' => $rememberToken,
+                'updated_at' => now(),
+            ]);
+    }
+
     public function existsByEmail(string $email): bool
     {
         return DB::table('users')->where('email', $email)->exists();

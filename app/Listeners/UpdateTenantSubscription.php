@@ -62,7 +62,7 @@ class UpdateTenantSubscription implements ShouldQueue
             if ($payment->subscription_extended_at !== null) {
                 Log::warning('PaymentApproved: Idempotency guard triggered - already processed', [
                     'payment_id' => $event->paymentId,
-                    'tenant_id' => $event->tenantId,
+                    'tenant_id' => $event->tenantId()->toString(),
                     'original_extension_at' => $payment->subscription_extended_at,
                 ]);
 
@@ -82,11 +82,11 @@ class UpdateTenantSubscription implements ShouldQueue
             // Pessimistic Locking: Concurrent processes will WAIT here
             // This mathematically eliminates race conditions
             // ═══════════════════════════════════════════════════════════════
-            $tenant = Tenant::lockForUpdate()->find($event->tenantId);
+            $tenant = Tenant::lockForUpdate()->find($event->tenantId()->toString());
 
             if (! $tenant) {
                 throw new \RuntimeException(
-                    "PaymentApproved: Tenant ID {$event->tenantId} not found. Data integrity compromised."
+                    "PaymentApproved: Tenant ID {$event->tenantId()->toString()} not found. Data integrity compromised."
                 );
             }
 
@@ -120,7 +120,7 @@ class UpdateTenantSubscription implements ShouldQueue
 
             Log::info('PaymentApproved: Subscription extended successfully', [
                 'payment_id' => $event->paymentId,
-                'tenant_id' => $event->tenantId,
+                'tenant_id' => $event->tenantId()->toString(),
                 'tenant_name' => $tenant->name,
                 'days_added' => $event->daysToAdd,
                 'new_end_date' => $newEndDate->toDateString(),
@@ -136,7 +136,7 @@ class UpdateTenantSubscription implements ShouldQueue
     {
         Log::critical('PaymentApproved: Listener FAILED - manual intervention required', [
             'payment_id' => $event->paymentId,
-            'tenant_id' => $event->tenantId,
+            'tenant_id' => $event->tenantId()->toString(),
             'reviewer_id' => $event->reviewerId,
             'exception_class' => get_class($exception),
             'exception_message' => $exception->getMessage(),

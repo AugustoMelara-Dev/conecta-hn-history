@@ -59,7 +59,7 @@ class GenerateBusinessProfileJob implements ShouldQueue
         public readonly string $businessName,
         public readonly string $description,
         public readonly int $userId,
-        public readonly int $tenantId,
+        public readonly string $tenantId,
         public readonly ?string $targetAudience = null,
         public readonly ?string $tone = null,
         public readonly array $keywords = []

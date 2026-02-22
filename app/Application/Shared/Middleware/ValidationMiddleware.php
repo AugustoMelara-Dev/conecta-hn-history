@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
  * Implements a "Convention over Configuration" pipeline step.
  * Scans for a matching Validator class and enforces rules strictly.
  */
-class ValidationMiddleware
+final class ValidationMiddleware
 {
     public function __construct(
         private ValidationFactory $validator,

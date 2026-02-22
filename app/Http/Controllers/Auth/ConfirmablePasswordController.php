@@ -7,13 +7,17 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 final class ConfirmablePasswordController extends Controller
 {
+    public function __construct(
+        private AuthFactory $auth
+    ) {}
+
     /**
      * Show the confirm password view.
      */
@@ -27,7 +31,7 @@ final class ConfirmablePasswordController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (! Auth::guard('web')->validate([
+        if (! $this->auth->guard('web')->validate([
             'email' => $request->user()->email,
             'password' => $request->password,
         ])) {

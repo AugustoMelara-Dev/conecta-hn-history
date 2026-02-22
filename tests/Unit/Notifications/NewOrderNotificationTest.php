@@ -1,5 +1,7 @@
 <?php
 
+
+
 declare(strict_types=1);
 
 use App\Notifications\NewOrderNotification;
@@ -26,7 +28,7 @@ function makeNotificationOrder(array $overrides = []): \App\Models\Order
         'id' => 100,
         'order_number' => '#1042',
         'total' => 350.50,
-        'tenant_id' => 5,
+        'tenant_id' => '00000000-0000-0000-0000-000000000001',
         'customer_name' => 'María López',
         'customer_email' => 'maria@example.com',
         'formatted_total' => 'L. 350.50',

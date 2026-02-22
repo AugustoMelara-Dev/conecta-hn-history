@@ -8,11 +8,11 @@ use App\Application\Actions\Auth\RegisterUserAction;
 use App\Application\DTOs\Auth\RegisterUserData;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
+use Psr\Log\LoggerInterface;
 
 /**
  * RegisteredUserController - Thin HTTP Gateway (Clean Controller)
@@ -24,6 +24,10 @@ use Inertia\Response;
  */
 final class RegisteredUserController extends Controller
 {
+    public function __construct(
+        private StatefulGuard $auth,
+        private LoggerInterface $logger
+    ) {}
     /**
      * Display the registration view.
      */
@@ -53,13 +57,13 @@ final class RegisteredUserController extends Controller
             $user = $action->execute($dto);
 
             // Authentication
-            Auth::login($user);
+            $this->auth->login($user);
 
             return redirect()->intended(route('filament.admin.pages.dashboard'));
 
         } catch (\Exception $e) {
             // Graceful Degradation: Log and return user-friendly error
-            Log::error('User registration failed', [
+            $this->logger->error('User registration failed', [
                 'error' => $e->getMessage(),
                 'email' => $request->validated('email'),
                 'trace' => $e->getTraceAsString(),

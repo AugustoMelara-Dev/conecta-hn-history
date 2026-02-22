@@ -8,7 +8,7 @@ use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -78,7 +78,7 @@ final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCo
      * Factory: Create from refund data (snapshotted at creation time).
      */
     public static function create(
-        int $tenantId,
+        string $tenantId,
         int $orderId,
         string $orderNumber,
         int $refundAmountCents,
@@ -88,7 +88,7 @@ final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCo
         string $currency = 'HNL'
     ): self {
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
+            tenantId: TenantId::fromString($tenantId),
             orderId: $orderId,
             orderNumber: OrderNumber::fromString($orderNumber),
             refundAmount: Money::fromCents($refundAmountCents, $currency),
@@ -182,7 +182,7 @@ final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCo
         }
 
         return new self(
-            tenantId: TenantId::fromInt($primitives['tenant_id']),
+            tenantId: TenantId::fromString((string) $primitives['tenant_id']),
             orderId: $primitives['order_id'],
             orderNumber: OrderNumber::fromString($primitives['order_number']),
             refundAmount: Money::fromCents(

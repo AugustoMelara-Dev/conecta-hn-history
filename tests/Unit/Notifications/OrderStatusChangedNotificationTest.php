@@ -1,5 +1,7 @@
 <?php
 
+
+
 declare(strict_types=1);
 
 use App\Models\Order;
@@ -20,7 +22,7 @@ function makeStatusOrder(array $overrides = []): Order
         'id' => 200,
         'order_number' => '#2001',
         'total' => 199.99,
-        'tenant_id' => 7,
+        'tenant_id' => '00000000-0000-0000-0000-000000000001',
         'customer_name' => 'Carlos Reyes',
         'customer_email' => 'carlos@example.com',
         'cancel_reason' => null,

@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Application\Tenant\Transformers;
 
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
-use App\Models\OpeningHour;
-use App\Models\Tenant;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 

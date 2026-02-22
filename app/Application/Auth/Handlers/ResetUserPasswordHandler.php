@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\ResetUserPasswordCommand;
-use App\Models\User;
+use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Hashing\Hasher;
@@ -16,17 +16,18 @@ use Psr\Log\LoggerInterface;
  * ResetUserPasswordHandler - Application Layer Password Reset Orchestrator
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  RESPONSIBILITY: Resolve User → Hash → Persist → Rotate Token → Event.║
- * ║  FRAMEWORK AGNOSTIC: Uses Hasher/Dispatcher contracts only.            ║
- * ║  TENANT AWARE: Validates tenant ownership and logs audit trail.        ║
+ * ║  RESPONSIBILITY: Hash → Delegate to Repository → Dispatch Event.      ║
+ * ║  FRAMEWORK AGNOSTIC: Uses Hasher/Dispatcher/Repository contracts.     ║
+ * ║  TENANT AWARE: Validates tenant ownership via repository scope.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * REFACTORED: Handler now resolves User by ID from the Command (string),
- * eliminating Eloquent model transport across architectural boundaries.
+ * REFACTORED: Eliminated direct App\Models\User dependency.
+ * Now delegates persistence to UserRepositoryInterface::resetPassword().
  */
 final readonly class ResetUserPasswordHandler
 {
     public function __construct(
+        private UserRepositoryInterface $userRepository,
         private Hasher $hasher,
         private Dispatcher $dispatcher,
         private LoggerInterface $logger,
@@ -35,21 +36,27 @@ final readonly class ResetUserPasswordHandler
     /**
      * Handle password reset command.
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException If user not found.
-     * @throws \RuntimeException If tenant ownership validation fails.
+     * @throws \App\Domain\Identity\Exceptions\UserNotFoundException If user not found within tenant scope.
      */
     public function handle(ResetUserPasswordCommand $command): void
     {
-        $user = User::where('id', $command->userId)
-            ->where('tenant_id', $command->tenantId)
-            ->firstOrFail();
+        $passwordHash = $this->hasher->make($command->password);
+        $rememberToken = Str::random(60);
 
-        $user->forceFill([
-            'password' => $this->hasher->make($command->password),
-            'remember_token' => Str::random(60),
-        ])->save();
+        $this->userRepository->resetPassword(
+            $command->userId,
+            $command->tenantId,
+            $passwordHash,
+            $rememberToken,
+        );
 
-        $this->dispatcher->dispatch(new PasswordReset($user));
+        // Dispatch Laravel's native PasswordReset event for framework hooks
+        // (e.g., session invalidation, auth guard refresh).
+        // Note: This uses the user object from findById for event compatibility.
+        $user = $this->userRepository->findById($command->userId, $command->tenantId);
+        if ($user !== null) {
+            $this->dispatcher->dispatch(new PasswordReset($user));
+        }
 
         $this->logger->info('Password reset completed', [
             'user_id' => $command->userId,
@@ -57,4 +64,3 @@ final readonly class ResetUserPasswordHandler
         ]);
     }
 }
-

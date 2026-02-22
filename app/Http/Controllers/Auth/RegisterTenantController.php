@@ -9,7 +9,8 @@ use App\Domain\Tenant\Contracts\OnboardingReader;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Contracts\Auth\StatefulGuard;
+use Illuminate\Routing\Redirector;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -23,6 +24,11 @@ use Inertia\Response;
  */
 final class RegisterTenantController extends Controller
 {
+    public function __construct(
+        private StatefulGuard $auth,
+        private Redirector $redirector
+    ) {}
+
     /**
      * Display the tenant registration form.
      */
@@ -81,9 +87,9 @@ final class RegisterTenantController extends Controller
             // EXECUTE
             $result = $bus->dispatch($command);
 
-            Auth::login($result['user']);
+            $this->auth->login($result['user']);
 
-            return redirect()->intended(route('tenant.dashboard'));
+            return $this->redirector->intended(route('tenant.dashboard'));
 
         } catch (\Exception $e) {
             return back()

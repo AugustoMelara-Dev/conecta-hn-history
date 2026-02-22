@@ -8,7 +8,7 @@ use App\Contracts\Events\DomainEvent;
 // use App\Models\Tenant; // REMOVED
 // use App\Models\User; // REMOVED
 use App\Traits\HasDomainMetadata;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -22,7 +22,7 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
     use HasDomainMetadata;
 
     public function __construct(
-        public int $tenantId,
+        public string $tenantId,
         public int $userId,
         // Restoration parameters
         ?string $restoredEventId = null,
@@ -38,7 +38,7 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
 
     public function tenantId(): TenantId
     {
-        return TenantId::fromInt($this->tenantId);
+        return TenantId::fromString((string) $this->tenantId);
     }
 
     public function aggregateId(): int

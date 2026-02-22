@@ -91,7 +91,7 @@ final class OpenAIService
         string $businessName,
         string $description,
         int $userId,
-        int $tenantId,
+        string $tenantId,
         ?string $targetAudience = null,
         ?string $tone = null,
         ?array $keywords = []

@@ -104,6 +104,22 @@ final class EloquentUserRepository implements UserRepositoryInterface
         User::where('id', $user->id())->delete();
     }
 
+    public function resetPassword(string $userId, string $tenantId, string $passwordHash, string $rememberToken): void
+    {
+        $affected = User::where('id', $userId)
+            ->where('tenant_id', $tenantId)
+            ->update([
+                'password' => $passwordHash,
+                'remember_token' => $rememberToken,
+            ]);
+
+        if ($affected === 0) {
+            throw new \App\Domain\Identity\Exceptions\UserNotFoundException(
+                "User {$userId} not found in tenant {$tenantId}."
+            );
+        }
+    }
+
     private function toEntity(User $model): UserEntity
     {
         $tenantId = null;

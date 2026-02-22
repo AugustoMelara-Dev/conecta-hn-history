@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
-use App\Models\Appointment;
-use App\Models\Service;
-use App\Models\ServiceProvider;
-use App\Models\Tenant;
+use App\Application\Shared\Contracts\AppointmentRepositoryInterface;
+use App\Application\Shared\Contracts\CommandBusInterface;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Application\Shared\Contracts\ServiceRepositoryInterface;
+use App\Application\Shared\Contracts\ServiceProviderRepositoryInterface;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,31 +24,39 @@ use Inertia\Response;
  * 
  * SECURITY: All queries are scoped to the resolved tenant via route binding.
  */
-class BookingController extends Controller
+final class BookingController extends Controller
 {
+    public function __construct(
+        private TenantRepositoryInterface $tenantRepository,
+        private ServiceRepositoryInterface $serviceRepository,
+        private ServiceProviderRepositoryInterface $providerRepository,
+        private AppointmentRepositoryInterface $appointmentRepository,
+        private CommandBusInterface $commandBus
+    ) {}
     /**
      * Display the booking wizard page.
      * 
      * GET /{tenant:slug}/book
      */
-    public function index(Tenant $tenant): Response
+    public function index(string $tenantSlug): Response
     {
+        $tenant = $this->tenantRepository->findBySlug($tenantSlug);
+        if (!$tenant) {
+            abort(404, 'Tenant not found.');
+        }
+
         // Ensure tenant has service-type business
-        $services = $tenant->services()
-            ->active()
-            ->get()
-            ->map(fn (Service $s) => [
-                'id' => $s->id,
-                'name' => $s->name,
-                'description' => $s->description,
-                'price' => $s->formatted_price,
-                'duration_minutes' => $s->duration_minutes,
-                'duration_formatted' => $s->formatted_duration,
+        $services = $this->serviceRepository->getActiveForTenant($tenant->id)
+            ->map(fn (array $s) => [
+                'id' => $s['id'],
+                'name' => $s['name'],
+                'description' => $s['description'],
+                'price' => $s['formatted_price'],
+                'duration_minutes' => $s['duration_minutes'],
+                'duration_formatted' => $s['formatted_duration'],
             ]);
 
-        $providers = $tenant->serviceProviders()
-            ->active()
-            ->get(['id', 'name']);
+        $providers = $this->providerRepository->getActiveForTenant($tenant->id);
 
         return Inertia::render('Public/Book/Index', [
             'tenant' => [
@@ -67,16 +76,21 @@ class BookingController extends Controller
      * 
      * GET /{tenant:slug}/book/providers/{service}
      */
-    public function getProviders(Tenant $tenant, Service $service): JsonResponse
+    public function getProviders(string $tenantSlug, string $serviceId): JsonResponse
     {
+        $tenant = $this->tenantRepository->findBySlug($tenantSlug);
+        $service = $this->serviceRepository->findById($serviceId);
+
+        if (!$tenant || !$service) {
+            abort(404, 'Tenant or Service not found.');
+        }
+
         // Security: Ensure service belongs to this tenant
         if ($service->tenant_id !== $tenant->id) {
             abort(404, 'Service not found');
         }
 
-        $providers = $tenant->serviceProviders()
-            ->active()
-            ->get(['id', 'name']);
+        $providers = $this->providerRepository->getActiveForTenant($tenant->id);
 
         return response()->json([
             'providers' => $providers,
@@ -88,16 +102,25 @@ class BookingController extends Controller
      * 
      * GET /{tenant:slug}/book/slots
      */
-    public function getSlots(Request $request, Tenant $tenant): JsonResponse
+    public function getSlots(Request $request, string $tenantSlug): JsonResponse
     {
+        $tenant = $this->tenantRepository->findBySlug($tenantSlug);
+        if (!$tenant) {
+            abort(404, 'Tenant not found.');
+        }
+
         $validated = $request->validate([
             'date' => 'required|date|after_or_equal:today',
-            'service_id' => 'required|exists:services,id',
-            'provider_id' => 'nullable|exists:service_providers,id',
+            'service_id' => 'required|string',
+            'provider_id' => 'nullable|string',
         ]);
 
         $date = Carbon::parse($validated['date']);
-        $service = Service::find($validated['service_id']);
+        $service = $this->serviceRepository->findById($validated['service_id']);
+
+        if (!$service) {
+            abort(404, 'Service not found.');
+        }
         
         // Security: Ensure service belongs to tenant
         if ($service->tenant_id !== $tenant->id) {
@@ -120,11 +143,16 @@ class BookingController extends Controller
      * 
      * POST /{tenant:slug}/book
      */
-    public function store(Request $request, Tenant $tenant)
+    public function store(Request $request, string $tenantSlug)
     {
+        $tenant = $this->tenantRepository->findBySlug($tenantSlug);
+        if (!$tenant) {
+            abort(404, 'Tenant not found.');
+        }
+
         $validated = $request->validate([
-            'service_id' => 'required|exists:services,id',
-            'service_provider_id' => 'required|exists:service_providers,id',
+            'service_id' => 'required|string',
+            'service_provider_id' => 'required|string',
             'date' => 'required|date|after_or_equal:today',
             'time' => 'required|date_format:H:i',
             'customer_name' => 'required|string|max:255',
@@ -133,8 +161,12 @@ class BookingController extends Controller
             'customer_notes' => 'nullable|string|max:500',
         ]);
 
-        $service = Service::findOrFail($validated['service_id']);
-        $provider = ServiceProvider::findOrFail($validated['service_provider_id']);
+        $service = $this->serviceRepository->findById($validated['service_id']);
+        $provider = $this->providerRepository->findById($validated['service_provider_id']);
+
+        if (!$service || !$provider) {
+            abort(404, 'Service or Provider not found.');
+        }
 
         // Security: Verify both belong to this tenant
         if ($service->tenant_id !== $tenant->id || $provider->tenant_id !== $tenant->id) {
@@ -145,30 +177,30 @@ class BookingController extends Controller
         $endAt = $scheduledAt->copy()->addMinutes($service->duration_minutes);
 
         // Check provider availability (prevent double-booking)
-        if (!$provider->isAvailableAt($scheduledAt, $endAt)) {
+        // Since we decoupled from Eloquent, the repository pattern should handle the domain check
+        if (!$this->providerRepository->isAvailableAt($provider->id, $scheduledAt, $endAt)) {
             return back()->withErrors([
                 'time' => 'Este horario ya no está disponible. Por favor selecciona otro.',
             ]);
         }
 
-        $appointment = new Appointment([
-            'tenant_id' => $tenant->id,
-            'service_id' => $service->id,
-            'service_provider_id' => $provider->id,
-            'scheduled_at' => $scheduledAt,
-            'end_at' => $endAt,
-            'customer_name' => $validated['customer_name'],
-            'customer_email' => $validated['customer_email'],
-            'customer_phone' => $validated['customer_phone'],
-            'customer_notes' => $validated['customer_notes'] ?? null,
-            'status' => Appointment::STATUS_PENDING,
-        ]);
+        $command = new \App\Application\Tenant\Commands\CreateAppointmentCommand(
+            tenantId: $tenant->id,
+            serviceId: $service->id,
+            serviceProviderId: $provider->id,
+            scheduledAt: $scheduledAt,
+            endAt: $endAt,
+            customerName: $validated['customer_name'],
+            customerEmail: $validated['customer_email'],
+            customerPhone: $validated['customer_phone'],
+            customerNotes: $validated['customer_notes'] ?? null
+        );
 
-        $appointment->save();
+        $result = $this->commandBus->dispatch($command);
 
         return redirect()->route('public.booking.success', [
-            'tenant' => $tenant,
-            'appointment' => $appointment->id,
+            'tenant' => $tenant->slug,
+            'appointment' => $result['id'],
         ]);
     }
 
@@ -177,15 +209,18 @@ class BookingController extends Controller
      * 
      * GET /{tenant:slug}/book/success
      */
-    public function success(Tenant $tenant, Request $request): Response
+    public function success(string $tenantSlug, Request $request): Response
     {
+        $tenant = $this->tenantRepository->findBySlug($tenantSlug);
+        if (!$tenant) {
+            abort(404, 'Tenant not found.');
+        }
+
         $appointmentId = $request->query('appointment');
         $appointment = null;
 
         if ($appointmentId) {
-            $appointment = Appointment::with(['service', 'provider'])
-                ->where('tenant_id', $tenant->id)
-                ->find($appointmentId);
+            $appointment = $this->appointmentRepository->findWithRelations($appointmentId);
         }
 
         return Inertia::render('Public/Book/Success', [
@@ -196,10 +231,10 @@ class BookingController extends Controller
             ],
             'appointment' => $appointment ? [
                 'id' => $appointment->id,
-                'service_name' => $appointment->service->name,
-                'provider_name' => $appointment->provider->name,
-                'scheduled_at' => $appointment->scheduled_at->format('l, d M Y'),
-                'time' => $appointment->scheduled_at->format('h:i A'),
+                'service_name' => $appointment->service->name ?? 'Service',
+                'provider_name' => $appointment->provider->name ?? 'Provider',
+                'scheduled_at' => Carbon::parse($appointment->scheduled_at)->format('l, d M Y'),
+                'time' => Carbon::parse($appointment->scheduled_at)->format('h:i A'),
                 'customer_name' => $appointment->customer_name,
             ] : null,
         ]);
@@ -211,23 +246,25 @@ class BookingController extends Controller
      * Uses spatie/opening-hours to respect tenant business hours
      * and provider schedule overrides.
      *
-     * @param Tenant $tenant The tenant for fallback hours
+     * @param string $tenantId The tenant ID for fallback hours
      * @param Carbon $date The date to generate slots for
      * @param int $durationMinutes Service duration in minutes
      * @param int|null $providerId Optional provider ID for schedule override
      * @return array<array{time: string, display: string}>
      */
     private function generateAvailableSlots(
-        Tenant $tenant,
+        string $tenantId,
         Carbon $date,
         int $durationMinutes,
-        ?int $providerId
+        ?string $providerId
     ): array {
         $slots = [];
 
-        // Resolve OpeningHours source (Provider > Tenant hierarchy)
-        $provider = $providerId ? ServiceProvider::find($providerId) : null;
-        $openingHours = $provider?->getOpeningHours() ?? $tenant->getOpeningHours();
+        // Decoupled OpeningHours abstraction
+        $openingHours = clone $this->tenantRepository->getOpeningHours($tenantId);
+        if ($providerId) {
+            $openingHours = $this->providerRepository->getOpeningHours($providerId) ?? $openingHours;
+        }
 
         // Get open ranges for the requested date (handles closed days automatically)
         $ranges = $openingHours->forDate($date);
@@ -249,8 +286,8 @@ class BookingController extends Controller
                     $isAvailable = true;
 
                     // If provider specified, check for appointment conflicts
-                    if ($provider) {
-                        $isAvailable = $provider->isAvailableAt($current, $slotEnd);
+                    if ($providerId) {
+                        $isAvailable = $this->providerRepository->isAvailableAt($providerId, $current, $slotEnd);
                     }
 
                     if ($isAvailable) {

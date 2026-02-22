@@ -13,7 +13,7 @@ use App\Http\Requests\Auth\GenerateOtpRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -29,8 +29,9 @@ use Illuminate\Validation\ValidationException;
 final class OtpController extends Controller
 {
     public function __construct(
-        private readonly GenerateOtpAction $generateAction,
-        private readonly VerifyOtpAction $verifyAction
+        private GenerateOtpAction $generateAction,
+        private VerifyOtpAction $verifyAction,
+        private RateLimiter $limiter
     ) {}
 
     /**
@@ -75,7 +76,7 @@ final class OtpController extends Controller
                 ipAddress: $request->ip() ?? '127.0.0.1'
             );
 
-            RateLimiter::clear($this->rateLimitKey($request, 'verify'));
+            $this->limiter->clear($this->rateLimitKey($request, 'verify'));
 
             return response()->json([
                 'message' => $result['requires_registration']
@@ -97,14 +98,14 @@ final class OtpController extends Controller
     {
         $key = $this->rateLimitKey($request, $action);
 
-        if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
-            $seconds = RateLimiter::availableIn($key);
+        if ($this->limiter->tooManyAttempts($key, $maxAttempts)) {
+            $seconds = $this->limiter->availableIn($key);
             throw ValidationException::withMessages([
                 'identifier' => ['Demasiados intentos. Intenta en '.ceil($seconds / 60).' minutos.'],
             ]);
         }
 
-        RateLimiter::hit($key, 3600);
+        $this->limiter->hit($key, 3600);
     }
 
     /**

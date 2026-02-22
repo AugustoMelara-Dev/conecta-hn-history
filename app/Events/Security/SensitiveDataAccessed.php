@@ -7,7 +7,7 @@ namespace App\Events\Security;
 use App\Contracts\Events\AuditEvent;
 use App\Enums\Severity;
 use App\ValueObjects\AuditContext;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 
 /**
  * SensitiveDataAccessed - Compliance Event for Data Access Logging
@@ -67,7 +67,7 @@ final readonly class SensitiveDataAccessed implements AuditEvent
     public static function create(
         int $userId,
         string $userEmail,
-        int $tenantId,
+        string $tenantId,
         string $resource,
         string $action,
         ?string $reason = null,
@@ -76,7 +76,7 @@ final readonly class SensitiveDataAccessed implements AuditEvent
         return new self(
             actorId: $userId,
             actorEmail: $userEmail,
-            tenantId: TenantId::fromInt($tenantId),
+            tenantId: TenantId::fromString($tenantId),
             resource: $resource,
             action: $action,
             context: AuditContext::capture(actorId: $userId, anonymizeIp: true),
@@ -158,7 +158,7 @@ final readonly class SensitiveDataAccessed implements AuditEvent
         return new self(
             actorId: $data['actor_id'] ?? 0,
             actorEmail: $data['actor_email'] ?? 'unknown@unknown.com',
-            tenantId: TenantId::fromInt($tenantId),
+            tenantId: TenantId::fromString($tenantId),
             resource: $data['resource'] ?? 'unknown',
             action: $data['action'] ?? 'unknown',
             context: AuditContext::fromPrimitives($data['context'] ?? []),

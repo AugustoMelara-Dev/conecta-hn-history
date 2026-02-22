@@ -27,7 +27,7 @@ function makeUserWithRole(string $role): User
     return $user;
 }
 
-function makeTenantMock(int $tenantId = 1): Tenant
+function makeTenantMock(string $tenantId = '00000000-0000-0000-0000-000000000001'): Tenant
 {
     $tenant = Mockery::mock(Tenant::class)->makePartial();
     $tenant->id = $tenantId;

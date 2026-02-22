@@ -10,9 +10,9 @@ use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
 use App\Services\TenantRegistrationService;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,6 +29,7 @@ final class RegistrationController extends Controller
         private readonly CommandBusInterface $bus,
         private readonly ReferenceDataReaderInterface $referenceDataReader,
         private readonly TenantRepositoryInterface $tenantRepository,
+        private readonly StatefulGuard $guard,
     ) {}
 
     /**
@@ -37,7 +38,7 @@ final class RegistrationController extends Controller
     public function create(): Response
     {
         // Redirect if already authenticated
-        if (Auth::check()) {
+        if ($this->guard->check()) {
             return Inertia::location('/app');
         }
 
@@ -117,7 +118,7 @@ final class RegistrationController extends Controller
         }
 
         // Free plan: Auto-login and redirect to dashboard
-        Auth::login($result['user']);
+        $this->guard->login($result['user']);
 
         return redirect()
             ->route('dashboard')

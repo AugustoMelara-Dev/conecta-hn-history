@@ -1,5 +1,7 @@
 <?php
 
+
+
 declare(strict_types=1);
 
 use App\Enums\LowStockSeverity;
@@ -197,7 +199,7 @@ test('broadcast title for Critical is Critical', function () {
 
 test('fromDomainData creates correct instance', function () {
     $broadcast = LowStockBroadcast::fromDomainData(
-        tenantId: 3,
+        tenantId: '00000000-0000-0000-0000-000000000001',
         productId: 99,
         productName: 'Café Molido',
         productSku: 'CM-500',

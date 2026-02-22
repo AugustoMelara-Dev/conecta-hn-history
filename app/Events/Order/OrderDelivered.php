@@ -7,7 +7,7 @@ namespace App\Events\Order;
 use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\OrderNumber;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -59,12 +59,12 @@ final readonly class OrderDelivered implements DomainEvent, ShouldDispatchAfterC
      * Factory: Create from order data.
      */
     public static function create(
-        int $tenantId,
+        string $tenantId,
         int $orderId,
         string $orderNumber
     ): self {
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
+            tenantId: TenantId::fromString($tenantId),
             orderId: $orderId,
             orderNumber: OrderNumber::fromString($orderNumber),
         );
@@ -108,7 +108,7 @@ final readonly class OrderDelivered implements DomainEvent, ShouldDispatchAfterC
         }
 
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
+            tenantId: TenantId::fromString($tenantId),
             orderId: $primitives['order_id'] ?? 0,
             orderNumber: OrderNumber::fromString($primitives['order_number'] ?? 'UNKNOWN'),
             // Restoration parameters

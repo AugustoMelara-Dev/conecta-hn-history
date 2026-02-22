@@ -6,7 +6,7 @@ namespace App\Domain\Analytics\Events;
 
 use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 /**
@@ -62,7 +62,7 @@ final readonly class AnalyticsSynced implements DomainEvent
     public static function fromPrimitives(array $primitives): self
     {
         return new self(
-            tenantId: TenantId::fromInt($primitives['tenant_id']),
+            tenantId: TenantId::fromString((string) $primitives['tenant_id']),
             processedRecords: $primitives['processed_records'],
             occurredOn: new DateTimeImmutable($primitives['occurred_on']),
             restoredEventId: $primitives['event_id'] ?? null,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Events;
 
+
+
 use App\Domain\Shared\ValueObjects\TenantId;
 use App\Events\Audit\SalesExportCreated;
 use App\Events\Order\OrderShipped;
@@ -225,7 +227,7 @@ class EventSerializationTest extends TestCase
     {
         // OrderShipped no longer has trackingUrl() - it exposes raw data
         $event = OrderShipped::create(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             orderId: 123,
             orderNumber: 'ORD-2026-00001',
             carrier: 'fedex',
@@ -302,7 +304,7 @@ class EventSerializationTest extends TestCase
     {
         // Minimal payload: only the absolutely required key (tenant_id)
         $degradedPayload = [
-            'tenant_id' => 42,
+            'tenant_id' => '00000000-0000-0000-0000-000000000001',
             // Missing: order_id, order_number, carrier, tracking_number,
             // estimated_delivery, event_id, occurred_at, correlation_id
         ];
@@ -313,7 +315,7 @@ class EventSerializationTest extends TestCase
         // Verify defaults were applied correctly via toPrimitives()
         $primitives = $event->toPrimitives();
 
-        $this->assertEquals(42, $primitives['tenant_id']);
+        $this->assertEquals('00000000-0000-0000-0000-000000000001', $primitives['tenant_id']);
         $this->assertEquals(0, $primitives['order_id']);
         $this->assertEquals('UNKNOWN', $primitives['order_number']);
         $this->assertEquals('unknown', $event->carrier());
@@ -345,7 +347,7 @@ class EventSerializationTest extends TestCase
     {
         $noisyPayload = [
             // Valid keys
-            'tenant_id' => 1,
+            'tenant_id' => '00000000-0000-0000-0000-000000000001',
             'order_id' => 999,
             'order_number' => 'ORD-CLEAN',
             'carrier' => 'dhl',
@@ -370,7 +372,7 @@ class EventSerializationTest extends TestCase
         // Verify valid data was processed correctly via toPrimitives()
         $primitives = $event->toPrimitives();
 
-        $this->assertEquals(1, $primitives['tenant_id']);
+        $this->assertEquals('00000000-0000-0000-0000-000000000001', $primitives['tenant_id']);
         $this->assertEquals(999, $primitives['order_id']);
         $this->assertEquals('ORD-CLEAN', $primitives['order_number']);
         $this->assertEquals('dhl', $event->carrier());
@@ -433,7 +435,7 @@ class EventSerializationTest extends TestCase
     {
         // Signature: create(tenantId, orderId, orderNumber, itemCount, totalAmountCents, customerId, customerName, currency)
         $original = \App\Events\Order\NewOrderReceived::create(
-            tenantId: 10,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             orderId: 500,
             orderNumber: 'ORD-2026-TEST',
             itemCount: 5,
@@ -469,7 +471,7 @@ class EventSerializationTest extends TestCase
     {
         // Signature: create(tenantId, orderId, orderNumber, transactionId, gatewayName, amountCents, currency)
         $original = \App\Events\Payment\PaymentApproved::create(
-            tenantId: 15,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             orderId: 600,
             orderNumber: 'ORD-PAY-TEST',
             transactionId: 'txn_abc123',

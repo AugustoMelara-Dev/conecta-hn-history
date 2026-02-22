@@ -25,6 +25,29 @@ use App\Contracts\Scope\TenantContextInterface;
  */
 final class FilamentTenantContext implements TenantContextInterface
 {
+    public function getTenantUuid(): ?string
+    {
+        if (class_exists(\Filament\Facades\Filament::class)) {
+            try {
+                $tenant = \Filament\Facades\Filament::getTenant();
+                if ($tenant !== null) {
+                    return $tenant->uuid; // Assuming 'uuid' is the property
+                }
+            } catch (\Throwable) {}
+        }
+
+        if (auth()->check()) {
+            /** @var \App\Models\User $user */
+            $user = auth()->user();
+            $primaryTenant = $user->tenants()->first();
+            if ($primaryTenant !== null) {
+                return $primaryTenant->uuid; // Assuming 'uuid' is the property
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Resolve tenant ID from Filament's active panel context.
      *

@@ -8,7 +8,7 @@ use App\Contracts\Events\AuditEvent;
 use App\Enums\Severity;
 use App\ValueObjects\AuditContext;
 use App\ValueObjects\IpAddress;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 /**

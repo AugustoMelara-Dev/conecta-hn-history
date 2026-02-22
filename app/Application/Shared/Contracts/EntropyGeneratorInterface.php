@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Shared\Interfaces;
+namespace App\Application\Shared\Contracts;
 
 /**
  * EntropyGeneratorInterface - Deterministic Randomness Contract

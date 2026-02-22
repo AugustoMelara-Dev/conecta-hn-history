@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Contracts\Events\DomainEventBus;
 use App\Events\Order\OrderCancelled;
+use App\Contracts\InventoryManagerInterface;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
 use App\Models\OrderEvent;
@@ -68,7 +69,7 @@ class OrderStateService
      * This allows pure domain unit tests with InMemoryEventBus.
      */
     public function __construct(
-        private readonly InventoryManager $inventoryManager,
+        private readonly InventoryManagerInterface $inventoryManager,
         private readonly DomainEventBus $eventBus,
     ) {}
 

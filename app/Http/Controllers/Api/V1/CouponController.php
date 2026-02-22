@@ -9,8 +9,8 @@ use App\Http\Controllers\Controller;
 use App\Services\TenantCacheManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Validation\Factory as ValidationFactory;
 
 /**
  * CouponController - Discount Validation Engine
@@ -22,11 +22,13 @@ use Illuminate\Support\Facades\Validator;
  */
 final class CouponController extends Controller
 {
-    protected const CACHE_TTL_MINUTES = 15;
+    private const CACHE_TTL_MINUTES = 15;
 
     public function __construct(
-        private readonly TenantCacheManager $cacheManager,
-        private readonly CouponReader $reader
+        private TenantCacheManager $cacheManager,
+        private CouponReader $reader,
+        private CacheRepository $cache,
+        private ValidationFactory $validator
     ) {}
 
     /**
@@ -35,7 +37,7 @@ final class CouponController extends Controller
      */
     public function verify(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $validator = $this->validator->make($request->all(), [
             'tenant_id' => 'required|integer',
             'code' => 'required|string|max:50',
             'cart_subtotal' => 'required|numeric|min:0',
@@ -94,7 +96,7 @@ final class CouponController extends Controller
         $cacheKey = $this->cacheManager->makeKey($tenantId, 'coupons_public');
 
         // Caching is fine in controller or Decorator. Keeping here for now to match logic.
-        $coupons = Cache::remember($cacheKey, now()->addMinutes(self::CACHE_TTL_MINUTES), function () use ($tenantId) {
+        $coupons = $this->cache->remember($cacheKey, now()->addMinutes(self::CACHE_TTL_MINUTES), function () use ($tenantId) {
             // Delegated to Reader
             return $this->reader->getValidCoupons($tenantId)->toArray();
         });

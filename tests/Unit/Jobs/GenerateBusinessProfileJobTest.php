@@ -1,5 +1,7 @@
 <?php
 
+
+
 declare(strict_types=1);
 
 use App\Jobs\GenerateBusinessProfileJob;
@@ -18,7 +20,7 @@ describe('GenerateBusinessProfileJob', function () {
             businessName: 'Test Business',
             description: 'A sample business description',
             userId: 1,
-            tenantId: 100
+            tenantId: '00000000-0000-0000-0000-000000000001'
         );
 
         Queue::assertPushed(GenerateBusinessProfileJob::class, function ($job) {
@@ -34,7 +36,7 @@ describe('GenerateBusinessProfileJob', function () {
             businessName: 'Test',
             description: 'Desc',
             userId: 1,
-            tenantId: 1
+            tenantId: '00000000-0000-0000-0000-000000000001'
         );
 
         expect($job->timeout)->toBe(60);
@@ -46,7 +48,7 @@ describe('GenerateBusinessProfileJob', function () {
             businessName: 'My Business',
             description: 'My Description',
             userId: 999,
-            tenantId: 888
+            tenantId: '00000000-0000-0000-0000-000000000001'
         );
 
         // Verify all properties are scalars (safe for Redis/DB queue)

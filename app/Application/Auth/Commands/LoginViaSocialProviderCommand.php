@@ -16,7 +16,7 @@ use App\Domain\Shared\Enums\ProviderName;
  * â•‘  TYPE SAFETY: Enforced via ProviderName Enum.                           â•‘
  * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class LoginViaSocialProviderCommand implements \App\Application\Shared\Contracts\HashableCommandInterface
+final readonly class LoginViaSocialProviderCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, \App\Application\Shared\Contracts\SensitiveDataInterface
 {
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) - Social login is always INTO a specific tenant */
@@ -38,10 +38,10 @@ final readonly class LoginViaSocialProviderCommand implements \App\Application\S
         public ?string $avatarUrl,
 
         /** OAuth access token (for API calls) */
-        public ?string $accessToken,
+        #[\SensitiveParameter] public ?string $accessToken,
 
         /** OAuth refresh token */
-        public ?string $refreshToken,
+        #[\SensitiveParameter] public ?string $refreshToken,
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
@@ -65,5 +65,10 @@ final readonly class LoginViaSocialProviderCommand implements \App\Application\S
             'providerId' => $this->providerId,
             'email' => $this->email, // Hashing email prevents spoofing if providerId collides (unlikely but safe)
         ]));
+    }
+
+    public function getSensitiveProperties(): array
+    {
+        return ['accessToken', 'refreshToken'];
     }
 }

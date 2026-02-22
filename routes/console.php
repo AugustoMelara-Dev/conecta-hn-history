@@ -96,6 +96,9 @@ Schedule::job(new \App\Jobs\SendAppointmentReminders)
 // Runs hourly to cleanup 'PENDING' subscription intents older than 1 hour.
 // Queries the gateway to verify final status (PAID/FAILED) and updates DB.
 // -------------------------------------------------------------------------------
-Schedule::job(new \App\Application\Billing\Jobs\ReconcilePendingSubscriptionsJob)
-    ->hourly()
-    ->withoutOverlapping();
+Schedule::call(function () {
+    $tenantIds = \Illuminate\Support\Facades\DB::table('tenants')->pluck('id');
+    foreach ($tenantIds as $tenantId) {
+        dispatch(new \App\Application\Billing\Jobs\ReconcilePendingSubscriptionsJob($tenantId));
+    }
+})->hourly()->name('billing:reconcile-pending');
