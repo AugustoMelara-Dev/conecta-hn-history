@@ -16,7 +16,7 @@ final readonly class CancelOrderCommand
 {
     public function __construct(
         /** Tenant ID for ownership verification */
-        public int $tenantId,
+        public string $tenantId,
 
         /** Order ID to cancel */
         public int $orderId,

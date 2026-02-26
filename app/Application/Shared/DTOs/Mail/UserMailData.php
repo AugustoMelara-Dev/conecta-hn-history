@@ -31,7 +31,7 @@ final readonly class UserMailData
     /**
      * Create from User model (snapshot at dispatch time).
      */
-    public static function fromUser(\App\Models\User $user): self
+    public static function fromUser(object $user): self
     {
         return new self(
             id: $user->id,

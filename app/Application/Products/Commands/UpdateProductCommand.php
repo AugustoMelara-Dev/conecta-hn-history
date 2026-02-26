@@ -19,7 +19,7 @@ final readonly class UpdateProductCommand implements IdempotentCommandInterface
 {
     public function __construct(
         /** Tenant ID for ownership verification */
-        public int $tenantId,
+        public string $tenantId,
 
         /** Product ID to update */
         public int $productId,

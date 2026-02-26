@@ -21,7 +21,7 @@ final readonly class EnhanceTenantProfileCommand
      * @param  bool  $isAiGenerated  Allow re-enhancement of previously AI-generated content
      */
     public function __construct(
-        public int $tenantId,
+        public string $tenantId,
         public ?string $description = null,
         public array $tags = [],
         public bool $isAiGenerated = false,

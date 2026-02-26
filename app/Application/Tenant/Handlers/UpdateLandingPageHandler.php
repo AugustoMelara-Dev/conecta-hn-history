@@ -53,7 +53,7 @@ final readonly class UpdateLandingPageHandler
         // 3. Update landing page data (JSON field)
         $tenant->landing_page_data = [
             'sections' => $command->landingData,
-            'updated_at' => now()->toIso8601String(),
+            'updated_at' => \Carbon\CarbonImmutable::now()->toIso8601String(),
         ];
 
         // 4. Persist via Repository

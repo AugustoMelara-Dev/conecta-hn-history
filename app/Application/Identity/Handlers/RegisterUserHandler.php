@@ -49,7 +49,7 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
 
         // 1. Generate Deterministic IDs & Time
         $userId = $this->idGenerator->generate();
-        $now = CarbonImmutable::now();
+        $now = \Carbon\CarbonImmutable::now();
 
         // 2. Security Hardening (Hashing BEFORE Domain/Persistence)
         $passwordHash = $this->hasher->hash($command->password);

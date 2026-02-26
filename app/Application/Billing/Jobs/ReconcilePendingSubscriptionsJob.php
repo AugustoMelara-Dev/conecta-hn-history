@@ -35,7 +35,7 @@ final class ReconcilePendingSubscriptionsJob implements ShouldQueue
         SubscriptionIntentRepositoryInterface $intentRepository,
     ): void {
         // Metric: Strict 1 hour threshold
-        $threshold = now()->subHour()->toDateTimeString();
+        $threshold = \Carbon\CarbonImmutable::now()->subHour()->toDateTimeString();
 
         $intents = $intentRepository->findPendingOlderThan($this->tenantId, $threshold);
 

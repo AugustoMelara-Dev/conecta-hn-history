@@ -30,7 +30,7 @@ final readonly class ProcessPaymentWebhookCommand
             eventType: $eventType,
             payload: $payload,
             tenantId: $tenantId,
-            receivedAt: now()->toIso8601String()
+            receivedAt: \Carbon\CarbonImmutable::now()->toIso8601String()
         );
     }
 }

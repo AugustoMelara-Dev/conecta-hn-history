@@ -52,7 +52,7 @@ final readonly class IntegrationEventMapper
                 'role' => $event->role,
                 'registered_at' => $event->occurredOn()->format(\DateTimeInterface::ATOM),
             ]),
-            'occurred_at' => now(),
+            'occurred_at' => \Carbon\CarbonImmutable::now(),
             'processed_at' => null,
         ];
     }
@@ -68,7 +68,7 @@ final readonly class IntegrationEventMapper
                 'domain' => $event->domain,
                 'created_at' => $event->occurredOn()->format(\DateTimeInterface::ATOM),
             ]),
-            'occurred_at' => now(),
+            'occurred_at' => \Carbon\CarbonImmutable::now(),
             'processed_at' => null,
         ];
     }

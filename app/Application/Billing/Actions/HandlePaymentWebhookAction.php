@@ -37,7 +37,7 @@ final readonly class HandlePaymentWebhookAction implements PaymentWebhookHandler
             'status' => 'acknowledged',
             'tenant_id' => $webhook->tenantId,
             'processed' => true,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => \Carbon\CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

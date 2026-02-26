@@ -84,8 +84,8 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
             'plan_identifier' => $plan->identifier,
             'gateway_provider' => 'stripe',
             'status' => SubscriptionIntent::STATUS_PENDING,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => \Carbon\CarbonImmutable::now(),
+            'updated_at' => \Carbon\CarbonImmutable::now(),
         ]);
 
         if ($inserted) {

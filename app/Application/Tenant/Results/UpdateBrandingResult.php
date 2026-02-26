@@ -13,7 +13,7 @@ namespace App\Application\Tenant\Results;
 final readonly class UpdateBrandingResult
 {
     public function __construct(
-        public int $tenantId,
+        public string $tenantId,
         public ?string $logoPath,
         public ?string $bannerPath,
         public ?string $name,
