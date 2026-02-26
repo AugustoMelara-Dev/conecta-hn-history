@@ -119,9 +119,9 @@ final readonly class OrderShipped implements DomainEvent, ShouldDispatchAfterCom
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

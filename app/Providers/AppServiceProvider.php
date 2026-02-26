@@ -608,6 +608,14 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // ═══════════════════════════════════════════════════════════════════════
+        // SECURITY: Metadata Sanitizer Abstraction (DIP Compliance for Actions)
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Application\Shared\Contracts\MetadataSanitizerInterface::class,
+            \App\Infrastructure\Security\MetadataSanitizer::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
         // TRANSACTIONAL OUTBOX: Event Dispatcher with At-Least-Once Delivery
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->singleton(
@@ -823,6 +831,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // ═══════════════════════════════════════════════════════════════════════
+        // COMMAND BUS: Schema Evolution Decorator (Upcasting Pipeline)
+        // Intercepts commands BEFORE TransactionalCommandBus to transform
+        // payloads from older schemaVersion to current shape.
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->extend(
+            \App\Application\Shared\Contracts\CommandBusInterface::class,
+            function ($commandBus, $app) {
+                return new \App\Application\Shared\Decorators\UpcastingCommandBus(
+                    $commandBus,
+                    $app->tagged('command_upcasters')
+                );
+            }
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
         // LOCALIZATION: Sync Carbon locale with Laravel app.locale
         // ═══════════════════════════════════════════════════════════════════════

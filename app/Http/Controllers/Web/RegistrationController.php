@@ -94,6 +94,14 @@ final class RegistrationController extends Controller
      */
     public function store(RegisterTenantRequest $request)
     {
+        // Resolve optional reference fields: default to first available if not submitted by the form
+        $cityId = (int) ($request->validated('city_id')
+            ?? \App\Models\City::value('id')
+            ?? 1);
+        $categoryId = (int) ($request->validated('category_id')
+            ?? \App\Models\Category::value('id')
+            ?? 1);
+
         // Create command from validated request
         $command = new \App\Application\Tenant\Commands\RegisterTenantCommand(
             businessName: $request->validated('business_name'),
@@ -101,24 +109,19 @@ final class RegistrationController extends Controller
             ownerName: $request->validated('name'),
             email: $request->validated('email'),
             password: $request->validated('password'),
-            cityId: (int) $request->validated('city_id'),
-            categoryId: (int) $request->validated('category_id'),
+            cityId: $cityId,
+            categoryId: $categoryId,
             whatsapp: $request->validated('whatsapp'),
             selectedPlan: $request->validated('selected_plan', 'free'),
         );
 
-        // Dispatch via Command Bus (Transaction handled by middleware)
+        // Dispatch via Command Bus
+        /** @var \App\Application\Tenant\Results\RegisterTenantResult $result */
         $result = $this->bus->dispatch($command);
 
-        // Handle post-registration routing
-        if ($result['plan'] === 'pro' && isset($result['payment'])) {
-            return redirect()
-                ->route('payment.pending', ['payment' => $result['payment']->id])
-                ->with('success', '¡Registro exitoso! Completa tu pago para activar tu plan PRO.');
-        }
-
-        // Free plan: Auto-login and redirect to dashboard
-        $this->guard->login($result['user']);
+        // Look up the persisted User to log them in
+        $user = \App\Models\User::where('email', $result->ownerEmail)->firstOrFail();
+        $this->guard->login($user);
 
         return redirect()
             ->route('dashboard')

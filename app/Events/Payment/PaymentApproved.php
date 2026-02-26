@@ -106,9 +106,9 @@ final readonly class PaymentApproved implements DomainEvent, ShouldDispatchAfter
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

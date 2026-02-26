@@ -26,8 +26,10 @@ final readonly class SubscriptionPricingService
             : 0.00;
     }
 
-    public function getPlanType(string $plan): string
+    public function getPlanType(string $plan): \App\Domain\TenantGovernance\Enums\TenantPlan
     {
-        return $plan === 'pro' ? 'pro' : 'semilla';
+        return $plan === 'pro' 
+            ? \App\Domain\TenantGovernance\Enums\TenantPlan::PRO 
+            : \App\Domain\TenantGovernance\Enums\TenantPlan::SEMILLA;
     }
 }

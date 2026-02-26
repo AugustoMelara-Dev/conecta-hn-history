@@ -42,15 +42,15 @@ export default function Register() {
         password: '',
         password_confirmation: '',
         // NEW: Tenant identity fields
-        tenant_name: '',
+        business_name: '',
         slug: '',
     });
 
-    // Reactive slug generation when tenant_name changes
-    const handleTenantNameChange = (value) => {
+    // Reactive slug generation when business_name changes
+    const handleBusinessNameChange = (value) => {
         setData((prev) => ({
             ...prev,
-            tenant_name: value,
+            business_name: value,
             slug: generateSlug(value),
         }));
     };
@@ -87,17 +87,17 @@ export default function Register() {
 
                     {/* Tenant Name */}
                     <div>
-                        <InputLabel htmlFor="tenant_name" value="Nombre de tu Negocio *" />
+                        <InputLabel htmlFor="business_name" value="Nombre de tu Negocio *" />
                         <TextInput
-                            id="tenant_name"
-                            name="tenant_name"
-                            value={data.tenant_name}
+                            id="business_name"
+                            name="business_name"
+                            value={data.business_name}
                             className="mt-1 block w-full"
                             placeholder="Ej: Pizzería Don Juan"
-                            onChange={(e) => handleTenantNameChange(e.target.value)}
+                            onChange={(e) => handleBusinessNameChange(e.target.value)}
                             required
                         />
-                        <InputError message={errors.tenant_name} className="mt-2" />
+                        <InputError message={errors.business_name} className="mt-2" />
                     </div>
 
                     {/* Slug */}
@@ -110,7 +110,7 @@ export default function Register() {
                         </InputLabel>
                         <div className="mt-1 flex rounded-lg shadow-sm">
                             <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-sm">
-                                conectahn.com/
+                                {typeof window !== 'undefined' ? window.location.host : 'conectahn.com'}/
                             </span>
                             <TextInput
                                 id="slug"

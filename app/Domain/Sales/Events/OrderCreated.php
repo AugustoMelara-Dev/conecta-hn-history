@@ -47,9 +47,9 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
         return TenantId::fromString($this->tenantId);
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -49,6 +49,16 @@ class InfrastructureServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Domain\Security\Contracts\HasherInterface::class,
+            \App\Infrastructure\Security\LaravelHasher::class
+        );
+
+        $this->app->bind(
+            \App\Application\Shared\Contracts\LoggerInterface::class,
+            \App\Infrastructure\Logging\LaravelLoggerAdapter::class
+        );
+
+        $this->app->bind(
             \App\Application\Shared\Contracts\SocialIdentityRepositoryInterface::class,
             \App\Infrastructure\Persistence\EloquentSocialIdentityRepository::class
         );

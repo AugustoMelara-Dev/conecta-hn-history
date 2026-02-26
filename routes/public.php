@@ -28,7 +28,7 @@ use Inertia\Inertia;
 Route::get('/', function () {
     // Minimal stats for social proof - avoid heavy queries
     $stats = [
-        'total_tenants' => Tenant::where('is_visible', true)->count(),
+        'total_tenants' => Tenant::where('is_active', true)->count(),
         'total_cities' => City::has('tenants')->count(),
     ];
 
@@ -46,7 +46,8 @@ Route::get('/', function () {
 Route::get('/explore', function () {
     // Featured tenants (visible, with cover images)
     $featuredTenants = Tenant::query()
-        ->where('is_visible', true)
+        ->with(['category', 'city'])
+        ->where('is_active', true)
         ->whereNotNull('logo_path')
         ->latest()
         ->limit(12)
@@ -55,8 +56,8 @@ Route::get('/explore', function () {
             'id' => $t->id,
             'name' => $t->name,
             'slug' => $t->slug,
-            'cover_url' => $t->cover_url,
-            'logo_url' => $t->logo_url,
+            'cover_url' => $t->cover_path ? \Illuminate\Support\Facades\Storage::url($t->cover_path) : null,
+            'logo_url' => $t->logo_path ? \Illuminate\Support\Facades\Storage::url($t->logo_path) : null,
             'category' => $t->category?->name,
             'city' => $t->city?->name,
             'description' => \Illuminate\Support\Str::limit($t->description, 80),
@@ -74,94 +75,41 @@ Route::get('/explore', function () {
         'featuredTenants' => $featuredTenants,
         'categories' => $categories,
         'stats' => [
-            'total_tenants' => Tenant::where('is_visible', true)->count(),
+            'total_tenants' => Tenant::where('is_active', true)->count(),
             'total_cities' => City::has('tenants')->count(),
         ],
     ]);
 })->name('public.explore');
 
-// ═══════════════════════════════════════════════════════════════════════════
-// DIRECTORY - Search Engine (Full Filtering)
-// ═══════════════════════════════════════════════════════════════════════════
-Route::get('/directory', function (\Illuminate\Http\Request $request) {
-    $search = $request->string('search')->trim()->toString();
-    $city = $request->string('city')->toString();
-    $category = $request->string('category')->toString();
-    $sort = $request->string('sort', 'newest')->toString();
-
-    $query = Tenant::query()
-        ->where('is_visible', true)
-        ->when($search, fn ($q) => $q->where('name', 'LIKE', "%{$search}%"))
-        ->when($city, fn ($q) => $q->whereHas('city', fn ($c) => $c->where('slug', $city)))
-        ->when($category, fn ($q) => $q->whereHas('category', fn ($c) => $c->where('slug', $category)));
-
-    // Sorting
-    $query = match ($sort) {
-        'popular' => $query->withCount('orders')->orderByDesc('orders_count'),
-        'name' => $query->orderBy('name'),
-        default => $query->latest(),
-    };
-
-    $tenants = $query->paginate(12)->through(fn (Tenant $t) => [
-        'id' => $t->id,
-        'name' => $t->name,
-        'slug' => $t->slug,
-        'cover_url' => $t->cover_url,
-        'logo_url' => $t->logo_url,
-        'category' => $t->category?->name,
-        'city' => $t->city?->name,
-        'description' => \Illuminate\Support\Str::limit($t->description, 80),
-        'is_open' => $t->isCurrentlyOpen(),
-    ]);
-
-    return Inertia::render('Public/Directory/Index', [
-        'tenants' => $tenants->items(),
-        'filters' => [
-            'search' => $search,
-            'city' => $city,
-            'category' => $category,
-            'sort' => $sort,
-        ],
-        'cities' => City::has('tenants')->orderBy('name')->get(['id', 'name', 'slug']),
-        'categories' => Category::has('tenants')->orderBy('name')->get(['id', 'name', 'slug']),
-        'meta' => [
-            'total' => $tenants->total(),
-            'current_page' => $tenants->currentPage(),
-            'last_page' => $tenants->lastPage(),
-        ],
-    ]);
-})->name('directory.index');
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TENANT SUBDOMAIN ROUTES - {tenant}.vito.io
+// TENANT SUBDOMAIN ROUTES - DISABLED (Path-based fallback active in web.php)
 // ═══════════════════════════════════════════════════════════════════════════
-// Subdomain-based multi-tenancy: Tenant resolved via IdentifyTenantBySubdomain middleware.
-// The tenant is available via app('current_tenant') - no route parameters needed.
+// Subdomain routing disabled for local dev + Ziggy compatibility.
+// Path-based fallback: /t/{tenant:slug} defined in routes/web.php.
+// To restore subdomain routing for production, uncomment the block below
+// and remove the path-based group from web.php.
 // ═══════════════════════════════════════════════════════════════════════════
 
-Route::domain('{tenant}.' . config('app.domain'))->group(function () {
-    // ═══════════════════════════════════════════════════════════════════════
-    // TENANT MICROSITE - Public Profile (CQRS: READ-ONLY Controller)
-    // ═══════════════════════════════════════════════════════════════════════
-    Route::get('/', [\App\Http\Controllers\Public\TenantMicrositeController::class, 'show'])
-        ->name('tenant.microsite.show');
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // BOOKING WIZARD - Public Appointment Booking (SERVICE-type tenants)
-    // ═══════════════════════════════════════════════════════════════════════
-    Route::prefix('book')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Public\BookingController::class, 'index'])
-            ->name('public.booking.index');
-        Route::post('/', [\App\Http\Controllers\Public\BookingController::class, 'store'])
-            ->name('public.booking.store');
-        Route::get('/providers/{service}', [\App\Http\Controllers\Public\BookingController::class, 'getProviders'])
-            ->name('public.booking.providers');
-        Route::get('/slots', [\App\Http\Controllers\Public\BookingController::class, 'getSlots'])
-            ->name('public.booking.slots');
-        Route::get('/success', [\App\Http\Controllers\Public\BookingController::class, 'success'])
-            ->name('public.booking.success');
-    });
-});
+// Route::domain('{tenant}.' . config('app.domain'))->group(function () {
+//     // TENANT MICROSITE - Public Profile (CQRS: READ-ONLY Controller)
+//     Route::get('/', [\App\Http\Controllers\Public\TenantMicrositeController::class, 'show'])
+//         ->name('tenant.microsite.show');
+//
+//     // BOOKING WIZARD - Public Appointment Booking (SERVICE-type tenants)
+//     Route::prefix('book')->group(function () {
+//         Route::get('/', [\App\Http\Controllers\Public\BookingController::class, 'index'])
+//             ->name('public.booking.index');
+//         Route::post('/', [\App\Http\Controllers\Public\BookingController::class, 'store'])
+//             ->name('public.booking.store');
+//         Route::get('/providers/{service}', [\App\Http\Controllers\Public\BookingController::class, 'getProviders'])
+//             ->name('public.booking.providers');
+//         Route::get('/slots', [\App\Http\Controllers\Public\BookingController::class, 'getSlots'])
+//             ->name('public.booking.slots');
+//         Route::get('/success', [\App\Http\Controllers\Public\BookingController::class, 'success'])
+//             ->name('public.booking.success');
+//     });
+// });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // GUEST APPOINTMENT PORTAL - Signed URL Access (No Auth Required)

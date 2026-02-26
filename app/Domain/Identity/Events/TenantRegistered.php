@@ -23,7 +23,7 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
 
     public function __construct(
         public string $tenantId,
-        public int $userId,
+        public string $userId,
         // Restoration parameters
         ?string $restoredEventId = null,
         ?string $restoredOccurredAt = null,
@@ -41,7 +41,7 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
         return TenantId::fromString((string) $this->tenantId);
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
         return $this->tenantId;
     }
@@ -63,8 +63,8 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
         // if used only in-process, but for correctness:
 
         return new self(
-            tenantId: (int) $primitives['tenant_id'],
-            userId: (int) $primitives['user_id'],
+            tenantId: (string) $primitives['tenant_id'],
+            userId: (string) $primitives['user_id'],
             restoredEventId: $primitives['event_id'] ?? null,
             restoredOccurredAt: $primitives['occurred_at'] ?? null
         );

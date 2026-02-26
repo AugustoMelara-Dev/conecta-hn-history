@@ -79,9 +79,9 @@ final readonly class OrderDelivered implements DomainEvent, ShouldDispatchAfterC
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

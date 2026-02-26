@@ -69,7 +69,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
 
         // 2. Persist User & CAPTURE HYDRATED ENTITY (Fix for Phantom Client)
         // CRITICAL: The ID is assigned by DB. Must update memory reference.
-        $userEntity = $this->userRepository->save($userEntity);
+        $this->userRepository->save($userEntity);
 
         // 3. Determine Limits (Domain Service)
         $productLimit = $this->pricingService->getProductLimit($command->selectedPlan);
@@ -77,9 +77,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         $isPro = $command->selectedPlan === 'pro';
 
         // 4. Create Tenant via Factory (Domain Integrity)
-        // Uses the REAL ID from the hydrated $userEntity
         $tenantEntity = $this->tenantFactory->createCommercialTenant(
-            userId: $userEntity->id,
             name: $command->businessName,
             slug: $command->slug,
             planType: $planType,
@@ -91,19 +89,18 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             whatsapp: $command->whatsapp
         );
 
-        // 5. Persist Tenant
-        // We assume TenantRepository follows standard void pattern or mismatch exists outside scope.
-        // Focusing on User ID integrity as requested.
         // 5. Persist Tenant & Capture Hydrated Entity
         $tenantEntity = $this->tenantRepository->save($tenantEntity);
+
+        // 5.1 Link User to Tenant (Resolves Foreign Key constraint)
+        $userEntity->assignToTenant($tenantEntity->id());
+        $this->userRepository->save($userEntity);
 
         // 6. Handle Payment
         $planPrice = $this->pricingService->getPlanPrice($command->selectedPlan);
         if ($planPrice > 0) {
             $this->paymentRepository->create([
-                'tenant_id' => $tenantEntity->id, // Warning: If tenant rep returns void, this might be 0.
-                // Assuming Tenant Repository hydrates by reference OR Tenant ID is handled elsewhere.
-                // But preventing User ID 0 was the specific critical failure.
+                'tenant_id' => $tenantEntity->id(), // Corrected to method call
                 'amount' => $planPrice,
                 'currency' => 'HNL',
                 'status' => 'pending',
@@ -114,15 +111,15 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
 
         // 7. Dispatch Event
         $this->eventDispatcher->dispatch(new \App\Domain\Identity\Events\TenantRegistered(
-            tenantId: $tenantEntity->id,
-            userId: $userEntity->id,
+            tenantId: $tenantEntity->id(),
+            userId: $userEntity->id(),
         ));
 
         // 8. Log
         $this->logger->info('Tenant registered', $this->sanitizePayload([
-            'user_id' => $userEntity->id,
-            'tenant_id' => $tenantEntity->id,
-            'slug' => $tenantEntity->slug,
+            'user_id' => $userEntity->id(),
+            'tenant_id' => $tenantEntity->id(),
+            'slug' => $tenantEntity->domain(),
         ], $this->scrubber));
 
         return RegisterTenantResult::fromEntities($tenantEntity, $userEntity);

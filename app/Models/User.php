@@ -12,11 +12,15 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Domain\Identity\Enums\UserRole;
+use Filament\Models\Contracts\HasTenants;
+use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -30,7 +34,7 @@ use Laravel\Sanctum\HasApiTokens;
  * 1. Authorization (via Enum-based Identity Helpers)
  * 2. Multi-tenancy Context Resolution (Strict Ownership)
  */
-class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthenticatable
+class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthenticatable, HasTenants
 {
     use HasApiTokens, HasFactory, HasPushSubscriptions, HasUuids, Notifiable;
 
@@ -206,6 +210,22 @@ class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthen
     public function tenants(): HasMany
     {
         return $this->hasMany(Tenant::class);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FILAMENT MULTI-TENANCY CONTRACT (HasTenants)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public function getTenants(Panel $panel): Collection
+    {
+        $tenant = $this->tenant;
+
+        return $tenant ? collect([$tenant]) : collect();
+    }
+
+    public function canAccessTenant(Model $tenant): bool
+    {
+        return $this->tenant_id !== null && $this->tenant_id === $tenant->id;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

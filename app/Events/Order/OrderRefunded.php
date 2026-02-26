@@ -123,9 +123,9 @@ final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCo
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

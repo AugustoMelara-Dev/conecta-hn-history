@@ -39,9 +39,9 @@ final readonly class ProductPriceChanged implements DomainEvent, ShouldDispatchA
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->productId;
+        return (string) $this->productId;
     }
 
     public function toPrimitives(): array

@@ -18,7 +18,7 @@ final class RegisterTenantValidator
             'slug' => ['required', 'alpha_dash', 'min:3', 'unique:tenants,id'], // domain_prefix in spec, usually maps to slug
             'ownerName' => ['required', 'string'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'min:8', 'confirmed'],
+            'password' => ['required', 'min:8'],
         ];
     }
 }

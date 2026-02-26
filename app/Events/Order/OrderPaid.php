@@ -105,9 +105,9 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return (int) $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

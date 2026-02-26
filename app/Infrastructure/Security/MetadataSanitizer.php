@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Security;
 
+use App\Application\Shared\Contracts\MetadataSanitizerInterface;
+
 /**
  * MetadataSanitizer - Recursive JSON Payload Neutralizer
  *
@@ -13,7 +15,7 @@ namespace App\Infrastructure\Security;
  * ║  DB OPTIMIZATION: Truncates strings beyond MAX_STRING_LENGTH.         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class MetadataSanitizer
+final class MetadataSanitizer implements MetadataSanitizerInterface
 {
     private const MAX_DEPTH = 3;
     private const MAX_STRING_LENGTH = 500;

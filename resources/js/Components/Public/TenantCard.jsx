@@ -33,7 +33,7 @@ export default function TenantCard({ tenant }) {
 
     return (
         <Link
-            href={route('tenant.show', tenant.slug)}
+            href={route('tenant.microsite.show', { tenant: tenant.slug })}
             className="group block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:border-gray-200 transition-all duration-300"
         >
             {/* Cover Image */}

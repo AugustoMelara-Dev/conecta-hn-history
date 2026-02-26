@@ -7,7 +7,7 @@ namespace App\Actions\Interactions;
 use App\Application\Interactions\Commands\RecordInteractionCommand;
 use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Interactions\DTOs\InteractionData;
-use App\Infrastructure\Security\MetadataSanitizer;
+use App\Application\Shared\Contracts\MetadataSanitizerInterface;
 
 /**
  * RecordInteractionAction - Infrastructure Adapter
@@ -29,6 +29,7 @@ final readonly class RecordInteractionAction
     public function __construct(
         private CommandBusInterface $commandBus,
         private \App\Application\Shared\Contracts\TenantRateLimiterInterface $tenantRateLimiter,
+        private MetadataSanitizerInterface $metadataSanitizer,
     ) {}
 
     /**
@@ -59,7 +60,7 @@ final readonly class RecordInteractionAction
         }
 
         // SECURITY: Sanitize metadata to neutralize XSS payloads, depth bombs, and oversized strings.
-        $cleanMetadata = MetadataSanitizer::clean($data->metadata ?? []);
+        $cleanMetadata = $this->metadataSanitizer->clean($data->metadata ?? []);
 
         $this->commandBus->dispatch(
             new RecordInteractionCommand(

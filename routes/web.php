@@ -6,6 +6,7 @@ use App\Http\Controllers\Public\ExploreController;
 use App\Http\Controllers\Public\InteractionController;
 use App\Http\Controllers\Public\LocationController;
 use App\Http\Controllers\Public\TenantMicrositeController;
+use App\Http\Controllers\Public\BookingController;
 use App\Http\Controllers\Public\WelcomeController;
 use App\Http\Controllers\Tenant\AnalyticsController;
 use Illuminate\Support\Facades\Route;
@@ -200,17 +201,19 @@ Route::middleware('auth')->group(function () {
 
 require __DIR__.'/auth.php';
 
-/*
-|--------------------------------------------------------------------------
-| Subdomain Routing Note
-|--------------------------------------------------------------------------
-|
-| Tenant microsites are now served via subdomain routing:
-| - {tenant}.vito.io → TenantMicrositeController
-|
-| Routes defined in: routes/public.php (Route::domain group)
-|
-| DEPRECATED: The old /@{slug} prefix routing has been removed.
-| All legacy URLs will return 404.
-|
-*/
+// ═══════════════════════════════════════════════════════════════════════════
+// TENANT MICROSITE - Path-Based Fallback (/t/{tenant:slug})
+// Replaces subdomain routing for local dev + Ziggy compatibility.
+// Original subdomain logic preserved (commented) in routes/public.php.
+// ═══════════════════════════════════════════════════════════════════════════
+Route::prefix('/t/{tenant:slug}')->group(function () {
+    Route::get('/', [TenantMicrositeController::class, 'show'])->name('tenant.microsite.show');
+
+    Route::prefix('book')->group(function () {
+        Route::get('/', [BookingController::class, 'index'])->name('public.booking.index');
+        Route::post('/', [BookingController::class, 'store'])->name('public.booking.store');
+        Route::get('/providers/{service}', [BookingController::class, 'getProviders'])->name('public.booking.providers');
+        Route::get('/slots', [BookingController::class, 'getSlots'])->name('public.booking.slots');
+        Route::get('/success', [BookingController::class, 'success'])->name('public.booking.success');
+    });
+});

@@ -18,7 +18,7 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 final readonly class RegisterTenantResult
 {
     public function __construct(
-        public int $tenantId,
+        public string $tenantId,
         public string $domain,
         public string $ownerEmail,
         public string $setupUrl,
@@ -37,7 +37,7 @@ final readonly class RegisterTenantResult
     public static function fromArray(array $data): self
     {
         return new self(
-            tenantId: (int) $data['tenantId'],
+            tenantId: (string) $data['tenantId'],
             domain: (string) $data['domain'],
             ownerEmail: (string) $data['ownerEmail'],
             setupUrl: (string) $data['setupUrl'],
@@ -53,13 +53,13 @@ final readonly class RegisterTenantResult
         ?string $appUrl = null
     ): self {
         // Domain construction logic
-        $domain = $tenant->slug.'.'.parse_url($appUrl ?? config('app.url'), PHP_URL_HOST);
-        $setupUrl = ($appUrl ?? config('app.url'))."/tenant/{$tenant->slug}/setup";
+        $domain = $tenant->domain().'.'.parse_url($appUrl ?? config('app.url'), PHP_URL_HOST);
+        $setupUrl = ($appUrl ?? config('app.url'))."/tenant/{$tenant->domain()}/setup";
 
         return new self(
-            tenantId: $tenant->id,
+            tenantId: $tenant->id(),
             domain: $domain,
-            ownerEmail: $user->email,
+            ownerEmail: $user->email(),
             setupUrl: $setupUrl,
         );
     }

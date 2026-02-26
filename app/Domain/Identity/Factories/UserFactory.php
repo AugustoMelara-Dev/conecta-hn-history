@@ -20,15 +20,13 @@ final readonly class UserFactory
         string $hashedPassword,
         string $role = 'customer'
     ): UserEntity {
-        return new UserEntity(
-            id: 0, // Transient ID
-            tenantId: 0, // Default/Global
-            email: new EmailAddress($email),
+        return UserEntity::register(
+            uuid: (string) \Illuminate\Support\Str::orderedUuid(),
             name: $name,
-            role: $role,
-            createdAt: $this->clock->now(), // Deterministic Time
-            updatedAt: $this->clock->now(),
-            password: $hashedPassword,
+            email: $email,
+            passwordHash: $hashedPassword,
+            role: \App\Domain\Identity\Enums\UserRole::tryFrom($role) ?? \App\Domain\Identity\Enums\UserRole::CUSTOMER,
+            tenantId: null
         );
     }
 }

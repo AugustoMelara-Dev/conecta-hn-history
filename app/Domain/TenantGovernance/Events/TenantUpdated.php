@@ -38,9 +38,9 @@ final readonly class TenantUpdated implements DomainEvent, ShouldDispatchAfterCo
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return (int) $this->tenantId->toString();
+        return $this->tenantId->toString();
     }
 
     public function toPrimitives(): array
