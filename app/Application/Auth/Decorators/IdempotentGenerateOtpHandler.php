@@ -24,7 +24,7 @@ final readonly class IdempotentGenerateOtpHandler implements GenerateOtpHandlerI
         /** Inner handler - typed as interface for polymorphism */
         private GenerateOtpHandlerInterface $inner,
         private IdempotencyServiceInterface $idempotencyService,
-        private \App\Infrastructure\Shared\Context\IdempotencyContext $idempotencyContext,
+        private \App\Application\Shared\Contracts\IdempotencyContextInterface $idempotencyContext,
         /** Idempotency TTL in seconds (previously hardcoded as 86400) */
         private int $idempotencyTtlSeconds,
     ) {}

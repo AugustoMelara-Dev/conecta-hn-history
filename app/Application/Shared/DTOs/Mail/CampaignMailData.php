@@ -21,7 +21,7 @@ final readonly class CampaignMailData
     /**
      * Create from Campaign model (snapshot at dispatch time).
      */
-    public static function fromCampaign(\App\Models\Campaign $campaign): self
+    public static function fromCampaign(object $campaign): self
     {
         return new self(
             id: $campaign->id,

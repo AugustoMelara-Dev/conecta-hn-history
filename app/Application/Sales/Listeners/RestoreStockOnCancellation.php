@@ -39,7 +39,7 @@ final class RestoreStockOnCancellation implements ShouldQueue
     public function handle(OrderCancelled $event): void
     {
         // Load order to get items (we need product_id and quantity)
-        $order = \App\Models\Order::with('items')->find($event->aggregateId());
+        $order = $this->orderRepository->findById($event->aggregateId());
 
         if ($order === null) {
             $this->logger->warning('RestoreStockOnCancellation: Order not found', [

@@ -18,7 +18,7 @@ final readonly class PaymentWebhookPayload
         return new self(
             eventType: $type,
             rawPayload: $data,
-            capturedAt: now()->toIso8601String()
+            capturedAt: $data['captured_at'] ?? null
         );
     }
 }
