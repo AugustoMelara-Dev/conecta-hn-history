@@ -26,7 +26,7 @@ class RegisterUserRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'tenant_name' => ['required', 'string', 'max:255'],
-            'tenant_domain' => ['required', 'string', 'alpha_dash', 'max:255', 'unique:tenants,domain'],
+            'tenant_domain' => ['required', 'string', 'alpha_dash', 'max:255', 'unique:tenants,slug'],
         ];
     }
 

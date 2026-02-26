@@ -9,7 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\StoreCheckoutRequest;
 use App\Services\CouponValidatorService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
  * CheckoutController - Hexagonal Compliant (DIP Remediation)
@@ -21,7 +21,9 @@ use Illuminate\Support\Facades\Log;
  */
 final class CheckoutController extends Controller
 {
-    public function __construct() {}
+    public function __construct(
+        private LoggerInterface $log
+    ) {}
 
     public function validateCoupon(StoreCheckoutRequest $request, CouponValidatorService $couponValidator): JsonResponse
     {
@@ -62,7 +64,7 @@ final class CheckoutController extends Controller
             ], 200);
 
         } catch (InvalidCouponException $e) {
-            Log::info('CheckoutController: Coupon validation failed', [
+            $this->log->info('CheckoutController: Coupon validation failed', [
                 'code' => $code,
                 'error_code' => $e->getCode(),
                 'user_id' => $request->user()?->id,

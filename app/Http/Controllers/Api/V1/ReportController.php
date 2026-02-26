@@ -49,7 +49,7 @@ final class ReportController extends Controller
      */
     public function salesExcel(SalesReportRequest $request): JsonResponse
     {
-        $tenantId = $this->tenantContext->getTenantId();
+        $tenantUuid = $this->tenantContext->getTenantUuid();
 
         // ═══════════════════════════════════════════════════════════════════════
         // ASYNC DISPATCH: Fire-and-Forget Pattern
@@ -58,7 +58,7 @@ final class ReportController extends Controller
         // User is notified via email/database when report is ready.
         GenerateSalesExport::dispatch(
             userId: $request->user()->id,
-            tenantId: $tenantId,
+            tenantId: $tenantUuid,
             criteriaData: [
                 'start_date' => $request->getStartDate(),
                 'end_date' => $request->getEndDate(),

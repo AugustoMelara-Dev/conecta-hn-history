@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Application\Sales\Handlers;
 
 use App\Application\Sales\Commands\CancelOrderCommand;
+use App\Application\Shared\Contracts\DataScrubberInterface;
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Events\Order\OrderCancelled;
-use App\Infrastructure\Bus\TransactionalEventDispatcher;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
 
 /**
  * CancelOrderHandler - Command Handler for Order Cancellation
@@ -23,13 +24,15 @@ use Illuminate\Support\Facades\Log;
  * ║  - ONLY responsibility: persist cancellation + dispatch event            ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class CancelOrderHandler
+final readonly class CancelOrderHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private readonly OrderRepositoryInterface $orderRepository,
-        private readonly TransactionalEventDispatcher $eventDispatcher,
+        private OrderRepositoryInterface $orderRepository,
+        private EventDispatcherInterface $eventDispatcher,
+        private LoggerInterface $logger,
+        private DataScrubberInterface $scrubber,
     ) {}
 
     /**
@@ -50,7 +53,7 @@ final class CancelOrderHandler
 
         // 3. SECURITY GUARD: Tenant Ownership Verification (IDOR Protection)
         if ($order->tenant_id !== $command->tenantId) {
-            Log::warning('SECURITY: Cross-tenant order cancellation attempt', [
+            $this->logger->warning('SECURITY: Cross-tenant order cancellation attempt', [
                 'requested_order_id' => $command->orderId,
                 'requesting_tenant_id' => $command->tenantId,
                 'actual_tenant_id' => $order->tenant_id,
@@ -76,12 +79,12 @@ final class CancelOrderHandler
         ));
 
         // 7. Audit Log (PII Scrubbed)
-        Log::info('Order cancelled successfully', $this->sanitizePayload([
+        $this->logger->info('Order cancelled successfully', $this->sanitizePayload([
             'order_id' => $order->id,
             'order_number' => $order->order_number,
             'tenant_id' => $command->tenantId,
             'reason' => $command->reason,
             'cancelled_by' => $command->userId,
-        ]));
+        ], $this->scrubber));
     }
 }

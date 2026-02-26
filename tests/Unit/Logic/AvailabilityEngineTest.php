@@ -1,5 +1,7 @@
 <?php
 
+
+
 declare(strict_types=1);
 
 use App\Models\OpeningHour;
@@ -121,19 +123,6 @@ describe('ServiceProvider Opening Hours', function () {
 });
 
 describe('Booking Slot Generation', function () {
-    it('BookingController has generateAvailableSlots method', function () {
-        $reflection = new ReflectionClass(\App\Http\Controllers\Public\BookingController::class);
-        
-        expect($reflection->hasMethod('generateAvailableSlots'))->toBeTrue();
-        
-        $method = $reflection->getMethod('generateAvailableSlots');
-        
-        // Should accept Tenant as first parameter
-        $params = $method->getParameters();
-        expect($params[0]->getName())->toBe('tenant');
-        expect($params[0]->getType()->getName())->toBe('App\Models\Tenant');
-    });
-
     it('closed days return empty slots (sunday default)', function () {
         $openingHours = OpeningHours::create([
             'monday' => ['09:00-17:00'],

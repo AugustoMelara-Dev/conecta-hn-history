@@ -1,5 +1,7 @@
 <?php
 
+// \DG\BypassFinals::enable();
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -42,7 +44,27 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
-{
-    // ..
-}
+expect()->extend('toMatchJsonSchema', function (string $schemaPath) {
+    if (! file_exists($schemaPath)) {
+        throw new InvalidArgumentException("Schema file not found at: {$schemaPath}");
+    }
+
+    $schemaObject = json_decode(file_get_contents($schemaPath));
+    $data = is_string($this->value) ? json_decode($this->value) : $this->value;
+    
+    if (is_array($data)) {
+        $data = json_decode(json_encode($data));
+    }
+
+    $validator = new \JsonSchema\Validator();
+    $validator->validate($data, $schemaObject, \JsonSchema\Constraints\Constraint::CHECK_MODE_COERCE_TYPES);
+
+    if (! $validator->isValid()) {
+        $errors = array_map(fn($e) => "[{$e['property']}] {$e['message']}", $validator->getErrors());
+        throw new \PHPUnit\Framework\ExpectationFailedException(
+            "JSON Schema validation failed for {$schemaPath}:\n" . implode("\n", $errors)
+        );
+    }
+
+    return $this;
+});

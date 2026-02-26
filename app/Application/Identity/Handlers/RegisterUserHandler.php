@@ -11,12 +11,14 @@ use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Events\UserRegistered;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Domain\Shared\OutboxRepositoryInterface;
+use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Shared\PasswordHasherInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity as Tenant;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Str;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
+use App\Application\Shared\Contracts\SlugGeneratorInterface;
+
 
 /**
  * Class RegisterUserHandler
@@ -31,54 +33,96 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
         private TenantRepositoryInterface $tenantRepository,
         private TransactionManagerInterface $transactionManager,
         private OutboxRepositoryInterface $outboxRepository,
+
         private PasswordHasherInterface $hasher,
+        private IdGeneratorInterface $idGenerator,
+        private SlugGeneratorInterface $slugGenerator,
     ) {}
 
     public function handle(RegisterUserCommand $command): RegisterUserResult
     {
+        // Guard: Staff registration requires an explicit Tenant ID.
+        // Prevents accidental "New Tenant" creation if ID is omitted for a Staff user.
+        if ($command->tenantId === null && $command->role === UserRole::STAFF->value) {
+            throw new \DomainException('tenantId is required for tenant-bound user registration.');
+        }
+
         // 1. Generate Deterministic IDs & Time
-        $userId = (string) Str::uuid();
-        $tenantId = (string) Str::uuid();
+        $userId = $this->idGenerator->generate();
         $now = CarbonImmutable::now();
 
         // 2. Security Hardening (Hashing BEFORE Domain/Persistence)
         $passwordHash = $this->hasher->hash($command->password);
 
-        return $this->transactionManager->transaction(function () use ($command, $userId, $tenantId, $passwordHash, $now) {
+        return $this->transactionManager->transaction(function () use ($command, $userId, $passwordHash, $now) {
 
-            // 3. Create Pure Domain Entities
-            // We use the new Physical Domain Classes, NOT Eloquent Models.
+            // BIFURCATION: Join Existing vs Create New
+            if ($command->tenantId) {
+                // FLOW B: Join Existing Tenant
+                // Verify tenant exists first
+                $tenant = $this->tenantRepository->findById($command->tenantId);
+                if (! $tenant) {
+                     // Should throw DomainException, using generic for now as per project style might vary
+                     throw new \InvalidArgumentException("Tenant not found: {$command->tenantId}");
+                }
+                
+                $tenantId = $command->tenantId;
+                // Default to STAFF if not specified, but never OWNER allowed here for safety? 
+                // We trust the command input for role, but default to STAFF if null.
+                $userRole = $command->role ? UserRole::from($command->role) : UserRole::STAFF;
 
-            $tenantName = $command->tenantName ?? $command->name."'s Workspace";
-            $tenantDomain = $command->slug ?? Str::slug($tenantName);
+                // Create User linked to existing Tenant
+                $user = UserEntity::register(
+                    uuid: $userId,
+                    name: $command->name,
+                    email: $command->email,
+                    passwordHash: $passwordHash,
+                    role: $userRole,
+                    tenantId: $tenantId
+                );
+                
+                // Persist User (Tenant already exists)
+                $this->userRepository->save($user);
 
-            $tenant = Tenant::create(
-                id: $tenantId,
-                name: $tenantName,
-                domain: $tenantDomain
-            );
+            } else {
+                // FLOW A: Create New Tenant (Greenfield)
+                $tenantId = $this->idGenerator->generate();
+                $tenantName = $command->tenantName ?? $command->name."'s Workspace";
+                $tenantDomain = $command->slug ?? $this->slugGenerator->generate($tenantName);
 
-            $user = UserEntity::register(
-                uuid: $userId,
-                name: $command->name,
-                email: $command->email,
-                passwordHash: $passwordHash, // Injected safe hash
-                role: UserRole::TENANT_OWNER,
-                tenantId: $tenantId
-            );
+                $tenant = Tenant::create(
+                    id: $tenantId,
+                    name: $tenantName,
+                    domain: $tenantDomain
+                );
 
-            // 4. Persist State via Repositories (Data Mapper Pattern)
-            $this->tenantRepository->save($tenant);
-            $this->userRepository->save($user);
+                $user = UserEntity::register(
+                    uuid: $userId,
+                    name: $command->name,
+                    email: $command->email,
+                    passwordHash: $passwordHash, // Injected safe hash
+                    role: UserRole::TENANT_OWNER,
+                    tenantId: $tenantId
+                );
+
+                // Persist Both
+                $this->tenantRepository->save($tenant);
+                $this->userRepository->save($user);
+            }
 
             // 5. Atomic Event Dispatch (Outbox)
             // Constructing strictly matching the UserRegistered signature
+            // Ensure we use the BACKING VALUE of the Enum (string)
+            $finalRole = $command->tenantId 
+                ? ($command->role ?? UserRole::STAFF->value) 
+                : UserRole::TENANT_OWNER->value;
+
             $event = new UserRegistered(
                 user_id: $userId,
                 name: $command->name,
                 email: $command->email,
                 password_hash: $passwordHash,
-                role: 'owner',
+                role: $finalRole,
                 tenant_id: $tenantId,
                 occurredOn: $now
             );
@@ -90,7 +134,8 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
                 id: $userId,
                 tenantId: $tenantId,
                 email: $command->email,
-                registeredAt: $now
+                registeredAt: $now,
+                requiresVerification: true
             );
         });
     }

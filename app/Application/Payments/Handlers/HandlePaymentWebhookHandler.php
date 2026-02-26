@@ -6,12 +6,14 @@ namespace App\Application\Payments\Handlers;
 
 use App\Application\Payments\Commands\HandlePaymentWebhookCommand;
 use App\Application\Payments\Results\PaymentWebhookResult;
+use App\Application\Shared\Contracts\DataScrubberInterface;
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Billing\Events\PaymentFailed;
 use App\Domain\Billing\Events\PaymentReceived;
 use App\Domain\Payment\Repositories\WebhookLogRepositoryInterface;
-use App\Infrastructure\Bus\TransactionalEventDispatcher;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use Illuminate\Support\Str;
 
 /**
@@ -26,13 +28,17 @@ use Illuminate\Support\Str;
  * ║  - STRICT RETURN: PaymentWebhookResult DTO (no array leak)              ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class HandlePaymentWebhookHandler
+final readonly class HandlePaymentWebhookHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private readonly WebhookLogRepositoryInterface $logRepository,
-        private readonly TransactionalEventDispatcher $eventDispatcher,
+        private WebhookLogRepositoryInterface $logRepository,
+
+        private EventDispatcherInterface $eventDispatcher,
+        private IdGeneratorInterface $idGenerator,
+        private LoggerInterface $logger,
+        private DataScrubberInterface $scrubber,
     ) {}
 
     /**
@@ -40,7 +46,7 @@ final class HandlePaymentWebhookHandler
      */
     private function translateToDomainEvent(HandlePaymentWebhookCommand $command): ?object
     {
-        $transactionId = Str::uuid()->toString();
+        $transactionId = $this->idGenerator->generate();
         $payload = $command->payload;
 
         return match ($command->eventType) {
@@ -83,7 +89,7 @@ final class HandlePaymentWebhookHandler
     {
         // STEP 1: IDEMPOTENCY GUARD
         if ($this->logRepository->hasBeenProcessed($command->provider, $command->externalEventId)) {
-            Log::info('Webhook already processed (idempotency)', [
+            $this->logger->info('Webhook already processed (idempotency)', [
                 'provider' => $command->provider,
                 'external_event_id' => $command->externalEventId,
             ]);
@@ -103,7 +109,7 @@ final class HandlePaymentWebhookHandler
         $domainEvent = $this->translateToDomainEvent($command);
 
         if ($domainEvent === null) {
-            Log::info('Webhook event type not handled', [
+            $this->logger->info('Webhook event type not handled', [
                 'provider' => $command->provider,
                 'event_type' => $command->eventType,
             ]);
@@ -119,11 +125,11 @@ final class HandlePaymentWebhookHandler
         // STEP 4: DISPATCH TO DOMAIN
         $this->eventDispatcher->dispatch($domainEvent);
 
-        Log::info('Webhook processed successfully', $this->sanitizePayload([
+        $this->logger->info('Webhook processed successfully', $this->sanitizePayload([
             'provider' => $command->provider,
             'event_type' => $command->eventType,
             'domain_event' => get_class($domainEvent),
-        ]));
+        ], $this->scrubber));
 
         // Determine Status based on Event Type
         $internalStatus = $domainEvent instanceof PaymentReceived ? 'PAID' : 'FAILED';

@@ -4,19 +4,22 @@ declare(strict_types=1);
 
 namespace App\Application\Products\Commands;
 
+use App\Application\Shared\Contracts\IdempotentCommandInterface;
+
 /**
  * CreateProductCommand - Immutable Input Contract for Product Creation
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  SERIALIZATION SAFE: No UploadedFile, only path reference.              ║
  * ║  MONETARY SAFETY: Price in cents (integer) to avoid float errors.       ║
+ * ║  IDEMPOTENT: Network retries must not create duplicate products.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class CreateProductCommand
+final readonly class CreateProductCommand implements IdempotentCommandInterface
 {
     public function __construct(
         /** Tenant ID for multi-tenant isolation */
-        public int $tenantId,
+        public string $tenantId,
 
         /** Product SKU (Unique) */
         public string $sku,
@@ -29,6 +32,9 @@ final readonly class CreateProductCommand
 
         /** Price in cents (integer for precision) */
         public int $price,
+
+        /** Idempotency Key (mandatory for deduplication) */
+        public string $idempotencyKey,
 
         /** Initial stock quantity */
         public int $stock = 0,
@@ -44,5 +50,13 @@ final readonly class CreateProductCommand
 
         /** Product visibility */
         public bool $isVisible = true,
+
+        /** Schema version for upcasting support */
+        public int $schemaVersion = 1,
     ) {}
+
+    public function getIdempotencyKey(): string
+    {
+        return $this->idempotencyKey;
+    }
 }

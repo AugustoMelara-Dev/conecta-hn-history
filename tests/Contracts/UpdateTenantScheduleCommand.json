@@ -1,0 +1,18 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "UpdateTenantScheduleCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "integer"
+        },
+        "scheduleData": {
+            "type": "array"
+        }
+    },
+    "required": [
+        "tenantId",
+        "scheduleData"
+    ],
+    "additionalProperties": false
+}

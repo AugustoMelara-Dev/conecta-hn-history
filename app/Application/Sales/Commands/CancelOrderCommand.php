@@ -26,5 +26,8 @@ final readonly class CancelOrderCommand
 
         /** User ID performing the cancellation (audit trail) */
         public int $userId,
+
+        /** Schema Version for Upcasting */
+        public int $schemaVersion = 1,
     ) {}
 }

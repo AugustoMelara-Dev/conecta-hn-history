@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Identity\Repositories;
 
-use App\Application\Common\Integration\IntegrationEventMapper;
+use App\Application\Shared\Common\Integration\IntegrationEventMapper;
 use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotStrategyInterface;
@@ -106,6 +106,20 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
     public function delete(UserEntity $user): void
     {
         // TODO: Implement delete logic (tombstone event?)
+    }
+
+    public function resetPassword(string $userId, string $tenantId, string $passwordHash, string $rememberToken): void
+    {
+        // TODO: Implement via PasswordReset domain event
+        // For now, delegate to inline projection update
+        DB::table('users')
+            ->where('id', $userId)
+            ->where('tenant_id', $tenantId)
+            ->update([
+                'password' => $passwordHash,
+                'remember_token' => $rememberToken,
+                'updated_at' => now(),
+            ]);
     }
 
     public function existsByEmail(string $email): bool

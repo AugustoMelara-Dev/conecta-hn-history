@@ -9,7 +9,7 @@ use App\Application\Billing\Commands\ReportPaymentCommand;
 /**
  * ReportPaymentValidator - Structural Validation
  */
-class ReportPaymentValidator
+final class ReportPaymentValidator
 {
     public function rules(ReportPaymentCommand $command): array
     {

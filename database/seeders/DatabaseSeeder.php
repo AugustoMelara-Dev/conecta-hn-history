@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Identity\Enums\UserRole;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Department;
@@ -17,8 +18,21 @@ class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
+     *
+     * IMPORTANT: Observers are silenced during seeding to prevent
+     * cascading side-effects (ActivityLog UUID/bigint mismatch, etc.).
      */
     public function run(): void
+    {
+        // Silence observers to prevent cascading side-effects during seeding
+        Tenant::withoutEvents(function () {
+            User::withoutEvents(function () {
+                $this->seedData();
+            });
+        });
+    }
+
+    private function seedData(): void
     {
         // 0. Limpieza (Opción mental - en realidad solo creamos si no existe)
 
@@ -65,18 +79,18 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Augusto Admin',
                 'password' => Hash::make('password'),
-                'role' => 'super_admin',
+                'role' => UserRole::SUPER_ADMIN,
                 'email_verified_at' => now(),
             ]
         );
 
-        // Vendedor Genérico
-        User::firstOrCreate(
+        // Vendedor Genérico — will own first PRO tenant (Sushi Master)
+        $seller = User::firstOrCreate(
             ['email' => 'vendedor@test.com'],
             [
                 'name' => 'Juan Vendedor',
                 'password' => Hash::make('password'),
-                'role' => 'seller',
+                'role' => UserRole::TENANT_OWNER,
                 'email_verified_at' => now(),
             ]
         );
@@ -101,7 +115,10 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($proTenantsData as $idx => $data) {
-            $user = User::factory()->create(['role' => 'seller', 'name' => 'Dueño '.$data['name']]);
+            // First PRO tenant (Sushi Master) is owned by vendedor@test.com
+            $user = ($idx === 0)
+                ? $seller
+                : User::factory()->create(['role' => UserRole::TENANT_OWNER, 'name' => 'Dueño '.$data['name']]);
 
             $tenant = Tenant::create([
                 'name' => $data['name'],
@@ -112,6 +129,8 @@ class DatabaseSeeder extends Seeder
                 'status' => 'approved',
                 'is_active' => true,
                 'is_pro' => true,
+                'plan_type' => 'pro',
+                'subscription_status' => 'active',
                 'product_limit' => 999,
                 'banner_path' => null, // Dejamos null o pondríamos path real si tuviéramos archivos
                 'description' => "Somos líderes en {$data['name']}. Ofrecemos la mejor calidad y servicio en ".$data['city']->name.'.',
@@ -122,6 +141,10 @@ class DatabaseSeeder extends Seeder
                 'whatsapp_number' => '50499999999',
                 'primary_color' => $categoriesData[$idx % count($categoriesData)]['color'], // Color temático
             ]);
+
+            // Assign tenant_id to owner so they can access dashboard
+            $user->tenant_id = $tenant->id;
+            $user->save();
 
             $createProducts($tenant, rand(10, 20));
             // Reviews commented out due to factory dependency issues
@@ -138,7 +161,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($freeTenantsData as $data) {
-            $user = User::factory()->create(['role' => 'seller', 'name' => 'Dueño '.$data['name']]);
+            $user = User::factory()->create(['role' => UserRole::TENANT_OWNER, 'name' => 'Dueño '.$data['name']]);
 
             $tenant = Tenant::create([
                 'name' => $data['name'],
@@ -149,12 +172,18 @@ class DatabaseSeeder extends Seeder
                 'status' => 'approved',
                 'is_active' => true,
                 'is_pro' => false,
+                'plan_type' => 'semilla',
+                'subscription_status' => 'active',
                 'product_limit' => 10,
                 'banner_path' => null,
                 'description' => "Negocio local de confianza en {$data['city']->name}.",
                 'social_links' => null, // Sin redes para free
                 'whatsapp_number' => '50488888888',
             ]);
+
+            // Assign tenant_id to owner so they can access dashboard
+            $user->tenant_id = $tenant->id;
+            $user->save();
 
             $createProducts($tenant, rand(3, 8)); // Menos productos
         }
@@ -167,7 +196,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($pendingTenants as $data) {
-            $user = User::factory()->create(['role' => 'seller']);
+            $user = User::factory()->create(['role' => UserRole::TENANT_OWNER]);
 
             Tenant::create([
                 'name' => $data['name'],

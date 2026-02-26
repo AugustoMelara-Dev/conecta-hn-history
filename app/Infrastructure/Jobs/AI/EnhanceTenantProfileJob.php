@@ -68,7 +68,14 @@ final class EnhanceTenantProfileJob implements ShouldBeUnique, ShouldQueue
     public function handle(
         \App\Application\Tenant\Handlers\EnhanceTenantProfileHandler $handler
     ): void {
-        $handler->handle($this->data);
+        $command = new \App\Application\Tenant\Commands\EnhanceTenantProfileCommand(
+            tenantId: (int) $this->data->tenantId,
+            description: $this->data->description,
+            tags: $this->data->tags,
+            isAiGenerated: $this->data->isAiGenerated,
+        );
+
+        $handler->handle($command);
     }
 
     public function middleware(): array

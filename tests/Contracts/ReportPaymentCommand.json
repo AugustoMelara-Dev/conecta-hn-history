@@ -1,0 +1,41 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "ReportPaymentCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "paymentReference": {
+            "type": "string"
+        },
+        "amountInCents": {
+            "type": "integer"
+        },
+        "currency": {
+            "type": "string"
+        },
+        "bank": {
+            "type": "string"
+        },
+        "idempotencyKey": {
+            "type": "string"
+        },
+        "proofOfPaymentPath": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        }
+    },
+    "required": [
+        "tenantId",
+        "paymentReference",
+        "amountInCents",
+        "currency",
+        "bank",
+        "idempotencyKey"
+    ],
+    "additionalProperties": false
+}

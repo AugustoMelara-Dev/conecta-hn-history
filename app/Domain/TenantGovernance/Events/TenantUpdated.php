@@ -7,7 +7,7 @@ namespace App\Domain\TenantGovernance\Events;
 use App\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\TenantAwareEvent;
 use App\Traits\HasDomainMetadata;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -38,9 +38,9 @@ final readonly class TenantUpdated implements DomainEvent, ShouldDispatchAfterCo
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return (int) $this->tenantId->toString();
+        return $this->tenantId->toString();
     }
 
     public function toPrimitives(): array
@@ -57,7 +57,7 @@ final readonly class TenantUpdated implements DomainEvent, ShouldDispatchAfterCo
     public static function fromPrimitives(array $primitives): self
     {
         return new self(
-            tenantId: TenantId::fromInt($primitives['tenant_id']),
+            tenantId: TenantId::fromString((string) $primitives['tenant_id']),
             oldSlug: $primitives['old_slug'],
             newSlug: $primitives['new_slug'],
             restoredEventId: $primitives['event_id'] ?? null,

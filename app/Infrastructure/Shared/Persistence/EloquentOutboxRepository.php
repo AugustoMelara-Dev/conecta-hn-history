@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Shared\Persistence;
 
-use App\Domain\Shared\OutboxRepositoryInterface;
+use App\Application\Shared\Contracts\OutboxRepositoryInterface;
+use App\Application\Shared\Contracts\SensitiveDataInterface;
 use App\Infrastructure\Models\OutboxMessage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -250,6 +251,15 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
             }
 
             $data[$property->getName()] = $value;
+        }
+
+        // REDACTION: If implementing SensitiveDataInterface, scrub secrets
+        if ($event instanceof SensitiveDataInterface) {
+            foreach ($event->getSensitiveProperties() as $sensitiveKey) {
+                if (array_key_exists($sensitiveKey, $data)) {
+                    $data[$sensitiveKey] = '[REDACTED]';
+                }
+            }
         }
 
         return $data;

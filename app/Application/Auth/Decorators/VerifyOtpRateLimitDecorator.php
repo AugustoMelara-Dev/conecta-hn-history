@@ -10,7 +10,7 @@ use App\Application\Auth\Results\VerifyOtpResult;
 use App\Domain\Shared\Contracts\RateLimitServiceInterface;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 
-final class VerifyOtpRateLimitDecorator implements VerifyOtpHandlerInterface
+final readonly class VerifyOtpRateLimitDecorator implements VerifyOtpHandlerInterface
 {
     public function __construct(
         private VerifyOtpHandlerInterface $inner,

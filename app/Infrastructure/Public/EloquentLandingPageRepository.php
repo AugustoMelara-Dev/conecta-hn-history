@@ -42,7 +42,7 @@ final class EloquentLandingPageRepository implements LandingPageRepository
             ->where('is_active', true)
             ->where('status', 'approved')
             ->with(['category:id,name,color'])
-            ->select(['id', 'name', 'slug', 'logo_path', 'category_id', 'created_at'])
+            ->select(['id', 'name', 'slug', 'logo_path', 'category_id', 'created_at', 'subscription_status', 'plan_type'])
             ->latest()
             ->take(8)
             ->get();

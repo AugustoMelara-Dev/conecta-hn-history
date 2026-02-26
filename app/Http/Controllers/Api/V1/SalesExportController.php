@@ -8,9 +8,9 @@ use App\Domain\ReportingAndExports\Jobs\GenerateSalesExport;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Contracts\Auth\StatefulGuard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -30,6 +30,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class SalesExportController extends Controller
 {
+    public function __construct(
+        private StatefulGuard $auth,
+        private LoggerInterface $log,
+        private FilesystemFactory $storage
+    ) {}
     /**
      * Request a new sales export (async).
      *
@@ -51,7 +56,7 @@ final class SalesExportController extends Controller
             'status' => ['nullable', 'string', 'in:pending,confirmed,preparing,ready,delivered,cancelled'],
         ]);
 
-        $user = Auth::user();
+        $user = $this->auth->user();
         $tenant = $user->tenant ?? $user->currentTenant;
 
         if (! $tenant) {
@@ -76,15 +81,15 @@ final class SalesExportController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         GenerateSalesExport::dispatch(
             userId: $user->id,
-            tenantId: $tenant->id,
+            tenantId: (string) $tenant->uuid,
             criteriaData: $criteriaData,
             ipAddress: $request->ip() ?? '127.0.0.1',
             userAgent: $request->userAgent() ?? 'Unknown',
         );
 
-        Log::info('SalesExport job dispatched', [
+        $this->log->info('SalesExport job dispatched', [
             'user_id' => $user->id,
-            'tenant_id' => $tenant->id,
+            'tenant_uuid' => $tenant->uuid,
             'criteria' => $criteriaData,
         ]);
 
@@ -136,11 +141,11 @@ final class SalesExportController extends Controller
         // STEP 2: Authorization - Verify Tenant Ownership
         // User must belong to the tenant that owns the file
         // ═══════════════════════════════════════════════════════════════════════
-        $user = Auth::user();
+        $user = $this->auth->user();
         $userTenantId = $user->tenant_id ?? $user->currentTenant?->id;
 
         if ($userTenantId !== $requestedTenantId) {
-            Log::warning('Unauthorized export download attempt', [
+            $this->log->warning('Unauthorized export download attempt', [
                 'user_id' => $user->id,
                 'user_tenant_id' => $userTenantId,
                 'requested_tenant_id' => $requestedTenantId,
@@ -156,7 +161,7 @@ final class SalesExportController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         // STEP 3: Validate File Exists
         // ═══════════════════════════════════════════════════════════════════════
-        if (! Storage::disk('local')->exists($filePath)) {
+        if (! $this->storage->disk('local')->exists($filePath)) {
             return response()->json([
                 'success' => false,
                 'message' => 'El archivo ya no está disponible. Los reportes expiran después de 24 horas.',
@@ -168,7 +173,7 @@ final class SalesExportController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         $fileName = basename($filePath);
 
-        return Storage::disk('local')->download($filePath, $fileName, [
+        return $this->storage->disk('local')->download($filePath, $fileName, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
     }

@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\Traits;
 
-use App\Infrastructure\Logging\SensitiveDataScrubber;
+use App\Application\Shared\Contracts\DataScrubberInterface;
 
 /**
  * LogSanitizer - Trait for easy PII scrubbing
+ *
+ * Requires the consuming class to inject DataScrubberInterface
+ * and pass it explicitly to sanitizePayload().
  */
 trait LogSanitizer
 {
-    protected function sanitizePayload(array|object $payload): array
+    protected function sanitizePayload(array|object $payload, DataScrubberInterface $scrubber): array
     {
-        /** @var SensitiveDataScrubber $scrubber */
-        $scrubber = app(SensitiveDataScrubber::class);
-
         return $scrubber->scrub($payload);
     }
 }

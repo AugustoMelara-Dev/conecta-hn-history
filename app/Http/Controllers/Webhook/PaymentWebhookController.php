@@ -4,54 +4,48 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Webhook;
 
-use App\Application\Actions\Payment\HandlePaymentWebhookAction;
+use App\Application\Billing\Actions\HandlePaymentWebhookAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
- * PaymentWebhookController - Financial Reconciliation Layer
+ * PaymentWebhookController - HTTP Gateway for Payment Callbacks
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ZERO-TRUST SECURITY: Cryptographic signature verification required     ║
- * ║  IDEMPOTENCY: Same event processed twice has no side effects            ║
- * ║  ACID COMPLIANCE: Delegate to Transactional Action                      ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * REFACTORED: Domain Action Pattern Implemented
+ * VALIDATION: Signature verification delegated internally
+ * ACID COMPLIANCE: Delegate to Transactional Action
  */
 final class PaymentWebhookController extends Controller
 {
     /**
      * Webhook secret for verification.
      */
-    protected string $webhookSecret;
+    private string $webhookSecret;
 
     public function __construct(
-        private readonly HandlePaymentWebhookAction $action
+        private HandlePaymentWebhookAction $webhookAction,
+        private LoggerInterface $logger
     ) {
         $secret = config('services.payment.webhook_secret');
 
-        if (empty($secret) && app()->runningInConsole()) {
-            $secret = 'console-dummy-secret';
+        if (! is_string($secret) || empty($secret)) {
+            // Strictly fail if secret is missing to prevent bypasses.
+            throw new \RuntimeException('Webhook secret is not configured.');
         }
 
-        throw_if(
-            empty($secret),
-            \RuntimeException::class,
-            'PAYMENT_WEBHOOK_SECRET is not configured.'
-        );
-
-        $this->webhookSecret = (string) $secret;
+        $this->webhookSecret = $secret;
     }
 
     /**
-     * Handle incoming payment webhook.
+     * Handle incoming webhook payload from payment provider.
      */
-    public function handle(Request $request): JsonResponse
+    public function handle(Request $request, string $provider): JsonResponse
     {
         // 1. Verify Signature
         if (! $this->verifySignature($request)) {
-            Log::warning('PaymentWebhook: Invalid signature', ['ip' => $request->ip()]);
+            $this->logger->warning('PaymentWebhook: Invalid signature', ['ip' => $request->ip()]);
 
             return response()->json(['message' => 'Invalid signature'], 403);
         }
@@ -60,41 +54,46 @@ final class PaymentWebhookController extends Controller
         $eventType = $payload['event'] ?? null;
         $eventData = $payload['data'] ?? [];
 
-        Log::info('PaymentWebhook: Event received', [
+        $this->logger->info('PaymentWebhook: Event received', [
             'event_type' => $eventType,
             'transaction_id' => $eventData['transaction_id'] ?? 'N/A',
         ]);
 
         try {
             // 2. Delegate to Transactional Action
-            $result = $this->action->execute($eventType ?? 'unknown', $eventData);
+            $result = $this->webhookAction->execute($eventType ?? 'unknown', $eventData);
 
             // Map result to status code
             $status = match ($result['status'] ?? 'ok') {
-                'success', 'acknowledged', 'ignored' => 200,
-                default => 500
+                'ok' => 200,
+                'ignored' => 202,
+                'invalid' => 422,
+                default => 200,
             };
 
             return response()->json($result, $status);
 
         } catch (\Throwable $e) {
-            Log::error('PaymentWebhook: Processing Error', ['error' => $e->getMessage()]);
+            $this->logger->error('PaymentWebhook: Processing Error', ['error' => $e->getMessage()]);
 
             return response()->json(['status' => 'error'], 500);
         }
     }
 
-    protected function verifySignature(Request $request): bool
+    /**
+     * Verify the HMAC signature from the request using strict comparison.
+     */
+    private function verifySignature(Request $request): bool
     {
-        $providedSignature = $request->header('X-Webhook-Signature');
+        $signature = $request->header('X-Signature');
 
-        if (empty($providedSignature)) {
+        if (! $signature) {
             return false;
         }
 
         $payload = $request->getContent();
-        $expectedSignature = hash_hmac('sha256', $payload, $this->webhookSecret);
+        $expectedSignature = hash_hmac('sha256', (string) $payload, $this->webhookSecret);
 
-        return hash_equals($expectedSignature, $providedSignature);
+        return hash_equals($expectedSignature, (string) $signature);
     }
 }

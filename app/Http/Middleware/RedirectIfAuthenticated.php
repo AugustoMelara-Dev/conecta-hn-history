@@ -36,7 +36,7 @@ class RedirectIfAuthenticated
                     return redirect('/mi-cuenta');
                 }
 
-                return redirect(route('directory'));
+                return redirect(route('directory.index'));
             }
         }
 

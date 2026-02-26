@@ -12,14 +12,20 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Domain\Identity\Enums\UserRole;
+use Filament\Models\Contracts\HasTenants;
+use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
+use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use NotificationChannels\WebPush\HasPushSubscriptions;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * User Model - Identity & Access Authority
@@ -28,9 +34,9 @@ use NotificationChannels\WebPush\HasPushSubscriptions;
  * 1. Authorization (via Enum-based Identity Helpers)
  * 2. Multi-tenancy Context Resolution (Strict Ownership)
  */
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthenticatable, HasTenants
 {
-    use HasFactory, HasPushSubscriptions, HasUuids, Notifiable;
+    use HasApiTokens, HasFactory, HasPushSubscriptions, HasUuids, Notifiable;
 
     /**
      * UUID Configuration: Disable Auto-Increment
@@ -102,7 +108,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'banned_at' => 'datetime',
             'role' => UserRole::class,
-            'tenant_id' => \App\Infrastructure\Persistence\Eloquent\Casts\TenantIdCast::class,
+            // 'tenant_id' => \App\Infrastructure\Persistence\Eloquent\Casts\TenantIdCast::class,
         ];
     }
 
@@ -161,9 +167,40 @@ class User extends Authenticatable implements MustVerifyEmail
         $this->banned_at = null;
     }
 
+    /**
+     * Domain Action: Update Password
+     *
+     * Encapsulates the password persistence and remember_token rotation.
+     * Accepts a PRE-HASHED password string. Hashing policy is owned
+     * by the Application Layer, NOT this model.
+     *
+     * @param string $hashedPassword The already-hashed password string.
+     *
+     * @see App\Application\Identity\Handlers\RegisterUserHandler
+     * @see App\Domain\Shared\PasswordHasherInterface
+     */
+    public function updatePassword(string $hashedPassword): void
+    {
+        $this->forceFill([
+            'password' => $hashedPassword,
+            'remember_token' => \Illuminate\Support\Str::random(60),
+        ])->save();
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // TENANCY RELATIONSHIPS
     // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * TenantAware Contract: Explicit tenant identity resolution.
+     *
+     * Replaces implicit $user->tenant_id access with a type-safe getter,
+     * decoupling Actions from the concrete Eloquent schema.
+     */
+    public function getTenantId(): int|string|null
+    {
+        return $this->tenant_id;
+    }
 
     public function tenant(): BelongsTo
     {
@@ -173,6 +210,22 @@ class User extends Authenticatable implements MustVerifyEmail
     public function tenants(): HasMany
     {
         return $this->hasMany(Tenant::class);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FILAMENT MULTI-TENANCY CONTRACT (HasTenants)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public function getTenants(Panel $panel): Collection
+    {
+        $tenant = $this->tenant;
+
+        return $tenant ? collect([$tenant]) : collect();
+    }
+
+    public function canAccessTenant(Model $tenant): bool
+    {
+        return $this->tenant_id !== null && $this->tenant_id === $tenant->id;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -246,10 +299,10 @@ class User extends Authenticatable implements MustVerifyEmail
      * INVARIANT: Points are tenant-isolated. Points from Tenant A
      * cannot be used at Tenant B.
      * 
-     * @param int $tenantId The tenant to check balance for
+     * @param string $tenantId The tenant to check balance for
      * @return int Current point balance (can be negative if over-redeemed)
      */
-    public function loyaltyBalance(int $tenantId): int
+    public function loyaltyBalance(string $tenantId): int
     {
         return (int) $this->loyaltyLedger()
             ->where('tenant_id', $tenantId)
@@ -259,10 +312,10 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Get active (non-expired) loyalty points balance for a tenant.
      * 
-     * @param int $tenantId The tenant to check balance for
+     * @param string $tenantId The tenant to check balance for
      * @return int Active point balance
      */
-    public function activeLoyaltyBalance(int $tenantId): int
+    public function activeLoyaltyBalance(string $tenantId): int
     {
         return (int) $this->loyaltyLedger()
             ->where('tenant_id', $tenantId)

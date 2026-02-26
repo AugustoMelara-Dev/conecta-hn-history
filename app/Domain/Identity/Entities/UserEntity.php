@@ -31,7 +31,7 @@ final class UserEntity
 
     private UserRole $role;
 
-    private string $tenantId;
+    private ?string $tenantId = null;
 
     private ?string $rememberToken = null;
 
@@ -47,7 +47,7 @@ final class UserEntity
      * Factory: Register a new User with Pre-allocated Identity.
      *
      * @param  string  $uuid  Pre-allocated UUID v4/v7.
-     * @param  string  $tenantId  Pre-allocated Tenant UUID.
+     * @param  ?string  $tenantId  Pre-allocated Tenant UUID or null for global.
      */
     public static function register(
         string $uuid,
@@ -55,7 +55,7 @@ final class UserEntity
         string $email,
         string $passwordHash,
         UserRole $role,
-        string $tenantId
+        ?string $tenantId = null
     ): self {
         $user = new self;
 
@@ -145,7 +145,7 @@ final class UserEntity
         return $this->role;
     }
 
-    public function tenantId(): string
+    public function tenantId(): ?string
     {
         return $this->tenantId;
     }
@@ -212,6 +212,12 @@ final class UserEntity
     {
         $this->name = $name;
         $this->email = $email;
+        $this->updatedAt = new DateTimeImmutable;
+    }
+
+    public function assignToTenant(string $tenantId): void
+    {
+        $this->tenantId = $tenantId;
         $this->updatedAt = new DateTimeImmutable;
     }
 

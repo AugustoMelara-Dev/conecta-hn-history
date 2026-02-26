@@ -1,0 +1,32 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "EnhanceTenantProfileCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "integer",
+            "description": "Target tenant identifier"
+        },
+        "description": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Updated description for AI processing",
+            "default": null
+        },
+        "tags": {
+            "type": "array",
+            "default": []
+        },
+        "isAiGenerated": {
+            "type": "boolean",
+            "description": "Allow re-enhancement of previously AI-generated content",
+            "default": false
+        }
+    },
+    "required": [
+        "tenantId"
+    ],
+    "additionalProperties": false
+}

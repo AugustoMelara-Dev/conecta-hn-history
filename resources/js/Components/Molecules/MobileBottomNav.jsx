@@ -39,8 +39,8 @@ export default function MobileBottomNav() {
         {
             label: 'Vista Previa',
             icon: Eye,
-            href: user && user.tenant ? route('tenant.show', user.tenant.slug) : '#',
-            active: route().current('tenant.show'),
+            href: user && user.tenant ? route('tenant.microsite.show', { tenant: user.tenant.slug }) : '#',
+            active: route().current('tenant.microsite.show'),
             show: user && user.role === 'seller' && user.tenant
         },
         {

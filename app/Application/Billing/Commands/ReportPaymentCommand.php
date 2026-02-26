@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Billing\Commands;
 
-use App\Domain\Shared\Contracts\IdempotentCommandInterface;
+use App\Application\Shared\Contracts\IdempotentCommandInterface;
 
 /**
  * ReportPaymentCommand - Immutable DTO
@@ -22,10 +22,25 @@ final readonly class ReportPaymentCommand implements IdempotentCommandInterface
         // STRICT REQUIREMENT: Idempotency Key is now mandatory.
         public string $idempotencyKey,
         public ?string $proofOfPaymentPath = null,
+        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string
     {
         return $this->idempotencyKey;
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'tenantId' => $this->tenantId,
+            'paymentReference' => $this->paymentReference,
+            'amountInCents' => $this->amountInCents,
+            'currency' => $this->currency,
+            'bank' => $this->bank,
+            'idempotencyKey' => $this->idempotencyKey,
+            'proofOfPaymentPath' => $this->proofOfPaymentPath,
+            'schemaVersion' => $this->schemaVersion,
+        ];
     }
 }

@@ -40,17 +40,20 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
         // ═══════════════════════════════════════════════════════════════════════
         // SECURITY: EXPLICIT TENANT MEMBERSHIP VERIFICATION
         // ═══════════════════════════════════════════════════════════════════════
-        // We CANNOT use User::findOrFail($userId) - that's an IDOR vulnerability.
         // We MUST verify the user belongs to the current tenant context.
-        $user = User::query()
-            ->where('id', $userId)
-            ->where(function ($query) use ($currentTenantId) {
-                // User is the OWNER of this tenant (via user_id FK)
-                $query->whereHas('tenants', function ($q) use ($currentTenantId) {
-                    $q->where('tenants.id', $currentTenantId);
-                });
-            })
-            ->first();
+        // OPTIMIZATION: Retrieve user_id directly from DB to avoid Model overhead/scopes.
+        $ownerId = \Illuminate\Support\Facades\DB::table('tenants')
+            ->where('id', $currentTenantId)
+            ->value('user_id');
+
+        // Compare strings (UUIDs)
+        $isOwner = $ownerId && (string)$ownerId === (string)$userId;
+
+        if ($isOwner) {
+            $user = User::where('id', $userId)->first();
+        } else {
+            $user = null;
+        }
 
         if ($user === null) {
             // Check if user exists but doesn't belong to this tenant (security probe)
@@ -67,7 +70,7 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
                 ]);
 
                 // Throw specific security exception
-                throw TenantMismatchException::forResource('User', (int) $userId, (int) $currentTenantId);
+                throw TenantMismatchException::forResource('User', $userId, $currentTenantId);
             }
 
             // User genuinely doesn't exist

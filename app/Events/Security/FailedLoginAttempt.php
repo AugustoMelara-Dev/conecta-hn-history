@@ -7,7 +7,7 @@ namespace App\Events\Security;
 use App\Contracts\Events\AuditEvent;
 use App\Enums\Severity;
 use App\ValueObjects\AuditContext;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 
 /**
  * FailedLoginAttempt - Audit Event for Brute Force Detection
@@ -56,12 +56,12 @@ final readonly class FailedLoginAttempt implements AuditEvent
      */
     public static function create(
         string $email,
-        ?int $tenantId = null,
+        ?string $tenantId = null,
         string $failureReason = 'invalid_credentials'
     ): self {
         return new self(
             email: $email,
-            tenantId: $tenantId !== null ? TenantId::fromInt($tenantId) : null,
+            tenantId: $tenantId !== null ? TenantId::fromString($tenantId) : null,
             context: AuditContext::capture(actorId: null, anonymizeIp: true),
             failureReason: $failureReason,
         );
@@ -138,7 +138,7 @@ final readonly class FailedLoginAttempt implements AuditEvent
 
         return new self(
             email: $email,
-            tenantId: isset($data['tenant_id']) ? TenantId::fromInt($data['tenant_id']) : null,
+            tenantId: isset($data['tenant_id']) ? TenantId::fromString((string) $data['tenant_id']) : null,
             context: AuditContext::fromPrimitives($data['context'] ?? []),
             failureReason: $data['failure_reason'] ?? 'invalid_credentials',
         );

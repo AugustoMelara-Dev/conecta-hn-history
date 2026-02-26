@@ -7,7 +7,8 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Password;
+use Illuminate\Contracts\Auth\PasswordBroker;
+use Illuminate\Routing\Redirector;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -19,6 +20,11 @@ use Laravel\Fortify\Contracts\ResetsUserPasswords;
  */
 final class NewPasswordController extends Controller
 {
+    public function __construct(
+        private PasswordBroker $passwordBroker,
+        private Redirector $redirector
+    ) {}
+
     /**
      * Display the password reset view.
      */
@@ -42,15 +48,15 @@ final class NewPasswordController extends Controller
         ]);
 
         // Broker handles token validation
-        $status = Password::reset(
+        $status = $this->passwordBroker->reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user) use ($request, $resetter) {
                 $resetter->reset($user, $request->all());
             }
         );
 
-        if ($status === Password::PASSWORD_RESET) {
-            return redirect()->route('login')->with('status', __($status));
+        if ($status === PasswordBroker::PASSWORD_RESET) {
+            return $this->redirector->route('login')->with('status', __($status));
         }
 
         throw ValidationException::withMessages([

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Bus\Middleware;
 
 use App\Domain\Shared\Contracts\IdempotencyStoreInterface;
-use App\Domain\Shared\Contracts\IdempotentCommandInterface;
+use App\Application\Shared\Contracts\IdempotentCommandInterface;
 use Closure;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;

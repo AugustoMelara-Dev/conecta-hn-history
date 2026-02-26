@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Common\Idempotency;
 
-use App\Application\Common\Contracts\IdempotencyServiceInterface;
-use App\Application\Common\Exceptions\ConcurrentRequestException;
+use App\Application\Shared\Contracts\IdempotencyServiceInterface;
+use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
 use Illuminate\Redis\Connections\Connection;
 
 /**
  * RedisIdempotencyService - Distributed Idempotency with Redis Backend
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  CRITICAL: This service is the last defense against duplicate payments. ║
- * ║  INTERFACE COMPLIANCE: Strictly implements IdempotencyServiceInterface. ║
- * ║  PROTOCOL: Uses {status, data} envelope for state management.           ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  CRITICAL: This service is the last defense against duplicate payments. â•‘
+ * â•‘  INTERFACE COMPLIANCE: Strictly implements IdempotencyServiceInterface. â•‘
+ * â•‘  PROTOCOL: Uses {status, data} envelope for state management.           â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final class RedisIdempotencyService implements IdempotencyServiceInterface
 {

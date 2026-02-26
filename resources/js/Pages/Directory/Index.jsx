@@ -25,7 +25,7 @@ function cleanParams(params) {
 function TenantCard({ tenant }) {
     return (
         <Link
-            href={route('tenant.show', tenant.slug)}
+            href={route('tenant.microsite.show', { tenant: tenant.slug })}
             className="group block h-full"
         >
             <div className={cn(

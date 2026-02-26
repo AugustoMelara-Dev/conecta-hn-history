@@ -14,7 +14,7 @@ use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Entities\DomainEventMessage;
-use App\Domain\Shared\Services\PasswordHasherInterface;
+use App\Domain\Shared\PasswordHasherInterface;
 use Ramsey\Uuid\Uuid;
 
 /**
@@ -85,20 +85,7 @@ final readonly class UpdateUserPasswordHandler implements UpdateUserPasswordHand
             sessionInvalidated: $sessionInvalidated,
         );
 
-        $message = new DomainEventMessage(
-            eventId: Uuid::uuid7()->toString(),
-            type: UserPasswordChanged::class,
-            aggregateId: (string) $command->userId,
-            payload: json_encode($event->toPayload()),
-            occurredAt: $this->clock->now(),
-            metadata: [
-                'tenant_id' => $command->requestingTenantId,
-                'causation_id' => $command->idempotencyKey,
-                'session_invalidated' => $sessionInvalidated,
-            ]
-        );
-
-        $this->outboxRepository->save($message);
+        $this->outboxRepository->append($event);
 
         return new \App\Application\Auth\Results\UpdateUserPasswordResult(
             status: 'success',

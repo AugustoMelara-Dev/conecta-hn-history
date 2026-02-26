@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Decorators;
 
-use App\Application\Common\Contracts\RateLimiterInterface;
-use App\Application\Common\Interfaces\ClientContextProviderInterface;
+use App\Application\Shared\Contracts\RateLimiterInterface;
+use App\Application\Shared\Contracts\ClientContextProviderInterface;
 use App\Application\Identity\Commands\RegisterUserCommand;
 use App\Application\Identity\Handlers\RegisterUserHandlerInterface;
 use App\Application\Identity\Results\RegisterUserResult;

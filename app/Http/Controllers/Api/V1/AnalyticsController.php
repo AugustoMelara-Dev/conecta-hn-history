@@ -10,7 +10,7 @@ use App\Domain\TenantGovernance\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 use Illuminate\Validation\Rule;
 
 /**
@@ -27,7 +27,8 @@ use Illuminate\Validation\Rule;
 final class AnalyticsController extends Controller
 {
     public function __construct(
-        private readonly TenantResolver $tenantResolver
+        private TenantResolver $tenantResolver,
+        private LoggerInterface $log
     ) {}
 
     /**
@@ -106,7 +107,7 @@ final class AnalyticsController extends Controller
                 ],
             );
 
-            Log::channel('daily')->info('Conversion tracked', [
+            $this->log->info('Conversion tracked', [
                 'tenant' => $tenantSlug,
                 'transaction_id' => $transactionId,
                 'value' => $value,
@@ -117,7 +118,7 @@ final class AnalyticsController extends Controller
                 'transaction_id' => $transactionId,
             ]);
         } catch (\Throwable $e) {
-            Log::warning('Analytics conversion error', ['error' => $e->getMessage()]);
+            $this->log->warning('Analytics conversion error', ['error' => $e->getMessage()]);
 
             return response()->json(['status' => 'error']);
         }

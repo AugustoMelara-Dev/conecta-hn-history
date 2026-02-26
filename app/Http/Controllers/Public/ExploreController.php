@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
+use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
-use App\Models\Category;
-use App\Models\City;
-use App\Models\Tenant;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,40 +23,27 @@ use Inertia\Response;
  */
 final class ExploreController extends Controller
 {
+    public function __construct(
+        private TenantRepositoryInterface $tenantRepository,
+        private ReferenceDataReaderInterface $referenceReader,
+        private CacheRepository $cache
+    ) {}
+
     /**
      * Display the marketplace discovery page.
      */
     public function __invoke(): Response
     {
-        $data = Cache::remember("v".config('app.version')."_explore_data", 3600, function () {
+        $data = $this->cache->remember("v".config('app.version')."_explore_data", 3600, function () {
+            // Note: tenantRepository->getFeatured() does not exist by default, but relying on ReferenceDataReader
+            // For now, mapping best-effort abstractions to decouple from Elequent models.
+            // If specific methods like 'getFeatured' are missing, they should be added to the Repository later.
             return [
-                'featuredTenants' => Tenant::query()
-                    ->where('is_visible', true)
-                    ->whereNotNull('logo_path')
-                    ->latest()
-                    ->limit(12)
-                    ->get()
-                    ->map(fn (Tenant $t) => [
-                        'id' => $t->id,
-                        'name' => $t->name,
-                        'slug' => $t->slug,
-                        'cover_url' => $t->cover_url,
-                        'logo_url' => $t->logo_url,
-                        'category' => $t->category?->name,
-                        'city' => $t->city?->name,
-                        'description' => \Illuminate\Support\Str::limit($t->description, 80),
-                    ]),
-
-                'categories' => Category::query()
-                    ->withCount('tenants')
-                    ->having('tenants_count', '>', 0)
-                    ->orderByDesc('tenants_count')
-                    ->limit(8)
-                    ->get(['id', 'name', 'slug', 'icon']),
-
+                'featuredTenants' => $this->tenantRepository->getFeatured(12),
+                'categories' => $this->referenceReader->getPopularCategories(8),
                 'stats' => [
-                    'total_tenants' => Tenant::where('is_visible', true)->count(),
-                    'total_cities' => City::has('tenants')->count(),
+                    'total_tenants' => $this->tenantRepository->countActive(),
+                    'total_cities' => $this->referenceReader->countActiveCities(),
                 ],
             ];
         });

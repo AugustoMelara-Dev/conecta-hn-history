@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Actions\Fortify\ResetPasswordAction;
-use App\Actions\Fortify\UpdateUserPassword;
-use App\Actions\Fortify\UpdateUserProfileInformation;
+use App\Actions\Authentication\ResetPasswordAction;
+use App\Actions\Authentication\UpdateUserPassword;
+use App\Actions\Identity\UpdateUserProfileInformation;
+use App\Actions\Identity\CreateNewUser;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -32,6 +33,7 @@ class FortifyServiceProvider extends ServiceProvider
         // ═══════════════════════════════════════════════════════════════════════
         // SECURITY ACTIONS: Infrastructure Adapters -> Application Layer
         // ═══════════════════════════════════════════════════════════════════════
+        Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
         Fortify::resetUserPasswordsUsing(ResetPasswordAction::class);

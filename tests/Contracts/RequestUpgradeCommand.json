@@ -1,0 +1,30 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "RequestUpgradeCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "newPlanIdentifier": {
+            "type": "string"
+        },
+        "currency": {
+            "type": "string"
+        },
+        "idempotencyKey": {
+            "type": "string"
+        },
+        "clientIdempotencyKey": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "tenantId",
+        "newPlanIdentifier",
+        "currency",
+        "idempotencyKey",
+        "clientIdempotencyKey"
+    ],
+    "additionalProperties": false
+}

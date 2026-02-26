@@ -33,7 +33,7 @@ final class GenerateSalesExport implements ShouldQueue
 
     public function __construct(
         public readonly int $userId,
-        public readonly int $tenantId,
+        public readonly string $tenantId,
         public readonly array $criteriaData,
         public readonly string $requestIp,
         public readonly string $userAgent
@@ -48,7 +48,7 @@ final class GenerateSalesExport implements ShouldQueue
             throw new ModelNotFoundException("User {$this->userId} not found");
         }
 
-        $tenantId = TenantId::fromInt($this->tenantId);
+        $tenantId = TenantId::fromString($this->tenantId);
         $criteria = SalesExportCriteria::fromArray($this->criteriaData);
 
         $filename = sprintf('exports/tenant_%d/sales_%s.xlsx', $this->tenantId, Str::uuid());

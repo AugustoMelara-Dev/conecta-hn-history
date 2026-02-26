@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Tenant\Transformers;
 
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
-use App\Models\OpeningHour;
-use App\Models\Tenant;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 
 /**
@@ -30,7 +28,8 @@ use Illuminate\Support\Str;
 final class TenantMicrositeTransformer
 {
     public function __construct(
-        private readonly PlanFeatureFlagService $planService
+        private readonly PlanFeatureFlagService $planService,
+        private readonly Filesystem $filesystem,
     ) {}
 
     /**
@@ -309,6 +308,6 @@ final class TenantMicrositeTransformer
             return $path;
         }
 
-        return Storage::url($path);
+        return $this->filesystem->url($path);
     }
 }

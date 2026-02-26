@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace App\Application\Billing\Decorators;
 
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Billing\Handlers\GenerateUploadUrlHandlerInterface;
-use App\Application\Common\Contracts\RateLimiterInterface;
+use App\Application\Shared\Contracts\RateLimiterInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
  * RateLimitedGenerateUploadUrlHandler - DoS Protection (Level 30)
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  DEFENSE: SIGNING ENDPOINT PROTECTION                                    ║
- * ║  1. Limits: 20 requests per minute per tenant (Higher burst for uploads).║
- * ║  2. Protects: CPU (Signing) & Disk/S3 Metadata Spam.                     ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  DEFENSE: SIGNING ENDPOINT PROTECTION                                    â•‘
+ * â•‘  1. Limits: 20 requests per minute per tenant (Higher burst for uploads).â•‘
+ * â•‘  2. Protects: CPU (Signing) & Disk/S3 Metadata Spam.                     â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final readonly class RateLimitedGenerateUploadUrlHandler implements GenerateUploadUrlHandlerInterface
 {
@@ -25,7 +26,8 @@ final readonly class RateLimitedGenerateUploadUrlHandler implements GenerateUplo
 
     public function __construct(
         private GenerateUploadUrlHandlerInterface $inner,
-        private RateLimiterInterface $rateLimiter
+        private RateLimiterInterface $rateLimiter,
+        private LoggerInterface $logger,
     ) {}
 
     public function handle(string $tenantId, string $mimeType, int $sizeBytes): array
@@ -48,7 +50,7 @@ final readonly class RateLimitedGenerateUploadUrlHandler implements GenerateUplo
             // CIRCUIT BREAKER: Fail Open
             // If Redis/Cache is down, we do NOT want to block payments.
             // We log the critical failure but allow the request to proceed.
-            \Illuminate\Support\Facades\Log::critical('Rate Limiter FAILURE (Fail-Open active): '.$e->getMessage());
+            $this->logger->critical('Rate Limiter FAILURE (Fail-Open active): '.$e->getMessage());
         }
 
         return $this->inner->handle($tenantId, $mimeType, $sizeBytes);

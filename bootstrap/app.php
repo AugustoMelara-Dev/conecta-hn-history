@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function () {
             require base_path('routes/api_mock.php');
+            require base_path('routes/public.php');
         },
     )
     ->withCommands([

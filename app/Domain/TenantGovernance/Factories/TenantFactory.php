@@ -18,53 +18,47 @@ final readonly class TenantFactory
     ) {}
 
     public function createTrialTenant(
-        UserEntity $owner,
         string $source,
+        string $ownerName, // Replaced UserEntity $owner to avoid tight coupling
         ?string $businessName = null,
         ?string $customSlug = null
     ): TenantEntity {
-        // 1. Fallback Logic for Business Name
         $finalName = ($businessName !== null && $businessName !== '')
             ? $businessName
-            : ($owner->name."'s Store");
+            : ($ownerName."'s Store");
 
-        // 2. Fallback Logic for Slug (Collision check in Handler)
         $finalSlug = ($customSlug !== null && $customSlug !== '')
             ? $customSlug
             : Str::slug($finalName);
 
-        // 3. Construct Entity with strict source tracking
-        return new TenantEntity(
-            id: 0,
-            userId: $owner->id,
+        $tenant = TenantEntity::create(
+            id: (string) Str::orderedUuid(),
             name: $finalName,
-            slug: $finalSlug,
-            source: $source,
-            planType: TenantPlan::SEMILLA, // PASSED AS OBJECT
-            subscriptionStatus: 'active',
-            isActive: true,
-            createdAt: new DateTimeImmutable,
-            updatedAt: new DateTimeImmutable,
+            domain: $finalSlug
         );
+        $tenant->upgradeToPlan(TenantPlan::SEMILLA->value);
+
+        return $tenant;
     }
 
     public function createCommercialTenant(
-        int $userId,
         string $name,
         string $slug,
-        TenantPlan $planType // STRICTLY ENUM
+        TenantPlan $planType,
+        bool $isPro = false,
+        int $productLimit = 10,
+        ?string $logoPath = null,
+        ?int $categoryId = null,
+        ?int $cityId = null,
+        ?string $whatsapp = null,
     ): TenantEntity {
-        return new TenantEntity(
-            id: 0,
-            userId: $userId,
+        $tenant = TenantEntity::create(
+            id: (string) Str::orderedUuid(),
             name: $name,
-            slug: $slug,
-            source: 'commercial_onboarding',
-            planType: $planType, // PASSED AS OBJECT
-            subscriptionStatus: 'active',
-            isActive: true,
-            createdAt: $this->clock->now(),
-            updatedAt: $this->clock->now(),
+            domain: $slug
         );
+        $tenant->upgradeToPlan($planType->value);
+
+        return $tenant;
     }
 }

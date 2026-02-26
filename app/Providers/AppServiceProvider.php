@@ -213,7 +213,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
-            \App\Domain\Shared\OutboxRepositoryInterface::class,
+            \App\Application\Shared\Contracts\OutboxRepositoryInterface::class,
             \App\Infrastructure\Shared\Persistence\EloquentOutboxRepository::class
         );
 
@@ -230,11 +230,12 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // ═══════════════════════════════════════════════════════════════════════
-        // COMMAND BUS: Synchronous Execution Pipeline
+        // COMMAND BUS: Transactional Outbox Pipeline (P2 Upgrade)
+        // Wraps dispatch in DB transaction + persists redacted payload to outbox.
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
             \App\Application\Shared\Contracts\CommandBusInterface::class,
-            \App\Infrastructure\Bus\IlluminateCommandBus::class
+            \App\Infrastructure\Bus\TransactionalCommandBus::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -255,6 +256,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Domain\Sales\Repositories\OrderRepositoryInterface::class,
             \App\Infrastructure\Repositories\Sales\EloquentOrderRepository::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // PROJECTION BINDINGS: Read-Side Ports for Actions Layer
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Application\Identity\Contracts\UserReadProjection::class,
+            \App\Infrastructure\Identity\Projections\EloquentUserReadProjection::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -286,6 +295,14 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // ═══════════════════════════════════════════════════════════════════════
+        // IDENTITY DOMAIN: User Uniqueness Validation (ORM Decoupling)
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Application\Identity\Contracts\UserUniquenessCheckerInterface::class,
+            \App\Infrastructure\Identity\Services\EloquentUserUniquenessChecker::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
         // DOCUMENT STORAGE: Abstraction for file handling in Billing Domain
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
@@ -299,6 +316,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Domain\Analytics\Repositories\InteractionRepositoryInterface::class,
             \App\Infrastructure\Repositories\Analytics\EloquentInteractionRepository::class
+        );
+
+        $this->app->bind(
+            \App\Domain\Interactions\Repositories\InteractionRepositoryInterface::class,
+            \App\Infrastructure\Interactions\Persistence\EloquentInteractionRepository::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -408,8 +430,8 @@ class AppServiceProvider extends ServiceProvider
                         // Outermost (Runs First)
                         \App\Application\Auth\Decorators\VerifyOtpRateLimitDecorator::class,
                         \App\Application\Auth\Validators\VerifyOtpCommandValidator::class,
-                        \App\Application\Common\Decorators\AtomicIdempotencyDecorator::class,
-                        \App\Application\Common\Decorators\TransactionDecorator::class,
+                        \App\Application\Shared\Common\Decorators\AtomicIdempotencyDecorator::class,
+                        \App\Application\Shared\Common\Decorators\TransactionDecorator::class,
                     ])
                     ->build($app);
             }
@@ -423,8 +445,8 @@ class AppServiceProvider extends ServiceProvider
                 return \App\Infrastructure\Shared\Bus\PipelineBuilder::make(\App\Application\Auth\Handlers\LoginViaSocialProviderHandler::class)
                     ->through([
                         \App\Application\Auth\Validators\LoginViaSocialProviderCommandValidator::class,
-                        \App\Application\Common\Decorators\AtomicIdempotencyDecorator::class,
-                        \App\Application\Common\Decorators\TransactionDecorator::class,
+                        \App\Application\Shared\Common\Decorators\AtomicIdempotencyDecorator::class,
+                        \App\Application\Shared\Common\Decorators\TransactionDecorator::class,
                     ])
                     ->build($app);
             }
@@ -437,8 +459,8 @@ class AppServiceProvider extends ServiceProvider
                 return \App\Infrastructure\Shared\Bus\PipelineBuilder::make(\App\Application\Auth\Handlers\DeleteUserHandler::class)
                     ->through([
                         \App\Application\Auth\Validators\DeleteUserCommandValidator::class,
-                        \App\Application\Common\Decorators\AtomicIdempotencyDecorator::class,
-                        \App\Application\Common\Decorators\TransactionDecorator::class,
+                        \App\Application\Shared\Common\Decorators\AtomicIdempotencyDecorator::class,
+                        \App\Application\Shared\Common\Decorators\TransactionDecorator::class,
                     ])
                     ->build($app);
             }
@@ -451,8 +473,8 @@ class AppServiceProvider extends ServiceProvider
                 return \App\Infrastructure\Shared\Bus\PipelineBuilder::make(\App\Application\Auth\Handlers\UpdateUserPasswordHandler::class)
                     ->through([
                         \App\Application\Auth\Validators\UpdateUserPasswordCommandValidator::class,
-                        \App\Application\Common\Decorators\AtomicIdempotencyDecorator::class,
-                        \App\Application\Common\Decorators\TransactionDecorator::class,
+                        \App\Application\Shared\Common\Decorators\AtomicIdempotencyDecorator::class,
+                        \App\Application\Shared\Common\Decorators\TransactionDecorator::class,
                     ])
                     ->build($app);
             }
@@ -473,7 +495,7 @@ class AppServiceProvider extends ServiceProvider
                     ->through([
                         \App\Application\Auth\Decorators\RateLimitedGenerateOtpHandler::class, // Outer
                         \App\Application\Auth\Decorators\ValidationGenerateOtpHandler::class,  // Gate
-                        \App\Application\Auth\Decorators\AtomicIdempotencyDecorator::class,    // Lock
+                        \App\Application\Auth\Decorators\GenerateOtpIdempotencyDecorator::class,    // Lock
                         \App\Application\Auth\Decorators\TransactionGenerateOtpHandler::class, // ACID Transaction (Strict Typed)
                     ])
                     ->build($app);
@@ -516,16 +538,23 @@ class AppServiceProvider extends ServiceProvider
         // BILLING DOMAIN: Handler Decorator Pipelines (Validation Layer)
         // ═══════════════════════════════════════════════════════════════════════
 
-        // ReportPayment Pipeline: Validator → Handler (Core)
+        // ReportPayment Pipeline: Validator -> RateLimiter -> Handler (Core)
         $this->app->bind(
             \App\Application\Billing\Handlers\ReportPaymentHandlerInterface::class,
             function ($app) {
                 // CORE: Pure Business Logic
                 $core = $app->make(\App\Application\Billing\Handlers\ReportPaymentHandler::class);
 
-                // LAYER 1: Validation Decorator (Now Outermost)
+                // LAYER 1: Resilience (Fail-Open Rate Limiter)
+                $rateLimited = new \App\Application\Billing\Decorators\RateLimitedReportPaymentHandler(
+                    $core,
+                    $app->make(\App\Application\Shared\Contracts\RateLimiterInterface::class)
+                );
+
+                // LAYER 2: Validation Decorator (Outermost)
+                // Validator ensures data integrity BEFORE rate limiting logic (to access ClientID/TenantID safely)
                 return new \App\Application\Billing\Validators\ReportPaymentCommandValidator(
-                    inner: $core,
+                    inner: $rateLimited,
                     validatorFactory: $app->make(\Illuminate\Contracts\Validation\Factory::class)
                 );
             }
@@ -555,6 +584,14 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // ═══════════════════════════════════════════════════════════════════════
+        // INVENTORY DOMAIN: Contracts
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Contracts\InventoryManagerInterface::class,
+            \App\Services\InventoryManager::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
         // ORDERS DOMAIN: Receipt PDF Generator
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
@@ -571,20 +608,29 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // ═══════════════════════════════════════════════════════════════════════
+        // SECURITY: Metadata Sanitizer Abstraction (DIP Compliance for Actions)
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Application\Shared\Contracts\MetadataSanitizerInterface::class,
+            \App\Infrastructure\Security\MetadataSanitizer::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
         // TRANSACTIONAL OUTBOX: Event Dispatcher with At-Least-Once Delivery
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->singleton(
             \App\Infrastructure\Bus\TransactionalEventDispatcher::class,
             \App\Infrastructure\Bus\TransactionalEventDispatcher::class
         );
-
+        
         // ═══════════════════════════════════════════════════════════════════════
-        // FORTIFY ACTIONS: Password Reset & User Authentication
+        // RATE LIMITING: Tenant-Aware Protection for Actions Layer
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \Laravel\Fortify\Contracts\ResetsUserPasswords::class,
-            \App\Actions\Fortify\ResetPasswordAction::class
+            \App\Application\Shared\Contracts\TenantRateLimiterInterface::class,
+            \App\Infrastructure\Security\CacheTenantRateLimiter::class
         );
+
 
         // ═══════════════════════════════════════════════════════════════════════
         // INFRASTRUCTURE: Fundamentals (Time, Entropy, Transactions, Outbox)
@@ -611,6 +657,16 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Application\Shared\Contracts\IdGeneratorInterface::class,
+            \App\Infrastructure\Adapters\FrameworkIdGenerator::class
+        );
+
+        $this->app->bind(
+            \App\Application\Shared\Contracts\ValidationServiceInterface::class,
+            \App\Infrastructure\Shared\Services\LaravelValidationService::class
+        );
+
+        $this->app->bind(
             \App\Domain\Shared\Contracts\UuidGeneratorInterface::class,
             \App\Infrastructure\Identity\RamseyUuidGenerator::class
         );
@@ -618,6 +674,42 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Domain\Shared\Contracts\EventDispatcherInterface::class,
             \App\Infrastructure\Bus\TransactionalEventDispatcher::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // LOGGING: PII Scrubber Abstraction (Application Layer Purity)
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Application\Shared\Contracts\DataScrubberInterface::class,
+            \App\Infrastructure\Logging\SensitiveDataScrubber::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // INFRASTRUCTURE ABSTRACTIONS: DIP Compliance (Application Layer Purity)
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Application\Shared\Contracts\PresignedUrlGeneratorInterface::class,
+            \App\Infrastructure\Services\S3PresignerService::class
+        );
+
+        $this->app->singleton(
+            \App\Application\Shared\Contracts\TraceContextInterface::class,
+            \App\Infrastructure\Shared\Telemetry\TraceContext::class
+        );
+
+        $this->app->singleton(
+            \App\Application\Shared\Contracts\IdempotencyContextInterface::class,
+            \App\Infrastructure\Shared\Context\IdempotencyContext::class
+        );
+
+        $this->app->bind(
+            \App\Application\Shared\Contracts\ResilientRateLimiterInterface::class,
+            \App\Infrastructure\Security\ResilientRateLimiter::class
+        );
+
+        $this->app->bind(
+            \App\Application\Shared\Contracts\SlugGeneratorInterface::class,
+            \App\Infrastructure\Services\LaravelSlugGenerator::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -629,23 +721,23 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
-            \App\Application\Common\Contracts\MetricsCollectorInterface::class,
+            \App\Application\Shared\Contracts\MetricsCollectorInterface::class,
             \App\Infrastructure\Monitoring\DatadogMetricsAdapter::class
         );
 
         $this->app->bind(
-            \App\Application\Common\Contracts\CircuitBreakerInterface::class,
+            \App\Application\Shared\Contracts\CircuitBreakerInterface::class,
             function ($app) {
                 return new \App\Infrastructure\Resilience\RedisCircuitBreaker(
                     redis: $app['redis']->connection(), // Explicit Connection Resolution
-                    metrics: $app->make(\App\Application\Common\Contracts\MetricsCollectorInterface::class)
+                    metrics: $app->make(\App\Application\Shared\Contracts\MetricsCollectorInterface::class)
                 );
             }
         );
 
         $this->app->bind(
-            \App\Application\Common\Contracts\AtomicIdempotencyInterface::class,
-            \App\Infrastructure\Shared\Services\AtomicIdempotencyService::class
+            \App\Application\Shared\Contracts\AtomicIdempotencyInterface::class,
+            \App\Infrastructure\Common\Idempotency\AtomicIdempotencyService::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -662,7 +754,7 @@ class AppServiceProvider extends ServiceProvider
 
         // 1. CONTEXT PROVIDER (Polymorphic Identity)
         $this->app->bind(
-            \App\Application\Common\Interfaces\ClientContextProviderInterface::class,
+            \App\Application\Shared\Contracts\ClientContextProviderInterface::class,
             function ($app) {
                 return $app->runningInConsole()
                     ? new \App\Infrastructure\Shared\ConsoleContextProvider
@@ -682,7 +774,7 @@ class AppServiceProvider extends ServiceProvider
                 // Uses the container-resolved IdempotencyService
                 $idempotent = new \App\Application\Identity\Decorators\IdempotentRegisterUserHandler(
                     inner: $core,
-                    service: $app->make(\App\Application\Common\Contracts\AtomicIdempotencyInterface::class)
+                    service: $app->make(\App\Application\Shared\Contracts\AtomicIdempotencyInterface::class)
                 );
 
                 // LAYER 2: Telemetry (The Watcher) - Measures Total Execution (including Idempotency check)
@@ -696,14 +788,14 @@ class AppServiceProvider extends ServiceProvider
                 return new \App\Application\Identity\Decorators\RateLimitedRegisterUserHandler(
                     inner: $telemetry,
                     // Use Interface
-                    rateLimiter: $app->make(\App\Application\Common\Contracts\RateLimiterInterface::class),
-                    contextProvider: $app->make(\App\Application\Common\Interfaces\ClientContextProviderInterface::class)
+                    rateLimiter: $app->make(\App\Application\Shared\Contracts\RateLimiterInterface::class),
+                    contextProvider: $app->make(\App\Application\Shared\Contracts\ClientContextProviderInterface::class)
                 );
             }
         );
 
         $this->app->bind(
-            \App\Application\Common\Contracts\RateLimiterInterface::class,
+            \App\Application\Shared\Contracts\RateLimiterInterface::class,
             \App\Infrastructure\Common\RateLimiting\LaravelRateLimiterAdapter::class
         );
 
@@ -715,7 +807,7 @@ class AppServiceProvider extends ServiceProvider
 
                 return new \App\Application\Sales\Decorators\IdempotentCreateOrderHandler(
                     inner: $core,
-                    service: $app->make(\App\Application\Common\Contracts\IdempotencyServiceInterface::class)
+                    service: $app->make(\App\Application\Shared\Contracts\IdempotencyServiceInterface::class)
                 );
             }
         );
@@ -728,7 +820,7 @@ class AppServiceProvider extends ServiceProvider
 
                 return new \App\Application\Tenant\Decorators\IdempotentRegisterTenantHandler(
                     inner: $core,
-                    service: $app->make(\App\Application\Common\Contracts\IdempotencyServiceInterface::class)
+                    service: $app->make(\App\Application\Shared\Contracts\IdempotencyServiceInterface::class)
                 );
             }
         );
@@ -739,6 +831,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // ═══════════════════════════════════════════════════════════════════════
+        // COMMAND BUS: Schema Evolution Decorator (Upcasting Pipeline)
+        // Intercepts commands BEFORE TransactionalCommandBus to transform
+        // payloads from older schemaVersion to current shape.
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->extend(
+            \App\Application\Shared\Contracts\CommandBusInterface::class,
+            function ($commandBus, $app) {
+                return new \App\Application\Shared\Decorators\UpcastingCommandBus(
+                    $commandBus,
+                    $app->tagged('command_upcasters')
+                );
+            }
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
         // LOCALIZATION: Sync Carbon locale with Laravel app.locale
         // ═══════════════════════════════════════════════════════════════════════
@@ -857,7 +964,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Application\Billing\Commands\RequestUpgradeCommand::class => \App\Application\Billing\Handlers\RequestUpgradeHandlerInterface::class,
             \App\Application\Auth\Commands\LoginViaSocialProviderCommand::class => \App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface::class,
             \App\Application\Auth\Commands\UpdateUserPasswordCommand::class => \App\Application\Auth\Handlers\UpdateUserPasswordHandlerInterface::class,
-            \App\Application\Auth\Commands\UpdateUserProfileCommand::class => \App\Application\Auth\Handlers\UpdateUserProfileHandler::class, // Left as is for now
+            \App\Application\Identity\Commands\UpdateUserProfileCommand::class => \App\Application\Identity\Handlers\UpdateUserProfileHandler::class,
             \App\Application\Auth\Commands\DeleteUserCommand::class => \App\Application\Auth\Handlers\DeleteUserHandlerInterface::class,
             \App\Application\Auth\Commands\GenerateOtpCommand::class => \App\Application\Auth\Contracts\GenerateOtpHandlerInterface::class,
             \App\Application\Auth\Commands\VerifyOtpCommand::class => \App\Application\Auth\Handlers\VerifyOtpHandlerInterface::class,
@@ -865,6 +972,8 @@ class AppServiceProvider extends ServiceProvider
             \App\Application\Tenant\Commands\UpdateLandingPageCommand::class => \App\Application\Tenant\Handlers\UpdateLandingPageHandler::class,
             \App\Application\Tenant\Commands\UpdateTenantBrandingCommand::class => \App\Application\Tenant\Handlers\UpdateTenantBrandingHandler::class,
             \App\Application\Interactions\Commands\RecordInteractionCommand::class => \App\Application\Interactions\Handlers\RecordInteractionHandler::class,
+            \App\Application\Identity\Commands\ReactivateUserCommand::class => \App\Application\Identity\Handlers\ReactivateUserHandler::class,
+            \App\Application\Auth\Commands\ResetUserPasswordCommand::class => \App\Application\Auth\Handlers\ResetUserPasswordHandler::class,
         ]);
 
         // ═══════════════════════════════════════════════════════════════════════

@@ -7,13 +7,13 @@ namespace App\Application\Auth\Commands;
 /**
  * DeleteUserCommand - Secure User Deletion Intent Contract
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  IDOR PROTECTION: Carries requesting tenant ID for ownership validation.║
- * ║  SELF-CONTAINED: No reliance on Auth::user() in Handler.                ║
- * ║  PRIMITIVES ONLY: No Eloquent models - just scalar types.               ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  IDOR PROTECTION: Carries requesting tenant ID for ownership validation.â•‘
+ * â•‘  SELF-CONTAINED: No reliance on Auth::user() in Handler.                â•‘
+ * â•‘  PRIMITIVES ONLY: No Eloquent models - just scalar types.               â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class DeleteUserCommand implements \App\Application\Common\Contracts\HashableCommandInterface
+final readonly class DeleteUserCommand implements \App\Application\Shared\Contracts\HashableCommandInterface
 {
     public function __construct(
         /** User ID to delete (UUID string) */

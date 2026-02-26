@@ -2,8 +2,8 @@
 
 namespace Tests\Architecture\Stress;
 
-use App\Application\Common\Exceptions\IdempotencyKeyReuseException;
-use App\Infrastructure\Shared\Services\AtomicIdempotencyService;
+use App\Application\Shared\Common\Exceptions\IdempotencyKeyReuseException;
+use App\Infrastructure\Common\Idempotency\AtomicIdempotencyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

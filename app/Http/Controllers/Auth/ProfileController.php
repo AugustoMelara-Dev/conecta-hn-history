@@ -9,18 +9,20 @@ use App\Application\Actions\Auth\UpdateUserProfileAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
+use Illuminate\Routing\Redirector;
 use Inertia\Inertia;
 use Inertia\Response;
 
 final class ProfileController extends Controller
 {
     public function __construct(
-        private readonly UpdateUserProfileAction $updateUserAction,
-        private readonly DeleteUserAction $deleteUserAction
+        private UpdateUserProfileAction $updateUserAction,
+        private DeleteUserAction $deleteUserAction,
+        private StatefulGuard $auth,
+        private Redirector $redirector
     ) {}
 
     public function edit(Request $request): Response
@@ -39,7 +41,7 @@ final class ProfileController extends Controller
             $request->validated()
         );
 
-        return Redirect::route('profile.edit');
+        return $this->redirector->route('profile.edit');
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -50,7 +52,7 @@ final class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::logout();
+        $this->auth->logout();
 
         // DELEGATED: Deletion logic moved to Action
         $this->deleteUserAction->execute($user);
@@ -58,6 +60,6 @@ final class ProfileController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return Redirect::to('/');
+        return $this->redirector->to('/');
     }
 }

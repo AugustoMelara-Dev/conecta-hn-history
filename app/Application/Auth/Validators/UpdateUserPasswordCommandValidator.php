@@ -20,10 +20,10 @@ use Illuminate\Validation\ValidationException;
  * ║  TESTABLE: Factory can be mocked in unit tests.                         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPasswordHandlerInterface
+final class UpdateUserPasswordCommandValidator implements UpdateUserPasswordHandlerInterface
 {
     public function __construct(
-        private UpdateUserPasswordHandlerInterface $inner,
+        private object $inner,
         private ValidatorFactory $validatorFactory,
     ) {}
 

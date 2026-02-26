@@ -64,12 +64,12 @@ final class RegisterTenantRequest extends FormRequest
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
 
             // Step 3: Business Profile
-            'city_id' => ['required', 'integer', 'exists:cities,id'],
-            'category_id' => ['required', 'integer', 'exists:categories,id'],
+            'city_id' => ['nullable', 'integer', 'exists:cities,id'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'whatsapp' => ['nullable', 'string', 'max:20'],
 
             // Step 4: Plan Selection
-            'selected_plan' => ['required', 'in:free,pro'],
+            'selected_plan' => ['nullable', 'in:free,pro'],
         ];
     }
 

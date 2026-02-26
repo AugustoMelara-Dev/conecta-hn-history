@@ -8,7 +8,7 @@ use App\Domain\AIEnrichment\Jobs\GenerateBusinessProfile;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiter;
 
 /**
  * AiController - The Guardian of Resources
@@ -17,6 +17,9 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 final class AiController extends Controller
 {
+    public function __construct(
+        private RateLimiter $limiter
+    ) {}
     /**
      * Dispatch AI generation asynchronously.
      */
@@ -39,7 +42,7 @@ final class AiController extends Controller
         // 2. Rate Limiting (Token Bucket Strategy)
         $key = 'ai-gen:'.$user->id;
 
-        $executed = RateLimiter::attempt(
+        $executed = $this->limiter->attempt(
             $key,
             $maxAttempts = 5,
             function () {
@@ -49,7 +52,7 @@ final class AiController extends Controller
         );
 
         if (! $executed) {
-            $seconds = RateLimiter::availableIn($key);
+            $seconds = $this->limiter->availableIn($key);
 
             return response()->json([
                 'message' => 'Límite de generación excedido. Intenta de nuevo en '.gmdate('i:s', $seconds).' minutos.',
@@ -76,7 +79,7 @@ final class AiController extends Controller
         return response()->json([
             'status' => 'processing',
             'message' => 'La IA está trabajando en tu perfil. Te notificaremos en breve.',
-            'remaining_attempts' => RateLimiter::remaining($key, $maxAttempts),
+            'remaining_attempts' => $this->limiter->remaining($key, $maxAttempts),
         ], 202);
     }
 }

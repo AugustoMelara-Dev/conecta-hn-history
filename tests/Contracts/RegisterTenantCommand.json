@@ -1,0 +1,63 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "RegisterTenantCommand",
+    "type": "object",
+    "properties": {
+        "businessName": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "ownerName": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "password": {
+            "type": "string"
+        },
+        "cityId": {
+            "type": "integer"
+        },
+        "categoryId": {
+            "type": "integer"
+        },
+        "whatsapp": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "selectedPlan": {
+            "type": "string",
+            "default": "free"
+        },
+        "logoPath": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "idempotencyKey": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        }
+    },
+    "required": [
+        "businessName",
+        "slug",
+        "ownerName",
+        "email",
+        "password",
+        "cityId",
+        "categoryId",
+        "whatsapp"
+    ],
+    "additionalProperties": false
+}

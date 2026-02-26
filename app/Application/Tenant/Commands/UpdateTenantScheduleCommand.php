@@ -22,5 +22,8 @@ final readonly class UpdateTenantScheduleCommand
          * Expected format: [['day' => 'monday', 'isOpen' => true, 'open' => '08:00', 'close' => '17:00'], ...]
          */
         public array $scheduleData,
+
+        /** Schema Version for Upcasting */
+        public int $schemaVersion = 1,
     ) {}
 }

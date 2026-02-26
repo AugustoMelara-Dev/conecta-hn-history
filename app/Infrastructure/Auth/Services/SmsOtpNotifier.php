@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Services;
 
+use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Auth\Contracts\OtpNotifierInterface;
 use App\Domain\Identity\Entities\UserEntity;
@@ -17,6 +18,10 @@ use Illuminate\Support\Facades\Log;
 final class SmsOtpNotifier implements OtpNotifierInterface
 {
     use LogSanitizer;
+
+    public function __construct(
+        private DataScrubberInterface $scrubber,
+    ) {}
 
     public function send(
         ?UserEntity $recipient,
@@ -34,7 +39,7 @@ final class SmsOtpNotifier implements OtpNotifierInterface
             'recipient' => $identifier, // LogSanitizer enmascarará esto
             'expiry' => $expiryMinutes,
             // 'code' => $plainTextCode // JAMÁS SE LOGUEA EL CÓDIGO
-        ]));
+        ], $this->scrubber));
 
         // Simulación de latencia de red
         // sleep(1);

@@ -8,7 +8,7 @@ use App\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldBeStoredInOutbox;
 // use App\Models\Order; // REMOVED
 use App\Traits\HasDomainMetadata;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -47,9 +47,9 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
         return TenantId::fromString($this->tenantId);
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

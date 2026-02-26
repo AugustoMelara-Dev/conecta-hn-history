@@ -29,9 +29,17 @@ namespace App\Contracts\Scope;
 interface TenantContextInterface
 {
     /**
+     * Resolve the current tenant UUID from the execution context.
+     *
+     * @return string|null The tenant UUID, or null if no tenant context is available
+     */
+    public function getTenantUuid(): ?string;
+
+    /**
      * Resolve the current tenant ID from the execution context.
      *
-     * @return int|null The tenant ID, or null if no tenant context is available
+     * @return string|int|null The tenant ID, or null if no tenant context is available
+     * @deprecated Use getTenantUuid() once Option 1 full migration is executed.
      */
-    public function getTenantId(): ?int;
+    public function getTenantId(): string|int|null;
 }

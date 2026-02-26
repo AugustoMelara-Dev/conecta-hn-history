@@ -7,7 +7,7 @@ namespace App\Events\Order;
 use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\OrderNumber;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -82,7 +82,7 @@ final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterC
      * Factory: Create from order data (snapshotted at creation time).
      */
     public static function create(
-        int $tenantId,
+        string $tenantId,
         int $orderId,
         string $orderNumber,
         string $reason,
@@ -90,7 +90,7 @@ final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterC
         bool $wasPaid = false
     ): self {
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
+            tenantId: TenantId::fromString($tenantId),
             orderId: $orderId,
             orderNumber: OrderNumber::fromString($orderNumber),
             reason: $reason,
@@ -124,9 +124,9 @@ final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterC
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -179,7 +179,7 @@ final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterC
         }
 
         return new self(
-            tenantId: TenantId::fromInt($primitives['tenant_id']),
+            tenantId: TenantId::fromString((string) $primitives['tenant_id']),
             orderId: $primitives['order_id'],
             orderNumber: OrderNumber::fromString($primitives['order_number']),
             reason: $primitives['reason'],

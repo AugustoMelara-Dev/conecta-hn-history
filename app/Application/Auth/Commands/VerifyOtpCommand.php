@@ -7,13 +7,13 @@ namespace App\Application\Auth\Commands;
 /**
  * VerifyOtpCommand - Immutable OTP Verification Credentials
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  TRANSPORT ONLY: No validation logic - Handler validates cryptography.  ║
- * ║  SECURITY METADATA: Carries IP for audit and brute-force detection.     ║
- * ║  TENANT AWARE: Mandatory tenantId to prevent cross-tenant verification. ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  TRANSPORT ONLY: No validation logic - Handler validates cryptography.  â•‘
+ * â•‘  SECURITY METADATA: Carries IP for audit and brute-force detection.     â•‘
+ * â•‘  TENANT AWARE: Mandatory tenantId to prevent cross-tenant verification. â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class VerifyOtpCommand implements \App\Application\Common\Contracts\HashableCommandInterface
+final readonly class VerifyOtpCommand implements \App\Application\Shared\Contracts\HashableCommandInterface
 {
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) */

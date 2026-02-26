@@ -31,14 +31,11 @@ final class TenantMicrositeController extends Controller
         private readonly TenantVisibilityService $visibilityService
     ) {}
 
-    public function show(Request $request): Response
+    public function show(Request $request, \App\Models\Tenant $tenant): Response
     {
-        // 1. Resolve Tenant from Container (set by IdentifyTenantBySubdomain middleware)
-        $tenant = app('current_tenant');
-
-        if (! $tenant) {
-            abort(404, 'Business not found');
-        }
+        // 1. Bind Tenant to Container for downstream services compatibility
+        app()->instance('current_tenant', $tenant);
+        app(\App\Domain\Shared\Services\TenantContext::class)->setTenant($tenant->id);
 
         // 2. Gatekeeper Logic (Domain Service)
         $this->visibilityService->check($tenant);
@@ -47,7 +44,14 @@ final class TenantMicrositeController extends Controller
         // Fire and Forget. Listener handles increment logic.
         // Needs basic Event class.
         if (class_exists(\App\Events\Analytics\MicrositeViewed::class)) {
-            \App\Events\Analytics\MicrositeViewed::dispatch($tenant, $request->ip(), $request->userAgent());
+            $tenantEntity = \App\Domain\TenantGovernance\Entities\TenantEntity::fromStateArray([
+                'id' => $tenant->id,
+                'name' => $tenant->name,
+                'domain' => $tenant->slug,
+                'is_active' => $tenant->is_active,
+            ]);
+
+            \App\Events\Analytics\MicrositeViewed::dispatch($tenantEntity, $request->ip(), $request->userAgent());
         }
 
         // 4. Transform & Respond

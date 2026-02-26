@@ -2,7 +2,7 @@
 
 namespace Tests\Architecture;
 
-use App\Application\Common\Contracts\AtomicIdempotencyInterface;
+use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
 use ReflectionClass;
 use Tests\TestCase;
 

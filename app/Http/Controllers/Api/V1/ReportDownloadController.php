@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -17,6 +17,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class ReportDownloadController extends Controller
 {
+    public function __construct(
+        private FilesystemFactory $storage
+    ) {}
     /**
      * Download a report file via signed URL.
      */
@@ -46,20 +49,20 @@ final class ReportDownloadController extends Controller
             abort(403, 'Ruta de archivo inválida.');
         }
 
-        if (! Storage::disk('local')->exists($safePath)) {
+        if (! $this->storage->disk('local')->exists($safePath)) {
             abort(404, 'El archivo no existe o ha expirado.');
         }
 
         $filename = basename($safePath);
         $mimeType = $this->getMimeType($safePath);
 
-        return Storage::disk('local')->download($safePath, $filename, [
+        return $this->storage->disk('local')->download($safePath, $filename, [
             'Content-Type' => $mimeType,
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
         ]);
     }
 
-    protected function validateAndSanitizePath(string $path): ?string
+    private function validateAndSanitizePath(string $path): ?string
     {
         $path = urldecode($path);
 
@@ -88,7 +91,7 @@ final class ReportDownloadController extends Controller
         return $path;
     }
 
-    protected function getMimeType(string $path): string
+    private function getMimeType(string $path): string
     {
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 

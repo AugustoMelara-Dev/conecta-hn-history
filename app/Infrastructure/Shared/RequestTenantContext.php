@@ -22,6 +22,26 @@ final class RequestTenantContext implements TenantContext
     /**
      * {@inheritDoc}
      */
+    public function getTenantUuid(): string
+    {
+        $user = $this->request->user();
+
+        if (! $user) {
+            throw new \RuntimeException('Tenant Context Error: User not authenticated.');
+        }
+
+        $tenantUuid = $user->tenant_uuid ?? ($user->tenant->uuid ?? null);
+
+        if (! $tenantUuid) {
+            throw new \RuntimeException('Tenant Context Error: User has no associated tenant UUID.');
+        }
+
+        return (string) $tenantUuid;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function getTenantId(): int
     {
         // Try resolving from authenticated user

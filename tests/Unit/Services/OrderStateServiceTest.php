@@ -6,8 +6,8 @@ namespace Tests\Unit\Services;
 
 use App\Events\Order\OrderCancelled;
 use App\Infrastructure\Events\InMemoryEventBus;
+use App\Contracts\InventoryManagerInterface;
 use App\Models\Order;
-use App\Services\InventoryManager;
 use App\Services\OrderStateService;
 use Mockery;
 use PHPUnit\Framework\TestCase;
@@ -41,7 +41,7 @@ class OrderStateServiceTest extends TestCase
 {
     private InMemoryEventBus $eventBus;
 
-    private InventoryManager $inventoryManager;
+    private InventoryManagerInterface $inventoryManager;
 
     private OrderStateService $service;
 
@@ -52,8 +52,8 @@ class OrderStateServiceTest extends TestCase
         // Use InMemoryEventBus for pure unit testing
         $this->eventBus = new InMemoryEventBus;
 
-        // Mock InventoryManager (we're testing OrderStateService, not InventoryManager)
-        $this->inventoryManager = Mockery::mock(InventoryManager::class);
+        // Mock InventoryManagerInterface (we're testing OrderStateService, not InventoryManager)
+        $this->inventoryManager = Mockery::mock(InventoryManagerInterface::class);
 
         // Create service with mocked dependencies
         $this->service = new OrderStateService(
@@ -77,7 +77,7 @@ class OrderStateServiceTest extends TestCase
         // Arrange: Create a mock order
         $order = Mockery::mock(Order::class);
         $order->shouldReceive('getAttribute')->with('status')->andReturn(Order::STATUS_PENDING);
-        $order->shouldReceive('getAttribute')->with('tenant_id')->andReturn(1);
+        $order->shouldReceive('getAttribute')->with('tenant_id')->andReturn(\Illuminate\Support\Str::uuid()->toString());
         $order->shouldReceive('getAttribute')->with('id')->andReturn(123);
         $order->shouldReceive('getAttribute')->with('order_number')->andReturn('ORD-1001');
         $order->shouldReceive('isPaid')->andReturn(false);
@@ -94,8 +94,9 @@ class OrderStateServiceTest extends TestCase
         // For this example, we're demonstrating the EventBus pattern
 
         // Verify: Check that the event bus received the correct event
+        $tenantId = \Illuminate\Support\Str::uuid()->toString();
         $this->eventBus->publish(OrderCancelled::create(
-            tenantId: 1,
+            tenantId: $tenantId,
             orderId: 123,
             orderNumber: 'ORD-1001',
             reason: 'customer_request',
@@ -111,7 +112,7 @@ class OrderStateServiceTest extends TestCase
         $event = $this->eventBus->getFirst(OrderCancelled::class);
         $this->assertNotNull($event);
         $this->assertEquals(123, $event->aggregateId());
-        $this->assertEquals(1, $event->tenantId()->toInt());
+        $this->assertEquals($tenantId, $event->tenantId()->toString());
         $this->assertEquals('ORD-1001', $event->orderNumber->toString());
         $this->assertEquals('customer_request', $event->reason);
         $this->assertFalse($event->shouldAutoRefund());
@@ -125,7 +126,7 @@ class OrderStateServiceTest extends TestCase
     {
         // Arrange
         $event = OrderCancelled::create(
-            tenantId: 1,
+            tenantId: \Illuminate\Support\Str::uuid()->toString(),
             orderId: 456,
             orderNumber: 'ORD-2002',
             reason: 'out_of_stock',
@@ -153,7 +154,7 @@ class OrderStateServiceTest extends TestCase
     {
         // Arrange: Publish an event
         $this->eventBus->publish(OrderCancelled::create(
-            tenantId: 1,
+            tenantId: \Illuminate\Support\Str::uuid()->toString(),
             orderId: 1,
             orderNumber: '#1',
             reason: 'test',

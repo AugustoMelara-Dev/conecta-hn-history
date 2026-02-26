@@ -1,0 +1,26 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "CancelOrderCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "integer"
+        },
+        "orderId": {
+            "type": "integer"
+        },
+        "reason": {
+            "type": "string"
+        },
+        "userId": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "tenantId",
+        "orderId",
+        "reason",
+        "userId"
+    ],
+    "additionalProperties": false
+}

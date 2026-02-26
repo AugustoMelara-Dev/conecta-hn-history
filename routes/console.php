@@ -89,3 +89,16 @@ Schedule::job(new \App\Jobs\SendAppointmentReminders)
     ->hourly()
     ->withoutOverlapping();
 
+
+// -------------------------------------------------------------------------------
+// BILLING RECONCILIATION - Self-Healing for Zombie Transactions
+// -------------------------------------------------------------------------------
+// Runs hourly to cleanup 'PENDING' subscription intents older than 1 hour.
+// Queries the gateway to verify final status (PAID/FAILED) and updates DB.
+// -------------------------------------------------------------------------------
+Schedule::call(function () {
+    $tenantIds = \Illuminate\Support\Facades\DB::table('tenants')->pluck('id');
+    foreach ($tenantIds as $tenantId) {
+        dispatch(new \App\Application\Billing\Jobs\ReconcilePendingSubscriptionsJob($tenantId));
+    }
+})->hourly()->name('billing:reconcile-pending');

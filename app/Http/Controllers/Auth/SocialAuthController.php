@@ -8,8 +8,9 @@ use App\Application\Actions\Auth\SocialLoginAction;
 use App\Application\DTOs\Auth\SocialProviderData;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Auth;
-use Laravel\Socialite\Facades\Socialite;
+use Illuminate\Contracts\Auth\StatefulGuard;
+use Laravel\Socialite\Contracts\Factory as SocialiteFactory;
+use Illuminate\Routing\Redirector;
 
 /**
  * SocialAuthController - Thin HTTP Gateway for OAuth
@@ -26,12 +27,18 @@ use Laravel\Socialite\Facades\Socialite;
  */
 final class SocialAuthController extends Controller
 {
+    public function __construct(
+        private StatefulGuard $auth,
+        private SocialiteFactory $socialite,
+        private Redirector $redirector
+    ) {}
+
     /**
      * Redirect to the OAuth provider.
      */
     public function redirect(string $provider): RedirectResponse|\Symfony\Component\HttpFoundation\RedirectResponse
     {
-        return Socialite::driver($provider)->redirect();
+        return $this->socialite->driver($provider)->redirect();
     }
 
     /**
@@ -41,7 +48,7 @@ final class SocialAuthController extends Controller
     {
         try {
             // 1. External Infrastructure Call (Socialite)
-            $socialUser = Socialite::driver($provider)->user();
+            $socialUser = $this->socialite->driver($provider)->user();
 
             // 2. Data Normalization (DTO)
             $data = SocialProviderData::fromSocialite($provider, $socialUser);
@@ -50,15 +57,15 @@ final class SocialAuthController extends Controller
             $user = $action->execute($data);
 
             // 4. Session Management
-            Auth::login($user, remember: true);
+            $this->auth->login($user, remember: true);
 
-            return redirect()->intended(config('fortify.home'));
+            return $this->redirector->intended(config('fortify.home'));
 
         } catch (\Exception $e) {
             // Error Handling (Log & Redirect)
             report($e);
 
-            return redirect()->route('login')->withErrors([
+            return $this->redirector->route('login')->withErrors([
                 'email' => 'Unable to login with '.ucfirst($provider).'. Please try again.',
             ]);
         }

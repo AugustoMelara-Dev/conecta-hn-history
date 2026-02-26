@@ -9,7 +9,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cookie;
+use Illuminate\Contracts\Cookie\Factory as CookieFactory;
 
 /**
  * LocationController - Hexagonal Compliant (DIP Remediation)
@@ -24,7 +24,8 @@ use Illuminate\Support\Facades\Cookie;
 final class LocationController extends Controller
 {
     public function __construct(
-        private readonly CityReader $cityReader
+        private CityReader $cityReader,
+        private CookieFactory $cookie
     ) {}
 
     public function setCity(Request $request): RedirectResponse
@@ -35,7 +36,7 @@ final class LocationController extends Controller
 
         $cityId = (int) $request->input('city_id');
         session(['active_city_id' => $cityId]);
-        Cookie::queue('conecta_city_id', (string) $cityId, 60 * 24 * 365 * 5);
+        $this->cookie->queue('conecta_city_id', (string) $cityId, 60 * 24 * 365 * 5);
 
         return back()->with('success', 'Ciudad actualizada');
     }
@@ -43,7 +44,7 @@ final class LocationController extends Controller
     public function clearCity(): RedirectResponse
     {
         session()->forget('active_city_id');
-        Cookie::queue(Cookie::forget('conecta_city_id'));
+        $this->cookie->queue($this->cookie->forget('conecta_city_id'));
 
         return back()->with('success', 'Filtro de ciudad eliminado');
     }

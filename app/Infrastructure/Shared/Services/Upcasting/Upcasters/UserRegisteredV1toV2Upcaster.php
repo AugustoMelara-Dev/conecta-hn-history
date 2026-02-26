@@ -15,16 +15,29 @@ use App\Application\Shared\Contracts\UpcasterInterface;
  */
 final class UserRegisteredV1toV2Upcaster implements UpcasterInterface
 {
-    public function supports(string $eventType, string $sourceVersion): bool
+    /**
+     * @param  string  $eventType
+     * @param  int  $schemaVersion
+     */
+    public function supports(string $eventType, int $schemaVersion): bool
     {
-        return $eventType === 'App\Domain\Identity\Events\UserRegistered' && $sourceVersion === '1.0';
+        return $eventType === 'App\Domain\Identity\Events\UserRegistered' && $schemaVersion === 1;
     }
 
-    public function getTargetVersion(): string
+    public function fromVersion(): int
     {
-        return '2.0';
+        return 1;
     }
 
+    public function toVersion(): int
+    {
+        return 2;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
     public function upcast(array $payload): array
     {
         // Logic: Rename 'fullname' to 'name'

@@ -9,14 +9,14 @@ use App\Domain\Shared\Enums\ProviderName;
 /**
  * LoginViaSocialProviderCommand - Provider-Agnostic Social Identity Contract
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  TENANT AWARE: Mandatory tenantId to prevent cross-tenant account hijack║
- * ║  SOCIALITE AGNOSTIC: No Laravel\Socialite references - normalized data. ║
- * ║  UNIVERSAL: Works for Google, GitHub, LinkedIn, Apple, etc.             ║
- * ║  TYPE SAFETY: Enforced via ProviderName Enum.                           ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  TENANT AWARE: Mandatory tenantId to prevent cross-tenant account hijackâ•‘
+ * â•‘  SOCIALITE AGNOSTIC: No Laravel\Socialite references - normalized data. â•‘
+ * â•‘  UNIVERSAL: Works for Google, GitHub, LinkedIn, Apple, etc.             â•‘
+ * â•‘  TYPE SAFETY: Enforced via ProviderName Enum.                           â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class LoginViaSocialProviderCommand implements \App\Application\Common\Contracts\HashableCommandInterface
+final readonly class LoginViaSocialProviderCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, \App\Application\Shared\Contracts\SensitiveDataInterface
 {
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) - Social login is always INTO a specific tenant */
@@ -38,10 +38,10 @@ final readonly class LoginViaSocialProviderCommand implements \App\Application\C
         public ?string $avatarUrl,
 
         /** OAuth access token (for API calls) */
-        public ?string $accessToken,
+        #[\SensitiveParameter] public ?string $accessToken,
 
         /** OAuth refresh token */
-        public ?string $refreshToken,
+        #[\SensitiveParameter] public ?string $refreshToken,
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
@@ -65,5 +65,10 @@ final readonly class LoginViaSocialProviderCommand implements \App\Application\C
             'providerId' => $this->providerId,
             'email' => $this->email, // Hashing email prevents spoofing if providerId collides (unlikely but safe)
         ]));
+    }
+
+    public function getSensitiveProperties(): array
+    {
+        return ['accessToken', 'refreshToken'];
     }
 }

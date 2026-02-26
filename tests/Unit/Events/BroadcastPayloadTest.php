@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Events;
 
+
+
 use App\Broadcasting\ChannelRegistry;
 use App\Events\Broadcast\LowStockBroadcast;
 use App\Events\Broadcast\NewLoginDetectedBroadcast;
@@ -49,7 +51,7 @@ class BroadcastPayloadTest extends TestCase
     public function order_paid_broadcast_satisfies_ui_contract(): void
     {
         $event = OrderPaidBroadcast::fromDomainData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             orderId: 123,
             orderNumber: 'ORD-2026-00001',
             amountCents: 150000,
@@ -72,7 +74,7 @@ class BroadcastPayloadTest extends TestCase
     public function order_cancelled_broadcast_satisfies_ui_contract(): void
     {
         $event = OrderCancelledBroadcast::fromDomainData(
-            tenantId: 2,
+            tenantId: '00000000-0000-0000-0000-000000000002',
             orderId: 456,
             orderNumber: 'ORD-2026-00002',
             reason: 'customer_request',
@@ -93,7 +95,7 @@ class BroadcastPayloadTest extends TestCase
     public function low_stock_broadcast_satisfies_ui_contract(): void
     {
         $event = LowStockBroadcast::fromDomainData(
-            tenantId: 3,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             productId: 789,
             productName: 'Premium Widget',
             productSku: 'WDG-001',
@@ -116,7 +118,7 @@ class BroadcastPayloadTest extends TestCase
     public function order_shipped_broadcast_satisfies_ui_contract(): void
     {
         $event = OrderShippedBroadcast::fromDomainData(
-            tenantId: 4,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             orderId: 101,
             orderNumber: 'ORD-2026-00003',
             carrier: 'fedex',
@@ -138,7 +140,7 @@ class BroadcastPayloadTest extends TestCase
     public function order_refunded_broadcast_satisfies_ui_contract(): void
     {
         $event = OrderRefundedBroadcast::fromDomainData(
-            tenantId: 5,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             orderId: 202,
             orderNumber: 'ORD-2026-00004',
             refundAmountCents: 50000,
@@ -162,7 +164,7 @@ class BroadcastPayloadTest extends TestCase
     {
         $event = NewLoginDetectedBroadcast::fromDomainData(
             userId: 100,
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             userEmail: 'user@example.com',
             ipAddress: '192.168.1.100',
             userAgent: 'Mozilla/5.0 Chrome/120',
@@ -218,7 +220,7 @@ class BroadcastPayloadTest extends TestCase
     public function low_stock_broadcast_handles_null_sku_gracefully(): void
     {
         $event = LowStockBroadcast::fromDomainData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             productId: 1,
             productName: 'Widget',
             productSku: null,
@@ -240,7 +242,7 @@ class BroadcastPayloadTest extends TestCase
     public function order_refunded_handles_null_reason(): void
     {
         $event = OrderRefundedBroadcast::fromDomainData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             orderId: 1,
             orderNumber: 'ORD-1',
             refundAmountCents: 1000,
@@ -262,7 +264,7 @@ class BroadcastPayloadTest extends TestCase
     {
         $event = NewLoginDetectedBroadcast::fromDomainData(
             userId: 1,
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             userEmail: 'user@test.com',
             ipAddress: '10.0.0.1',
             userAgent: null,
@@ -283,7 +285,7 @@ class BroadcastPayloadTest extends TestCase
     public function low_stock_handles_special_characters_in_product_name(): void
     {
         $event = LowStockBroadcast::fromDomainData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             productId: 1,
             productName: "L'Oréal Premium \"Deluxe\" & Co.",
             productSku: "SKU-O'BRIEN",
@@ -309,7 +311,7 @@ class BroadcastPayloadTest extends TestCase
     public function format_money_handles_zero_amount(): void
     {
         $event = OrderPaidBroadcast::fromDomainData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             orderId: 1,
             orderNumber: 'ORD-1',
             amountCents: 0,
@@ -327,7 +329,7 @@ class BroadcastPayloadTest extends TestCase
     public function format_money_handles_large_amounts(): void
     {
         $event = OrderPaidBroadcast::fromDomainData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             orderId: 1,
             orderNumber: 'ORD-1',
             amountCents: 99999999,
@@ -344,7 +346,7 @@ class BroadcastPayloadTest extends TestCase
     public function format_money_handles_cents_correctly(): void
     {
         $event = OrderPaidBroadcast::fromDomainData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             orderId: 1,
             orderNumber: 'ORD-1',
             amountCents: 333,
@@ -436,7 +438,7 @@ class BroadcastPayloadTest extends TestCase
         $this->expectException(\ValueError::class);
 
         LowStockBroadcast::fromDomainData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             productId: 1,
             productName: 'Widget',
             productSku: null,
@@ -454,7 +456,7 @@ class BroadcastPayloadTest extends TestCase
 
         foreach ($severities as $severity) {
             $event = LowStockBroadcast::fromDomainData(
-                tenantId: 1,
+                tenantId: '00000000-0000-0000-0000-000000000001',
                 productId: 1,
                 productName: 'Widget',
                 productSku: null,
@@ -607,7 +609,7 @@ class BroadcastPayloadTest extends TestCase
         app()->setLocale('es');
 
         $event = LowStockBroadcast::fromDomainData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             productId: 1,
             productName: 'Widget',
             productSku: null,
@@ -630,7 +632,7 @@ class BroadcastPayloadTest extends TestCase
         app()->setLocale('es');
 
         $event = LowStockBroadcast::fromDomainData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             productId: 1,
             productName: 'Widget',
             productSku: null,
@@ -652,7 +654,7 @@ class BroadcastPayloadTest extends TestCase
         app()->setLocale('es');
 
         $event = LowStockBroadcast::fromDomainData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             productId: 1,
             productName: 'Widget',
             productSku: null,
@@ -742,7 +744,7 @@ class BroadcastPayloadTest extends TestCase
         \Illuminate\Support\Facades\Log::spy();
 
         $event = OrderPaidBroadcast::fromDomainData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             orderId: 123,
             orderNumber: 'ORD-TEST',
             amountCents: 10000,

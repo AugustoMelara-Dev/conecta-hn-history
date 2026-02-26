@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Decorators;
 
-use App\Application\Common\Contracts\IdempotencyServiceInterface;
+use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
 use App\Application\Identity\Commands\RegisterUserCommand;
 use App\Application\Identity\Handlers\RegisterUserHandlerInterface;
 use App\Application\Identity\Results\RegisterUserResult;
@@ -22,7 +22,7 @@ final readonly class IdempotentRegisterUserHandler implements RegisterUserHandle
 {
     public function __construct(
         private RegisterUserHandlerInterface $inner,
-        private \App\Application\Common\Contracts\AtomicIdempotencyInterface $service
+        private AtomicIdempotencyInterface $service
     ) {}
 
     public function handle(RegisterUserCommand $command): RegisterUserResult

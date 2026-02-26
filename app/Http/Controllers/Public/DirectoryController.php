@@ -44,7 +44,7 @@ final class DirectoryController extends Controller
         $categories = $this->reader->getCategoriesWithTenants();
 
         // 4. Transform using Resource (Clean Presentation)
-        $tenants->through(fn ($t) => new \App\Http\Resources\TenantCardResource($t));
+        $tenants->through(fn ($t) => (new \App\Http\Resources\TenantCardResource($t))->resolve());
 
         return Inertia::render('Directory/Index', [
             'tenants' => $tenants,

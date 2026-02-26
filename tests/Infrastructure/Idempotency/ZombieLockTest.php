@@ -2,7 +2,7 @@
 
 namespace Tests\Infrastructure\Idempotency;
 
-use App\Infrastructure\Shared\Services\AtomicIdempotencyService;
+use App\Infrastructure\Common\Idempotency\AtomicIdempotencyService;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -74,7 +74,7 @@ class ZombieLockTest extends TestCase
         $service = $this->app->make(AtomicIdempotencyService::class);
 
         // 2. Act & Assert: Expect Exception
-        $this->expectException(\App\Application\Common\Exceptions\ConcurrentRequestException::class);
+        $this->expectException(\App\Application\Shared\Common\Exceptions\ConcurrentRequestException::class);
 
         $service->execute($key, 'tenant-1', 'hash-x', function () {
             return 'SHOULD_NOT_EXECUTE';

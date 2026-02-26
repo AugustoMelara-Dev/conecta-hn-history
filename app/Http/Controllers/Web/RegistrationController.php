@@ -10,9 +10,9 @@ use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
 use App\Services\TenantRegistrationService;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,6 +29,7 @@ final class RegistrationController extends Controller
         private readonly CommandBusInterface $bus,
         private readonly ReferenceDataReaderInterface $referenceDataReader,
         private readonly TenantRepositoryInterface $tenantRepository,
+        private readonly StatefulGuard $guard,
     ) {}
 
     /**
@@ -37,7 +38,7 @@ final class RegistrationController extends Controller
     public function create(): Response
     {
         // Redirect if already authenticated
-        if (Auth::check()) {
+        if ($this->guard->check()) {
             return Inertia::location('/app');
         }
 
@@ -93,6 +94,14 @@ final class RegistrationController extends Controller
      */
     public function store(RegisterTenantRequest $request)
     {
+        // Resolve optional reference fields: default to first available if not submitted by the form
+        $cityId = (int) ($request->validated('city_id')
+            ?? \App\Models\City::value('id')
+            ?? 1);
+        $categoryId = (int) ($request->validated('category_id')
+            ?? \App\Models\Category::value('id')
+            ?? 1);
+
         // Create command from validated request
         $command = new \App\Application\Tenant\Commands\RegisterTenantCommand(
             businessName: $request->validated('business_name'),
@@ -100,24 +109,19 @@ final class RegistrationController extends Controller
             ownerName: $request->validated('name'),
             email: $request->validated('email'),
             password: $request->validated('password'),
-            cityId: (int) $request->validated('city_id'),
-            categoryId: (int) $request->validated('category_id'),
+            cityId: $cityId,
+            categoryId: $categoryId,
             whatsapp: $request->validated('whatsapp'),
             selectedPlan: $request->validated('selected_plan', 'free'),
         );
 
-        // Dispatch via Command Bus (Transaction handled by middleware)
+        // Dispatch via Command Bus
+        /** @var \App\Application\Tenant\Results\RegisterTenantResult $result */
         $result = $this->bus->dispatch($command);
 
-        // Handle post-registration routing
-        if ($result['plan'] === 'pro' && isset($result['payment'])) {
-            return redirect()
-                ->route('payment.pending', ['payment' => $result['payment']->id])
-                ->with('success', '¡Registro exitoso! Completa tu pago para activar tu plan PRO.');
-        }
-
-        // Free plan: Auto-login and redirect to dashboard
-        Auth::login($result['user']);
+        // Look up the persisted User to log them in
+        $user = \App\Models\User::where('email', $result->ownerEmail)->firstOrFail();
+        $this->guard->login($user);
 
         return redirect()
             ->route('dashboard')

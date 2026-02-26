@@ -6,10 +6,10 @@ namespace App\Http\Controllers\Auth;
 
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
  * Audit Logged Impersonation Exit Controller.
@@ -29,7 +29,9 @@ use Illuminate\Support\Facades\Log;
 final class ImpersonationController extends Controller
 {
     public function __construct(
-        private readonly UserRepositoryInterface $userRepository
+        private UserRepositoryInterface $userRepository,
+        private StatefulGuard $auth,
+        private LoggerInterface $logger
     ) {}
 
     /**
@@ -39,7 +41,7 @@ final class ImpersonationController extends Controller
     {
         // 1. Pre-condition: Check if actually impersonating
         if (! $request->session()->has('impersonator_id')) {
-            Log::warning('Security: Attempted to leave impersonation without active session.', [
+            $this->logger->warning('Security: Attempted to leave impersonation without active session.', [
                 'ip' => $request->ip(),
                 'user_id' => $request->user()?->id,
             ]);
@@ -51,7 +53,7 @@ final class ImpersonationController extends Controller
         $impersonatedUserId = $request->user()?->id;
 
         // 2. Forensic Audit Log
-        Log::info('impersonation_ended', [
+        $this->logger->info('impersonation_ended', [
             'original_admin_id' => $impersonatorId,
             'impersonated_user_id' => $impersonatedUserId,
             'ip_address' => $request->ip(),
@@ -63,7 +65,7 @@ final class ImpersonationController extends Controller
         $request->session()->forget(['impersonator_id', 'impersonator_name', 'password_hash_check']);
 
         // 4. Restore Original Identity
-        Auth::logout();
+        $this->auth->logout();
 
         try {
             // DIP COMPLIANT: Uses repository interface instead of User::findOrFail()
@@ -73,7 +75,7 @@ final class ImpersonationController extends Controller
                 throw new \RuntimeException("Admin user with ID {$impersonatorId} not found");
             }
 
-            Auth::login($admin);
+            $this->auth->login($admin);
 
             // 5. Session Fixation Mitigation (Rotate Session ID)
             $request->session()->regenerate();
@@ -83,12 +85,12 @@ final class ImpersonationController extends Controller
         } catch (\Throwable $e) {
             // Serious Failure: Admin ID from session invalid/deleted.
             // Fallback to complete logout for safety.
-            Log::emergency('Security: Failed to restore admin session after impersonation.', [
+            $this->logger->emergency('Security: Failed to restore admin session after impersonation.', [
                 'admin_id' => $impersonatorId,
                 'error' => $e->getMessage(),
             ]);
 
-            Auth::logout();
+            $this->auth->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 

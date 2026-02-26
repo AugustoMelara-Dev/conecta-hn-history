@@ -19,7 +19,7 @@ use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
  * ║  FINANCIAL PRECISION: Validates amounts as positive integers (cents).   ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class ReportPaymentCommandValidator implements ReportPaymentHandlerInterface
+final class ReportPaymentCommandValidator implements ReportPaymentHandlerInterface
 {
     public function __construct(
         private ReportPaymentHandlerInterface $inner,

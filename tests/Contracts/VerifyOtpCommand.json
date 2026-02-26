@@ -1,0 +1,30 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "VerifyOtpCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "identifier": {
+            "type": "string"
+        },
+        "code": {
+            "type": "string"
+        },
+        "ipAddress": {
+            "type": "string"
+        },
+        "idempotencyKey": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "tenantId",
+        "identifier",
+        "code",
+        "ipAddress",
+        "idempotencyKey"
+    ],
+    "additionalProperties": false
+}

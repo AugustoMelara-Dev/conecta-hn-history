@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Application\Products\Commands;
 
+use App\Application\Shared\Contracts\IdempotentCommandInterface;
+
 /**
  * DeleteProductCommand - Immutable Input Contract for Product Deletion
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  SOFT DELETE: Product is marked deleted but preserved for restoration.  ║
  * ║  TENANT ISOLATED: Requires tenant ID for ownership verification.        ║
+ * ║  IDEMPOTENT: Replaying a delete on an already-deleted product is safe.  ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class DeleteProductCommand
+final readonly class DeleteProductCommand implements IdempotentCommandInterface
 {
     public function __construct(
         /** Tenant ID for ownership verification */
@@ -20,5 +23,16 @@ final readonly class DeleteProductCommand
 
         /** Product ID to delete */
         public int $productId,
+
+        /** Idempotency Key (mandatory for deduplication) */
+        public string $idempotencyKey,
+
+        /** Schema version for upcasting support */
+        public int $schemaVersion = 1,
     ) {}
+
+    public function getIdempotencyKey(): string
+    {
+        return $this->idempotencyKey;
+    }
 }

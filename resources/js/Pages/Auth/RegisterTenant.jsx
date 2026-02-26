@@ -452,7 +452,7 @@ export default function RegisterTenant({ categories = [], cities = [] }) {
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-gray-500">URL</span>
-                                            <span className="font-mono text-blue-600">conectahn.com/{data.slug}</span>
+                                            <span className="font-mono text-blue-600">{typeof window !== 'undefined' ? window.location.host : 'conectahn.com'}/{data.slug}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-gray-500">Email</span>

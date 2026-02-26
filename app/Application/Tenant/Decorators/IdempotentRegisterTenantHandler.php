@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Decorators;
 
-use App\Application\Common\Contracts\IdempotencyServiceInterface;
+use App\Application\Shared\Contracts\IdempotencyServiceInterface;
 use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Application\Tenant\Handlers\RegisterTenantHandlerInterface;
 use App\Application\Tenant\Results\RegisterTenantResult;

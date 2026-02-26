@@ -19,7 +19,7 @@ use LogicException;
  */
 final class TenantContext
 {
-    private ?int $tenantId = null;
+    private string|int|null $tenantId = null;
 
     private bool $isSystemRoot = false;
 
@@ -30,7 +30,7 @@ final class TenantContext
      *
      * @throws TenantContextMutationException If attempting to switch tenants.
      */
-    public function setTenant(int $id): void
+    public function setTenant(string|int $id): void
     {
         if ($this->isInitialized && $this->tenantId !== null && $this->tenantId !== $id) {
             throw TenantContextMutationException::tenantHopping($this->tenantId, $id);
@@ -70,7 +70,7 @@ final class TenantContext
      * @throws LogicException If called in System Root mode (no ID exists).
      * @throws TenantContextMissingException If context is not initialized.
      */
-    public function id(): int
+    public function id(): string|int
     {
         if ($this->isSystemRoot) {
             throw new LogicException('Root context has no specific ID. Use isRoot() to check mode.');

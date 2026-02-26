@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Application\Products\Handlers;
 
 use App\Application\Products\Commands\DeleteProductCommand;
+use App\Application\Shared\Contracts\DataScrubberInterface;
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Product\Events\ProductDeleted;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
-use App\Infrastructure\Bus\TransactionalEventDispatcher;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
 
 /**
  * DeleteProductHandler - Command Handler for Product Soft Deletion
@@ -20,13 +21,15 @@ use Illuminate\Support\Facades\Log;
  * ║  IDOR PROTECTED: Verifies tenant ownership before deletion.             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class DeleteProductHandler
+final readonly class DeleteProductHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private readonly ProductRepositoryInterface $productRepository,
-        private readonly TransactionalEventDispatcher $eventDispatcher,
+        private ProductRepositoryInterface $productRepository,
+        private EventDispatcherInterface $eventDispatcher,
+        private LoggerInterface $logger,
+        private DataScrubberInterface $scrubber,
     ) {}
 
     /**
@@ -45,7 +48,7 @@ final class DeleteProductHandler
 
         // 2. SECURITY GUARD: Tenant Ownership Verification
         if ($product->tenant_id !== $command->tenantId) {
-            Log::warning('SECURITY: Cross-tenant product deletion attempt', [
+            $this->logger->warning('SECURITY: Cross-tenant product deletion attempt', [
                 'requested_product_id' => $command->productId,
                 'requesting_tenant_id' => $command->tenantId,
             ]);
@@ -62,9 +65,9 @@ final class DeleteProductHandler
             name: $product->name,
         ));
 
-        Log::info('Product deleted', $this->sanitizePayload([
+        $this->logger->info('Product deleted', $this->sanitizePayload([
             'product_id' => $command->productId,
             'tenant_id' => $command->tenantId,
-        ]));
+        ], $this->scrubber));
     }
 }

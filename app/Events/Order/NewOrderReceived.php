@@ -8,7 +8,7 @@ use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -80,7 +80,7 @@ final readonly class NewOrderReceived implements DomainEvent, ShouldDispatchAfte
      * Factory: Create from order data (snapshotted at creation time).
      */
     public static function create(
-        int $tenantId,
+        string $tenantId,
         int $orderId,
         string $orderNumber,
         int $itemCount,
@@ -90,7 +90,7 @@ final readonly class NewOrderReceived implements DomainEvent, ShouldDispatchAfte
         string $currency = 'HNL'
     ): self {
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
+            tenantId: TenantId::fromString($tenantId),
             orderId: $orderId,
             orderNumber: OrderNumber::fromString($orderNumber),
             itemCount: $itemCount,
@@ -117,9 +117,9 @@ final readonly class NewOrderReceived implements DomainEvent, ShouldDispatchAfte
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -168,7 +168,7 @@ final readonly class NewOrderReceived implements DomainEvent, ShouldDispatchAfte
         }
 
         return new self(
-            tenantId: TenantId::fromInt($primitives['tenant_id']),
+            tenantId: TenantId::fromString((string) $primitives['tenant_id']),
             orderId: $primitives['order_id'],
             orderNumber: OrderNumber::fromString($primitives['order_number']),
             itemCount: $primitives['item_count'],

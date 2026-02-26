@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Commands;
 
-use App\Application\Common\Contracts\HashableCommandInterface;
+use App\Application\Shared\Contracts\HashableCommandInterface;
 
 /**
  * GenerateOtpCommand - Immutable OTP Request Contract
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  TENANT AWARE: Mandatory tenantId to prevent cross-tenant OTP abuse.    ║
- * ║  HASHABLE: Implements HashableCommand for integrity verification.       ║
- * ║  AUDIT METADATA: Carries IP/UserAgent for security logging.             ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  TENANT AWARE: Mandatory tenantId to prevent cross-tenant OTP abuse.    â•‘
+ * â•‘  HASHABLE: Implements HashableCommand for integrity verification.       â•‘
+ * â•‘  AUDIT METADATA: Carries IP/UserAgent for security logging.             â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final readonly class GenerateOtpCommand implements HashableCommandInterface
 {

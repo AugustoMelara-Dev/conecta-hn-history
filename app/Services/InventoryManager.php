@@ -29,7 +29,7 @@ use Illuminate\Validation\ValidationException;
  * This abstraction layer allows future swap to "Variant Inventory"
  * without breaking controller code.
  */
-class InventoryManager
+class InventoryManager implements \App\Contracts\InventoryManagerInterface
 {
     /**
      * Validate and lock product inventory for order creation.

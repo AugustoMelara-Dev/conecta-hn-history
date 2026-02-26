@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Domain\AIEnrichment\Jobs\EnhanceTenantProfileJob;
+use App\Infrastructure\Jobs\AI\EnhanceTenantProfileJob;
+use App\Application\Tenant\ResultsProfileData;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -85,8 +86,9 @@ class AiEnrichmentIntegrationTest extends TestCase
             'name' => 'pulperia don mario',
         ]);
 
-        $job = new EnhanceTenantProfileJob($tenant->id);
-        $job->handle(app(\App\Services\AiProfileGeneratorService::class));
+        $data = new ResultsProfileData(tenantId: (string) $tenant->id);
+        $job = new EnhanceTenantProfileJob($data);
+        $job->handle(app(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class));
 
         $tenant->refresh();
 
@@ -103,8 +105,9 @@ class AiEnrichmentIntegrationTest extends TestCase
             'name' => 'Suspicious Business',
         ]);
 
-        $job = new EnhanceTenantProfileJob($tenant->id);
-        $job->handle(app(\App\Services\AiProfileGeneratorService::class));
+        $data = new ResultsProfileData(tenantId: (string) $tenant->id);
+        $job = new EnhanceTenantProfileJob($data);
+        $job->handle(app(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class));
 
         $tenant->refresh();
 
@@ -115,8 +118,9 @@ class AiEnrichmentIntegrationTest extends TestCase
 
     public function test_job_skips_nonexistent_tenant(): void
     {
-        $job = new EnhanceTenantProfileJob(999999);
-        $job->handle(app(\App\Services\AiProfileGeneratorService::class));
+        $data = new ResultsProfileData(tenantId: '999999');
+        $job = new EnhanceTenantProfileJob($data);
+        $job->handle(app(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class));
 
         // No exception thrown = test passes
         $this->assertTrue(true);
@@ -134,8 +138,9 @@ class AiEnrichmentIntegrationTest extends TestCase
 
         $originalName = $tenant->name;
 
-        $job = new EnhanceTenantProfileJob($tenant->id);
-        $job->handle(app(\App\Services\AiProfileGeneratorService::class));
+        $data = new ResultsProfileData(tenantId: (string) $tenant->id);
+        $job = new EnhanceTenantProfileJob($data);
+        $job->handle(app(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class));
 
         $tenant->refresh();
 
@@ -153,16 +158,18 @@ class AiEnrichmentIntegrationTest extends TestCase
 
         $tenant = $this->createTenant();
 
-        EnhanceTenantProfileJob::dispatch($tenant->id);
+        $data = new ResultsProfileData(tenantId: (string) $tenant->id);
+        EnhanceTenantProfileJob::dispatch($data);
 
         Queue::assertPushed(EnhanceTenantProfileJob::class, function ($job) use ($tenant) {
-            return $job->uniqueId() === 'enhance-tenant-'.$tenant->id;
+            return $job->uniqueId() === 'enhance_'.$tenant->id;
         });
     }
 
     public function test_job_has_correct_configuration(): void
     {
-        $job = new EnhanceTenantProfileJob(1);
+        $data = new ResultsProfileData(tenantId: '1');
+        $job = new EnhanceTenantProfileJob($data);
 
         $this->assertEquals(3, $job->tries);
         $this->assertEquals([30, 60, 120], $job->backoff);
@@ -182,7 +189,8 @@ class AiEnrichmentIntegrationTest extends TestCase
 
         $this->expectException(\Exception::class);
 
-        $job = new EnhanceTenantProfileJob($tenant->id);
-        $job->handle(app(\App\Services\AiProfileGeneratorService::class));
+        $data = new ResultsProfileData(tenantId: (string) $tenant->id);
+        $job = new EnhanceTenantProfileJob($data);
+        $job->handle(app(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class));
     }
 }

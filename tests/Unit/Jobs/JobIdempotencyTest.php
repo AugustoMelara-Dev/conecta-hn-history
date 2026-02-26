@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Jobs;
 
+
+
 use App\Application\DTOs\ReportRequestData;
 use App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob;
 use App\Infrastructure\Jobs\Media\GenerateProductBlurhash;
@@ -39,7 +41,7 @@ class JobIdempotencyTest extends TestCase
      */
     public function generate_product_blurhash_job_implements_should_be_unique(): void
     {
-        $job = new GenerateProductBlurhash(productId: 100, tenantId: 1);
+        $job = new GenerateProductBlurhash(productId: 100, tenantId: '00000000-0000-0000-0000-000000000001');
 
         $this->assertInstanceOf(ShouldBeUnique::class, $job);
         $this->assertEquals('blurhash_1_100', $job->uniqueId());
@@ -51,7 +53,7 @@ class JobIdempotencyTest extends TestCase
     public function generate_pdf_report_job_implements_should_be_unique(): void
     {
         $data = new ReportRequestData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             reportType: 'sales',
             startDate: new \DateTimeImmutable('2026-01-01'),
             endDate: new \DateTimeImmutable('2026-01-31')
@@ -71,8 +73,8 @@ class JobIdempotencyTest extends TestCase
      */
     public function blurhash_unique_keys_are_tenant_scoped(): void
     {
-        $tenant1Job = new GenerateProductBlurhash(productId: 100, tenantId: 1);
-        $tenant2Job = new GenerateProductBlurhash(productId: 100, tenantId: 2);
+        $tenant1Job = new GenerateProductBlurhash(productId: 100, tenantId: '00000000-0000-0000-0000-000000000001');
+        $tenant2Job = new GenerateProductBlurhash(productId: 100, tenantId: '00000000-0000-0000-0000-000000000002');
 
         // Same product ID but different tenants = different unique keys
         $this->assertNotEquals($tenant1Job->uniqueId(), $tenant2Job->uniqueId());
@@ -84,13 +86,13 @@ class JobIdempotencyTest extends TestCase
     public function pdf_unique_keys_are_tenant_scoped(): void
     {
         $tenant1Data = new ReportRequestData(
-            tenantId: 1,
+            tenantId: '00000000-0000-0000-0000-000000000001',
             reportType: 'sales',
             startDate: new \DateTimeImmutable('2026-01-01'),
             endDate: new \DateTimeImmutable('2026-01-31')
         );
         $tenant2Data = new ReportRequestData(
-            tenantId: 2,
+            tenantId: '00000000-0000-0000-0000-000000000002',
             reportType: 'sales',
             startDate: new \DateTimeImmutable('2026-01-01'),
             endDate: new \DateTimeImmutable('2026-01-31')

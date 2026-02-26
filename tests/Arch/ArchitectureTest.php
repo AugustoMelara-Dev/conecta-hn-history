@@ -123,3 +123,27 @@ test('transaction manager interface exists in application contracts')
 test('logger interface exists in application contracts')
     ->expect('App\Application\Shared\Contracts\LoggerInterface')
     ->toBeInterface();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LAW 4: ACTIONS LAYER GOVERNANCE (ADAPTER PATTERN ENFORCEMENT)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+test('actions must be final readonly classes')
+    ->expect('App\Actions')
+    ->classes()
+    ->toBeFinal()
+    ->toBeReadonly();
+
+test('actions must not use infrastructure facades')
+    ->expect('App\Actions')
+    ->not->toUse([
+        'Illuminate\Support\Facades\DB',
+        'Illuminate\Support\Facades\Hash',
+        'Illuminate\Support\Facades\Log',
+        'Illuminate\Support\Facades\Cache',
+    ]);
+
+test('actions must not depend on concrete handlers')
+    ->expect('App\Actions')
+    ->not->toUse('App\Application\Identity\Handlers');
+

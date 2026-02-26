@@ -25,7 +25,8 @@ Route::prefix('v1')->group(function () {
     // ═══════════════════════════════════════════════════════════════════════════
     Route::get('/user', function (Request $request) {
         return $request->user();
-    })->middleware(['auth:sanctum', 'throttle:api']);
+    })->middleware(['auth:sanctum', 'throttle:api'])
+      ->name('api.users.show'); // Maps to /user (profile) for now, ignoring parameter if passed, or we can add specific route
 
     // ═══════════════════════════════════════════════════════════════════════════
     // AUTHENTICATION: OTP Routes
@@ -36,6 +37,14 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/verify', [OtpController::class, 'verify'])
             ->middleware('throttle:api.verification');
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AUTHENTICATION: Social Login
+    // ═══════════════════════════════════════════════════════════════════════════
+    Route::prefix('auth')->group(function () {
+        Route::post('/social', [\App\Http\Controllers\Api\V1\AuthController::class, 'socialLogin'])
+            ->middleware('throttle:api');
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -155,6 +164,8 @@ Route::prefix('v1')->group(function () {
     // ═══════════════════════════════════════════════════════════════════════════
     Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('ai')->group(function () {
         Route::post('/generate', [\App\Http\Controllers\Api\V1\AiController::class, 'generate']);
+        Route::post('/optimize-profile', [\App\Http\Controllers\Api\V1\AiOptimizationController::class, 'optimizeProfile'])
+            ->name('api.ai.optimize-profile');
     });
 });
 

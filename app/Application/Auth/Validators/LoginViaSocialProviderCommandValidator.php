@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  * ║  TESTABLE: Factory can be mocked in unit tests.                         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class LoginViaSocialProviderCommandValidator implements LoginViaSocialProviderHandlerInterface
+final class LoginViaSocialProviderCommandValidator implements LoginViaSocialProviderHandlerInterface
 {
     public function __construct(
         private LoginViaSocialProviderHandlerInterface $inner,

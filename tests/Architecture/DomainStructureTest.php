@@ -1,0 +1,22 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Actions\Identity\UpdateUserProfileInformation;
+
+/**
+ * DomainStructureTest - Screaming Architecture Governance
+ *
+ * Enforces: Actions reside in their correct Bounded Context subdirectory.
+ * Profile updates are Identity lifecycle events, not Authentication events.
+ */
+
+test('update user profile information resides in identity namespace', function () {
+    expect(class_exists(UpdateUserProfileInformation::class))->toBeTrue();
+    expect((new ReflectionClass(UpdateUserProfileInformation::class))->getNamespaceName())
+        ->toBe('App\Actions\Identity');
+});
+
+test('authentication namespace does not contain profile updates', function () {
+    expect(class_exists('App\Actions\Authentication\UpdateUserProfileInformation'))->toBeFalse();
+});

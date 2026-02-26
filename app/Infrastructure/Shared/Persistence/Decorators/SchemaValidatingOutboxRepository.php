@@ -6,7 +6,6 @@ namespace App\Infrastructure\Shared\Persistence\Decorators;
 
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Application\Shared\Contracts\SchemaValidatorInterface;
-use App\Domain\Shared\Entities\DomainEventMessage;
 use Illuminate\Support\Str;
 
 /**
@@ -22,41 +21,42 @@ final readonly class SchemaValidatingOutboxRepository implements OutboxRepositor
         private SchemaValidatorInterface $validator
     ) {}
 
-    public function save(DomainEventMessage $message): void
+    public function append(object $event): void
     {
-        // 1. Resolve Subject Name
-        // Convention: 'App\Domain\Auth\Events\UserRegistered' -> 'user.registered.v1'
-        // This mapping strategy needs to be robust. For now, we use a static mapper or heuristic.
-        // Assuming the Event Class Name or Type carries the version or we default to v1.
-
-        $subject = $this->resolveSubject($message->type);
+        // 1. Resolve Subject Name from event class
+        $subject = $this->resolveSubject(get_class($event));
 
         if ($subject) {
-            // 2. Decode Payload (it's stored as JSON string in DomainEventMessage)
-            $payload = json_decode($message->payload, true);
+            // 2. Extract public properties for validation
+            $reflection = new \ReflectionClass($event);
+            $payload = [];
+            foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+                $payload[$property->getName()] = $property->getValue($event);
+            }
 
             // 3. Validate
             $this->validator->validate($subject, $payload);
         }
 
         // 4. Delegate to Inner Repository
-        $this->inner->save($message);
+        $this->inner->append($event);
+    }
+
+    public function retrieveNextStaleBatch(int $batchSize, int $staleThresholdSeconds, array $ownedPartitionKeys): \Illuminate\Support\Collection
+    {
+        // Pure delegation — schema validation is only for writes
+        return $this->inner->retrieveNextStaleBatch($batchSize, $staleThresholdSeconds, $ownedPartitionKeys);
     }
 
     private function resolveSubject(string $eventType): ?string
     {
         // Heuristic: ClassName to dot.notation
         // App\Domain\Auth\Events\UserRegistered -> user.registered.v1
-        // We can optimize this with a Map/Config later.
-
-        $className = class_basename($eventType); // UserRegistered
-        $kebab = Str::kebab($className); // user-registered
-        $dot = str_replace('-', '.', $kebab); // user.registered
-
-        // Check if a specific version exists?
-        // ideally the DomainEventMessage should carry the version.
-        // For this iteration, we enforce v1.
+        $className = class_basename($eventType);
+        $kebab = Str::kebab($className);
+        $dot = str_replace('-', '.', $kebab);
 
         return $dot.'.v1';
     }
 }
+

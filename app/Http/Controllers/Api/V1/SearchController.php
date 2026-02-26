@@ -8,7 +8,7 @@ use App\Domain\Search\Contracts\GlobalSearchReader;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 
 /**
  * SearchController - Unified Search API
@@ -21,7 +21,8 @@ use Illuminate\Support\Facades\Storage;
 final class SearchController extends Controller
 {
     public function __construct(
-        private readonly GlobalSearchReader $reader
+        private GlobalSearchReader $reader,
+        private FilesystemFactory $storage
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -47,7 +48,7 @@ final class SearchController extends Controller
             'id' => $tenant->id,
             'name' => $tenant->name,
             'slug' => $tenant->slug,
-            'logo_url' => $tenant->logo_path ? Storage::url($tenant->logo_path) : null,
+            'logo_url' => $tenant->logo_path ? $this->storage->disk('public')->url($tenant->logo_path) : null,
             'category_name' => $tenant->category?->name,
             'city_name' => $tenant->city?->name,
         ]);

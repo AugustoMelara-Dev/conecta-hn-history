@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
+use App\Application\Shared\Contracts\DataScrubberInterface;
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\UpdateTenantBrandingCommand;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use App\Domain\Shared\Contracts\MediaStorageServiceInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
 
 /**
  * UpdateTenantBrandingHandler - Branding Assets Update Handler
@@ -20,13 +21,15 @@ use Illuminate\Support\Facades\Log;
  * ║  CLEANUP: Deletes old files before storing new ones.                    ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class UpdateTenantBrandingHandler
+final readonly class UpdateTenantBrandingHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private readonly TenantRepositoryInterface $tenantRepository,
-        private readonly MediaStorageServiceInterface $mediaStorage,
+        private TenantRepositoryInterface $tenantRepository,
+        private MediaStorageServiceInterface $mediaStorage,
+        private LoggerInterface $logger,
+        private DataScrubberInterface $scrubber,
     ) {}
 
     /**
@@ -67,11 +70,11 @@ final class UpdateTenantBrandingHandler
         // 5. Persist via Repository
         $this->tenantRepository->save($tenant);
 
-        Log::info('Tenant branding updated', $this->sanitizePayload([
+        $this->logger->info('Tenant branding updated', $this->sanitizePayload([
             'tenant_id' => $command->tenantId,
             'logo_updated' => $command->logo !== null,
             'banner_updated' => $command->banner !== null,
-        ]));
+        ], $this->scrubber));
     }
 
     /**

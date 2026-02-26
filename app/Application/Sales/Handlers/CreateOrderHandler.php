@@ -6,17 +6,18 @@ namespace App\Application\Sales\Handlers;
 
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Results\CreateOrderResult;
+use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Sales\Factories\OrderFactory;
 use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Exceptions\TenantNotFoundException;
-use App\Infrastructure\Bus\TransactionalEventDispatcher;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Services\CouponValidatorService;
 use App\Services\InventoryManager;
 use App\Services\PriceCalculatorService;
-use Illuminate\Support\Facades\Log;
 
 /**
  * CreateOrderHandler - Pure Business Logic for Order Creation
@@ -29,20 +30,22 @@ use Illuminate\Support\Facades\Log;
  * ║  - Transactional via TransactionManagerInterface.                       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class CreateOrderHandler implements CreateOrderHandlerInterface
+final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
 {
     use LogSanitizer;
 
     public function __construct(
-        private readonly InventoryManager $inventoryManager,
-        private readonly PriceCalculatorService $priceCalculator,
-        private readonly CouponValidatorService $couponValidator,
-        private readonly TenantRepositoryInterface $tenantRepository,
-        private readonly OrderRepositoryInterface $orderRepository,
-        private readonly \App\Domain\Identity\Repositories\UserRepositoryInterface $userRepository,
-        private readonly TransactionalEventDispatcher $eventDispatcher,
-        private readonly OrderFactory $orderFactory,
-        private readonly TransactionManagerInterface $transactionManager, // Injected for Atomicity
+        private InventoryManager $inventoryManager,
+        private PriceCalculatorService $priceCalculator,
+        private CouponValidatorService $couponValidator,
+        private TenantRepositoryInterface $tenantRepository,
+        private OrderRepositoryInterface $orderRepository,
+        private \App\Domain\Identity\Repositories\UserRepositoryInterface $userRepository,
+        private EventDispatcherInterface $eventDispatcher,
+        private OrderFactory $orderFactory,
+        private TransactionManagerInterface $transactionManager, // Injected for Atomicity,
+        private LoggerInterface $logger,
+        private DataScrubberInterface $scrubber,
     ) {}
 
     public function handle(CreateOrderCommand $command): CreateOrderResult
@@ -154,11 +157,11 @@ final class CreateOrderHandler implements CreateOrderHandlerInterface
             status: 'pending' // Default status for new orders
         ));
 
-        Log::info('Order created via Command Bus', $this->sanitizePayload([
+        $this->logger->info('Order created via Command Bus', $this->sanitizePayload([
             'order_id' => $orderEntity->id,
             'tenant_id' => $command->tenantId,
             'total' => $total,
-        ]));
+        ], $this->scrubber));
 
         return CreateOrderResult::fromEntity($orderEntity);
     }
