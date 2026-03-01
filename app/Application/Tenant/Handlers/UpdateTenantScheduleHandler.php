@@ -10,7 +10,7 @@ use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\UpdateTenantScheduleCommand;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use DomainException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Domain\Identity\Exceptions\TenantNotFoundException;
 
 /**
  * UpdateTenantScheduleHandler - Business Hours Update Handler
@@ -33,7 +33,7 @@ final readonly class UpdateTenantScheduleHandler
     /**
      * Handle schedule update command.
      *
-     * @throws ModelNotFoundException If tenant not found
+     * @throws TenantNotFoundException If tenant not found
      * @throws DomainException If no day is open
      */
     public function handle(UpdateTenantScheduleCommand $command): void
@@ -42,7 +42,7 @@ final readonly class UpdateTenantScheduleHandler
         $tenant = $this->tenantRepository->findById($command->tenantId);
 
         if ($tenant === null) {
-            throw new ModelNotFoundException("Tenant not found: {$command->tenantId}");
+            throw new TenantNotFoundException("Tenant not found: {$command->tenantId}");
         }
 
         // 2. DOMAIN RULE: At least one day must be open

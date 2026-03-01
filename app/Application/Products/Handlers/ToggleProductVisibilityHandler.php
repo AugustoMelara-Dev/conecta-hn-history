@@ -9,7 +9,7 @@ use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Domain\Product\Exceptions\ProductNotFoundException;
 
 /**
  * ToggleProductVisibilityHandler - Command Handler for Product Visibility Toggle
@@ -32,7 +32,7 @@ final readonly class ToggleProductVisibilityHandler
     /**
      * Handle visibility toggle command.
      *
-     * @throws ModelNotFoundException If product not found or tenant mismatch
+     * @throws ProductNotFoundException If product not found or tenant mismatch
      */
     public function handle(ToggleProductVisibilityCommand $command): void
     {
@@ -40,7 +40,7 @@ final readonly class ToggleProductVisibilityHandler
         $product = $this->productRepository->findById($command->productId);
 
         if ($product === null) {
-            throw new ModelNotFoundException("Product not found: {$command->productId}");
+            throw new ProductNotFoundException("Product not found: {$command->productId}");
         }
 
         // 2. SECURITY GUARD: Tenant Ownership Verification
@@ -49,7 +49,7 @@ final readonly class ToggleProductVisibilityHandler
                 'requested_product_id' => $command->productId,
                 'requesting_tenant_id' => $command->tenantId,
             ]);
-            throw new ModelNotFoundException("Product not found: {$command->productId}");
+            throw new ProductNotFoundException("Product not found: {$command->productId}");
         }
 
         // 3. Toggle visibility

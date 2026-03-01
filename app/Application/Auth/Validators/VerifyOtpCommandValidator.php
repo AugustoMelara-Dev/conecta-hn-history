@@ -19,7 +19,7 @@ use Illuminate\Validation\ValidationException;
  * ║  TESTABLE: Factory can be mocked in unit tests.                         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class VerifyOtpCommandValidator implements VerifyOtpHandlerInterface
+final readonly class VerifyOtpCommandValidator implements VerifyOtpHandlerInterface
 {
     public function __construct(
         private VerifyOtpHandlerInterface $inner,

@@ -10,7 +10,7 @@ use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\UpdateTenantBrandingCommand;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use App\Domain\Shared\Contracts\MediaStorageServiceInterface;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Domain\Identity\Exceptions\TenantNotFoundException;
 
 /**
  * UpdateTenantBrandingHandler - Branding Assets Update Handler
@@ -35,7 +35,7 @@ final readonly class UpdateTenantBrandingHandler
     /**
      * Handle branding update command.
      *
-     * @throws ModelNotFoundException If tenant not found
+     * @throws TenantNotFoundException If tenant not found
      */
     public function handle(UpdateTenantBrandingCommand $command): void
     {
@@ -43,7 +43,7 @@ final readonly class UpdateTenantBrandingHandler
         $tenant = $this->tenantRepository->findById($command->tenantId);
 
         if ($tenant === null) {
-            throw new ModelNotFoundException("Tenant not found: {$command->tenantId}");
+            throw new TenantNotFoundException("Tenant not found: {$command->tenantId}");
         }
 
         // 2. Handle Logo Upload (delegated to MediaStorageService)
