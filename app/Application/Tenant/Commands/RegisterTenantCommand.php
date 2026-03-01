@@ -22,6 +22,7 @@ final readonly class RegisterTenantCommand implements IdempotentCommandInterface
         public string $slug,
 
         // Credentials
+        #[\SensitiveParameter]
         public string $ownerName,
         #[SensitiveParameter]
         public string $email,
@@ -56,6 +57,6 @@ final readonly class RegisterTenantCommand implements IdempotentCommandInterface
 
     public function getSensitiveProperties(): array
     {
-        return ['password'];
+        return ['password', 'ownerName'];
     }
 }
