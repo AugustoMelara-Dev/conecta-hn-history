@@ -29,10 +29,10 @@ final readonly class LoginViaSocialProviderCommand implements \App\Application\S
         public string $providerId,
 
         /** Verified email address */
-        public string $email,
+        #[\SensitiveParameter] public string $email,
 
         /** Display name */
-        public string $name,
+        #[\SensitiveParameter] public string $name,
 
         /** Avatar URL */
         public ?string $avatarUrl,
