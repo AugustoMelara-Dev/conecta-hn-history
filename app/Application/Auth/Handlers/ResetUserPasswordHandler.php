@@ -6,7 +6,7 @@ namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\ResetUserPasswordCommand;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use Illuminate\Auth\Events\PasswordReset;
+use App\Domain\Identity\Events\UserPasswordResetRequested;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Support\Str;
@@ -50,12 +50,11 @@ final readonly class ResetUserPasswordHandler
             $rememberToken,
         );
 
-        // Dispatch Laravel's native PasswordReset event for framework hooks
+        // Dispatch domain event. Infrastructure listeners will handle framework hooks
         // (e.g., session invalidation, auth guard refresh).
-        // Note: This uses the user object from findById for event compatibility.
         $user = $this->userRepository->findById($command->userId, $command->tenantId);
         if ($user !== null) {
-            $this->dispatcher->dispatch(new PasswordReset($user));
+            $this->dispatcher->dispatch(new UserPasswordResetRequested($user));
         }
 
         $this->logger->info('Password reset completed', [
