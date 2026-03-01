@@ -9,7 +9,7 @@ use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Services\AiProfileGeneratorService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Domain\Identity\Exceptions\TenantNotFoundException;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 
@@ -36,7 +36,7 @@ final class GenerateBusinessProfile implements ShouldQueue
     ): void {
         $tenant = $tenantRepository->findById($this->tenantId);
         if ($tenant === null) {
-            throw new ModelNotFoundException("Tenant {$this->tenantId} not found");
+            throw new TenantNotFoundException("Tenant {$this->tenantId} not found");
         }
 
         $profile = $aiService->generateProfile($tenant);

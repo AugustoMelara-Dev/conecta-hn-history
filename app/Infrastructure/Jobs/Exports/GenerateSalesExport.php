@@ -13,7 +13,7 @@ use App\Exports\SalesExport;
 use App\Notifications\ExportReadyNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Domain\Identity\Exceptions\UserNotFoundException;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Str;
@@ -45,7 +45,7 @@ final class GenerateSalesExport implements ShouldQueue
     ): void {
         $user = $userRepository->findById($this->userId);
         if ($user === null) {
-            throw new ModelNotFoundException("User {$this->userId} not found");
+            throw new UserNotFoundException("User {$this->userId} not found");
         }
 
         $tenantId = TenantId::fromString($this->tenantId);

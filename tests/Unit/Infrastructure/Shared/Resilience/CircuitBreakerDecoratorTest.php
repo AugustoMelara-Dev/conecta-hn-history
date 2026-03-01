@@ -103,7 +103,7 @@ final class CircuitBreakerDecoratorTest extends TestCase
 
             // EXECUTE
             try {
-                $decorator->send('123456', 'user@example.com', 'Test User');
+                $decorator->send(null, '123456', 'user@example.com', 'tenant_1', 15);
                 $this->fail("Should have thrown exception on iteration {$i}");
             } catch (Exception $e) {
                 $this->assertEquals("Provider Timeout Scenario iteration #{$i}", $e->getMessage());
@@ -123,7 +123,7 @@ final class CircuitBreakerDecoratorTest extends TestCase
 
         // EXECUTE
         try {
-            $decorator->send('123456', 'user@example.com', 'Test User');
+            $decorator->send(null, '123456', 'user@example.com', 'tenant_1', 15);
             $this->fail('Should have thrown RuntimeException (Circuit Open)');
         } catch (RuntimeException $e) {
             $this->assertStringContainsString('Circuit Opened', $e->getMessage());

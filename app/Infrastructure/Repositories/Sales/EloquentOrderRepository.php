@@ -28,7 +28,7 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
     public function save(OrderEntity $order): void
     {
         $model = $order->id
-            ? Order::findOrFail($order->id)
+            ? Order::find($order->id) ?? throw new \App\Domain\Sales\Exceptions\OrderNotFoundException("Order {$order->id} not found")
             : new Order;
 
         $model->tenant_id = $order->tenantId;

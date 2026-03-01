@@ -15,7 +15,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Domain\Identity\Exceptions\TenantNotFoundException;
+use App\Domain\Identity\Exceptions\UserNotFoundException;
+use Throwable;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Str;
@@ -65,12 +67,12 @@ final class GeneratePdfReportJob implements ShouldQueue, ShouldBeUnique
             // Access tenantId from DTO
             $tenant = $tenantRepository->findById($this->data->tenantId);
             if ($tenant === null) {
-                throw new ModelNotFoundException("Tenant {$this->data->tenantId} not found");
+                throw new TenantNotFoundException("Tenant {$this->data->tenantId} not found");
             }
 
             $requestor = $userRepository->findById($this->requestorId);
             if ($requestor === null) {
-                throw new ModelNotFoundException("User {$this->requestorId} not found");
+                throw new UserNotFoundException("User {$this->requestorId} not found");
             }
 
             // Map DTO back to filters array for service compatibility
@@ -100,7 +102,7 @@ final class GeneratePdfReportJob implements ShouldQueue, ShouldBeUnique
                 tenantName: $tenant->name,
                 expiresAt: $expiresAt,
             ));
-        } catch (ModelNotFoundException $e) {
+        } catch (TenantNotFoundException | UserNotFoundException $e) {
             if ($this->deleteWhenMissingModels) {
                 $this->delete();
 

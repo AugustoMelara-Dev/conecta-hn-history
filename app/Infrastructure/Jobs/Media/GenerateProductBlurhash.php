@@ -45,7 +45,11 @@ final class GenerateProductBlurhash implements ShouldQueue, ShouldBeUnique
         // SECURITY: Verify product belongs to this tenant (VC-AUDIT-003 fix)
         $product = Product::where('id', $this->productId)
             ->where('tenant_id', $this->tenantId)
-            ->firstOrFail();
+            ->first();
+
+        if (! $product) {
+            throw new \App\Domain\Product\Exceptions\ProductNotFoundException("Product {$this->productId} not found");
+        }
 
         if (! $product->image_path) {
             return;
