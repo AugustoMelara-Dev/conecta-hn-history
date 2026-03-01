@@ -36,6 +36,23 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // ═══════════════════════════════════════════════════════════════════════
+        // EVENT UPCASTING: Schema Evolution Registry (Singleton)
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->singleton(
+            \App\Application\Shared\Services\EventUpcasterRegistry::class,
+            function ($app) {
+                $registry = new \App\Application\Shared\Services\EventUpcasterRegistry();
+
+                // Tagged upcasters can be resolved here in the future:
+                // foreach ($app->tagged('event.upcasters') as $upcaster) {
+                //     $registry->register($upcaster);
+                // }
+
+                return $registry;
+            }
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
         // TITANIUM EVENT STORE: The One True Store (DB + Outbox)
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(

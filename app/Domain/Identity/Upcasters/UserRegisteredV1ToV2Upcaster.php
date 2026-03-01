@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Identity\Upcasters;
 
-use App\Domain\Common\EventUpcaster;
+use App\Application\Shared\Contracts\UpcasterInterface;
 use App\Domain\Identity\Events\UserRegistered;
 
-final class UserRegisteredV1ToV2Upcaster implements EventUpcaster
+final class UserRegisteredV1ToV2Upcaster implements UpcasterInterface
 {
-    public function supports(string $eventType, int $sourceVersion): bool
+    public function supports(string $eventType, int $schemaVersion): bool
     {
-        return $eventType === UserRegistered::class && $sourceVersion === 1;
+        return $eventType === UserRegistered::class && $schemaVersion === 1;
     }
 
     public function upcast(array $payload): array
@@ -29,5 +29,15 @@ final class UserRegisteredV1ToV2Upcaster implements EventUpcaster
         $payload['last_name'] = $parts[1] ?? '';
 
         return $payload;
+    }
+
+    public function fromVersion(): int
+    {
+        return 1;
+    }
+
+    public function toVersion(): int
+    {
+        return 2;
     }
 }
