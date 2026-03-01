@@ -11,7 +11,7 @@ use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Product\Events\ProductDeleted;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Domain\Product\Exceptions\ProductNotFoundException;
 
 /**
  * DeleteProductHandler - Command Handler for Product Soft Deletion
@@ -35,7 +35,7 @@ final readonly class DeleteProductHandler
     /**
      * Handle product deletion command.
      *
-     * @throws ModelNotFoundException If product not found or tenant mismatch
+     * @throws ProductNotFoundException If product not found or tenant mismatch
      */
     public function handle(DeleteProductCommand $command): void
     {
@@ -43,7 +43,7 @@ final readonly class DeleteProductHandler
         $product = $this->productRepository->findById($command->productId);
 
         if ($product === null) {
-            throw new ModelNotFoundException("Product not found: {$command->productId}");
+            throw new ProductNotFoundException("Product not found: {$command->productId}");
         }
 
         // 2. SECURITY GUARD: Tenant Ownership Verification
@@ -52,7 +52,7 @@ final readonly class DeleteProductHandler
                 'requested_product_id' => $command->productId,
                 'requesting_tenant_id' => $command->tenantId,
             ]);
-            throw new ModelNotFoundException("Product not found: {$command->productId}");
+            throw new ProductNotFoundException("Product not found: {$command->productId}");
         }
 
         // 3. Soft Delete via Repository

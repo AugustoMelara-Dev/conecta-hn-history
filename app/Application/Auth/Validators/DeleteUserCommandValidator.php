@@ -19,7 +19,7 @@ use Illuminate\Validation\ValidationException;
  * ║  TESTABLE: Factory can be mocked in unit tests.                         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class DeleteUserCommandValidator implements DeleteUserHandlerInterface
+final readonly class DeleteUserCommandValidator implements DeleteUserHandlerInterface
 {
     public function __construct(
         private DeleteUserHandlerInterface $inner,

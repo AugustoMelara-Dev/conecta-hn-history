@@ -23,6 +23,7 @@ final readonly class RegisterTenantCommand implements IdempotentCommandInterface
 
         // Credentials
         public string $ownerName,
+        #[SensitiveParameter]
         public string $email,
         #[SensitiveParameter]
         public string $password,
