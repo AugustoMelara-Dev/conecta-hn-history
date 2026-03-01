@@ -6,7 +6,10 @@ namespace App\Application\Shared\Common\Exceptions;
 
 use RuntimeException;
 
-class IdempotencyKeyReuseException extends RuntimeException
+final class IdempotencyKeyReuseException extends RuntimeException
 {
-    protected $code = 409; // Conflict
+    public function __construct(string $message = 'Idempotency key reuse detected', ?\Throwable $previous = null)
+    {
+        parent::__construct($message, 409, $previous);
+    }
 }

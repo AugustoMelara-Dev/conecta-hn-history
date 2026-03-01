@@ -50,11 +50,11 @@ final readonly class RegisterTenantResult
     public static function fromEntities(
         object $tenant,
         object $user,
-        ?string $appUrl = null
+        string $appUrl
     ): self {
         // Domain construction logic
-        $domain = $tenant->domain().'.'.parse_url($appUrl ?? config('app.url'), PHP_URL_HOST);
-        $setupUrl = ($appUrl ?? config('app.url'))."/tenant/{$tenant->domain()}/setup";
+        $domain = $tenant->domain().'.'.parse_url($appUrl, PHP_URL_HOST);
+        $setupUrl = rtrim($appUrl, '/')."/tenant/{$tenant->domain()}/setup";
 
         return new self(
             tenantId: $tenant->id(),

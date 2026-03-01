@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Application\Shared\Contracts\AiProfileGeneratorInterface;
 use Exception;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
@@ -26,7 +27,7 @@ use Illuminate\Support\Facades\Log;
  *   $service = app(AiProfileGeneratorService::class);
  *   $result = $service->generate($rawName, $rawDescription, $rawCategory);
  */
-class AiProfileGeneratorService
+class AiProfileGeneratorService implements AiProfileGeneratorInterface
 {
     // ═══════════════════════════════════════════════════════════════════════════════
     // CONFIGURATION CONSTANTS

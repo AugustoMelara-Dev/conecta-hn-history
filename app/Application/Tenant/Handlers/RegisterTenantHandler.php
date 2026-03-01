@@ -122,6 +122,6 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             'slug' => $tenantEntity->domain(),
         ], $this->scrubber));
 
-        return RegisterTenantResult::fromEntities($tenantEntity, $userEntity);
+        return RegisterTenantResult::fromEntities($tenantEntity, $userEntity, config('app.url', ''));
     }
 }

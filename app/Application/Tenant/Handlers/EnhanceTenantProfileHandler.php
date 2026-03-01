@@ -7,11 +7,11 @@ namespace App\Application\Tenant\Handlers;
 use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
+use App\Application\Shared\Contracts\AiProfileGeneratorInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\EnhanceTenantProfileCommand;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Services\AiProfileGeneratorService;
 
 /**
  * EnhanceTenantProfileHandler - Pure Business Logic for AI Enhancement
@@ -30,7 +30,7 @@ final readonly class EnhanceTenantProfileHandler
 
     public function __construct(
         private TenantRepositoryInterface $repository,
-        private AiProfileGeneratorService $aiService,
+        private AiProfileGeneratorInterface $aiService,
         private TransactionManagerInterface $transactionManager,
         private LoggerInterface $logger,
         private DataScrubberInterface $scrubber,
