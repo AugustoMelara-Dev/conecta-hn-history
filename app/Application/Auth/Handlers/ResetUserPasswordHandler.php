@@ -53,7 +53,7 @@ final readonly class ResetUserPasswordHandler
         // (e.g., session invalidation, auth guard refresh).
         $user = $this->userRepository->findById($command->userId, $command->tenantId);
         if ($user !== null) {
-            $this->dispatcher->dispatch(new UserPasswordResetRequested($user));
+            $this->dispatcher->dispatch(new UserPasswordResetRequested($command->userId, $command->tenantId));
         }
 
         $this->logger->info('Password reset completed', [
