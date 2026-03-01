@@ -9,7 +9,7 @@ use App\Application\Reviews\Commands\SubmitReviewCommand;
 /**
  * SubmitReviewValidator - Structural Validation
  */
-final class SubmitReviewValidator
+final readonly class SubmitReviewValidator
 {
     public function rules(SubmitReviewCommand $command): array
     {

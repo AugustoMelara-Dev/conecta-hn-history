@@ -24,7 +24,7 @@ final readonly class UserMailData
     public function __construct(
         public int $id,
         public string $name,
-        public string $email,
+        #[\SensitiveParameter] public string $email,
         public ?int $tenantId = null,
     ) {}
 

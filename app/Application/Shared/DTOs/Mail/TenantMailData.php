@@ -14,7 +14,7 @@ final readonly class TenantMailData
     public function __construct(
         public int $id,
         public string $name,
-        public string $email,
+        #[\SensitiveParameter] public string $email,
         public string $planType,
         public ?string $subscriptionEndsAt = null,
     ) {}

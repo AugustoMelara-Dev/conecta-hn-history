@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 /**
  * UpdateProductValidator - Structural Validation
  */
-final class UpdateProductValidator
+final readonly class UpdateProductValidator
 {
     public function rules(UpdateProductCommand $command): array
     {

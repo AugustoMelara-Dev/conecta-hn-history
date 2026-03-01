@@ -30,6 +30,6 @@ final readonly class UpdateUserProfileCommand
         public string $name,
 
         /** New email address */
-        public string $email,
+        #[\SensitiveParameter] public string $email,
     ) {}
 }

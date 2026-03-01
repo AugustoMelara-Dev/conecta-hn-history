@@ -17,7 +17,7 @@ final readonly class RegisterUserCommand implements IdempotentCommandInterface, 
 {
     public function __construct(
         public string $name,
-        public string $email,
+        #[\SensitiveParameter] public string $email,
         #[\SensitiveParameter] public string $password,
         public ?string $tenantName = null,
         public ?string $slug = null,

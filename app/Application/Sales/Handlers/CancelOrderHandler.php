@@ -11,7 +11,7 @@ use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Events\Order\OrderCancelled;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Domain\Sales\Exceptions\OrderNotFoundException;
 
 /**
  * CancelOrderHandler - Command Handler for Order Cancellation
@@ -38,7 +38,7 @@ final readonly class CancelOrderHandler
     /**
      * Handle order cancellation command.
      *
-     * @throws ModelNotFoundException If order not found or tenant mismatch
+     * @throws OrderNotFoundException If order not found or tenant mismatch
      * @throws \App\Domain\Sales\Exceptions\OrderCannotBeCancelledException
      */
     public function handle(CancelOrderCommand $command): void
@@ -48,7 +48,7 @@ final readonly class CancelOrderHandler
 
         // 2. Guard: Order Existence
         if ($order === null) {
-            throw new ModelNotFoundException("Order not found: {$command->orderId}");
+            throw new OrderNotFoundException("Order not found: {$command->orderId}");
         }
 
         // 3. SECURITY GUARD: Tenant Ownership Verification (IDOR Protection)
@@ -58,7 +58,7 @@ final readonly class CancelOrderHandler
                 'requesting_tenant_id' => $command->tenantId,
                 'actual_tenant_id' => $order->tenant_id,
             ]);
-            throw new ModelNotFoundException("Order not found: {$command->orderId}");
+            throw new OrderNotFoundException("Order not found: {$command->orderId}");
         }
 
         // 4. DELEGATE TO DOMAIN: Let Order protect its own invariants

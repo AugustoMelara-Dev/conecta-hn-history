@@ -17,7 +17,7 @@ final readonly class RegisterUserResult
     public function __construct(
         public string $id,
         public string $tenantId,
-        public string $email,
+        #[\SensitiveParameter] public string $email,
         public CarbonImmutable $registeredAt,
         public bool $requiresVerification = true,
     ) {}

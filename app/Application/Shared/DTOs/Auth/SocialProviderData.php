@@ -20,7 +20,7 @@ final readonly class SocialProviderData
 {
     public function __construct(
         public string $name,
-        public string $email,
+        #[\SensitiveParameter] public string $email,
         public ?string $avatar,
         public string $provider_id,
         public string $provider_name,
