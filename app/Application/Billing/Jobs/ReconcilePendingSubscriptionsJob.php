@@ -7,10 +7,6 @@ namespace App\Application\Billing\Jobs;
 use App\Domain\Billing\Gateways\SubscriptionGatewayInterface;
 use App\Domain\Billing\Entities\SubscriptionIntent;
 use App\Domain\Billing\Repositories\SubscriptionIntentRepositoryInterface;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -21,10 +17,8 @@ use Psr\Log\LoggerInterface;
  *
  * REFACTORED: Replaced ConnectionInterface with SubscriptionIntentRepositoryInterface.
  */
-final class ReconcilePendingSubscriptionsJob implements ShouldQueue
+final readonly class ReconcilePendingSubscriptionsJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable;
-
     public function __construct(
         public readonly string $tenantId,
     ) {}
