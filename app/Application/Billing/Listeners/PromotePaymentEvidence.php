@@ -10,8 +10,6 @@ use App\Domain\Billing\Events\PaymentReported;
 use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Domain\Billing\Services\DocumentStorageServiceInterface;
 use App\Domain\Shared\Exceptions\StaleObjectException;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use RuntimeException;
 use Throwable;
 
@@ -27,14 +25,8 @@ use Throwable;
  * ║  5. Atomic Optimistic Update.                                            ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class PromotePaymentEvidence implements ShouldQueue
+final readonly class PromotePaymentEvidence
 {
-    use InteractsWithQueue;
-
-    public int $tries = 3;
-
-    public bool $afterCommit = true;
-
     private const MAX_ATTEMPTS = 3;
 
     public function __construct(
@@ -60,17 +52,9 @@ final class PromotePaymentEvidence implements ShouldQueue
                 $payment = $this->paymentRepository->findByIdOnWriteConnection($event->paymentId);
 
                 if (! $payment) {
-                    // LEVEL 38+40: DETERMINISTIC FAIL-FAST WITH OBSERVABILITY
-                    // If the record is missing on the PRIMARY NODE, it is DEFINITIVE.
-                    // Using fail() instead of delete() to:
-                    // 1. Trigger the failed() hook for logging
-                    // 2. Populate the failed_jobs table for SRE visibility
-                    // 3. Enable alerting on Zombie Events
-                    $this->fail(new RuntimeException(
-                        "ZOMBIE EVENT: Payment {$event->paymentId} not found on Primary Node (Transaction Rollback or Deletion)."
-                    ));
-
-                    return;
+                    throw new RuntimeException(
+                        "ZOMBIE EVENT: Payment {$event->paymentId} not found on Primary Node."
+                    );
                 }
 
                 // 2. VERIFICATION (Idempotency Check)
@@ -141,13 +125,5 @@ final class PromotePaymentEvidence implements ShouldQueue
         $this->logger->info("PromotePaymentEvidence: Promoting artifact for Payment {$paymentId}");
 
         return $this->documentStorage->promote($tempPath);
-    }
-
-    public function failed(PaymentReported $event, Throwable $exception): void
-    {
-        $this->logger->critical("TERMINAL FAILURE: Could not promote evidence for Payment {$event->paymentId}. Artifact is stuck in TEMP storage.", [
-            'payment_id' => $event->paymentId,
-            'exception' => $exception->getMessage(),
-        ]);
     }
 }

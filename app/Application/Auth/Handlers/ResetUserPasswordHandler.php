@@ -7,9 +7,8 @@ namespace App\Application\Auth\Handlers;
 use App\Application\Auth\Commands\ResetUserPasswordCommand;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Identity\Events\UserPasswordResetRequested;
-use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Contracts\Hashing\Hasher;
-use Illuminate\Support\Str;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
+use App\Domain\Security\Contracts\HasherInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -17,19 +16,19 @@ use Psr\Log\LoggerInterface;
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  RESPONSIBILITY: Hash → Delegate to Repository → Dispatch Event.      ║
- * ║  FRAMEWORK AGNOSTIC: Uses Hasher/Dispatcher/Repository contracts.     ║
+ * ║  FRAMEWORK AGNOSTIC: Uses HasherInterface/EventDispatcherInterface.   ║
  * ║  TENANT AWARE: Validates tenant ownership via repository scope.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * REFACTORED: Eliminated direct App\Models\User dependency.
- * Now delegates persistence to UserRepositoryInterface::resetPassword().
+ * REFACTORED: Eliminated Illuminate\Contracts coupling.
+ * Now uses Domain contracts (HasherInterface, EventDispatcherInterface).
  */
 final readonly class ResetUserPasswordHandler
 {
     public function __construct(
         private UserRepositoryInterface $userRepository,
-        private Hasher $hasher,
-        private Dispatcher $dispatcher,
+        private HasherInterface $hasher,
+        private EventDispatcherInterface $dispatcher,
         private LoggerInterface $logger,
     ) {}
 
@@ -41,7 +40,7 @@ final readonly class ResetUserPasswordHandler
     public function handle(ResetUserPasswordCommand $command): void
     {
         $passwordHash = $this->hasher->make($command->password);
-        $rememberToken = Str::random(60);
+        $rememberToken = bin2hex(random_bytes(30));
 
         $this->userRepository->resetPassword(
             $command->userId,

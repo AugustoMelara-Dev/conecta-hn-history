@@ -8,7 +8,7 @@ use App\Application\Auth\Commands\VerifyOtpCommand;
 use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
 use App\Application\Auth\Results\VerifyOtpResult;
 use App\Domain\Shared\Contracts\RateLimitServiceInterface;
-use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use App\Application\Shared\Common\Exceptions\RateLimitExceededException;
 
 final readonly class VerifyOtpRateLimitDecorator implements VerifyOtpHandlerInterface
 {
@@ -25,7 +25,7 @@ final readonly class VerifyOtpRateLimitDecorator implements VerifyOtpHandlerInte
         $key = sprintf('verify_otp:%s:%s', $command->tenantId, $command->ipAddress);
 
         if ($this->rateLimiter->tooManyAttempts($key, $this->maxAttempts)) {
-            throw new ThrottleRequestsException('Demasiados intentos. Intente más tarde.');
+            throw new RateLimitExceededException('Demasiados intentos. Intente más tarde.');
         }
 
         $this->rateLimiter->hit($key, $this->decaySeconds);

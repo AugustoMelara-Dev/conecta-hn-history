@@ -6,31 +6,15 @@ namespace App\Application\Sales\Listeners;
 
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Events\Order\OrderCancelled;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
-/**
- * RestoreStockOnCancellation - Async Listener for Inventory Restoration
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  EVENTUAL CONSISTENCY: Runs async after OrderCancelled event.           ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  - Decouples Sales domain from Inventory domain                         ║
- * ║  - Tenant-aware via TenantQueueMiddleware                               ║
- * ║  - Retryable: If it fails, the queue will retry automatically          ║
- * ║  - FRAMEWORK AGNOSTIC: Uses LoggerInterface instead of Log facade      ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- */
-final class RestoreStockOnCancellation implements ShouldQueue
+final readonly class RestoreStockOnCancellation
 {
-    public int $tries = 3;
-
-    public int $timeout = 60;
-
     public function __construct(
-        private readonly ProductRepositoryInterface $productRepository,
-        private readonly LoggerInterface $logger,
+        private ProductRepositoryInterface $productRepository,
+        private OrderRepositoryInterface $orderRepository,
+        private LoggerInterface $logger,
     ) {}
 
     /**
@@ -61,18 +45,5 @@ final class RestoreStockOnCancellation implements ShouldQueue
             'order_id' => $event->aggregateId(),
             'items_count' => $order->items->count(),
         ]);
-    }
-
-    /**
-     * Middleware for tenant-aware queue processing.
-     *
-     * @return array<int, object>
-     */
-    public function middleware(OrderCancelled $event): array
-    {
-        // UUID STRING: Use toString() for tenant context
-        return [
-            new TenantQueueMiddleware($event->tenantId()->toString()),
-        ];
     }
 }
