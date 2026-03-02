@@ -9,7 +9,7 @@ use App\Application\Billing\Commands\ReportPaymentCommand;
 use App\Application\Billing\Handlers\ReportPaymentHandlerInterface;
 use App\Application\Billing\Results\ReportPaymentResult;
 use App\Application\Shared\Contracts\RateLimiterInterface;
-use Illuminate\Validation\ValidationException;
+use App\Application\Shared\Common\Exceptions\RateLimitExceededException;
 
 /**
  * RateLimitedReportPaymentHandler - DoS Protection (Level 28)
@@ -41,14 +41,12 @@ final readonly class RateLimitedReportPaymentHandler implements ReportPaymentHan
             if ($this->rateLimiter->tooManyAttempts($key, self::MAX_ATTEMPTS)) {
                 $seconds = $this->rateLimiter->availableIn($key);
 
-                throw ValidationException::withMessages([
-                    'tenant_id' => ["Rate limit exceeded. Please try again in {$seconds} seconds."],
-                ]);
+                throw new RateLimitExceededException("Rate limit exceeded. Please try again in {$seconds} seconds.");
             }
 
             $this->rateLimiter->hit($key, self::DECAY_SECONDS);
-        } catch (ValidationException $e) {
-            throw $e; // Respect validation errors (429)
+        } catch (RateLimitExceededException $e) {
+            throw $e; // Propagate rate limit signal
         } catch (\Throwable $e) {
             // CIRCUIT BREAKER: Fail Open (Level 33)
             // If Redis is down, we MUST NOT block payment reporting (Revenue).

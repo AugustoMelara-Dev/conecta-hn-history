@@ -7,7 +7,7 @@ namespace App\Application\Billing\Decorators;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Billing\Handlers\GenerateUploadUrlHandlerInterface;
 use App\Application\Shared\Contracts\RateLimiterInterface;
-use Illuminate\Validation\ValidationException;
+use App\Application\Shared\Common\Exceptions\RateLimitExceededException;
 
 /**
  * RateLimitedGenerateUploadUrlHandler - DoS Protection (Level 30)
@@ -38,14 +38,12 @@ final readonly class RateLimitedGenerateUploadUrlHandler implements GenerateUplo
             if ($this->rateLimiter->tooManyAttempts($key, self::MAX_ATTEMPTS)) {
                 $seconds = $this->rateLimiter->availableIn($key);
 
-                throw ValidationException::withMessages([
-                    'tenant_id' => ["Upload rate limit exceeded. Please wait {$seconds} seconds."],
-                ]);
+                throw new RateLimitExceededException("Upload rate limit exceeded. Please wait {$seconds} seconds.");
             }
 
             $this->rateLimiter->hit($key, self::DECAY_SECONDS);
-        } catch (ValidationException $e) {
-            throw $e; // Re-throw actual validations
+        } catch (RateLimitExceededException $e) {
+            throw $e; // Re-throw actual rate limit signals
         } catch (\Throwable $e) {
             // CIRCUIT BREAKER: Fail Open
             // If Redis/Cache is down, we do NOT want to block payments.

@@ -39,4 +39,7 @@ interface ProductRepositoryInterface
 
     // Atomic Stock Update
     public function incrementStock(int $productId, int $quantity): void;
+
+    // Uniqueness Check for SKU validation (excludes given product ID to allow self-update)
+    public function existsBySkuExcludingId(string $sku, string $productId): bool;
 }
