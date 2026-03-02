@@ -30,6 +30,7 @@ final readonly class VerifyOtpCommand implements \App\Application\Shared\Contrac
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
+        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string

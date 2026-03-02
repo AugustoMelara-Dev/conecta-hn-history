@@ -45,6 +45,7 @@ final readonly class LoginViaSocialProviderCommand implements \App\Application\S
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
+        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string

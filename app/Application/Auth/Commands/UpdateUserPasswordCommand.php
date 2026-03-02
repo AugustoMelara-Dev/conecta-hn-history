@@ -40,6 +40,7 @@ final readonly class UpdateUserPasswordCommand implements \App\Application\Share
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
+        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string

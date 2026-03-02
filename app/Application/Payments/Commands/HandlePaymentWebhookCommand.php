@@ -29,5 +29,6 @@ final readonly class HandlePaymentWebhookCommand
 
         /** Mandatory tenant ID for audit trail isolation */
         public int|string $tenantId,
+        public int $schemaVersion = 1,
     ) {}
 }

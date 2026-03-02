@@ -21,5 +21,6 @@ final readonly class ReactivateUserCommand
 
         /** UUID of the requesting tenant context */
         public string $tenantId,
+        public int $schemaVersion = 1,
     ) {}
 }

@@ -12,7 +12,8 @@ final readonly class ProcessPaymentWebhookCommand
         public string $eventType,
         public array $payload,
         public string $tenantId, // New Invariant
-        public string $receivedAt
+        public string $receivedAt,
+        public int $schemaVersion = 1,
     ) {}
 
     public static function fromRequest(string $eventType, array $payload): self
@@ -30,7 +31,7 @@ final readonly class ProcessPaymentWebhookCommand
             eventType: $eventType,
             payload: $payload,
             tenantId: $tenantId,
-            receivedAt: \Carbon\CarbonImmutable::now()->toIso8601String()
+            receivedAt: (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM)
         );
     }
 }

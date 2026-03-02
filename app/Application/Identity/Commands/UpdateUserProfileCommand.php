@@ -31,5 +31,6 @@ final readonly class UpdateUserProfileCommand
 
         /** New email address */
         #[\SensitiveParameter] public string $email,
+        public int $schemaVersion = 1,
     ) {}
 }
