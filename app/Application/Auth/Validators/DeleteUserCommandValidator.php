@@ -7,8 +7,7 @@ namespace App\Application\Auth\Validators;
 use App\Application\Auth\Commands\DeleteUserCommand;
 use App\Application\Auth\Handlers\DeleteUserHandlerInterface;
 use App\Application\Auth\Results\DeleteUserResult;
-use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
-use Illuminate\Validation\ValidationException;
+use App\Application\Shared\Contracts\ValidatorFactoryInterface;
 
 /**
  * DeleteUserCommandValidator - Clean Architecture Edition
@@ -23,7 +22,7 @@ final readonly class DeleteUserCommandValidator implements DeleteUserHandlerInte
 {
     public function __construct(
         private DeleteUserHandlerInterface $inner,
-        private ValidatorFactory $validatorFactory,
+        private ValidatorFactoryInterface $validatorFactory,
     ) {}
 
     public function handle(DeleteUserCommand $command): DeleteUserResult
@@ -38,7 +37,7 @@ final readonly class DeleteUserCommandValidator implements DeleteUserHandlerInte
      */
     private function validate(DeleteUserCommand $command): void
     {
-        $validator = $this->validatorFactory->make([
+        $this->validatorFactory->validate([
             'userId' => $command->userId,
             'requestingTenantId' => $command->requestingTenantId,
             'idempotencyKey' => $command->idempotencyKey,
@@ -47,9 +46,5 @@ final readonly class DeleteUserCommandValidator implements DeleteUserHandlerInte
             'requestingTenantId' => ['required', 'uuid'],
             'idempotencyKey' => ['required', 'uuid'],
         ]);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
     }
 }

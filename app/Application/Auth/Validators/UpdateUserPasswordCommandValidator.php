@@ -7,9 +7,7 @@ namespace App\Application\Auth\Validators;
 use App\Application\Auth\Commands\UpdateUserPasswordCommand;
 use App\Application\Auth\Handlers\UpdateUserPasswordHandlerInterface;
 use App\Application\Auth\Results\UpdateUserPasswordResult;
-use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
-use Illuminate\Validation\Rules\Password;
-use Illuminate\Validation\ValidationException;
+use App\Application\Shared\Contracts\ValidatorFactoryInterface;
 
 /**
  * UpdateUserPasswordCommandValidator - Clean Architecture Edition
@@ -23,8 +21,8 @@ use Illuminate\Validation\ValidationException;
 final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPasswordHandlerInterface
 {
     public function __construct(
-        private object $inner,
-        private ValidatorFactory $validatorFactory,
+        private UpdateUserPasswordHandlerInterface $inner,
+        private ValidatorFactoryInterface $validatorFactory,
     ) {}
 
     public function handle(UpdateUserPasswordCommand $command): UpdateUserPasswordResult
@@ -39,7 +37,7 @@ final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPas
      */
     private function validate(UpdateUserPasswordCommand $command): void
     {
-        $validator = $this->validatorFactory->make([
+        $this->validatorFactory->validate([
             'userId' => $command->userId,
             'requestingTenantId' => $command->requestingTenantId,
             'currentPassword' => $command->currentPassword,
@@ -49,12 +47,8 @@ final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPas
             'userId' => ['required', 'uuid'],
             'requestingTenantId' => ['required', 'uuid'],
             'currentPassword' => ['required', 'string'],
-            'newPassword' => ['required', 'string', Password::min(8)->letters()->numbers()],
+            'newPassword' => ['required', 'string', 'min:8', 'regex:/[A-Za-z]/', 'regex:/[0-9]/'],
             'idempotencyKey' => ['required', 'uuid'],
         ]);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
     }
 }

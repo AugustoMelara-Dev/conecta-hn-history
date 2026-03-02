@@ -7,7 +7,7 @@ namespace App\Application\Shared\Common\Integration;
 use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Domain\Identity\Events\UserRegistered;
 use App\Domain\TenantGovernance\Events\TenantCreated;
-use Illuminate\Support\Str;
+use App\Domain\Shared\Contracts\ClockInterface;
 
 /**
  * IntegrationEventMapper - The Diplomat
@@ -19,6 +19,7 @@ final readonly class IntegrationEventMapper
 {
     public function __construct(
         private IdGeneratorInterface $idGenerator,
+        private ClockInterface $clock,
     ) {}
 
     public function map(array $domainEvents): array
@@ -52,7 +53,7 @@ final readonly class IntegrationEventMapper
                 'role' => $event->role,
                 'registered_at' => $event->occurredOn()->format(\DateTimeInterface::ATOM),
             ]),
-            'occurred_at' => \Carbon\CarbonImmutable::now(),
+            'occurred_at' => $this->clock->now(),
             'processed_at' => null,
         ];
     }
@@ -68,7 +69,7 @@ final readonly class IntegrationEventMapper
                 'domain' => $event->domain,
                 'created_at' => $event->occurredOn()->format(\DateTimeInterface::ATOM),
             ]),
-            'occurred_at' => \Carbon\CarbonImmutable::now(),
+            'occurred_at' => $this->clock->now(),
             'processed_at' => null,
         ];
     }

@@ -7,7 +7,7 @@ namespace App\Application\Billing\Validators;
 use App\Application\Billing\Commands\RequestUpgradeCommand;
 use App\Application\Billing\Handlers\RequestUpgradeHandlerInterface;
 use App\Application\Billing\Results\RequestUpgradeResult;
-use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use App\Application\Shared\Contracts\ValidatorFactoryInterface;
 
 /**
  * RequestUpgradeCommandValidator - Clean Architecture Validation Decorator
@@ -23,12 +23,12 @@ final readonly class RequestUpgradeCommandValidator implements RequestUpgradeHan
 {
     public function __construct(
         private RequestUpgradeHandlerInterface $inner,
-        private ValidatorFactory $validatorFactory,
+        private ValidatorFactoryInterface $validatorFactory,
     ) {}
 
     public function handle(RequestUpgradeCommand $command): RequestUpgradeResult
     {
-        $this->validatorFactory->make($command->toArray(), [
+        $this->validatorFactory->validate($command->toArray(), [
             // Tenant isolation: Required string (UUID format)
             'tenantId' => ['required', 'string', 'uuid'],
 
@@ -43,7 +43,7 @@ final readonly class RequestUpgradeCommandValidator implements RequestUpgradeHan
 
             // Idempotency key: Optional, must be valid UUID if present
             'idempotencyKey' => ['nullable', 'string', 'uuid'],
-        ])->validate();
+        ]);
 
         return $this->inner->handle($command);
     }

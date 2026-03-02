@@ -9,9 +9,7 @@ use App\Application\Identity\Validators\Rules\UniqueTenantSlugRule;
 use App\Application\Identity\Validators\Rules\UniqueUserEmailRule;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
-use Illuminate\Validation\Rules\Password;
-use Illuminate\Validation\ValidationException;
+use App\Application\Shared\Contracts\ValidatorFactoryInterface;
 
 /**
  * RegisterUserValidator - Executable Validation Service
@@ -28,7 +26,7 @@ use Illuminate\Validation\ValidationException;
 final readonly class RegisterUserValidator
 {
     public function __construct(
-        private ValidatorFactory $validatorFactory,
+        private ValidatorFactoryInterface $validatorFactory,
         private UserRepositoryInterface $userRepository,
         private TenantRepositoryInterface $tenantRepository,
     ) {}
@@ -48,17 +46,13 @@ final readonly class RegisterUserValidator
             'slug' => $command->slug,
         ];
 
-        $validator = $this->validatorFactory->make($data, $this->rules($command));
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
+        $this->validatorFactory->validate($data, $this->rules($command));
     }
 
     /**
      * Get validation rules for the RegisterUserCommand.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\Rule|array|string>
+     * @return array<string, array|string>
      */
     public function rules(RegisterUserCommand $command): array
     {
@@ -71,7 +65,7 @@ final readonly class RegisterUserValidator
                 'max:255',
                 new UniqueUserEmailRule($this->userRepository),
             ],
-            'password' => ['required', 'string', Password::defaults()],
+            'password' => ['required', 'string', 'min:8', 'regex:/[A-Za-z]/', 'regex:/[0-9]/'],
             'tenantName' => ['nullable', 'string', 'max:255'],
             'slug' => [
                 'nullable',
