@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\Contracts;
 
-use Illuminate\Contracts\Auth\Authenticatable;
+
 
 /**
  * TenantAwareAuthenticatable - Unified Identity + Tenancy Contract
@@ -18,8 +18,16 @@ use Illuminate\Contracts\Auth\Authenticatable;
  * @see App\Application\Shared\Contracts\TenantAware
  * @see App\Actions\Authentication\ResetPasswordAction
  */
-interface TenantAwareAuthenticatable extends Authenticatable, TenantAware
+interface TenantAwareAuthenticatable extends TenantAware
 {
     // Inherits getTenantId(): int|string from TenantAware
-    // Inherits getAuthIdentifier(), getAuthPassword(), etc. from Authenticatable
+    // Explicit auth contract — mirrors Illuminate\Contracts\Auth\Authenticatable
+    // without coupling the Application layer to the framework namespace.
+    public function getAuthIdentifierName(): string;
+    public function getAuthIdentifier(): mixed;
+    public function getAuthPasswordName(): string;
+    public function getAuthPassword(): string;
+    public function getRememberToken(): ?string;
+    public function setRememberToken(?string $value): void;
+    public function getRememberTokenName(): string;
 }

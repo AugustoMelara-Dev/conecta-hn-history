@@ -7,6 +7,7 @@ namespace App\Application\Billing\Jobs;
 use App\Domain\Billing\Gateways\SubscriptionGatewayInterface;
 use App\Domain\Billing\Entities\SubscriptionIntent;
 use App\Domain\Billing\Repositories\SubscriptionIntentRepositoryInterface;
+use App\Domain\Shared\Contracts\ClockInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -27,9 +28,10 @@ final readonly class ReconcilePendingSubscriptionsJob
         SubscriptionGatewayInterface $gateway,
         LoggerInterface $logger,
         SubscriptionIntentRepositoryInterface $intentRepository,
+        ClockInterface $clock,
     ): void {
         // Metric: Strict 1 hour threshold
-        $threshold = \Carbon\CarbonImmutable::now()->subHour()->toDateTimeString();
+        $threshold = $clock->now()->modify('-1 hour')->format('Y-m-d H:i:s');
 
         $intents = $intentRepository->findPendingOlderThan($this->tenantId, $threshold);
 
@@ -53,7 +55,10 @@ final readonly class ReconcilePendingSubscriptionsJob
                     $logger->info("Reconciled PENDING intent to FAILED", ['intent_id' => $intent->id]);
                 }
             } catch (\Throwable $e) {
-                report($e); // Fail-safe
+                $logger->error('Failed to reconcile subscription intent', [
+                    'intent_id' => $intent->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
     }
