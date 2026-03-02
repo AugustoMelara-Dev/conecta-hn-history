@@ -53,11 +53,59 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // ═══════════════════════════════════════════════════════════════════════
-        // TITANIUM EVENT STORE: The One True Store (DB + Outbox)
+        // COMMAND VALIDATOR REGISTRY: Explicit Command → Validator Mapping (A5)
+        // Replaces Service Locator pattern in ValidationMiddleware.
         // ═══════════════════════════════════════════════════════════════════════
-        $this->app->bind(
-            \App\Domain\Common\Contracts\EventStoreRepositoryInterface::class,
-            \App\Infrastructure\Common\EventStore\DatabaseEventStore::class
+        $this->app->singleton(
+            \App\Application\Shared\Contracts\CommandValidatorRegistryInterface::class,
+            function ($app) {
+                $registry = new \App\Infrastructure\Shared\Middleware\CommandValidatorRegistry();
+
+                if (class_exists(\App\Application\Identity\Commands\RegisterUserCommand::class)) {
+                    $registry->register(
+                        \App\Application\Identity\Commands\RegisterUserCommand::class,
+                        $app->make(\App\Application\Identity\Validators\RegisterUserValidator::class)
+                    );
+                }
+                if (class_exists(\App\Application\Auth\Commands\DeleteUserCommand::class)) {
+                    $registry->register(
+                        \App\Application\Auth\Commands\DeleteUserCommand::class,
+                        $app->make(\App\Application\Auth\Validators\DeleteUserCommandValidator::class)
+                    );
+                }
+                if (class_exists(\App\Application\Auth\Commands\LoginViaSocialProviderCommand::class)) {
+                    $registry->register(
+                        \App\Application\Auth\Commands\LoginViaSocialProviderCommand::class,
+                        $app->make(\App\Application\Auth\Validators\LoginViaSocialProviderCommandValidator::class)
+                    );
+                }
+                if (class_exists(\App\Application\Auth\Commands\UpdateUserPasswordCommand::class)) {
+                    $registry->register(
+                        \App\Application\Auth\Commands\UpdateUserPasswordCommand::class,
+                        $app->make(\App\Application\Auth\Validators\UpdateUserPasswordCommandValidator::class)
+                    );
+                }
+                if (class_exists(\App\Application\Auth\Commands\VerifyOtpCommand::class)) {
+                    $registry->register(
+                        \App\Application\Auth\Commands\VerifyOtpCommand::class,
+                        $app->make(\App\Application\Auth\Validators\VerifyOtpCommandValidator::class)
+                    );
+                }
+                if (class_exists(\App\Application\Billing\Commands\ReportPaymentCommand::class)) {
+                    $registry->register(
+                        \App\Application\Billing\Commands\ReportPaymentCommand::class,
+                        $app->make(\App\Application\Billing\Validators\ReportPaymentCommandValidator::class)
+                    );
+                }
+                if (class_exists(\App\Application\Billing\Commands\RequestUpgradeCommand::class)) {
+                    $registry->register(
+                        \App\Application\Billing\Commands\RequestUpgradeCommand::class,
+                        $app->make(\App\Application\Billing\Validators\RequestUpgradeCommandValidator::class)
+                    );
+                }
+
+                return $registry;
+            }
         );
 
         // ═══════════════════════════════════════════════════════════════════════

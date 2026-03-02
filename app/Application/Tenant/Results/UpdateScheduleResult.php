@@ -20,11 +20,11 @@ final readonly class UpdateScheduleResult
         public array $schedule
     ) {}
 
-    public static function fromRequest(mixed $request, int|string $tenantId): self
+    public static function fromArray(array $schedule, int|string $tenantId): self
     {
         return new self(
             tenantId: $tenantId,
-            schedule: (array) $request->input('schedule', [])
+            schedule: $schedule
         );
     }
 }
