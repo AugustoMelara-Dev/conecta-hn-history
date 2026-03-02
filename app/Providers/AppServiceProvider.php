@@ -609,6 +609,24 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // ═══════════════════════════════════════════════════════════════════════
+        // APPLICATION LAYER: DIP Ports → Infrastructure Adapters
+        // Binds Application\Shared\Contracts (Ports) to App\Services (Adapters)
+        // Required by CreateOrderHandler after concrete service decoupling.
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Application\Shared\Contracts\CouponValidatorInterface::class,
+            \App\Services\CouponValidatorService::class
+        );
+        $this->app->bind(
+            \App\Application\Shared\Contracts\InventoryManagerInterface::class,
+            \App\Services\InventoryManager::class
+        );
+        $this->app->bind(
+            \App\Application\Shared\Contracts\PriceCalculatorInterface::class,
+            \App\Services\PriceCalculatorService::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
         // ORDERS DOMAIN: Receipt PDF Generator
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
