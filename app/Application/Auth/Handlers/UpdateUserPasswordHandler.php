@@ -15,7 +15,7 @@ use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Shared\PasswordHasherInterface;
-use Ramsey\Uuid\Uuid;
+
 
 /**
  * UpdateUserPasswordHandler - Atomic Protocol Edition

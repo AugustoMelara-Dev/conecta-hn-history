@@ -15,6 +15,8 @@ use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
+use App\Domain\Identity\Repositories\UserRepositoryInterface;
+use App\Domain\Sales\Events\OrderCreated;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Application\Shared\Contracts\CouponValidatorInterface;
 use App\Application\Shared\Contracts\InventoryManagerInterface;
@@ -41,7 +43,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         private CouponValidatorInterface $couponValidator,
         private TenantRepositoryInterface $tenantRepository,
         private OrderRepositoryInterface $orderRepository,
-        private \App\Domain\Identity\Repositories\UserRepositoryInterface $userRepository,
+        private UserRepositoryInterface $userRepository,
         private EventDispatcherInterface $eventDispatcher,
         private OrderFactory $orderFactory,
         private TransactionManagerInterface $transactionManager, // Injected for Atomicity,
@@ -149,7 +151,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         }
 
         // STEP 9: DISPATCH EVENT
-        $this->eventDispatcher->dispatch(new \App\Domain\Sales\Events\OrderCreated(
+        $this->eventDispatcher->dispatch(new OrderCreated(
             orderId: $orderEntity->id,
             tenantId: $command->tenantId, // or $orderEntity->tenantId if available
             orderNumber: $orderEntity->orderNumber->toString(), // Assuming VO or string
