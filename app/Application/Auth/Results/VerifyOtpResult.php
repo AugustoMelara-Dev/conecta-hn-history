@@ -24,7 +24,7 @@ final readonly class VerifyOtpResult
         public DateTimeImmutable $verifiedAt,
         public bool $requiresTwoFactor = false,
         public bool $requiresRegistration = false,
-        public ?string $identifier = null,
+        #[\SensitiveParameter] public ?string $identifier = null,
     ) {}
 
     public static function forUser(UserEntity $user): self
