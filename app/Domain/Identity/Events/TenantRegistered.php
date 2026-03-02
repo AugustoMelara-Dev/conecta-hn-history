@@ -24,6 +24,7 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
     public function __construct(
         public string $tenantId,
         public string $userId,
+        public string $selectedPlan = 'free',
         // Restoration parameters
         ?string $restoredEventId = null,
         ?string $restoredOccurredAt = null,
@@ -51,6 +52,7 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
         return [
             'tenant_id' => $this->tenantId,
             'user_id' => $this->userId,
+            'selected_plan' => $this->selectedPlan,
             'event_id' => $this->eventId,
             'occurred_at' => $this->occurredAt->format(DATE_ATOM),
         ];
