@@ -13,29 +13,29 @@ use App\Domain\Identity\Entities\UserEntity;
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  PROTOCOL AGNOSTIC: Zero knowledge of HTTP, URLs, or Redirects.         ║
  * ║  STATE FOCUSED: Exposes the exact result state via AuthStatus Enum.     ║
- * ║  INMUTABLE: Final readonly DTO.                                         ║
+ * ║  INMUTABLE: Final readonly DTO. Transports primitives only.             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class SocialLoginResult
 {
     public function __construct(
         public AuthStatus $status,
-        public UserEntity $user,
-        public ?string $token = null // Optional JWT/Sanctum token if needed immediately
+        public string $userId,
+        public ?string $tenantId = null,
+        public ?string $token = null
     ) {}
 
     public static function success(UserEntity $user): self
     {
-        // If user has no tenant, they require onboarding
-        $status = $user->tenantId === null
+        $status = $user->tenantId() === null
             ? AuthStatus::REQUIRES_ONBOARDING
             : AuthStatus::SUCCESS;
 
-        return new self($status, $user);
+        return new self($status, $user->id(), $user->tenantId());
     }
 
     public static function newUser(UserEntity $user): self
     {
-        return new self(AuthStatus::NEW_USER, $user);
+        return new self(AuthStatus::NEW_USER, $user->id(), $user->tenantId());
     }
 }

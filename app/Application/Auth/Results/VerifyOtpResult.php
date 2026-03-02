@@ -13,13 +13,14 @@ use DateTimeImmutable;
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  PURE: Uses native DateTimeImmutable, no Carbon dependency.             ║
  * ║  IMMUTABLE: final readonly ensures state consistency.                   ║
- * ║  TYPED: Strongly typed properties for IDE support and safety.           ║
+ * ║  TYPED: Primitive transport only — no Domain Entity leakage.            ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class VerifyOtpResult
 {
     public function __construct(
-        public ?UserEntity $user,
+        public ?string $userId,
+        public ?string $tenantId,
         public DateTimeImmutable $verifiedAt,
         public bool $requiresTwoFactor = false,
         public bool $requiresRegistration = false,
@@ -29,7 +30,8 @@ final readonly class VerifyOtpResult
     public static function forUser(UserEntity $user): self
     {
         return new self(
-            user: $user,
+            userId: $user->id(),
+            tenantId: $user->tenantId(),
             verifiedAt: new DateTimeImmutable,
         );
     }
@@ -37,7 +39,8 @@ final readonly class VerifyOtpResult
     public static function forNewUser(string $identifier): self
     {
         return new self(
-            user: null,
+            userId: null,
+            tenantId: null,
             verifiedAt: new DateTimeImmutable,
             requiresRegistration: true,
             identifier: $identifier,
@@ -46,6 +49,6 @@ final readonly class VerifyOtpResult
 
     public function hasUser(): bool
     {
-        return $this->user !== null;
+        return $this->userId !== null;
     }
 }
