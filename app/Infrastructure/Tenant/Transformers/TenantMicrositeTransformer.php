@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Tenant\Transformers;
+namespace App\Infrastructure\Tenant\Transformers;
 
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
 use App\Application\Shared\Contracts\FileUrlResolverInterface;
 use App\Application\Shared\Contracts\SlugGeneratorInterface;
+use App\Models\Tenant;
 
 /**
  * TenantMicrositeTransformer - Application Layer Data Transformer
