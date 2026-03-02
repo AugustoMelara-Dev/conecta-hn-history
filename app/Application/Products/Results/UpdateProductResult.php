@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Application\Products\Results;
 
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * UpdateProductResult - Immutable Output Contract for Product Update
@@ -13,7 +12,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  * ║  AUDIT FRIENDLY: Includes changedAttributes for UI change notifications ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-#[TypeScript]
 final readonly class UpdateProductResult
 {
     /**

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Results;
 
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * RegisterTenantResult - Immutable Output Contract for Tenant Registration
@@ -14,7 +13,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  * ║  IDEMPOTENCY READY: Implements strict serialization for caching.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-#[TypeScript]
 final readonly class RegisterTenantResult
 {
     public function __construct(
