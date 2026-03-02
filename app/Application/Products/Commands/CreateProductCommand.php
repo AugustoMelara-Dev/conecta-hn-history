@@ -15,8 +15,10 @@ use App\Application\Shared\Contracts\IdempotentCommandInterface;
  * ║  IDEMPOTENT: Network retries must not create duplicate products.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class CreateProductCommand implements IdempotentCommandInterface
+final readonly class CreateProductCommand implements IdempotentCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** Tenant ID for multi-tenant isolation */
         public string $tenantId,

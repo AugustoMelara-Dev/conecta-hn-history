@@ -14,8 +14,10 @@ use App\Application\Shared\Contracts\IdempotentCommandInterface;
  * ║  TENANT ISOLATED: Requires tenant ID for ownership verification.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class ToggleProductVisibilityCommand implements IdempotentCommandInterface
+final readonly class ToggleProductVisibilityCommand implements IdempotentCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** Tenant ID for ownership verification */
         public string $tenantId,

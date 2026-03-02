@@ -15,8 +15,10 @@ use App\Application\Shared\Contracts\IdempotentCommandInterface;
  * ║  IDEMPOTENT: Replaying a delete on an already-deleted product is safe.  ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class DeleteProductCommand implements IdempotentCommandInterface
+final readonly class DeleteProductCommand implements IdempotentCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** Tenant ID for ownership verification */
         public string $tenantId,
