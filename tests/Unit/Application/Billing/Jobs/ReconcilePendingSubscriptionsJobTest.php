@@ -29,5 +29,9 @@ it('passes tenantId to findPendingOlderThan and does not return cross-tenant int
     $logger  = Mockery::mock(\Psr\Log\LoggerInterface::class);
 
     $job = new \App\Application\Billing\Jobs\ReconcilePendingSubscriptionsJob($tenantA);
-    $job->handle($gateway, $logger, $repository);
+
+    $clock = Mockery::mock(\App\Domain\Shared\Contracts\ClockInterface::class);
+    $clock->shouldReceive('now')->andReturn(new \DateTimeImmutable());
+
+    $job->handle($gateway, $logger, $repository, $clock);
 });
