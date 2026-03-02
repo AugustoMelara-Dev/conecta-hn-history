@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
-use App\Application\Auth\Handlers\LoginViaSocialProviderHandler;
+use App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface;
 use App\Application\DTOs\Auth\SocialProviderData;
 use App\Domain\Shared\Enums\ProviderName;
 use App\Http\Controllers\Controller;
@@ -48,7 +48,7 @@ final class SocialAuthController extends Controller
     /**
      * Handle the OAuth provider callback.
      */
-    public function callback(string $provider, LoginViaSocialProviderHandler $handler): RedirectResponse
+    public function callback(string $provider, LoginViaSocialProviderHandlerInterface $handler): RedirectResponse
     {
         try {
             // 1. External Infrastructure Call (Socialite)

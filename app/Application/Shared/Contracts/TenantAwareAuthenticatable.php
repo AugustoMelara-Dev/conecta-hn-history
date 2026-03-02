@@ -23,11 +23,14 @@ interface TenantAwareAuthenticatable extends TenantAware
     // Inherits getTenantId(): int|string from TenantAware
     // Explicit auth contract — mirrors Illuminate\Contracts\Auth\Authenticatable
     // without coupling the Application layer to the framework namespace.
-    public function getAuthIdentifierName(): string;
-    public function getAuthIdentifier(): mixed;
-    public function getAuthPasswordName(): string;
-    public function getAuthPassword(): string;
-    public function getRememberToken(): ?string;
-    public function setRememberToken(?string $value): void;
-    public function getRememberTokenName(): string;
+    // NOTE: No return types — Illuminate\Auth\Authenticatable trait declares all
+    // these methods without type hints. Adding types would cause fatal PHP
+    // declaration incompatibility on every Eloquent User implementation.
+    public function getAuthIdentifierName();
+    public function getAuthIdentifier();
+    public function getAuthPasswordName();
+    public function getAuthPassword();
+    public function getRememberToken();
+    public function setRememberToken($value);
+    public function getRememberTokenName();
 }
