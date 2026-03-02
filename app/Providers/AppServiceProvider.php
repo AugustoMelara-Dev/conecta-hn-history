@@ -747,6 +747,16 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Services\LaravelSlugGenerator::class
         );
 
+        $this->app->bind(
+            \App\Application\Shared\Contracts\FileUrlResolverInterface::class,
+            \App\Infrastructure\Storage\LaravelFileUrlResolver::class
+        );
+
+        $this->app->bind(
+            \App\Application\Shared\Contracts\ValidatorFactoryInterface::class,
+            \App\Infrastructure\Shared\Services\LaravelValidatorFactory::class
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
         // INFRASTRUCTURE: Resilience & Observability
         // ═══════════════════════════════════════════════════════════════════════

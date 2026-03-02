@@ -50,8 +50,15 @@ final class SocialAuthController extends Controller
             // 1. External Infrastructure Call (Socialite)
             $socialUser = $this->socialite->driver($provider)->user();
 
-            // 2. Data Normalization (DTO)
-            $data = SocialProviderData::fromSocialite($provider, $socialUser);
+            // 2. Data Normalization (DTO) — ACL boundary: extract primitives here
+            $data = new SocialProviderData(
+                name: $socialUser->getName() ?? explode('@', $socialUser->getEmail())[0],
+                email: $socialUser->getEmail(),
+                avatar: $socialUser->getAvatar(),
+                provider_id: $socialUser->getId(),
+                provider_name: strtolower($provider),
+                token: $socialUser->token ?? null,
+            );
 
             // 3. Domain Logic Execution (Action)
             $user = $action->execute($data);

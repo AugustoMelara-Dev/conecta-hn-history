@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Shared\Middleware;
 
 use Closure;
-use Illuminate\Contracts\Validation\Factory as ValidationFactory;
-use Illuminate\Validation\ValidationException;
+use App\Application\Shared\Contracts\ValidatorFactoryInterface;
+use App\Application\Shared\Exceptions\CommandValidationException;
 
 /**
  * ValidationMiddleware - Intercepts Commands before Handling
@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 final class ValidationMiddleware
 {
     public function __construct(
-        private ValidationFactory $validator,
+        private ValidatorFactoryInterface $validator,
         private \Illuminate\Contracts\Container\Container $container,
     ) {}
 
@@ -84,7 +84,7 @@ final class ValidationMiddleware
         $validator = $this->validator->make($payload, $rules);
 
         if ($validator->fails()) {
-            throw new ValidationException($validator);
+            throw new CommandValidationException($validator->errors()->toArray());
         }
 
         // 6. Pass to next middleware/handler

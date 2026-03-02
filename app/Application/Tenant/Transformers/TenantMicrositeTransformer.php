@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Tenant\Transformers;
 
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
-use Illuminate\Contracts\Filesystem\Filesystem;
-use Illuminate\Support\Str;
+use App\Application\Shared\Contracts\FileUrlResolverInterface;
+use App\Application\Shared\Contracts\SlugGeneratorInterface;
 
 /**
  * TenantMicrositeTransformer - Application Layer Data Transformer
@@ -29,7 +29,8 @@ final class TenantMicrositeTransformer
 {
     public function __construct(
         private readonly PlanFeatureFlagService $planService,
-        private readonly Filesystem $filesystem,
+        private readonly FileUrlResolverInterface $filesystem,
+        private readonly SlugGeneratorInterface $slugGenerator,
     ) {}
 
     /**
@@ -138,7 +139,7 @@ final class TenantMicrositeTransformer
             $baseProduct = [
                 'id' => $product->id,
                 'name' => $product->name,
-                'slug' => $product->slug ?? Str::slug($product->name),
+                'slug' => $product->slug ?? $this->slugGenerator->generate($product->name),
                 'description' => $product->description ?? '',
                 'price' => (float) ($product->price ?? 0),
                 'formatted_price' => 'L. '.number_format((float) ($product->price ?? 0), 2),
