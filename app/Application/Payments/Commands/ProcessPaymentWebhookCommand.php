@@ -6,8 +6,10 @@ namespace App\Application\Payments\Commands;
 
 use App\Domain\Exceptions\Payment\InvalidWebhookPayloadException;
 
-final readonly class ProcessPaymentWebhookCommand
+final readonly class ProcessPaymentWebhookCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         public string $eventType,
         public array $payload,

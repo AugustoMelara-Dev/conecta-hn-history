@@ -18,8 +18,10 @@ use App\Application\Shared\Contracts\SensitiveDataInterface;
  * ║  P1-REDACT: SensitiveDataInterface for Outbox/log sanitization.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class ResetUserPasswordCommand implements IdempotentCommandInterface, SensitiveDataInterface
+final readonly class ResetUserPasswordCommand implements IdempotentCommandInterface, SensitiveDataInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** The user's UUID (resolved by Handler, not carried as Entity) */
         public string $userId,

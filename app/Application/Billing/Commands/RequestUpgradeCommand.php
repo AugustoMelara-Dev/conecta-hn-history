@@ -6,8 +6,10 @@ namespace App\Application\Billing\Commands;
 
 use App\Application\Shared\Contracts\IdempotentCommandInterface;
 
-final readonly class RequestUpgradeCommand implements IdempotentCommandInterface
+final readonly class RequestUpgradeCommand implements IdempotentCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         public string $tenantId,
         public string $newPlanIdentifier,

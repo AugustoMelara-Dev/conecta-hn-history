@@ -12,8 +12,10 @@ namespace App\Application\Payments\Commands;
  * ║  IDEMPOTENCY KEY: externalEventId allows duplicate detection.           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class HandlePaymentWebhookCommand
+final readonly class HandlePaymentWebhookCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** Provider identifier (stripe, paypal, etc.) */
         public string $provider,
