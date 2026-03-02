@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Events\Order;
+namespace App\Domain\Sales\Events;
 
 use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\OrderNumber;
 use App\Domain\Shared\ValueObjects\TenantId;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+
 
 /**
  * OrderCancelled - Pure Domain Event for Order Voiding
@@ -47,7 +47,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
  *
  * DISPATCH POINT: OrderStateService::onCancelled() via DomainEventBus
  */
-final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterCommit
+final readonly class OrderCancelled implements DomainEvent
 {
     use HasDomainMetadata;
 

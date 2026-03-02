@@ -8,7 +8,7 @@ use App\Application\Shared\Contracts\EventBusInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\Payment\PaymentWebhookHandlerInterface;
 use App\Domain\ValueObjects\Payment\PaymentWebhook;
-use App\Events\Payment\PaymentWebhookReceived;
+use App\Domain\Billing\Events\PaymentWebhookReceived;
 
 /**
  * HandlePaymentWebhookAction
@@ -37,7 +37,7 @@ final readonly class HandlePaymentWebhookAction implements PaymentWebhookHandler
             'status' => 'acknowledged',
             'tenant_id' => $webhook->tenantId,
             'processed' => true,
-            'timestamp' => \Carbon\CarbonImmutable::now()->toIso8601String(),
+            'timestamp' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
         ];
     }
 }

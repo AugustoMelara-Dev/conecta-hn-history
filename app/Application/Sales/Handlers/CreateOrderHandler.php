@@ -13,11 +13,12 @@ use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Sales\Factories\OrderFactory;
 use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Exceptions\TenantNotFoundException;
+use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
+use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use App\Services\CouponValidatorService;
-use App\Services\InventoryManager;
-use App\Services\PriceCalculatorService;
+use App\Application\Shared\Contracts\CouponValidatorInterface;
+use App\Application\Shared\Contracts\InventoryManagerInterface;
+use App\Application\Shared\Contracts\PriceCalculatorInterface;
 
 /**
  * CreateOrderHandler - Pure Business Logic for Order Creation
@@ -35,9 +36,9 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
     use LogSanitizer;
 
     public function __construct(
-        private InventoryManager $inventoryManager,
-        private PriceCalculatorService $priceCalculator,
-        private CouponValidatorService $couponValidator,
+        private InventoryManagerInterface $inventoryManager,
+        private PriceCalculatorInterface $priceCalculator,
+        private CouponValidatorInterface $couponValidator,
         private TenantRepositoryInterface $tenantRepository,
         private OrderRepositoryInterface $orderRepository,
         private \App\Domain\Identity\Repositories\UserRepositoryInterface $userRepository,
@@ -60,7 +61,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         // STEP 0: RESOLVE CUSTOMER
         $user = $this->userRepository->findById($command->customerId);
         if (! $user) {
-            throw new \App\Exceptions\UserNotFoundException("User {$command->customerId} not found");
+            throw new UserNotFoundException("User {$command->customerId} not found");
         }
 
         // STEP 1: INVENTORY VALIDATION & LOCKING
