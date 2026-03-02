@@ -27,7 +27,7 @@ final readonly class HandlePaymentWebhookCommand
         /** Full decoded JSON payload for audit trail */
         public array $payload,
 
-        /** Optional tenant ID if webhook is tenant-contextualized */
-        public ?int $tenantId = null,
+        /** Mandatory tenant ID for audit trail isolation */
+        public int|string $tenantId,
     ) {}
 }
