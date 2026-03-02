@@ -15,7 +15,7 @@ use App\Application\Shared\Contracts\TransactionManagerInterface;
  * 2. Auto-Rollback: On any Throwable.
  * 3. Commit: Only on success.
  */
-final class TransactionDecorator
+final readonly class TransactionDecorator
 {
     public function __construct(
         private object $inner,

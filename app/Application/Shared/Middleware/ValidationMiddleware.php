@@ -15,7 +15,7 @@ use App\Application\Shared\Exceptions\CommandValidationException;
  * Implements a "Registry over Convention" pipeline step.
  * Resolves validators via an explicit registry — no Service Locator.
  */
-final class ValidationMiddleware
+final readonly class ValidationMiddleware
 {
     public function __construct(
         private ValidatorFactoryInterface $validator,

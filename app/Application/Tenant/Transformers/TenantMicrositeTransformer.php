@@ -25,7 +25,7 @@ use App\Application\Shared\Contracts\SlugGeneratorInterface;
  *
  * @see \App\Http\Controllers\Public\TenantMicrositeController - Uses this transformer
  */
-final class TenantMicrositeTransformer
+final readonly class TenantMicrositeTransformer
 {
     public function __construct(
         private readonly PlanFeatureFlagService $planService,

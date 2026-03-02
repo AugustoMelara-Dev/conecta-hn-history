@@ -99,6 +99,6 @@ Schedule::job(new \App\Jobs\SendAppointmentReminders)
 Schedule::call(function () {
     $tenantIds = \Illuminate\Support\Facades\DB::table('tenants')->pluck('id');
     foreach ($tenantIds as $tenantId) {
-        dispatch(new \App\Application\Billing\Jobs\ReconcilePendingSubscriptionsJob($tenantId));
+        dispatch(new \App\Application\Billing\Commands\ReconcilePendingSubscriptionsCommand($tenantId));
     }
 })->hourly()->name('billing:reconcile-pending');

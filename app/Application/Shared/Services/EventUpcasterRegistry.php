@@ -16,15 +16,12 @@ use RuntimeException;
  * ║  TENANT SAFE: Operates only on raw array payloads.                     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class EventUpcasterRegistry
+final readonly class EventUpcasterRegistry
 {
-    /** @var UpcasterInterface[] */
-    private array $upcasters = [];
-
-    public function register(UpcasterInterface $upcaster): void
-    {
-        $this->upcasters[] = $upcaster;
-    }
+    /**
+     * @param UpcasterInterface[] $upcasters Injected at construction — no post-construction mutation.
+     */
+    public function __construct(private array $upcasters = []) {}
 
     /**
      * Apply sequential upcasting chain: V(n) → V(n+1) → ... → V(target).
