@@ -1,163 +1,109 @@
 <?php
 
-namespace Tests\Feature\Billing;
+declare(strict_types=1);
 
 use App\Application\Billing\Jobs\ReconcilePendingSubscriptionsJob;
 use App\Domain\Billing\Gateways\SubscriptionGatewayInterface;
-use Illuminate\Database\ConnectionInterface;
-use Illuminate\Database\Query\Builder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Mockery;
+use App\Domain\Billing\Repositories\SubscriptionIntentRepositoryInterface;
+use App\Domain\Shared\Contracts\ClockInterface;
 use Psr\Log\LoggerInterface;
-use Tests\TestCase;
 
-class ReconcilePendingSubscriptionsTest extends TestCase
-{
-    use RefreshDatabase;
+beforeEach(function () {
+    $this->gateway    = Mockery::mock(SubscriptionGatewayInterface::class);
+    $this->logger     = Mockery::mock(LoggerInterface::class)->shouldIgnoreMissing();
+    $this->repository = Mockery::mock(SubscriptionIntentRepositoryInterface::class);
+    $this->clock      = Mockery::mock(ClockInterface::class);
+});
 
-    private ConnectionInterface $mockConnection;
-    private Builder $mockBuilder;
-    private LoggerInterface $mockLogger;
+afterEach(function () {
+    Mockery::close();
+});
 
-    protected function setUp(): void
-    {
-        parent::setUp();
+it('ignores recent pending subscriptions', function () {
+    $tenantId = 'tenant-123';
+    $job      = new ReconcilePendingSubscriptionsJob($tenantId);
 
-        // Create Tenant for FK constraints
-        DB::table('tenants')->insert([
-            'id' => '00000000-0000-0000-0000-000000000001',
-            'name' => 'Test Tenant',
-            'slug' => 'test-tenant-slug',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+    $date      = new \DateTimeImmutable('2026-03-01 12:00:00');
+    $threshold = $date->modify('-1 hour')->format('Y-m-d H:i:s');
 
-        // Mock the ConnectionInterface and Query Builder chain
-        $this->mockBuilder = Mockery::mock(Builder::class);
-        $this->mockConnection = Mockery::mock(ConnectionInterface::class);
-        $this->mockLogger = Mockery::mock(LoggerInterface::class);
-        $this->mockLogger->shouldReceive('info')->zeroOrMoreTimes();
-    }
+    $this->clock->shouldReceive('now')->once()->andReturn($date);
 
-    /** @test */
-    public function it_ignores_recent_pending_subscriptions()
-    {
-        // ARRANGE — No stale intents exist
-        $this->mockConnection
-            ->shouldReceive('table')
-            ->with('subscription_intents')
-            ->once()
-            ->andReturn($this->mockBuilder);
+    $this->repository
+        ->shouldReceive('findPendingOlderThan')
+        ->once()
+        ->with($tenantId, $threshold)
+        ->andReturn([]);
 
-        $this->mockBuilder->shouldReceive('where')->andReturnSelf();
-        $this->mockBuilder->shouldReceive('get')->once()->andReturn(collect([]));
+    $this->gateway->shouldReceive('verifyStatus')->never();
+    $this->repository->shouldReceive('updateStatus')->never();
 
-        // Mock Gateway to ensure it is NOT called
-        $mockGateway = Mockery::mock(SubscriptionGatewayInterface::class);
-        $mockGateway->shouldReceive('verifyStatus')->never();
+    $job->handle($this->gateway, $this->logger, $this->repository, $this->clock);
+});
 
-        // ACT
-        $job = new ReconcilePendingSubscriptionsJob;
-        $job->handle($mockGateway, $this->mockLogger, $this->mockConnection);
+it('reconciles old pending subscriptions to paid', function () {
+    $tenantId = 'tenant-123';
+    $job      = new ReconcilePendingSubscriptionsJob($tenantId);
 
-        // ASSERT — If gateway was called, Mockery would fail (->never())
-        expect(true)->toBeTrue();
-    }
+    $date      = new \DateTimeImmutable('2026-03-01 12:00:00');
+    $threshold = $date->modify('-1 hour')->format('Y-m-d H:i:s');
 
-    /** @test */
-    public function it_reconciles_old_pending_subscriptions_to_paid()
-    {
-        // ARRANGE — One stale intent exists
-        $staleIntent = (object) [
-            'id' => '00000000-0000-0000-0000-000000000200',
-            'tenant_id' => '00000000-0000-0000-0000-000000000001',
-            'plan_identifier' => 'pro_monthly',
-            'gateway_provider' => 'stripe',
-            'status' => 'PENDING',
-            'client_idempotency_key' => 'key_stuck',
-            'created_at' => '2020-01-01 00:00:00',
-        ];
+    $intent = (object) [
+        'id'                     => 'intent-1',
+        'client_idempotency_key' => 'key-1',
+    ];
 
-        // SELECT query: table -> where(status) -> where(created_at) -> get()
-        $selectBuilder = Mockery::mock(Builder::class);
-        $selectBuilder->shouldReceive('where')->andReturnSelf();
-        $selectBuilder->shouldReceive('get')->once()->andReturn(collect([$staleIntent]));
+    $this->clock->shouldReceive('now')->once()->andReturn($date);
 
-        // UPDATE query: table -> where(id) -> update(...)
-        $updateBuilder = Mockery::mock(Builder::class);
-        $updateBuilder->shouldReceive('where')->with('id', $staleIntent->id)->once()->andReturnSelf();
-        $updateBuilder->shouldReceive('update')->once()->with(Mockery::on(function ($data) {
-            return $data['status'] === 'COMPLETED'
-                && $data['notes'] === 'Auto-reconciled by ReconcilePendingSubscriptionsJob';
-        }))->andReturn(1);
+    $this->repository
+        ->shouldReceive('findPendingOlderThan')
+        ->once()
+        ->with($tenantId, $threshold)
+        ->andReturn([$intent]);
 
-        // Wire connection: first table() call = SELECT, second = UPDATE
-        $this->mockConnection
-            ->shouldReceive('table')
-            ->with('subscription_intents')
-            ->twice()
-            ->andReturn($selectBuilder, $updateBuilder);
+    $this->gateway
+        ->shouldReceive('verifyStatus')
+        ->once()
+        ->with('key-1')
+        ->andReturn('PAID'); // Uppercase — matches `if ($status === 'PAID')` in handler
 
-        // Mock Gateway returns PAID
-        $mockGateway = Mockery::mock(SubscriptionGatewayInterface::class);
-        $mockGateway->shouldReceive('verifyStatus')
-            ->with('key_stuck')
-            ->once()
-            ->andReturn('PAID');
+    $this->repository
+        ->shouldReceive('updateStatus')
+        ->once()
+        ->with('intent-1', Mockery::type('array'));
 
-        // ACT
-        $job = new ReconcilePendingSubscriptionsJob;
-        $job->handle($mockGateway, $this->mockLogger, $this->mockConnection);
+    $job->handle($this->gateway, $this->logger, $this->repository, $this->clock);
+});
 
-        // ASSERT — Mockery expectations verify the update was called with COMPLETED
-    }
+it('reconciles old pending subscriptions to failed', function () {
+    $tenantId = 'tenant-123';
+    $job      = new ReconcilePendingSubscriptionsJob($tenantId);
 
-    /** @test */
-    public function it_reconciles_old_pending_subscriptions_to_failed()
-    {
-        // ARRANGE — One stale intent exists
-        $staleIntent = (object) [
-            'id' => '00000000-0000-0000-0000-000000000300',
-            'tenant_id' => '00000000-0000-0000-0000-000000000001',
-            'plan_identifier' => 'pro_monthly',
-            'gateway_provider' => 'stripe',
-            'status' => 'PENDING',
-            'client_idempotency_key' => 'key_fail',
-            'created_at' => '2020-01-01 00:00:00',
-        ];
+    $date      = new \DateTimeImmutable('2026-03-01 12:00:00');
+    $threshold = $date->modify('-1 hour')->format('Y-m-d H:i:s');
 
-        // SELECT query
-        $selectBuilder = Mockery::mock(Builder::class);
-        $selectBuilder->shouldReceive('where')->andReturnSelf();
-        $selectBuilder->shouldReceive('get')->once()->andReturn(collect([$staleIntent]));
+    $intent = (object) [
+        'id'                     => 'intent-2',
+        'client_idempotency_key' => 'key-2',
+    ];
 
-        // UPDATE query
-        $updateBuilder = Mockery::mock(Builder::class);
-        $updateBuilder->shouldReceive('where')->with('id', $staleIntent->id)->once()->andReturnSelf();
-        $updateBuilder->shouldReceive('update')->once()->with(Mockery::on(function ($data) {
-            return $data['status'] === 'FAILED'
-                && $data['notes'] === 'Auto-reconciled by ReconcilePendingSubscriptionsJob';
-        }))->andReturn(1);
+    $this->clock->shouldReceive('now')->once()->andReturn($date);
 
-        // Wire connection
-        $this->mockConnection
-            ->shouldReceive('table')
-            ->with('subscription_intents')
-            ->twice()
-            ->andReturn($selectBuilder, $updateBuilder);
+    $this->repository
+        ->shouldReceive('findPendingOlderThan')
+        ->once()
+        ->with($tenantId, $threshold)
+        ->andReturn([$intent]);
 
-        // Mock Gateway returns FAILED
-        $mockGateway = Mockery::mock(SubscriptionGatewayInterface::class);
-        $mockGateway->shouldReceive('verifyStatus')
-            ->with('key_fail')
-            ->once()
-            ->andReturn('FAILED');
+    $this->gateway
+        ->shouldReceive('verifyStatus')
+        ->once()
+        ->with('key-2')
+        ->andReturn('FAILED'); // Uppercase — matches `elseif ($status === 'FAILED')` in handler
 
-        // ACT
-        $job = new ReconcilePendingSubscriptionsJob;
-        $job->handle($mockGateway, $this->mockLogger, $this->mockConnection);
+    $this->repository
+        ->shouldReceive('updateStatus')
+        ->once()
+        ->with('intent-2', Mockery::type('array'));
 
-        // ASSERT — Mockery expectations verify the update was called with FAILED
-    }
-}
+    $job->handle($this->gateway, $this->logger, $this->repository, $this->clock);
+});
