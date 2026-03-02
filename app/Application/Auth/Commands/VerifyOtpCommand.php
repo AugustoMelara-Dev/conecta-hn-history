@@ -22,13 +22,13 @@ final readonly class VerifyOtpCommand implements \App\Application\Shared\Contrac
         public string $tenantId,
 
         /** Email or phone number associated with OTP */
-        public string $identifier,
+        #[\SensitiveParameter] public string $identifier,
 
         /** 6-digit OTP code entered by user (plain text) */
-        public string $code,
+        #[\SensitiveParameter] public string $code,
 
         /** Client IP for security audit and brute-force detection */
-        public string $ipAddress,
+        #[\SensitiveParameter] public string $ipAddress,
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,

@@ -16,11 +16,11 @@ final readonly class UpdateScheduleResult
      * @param  array<string, array{isOpen: bool, open: ?string, close: ?string}>  $schedule
      */
     public function __construct(
-        public int|string $tenantId,
+        public string $tenantId,
         public array $schedule
     ) {}
 
-    public static function fromArray(array $schedule, int|string $tenantId): self
+    public static function fromArray(array $schedule, string $tenantId): self
     {
         return new self(
             tenantId: $tenantId,

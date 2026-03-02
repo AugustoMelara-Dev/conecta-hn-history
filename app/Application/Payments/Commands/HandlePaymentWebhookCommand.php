@@ -30,7 +30,7 @@ final readonly class HandlePaymentWebhookCommand implements \App\Application\Sha
         public array $payload,
 
         /** Mandatory tenant ID for audit trail isolation */
-        public int|string $tenantId,
+        public string $tenantId,
         public int $schemaVersion = 1,
     ) {}
 }
