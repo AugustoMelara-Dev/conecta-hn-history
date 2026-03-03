@@ -27,8 +27,8 @@ final class LowStockBroadcast implements BroadcastableNotification
     public $timeout = 30;
 
     public function __construct(
-        public int $tenantId,
-        public int $productId,
+        public string|int $tenantId,
+        public string|int $productId,
         public string $productName,
         public ?string $productSku,
         public float $currentStock,
@@ -38,8 +38,8 @@ final class LowStockBroadcast implements BroadcastableNotification
     ) {}
 
     public static function fromDomainData(
-        int $tenantId,
-        int $productId,
+        string|int $tenantId,
+        string|int $productId,
         string $productName,
         ?string $productSku,
         float $currentStock,
@@ -100,7 +100,7 @@ final class LowStockBroadcast implements BroadcastableNotification
      *   current_stock: float,
      *   threshold: float,
      *   severity: string,
-     *   tenant_id: int
+     *   tenant_id: string|int
      * }
      */
     public function broadcastWith(): array

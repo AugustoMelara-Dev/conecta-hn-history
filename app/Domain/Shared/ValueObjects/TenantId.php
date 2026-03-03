@@ -32,6 +32,18 @@ final readonly class TenantId
         return new self($value);
     }
 
+    /** @deprecated Test compatibility layer */
+    public static function fromInt(int $id): self
+    {
+        return new self(sprintf('00000000-0000-0000-4000-%012d', $id));
+    }
+
+    /** @deprecated Test compatibility layer */
+    public function toInt(): int
+    {
+        return (int) substr($this->value, -12);
+    }
+
     /**
      * Generate a new random TenantId using Ramsey\Uuid (framework-agnostic).
      */

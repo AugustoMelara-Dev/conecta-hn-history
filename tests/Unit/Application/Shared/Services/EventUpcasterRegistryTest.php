@@ -6,8 +6,6 @@ use App\Application\Shared\Contracts\UpcasterInterface;
 use App\Application\Shared\Services\EventUpcasterRegistry;
 
 it('sequentially upcasts an event payload from v1 to v3', function () {
-    $registry = new EventUpcasterRegistry();
-
     $upcasterV1toV2 = new class implements UpcasterInterface
     {
         public function supports(string $eventType, int $schemaVersion): bool
@@ -60,8 +58,7 @@ it('sequentially upcasts an event payload from v1 to v3', function () {
         }
     };
 
-    $registry->register($upcasterV1toV2);
-    $registry->register($upcasterV2toV3);
+    $registry = new EventUpcasterRegistry([$upcasterV1toV2, $upcasterV2toV3]);
 
     $initialPayload = [
         'first_name' => 'John',
@@ -77,8 +74,6 @@ it('sequentially upcasts an event payload from v1 to v3', function () {
 });
 
 it('throws an exception if there is a gap in the upcasting chain', function () {
-    $registry = new EventUpcasterRegistry();
-
     $faultyUpcaster = new class implements UpcasterInterface
     {
         public function supports(string $eventType, int $schemaVersion): bool
@@ -102,7 +97,7 @@ it('throws an exception if there is a gap in the upcasting chain', function () {
         }
     };
 
-    $registry->register($faultyUpcaster);
+    $registry = new EventUpcasterRegistry([$faultyUpcaster]);
 
     expect(fn () => $registry->upcast('TestEvent', 1, []))
         ->toThrow(RuntimeException::class, 'Upcasting gap detected');
