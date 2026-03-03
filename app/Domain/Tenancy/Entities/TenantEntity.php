@@ -67,11 +67,10 @@ final class TenantEntity
         // I will define the usage here. If the file `TenantCreated` is strictly readonly in disk, I can't fix it.
         // But I will follow the instruction "Pasa este plan...".
 
-        $event = new TenantCreated(
+        $event = TenantCreated::now(
             id: $id,
             name: $name,
-            domain: $domain,
-            plan: $plan // Assumed Arg
+            domain: $domain
         );
 
         $tenant->recordThat($event);

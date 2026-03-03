@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\ValueObjects;
 
-use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
@@ -17,10 +16,13 @@ use InvalidArgumentException;
  */
 final readonly class TenantId
 {
+    /** UUID v4 pattern (8-4-4-4-12 hex groups) */
+    private const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
+
     private function __construct(
         public string $value
     ) {
-        if (! Str::isUuid($this->value)) {
+        if (! preg_match(self::UUID_PATTERN, $this->value)) {
             throw new InvalidArgumentException("TenantId must be a valid UUID string. Received: {$this->value}");
         }
     }
@@ -28,6 +30,14 @@ final readonly class TenantId
     public static function fromString(string $value): self
     {
         return new self($value);
+    }
+
+    /**
+     * Generate a new random TenantId using Ramsey\Uuid (framework-agnostic).
+     */
+    public static function generate(): self
+    {
+        return new self(\Ramsey\Uuid\Uuid::uuid4()->toString());
     }
 
     public function __toString(): string

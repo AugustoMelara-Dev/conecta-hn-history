@@ -48,7 +48,7 @@ final class TenantEntity
     {
         $tenant = new self;
 
-        $event = new TenantCreated(
+        $event = TenantCreated::now(
             id: $id,
             name: $name,
             domain: $domain

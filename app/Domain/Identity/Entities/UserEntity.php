@@ -61,13 +61,13 @@ final class UserEntity
 
         // The Event is recorded ONCE with the FINAL state.
         // No patching allowed.
-        $event = new UserRegistered(
+        $event = UserRegistered::now(
             user_id: $uuid,
             name: $name,
             email: $email,
             password_hash: $passwordHash,
             role: $role->value,
-            tenant_id: $tenantId
+            tenant_id: $tenantId,
         );
 
         $user->recordThat($event);

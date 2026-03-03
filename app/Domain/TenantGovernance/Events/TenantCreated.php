@@ -12,17 +12,23 @@ use DateTimeImmutable;
  *
  * Immutable record of a Tenant's birth.
  */
-final class TenantCreated implements DomainEventInterface
+final readonly class TenantCreated implements DomainEventInterface
 {
-    public readonly DateTimeImmutable $occurredOn;
-
     public function __construct(
-        public readonly string $id,
-        public readonly string $name,
-        public readonly string $domain,
-        ?DateTimeImmutable $occurredOn = null
-    ) {
-        $this->occurredOn = $occurredOn ?? new DateTimeImmutable;
+        public string $id,
+        public string $name,
+        public string $domain,
+        public DateTimeImmutable $occurredOn,
+    ) {}
+
+    public static function now(string $id, string $name, string $domain): self
+    {
+        return new self(
+            id: $id,
+            name: $name,
+            domain: $domain,
+            occurredOn: new DateTimeImmutable,
+        );
     }
 
     public function occurredOn(): DateTimeImmutable
@@ -53,7 +59,7 @@ final class TenantCreated implements DomainEventInterface
             domain: (string) ($payload['domain'] ?? ''),
             occurredOn: isset($payload['occurred_on'])
                 ? new DateTimeImmutable($payload['occurred_on'])
-                : new DateTimeImmutable
+                : new DateTimeImmutable,
         );
     }
 }

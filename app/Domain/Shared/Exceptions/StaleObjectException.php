@@ -12,7 +12,7 @@ use RuntimeException;
  * Thrown when an Optimistic Update fails because the object's version
  * in the database does not match the version held in memory.
  */
-class StaleObjectException extends RuntimeException
+final class StaleObjectException extends RuntimeException
 {
     public static function forEntity(string $entityName, string $id): self
     {

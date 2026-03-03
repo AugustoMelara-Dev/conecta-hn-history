@@ -6,7 +6,7 @@ namespace App\Domain\Shared\Exceptions;
 
 use RuntimeException;
 
-class SchemaViolationException extends RuntimeException
+final class SchemaViolationException extends RuntimeException
 {
     public static function forSubject(string $subject, string $errors): self
     {

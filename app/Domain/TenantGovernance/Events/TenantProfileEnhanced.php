@@ -16,7 +16,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
  * - Implements toPayload/fromPayload.
  * - Outbox Ready.
  */
-final class TenantProfileEnhanced implements ShouldDispatchAfterCommit
+final readonly class TenantProfileEnhanced implements ShouldDispatchAfterCommit
 {
     public function __construct(
         public readonly string $tenant_id,
@@ -44,7 +44,7 @@ final class TenantProfileEnhanced implements ShouldDispatchAfterCommit
         return new self(
             tenant_id: (string) ($payload['tenant_id'] ?? ''),
             user_id: (int) ($payload['user_id'] ?? 0),
-            occurred_at: (string) ($payload['occurred_at'] ?? now()->toIso8601String()),
+            occurred_at: (string) ($payload['occurred_at'] ?? date('c')),
             enhanced_fields: (array) ($payload['enhanced_fields'] ?? [])
         );
     }

@@ -6,7 +6,7 @@ namespace App\Domain\Identity\Exceptions;
 
 use DomainException;
 
-class UserAlreadyExistsException extends DomainException
+final class UserAlreadyExistsException extends DomainException
 {
     // Semantic Domain Exception
 }
