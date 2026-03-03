@@ -4,10 +4,10 @@
     "type": "object",
     "properties": {
         "tenantId": {
-            "type": "integer"
+            "type": "string"
         },
         "customerId": {
-            "type": "integer"
+            "type": "string"
         },
         "currency": {
             "type": "string"
@@ -68,7 +68,7 @@
         },
         "requestorId": {
             "type": [
-                "integer",
+                "string",
                 "null"
             ],
             "default": null
@@ -79,6 +79,10 @@
                 "null"
             ],
             "default": null
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "default": 1
         }
     },
     "required": [

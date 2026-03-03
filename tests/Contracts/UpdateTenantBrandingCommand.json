@@ -4,7 +4,7 @@
     "type": "object",
     "properties": {
         "tenantId": {
-            "type": "integer"
+            "type": "string"
         },
         "logo": {
             "type": [
@@ -96,6 +96,10 @@
                 "null"
             ],
             "default": null
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "default": 1
         }
     },
     "required": [

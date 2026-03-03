@@ -1,0 +1,14 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "ReconcilePendingSubscriptionsCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "tenantId"
+    ],
+    "additionalProperties": false
+}

@@ -17,8 +17,10 @@ use App\Application\Shared\Contracts\SensitiveDataInterface;
  * ║  GDPR: ipAddress & userAgent are PII — redacted in logs & Outbox.     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class RecordInteractionCommand implements IdempotentCommandInterface, SensitiveDataInterface
+final readonly class RecordInteractionCommand implements IdempotentCommandInterface, SensitiveDataInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** Tenant context ID (pre-validated) */
         public string $tenantId,

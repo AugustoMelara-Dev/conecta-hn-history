@@ -1,0 +1,30 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "ProcessPaymentWebhookCommand",
+    "type": "object",
+    "properties": {
+        "eventType": {
+            "type": "string"
+        },
+        "payload": {
+            "type": "array"
+        },
+        "tenantId": {
+            "type": "string"
+        },
+        "receivedAt": {
+            "type": "string"
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "default": 1
+        }
+    },
+    "required": [
+        "eventType",
+        "payload",
+        "tenantId",
+        "receivedAt"
+    ],
+    "additionalProperties": false
+}

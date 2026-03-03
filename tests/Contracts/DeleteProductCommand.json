@@ -4,15 +4,23 @@
     "type": "object",
     "properties": {
         "tenantId": {
-            "type": "integer"
+            "type": "string"
         },
         "productId": {
             "type": "integer"
+        },
+        "idempotencyKey": {
+            "type": "string"
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "default": 1
         }
     },
     "required": [
         "tenantId",
-        "productId"
+        "productId",
+        "idempotencyKey"
     ],
     "additionalProperties": false
 }

@@ -11,6 +11,10 @@
         },
         "idempotencyKey": {
             "type": "string"
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "default": 1
         }
     },
     "required": [
