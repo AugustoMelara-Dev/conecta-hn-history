@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\User\Events;
 
 use DateTimeImmutable;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
 
 /**
  * UserProfileUpdated - Profile Change Domain Event

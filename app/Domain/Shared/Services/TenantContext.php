@@ -49,10 +49,12 @@ final class TenantContext
      *
      * @throws TenantContextMutationException If context already set.
      */
-    public function setAsSystemRoot(): void
+    public function setAsSystemRoot(bool $isConsoleOrTesting = false): void
     {
-        // SECURITY FIX (VC-AUDIT-008): Prevent HTTP-based privilege escalation
-        if (! app()->runningInConsole() && ! app()->environment('testing')) {
+        // SECURITY FIX (VC-AUDIT-008): Prevent HTTP-based privilege escalation.
+        // Callers (Console Kernel, ServiceProvider, TestCase setUp) must pass true explicitly.
+        // This removes the app() service locator dependency from the Domain layer.
+        if (! $isConsoleOrTesting) {
             throw new \RuntimeException('Security Violation: setAsSystemRoot() cannot be invoked from HTTP context.');
         }
 

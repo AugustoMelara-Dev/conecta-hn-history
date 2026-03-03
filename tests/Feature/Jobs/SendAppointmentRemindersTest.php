@@ -37,7 +37,7 @@ class SendAppointmentRemindersTest extends TestCase
         Mail::fake();
 
         // Initialize TenantContext as System Root for Job execution
-        app(\App\Domain\Shared\Services\TenantContext::class)->setAsSystemRoot();
+        app(\App\Domain\Shared\Services\TenantContext::class)->setAsSystemRoot(isConsoleOrTesting: true);
 
         // ═══════════════════════════════════════════════════════════════════════
         // RAW DB SETUP: Avoids BelongsToTenant TenantContext issues with factories

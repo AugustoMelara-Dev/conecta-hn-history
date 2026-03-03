@@ -36,7 +36,7 @@ final class AdminContextRunner
         $this->context->reset(); // Ensure clean slate before elevation
 
         try {
-            $this->context->setAsSystemRoot();
+            $this->context->setAsSystemRoot(isConsoleOrTesting: true);
 
             return $callback();
         } finally {
