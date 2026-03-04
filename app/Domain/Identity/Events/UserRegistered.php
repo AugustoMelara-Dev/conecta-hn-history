@@ -35,7 +35,7 @@ final readonly class UserRegistered implements DomainEventInterface
         public string $name, // Added for Read Model Completeness
         public string $email,
         public string $role,
-        public ?string $tenant_id,
+        public string $tenant_id,
         public DateTimeImmutable $occurredOn,
     ) {}
 
@@ -44,7 +44,7 @@ final readonly class UserRegistered implements DomainEventInterface
         string $name,
         string $email,
         string $role,
-        ?string $tenant_id,
+        string $tenant_id,
     ): self {
         return new self(
             user_id: $user_id,
@@ -64,7 +64,7 @@ final readonly class UserRegistered implements DomainEventInterface
             name: (string) ($payload['name'] ?? 'Unknown User'),
             email: (string) ($payload['email'] ?? ''),
             role: (string) ($payload['role'] ?? 'customer'),
-            tenant_id: $payload['tenant_id'] ?? null,
+            tenant_id: (string) ($payload['tenant_id'] ?? ''),
             occurredOn: isset($payload['occurred_on'])
                 ? new DateTimeImmutable($payload['occurred_on'])
                 : new DateTimeImmutable,
