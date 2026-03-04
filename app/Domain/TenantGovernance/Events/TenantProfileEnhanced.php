@@ -25,19 +25,8 @@ final readonly class TenantProfileEnhanced implements ShouldDispatchAfterCommit
         public readonly array $enhanced_fields // Array is scalar-ish enough for JSON
     ) {}
 
-    /*
-    public static function fromTenant(
-        \App\Models\Tenant $tenant,
-        array $enhancedFields
-    ): self {
-        return new self(
-            tenant_id: (string) $tenant->id,
-            user_id: (int) $tenant->user_id,
-            occurred_at: now()->toIso8601String(),
-            enhanced_fields: $enhancedFields
-        );
-    }
-    */
+
+
 
     public static function fromPayload(array $payload): self
     {
