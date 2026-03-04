@@ -16,9 +16,20 @@ use DateTimeImmutable;
  * SECURITY (A6): password_hash removed — credentials must never be
  * serialized in domain events (Event Store / Queue persistence).
  * The hash is set on the aggregate root before the event is recorded.
+ *
+ * CONTRACT VERSIONING: SCHEMA_VERSION = 2
+ * V1 → original with password_hash (purged, CRÍTICO-03)
+ * V2 → current: credential-free payload, contract-testing ready
  */
 final readonly class UserRegistered implements DomainEventInterface
 {
+    private const SCHEMA_VERSION = 2;
+
+    public function schemaVersion(): int
+    {
+        return self::SCHEMA_VERSION;
+    }
+
     public function __construct(
         public string $user_id,
         public string $name, // Added for Read Model Completeness
@@ -47,7 +58,8 @@ final readonly class UserRegistered implements DomainEventInterface
 
     public static function fromPayload(array $payload): static
     {
-        return new self(
+        // schema_version is routed by the Upcaster registry before reaching this factory.
+        return new static(
             user_id: (string) ($payload['user_id'] ?? ''),
             name: (string) ($payload['name'] ?? 'Unknown User'),
             email: (string) ($payload['email'] ?? ''),
@@ -62,12 +74,13 @@ final readonly class UserRegistered implements DomainEventInterface
     public function toPayload(): array
     {
         return [
-            'user_id' => $this->user_id,
-            'name' => $this->name,
-            'email' => $this->email,
-            'role' => $this->role,
-            'tenant_id' => $this->tenant_id,
-            'occurred_on' => $this->occurredOn->format(DateTimeImmutable::ATOM),
+            'schema_version' => self::SCHEMA_VERSION,
+            'user_id'        => $this->user_id,
+            'name'           => $this->name,
+            'email'          => $this->email,
+            'role'           => $this->role,
+            'tenant_id'      => $this->tenant_id,
+            'occurred_on'    => $this->occurredOn->format(\DateTimeInterface::ATOM),
         ];
     }
 
