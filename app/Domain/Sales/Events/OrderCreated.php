@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Sales\Events;
 
-use App\Contracts\Events\DomainEvent;
+use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldBeStoredInOutbox;
 // use App\Models\Order; // REMOVED
 use App\Traits\HasDomainMetadata;
