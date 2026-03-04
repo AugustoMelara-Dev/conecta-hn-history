@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Payments\Exceptions;
+namespace App\Domain\Billing\Exceptions;
 
 /**
  * UnknownPaymentException - Domain Exception for Unexpected Payment Errors

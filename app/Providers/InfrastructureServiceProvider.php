@@ -71,7 +71,7 @@ class InfrastructureServiceProvider extends ServiceProvider
         // FakePaymentGateway for testing or PayPalPaymentGateway for migration.
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Payments\Gateways\PaymentGatewayInterface::class,
+            \App\Domain\Billing\Gateways\PaymentGatewayInterface::class,
             fn () => app()->environment('testing')
                 ? new \App\Infrastructure\Payments\FakePaymentGateway
                 : new \App\Infrastructure\Payments\Stripe\StripePaymentGateway

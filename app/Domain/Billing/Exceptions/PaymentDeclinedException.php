@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Payments\Exceptions;
+namespace App\Domain\Billing\Exceptions;
 
 /**
  * PaymentDeclinedException - Domain Exception for Declined Payments

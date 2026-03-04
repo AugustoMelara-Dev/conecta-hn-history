@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Payment\Repositories;
+namespace App\Domain\Billing\Repositories;
 
 /**
  * WebhookLogRepositoryInterface - Domain Port for Webhook Audit & Idempotency

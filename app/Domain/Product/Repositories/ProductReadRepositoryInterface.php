@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Products\Repositories;
+namespace App\Domain\Product\Repositories;
 
 /**
  * ProductReadRepositoryInterface - Read Model for Product Catalog

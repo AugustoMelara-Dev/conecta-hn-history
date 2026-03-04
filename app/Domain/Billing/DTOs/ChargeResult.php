@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Payments\DTOs;
+namespace App\Domain\Billing\DTOs;
 
 /**
  * ChargeResult - Immutable Result DTO for Payment Operations
