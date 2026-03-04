@@ -16,6 +16,8 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  */
 final readonly class ProductDeleted implements ShouldDispatchAfterCommit
 {
+    private const SCHEMA_VERSION = 1;
+    public function schemaVersion(): int { return self::SCHEMA_VERSION; }
     public function __construct(
         public int $productId,
         public string $tenantId,
@@ -30,6 +32,7 @@ final readonly class ProductDeleted implements ShouldDispatchAfterCommit
     public function toPayload(): array
     {
         return [
+            'schema_version' => self::SCHEMA_VERSION,
             'product_id' => $this->productId,
             'tenant_id' => $this->tenantId,
             'name' => $this->name,

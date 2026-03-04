@@ -7,7 +7,7 @@ namespace App\Domain\Identity\Events;
 use App\Contracts\Events\DomainEvent;
 // use App\Models\Tenant; // REMOVED
 // use App\Models\User; // REMOVED
-use App\Traits\HasDomainMetadata;
+use App\Domain\Shared\Traits\HasDomainMetadata;
 use App\Domain\Shared\ValueObjects\TenantId;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
@@ -20,6 +20,9 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfterCommit
 {
     use HasDomainMetadata;
+
+    private const SCHEMA_VERSION = 1;
+    public function schemaVersion(): int { return self::SCHEMA_VERSION; }
 
     public function __construct(
         public string $tenantId,
@@ -50,6 +53,7 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
     public function toPrimitives(): array
     {
         return [
+            'schema_version' => self::SCHEMA_VERSION,
             'tenant_id' => $this->tenantId,
             'user_id' => $this->userId,
             'selected_plan' => $this->selectedPlan,

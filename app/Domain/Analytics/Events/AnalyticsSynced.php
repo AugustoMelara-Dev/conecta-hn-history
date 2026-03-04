@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Analytics\Events;
 
 use App\Contracts\Events\DomainEvent;
-use App\Traits\HasDomainMetadata;
+use App\Domain\Shared\Traits\HasDomainMetadata;
 use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 
@@ -17,6 +17,9 @@ use DateTimeImmutable;
 final readonly class AnalyticsSynced implements DomainEvent
 {
     use HasDomainMetadata;
+
+    private const SCHEMA_VERSION = 1;
+    public function schemaVersion(): int { return self::SCHEMA_VERSION; }
 
     public function __construct(
         public TenantId $tenantId,
@@ -52,6 +55,7 @@ final readonly class AnalyticsSynced implements DomainEvent
     public function toPrimitives(): array
     {
         return [
+            'schema_version' => self::SCHEMA_VERSION,
             'tenant_id' => $this->tenantId->toString(),
             'processed_records' => $this->processedRecords,
             'occurred_on' => $this->occurredOn->format(DATE_ATOM),
