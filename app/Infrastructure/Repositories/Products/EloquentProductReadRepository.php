@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Repositories\Products;
 
-use App\Domain\Products\Repositories\ProductReadRepositoryInterface;
+use App\Domain\Product\Repositories\ProductReadRepositoryInterface;
 use App\Models\Product;
 
 /**

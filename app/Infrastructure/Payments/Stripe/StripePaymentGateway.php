@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Payments\Stripe;
 
-use App\Domain\Payments\DTOs\ChargeResult;
-use App\Domain\Payments\Exceptions\PaymentDeclinedException;
-use App\Domain\Payments\Exceptions\PaymentGatewayUnavailableException;
-use App\Domain\Payments\Exceptions\UnknownPaymentException;
-use App\Domain\Payments\Gateways\PaymentGatewayInterface;
+use App\Domain\Billing\DTOs\ChargeResult;
+use App\Domain\Billing\Exceptions\PaymentDeclinedException;
+use App\Domain\Billing\Exceptions\PaymentGatewayUnavailableException;
+use App\Domain\Billing\Exceptions\UnknownPaymentException;
+use App\Domain\Billing\Gateways\PaymentGatewayInterface;
 use Illuminate\Support\Facades\Log;
 use Stripe\Exception\ApiConnectionException;
 use Stripe\Exception\AuthenticationException;
