@@ -17,7 +17,7 @@ final readonly class ReviewCreated implements ShouldDispatchAfterCommit
     public function __construct(
         public int $reviewId,
         public int $productId,
-        public int $tenantId,
+        public string $tenantId,
         public int $rating,
     ) {}
 
@@ -33,7 +33,7 @@ final readonly class ReviewCreated implements ShouldDispatchAfterCommit
             'product_id' => $this->productId,
             'tenant_id' => $this->tenantId,
             'rating' => $this->rating,
-            'occurred_at' => now()->toIso8601String(),
+            'occurred_at' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
         ];
     }
 }

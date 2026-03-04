@@ -15,7 +15,7 @@ final readonly class ProductCreated implements ShouldDispatchAfterCommit
 {
     public function __construct(
         public int $productId,
-        public int $tenantId,
+        public string $tenantId,
         public string $name,
     ) {}
 
@@ -30,7 +30,7 @@ final readonly class ProductCreated implements ShouldDispatchAfterCommit
             'product_id' => $this->productId,
             'tenant_id' => $this->tenantId,
             'name' => $this->name,
-            'occurred_at' => now()->toIso8601String(),
+            'occurred_at' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
         ];
     }
 }

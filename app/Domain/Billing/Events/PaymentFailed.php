@@ -28,7 +28,7 @@ final readonly class PaymentFailed implements ShouldDispatchAfterCommit
         public ?string $failureCode = null,
 
         /** Tenant ID for multi-tenant context */
-        public ?int $tenantId = null,
+        public ?string $tenantId = null,
     ) {}
 
     /**
@@ -44,7 +44,7 @@ final readonly class PaymentFailed implements ShouldDispatchAfterCommit
             'reason' => $this->reason,
             'failure_code' => $this->failureCode,
             'tenant_id' => $this->tenantId,
-            'occurred_at' => now()->toIso8601String(),
+            'occurred_at' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
         ];
     }
 }

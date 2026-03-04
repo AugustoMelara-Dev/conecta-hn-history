@@ -754,6 +754,15 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Identity\RamseyUuidGenerator::class
         );
 
+        // ═══════════════════════════════════════════════════════════════════════
+        // TENANT GOVERNANCE: Plan Limits Abstraction (A5 - Settings Isolation)
+        // Binds PlanLimitsInterface to Infrastructure adapter wrapping GeneralSettings
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\TenantGovernance\Contracts\PlanLimitsInterface::class,
+            \App\Infrastructure\TenantGovernance\Settings\SettingsPlanLimits::class
+        );
+
         $this->app->bind(
             \App\Domain\Shared\Contracts\EventDispatcherInterface::class,
             \App\Infrastructure\Bus\TransactionalEventDispatcher::class
