@@ -8,7 +8,6 @@ use App\Domain\Common\Traits\EventSourcedAggregate;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Events\UserRegistered;
 use DateTimeImmutable;
-use Illuminate\Support\Str;
 
 /**
  * UserEntity - Aggregate Root (Titanium Immutable)
@@ -91,7 +90,7 @@ final class UserEntity
     ): self {
         $user = new self;
         // OPTIMIZATION: Use Ordered UUID to prevent B-Tree fragmentation
-        $user->id = (string) Str::orderedUuid();
+        $user->id = \Ramsey\Uuid\Uuid::uuid7()->toString();
         $user->tenantId = $tenantId;
         $user->name = $name;
         $user->email = $email;
