@@ -21,7 +21,7 @@ final readonly class TenantProfileEnhanced implements ShouldDispatchAfterCommit
     public function __construct(
         public readonly string $tenant_id,
         public readonly string $user_id, // IDs as scalar
-        public readonly string $occurred_at, // ISO8601 String
+        public readonly \DateTimeImmutable $occurredAt,
         public readonly array $enhanced_fields // Array is scalar-ish enough for JSON
     ) {}
 
@@ -33,7 +33,7 @@ final readonly class TenantProfileEnhanced implements ShouldDispatchAfterCommit
         return new self(
             tenant_id: (string) ($payload['tenant_id'] ?? ''),
             user_id: (string) ($payload['user_id'] ?? ''),
-            occurred_at: (string) ($payload['occurred_at'] ?? date('c')),
+            occurredAt: new \DateTimeImmutable($payload['occurred_at'] ?? 'now'),
             enhanced_fields: (array) ($payload['enhanced_fields'] ?? [])
         );
     }
@@ -43,7 +43,7 @@ final readonly class TenantProfileEnhanced implements ShouldDispatchAfterCommit
         return [
             'tenant_id' => $this->tenant_id,
             'user_id' => $this->user_id,
-            'occurred_at' => $this->occurred_at,
+            'occurred_at' => $this->occurredAt->format(\DateTimeInterface::ATOM),
             'enhanced_fields' => $this->enhanced_fields,
         ];
     }
