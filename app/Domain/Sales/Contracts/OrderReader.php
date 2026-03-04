@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Sales\Contracts;
 
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Domain\Shared\Contracts\PaginatedResult;
 
 /**
  * OrderReader - Read-Only Query Contract for Order Domain
@@ -30,7 +30,7 @@ interface OrderReader
         int|string $tenantId,
         ?string $status = null,
         int $perPage = 20
-    ): LengthAwarePaginator;
+    ): PaginatedResult;
 
     /**
      * Find a single order by ID within a specific tenant.

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Infrastructure\Catalog;
 
 use App\Domain\Catalog\Contracts\ProductCatalogReader;
+use App\Domain\Shared\Contracts\PaginatedResult;
+use App\Infrastructure\Shared\EloquentPaginatedResult;
 use App\Models\Product;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -21,7 +21,7 @@ final class CachedProductReader implements ProductCatalogReader
 {
     private const TTL_SECONDS = 3600; // 1 Hour
 
-    public function getFeaturedProducts(int $tenantId, int $limit = 10): Collection
+    public function getFeaturedProducts(int $tenantId, int $limit = 10): array
     {
         return Cache::tags(["tenant_{$tenantId}_products"])->remember(
             "tenant_{$tenantId}_featured_limit_{$limit}",
@@ -31,6 +31,7 @@ final class CachedProductReader implements ProductCatalogReader
                 ->where('is_featured', true)
                 ->take($limit)
                 ->get()
+                ->toArray()
         );
     }
 
@@ -60,13 +61,12 @@ final class CachedProductReader implements ProductCatalogReader
         );
     }
 
-    public function searchProducts(int $tenantId, array $filters, int $perPage = 20): LengthAwarePaginator
+    public function searchProducts(int $tenantId, array $filters, int $perPage = 20): PaginatedResult
     {
-        // Cache Key based on serialized filters to handle combinations
         $filterHash = md5(json_encode($filters));
         $page = request()->get('page', 1);
 
-        return Cache::tags(["tenant_{$tenantId}_products"])->remember(
+        $paginator = Cache::tags(["tenant_{$tenantId}_products"])->remember(
             "tenant_{$tenantId}_search_{$filterHash}_page_{$page}_per_{$perPage}",
             self::TTL_SECONDS,
             function () use ($tenantId, $filters, $perPage) {
@@ -93,5 +93,7 @@ final class CachedProductReader implements ProductCatalogReader
                 return $query->paginate($perPage);
             }
         );
+
+        return new EloquentPaginatedResult($paginator);
     }
 }

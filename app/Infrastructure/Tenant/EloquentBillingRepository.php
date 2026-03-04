@@ -5,21 +5,24 @@ declare(strict_types=1);
 namespace App\Infrastructure\Tenant;
 
 use App\Domain\Tenant\Contracts\BillingRepository;
+use App\Domain\Shared\Contracts\PaginatedResult;
+use App\Infrastructure\Shared\EloquentPaginatedResult;
 use App\Models\Payment;
 use App\Models\Tenant;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
  * EloquentBillingRepository - Infra Implementation
  */
 final class EloquentBillingRepository implements BillingRepository
 {
-    public function getInvoices(int $tenantId, int $perPage = 10): LengthAwarePaginator
+    public function getInvoices(int $tenantId, int $perPage = 10): PaginatedResult
     {
-        return Payment::query()
-            ->where('tenant_id', $tenantId)
-            ->orderByDesc('created_at')
-            ->paginate($perPage);
+        return new EloquentPaginatedResult(
+            Payment::query()
+                ->where('tenant_id', $tenantId)
+                ->orderByDesc('created_at')
+                ->paginate($perPage)
+        );
     }
 
     public function getSubscriptionStatus(int $tenantId): array

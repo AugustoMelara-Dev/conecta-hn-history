@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Marketing\Contracts;
 
-use Illuminate\Support\Collection;
 
 /**
  * CouponReader - Domain Contract for Coupon Validation
@@ -19,7 +18,7 @@ interface CouponReader
      *
      * @return Collection<int, object>
      */
-    public function getValidCoupons(int $tenantId): Collection;
+    public function getValidCoupons(int $tenantId): array;
 
     /**
      * Find a specific coupon by code for a tenant.

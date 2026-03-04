@@ -7,7 +7,6 @@ namespace App\Infrastructure\Sales;
 use App\Domain\Sales\Contracts\ReportReader;
 use App\Models\Order;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 
 /**
  * EloquentReportReader - Eloquent Implementation of ReportReader
@@ -23,18 +22,20 @@ final class EloquentReportReader implements ReportReader
     /**
      * {@inheritdoc}
      */
-    public function getSalesData(int $tenantId, Carbon $startDate, Carbon $endDate): Collection
+    public function getSalesData(int $tenantId, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
     {
-        // DEFENSIVE: Explicit cast in case of ValueObject leakage
         $tenantId = (int) $tenantId;
+        $carbonStart = Carbon::instance($startDate);
+        $carbonEnd   = Carbon::instance($endDate);
 
         return Order::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$carbonStart, $carbonEnd])
             ->whereIn('status', ['completed', 'paid', 'delivered'])
             ->with('items')
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->toArray();
     }
 
     /**
@@ -45,13 +46,13 @@ final class EloquentReportReader implements ReportReader
      */
     public function getSalesSummary(
         int $tenantId,
-        Carbon $startDate,
-        Carbon $endDate,
-        ?Collection $preloadedOrders = null
+        \DateTimeImmutable $startDate,
+        \DateTimeImmutable $endDate,
+        ?array $preloadedOrders = null
     ): array {
-        // Use preloaded data if available (O(1) SQL queries)
-        // Otherwise, fetch fresh data (1 SQL query - fallback)
-        $orders = $preloadedOrders ?? $this->getSalesData($tenantId, $startDate, $endDate);
+        $orders = $preloadedOrders !== null
+            ? collect($preloadedOrders)
+            : collect($this->getSalesData($tenantId, $startDate, $endDate));
 
         $totalRevenue = (float) $orders->sum('total');
         $orderCount = $orders->count();

@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Infrastructure\Api;
 
 use App\Domain\Api\Contracts\NotificationRepository;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Domain\Shared\Contracts\PaginatedResult;
+use App\Infrastructure\Shared\EloquentPaginatedResult;
 use Illuminate\Notifications\DatabaseNotification;
 
 /**
@@ -19,14 +20,16 @@ final class EloquentNotificationRepository implements NotificationRepository
     /**
      * {@inheritDoc}
      */
-    public function getUserNotifications(int $userId, int $perPage = 20): LengthAwarePaginator
+    public function getUserNotifications(int $userId, int $perPage = 20): PaginatedResult
     {
-        return DatabaseNotification::query()
-            ->where('notifiable_id', $userId)
-            ->where('notifiable_type', 'App\Models\User') // Constraint for safety
-            ->orderByRaw('read_at IS NULL DESC')
-            ->orderByDesc('created_at')
-            ->paginate($perPage);
+        return new EloquentPaginatedResult(
+            DatabaseNotification::query()
+                ->where('notifiable_id', $userId)
+                ->where('notifiable_type', 'App\Models\User')
+                ->orderByRaw('read_at IS NULL DESC')
+                ->orderByDesc('created_at')
+                ->paginate($perPage)
+        );
     }
 
     /**

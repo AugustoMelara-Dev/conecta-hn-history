@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\Contracts;
 
-use Illuminate\Support\Collection;
 
 /**
  * CityReader - Port for City Data Access
@@ -23,5 +22,5 @@ interface CityReader
      *
      * @return Collection<int, object> Collection of city DTOs or stdClass objects
      */
-    public function getAllCities(): Collection;
+    public function getAllCities(): array;
 }

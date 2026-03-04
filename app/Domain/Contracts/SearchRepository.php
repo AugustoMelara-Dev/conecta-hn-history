@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Contracts;
 
-use Illuminate\Support\Collection;
-
 interface SearchRepository
 {
     /**
@@ -17,5 +15,5 @@ interface SearchRepository
      * @param  int  $limit  Max results to return.
      * @return Collection<int, \App\Domain\TenantGovernance\Models\Tenant>
      */
-    public function searchTenants(string $query, ?string $citySlug = null, ?string $categorySlug = null, int $limit = 20): Collection;
+    public function searchTenants(string $query, ?string $citySlug = null, ?string $categorySlug = null, int $limit = 20): array;
 }

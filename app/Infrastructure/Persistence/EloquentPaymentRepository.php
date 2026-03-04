@@ -11,7 +11,6 @@ use App\Domain\Shared\Exceptions\StaleObjectException;
 use App\Domain\Shared\ValueObjects\Money;
 use App\Models\Payment as PaymentModel;
 use DateTimeImmutable;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final readonly class EloquentPaymentRepository implements PaymentRepositoryInterface
@@ -131,20 +130,20 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
         return $model ? $this->toEntity($model) : null;
     }
 
-    public function findPaymentsWithTemporaryProofs(int $limit = 50): Collection
+    public function findPaymentsWithTemporaryProofs(int $limit = 50): array
     {
         $bufferThreshold = now()->subMinutes(5);
         $executionDelay = now()->subMinutes(10);
 
-        $models = PaymentModel::query()
-            ->where('proof_path', 'like', 'temp/%') // MAPPED
+        return PaymentModel::query()
+            ->where('proof_path', 'like', 'temp/%')
             ->where('created_at', '<', $bufferThreshold)
             ->where('updated_at', '<', $executionDelay)
             ->orderBy('id')
             ->limit($limit)
-            ->get();
-
-        return $models->map(fn (PaymentModel $model) => $this->toEntity($model));
+            ->get()
+            ->map(fn (PaymentModel $model) => $this->toEntity($model))
+            ->toArray();
     }
 
     private function toEntity(PaymentModel $model): PaymentEntity

@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Analytics\Contracts;
 
-use Carbon\Carbon;
-use Illuminate\Support\Collection;
+use DateTimeImmutable;
 
 /**
  * AnalyticsReader - Domain Contract for Analytics Data
@@ -21,9 +20,9 @@ interface AnalyticsReader
      * @param  int  $tenantId  Tenant ID
      * @param  Carbon  $startDate  Range start
      * @param  Carbon  $endDate  Range end
-     * @return Collection Daily analytics records
+     * @return array<int, mixed> Daily analytics records
      */
-    public function getAnalyticsData(int $tenantId, Carbon $startDate, Carbon $endDate): Collection;
+    public function getAnalyticsData(int $tenantId, DateTimeImmutable $startDate, DateTimeImmutable $endDate): array;
 
     /**
      * Get filled analytics with zero-value gap filling.

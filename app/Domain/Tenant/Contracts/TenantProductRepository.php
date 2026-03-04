@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Tenant\Contracts;
 
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Domain\Shared\Contracts\PaginatedResult;
 
 /**
  * TenantProductRepository - Domain Contract for Tenant Product Queries
@@ -26,7 +26,7 @@ interface TenantProductRepository
      * @param  int  $perPage  Number of items per page
      * @return LengthAwarePaginator Paginated product collection
      */
-    public function getDashboardList(int $tenantId, string $search = '', int $perPage = 12): LengthAwarePaginator;
+    public function getDashboardList(int $tenantId, string $search = '', int $perPage = 12): PaginatedResult;
 
     /**
      * Count total products for a tenant.

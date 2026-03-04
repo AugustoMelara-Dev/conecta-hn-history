@@ -7,7 +7,6 @@ namespace App\Infrastructure\Analytics;
 use App\Domain\Analytics\Contracts\AnalyticsReader;
 use App\Models\TenantAnalytic;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 
 /**
  * EloquentAnalyticsReader - Eloquent Implementation of AnalyticsReader
@@ -20,8 +19,10 @@ final class EloquentAnalyticsReader implements AnalyticsReader
     /**
      * {@inheritdoc}
      */
-    public function getAnalyticsData(int $tenantId, Carbon $startDate, Carbon $endDate): Collection
+    public function getAnalyticsData(int $tenantId, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
     {
+        $carbonStart = Carbon::instance($startDate);
+        $carbonEnd   = Carbon::instance($endDate);
         return TenantAnalytic::where('tenant_id', $tenantId)
             ->whereBetween('date', [$startDate, $endDate])
             ->orderBy('date', 'asc')
@@ -30,7 +31,7 @@ final class EloquentAnalyticsReader implements AnalyticsReader
                 'date' => $record->date->format('Y-m-d'),
                 'visits' => $record->unique_visits,
                 'total' => $record->total_visits,
-            ]);
+            ])->toArray();
     }
 
     /**
@@ -41,7 +42,7 @@ final class EloquentAnalyticsReader implements AnalyticsReader
         $startDate = now()->subDays($days)->startOfDay();
         $endDate = now()->endOfDay();
 
-        $analytics = $this->getAnalyticsData($tenantId, $startDate, $endDate);
+        $analytics = collect($this->getAnalyticsData($tenantId, \DateTimeImmutable::createFromInterface($startDate), \DateTimeImmutable::createFromInterface($endDate)));
 
         // Fill gaps with zero values
         $filledData = [];
