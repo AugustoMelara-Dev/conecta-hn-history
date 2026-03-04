@@ -11,12 +11,12 @@ final readonly class OtpVerified
     public function __construct(
         public string $eventId,
         public string $otpIdentifier,
-        public ?int $userId,
+        public ?string $userId,
         public string $tenantId,
         public DateTimeImmutable $verifiedAt,
     ) {}
 
-    public static function now(string $otpIdentifier, ?int $userId, string $tenantId): self
+    public static function now(string $otpIdentifier, ?string $userId, string $tenantId): self
     {
         return new self(
             eventId: \Ramsey\Uuid\Uuid::uuid7()->toString(),

@@ -26,7 +26,7 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
         public string $tenantId,
         public string $orderNumber,
         public string $customerName,
-        public float $total,
+        public int $total,
         public string $status,
         // Restoration parameters
         ?string $restoredEventId = null,
@@ -78,7 +78,7 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
             tenantId: (string) $payload['tenant_id'],
             orderNumber: (string) $payload['order_number'],
             customerName: (string) ($payload['customer_name'] ?? 'Guest'),
-            total: (float) $payload['total'],
+            total: (int) $payload['total'],
             status: (string) ($payload['status'] ?? 'pending'),
             restoredEventId: $payload['event_id'] ?? null,
             restoredOccurredAt: $payload['occurred_at'] ?? null,
