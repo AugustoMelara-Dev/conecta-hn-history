@@ -9,7 +9,7 @@ use App\Contracts\Events\DomainEvent;
 // use App\Models\User; // REMOVED
 use App\Traits\HasDomainMetadata;
 use App\Domain\Shared\ValueObjects\TenantId;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * TenantRegistered - Domain Event

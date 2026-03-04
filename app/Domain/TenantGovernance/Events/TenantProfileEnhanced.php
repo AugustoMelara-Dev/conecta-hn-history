@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Events;
 
 // Assuming a base abstract class or interface exists, or just standalone
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * TenantProfileEnhanced - Domain Event (Scalar Compliant)

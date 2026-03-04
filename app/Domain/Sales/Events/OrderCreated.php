@@ -9,7 +9,7 @@ use App\Domain\Shared\Contracts\ShouldBeStoredInOutbox;
 // use App\Models\Order; // REMOVED
 use App\Traits\HasDomainMetadata;
 use App\Domain\Shared\ValueObjects\TenantId;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * OrderCreated - Domain Event with Transactional Outbox Support

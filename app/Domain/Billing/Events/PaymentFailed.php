@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Billing\Events;
 
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * PaymentFailed - Domain Event for Failed Payment

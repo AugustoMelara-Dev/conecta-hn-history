@@ -6,7 +6,7 @@ namespace App\Domain\Billing\Events;
 
 use DateTimeImmutable;
 use DateTimeInterface;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * SubscriptionUpgraded - Domain Event for Plan Upgrade

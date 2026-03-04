@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Identity\Events;
 
 use DateTimeImmutable;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * UserDeleted - Digital Tombstone Domain Event

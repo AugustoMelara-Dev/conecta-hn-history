@@ -8,7 +8,7 @@ use App\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\TenantAwareEvent;
 use App\Traits\HasDomainMetadata;
 use App\Domain\Shared\ValueObjects\TenantId;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * ProductPriceChanged - Event fired when a product price is updated.

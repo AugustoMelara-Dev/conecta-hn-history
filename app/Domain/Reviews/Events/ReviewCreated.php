@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Reviews\Events;
 
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * ReviewCreated - Domain Event for Review Submission

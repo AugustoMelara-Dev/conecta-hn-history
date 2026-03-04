@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Product\Events;
 
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * ProductUpdated - Domain Event for Product Update
