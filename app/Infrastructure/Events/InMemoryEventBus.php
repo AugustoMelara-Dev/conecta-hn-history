@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Events;
 
-use App\Contracts\Events\DomainEvent;
+use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Contracts\Events\DomainEventBus;
 
 /**

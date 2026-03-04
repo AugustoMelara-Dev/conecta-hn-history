@@ -6,7 +6,7 @@ namespace App\Events\Security;
 
 use App\Contracts\Events\AuditEvent;
 use App\Enums\Severity;
-use App\Traits\HasDomainMetadata;
+use App\Domain\Shared\Traits\HasDomainMetadata;
 use App\ValueObjects\AuditContext;
 use App\ValueObjects\IpAddress;
 use App\Domain\Shared\ValueObjects\TenantId;
