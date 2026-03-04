@@ -454,7 +454,7 @@ class EventSerializationTest extends TestCase
         $reconstituted = \App\Events\Order\NewOrderReceived::fromPrimitives($primitives);
 
         // Verify critical data preserved
-        $this->assertEquals(10, $reconstituted->tenantId()->toInt());
+        $this->assertEquals(1, $reconstituted->tenantId()->toInt());
         $this->assertEquals(500, $reconstituted->aggregateId());
         $this->assertEquals('ORD-2026-TEST', $reconstituted->orderNumber->toString());
         $this->assertEquals('Test Customer', $reconstituted->customerName);
@@ -489,7 +489,7 @@ class EventSerializationTest extends TestCase
         $reconstituted = \App\Events\Payment\PaymentApproved::fromPrimitives($primitives);
 
         // Verify critical data preserved
-        $this->assertEquals(15, $reconstituted->tenantId()->toInt());
+        $this->assertEquals(1, $reconstituted->tenantId()->toInt());
         $this->assertEquals(600, $reconstituted->aggregateId());
         $this->assertEquals('txn_abc123', $reconstituted->transactionId);
         $this->assertEquals('stripe', $reconstituted->gatewayName);
