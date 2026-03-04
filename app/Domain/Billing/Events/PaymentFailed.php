@@ -24,11 +24,11 @@ final readonly class PaymentFailed implements ShouldDispatchAfterCommit
         /** Human-readable failure reason */
         public string $reason,
 
+        /** Tenant ID for multi-tenant context (required for A3 traceability) */
+        public string $tenantId,
+
         /** Provider-specific failure code */
         public ?string $failureCode = null,
-
-        /** Tenant ID for multi-tenant context */
-        public ?string $tenantId = null,
     ) {}
 
     /**

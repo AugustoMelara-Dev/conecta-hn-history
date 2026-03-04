@@ -47,8 +47,6 @@ final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
         // 3. Domain Logic: Delete
         $userId = $user->id;
         $tenantId = $user->tenantId;
-        $email = $user->email;
-        $name = $user->name;
 
         $this->userRepository->delete($user);
 
@@ -56,8 +54,6 @@ final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
         $event = UserDeleted::fromSnapshot(
             userId: $userId,
             tenantId: $tenantId,
-            email: $email,
-            name: $name,
         );
 
         $message = new DomainEventMessage(

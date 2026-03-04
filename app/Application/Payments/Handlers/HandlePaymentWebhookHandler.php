@@ -71,10 +71,10 @@ final readonly class HandlePaymentWebhookHandler
                 reason: $payload['failure_message']
                     ?? $payload['data']['object']['failure_message']
                     ?? 'Payment failed',
+                tenantId: $command->tenantId,
                 failureCode: $payload['failure_code']
                     ?? $payload['data']['object']['failure_code']
                     ?? null,
-                tenantId: $command->tenantId,
             ),
 
             // Unhandled events - log but don't fail
