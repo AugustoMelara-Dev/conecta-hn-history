@@ -11,7 +11,6 @@ final readonly class PaymentWebhook
     private function __construct(
         public string $eventType,
         public string $tenantId,
-        public array $rawPayload,
         public string $providerId
     ) {}
 
@@ -31,7 +30,6 @@ final readonly class PaymentWebhook
         return new self(
             eventType: $type,
             tenantId: $tenantId,
-            rawPayload: $data,
             providerId: (string) $providerId
         );
     }

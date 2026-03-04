@@ -81,7 +81,13 @@ class TenantQueueMiddleware
         $tenant = $this->tenantRepository->findById((string) $tenantId);
 
         if (! $tenant) {
-            throw new \RuntimeException("Tenant {$tenantId} not found. Cannot process queued job.");
+            // Fail-safe: one retry after 500ms to account for DB replication lag
+            usleep(500000);
+            $tenant = $this->tenantRepository->findById((string) $tenantId);
+        }
+
+        if (! $tenant) {
+            throw new \RuntimeException("Tenant context could not be resolved for tenantId: {$tenantId}. Cannot process queued job.");
         }
 
         // If using Spatie Laravel-Multitenancy
