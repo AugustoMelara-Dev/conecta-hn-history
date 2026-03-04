@@ -14,6 +14,13 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  */
 final readonly class PaymentFailed implements ShouldDispatchAfterCommit
 {
+    public const SCHEMA_VERSION = 1;
+
+    public function schemaVersion(): int
+    {
+        return self::SCHEMA_VERSION;
+    }
+
     public function __construct(
         /** Internal transaction reference */
         public string $transactionId,
@@ -39,6 +46,18 @@ final readonly class PaymentFailed implements ShouldDispatchAfterCommit
      *
      * @return array<string, mixed>
      */
+    public static function fromPayload(array $payload): self
+    {
+        return new self(
+            transactionId: $payload['transaction_id'],
+            providerReference: $payload['provider_reference'],
+            reason: $payload['reason'],
+            tenantId: $payload['tenant_id'],
+            failureCode: $payload['failure_code'] ?? null,
+            occurredAt: new \DateTimeImmutable($payload['occurred_at'])
+        );
+    }
+
     public function toPayload(): array
     {
         return [
