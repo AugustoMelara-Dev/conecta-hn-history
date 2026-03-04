@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Upcasters;
 
-use App\Application\Shared\Contracts\UpcasterInterface;
+use App\Domain\Shared\Contracts\UpcasterInterface;
 
 /**
  * UserPasswordChangedV1ToV2Upcaster - Example Migration Upcaster

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Events;
 
-use App\Application\Shared\Contracts\UpcasterInterface;
+use App\Domain\Shared\Contracts\UpcasterInterface;
 use RuntimeException;
 
 final class UpcastingEventFactory

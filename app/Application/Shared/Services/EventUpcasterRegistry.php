@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\Services;
 
-use App\Application\Shared\Contracts\UpcasterInterface;
+use App\Domain\Shared\Contracts\UpcasterInterface;
 use RuntimeException;
 
 /**
