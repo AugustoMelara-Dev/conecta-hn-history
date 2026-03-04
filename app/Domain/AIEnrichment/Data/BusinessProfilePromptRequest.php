@@ -14,7 +14,7 @@ namespace App\Domain\AIEnrichment\Data;
  * ║  Designed for immutability and future extensibility (metadata/config).   ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-readonly class AiPromptPayload
+final readonly class BusinessProfilePromptRequest
 {
     public function __construct(
         public string $content,

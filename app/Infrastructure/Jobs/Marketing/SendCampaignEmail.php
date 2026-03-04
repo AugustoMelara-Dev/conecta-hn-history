@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\Marketing;
 
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Mail\CampaignOfferMail;
 use App\Models\Campaign;
 use App\Models\User;

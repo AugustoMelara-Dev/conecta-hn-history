@@ -7,7 +7,7 @@ namespace App\Infrastructure\Jobs\Reporting;
 use App\Contracts\LoggerInterface;
 use App\Contracts\ReportGenerationInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Notifications\ReportReadyNotification;
 use App\Traits\GeneratesSignedDownloadUrls;

@@ -33,7 +33,7 @@ final class SendLowStockNotification implements ShouldQueue
     {
         // UUID STRING: Use toString() for tenant context
         return [
-            new \App\Domain\Shared\Middleware\TenantQueueMiddleware((string) $event->product->tenant_id),
+            new \App\Infrastructure\Queue\Middleware\TenantQueueMiddleware((string) $event->product->tenant_id),
         ];
     }
 

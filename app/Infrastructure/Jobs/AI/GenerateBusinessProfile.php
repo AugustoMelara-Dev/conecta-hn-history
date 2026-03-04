@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\AI;
 
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Services\AiProfileGeneratorService;
 use Illuminate\Bus\Queueable;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Shared\Middleware;
+namespace App\Infrastructure\Queue\Middleware;
 
 use Closure;
 

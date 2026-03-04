@@ -6,7 +6,7 @@ namespace App\Infrastructure\Jobs\Exports;
 
 use App\Contracts\DataExportInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Domain\Shared\ValueObjects\TenantId;
 use App\Exports\Criteria\SalesExportCriteria;
 use App\Exports\SalesExport;

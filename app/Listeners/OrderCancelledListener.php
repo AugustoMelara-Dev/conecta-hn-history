@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Events\Broadcast\OrderCancelledBroadcast;
 use App\Events\Order\OrderCancelled;
 use App\Exceptions\TenantMismatchException;
