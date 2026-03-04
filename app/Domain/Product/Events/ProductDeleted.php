@@ -18,7 +18,7 @@ final readonly class ProductDeleted implements ShouldDispatchAfterCommit
 {
     public function __construct(
         public int $productId,
-        public int $tenantId,
+        public string $tenantId,
         public string $name,
     ) {}
 
