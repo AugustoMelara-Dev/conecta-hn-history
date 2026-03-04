@@ -121,7 +121,6 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
                 user_id: $userId,
                 name: $command->name,
                 email: $command->email,
-                password_hash: $passwordHash,
                 role: $finalRole,
                 tenant_id: $tenantId,
                 occurredOn: $now

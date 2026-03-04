@@ -12,6 +12,10 @@ use DateTimeImmutable;
  *
  * adheres to "The Scalar Payload Rule":
  * Carries primitive data only. No Enums allowed in constructor.
+ *
+ * SECURITY (A6): password_hash removed — credentials must never be
+ * serialized in domain events (Event Store / Queue persistence).
+ * The hash is set on the aggregate root before the event is recorded.
  */
 final readonly class UserRegistered implements DomainEventInterface
 {
@@ -19,7 +23,6 @@ final readonly class UserRegistered implements DomainEventInterface
         public string $user_id,
         public string $name, // Added for Read Model Completeness
         public string $email,
-        public string $password_hash,
         public string $role,
         public ?string $tenant_id,
         public DateTimeImmutable $occurredOn,
@@ -29,7 +32,6 @@ final readonly class UserRegistered implements DomainEventInterface
         string $user_id,
         string $name,
         string $email,
-        string $password_hash,
         string $role,
         ?string $tenant_id,
     ): self {
@@ -37,7 +39,6 @@ final readonly class UserRegistered implements DomainEventInterface
             user_id: $user_id,
             name: $name,
             email: $email,
-            password_hash: $password_hash,
             role: $role,
             tenant_id: $tenant_id,
             occurredOn: new DateTimeImmutable,
@@ -50,7 +51,6 @@ final readonly class UserRegistered implements DomainEventInterface
             user_id: (string) ($payload['user_id'] ?? ''),
             name: (string) ($payload['name'] ?? 'Unknown User'),
             email: (string) ($payload['email'] ?? ''),
-            password_hash: (string) ($payload['password_hash'] ?? ''),
             role: (string) ($payload['role'] ?? 'customer'),
             tenant_id: $payload['tenant_id'] ?? null,
             occurredOn: isset($payload['occurred_on'])
@@ -65,7 +65,6 @@ final readonly class UserRegistered implements DomainEventInterface
             'user_id' => $this->user_id,
             'name' => $this->name,
             'email' => $this->email,
-            'password_hash' => $this->password_hash,
             'role' => $this->role,
             'tenant_id' => $this->tenant_id,
             'occurred_on' => $this->occurredOn->format(DateTimeImmutable::ATOM),

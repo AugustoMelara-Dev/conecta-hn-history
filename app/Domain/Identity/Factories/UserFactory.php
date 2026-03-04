@@ -6,12 +6,14 @@ namespace App\Domain\Identity\Factories;
 
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Contracts\UuidGeneratorInterface;
 use App\Domain\Shared\ValueObjects\EmailAddress;
 
 final readonly class UserFactory
 {
     public function __construct(
         private ClockInterface $clock,
+        private UuidGeneratorInterface $uuidGenerator,
     ) {}
 
     public function createNewUser(
@@ -21,7 +23,7 @@ final readonly class UserFactory
         string $role = 'customer'
     ): UserEntity {
         return UserEntity::register(
-            uuid: (string) \Illuminate\Support\Str::orderedUuid(),
+            uuid: $this->uuidGenerator->generate(),
             name: $name,
             email: $email,
             passwordHash: $hashedPassword,

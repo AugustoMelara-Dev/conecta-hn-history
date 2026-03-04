@@ -58,13 +58,15 @@ final class UserEntity
     ): self {
         $user = new self;
 
+        // Password is set on the aggregate directly — never travels in events (A6).
+        $user->password = $passwordHash;
+
         // The Event is recorded ONCE with the FINAL state.
         // No patching allowed.
         $event = UserRegistered::now(
             user_id: $uuid,
             name: $name,
             email: $email,
-            password_hash: $passwordHash,
             role: $role->value,
             tenant_id: $tenantId,
         );
@@ -110,7 +112,8 @@ final class UserEntity
         $this->id = $event->user_id;
         $this->name = $event->name;
         $this->email = $event->email;
-        $this->password = $event->password_hash;
+        // NOTE: $password is set directly in register() before recordThat().
+        // It is intentionally absent from the event payload (A6 — no credentials in events).
         $this->role = UserRole::from($event->role);
         $this->tenantId = $event->tenant_id;
         $this->createdAt = $event->occurredOn();
