@@ -9,7 +9,7 @@ use App\Services\AI\OpenAIService;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
-uses(TestCase::class);
+// uses(TestCase::class);
 
 describe('GenerateBusinessProfileJob', function () {
 

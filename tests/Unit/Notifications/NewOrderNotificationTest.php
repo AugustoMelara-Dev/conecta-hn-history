@@ -9,7 +9,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Collection;
 
 // Bootstrap Laravel app — needed because NewOrderNotification::toMail() calls url()
-uses(Tests\TestCase::class);
+// uses(Tests\TestCase::class);
 
 
 // ═══════════════════════════════════════════════════════════════════════════

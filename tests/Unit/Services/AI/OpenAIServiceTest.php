@@ -9,7 +9,7 @@ use App\Infrastructure\AI\BudgetEnforcer;
 use App\Services\AI\OpenAIService;
 use Illuminate\Support\Facades\Http;
 
-uses(Tests\TestCase::class);
+// uses(Tests\TestCase::class);
 
 beforeEach(function () {
     \DG\BypassFinals::enable();
