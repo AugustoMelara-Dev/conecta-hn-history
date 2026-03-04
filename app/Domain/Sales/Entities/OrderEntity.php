@@ -9,7 +9,7 @@ use DateTimeImmutable;
 /**
  * OrderEntity - Aggregate Root for Sales Order
  */
-final class OrderEntity
+final readonly class OrderEntity
 {
     public function __construct(
         public ?int $id,
@@ -36,10 +36,6 @@ final class OrderEntity
         public array $items = []
     ) {}
 
-    public function setId(int $id): self
-    {
-        $this->id = $id;
-
-        return $this;
-    }
+    // setId() removed to enforce strict immutability (A1).
+    // Infrastructure must hydrate $id via constructor at reconstitution time.
 }

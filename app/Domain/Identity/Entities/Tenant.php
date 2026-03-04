@@ -12,7 +12,7 @@ use DateTimeImmutable;
  * Use Case Agnostic Domain Entity.
  * Represents a workspace or organization. Pure PHP object.
  */
-final class Tenant
+final readonly class Tenant
 {
     public function __construct(
         private string $id,

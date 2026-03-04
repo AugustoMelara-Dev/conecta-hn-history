@@ -69,7 +69,8 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
             }
         }
 
-        $order->setId($model->id);
+        // ID is immutable post-construction. Callers needing the persisted ID
+        // after a new insert must use findById() or orderNumber as aggregate key.
     }
 
     public function generateOrderNumber(int $tenantId): string
