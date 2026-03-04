@@ -29,6 +29,9 @@ final readonly class PaymentFailed implements ShouldDispatchAfterCommit
 
         /** Provider-specific failure code */
         public ?string $failureCode = null,
+
+        /** Timestamp locked at instantiation for deterministic replayability */
+        public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
     ) {}
 
     /**
@@ -43,8 +46,8 @@ final readonly class PaymentFailed implements ShouldDispatchAfterCommit
             'provider_reference' => $this->providerReference,
             'reason' => $this->reason,
             'failure_code' => $this->failureCode,
-            'tenant_id' => $this->tenantId,
-            'occurred_at' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
+            'tenant_id'          => $this->tenantId,
+            'occurred_at'        => $this->occurredAt->format(\DateTimeInterface::ATOM),
         ];
     }
 }

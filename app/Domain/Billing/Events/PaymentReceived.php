@@ -30,8 +30,11 @@ final readonly class PaymentReceived implements ShouldDispatchAfterCommit
         /** Payer's email for notification */
         public ?string $payerEmail = null,
 
-        /** Tenant ID for multi-tenant context */
-        public ?int $tenantId = null,
+        /** Tenant ID for multi-tenant context (required for A3 traceability) */
+        public string $tenantId,
+
+        /** Timestamp locked at instantiation for deterministic replayability */
+        public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
     ) {}
 
     /**
@@ -47,8 +50,8 @@ final readonly class PaymentReceived implements ShouldDispatchAfterCommit
             'amount' => $this->amount,
             'currency' => $this->currency,
             'payer_email' => $this->payerEmail,
-            'tenant_id' => $this->tenantId,
-            'occurred_at' => now()->toIso8601String(),
+            'tenant_id'          => $this->tenantId,
+            'occurred_at'        => $this->occurredAt->format(\DateTimeInterface::ATOM),
         ];
     }
 }
