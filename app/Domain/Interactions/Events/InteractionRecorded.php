@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Interactions\Events;
 
+use DateTimeImmutable;
+
 final readonly class InteractionRecorded
 {
     public function __construct(
         public string $interactionId,
         public string $tenantId,
+        public DateTimeImmutable $occurredAt,
     ) {}
 }
