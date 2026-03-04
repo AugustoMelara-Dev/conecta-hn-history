@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Events;
 
 use App\Domain\Common\Contracts\DomainEventInterface;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 use DateTimeImmutable;
 
 /**
@@ -12,8 +13,10 @@ use DateTimeImmutable;
  *
  * Immutable record of a Tenant's birth.
  */
-final readonly class TenantCreated implements DomainEventInterface
+final readonly class TenantCreated implements DomainEventInterface, ShouldDispatchAfterCommit
 {
+    private const SCHEMA_VERSION = 1;
+    public function schemaVersion(): int { return self::SCHEMA_VERSION; }
     public function __construct(
         public string $id,
         public string $name,

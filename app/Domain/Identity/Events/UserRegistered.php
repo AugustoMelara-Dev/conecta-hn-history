@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Identity\Events;
 
 use App\Domain\Common\Contracts\DomainEventInterface;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 use DateTimeImmutable;
 
 /**
@@ -21,7 +22,7 @@ use DateTimeImmutable;
  * V1 → original with password_hash (purged, CRÍTICO-03)
  * V2 → current: credential-free payload, contract-testing ready
  */
-final readonly class UserRegistered implements DomainEventInterface
+final readonly class UserRegistered implements DomainEventInterface, ShouldDispatchAfterCommit
 {
     private const SCHEMA_VERSION = 2;
 
