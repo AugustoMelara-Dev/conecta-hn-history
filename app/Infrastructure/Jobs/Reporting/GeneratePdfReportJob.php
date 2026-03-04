@@ -40,7 +40,7 @@ final class GeneratePdfReportJob implements ShouldQueue, ShouldBeUnique
     public bool $deleteWhenMissingModels = true;
 
     public function __construct(
-        public readonly \App\Application\DTOs\ReportRequestData $data,
+        public readonly \App\Application\Shared\DTOs\ReportRequestData $data,
         public readonly int $requestorId
     ) {}
 
@@ -49,7 +49,7 @@ final class GeneratePdfReportJob implements ShouldQueue, ShouldBeUnique
      */
     public function uniqueId(): string
     {
-        return sprintf('pdf_%d_%s_%s',
+        return sprintf('pdf_%s_%s_%s',
             $this->data->tenantId,
             $this->data->reportType,
             $this->data->startDate->format('Y-m-d')

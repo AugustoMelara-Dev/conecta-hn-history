@@ -794,7 +794,7 @@ class BroadcastPayloadTest extends TestCase
         {
             use \App\Traits\FormatsCurrency;
 
-            public function test_format(int $cents, string $currency): string
+            public function testFormat(int $cents, string $currency): string
             {
                 return $this->formatMoney($cents, $currency);
             }
