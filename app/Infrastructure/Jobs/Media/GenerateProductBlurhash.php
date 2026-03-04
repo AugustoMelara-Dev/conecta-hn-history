@@ -29,7 +29,7 @@ final class GenerateProductBlurhash implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public readonly int $productId,
-        public readonly int $tenantId
+        public readonly string $tenantId
     ) {}
 
     /**

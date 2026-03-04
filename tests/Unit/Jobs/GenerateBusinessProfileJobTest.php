@@ -27,7 +27,7 @@ describe('GenerateBusinessProfileJob', function () {
             return $job->businessName === 'Test Business'
                 && $job->description === 'A sample business description'
                 && $job->userId === 1
-                && $job->tenantId === 100;
+                && $job->tenantId === '00000000-0000-0000-0000-000000000001';
         });
     });
 
@@ -55,11 +55,11 @@ describe('GenerateBusinessProfileJob', function () {
         expect($job->businessName)->toBeString();
         expect($job->description)->toBeString();
         expect($job->userId)->toBeInt();
-        expect($job->tenantId)->toBeInt();
+        expect($job->tenantId)->toBeString();
     });
 
     it('preserves tenant ID for isolation', function () {
-        $tenantId = 12345;
+        $tenantId = '00000000-0000-0000-0000-000000000002';
         
         $job = new GenerateBusinessProfileJob(
             businessName: 'Tenant Business',
