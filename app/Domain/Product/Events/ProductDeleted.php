@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Traits\HasEventIdentity;
 
 /**
  * ProductDeleted - Domain Event for Product Soft Deletion
@@ -17,10 +18,13 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  * - Notify affected users
  * - Log audit trail
  *
- * Implements DomainEvent (canonical) via Bridge pattern.
+ * Implements DomainEvent (canonical) via Bridge pattern (W-01).
+ * Uses HasEventIdentity (W-03) for auto-generated eventId/correlationId.
  */
 final readonly class ProductDeleted implements DomainEvent, ShouldDispatchAfterCommit
 {
+    use HasEventIdentity;
+
     private const SCHEMA_VERSION = 1;
 
     public function schemaVersion(): int
@@ -33,26 +37,23 @@ final readonly class ProductDeleted implements DomainEvent, ShouldDispatchAfterC
         public string $tenantId,
         public string $name,
         public DateTimeImmutable $occurredAt = new DateTimeImmutable(),
-        /** W-01: DomainEvent metadata — populated by Outbox relay or Handler */
-        public string $eventId = '',
-        public string $correlationId = '',
-    ) {}
+        ?string $restoredEventId       = null,
+        ?string $restoredCorrelationId = null,
+    ) {
+        $this->initEventIdentity($restoredEventId, $restoredCorrelationId);
+    }
 
     // ─── DomainEvent interface ────────────────────────────────────────────────
 
-    public function eventId(): string        { return $this->eventId; }
-    public function correlationId(): string  { return $this->correlationId; }
     public function tenantId(): mixed        { return $this->tenantId; }
     public function aggregateId(): string    { return (string) $this->productId; }
     public function occurredAt(): DateTimeImmutable { return $this->occurredAt; }
 
-    /** Bridge: delegates to toPayload(). */
     public function toPrimitives(): array
     {
         return $this->toPayload();
     }
 
-    /** Bridge: delegates to fromPayload(). */
     public static function fromPrimitives(array $primitives): self
     {
         return static::fromPayload($primitives);
@@ -82,14 +83,14 @@ final readonly class ProductDeleted implements DomainEvent, ShouldDispatchAfterC
     public static function fromPayload(array $payload): self
     {
         return new self(
-            productId:      (int)    ($payload['product_id']     ?? 0),
-            tenantId:       (string) ($payload['tenant_id']      ?? ''),
-            name:           (string) ($payload['name']           ?? ''),
+            productId:              (int)    ($payload['product_id']     ?? 0),
+            tenantId:               (string) ($payload['tenant_id']      ?? ''),
+            name:                   (string) ($payload['name']           ?? ''),
             occurredAt: isset($payload['occurred_at'])
                 ? new DateTimeImmutable($payload['occurred_at'])
                 : new DateTimeImmutable(),
-            eventId:        (string) ($payload['event_id']       ?? ''),
-            correlationId:  (string) ($payload['correlation_id'] ?? ''),
+            restoredEventId:        $payload['event_id']       ?? null,
+            restoredCorrelationId:  $payload['correlation_id'] ?? null,
         );
     }
 }

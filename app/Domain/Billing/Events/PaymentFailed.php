@@ -6,16 +6,19 @@ namespace App\Domain\Billing\Events;
 
 use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Traits\HasEventIdentity;
 
 /**
  * PaymentFailed - Domain Event for Failed Payment
  *
  * Agnostic event that abstracts Stripe/PayPal into internal domain language.
- * Implements ShouldDispatchAfterCommit for Transactional Outbox safety.
- * Implements DomainEvent (canonical) via Bridge pattern.
+ * Implements DomainEvent (canonical) via Bridge pattern (W-01).
+ * Uses HasEventIdentity (W-03) for auto-generated eventId/correlationId.
  */
 final readonly class PaymentFailed implements DomainEvent, ShouldDispatchAfterCommit
 {
+    use HasEventIdentity;
+
     public const SCHEMA_VERSION = 1;
 
     public function schemaVersion(): int
@@ -24,48 +27,26 @@ final readonly class PaymentFailed implements DomainEvent, ShouldDispatchAfterCo
     }
 
     public function __construct(
-        /** Internal transaction reference */
         public string $transactionId,
-
-        /** External provider reference */
         public string $providerReference,
-
-        /** Human-readable failure reason */
         public string $reason,
-
-        /** Tenant ID for multi-tenant context (required for A3 traceability) */
         public string $tenantId,
-
-        /** Provider-specific failure code */
         public ?string $failureCode = null,
-
-        /** Timestamp locked at instantiation for deterministic replayability */
         public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
-
-        /** W-01: DomainEvent metadata — populated by Outbox relay or Handler */
-        public string $eventId = '',
-        public string $correlationId = '',
-    ) {}
+        ?string $restoredEventId       = null,
+        ?string $restoredCorrelationId = null,
+    ) {
+        $this->initEventIdentity($restoredEventId, $restoredCorrelationId);
+    }
 
     // ─── DomainEvent interface ────────────────────────────────────────────────
 
-    public function eventId(): string        { return $this->eventId; }
-    public function correlationId(): string  { return $this->correlationId; }
     public function tenantId(): mixed        { return $this->tenantId; }
     public function aggregateId(): string    { return $this->transactionId; }
     public function occurredAt(): \DateTimeImmutable { return $this->occurredAt; }
 
-    /** Bridge: delegates to toPayload(). */
-    public function toPrimitives(): array
-    {
-        return $this->toPayload();
-    }
-
-    /** Bridge: delegates to fromPayload(). */
-    public static function fromPrimitives(array $primitives): self
-    {
-        return static::fromPayload($primitives);
-    }
+    public function toPrimitives(): array { return $this->toPayload(); }
+    public static function fromPrimitives(array $primitives): self { return static::fromPayload($primitives); }
 
     // ─── Serialization ────────────────────────────────────────────────────────
 
@@ -75,14 +56,14 @@ final readonly class PaymentFailed implements DomainEvent, ShouldDispatchAfterCo
     public static function fromPayload(array $payload): self
     {
         return new self(
-            transactionId:     (string) ($payload['transaction_id']    ?? ''),
-            providerReference: (string) ($payload['provider_reference'] ?? ''),
-            reason:            (string) ($payload['reason']             ?? ''),
-            tenantId:          (string) ($payload['tenant_id']          ?? ''),
-            failureCode:       isset($payload['failure_code']) ? (string) $payload['failure_code'] : null,
-            occurredAt:        new \DateTimeImmutable($payload['occurred_at'] ?? 'now'),
-            eventId:           (string) ($payload['event_id']           ?? ''),
-            correlationId:     (string) ($payload['correlation_id']     ?? ''),
+            transactionId:          (string) ($payload['transaction_id']    ?? ''),
+            providerReference:      (string) ($payload['provider_reference'] ?? ''),
+            reason:                 (string) ($payload['reason']             ?? ''),
+            tenantId:               (string) ($payload['tenant_id']          ?? ''),
+            failureCode:            isset($payload['failure_code']) ? (string) $payload['failure_code'] : null,
+            occurredAt:             new \DateTimeImmutable($payload['occurred_at'] ?? 'now'),
+            restoredEventId:        $payload['event_id']       ?? null,
+            restoredCorrelationId:  $payload['correlation_id'] ?? null,
         );
     }
 

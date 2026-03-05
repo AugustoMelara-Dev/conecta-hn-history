@@ -7,6 +7,7 @@ namespace App\Domain\Identity\Events;
 use DateTimeImmutable;
 use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Traits\HasEventIdentity;
 
 /**
  * UserDeleted - Digital Tombstone Domain Event
@@ -19,35 +20,26 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  * ║  UUID ALIGNED: Uses string IDs consistent with UserEntity.              ║
  * ║  REACTIVE: Allows Billing, Notifications, Audit modules to react.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * Use Cases:
- * - Billing subscription cancellation (userId + tenantId sufficient)
- * - Audit trail completion
- * - Resource cleanup (files, tokens, etc.)
- * - Marketing suppression: use userId to query suppression log pre-deletion
- *
- * Implements DomainEvent (canonical) via Bridge pattern.
+ * Implements DomainEvent (canonical) via Bridge (W-01).
+ * Uses HasEventIdentity (W-03).
  */
 final readonly class UserDeleted implements DomainEvent, ShouldDispatchAfterCommit
 {
+    use HasEventIdentity;
+
     private const EVENT_NAME = 'identity.user_deleted';
 
     private const SCHEMA_VERSION = 3; // Bumped: PII removed (A6/GDPR compliance)
 
     public function __construct(
-        /** Historical user ID (UUID string, no longer in DB) */
         public string $userId,
-
-        /** Tenant context for cleanup scope (UUID string) */
         public string $tenantId,
-
-        /** Timestamp of deletion moment */
         public DateTimeImmutable $deletedAt,
-
-        /** W-01: DomainEvent metadata — populated by Outbox relay or Handler */
-        public string $eventId = '',
-        public string $correlationId = '',
-    ) {}
+        ?string $restoredEventId       = null,
+        ?string $restoredCorrelationId = null,
+    ) {
+        $this->initEventIdentity($restoredEventId, $restoredCorrelationId);
+    }
 
     /**
      * Create from user data snapshot.
@@ -66,23 +58,12 @@ final readonly class UserDeleted implements DomainEvent, ShouldDispatchAfterComm
 
     // ─── DomainEvent interface ────────────────────────────────────────────────
 
-    public function eventId(): string        { return $this->eventId; }
-    public function correlationId(): string  { return $this->correlationId; }
     public function tenantId(): mixed        { return $this->tenantId; }
     public function aggregateId(): string    { return $this->userId; }
     public function occurredAt(): DateTimeImmutable { return $this->deletedAt; }
 
-    /** Bridge: delegates to toPayload(). */
-    public function toPrimitives(): array
-    {
-        return $this->toPayload();
-    }
-
-    /** Bridge: delegates to fromPayload(). */
-    public static function fromPrimitives(array $primitives): self
-    {
-        return static::fromPayload($primitives);
-    }
+    public function toPrimitives(): array { return $this->toPayload(); }
+    public static function fromPrimitives(array $primitives): self { return static::fromPayload($primitives); }
 
     // ─── Serialization ────────────────────────────────────────────────────────
 
@@ -97,26 +78,22 @@ final readonly class UserDeleted implements DomainEvent, ShouldDispatchAfterComm
     }
 
     /**
-     * Reconstruct event from safe payload.
-     *
      * @param array<string, mixed> $payload
      */
     public static function fromPayload(array $payload): self
     {
         return new self(
-            userId:        (string) ($payload['user_id']       ?? ''),
-            tenantId:      (string) ($payload['tenant_id']     ?? ''),
-            deletedAt:     isset($payload['deleted_at'])
+            userId:                 (string) ($payload['user_id']       ?? ''),
+            tenantId:               (string) ($payload['tenant_id']     ?? ''),
+            deletedAt: isset($payload['deleted_at'])
                 ? new DateTimeImmutable($payload['deleted_at'])
                 : new DateTimeImmutable(),
-            eventId:       (string) ($payload['event_id']      ?? ''),
-            correlationId: (string) ($payload['correlation_id'] ?? ''),
+            restoredEventId:        $payload['event_id']       ?? null,
+            restoredCorrelationId:  $payload['correlation_id'] ?? null,
         );
     }
 
     /**
-     * Serialize to safe payload for Outbox storage.
-     *
      * @return array<string, mixed>
      */
     public function toPayload(): array

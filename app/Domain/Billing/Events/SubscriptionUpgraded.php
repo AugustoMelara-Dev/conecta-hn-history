@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Traits\HasEventIdentity;
 
 /**
  * SubscriptionUpgraded - Domain Event for Plan Upgrade
@@ -17,10 +18,13 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  * ║  TRANSACTIONAL: Implements ShouldDispatchAfterCommit for Outbox safety.  ║
  * ║  TEMPORAL ACCURACY: occurredAt is immutable, set at creation time.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
- * Implements DomainEvent (canonical) via Bridge pattern.
+ * Implements DomainEvent (canonical) via Bridge (W-01).
+ * Uses HasEventIdentity (W-03).
  */
 final readonly class SubscriptionUpgraded implements DomainEvent, ShouldDispatchAfterCommit
 {
+    use HasEventIdentity;
+
     public const SCHEMA_VERSION = 3;
 
     public function __construct(
@@ -31,10 +35,11 @@ final readonly class SubscriptionUpgraded implements DomainEvent, ShouldDispatch
         public DateTimeImmutable $occurredAt,
         public ?string $transactionId = null,
         public int $schemaVersion = self::SCHEMA_VERSION,
-        /** W-01: DomainEvent metadata — populated by Outbox relay or Handler */
-        public string $eventId = '',
-        public string $correlationId = '',
-    ) {}
+        ?string $restoredEventId       = null,
+        ?string $restoredCorrelationId = null,
+    ) {
+        $this->initEventIdentity($restoredEventId, $restoredCorrelationId);
+    }
 
     /**
      * Create from upgrade context.
@@ -47,62 +52,44 @@ final readonly class SubscriptionUpgraded implements DomainEvent, ShouldDispatch
         ?string $transactionId = null,
     ): self {
         return new self(
-            tenantId:       $tenantId,
-            oldPlanId:      $oldPlanId,
-            newPlanId:      $newPlanId,
-            newPlanName:    $newPlanName,
-            occurredAt:     new DateTimeImmutable(),
-            transactionId:  $transactionId,
+            tenantId:      $tenantId,
+            oldPlanId:     $oldPlanId,
+            newPlanId:     $newPlanId,
+            newPlanName:   $newPlanName,
+            occurredAt:    new DateTimeImmutable(),
+            transactionId: $transactionId,
         );
     }
 
     // ─── DomainEvent interface ────────────────────────────────────────────────
 
-    public function eventId(): string        { return $this->eventId; }
-    public function correlationId(): string  { return $this->correlationId; }
     public function tenantId(): mixed        { return $this->tenantId; }
     public function aggregateId(): string    { return $this->tenantId; }
     public function occurredAt(): DateTimeImmutable { return $this->occurredAt; }
 
-    /** Bridge: delegates to toPayload(). */
-    public function toPrimitives(): array
-    {
-        return $this->toPayload();
-    }
-
-    /** Bridge: delegates to fromPayload(). */
-    public static function fromPrimitives(array $primitives): self
-    {
-        return static::fromPayload($primitives);
-    }
+    public function toPrimitives(): array { return $this->toPayload(); }
+    public static function fromPrimitives(array $primitives): self { return static::fromPayload($primitives); }
 
     // ─── Serialization ────────────────────────────────────────────────────────
 
-    /**
-     * Reconstruct event from safe payload.
-     */
     public static function fromPayload(array $payload): self
     {
-        $occurredAt = isset($payload['occurred_at'])
-            ? new DateTimeImmutable($payload['occurred_at'])
-            : new DateTimeImmutable();
-
         return new self(
-            tenantId:       (string) ($payload['tenant_id']      ?? ''),
-            oldPlanId:      (string) ($payload['old_plan_id']    ?? ''),
-            newPlanId:      (string) ($payload['new_plan_id']    ?? ''),
-            newPlanName:    (string) ($payload['new_plan_name']  ?? ''),
-            occurredAt:     $occurredAt,
-            transactionId:  isset($payload['transaction_id']) ? (string) $payload['transaction_id'] : null,
-            schemaVersion:  (int)    ($payload['schema_version'] ?? self::SCHEMA_VERSION),
-            eventId:        (string) ($payload['event_id']        ?? ''),
-            correlationId:  (string) ($payload['correlation_id']  ?? ''),
+            tenantId:               (string) ($payload['tenant_id']      ?? ''),
+            oldPlanId:              (string) ($payload['old_plan_id']    ?? ''),
+            newPlanId:              (string) ($payload['new_plan_id']    ?? ''),
+            newPlanName:            (string) ($payload['new_plan_name']  ?? ''),
+            occurredAt: isset($payload['occurred_at'])
+                ? new DateTimeImmutable($payload['occurred_at'])
+                : new DateTimeImmutable(),
+            transactionId:          isset($payload['transaction_id']) ? (string) $payload['transaction_id'] : null,
+            schemaVersion:          (int)    ($payload['schema_version']  ?? self::SCHEMA_VERSION),
+            restoredEventId:        $payload['event_id']       ?? null,
+            restoredCorrelationId:  $payload['correlation_id'] ?? null,
         );
     }
 
     /**
-     * Serialize to safe payload for Outbox storage.
-     *
      * @return array<string, mixed>
      */
     public function toPayload(): array

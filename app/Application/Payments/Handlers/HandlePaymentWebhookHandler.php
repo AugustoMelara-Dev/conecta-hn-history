@@ -58,7 +58,6 @@ final readonly class HandlePaymentWebhookHandler
                 providerReference: $payload['id'] ?? $command->externalEventId,
                 amount: (int) ($payload['amount'] ?? $payload['data']['object']['amount'] ?? 0),
                 currency: $payload['currency'] ?? $payload['data']['object']['currency'] ?? 'HNL',
-                payerEmail: $payload['receipt_email'] ?? $payload['data']['object']['receipt_email'] ?? null,
                 tenantId: $command->tenantId,
             ),
 

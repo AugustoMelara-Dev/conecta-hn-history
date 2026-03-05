@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Traits\HasEventIdentity;
 
 /**
  * PaymentReported - Domain Event for Manual Payment Submission
@@ -18,10 +19,13 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  * ║  TYPE SAFE: Uses string IDs (UUID/ULID compatible).                      ║
  * ║  TEMPORAL ACCURACY: occurredAt is immutable, set at creation time.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
- * Implements DomainEvent (canonical) via Bridge pattern.
+ * Implements DomainEvent (canonical) via Bridge (W-01).
+ * Uses HasEventIdentity (W-03).
  */
 final readonly class PaymentReported implements DomainEvent, ShouldDispatchAfterCommit
 {
+    use HasEventIdentity;
+
     public const SCHEMA_VERSION = 4;
 
     public function __construct(
@@ -33,62 +37,46 @@ final readonly class PaymentReported implements DomainEvent, ShouldDispatchAfter
         public ?string $idempotencyKey = null,
         public DateTimeImmutable $occurredAt = new DateTimeImmutable(),
         public int $schemaVersion = self::SCHEMA_VERSION,
-        /** W-01: DomainEvent metadata — populated by Outbox relay or Handler */
-        public string $eventId = '',
-        public string $correlationId = '',
-    ) {}
+        ?string $restoredEventId       = null,
+        ?string $restoredCorrelationId = null,
+    ) {
+        $this->initEventIdentity($restoredEventId, $restoredCorrelationId);
+    }
 
     // ─── DomainEvent interface ────────────────────────────────────────────────
 
-    public function eventId(): string        { return $this->eventId; }
-    public function correlationId(): string  { return $this->correlationId; }
     public function tenantId(): mixed        { return $this->tenantId; }
     public function aggregateId(): string    { return $this->paymentId; }
     public function occurredAt(): DateTimeImmutable { return $this->occurredAt; }
 
-    /** Bridge: delegates to toPayload(). */
-    public function toPrimitives(): array
-    {
-        return $this->toPayload();
-    }
-
-    /** Bridge: delegates to fromPayload(). */
-    public static function fromPrimitives(array $primitives): self
-    {
-        return static::fromPayload($primitives);
-    }
+    public function toPrimitives(): array { return $this->toPayload(); }
+    public static function fromPrimitives(array $primitives): self { return static::fromPayload($primitives); }
 
     // ─── Serialization ────────────────────────────────────────────────────────
 
     /**
      * Reconstruct event from safe payload.
-     *
-     * Essential for eliminating "Metadata Bomb" (extra keys) and
-     * resolving Case Mismatch (snake vs camel).
+     * Eliminates "Metadata Bomb" and resolves Case Mismatch.
      */
     public static function fromPayload(array $payload): self
     {
-        $occurredAt = isset($payload['occurred_at'])
-            ? new DateTimeImmutable($payload['occurred_at'])
-            : new DateTimeImmutable();
-
         return new self(
-            paymentId:      (string) ($payload['payment_id']      ?? ''),
-            tenantId:       (string) ($payload['tenant_id']       ?? ''),
-            amountInCents:  (int)    ($payload['amount_in_cents'] ?? 0),
-            currency:       (string) ($payload['currency']        ?? 'HNL'),
-            reference:      (string) ($payload['reference']       ?? ''),
-            idempotencyKey: isset($payload['idempotency_key']) ? (string) $payload['idempotency_key'] : null,
-            occurredAt:     $occurredAt,
-            schemaVersion:  (int)    ($payload['schema_version']  ?? self::SCHEMA_VERSION),
-            eventId:        (string) ($payload['event_id']        ?? ''),
-            correlationId:  (string) ($payload['correlation_id']  ?? ''),
+            paymentId:              (string) ($payload['payment_id']       ?? ''),
+            tenantId:               (string) ($payload['tenant_id']        ?? ''),
+            amountInCents:          (int)    ($payload['amount_in_cents']  ?? 0),
+            currency:               (string) ($payload['currency']         ?? 'HNL'),
+            reference:              (string) ($payload['reference']        ?? ''),
+            idempotencyKey:         isset($payload['idempotency_key']) ? (string) $payload['idempotency_key'] : null,
+            occurredAt: isset($payload['occurred_at'])
+                ? new DateTimeImmutable($payload['occurred_at'])
+                : new DateTimeImmutable(),
+            schemaVersion:          (int)    ($payload['schema_version']   ?? self::SCHEMA_VERSION),
+            restoredEventId:        $payload['event_id']       ?? null,
+            restoredCorrelationId:  $payload['correlation_id'] ?? null,
         );
     }
 
     /**
-     * Serialize to safe payload for Outbox storage.
-     *
      * @return array<string, mixed>
      */
     public function toPayload(): array
