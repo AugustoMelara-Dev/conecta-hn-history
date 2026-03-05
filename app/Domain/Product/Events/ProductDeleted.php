@@ -6,6 +6,7 @@ namespace App\Domain\Product\Events;
 
 use DateTimeImmutable;
 use DateTimeInterface;
+use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
@@ -15,8 +16,10 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  * - Update search indexes
  * - Notify affected users
  * - Log audit trail
+ *
+ * Implements DomainEvent (canonical) via Bridge pattern.
  */
-final readonly class ProductDeleted implements ShouldDispatchAfterCommit
+final readonly class ProductDeleted implements DomainEvent, ShouldDispatchAfterCommit
 {
     private const SCHEMA_VERSION = 1;
 
@@ -30,11 +33,34 @@ final readonly class ProductDeleted implements ShouldDispatchAfterCommit
         public string $tenantId,
         public string $name,
         public DateTimeImmutable $occurredAt = new DateTimeImmutable(),
+        /** W-01: DomainEvent metadata — populated by Outbox relay or Handler */
+        public string $eventId = '',
+        public string $correlationId = '',
     ) {}
 
+    // ─── DomainEvent interface ────────────────────────────────────────────────
+
+    public function eventId(): string        { return $this->eventId; }
+    public function correlationId(): string  { return $this->correlationId; }
+    public function tenantId(): mixed        { return $this->tenantId; }
+    public function aggregateId(): string    { return (string) $this->productId; }
+    public function occurredAt(): DateTimeImmutable { return $this->occurredAt; }
+
+    /** Bridge: delegates to toPayload(). */
+    public function toPrimitives(): array
+    {
+        return $this->toPayload();
+    }
+
+    /** Bridge: delegates to fromPayload(). */
+    public static function fromPrimitives(array $primitives): self
+    {
+        return static::fromPayload($primitives);
+    }
+
+    // ─── Serialization ────────────────────────────────────────────────────────
+
     /**
-     * Serialize to safe payload for Outbox storage.
-     *
      * @return array<string, mixed>
      */
     public function toPayload(): array
@@ -45,23 +71,25 @@ final readonly class ProductDeleted implements ShouldDispatchAfterCommit
             'tenant_id'      => $this->tenantId,
             'name'           => $this->name,
             'occurred_at'    => $this->occurredAt->format(DateTimeInterface::ATOM),
+            'event_id'       => $this->eventId,
+            'correlation_id' => $this->correlationId,
         ];
     }
 
     /**
-     * Reconstruct event from safe payload.
-     *
      * @param array<string, mixed> $payload
      */
     public static function fromPayload(array $payload): self
     {
         return new self(
-            productId:  (int)    ($payload['product_id'] ?? 0),
-            tenantId:   (string) ($payload['tenant_id']  ?? ''),
-            name:       (string) ($payload['name']       ?? ''),
+            productId:      (int)    ($payload['product_id']     ?? 0),
+            tenantId:       (string) ($payload['tenant_id']      ?? ''),
+            name:           (string) ($payload['name']           ?? ''),
             occurredAt: isset($payload['occurred_at'])
                 ? new DateTimeImmutable($payload['occurred_at'])
                 : new DateTimeImmutable(),
+            eventId:        (string) ($payload['event_id']       ?? ''),
+            correlationId:  (string) ($payload['correlation_id'] ?? ''),
         );
     }
 }

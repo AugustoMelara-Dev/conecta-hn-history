@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Identity\Events;
 
 use DateTimeImmutable;
+use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
@@ -24,8 +25,10 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  * - Audit trail completion
  * - Resource cleanup (files, tokens, etc.)
  * - Marketing suppression: use userId to query suppression log pre-deletion
+ *
+ * Implements DomainEvent (canonical) via Bridge pattern.
  */
-final readonly class UserDeleted implements ShouldDispatchAfterCommit
+final readonly class UserDeleted implements DomainEvent, ShouldDispatchAfterCommit
 {
     private const EVENT_NAME = 'identity.user_deleted';
 
@@ -40,6 +43,10 @@ final readonly class UserDeleted implements ShouldDispatchAfterCommit
 
         /** Timestamp of deletion moment */
         public DateTimeImmutable $deletedAt,
+
+        /** W-01: DomainEvent metadata — populated by Outbox relay or Handler */
+        public string $eventId = '',
+        public string $correlationId = '',
     ) {}
 
     /**
@@ -51,27 +58,33 @@ final readonly class UserDeleted implements ShouldDispatchAfterCommit
         string $tenantId,
     ): self {
         return new self(
-            userId: $userId,
-            tenantId: $tenantId,
-            deletedAt: new DateTimeImmutable,
+            userId:    $userId,
+            tenantId:  $tenantId,
+            deletedAt: new DateTimeImmutable(),
         );
     }
 
-    /**
-     * Reconstruct event from safe payload.
-     *
-     * @param array<string, mixed> $payload
-     */
-    public static function fromPayload(array $payload): self
+    // ─── DomainEvent interface ────────────────────────────────────────────────
+
+    public function eventId(): string        { return $this->eventId; }
+    public function correlationId(): string  { return $this->correlationId; }
+    public function tenantId(): mixed        { return $this->tenantId; }
+    public function aggregateId(): string    { return $this->userId; }
+    public function occurredAt(): DateTimeImmutable { return $this->deletedAt; }
+
+    /** Bridge: delegates to toPayload(). */
+    public function toPrimitives(): array
     {
-        return new self(
-            userId:    (string) ($payload['user_id']   ?? ''),
-            tenantId:  (string) ($payload['tenant_id'] ?? ''),
-            deletedAt: isset($payload['deleted_at'])
-                ? new DateTimeImmutable($payload['deleted_at'])
-                : new DateTimeImmutable(),
-        );
+        return $this->toPayload();
     }
+
+    /** Bridge: delegates to fromPayload(). */
+    public static function fromPrimitives(array $primitives): self
+    {
+        return static::fromPayload($primitives);
+    }
+
+    // ─── Serialization ────────────────────────────────────────────────────────
 
     public function eventName(): string
     {
@@ -84,6 +97,24 @@ final readonly class UserDeleted implements ShouldDispatchAfterCommit
     }
 
     /**
+     * Reconstruct event from safe payload.
+     *
+     * @param array<string, mixed> $payload
+     */
+    public static function fromPayload(array $payload): self
+    {
+        return new self(
+            userId:        (string) ($payload['user_id']       ?? ''),
+            tenantId:      (string) ($payload['tenant_id']     ?? ''),
+            deletedAt:     isset($payload['deleted_at'])
+                ? new DateTimeImmutable($payload['deleted_at'])
+                : new DateTimeImmutable(),
+            eventId:       (string) ($payload['event_id']      ?? ''),
+            correlationId: (string) ($payload['correlation_id'] ?? ''),
+        );
+    }
+
+    /**
      * Serialize to safe payload for Outbox storage.
      *
      * @return array<string, mixed>
@@ -91,9 +122,11 @@ final readonly class UserDeleted implements ShouldDispatchAfterCommit
     public function toPayload(): array
     {
         return [
-            'user_id' => $this->userId,
-            'tenant_id' => $this->tenantId,
-            'deleted_at' => $this->deletedAt->format(DateTimeImmutable::ATOM),
+            'user_id'        => $this->userId,
+            'tenant_id'      => $this->tenantId,
+            'deleted_at'     => $this->deletedAt->format(DateTimeImmutable::ATOM),
+            'event_id'       => $this->eventId,
+            'correlation_id' => $this->correlationId,
         ];
     }
 }

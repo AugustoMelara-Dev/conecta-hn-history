@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Billing\Events;
 
+use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
@@ -11,8 +12,9 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  *
  * Agnostic event that abstracts Stripe/PayPal into internal domain language.
  * Implements ShouldDispatchAfterCommit for Transactional Outbox safety.
+ * Implements DomainEvent (canonical) via Bridge pattern.
  */
-final readonly class PaymentFailed implements ShouldDispatchAfterCommit
+final readonly class PaymentFailed implements DomainEvent, ShouldDispatchAfterCommit
 {
     public const SCHEMA_VERSION = 1;
 
@@ -39,34 +41,63 @@ final readonly class PaymentFailed implements ShouldDispatchAfterCommit
 
         /** Timestamp locked at instantiation for deterministic replayability */
         public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
+
+        /** W-01: DomainEvent metadata — populated by Outbox relay or Handler */
+        public string $eventId = '',
+        public string $correlationId = '',
     ) {}
 
+    // ─── DomainEvent interface ────────────────────────────────────────────────
+
+    public function eventId(): string        { return $this->eventId; }
+    public function correlationId(): string  { return $this->correlationId; }
+    public function tenantId(): mixed        { return $this->tenantId; }
+    public function aggregateId(): string    { return $this->transactionId; }
+    public function occurredAt(): \DateTimeImmutable { return $this->occurredAt; }
+
+    /** Bridge: delegates to toPayload(). */
+    public function toPrimitives(): array
+    {
+        return $this->toPayload();
+    }
+
+    /** Bridge: delegates to fromPayload(). */
+    public static function fromPrimitives(array $primitives): self
+    {
+        return static::fromPayload($primitives);
+    }
+
+    // ─── Serialization ────────────────────────────────────────────────────────
+
     /**
-     * Serialize to safe payload for Outbox storage.
-     *
-     * @return array<string, mixed>
+     * @param array<string, mixed> $payload
      */
     public static function fromPayload(array $payload): self
     {
         return new self(
-            transactionId: $payload['transaction_id'],
-            providerReference: $payload['provider_reference'],
-            reason: $payload['reason'],
-            tenantId: $payload['tenant_id'],
-            failureCode: $payload['failure_code'] ?? null,
-            occurredAt: new \DateTimeImmutable($payload['occurred_at'])
+            transactionId:     (string) ($payload['transaction_id']    ?? ''),
+            providerReference: (string) ($payload['provider_reference'] ?? ''),
+            reason:            (string) ($payload['reason']             ?? ''),
+            tenantId:          (string) ($payload['tenant_id']          ?? ''),
+            failureCode:       isset($payload['failure_code']) ? (string) $payload['failure_code'] : null,
+            occurredAt:        new \DateTimeImmutable($payload['occurred_at'] ?? 'now'),
+            eventId:           (string) ($payload['event_id']           ?? ''),
+            correlationId:     (string) ($payload['correlation_id']     ?? ''),
         );
     }
 
     public function toPayload(): array
     {
         return [
-            'transaction_id' => $this->transactionId,
+            'schema_version'     => self::SCHEMA_VERSION,
+            'transaction_id'     => $this->transactionId,
             'provider_reference' => $this->providerReference,
-            'reason' => $this->reason,
-            'failure_code' => $this->failureCode,
+            'reason'             => $this->reason,
+            'failure_code'       => $this->failureCode,
             'tenant_id'          => $this->tenantId,
             'occurred_at'        => $this->occurredAt->format(\DateTimeInterface::ATOM),
+            'event_id'           => $this->eventId,
+            'correlation_id'     => $this->correlationId,
         ];
     }
 }

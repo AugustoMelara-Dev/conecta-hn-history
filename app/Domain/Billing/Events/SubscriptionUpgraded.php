@@ -6,6 +6,7 @@ namespace App\Domain\Billing\Events;
 
 use DateTimeImmutable;
 use DateTimeInterface;
+use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
@@ -16,8 +17,9 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  * ║  TRANSACTIONAL: Implements ShouldDispatchAfterCommit for Outbox safety.  ║
  * ║  TEMPORAL ACCURACY: occurredAt is immutable, set at creation time.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
+ * Implements DomainEvent (canonical) via Bridge pattern.
  */
-final readonly class SubscriptionUpgraded implements ShouldDispatchAfterCommit
+final readonly class SubscriptionUpgraded implements DomainEvent, ShouldDispatchAfterCommit
 {
     public const SCHEMA_VERSION = 3;
 
@@ -29,6 +31,9 @@ final readonly class SubscriptionUpgraded implements ShouldDispatchAfterCommit
         public DateTimeImmutable $occurredAt,
         public ?string $transactionId = null,
         public int $schemaVersion = self::SCHEMA_VERSION,
+        /** W-01: DomainEvent metadata — populated by Outbox relay or Handler */
+        public string $eventId = '',
+        public string $correlationId = '',
     ) {}
 
     /**
@@ -42,14 +47,36 @@ final readonly class SubscriptionUpgraded implements ShouldDispatchAfterCommit
         ?string $transactionId = null,
     ): self {
         return new self(
-            tenantId: $tenantId,
-            oldPlanId: $oldPlanId,
-            newPlanId: $newPlanId,
-            newPlanName: $newPlanName,
-            occurredAt: new DateTimeImmutable,
-            transactionId: $transactionId,
+            tenantId:       $tenantId,
+            oldPlanId:      $oldPlanId,
+            newPlanId:      $newPlanId,
+            newPlanName:    $newPlanName,
+            occurredAt:     new DateTimeImmutable(),
+            transactionId:  $transactionId,
         );
     }
+
+    // ─── DomainEvent interface ────────────────────────────────────────────────
+
+    public function eventId(): string        { return $this->eventId; }
+    public function correlationId(): string  { return $this->correlationId; }
+    public function tenantId(): mixed        { return $this->tenantId; }
+    public function aggregateId(): string    { return $this->tenantId; }
+    public function occurredAt(): DateTimeImmutable { return $this->occurredAt; }
+
+    /** Bridge: delegates to toPayload(). */
+    public function toPrimitives(): array
+    {
+        return $this->toPayload();
+    }
+
+    /** Bridge: delegates to fromPayload(). */
+    public static function fromPrimitives(array $primitives): self
+    {
+        return static::fromPayload($primitives);
+    }
+
+    // ─── Serialization ────────────────────────────────────────────────────────
 
     /**
      * Reconstruct event from safe payload.
@@ -58,16 +85,18 @@ final readonly class SubscriptionUpgraded implements ShouldDispatchAfterCommit
     {
         $occurredAt = isset($payload['occurred_at'])
             ? new DateTimeImmutable($payload['occurred_at'])
-            : new DateTimeImmutable;
+            : new DateTimeImmutable();
 
         return new self(
-            tenantId: (string) ($payload['tenant_id'] ?? ''),
-            oldPlanId: (string) ($payload['old_plan_id'] ?? ''),
-            newPlanId: (string) ($payload['new_plan_id'] ?? ''),
-            newPlanName: (string) ($payload['new_plan_name'] ?? ''),
-            occurredAt: $occurredAt,
-            transactionId: isset($payload['transaction_id']) ? (string) $payload['transaction_id'] : null,
-            schemaVersion: (int) ($payload['schema_version'] ?? self::SCHEMA_VERSION),
+            tenantId:       (string) ($payload['tenant_id']      ?? ''),
+            oldPlanId:      (string) ($payload['old_plan_id']    ?? ''),
+            newPlanId:      (string) ($payload['new_plan_id']    ?? ''),
+            newPlanName:    (string) ($payload['new_plan_name']  ?? ''),
+            occurredAt:     $occurredAt,
+            transactionId:  isset($payload['transaction_id']) ? (string) $payload['transaction_id'] : null,
+            schemaVersion:  (int)    ($payload['schema_version'] ?? self::SCHEMA_VERSION),
+            eventId:        (string) ($payload['event_id']        ?? ''),
+            correlationId:  (string) ($payload['correlation_id']  ?? ''),
         );
     }
 
@@ -80,12 +109,14 @@ final readonly class SubscriptionUpgraded implements ShouldDispatchAfterCommit
     {
         return [
             'schema_version' => $this->schemaVersion,
-            'tenant_id' => $this->tenantId,
-            'old_plan_id' => $this->oldPlanId,
-            'new_plan_id' => $this->newPlanId,
-            'new_plan_name' => $this->newPlanName,
+            'tenant_id'      => $this->tenantId,
+            'old_plan_id'    => $this->oldPlanId,
+            'new_plan_id'    => $this->newPlanId,
+            'new_plan_name'  => $this->newPlanName,
             'transaction_id' => $this->transactionId,
-            'occurred_at' => $this->occurredAt->format(DateTimeInterface::ATOM),
+            'occurred_at'    => $this->occurredAt->format(DateTimeInterface::ATOM),
+            'event_id'       => $this->eventId,
+            'correlation_id' => $this->correlationId,
         ];
     }
 }

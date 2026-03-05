@@ -6,6 +6,7 @@ namespace App\Domain\Billing\Events;
 
 use DateTimeImmutable;
 use DateTimeInterface;
+use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
@@ -13,13 +14,14 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  *
  * Agnostic event that abstracts Stripe/PayPal into internal domain language.
  * Implements ShouldDispatchAfterCommit for Transactional Outbox safety.
+ * Implements DomainEvent (canonical) via Bridge pattern.
  *
  * A6/GDPR: payer email has been removed from the event payload.
  * Events are stored indefinitely in the Outbox — PII must never persist.
  * Consumers requiring payer contact info must query the user repository
  * using $transactionId as the correlation key.
  */
-final readonly class PaymentReceived implements ShouldDispatchAfterCommit
+final readonly class PaymentReceived implements DomainEvent, ShouldDispatchAfterCommit
 {
     public const SCHEMA_VERSION = 1;
 
@@ -46,7 +48,33 @@ final readonly class PaymentReceived implements ShouldDispatchAfterCommit
 
         /** Timestamp locked at instantiation for deterministic replayability */
         public DateTimeImmutable $occurredAt = new DateTimeImmutable(),
+
+        /** W-01: DomainEvent metadata — populated by Outbox relay or Handler */
+        public string $eventId = '',
+        public string $correlationId = '',
     ) {}
+
+    // ─── DomainEvent interface ────────────────────────────────────────────────
+
+    public function eventId(): string        { return $this->eventId; }
+    public function correlationId(): string  { return $this->correlationId; }
+    public function tenantId(): mixed        { return $this->tenantId; }
+    public function aggregateId(): string    { return $this->transactionId; }
+    public function occurredAt(): DateTimeImmutable { return $this->occurredAt; }
+
+    /** Bridge: delegates to toPayload(). */
+    public function toPrimitives(): array
+    {
+        return $this->toPayload();
+    }
+
+    /** Bridge: delegates to fromPayload(). */
+    public static function fromPrimitives(array $primitives): self
+    {
+        return static::fromPayload($primitives);
+    }
+
+    // ─── Serialization ────────────────────────────────────────────────────────
 
     /**
      * Reconstruct event from safe payload.
@@ -64,6 +92,8 @@ final readonly class PaymentReceived implements ShouldDispatchAfterCommit
             occurredAt: isset($payload['occurred_at'])
                 ? new DateTimeImmutable($payload['occurred_at'])
                 : new DateTimeImmutable(),
+            eventId:           (string) ($payload['event_id']           ?? ''),
+            correlationId:     (string) ($payload['correlation_id']     ?? ''),
         );
     }
 
@@ -84,6 +114,8 @@ final readonly class PaymentReceived implements ShouldDispatchAfterCommit
             'currency'           => $this->currency,
             'tenant_id'          => $this->tenantId,
             'occurred_at'        => $this->occurredAt->format(DateTimeInterface::ATOM),
+            'event_id'           => $this->eventId,
+            'correlation_id'     => $this->correlationId,
         ];
     }
 }
