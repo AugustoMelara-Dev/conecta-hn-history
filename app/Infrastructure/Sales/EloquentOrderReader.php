@@ -6,7 +6,8 @@ namespace App\Infrastructure\Sales;
 
 use App\Domain\Sales\Contracts\OrderReader;
 use App\Models\Order;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Domain\Shared\Contracts\PaginatedResult;
+use App\Infrastructure\Shared\EloquentPaginatedResult;
 
 /**
  * EloquentOrderReader - Eloquent Implementation of OrderReader
@@ -26,13 +27,15 @@ final class EloquentOrderReader implements OrderReader
         int|string $tenantId,
         ?string $status = null,
         int $perPage = 20
-    ): LengthAwarePaginator {
-        return Order::withoutGlobalScopes()
+    ): PaginatedResult {
+        $paginator = Order::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->when($status, fn ($query, $status) => $query->where('status', $status))
             ->with(['items', 'tenant'])
             ->latest()
             ->paginate($perPage);
+
+        return new EloquentPaginatedResult($paginator);
     }
 
     /**

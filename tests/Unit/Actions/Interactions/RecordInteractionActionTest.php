@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Interactions\RecordInteractionAction;
+use App\Infrastructure\Interactions\Actions\RecordInteractionAction;
 use App\Application\Interactions\DTOs\InteractionData;
 use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\MetadataSanitizerInterface;

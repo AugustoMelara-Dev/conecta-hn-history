@@ -2,25 +2,22 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Authentication;
+namespace App\Infrastructure\Identity\Fortify\Actions\Authentication;
 
 use App\Application\Auth\Commands\UpdateUserPasswordCommand;
 use App\Application\Shared\Contracts\CommandBusInterface;
-use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
-use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
 use App\Application\Shared\Contracts\IdGeneratorInterface;
+use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
+use App\Application\Shared\Contracts\TenantRateLimiterInterface;
+use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
 
 /**
- * UpdateUserPassword - Infrastructure Adapter for Authentication
+ * UpdateUserPassword - Infrastructure Adapter for Fortify
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  GATEWAY ONLY: Validates HTTP input and delegates to Application Layer. ║
- * ║  PURE: No Eloquent logic, no hashing here.                              ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * Moved from Fortify/ to Authentication/ for Screaming Architecture compliance.
+ * Relocated from app/Actions/Authentication to Infrastructure layer.
+ * Gateway only: Validates HTTP input and delegates to Application Layer.
  */
 final readonly class UpdateUserPassword implements UpdatesUserPasswords
 {
@@ -28,19 +25,15 @@ final readonly class UpdateUserPassword implements UpdatesUserPasswords
         private CommandBusInterface $commandBus,
         private ValidatorFactory $validatorFactory,
         private IdGeneratorInterface $idGenerator,
-        private \App\Application\Shared\Contracts\TenantRateLimiterInterface $tenantRateLimiter,
+        private TenantRateLimiterInterface $tenantRateLimiter,
     ) {}
 
     /**
-     * Validate and update the user's password.
-     *
      * @param  mixed  $user
      * @param  array<string, string>  $input
      */
     public function update($user, array $input): void
     {
-        // PRODUCTION SAFETY: Explicit guard replaces assert() which is compiled
-        // out in production (zend.assertions = -1). SEC-01 hardening.
         if (! $user instanceof TenantAwareAuthenticatable) {
             throw new \InvalidArgumentException('User must implement TenantAwareAuthenticatable.');
         }
@@ -49,7 +42,6 @@ final readonly class UpdateUserPassword implements UpdatesUserPasswords
             throw new \RuntimeException('Cannot update password: user has no tenant context.');
         }
 
-        // RATE LIMITING: 5 updates per minute per tenant
         $this->tenantRateLimiter->ensureNotExceeded(
             actionName: self::class,
             tenantId: (string) $user->getTenantId(),

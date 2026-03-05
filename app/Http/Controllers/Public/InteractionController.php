@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
-use App\Actions\Interactions\RecordInteractionAction;
+use App\Infrastructure\Interactions\Actions\RecordInteractionAction;
 use App\Domain\Analytics\Enums\InteractionType;
 use App\Application\Interactions\DTOs\InteractionData;
 use App\Domain\Shared\ValueObjects\PhoneNumber;

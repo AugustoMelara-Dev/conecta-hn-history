@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Identity\UpdateUserProfileInformation;
+use App\Infrastructure\Identity\Fortify\Actions\Identity\UpdateUserProfileInformation;
 
 /**
  * DomainStructureTest - Screaming Architecture Governance

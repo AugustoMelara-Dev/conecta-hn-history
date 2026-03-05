@@ -1,6 +1,6 @@
 <?php
 
-use App\Actions\Identity\CreateNewUser;
+use App\Infrastructure\Identity\Fortify\Actions\Identity\CreateNewUser;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Domain\Identity\Enums\UserRole;

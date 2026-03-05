@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Actions\Interactions\RecordInteractionAction;
+use App\Infrastructure\Interactions\Actions\RecordInteractionAction;
 use App\Application\Interactions\DTOs\InteractionData;
 use App\Domain\Shared\Contracts\TenantReadRepository;
 use App\Http\Controllers\Controller;

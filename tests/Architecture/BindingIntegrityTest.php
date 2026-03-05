@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Authentication\ResetPasswordAction;
+use App\Infrastructure\Identity\Fortify\Actions\Authentication\ResetPasswordAction;
 
 /**
  * BindingIntegrityTest - Container Wiring Governance
