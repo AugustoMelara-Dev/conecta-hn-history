@@ -27,22 +27,22 @@ it('legacy EloquentInteractionRepository class does not exist', function () {
 
 // ─── W-02 ────────────────────────────────────────────────────────────────────
 
-it('UserRegistered has emailHash not email', function () {
+it('UserRegistered has EncryptedEmail property email', function () {
     $reflection = new ReflectionClass(UserRegistered::class);
-    expect($reflection->hasProperty('emailHash'))->toBeTrue();
-    expect($reflection->hasProperty('email'))->toBeFalse();
+    $prop = $reflection->getProperty('email');
+    expect($prop->getType()->getName())->toBe(\App\Domain\Shared\ValueObjects\EncryptedEmail::class);
 });
 
-it('UserRegistered SCHEMA_VERSION is 3', function () {
+it('UserRegistered SCHEMA_VERSION is 2', function () {
     $reflection = new ReflectionClass(UserRegistered::class);
     $const = $reflection->getConstant('SCHEMA_VERSION');
-    expect($const)->toBe(3);
+    expect($const)->toBe(2);
 });
 
-it('UserRegisteredViaSocial has emailHash not email', function () {
+it('UserRegisteredViaSocial has EncryptedEmail property email', function () {
     $reflection = new ReflectionClass(UserRegisteredViaSocial::class);
-    expect($reflection->hasProperty('emailHash'))->toBeTrue();
-    expect($reflection->hasProperty('email'))->toBeFalse();
+    $prop = $reflection->getProperty('email');
+    expect($prop->getType()->getName())->toBe(\App\Domain\Shared\ValueObjects\EncryptedEmail::class);
 });
 
 it('UserRegisteredViaSocial SCHEMA_VERSION is 2', function () {
@@ -51,28 +51,28 @@ it('UserRegisteredViaSocial SCHEMA_VERSION is 2', function () {
     expect($const)->toBe(2);
 });
 
-it('UserRegistered fromPayload V2 backward compat hashes email on read', function () {
+it('UserRegistered fromPayload parses EncryptedEmail correctly', function () {
     $v2Payload = [
         'user_id'       => 'usr-1',
         'name'          => 'Test',
-        'email'         => 'test@example.com',
+        'email'         => base64_encode('test@example.com'), // fake encrypted payload
         'role'          => 'customer',
         'tenant_id'     => '00000000-0000-0000-0000-000000000001',
         'occurred_on'   => '2026-01-01T00:00:00+00:00',
         'schema_version' => 2,
     ];
     $event = UserRegistered::fromPayload($v2Payload);
-    expect($event->emailHash)->toBe(hash('sha256', 'test@example.com'));
+    expect($event->email->value())->toBe(base64_encode('test@example.com'));
 });
 
-it('UserRegistered now() hashes email', function () {
+it('UserRegistered now() encrypts email', function () {
     $event = UserRegistered::now('u1', 'Alice', 'alice@test.com', 'customer', 'tenant-1');
-    expect($event->emailHash)->toBe(hash('sha256', 'alice@test.com'));
+    expect($event->email)->toBeInstanceOf(\App\Domain\Shared\ValueObjects\EncryptedEmail::class);
 });
 
-it('UserRegisteredViaSocial now() hashes email', function () {
+it('UserRegisteredViaSocial now() encrypts email', function () {
     $event = UserRegisteredViaSocial::now('u1', 'tenant-1', 'bob@test.com', 'google');
-    expect($event->emailHash)->toBe(hash('sha256', 'bob@test.com'));
+    expect($event->email)->toBeInstanceOf(\App\Domain\Shared\ValueObjects\EncryptedEmail::class);
 });
 
 // ─── W-03 ────────────────────────────────────────────────────────────────────

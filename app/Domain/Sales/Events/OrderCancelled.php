@@ -51,6 +51,13 @@ final readonly class OrderCancelled implements DomainEvent
 {
     use HasDomainMetadata;
 
+    public const SCHEMA_VERSION = 1;
+
+    public function schemaVersion(): int
+    {
+        return self::SCHEMA_VERSION;
+    }
+
     /**
      * @param  TenantId  $tenantId  Tenant context for queue middleware
      * @param  int  $orderId  The order aggregate root ID
@@ -136,6 +143,7 @@ final readonly class OrderCancelled implements DomainEvent
     public function toPrimitives(): array
     {
         return [
+            'schema_version' => self::SCHEMA_VERSION,
             'event_id' => $this->eventId,
             'tenant_id' => $this->tenantId->toString(),
             'order_id' => $this->orderId,

@@ -8,7 +8,7 @@ it('serializes to payload with schema version 2', function () {
     $event = new UserRegistered(
         user_id: 'usr_123456',
         name: 'Jane Doe',
-        email: 'jane@example.com',
+        email: new \App\Domain\Shared\ValueObjects\EncryptedEmail(base64_encode('jane@example.com')),
         role: 'user',
         tenant_id: 'tnt_987654',
         occurredOn: new \DateTimeImmutable('2026-03-04T12:00:00+00:00'),
@@ -29,7 +29,7 @@ it('reconstitutes from payload successfully', function () {
         'schema_version' => 2,
         'user_id'        => 'usr_123456',
         'name'           => 'Jane Doe',
-        'email'          => 'jane@example.com',
+        'email'          => base64_encode('jane@example.com'),
         'role'           => 'user',
         'tenant_id'      => 'tnt_987654',
         'occurred_on'    => '2026-03-04T12:00:00+00:00',
