@@ -6,7 +6,7 @@ namespace App\Domain\TenantGovernance\Events;
 
 use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\TenantAwareEvent;
-use App\Traits\HasDomainMetadata;
+use App\Domain\Shared\Traits\HasDomainMetadata;
 use App\Domain\Shared\ValueObjects\TenantId;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
