@@ -57,6 +57,22 @@ final readonly class UserDeleted implements ShouldDispatchAfterCommit
         );
     }
 
+    /**
+     * Reconstruct event from safe payload.
+     *
+     * @param array<string, mixed> $payload
+     */
+    public static function fromPayload(array $payload): self
+    {
+        return new self(
+            userId:    (string) ($payload['user_id']   ?? ''),
+            tenantId:  (string) ($payload['tenant_id'] ?? ''),
+            deletedAt: isset($payload['deleted_at'])
+                ? new DateTimeImmutable($payload['deleted_at'])
+                : new DateTimeImmutable(),
+        );
+    }
+
     public function eventName(): string
     {
         return self::EVENT_NAME;

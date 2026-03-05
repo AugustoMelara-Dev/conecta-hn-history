@@ -18,6 +18,13 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  */
 final readonly class TenantProfileEnhanced implements ShouldDispatchAfterCommit
 {
+    private const SCHEMA_VERSION = 1;
+
+    public function schemaVersion(): int
+    {
+        return self::SCHEMA_VERSION;
+    }
+
     public function __construct(
         public readonly string $tenant_id,
         public readonly string $user_id, // IDs as scalar
@@ -41,9 +48,10 @@ final readonly class TenantProfileEnhanced implements ShouldDispatchAfterCommit
     public function toPayload(): array
     {
         return [
-            'tenant_id' => $this->tenant_id,
-            'user_id' => $this->user_id,
-            'occurred_at' => $this->occurredAt->format(\DateTimeInterface::ATOM),
+            'schema_version'  => self::SCHEMA_VERSION,
+            'tenant_id'       => $this->tenant_id,
+            'user_id'         => $this->user_id,
+            'occurred_at'     => $this->occurredAt->format(\DateTimeInterface::ATOM),
             'enhanced_fields' => $this->enhanced_fields,
         ];
     }

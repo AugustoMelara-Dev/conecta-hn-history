@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Billing\Events;
 
+use DateTimeImmutable;
+use DateTimeInterface;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
@@ -11,6 +13,11 @@ use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
  *
  * Agnostic event that abstracts Stripe/PayPal into internal domain language.
  * Implements ShouldDispatchAfterCommit for Transactional Outbox safety.
+ *
+ * A6/GDPR: payer email has been removed from the event payload.
+ * Events are stored indefinitely in the Outbox — PII must never persist.
+ * Consumers requiring payer contact info must query the user repository
+ * using $transactionId as the correlation key.
  */
 final readonly class PaymentReceived implements ShouldDispatchAfterCommit
 {
@@ -34,44 +41,49 @@ final readonly class PaymentReceived implements ShouldDispatchAfterCommit
         /** ISO 4217 currency code */
         public string $currency,
 
-        /** Payer's email for notification */
-        public ?string $payerEmail = null,
-
         /** Tenant ID for multi-tenant context (required for A3 traceability) */
         public string $tenantId,
 
         /** Timestamp locked at instantiation for deterministic replayability */
-        public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
+        public DateTimeImmutable $occurredAt = new DateTimeImmutable(),
     ) {}
 
     /**
-     * Serialize to safe payload for Outbox storage.
+     * Reconstruct event from safe payload.
      *
-     * @return array<string, mixed>
+     * @param array<string, mixed> $payload
      */
     public static function fromPayload(array $payload): self
     {
         return new self(
-            transactionId: $payload['transaction_id'],
-            providerReference: $payload['provider_reference'],
-            amount: (int) $payload['amount'],
-            currency: $payload['currency'],
-            payerEmail: $payload['payer_email'] ?? null,
-            tenantId: $payload['tenant_id'],
-            occurredAt: new \DateTimeImmutable($payload['occurred_at'])
+            transactionId:     (string) ($payload['transaction_id']    ?? ''),
+            providerReference: (string) ($payload['provider_reference'] ?? ''),
+            amount:            (int)    ($payload['amount']             ?? 0),
+            currency:          (string) ($payload['currency']           ?? ''),
+            tenantId:          (string) ($payload['tenant_id']          ?? ''),
+            occurredAt: isset($payload['occurred_at'])
+                ? new DateTimeImmutable($payload['occurred_at'])
+                : new DateTimeImmutable(),
         );
     }
 
+    /**
+     * Serialize to safe payload for Outbox storage.
+     *
+     * A6/GDPR: payer_email intentionally excluded from payload.
+     *
+     * @return array<string, mixed>
+     */
     public function toPayload(): array
     {
         return [
-            'transaction_id' => $this->transactionId,
+            'schema_version'     => self::SCHEMA_VERSION,
+            'transaction_id'     => $this->transactionId,
             'provider_reference' => $this->providerReference,
-            'amount' => $this->amount,
-            'currency' => $this->currency,
-            'payer_email' => $this->payerEmail,
+            'amount'             => $this->amount,
+            'currency'           => $this->currency,
             'tenant_id'          => $this->tenantId,
-            'occurred_at'        => $this->occurredAt->format(\DateTimeInterface::ATOM),
+            'occurred_at'        => $this->occurredAt->format(DateTimeInterface::ATOM),
         ];
     }
 }
