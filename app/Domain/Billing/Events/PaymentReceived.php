@@ -7,6 +7,7 @@ namespace App\Domain\Billing\Events;
 use DateTimeImmutable;
 use DateTimeInterface;
 use App\Domain\Shared\Contracts\Events\DomainEvent;
+use App\Domain\Shared\Contracts\ShouldBeStoredInOutbox;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 use App\Domain\Shared\Traits\HasEventIdentity;
 
@@ -23,7 +24,7 @@ use App\Domain\Shared\Traits\HasEventIdentity;
  * Consumers requiring payer contact info must query the user repository
  * using $transactionId as the correlation key.
  */
-final readonly class PaymentReceived implements DomainEvent, ShouldDispatchAfterCommit
+final readonly class PaymentReceived implements DomainEvent, ShouldBeStoredInOutbox, ShouldDispatchAfterCommit
 {
     use HasEventIdentity;
 
@@ -52,6 +53,10 @@ final readonly class PaymentReceived implements DomainEvent, ShouldDispatchAfter
     public function tenantId(): mixed        { return $this->tenantId; }
     public function aggregateId(): string    { return $this->transactionId; }
     public function occurredAt(): DateTimeImmutable { return $this->occurredAt; }
+
+    // ─── ShouldBeStoredInOutbox ───────────────────────────────────────────────
+    public function getAggregateId(): ?string    { return $this->transactionId; }
+    public function getAggregateType(): ?string  { return 'Payment'; }
 
     public function toPrimitives(): array { return $this->toPayload(); }
     public static function fromPrimitives(array $primitives): self { return static::fromPayload($primitives); }

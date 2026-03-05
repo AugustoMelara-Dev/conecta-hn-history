@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Sales\Events;
 
 use App\Domain\Shared\Contracts\Events\DomainEvent;
-use App\Traits\HasDomainMetadata;
+use App\Domain\Shared\Traits\HasDomainMetadata;
 use App\ValueObjects\OrderNumber;
 use App\Domain\Shared\ValueObjects\TenantId;
 

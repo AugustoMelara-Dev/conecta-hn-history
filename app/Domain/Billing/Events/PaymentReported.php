@@ -7,6 +7,7 @@ namespace App\Domain\Billing\Events;
 use DateTimeImmutable;
 use DateTimeInterface;
 use App\Domain\Shared\Contracts\Events\DomainEvent;
+use App\Domain\Shared\Contracts\ShouldBeStoredInOutbox;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 use App\Domain\Shared\Traits\HasEventIdentity;
 
@@ -22,7 +23,7 @@ use App\Domain\Shared\Traits\HasEventIdentity;
  * Implements DomainEvent (canonical) via Bridge (W-01).
  * Uses HasEventIdentity (W-03).
  */
-final readonly class PaymentReported implements DomainEvent, ShouldDispatchAfterCommit
+final readonly class PaymentReported implements DomainEvent, ShouldBeStoredInOutbox, ShouldDispatchAfterCommit
 {
     use HasEventIdentity;
 
@@ -48,6 +49,10 @@ final readonly class PaymentReported implements DomainEvent, ShouldDispatchAfter
     public function tenantId(): mixed        { return $this->tenantId; }
     public function aggregateId(): string    { return $this->paymentId; }
     public function occurredAt(): DateTimeImmutable { return $this->occurredAt; }
+
+    // ─── ShouldBeStoredInOutbox ───────────────────────────────────────────────
+    public function getAggregateId(): ?string    { return $this->paymentId; }
+    public function getAggregateType(): ?string  { return 'PaymentReport'; }
 
     public function toPrimitives(): array { return $this->toPayload(); }
     public static function fromPrimitives(array $primitives): self { return static::fromPayload($primitives); }
