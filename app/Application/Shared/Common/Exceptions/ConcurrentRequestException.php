@@ -6,7 +6,7 @@ namespace App\Application\Shared\Common\Exceptions;
 
 use RuntimeException;
 
-class ConcurrentRequestException extends RuntimeException
+final class ConcurrentRequestException extends RuntimeException
 {
     public static function forKey(string $key): self
     {

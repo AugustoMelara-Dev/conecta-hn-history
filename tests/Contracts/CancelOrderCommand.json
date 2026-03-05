@@ -4,7 +4,7 @@
     "type": "object",
     "properties": {
         "tenantId": {
-            "type": "integer"
+            "type": "string"
         },
         "orderId": {
             "type": "integer"
@@ -14,6 +14,10 @@
         },
         "userId": {
             "type": "integer"
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "default": 1
         }
     },
     "required": [

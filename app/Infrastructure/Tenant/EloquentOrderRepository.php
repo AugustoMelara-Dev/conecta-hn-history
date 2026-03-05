@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Infrastructure\Tenant;
 
 use App\Domain\Tenant\Contracts\OrderRepository;
+use App\Domain\Shared\Contracts\PaginatedResult;
+use App\Infrastructure\Shared\EloquentPaginatedResult;
 use App\Models\Order;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 
 /**
  * EloquentOrderRepository - Infrastructure Implementation
@@ -24,32 +24,30 @@ final class EloquentOrderRepository implements OrderRepository
     /**
      * {@inheritDoc}
      */
-    public function getDashboardKanban(int $tenantId, array $filters = []): Collection
+    public function getDashboardKanban(int $tenantId, array $filters = []): array
     {
         $query = Order::query()
             ->where('tenant_id', $tenantId)
             ->with(['items.product:id,name,price,image_path'])
             ->orderByDesc('created_at');
 
-        // Apply date filter (default: today)
         if (isset($filters['date'])) {
             $query->whereDate('created_at', $filters['date']);
         } else {
             $query->whereDate('created_at', today());
         }
 
-        // Apply status filter if specified
         if (isset($filters['status']) && $filters['status'] !== 'all') {
             $query->where('status', $filters['status']);
         }
 
-        return $query->get()->groupBy('status');
+        return $query->get()->groupBy('status')->toArray();
     }
 
     /**
      * {@inheritDoc}
      */
-    public function getDashboardList(int $tenantId, array $filters = [], int $perPage = 15): LengthAwarePaginator
+    public function getDashboardList(int $tenantId, array $filters = [], int $perPage = 15): PaginatedResult
     {
         $query = Order::query()
             ->where('tenant_id', $tenantId)
@@ -60,7 +58,7 @@ final class EloquentOrderRepository implements OrderRepository
             $query->where('status', $filters['status']);
         }
 
-        return $query->paginate($perPage);
+        return new EloquentPaginatedResult($query->paginate($perPage));
     }
 
     /**

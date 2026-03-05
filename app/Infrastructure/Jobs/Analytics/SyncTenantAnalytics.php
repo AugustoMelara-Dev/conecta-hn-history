@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\Analytics;
 
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Models\TenantAnalytic;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

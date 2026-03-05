@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(TestCase::class);
+// uses(TestCase::class);
 
 describe('TenantCacheManager', function () {
     beforeEach(function () {

@@ -10,7 +10,7 @@ use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Application\Tenant\Results\RegisterTenantResult;
-use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
+use App\Domain\Identity\Events\TenantRegistered;
 use App\Domain\Identity\Factories\UserFactory;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Security\Contracts\HasherInterface;
@@ -39,13 +39,13 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         private TenantFactory $tenantFactory,
         private UserRepositoryInterface $userRepository,
         private TenantRepositoryInterface $tenantRepository,
-        private PaymentRepositoryInterface $paymentRepository,
         private EventDispatcherInterface $eventDispatcher,
         private SubscriptionPricingService $pricingService,
         private HasherInterface $hasher,
         private TransactionManagerInterface $transactionManager,
         private LoggerInterface $logger,
         private DataScrubberInterface $scrubber,
+        private string $appUrl = '',
     ) {}
 
     public function handle(RegisterTenantCommand $command): RegisterTenantResult
@@ -96,23 +96,14 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         $userEntity->assignToTenant($tenantEntity->id());
         $this->userRepository->save($userEntity);
 
-        // 6. Handle Payment
-        $planPrice = $this->pricingService->getPlanPrice($command->selectedPlan);
-        if ($planPrice > 0) {
-            $this->paymentRepository->create([
-                'tenant_id' => $tenantEntity->id(), // Corrected to method call
-                'amount' => $planPrice,
-                'currency' => 'HNL',
-                'status' => 'pending',
-                'reference_number' => 'PRO-'.strtoupper(uniqid()),
-                'description' => 'Suscripción Plan PRO',
-            ]);
-        }
+        // 6. Handle Payment (DELEGATED TO PROCESS MANAGER)
+        // Billing setup is now eventually consistent to prevent cross-context DB locking.
 
         // 7. Dispatch Event
-        $this->eventDispatcher->dispatch(new \App\Domain\Identity\Events\TenantRegistered(
+        $this->eventDispatcher->dispatch(new TenantRegistered(
             tenantId: $tenantEntity->id(),
             userId: $userEntity->id(),
+            selectedPlan: $command->selectedPlan,
         ));
 
         // 8. Log
@@ -122,6 +113,6 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             'slug' => $tenantEntity->domain(),
         ], $this->scrubber));
 
-        return RegisterTenantResult::fromEntities($tenantEntity, $userEntity);
+        return RegisterTenantResult::fromEntities($tenantEntity, $userEntity, $this->appUrl);
     }
 }

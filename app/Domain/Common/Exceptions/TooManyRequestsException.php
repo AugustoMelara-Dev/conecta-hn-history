@@ -8,20 +8,12 @@ use Exception;
 
 // use Illuminate\Http\JsonResponse; // REMOVED: Domain layer cannot depend on Http layer
 
-class TooManyRequestsException extends Exception
+final class TooManyRequestsException extends Exception
 {
-    /**
-     * Render the exception into an HTTP response.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     */
-    public function render($request): JsonResponse
-    {
-        return response()->json([
-            'error' => 'Too Many Requests',
-            'message' => 'Rate limit exceeded. Please try again later.',
-        ], 429, [
-            'Retry-After' => 60,
-        ]);
+    public function __construct(
+        string $message = 'Rate limit exceeded. Please try again later.',
+        public readonly int $retryAfterSeconds = 60,
+    ) {
+        parent::__construct($message);
     }
 }

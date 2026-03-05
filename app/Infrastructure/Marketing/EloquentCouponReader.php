@@ -6,7 +6,6 @@ namespace App\Infrastructure\Marketing;
 
 use App\Domain\Marketing\Contracts\CouponReader;
 use App\Models\Coupon;
-use Illuminate\Database\Eloquent\Collection;
 
 /**
  * EloquentCouponReader - Eloquent Implementation
@@ -15,13 +14,14 @@ use Illuminate\Database\Eloquent\Collection;
  */
 final class EloquentCouponReader implements CouponReader
 {
-    public function getValidCoupons(int $tenantId): Collection
+    public function getValidCoupons(int $tenantId): array
     {
         return Coupon::where('tenant_id', $tenantId)
             ->where('is_active', true)
             ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->select(['code', 'name', 'description', 'type', 'value', 'min_spend', 'expires_at'])
-            ->get();
+            ->get()
+            ->toArray();
     }
 
     public function findByCode(int $tenantId, string $code): ?object

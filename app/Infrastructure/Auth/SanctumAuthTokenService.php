@@ -74,7 +74,7 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
             }
 
             // User genuinely doesn't exist
-            throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
+            throw new \App\Domain\Identity\Exceptions\UserNotFoundException(
                 "User {$userId} not found"
             );
         }

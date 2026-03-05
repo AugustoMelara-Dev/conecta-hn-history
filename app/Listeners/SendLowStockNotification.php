@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Events\LowStockThresholdReached;
+use App\Events\Inventory\LowStockThresholdReached;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -33,7 +33,7 @@ final class SendLowStockNotification implements ShouldQueue
     {
         // UUID STRING: Use toString() for tenant context
         return [
-            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()->toString()),
+            new \App\Infrastructure\Queue\Middleware\TenantQueueMiddleware((string) $event->product->tenant_id),
         ];
     }
 
@@ -42,8 +42,8 @@ final class SendLowStockNotification implements ShouldQueue
      */
     public function handle(LowStockThresholdReached $event): void
     {
-        $productId = $event->aggregateId();
-        $tenantIdString = $event->tenantId()->toString();
+        $productId = $event->product->id;
+        $tenantIdString = (string) $event->product->tenant_id;
 
         // ═══════════════════════════════════════════════════════════════════════
         // SECURITY: EXPLICIT TENANT-SCOPED FETCH (NO GLOBAL SCOPE RELIANCE)
@@ -51,14 +51,14 @@ final class SendLowStockNotification implements ShouldQueue
         // CRITICAL: We NEVER use Product::find() in background jobs.
         // Background workers may not have the global tenant scope booted.
         // We always enforce tenant isolation at the SQL WHERE clause level.
-        $product = \App\Models\Product::query()
+        $product = \App\Models\Product::withoutGlobalScopes()
             ->where('id', $productId)
             ->where('tenant_id', $tenantIdString) // THE IMMUTABLE FIREWALL
             ->first();
 
         if (! $product) {
             // Check if product exists but belongs to different tenant (security probe)
-            $existsElsewhere = \App\Models\Product::where('id', $productId)->exists();
+            $existsElsewhere = \App\Models\Product::withoutGlobalScopes()->where('id', $productId)->exists();
 
             if ($existsElsewhere) {
                 // SECURITY ALERT: Cross-tenant access attempt blocked
@@ -116,7 +116,7 @@ final class SendLowStockNotification implements ShouldQueue
             'product_name' => $product->name,
             'current_stock' => $newStock,
             'threshold' => $threshold,
-            'tenant_id' => $event->tenantId()->toString(),
+            'tenant_id' => $tenantIdString,
             'owner_email' => $owner->email,
         ]);
 

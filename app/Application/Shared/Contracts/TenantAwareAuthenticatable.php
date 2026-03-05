@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\Contracts;
 
-use Illuminate\Contracts\Auth\Authenticatable;
+
 
 /**
  * TenantAwareAuthenticatable - Unified Identity + Tenancy Contract
@@ -18,8 +18,19 @@ use Illuminate\Contracts\Auth\Authenticatable;
  * @see App\Application\Shared\Contracts\TenantAware
  * @see App\Actions\Authentication\ResetPasswordAction
  */
-interface TenantAwareAuthenticatable extends Authenticatable, TenantAware
+interface TenantAwareAuthenticatable extends TenantAware
 {
     // Inherits getTenantId(): int|string from TenantAware
-    // Inherits getAuthIdentifier(), getAuthPassword(), etc. from Authenticatable
+    // Explicit auth contract — mirrors Illuminate\Contracts\Auth\Authenticatable
+    // without coupling the Application layer to the framework namespace.
+    // NOTE: No return types — Illuminate\Auth\Authenticatable trait declares all
+    // these methods without type hints. Adding types would cause fatal PHP
+    // declaration incompatibility on every Eloquent User implementation.
+    public function getAuthIdentifierName();
+    public function getAuthIdentifier();
+    public function getAuthPasswordName();
+    public function getAuthPassword();
+    public function getRememberToken();
+    public function setRememberToken($value);
+    public function getRememberTokenName();
 }

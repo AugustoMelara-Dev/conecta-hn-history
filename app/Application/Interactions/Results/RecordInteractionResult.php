@@ -19,8 +19,8 @@ final readonly class RecordInteractionResult
         public string $tenantId,
         public string $type,
         public ?string $productId,
-        public ?string $ipAddress,
-        public ?string $userAgent,
+        #[\SensitiveParameter] public ?string $ipAddress,
+        #[\SensitiveParameter] public ?string $userAgent,
         public ?string $referrer,
         public ?string $url,
         public ?array $metadata

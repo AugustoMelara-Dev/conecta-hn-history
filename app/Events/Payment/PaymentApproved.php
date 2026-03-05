@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Events\Payment;
 
-use App\Contracts\Events\DomainEvent;
-use App\Traits\HasDomainMetadata;
+use App\Domain\Shared\Contracts\Events\DomainEvent;
+use App\Domain\Shared\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
 use App\Domain\Shared\ValueObjects\TenantId;

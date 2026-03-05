@@ -27,8 +27,8 @@ final class OrderRefundedBroadcast implements BroadcastableNotification
     public $timeout = 30;
 
     public function __construct(
-        public int $tenantId,
-        public int $orderId,
+        public string|int $tenantId,
+        public string|int $orderId,
         public string $orderNumber,
         public int $refundAmountCents,
         public string $currency,
@@ -38,8 +38,8 @@ final class OrderRefundedBroadcast implements BroadcastableNotification
     ) {}
 
     public static function fromDomainData(
-        int $tenantId,
-        int $orderId,
+        string|int $tenantId,
+        string|int $orderId,
         string $orderNumber,
         int $refundAmountCents,
         string $currency,
@@ -96,7 +96,7 @@ final class OrderRefundedBroadcast implements BroadcastableNotification
      *   order_number: string,
      *   amount: string,
      *   reason: string,
-     *   tenant_id: int
+     *   tenant_id: string|int
      * }
      */
     public function broadcastWith(): array

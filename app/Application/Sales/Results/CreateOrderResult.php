@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Application\Sales\Results;
 
 use App\Application\Sales\DTOs\OrderItemData;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * CreateOrderResult - Immutable Output Contract for Order Creation
@@ -16,7 +15,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  * ║  IDEMPOTENCY READY: Implements strict serialization for caching.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-#[TypeScript]
 final readonly class CreateOrderResult
 {
     public function __construct(

@@ -7,7 +7,7 @@ namespace App\Application\Billing\Validators;
 use App\Application\Billing\Commands\ReportPaymentCommand;
 use App\Application\Billing\Handlers\ReportPaymentHandlerInterface;
 use App\Application\Billing\Results\ReportPaymentResult;
-use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use App\Application\Shared\Contracts\ValidatorFactoryInterface;
 
 /**
  * ReportPaymentCommandValidator - Clean Architecture Validation Decorator
@@ -19,16 +19,16 @@ use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
  * ║  FINANCIAL PRECISION: Validates amounts as positive integers (cents).   ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class ReportPaymentCommandValidator implements ReportPaymentHandlerInterface
+final readonly class ReportPaymentCommandValidator implements ReportPaymentHandlerInterface
 {
     public function __construct(
         private ReportPaymentHandlerInterface $inner,
-        private ValidatorFactory $validatorFactory,
+        private ValidatorFactoryInterface $validatorFactory,
     ) {}
 
     public function handle(ReportPaymentCommand $command): ReportPaymentResult
     {
-        $this->validatorFactory->make($command->toArray(), [
+        $this->validatorFactory->validate($command->toArray(), [
             // Tenant isolation: Required string (UUID format)
             'tenantId' => ['required', 'string', 'uuid'],
 
@@ -52,7 +52,7 @@ final class ReportPaymentCommandValidator implements ReportPaymentHandlerInterfa
 
             // Notes: Hard limit to prevent Memory Bomb (DoS)
             'notes' => ['nullable', 'string', 'max:500'],
-        ])->validate();
+        ]);
 
         return $this->inner->handle($command);
     }

@@ -12,8 +12,10 @@ namespace App\Application\Payments\Commands;
  * ║  IDEMPOTENCY KEY: externalEventId allows duplicate detection.           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class HandlePaymentWebhookCommand
+final readonly class HandlePaymentWebhookCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** Provider identifier (stripe, paypal, etc.) */
         public string $provider,
@@ -27,7 +29,8 @@ final readonly class HandlePaymentWebhookCommand
         /** Full decoded JSON payload for audit trail */
         public array $payload,
 
-        /** Optional tenant ID if webhook is tenant-contextualized */
-        public ?int $tenantId = null,
+        /** Mandatory tenant ID for audit trail isolation */
+        public string $tenantId,
+        public int $schemaVersion = 1,
     ) {}
 }

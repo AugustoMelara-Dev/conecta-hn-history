@@ -6,13 +6,16 @@ namespace App\Application\Payments\Commands;
 
 use App\Domain\Exceptions\Payment\InvalidWebhookPayloadException;
 
-final readonly class ProcessPaymentWebhookCommand
+final readonly class ProcessPaymentWebhookCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         public string $eventType,
         public array $payload,
         public string $tenantId, // New Invariant
-        public string $receivedAt
+        public string $receivedAt,
+        public int $schemaVersion = 1,
     ) {}
 
     public static function fromRequest(string $eventType, array $payload): self
@@ -30,7 +33,7 @@ final readonly class ProcessPaymentWebhookCommand
             eventType: $eventType,
             payload: $payload,
             tenantId: $tenantId,
-            receivedAt: now()->toIso8601String()
+            receivedAt: (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM)
         );
     }
 }

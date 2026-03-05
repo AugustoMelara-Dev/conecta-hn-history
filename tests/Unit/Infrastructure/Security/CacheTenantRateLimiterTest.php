@@ -9,7 +9,7 @@ use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Mockery;
 
-uses(\Tests\TestCase::class);
+// uses(\Tests\TestCase::class);
 
 test('ensureNotExceeded allows request within limit', function () {
     $mockLimiter = Mockery::mock(RateLimiter::class);

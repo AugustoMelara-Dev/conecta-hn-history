@@ -8,9 +8,7 @@ use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface;
 use App\Application\Auth\Results\SocialLoginResult;
 use App\Domain\Shared\Enums\ProviderName;
-use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
-use Illuminate\Validation\Rules\Enum;
-use Illuminate\Validation\ValidationException;
+use App\Application\Shared\Contracts\ValidatorFactoryInterface;
 
 /**
  * LoginViaSocialProviderCommandValidator - Clean Architecture Edition
@@ -21,16 +19,19 @@ use Illuminate\Validation\ValidationException;
  * ║  TESTABLE: Factory can be mocked in unit tests.                         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class LoginViaSocialProviderCommandValidator implements LoginViaSocialProviderHandlerInterface
+final readonly class LoginViaSocialProviderCommandValidator implements LoginViaSocialProviderHandlerInterface
 {
     public function __construct(
         private LoginViaSocialProviderHandlerInterface $inner,
-        private ValidatorFactory $validatorFactory,
+        private ValidatorFactoryInterface $validatorFactory,
     ) {}
 
     public function handle(LoginViaSocialProviderCommand $command): SocialLoginResult
     {
-        $validator = $this->validatorFactory->make([
+        // Convert Enum cases to 'in:' rule — no framework coupling
+        $allowedProviders = implode(',', array_column(ProviderName::cases(), 'value'));
+
+        $this->validatorFactory->validate([
             'tenantId' => $command->tenantId,
             'providerName' => $command->providerName,
             'providerId' => $command->providerId,
@@ -40,17 +41,13 @@ final class LoginViaSocialProviderCommandValidator implements LoginViaSocialProv
             'avatarUrl' => $command->avatarUrl,
         ], [
             'tenantId' => ['required', 'uuid'],
-            'providerName' => ['required', new Enum(ProviderName::class)],
+            'providerName' => ['required', 'in:' . $allowedProviders],
             'providerId' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
             'idempotencyKey' => ['required', 'uuid'],
             'avatarUrl' => ['nullable', 'url', 'max:1024'],
         ]);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
 
         return $this->inner->handle($command);
     }

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Notification;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    \DG\BypassFinals::enable();
     // Crear dos tenants
     $this->tenantA = Tenant::factory()->create(['name' => 'Tenant A']);
     $this->tenantB = Tenant::factory()->create(['name' => 'Tenant B']);
@@ -21,13 +22,13 @@ beforeEach(function () {
     $this->productA = Product::factory()->create([
         'tenant_id' => $this->tenantA->id,
         'name' => 'Product A',
-        'stock' => 5,
+        'stock_quantity' => 5,
     ]);
     
     $this->productB = Product::factory()->create([
         'tenant_id' => $this->tenantB->id,
         'name' => 'Product B',
-        'stock' => 3,
+        'stock_quantity' => 3,
     ]);
     
     $this->listener = new SendLowStockNotification();
@@ -60,16 +61,16 @@ test('processes product with correct tenant_id', function () {
 test('blocks product from different tenant and logs security event', function () {
     // Simular evento malintencionado: producto de TenantB pero con contexto manipulado
     // Creamos un producto "falso" que simula un ID de otro tenant
-    $maliciousEvent = Mockery::mock(LowStockThresholdReached::class);
-    $maliciousEvent->product = $this->productA; // Producto real de Tenant A
-    $maliciousEvent->currentStock = 5;
-    $maliciousEvent->threshold = 10;
+    // pero se procesa a nivel de código
+    $maliciousProduct = Mockery::mock(\App\Models\Product::class)->makePartial();
+    $maliciousProduct->id = $this->productA->id;
+    $maliciousProduct->tenant_id = $this->tenantB->id;
     
-    // Pero forzamos que busque con tenant_id de Tenant B
-    $maliciousEvent->shouldReceive('aggregateId')
-        ->andReturn((string) $this->productA->id);
-    $maliciousEvent->shouldReceive('tenantId->toString')
-        ->andReturn((string) $this->tenantB->id); // ¡TENANT INCORRECTO!
+    $maliciousEvent = new LowStockThresholdReached(
+        product: $maliciousProduct,
+        currentStock: 5,
+        threshold: 10
+    );
 
     Log::shouldReceive('channel')
         ->with('security')
@@ -92,15 +93,15 @@ test('blocks product from different tenant and logs security event', function ()
 // ═══════════════════════════════════════════════════════════════════════════
 
 test('gracefully returns for non-existent product', function () {
-    $maliciousEvent = Mockery::mock(LowStockThresholdReached::class);
-    $maliciousEvent->product = $this->productA;
-    $maliciousEvent->currentStock = 5;
-    $maliciousEvent->threshold = 10;
-    
-    $maliciousEvent->shouldReceive('aggregateId')
-        ->andReturn('99999999'); // ID inexistente
-    $maliciousEvent->shouldReceive('tenantId->toString')
-        ->andReturn((string) $this->tenantA->id);
+    $maliciousProduct = Mockery::mock(\App\Models\Product::class)->makePartial();
+    $maliciousProduct->id = '99999999';
+    $maliciousProduct->tenant_id = $this->tenantA->id;
+
+    $maliciousEvent = new LowStockThresholdReached(
+        product: $maliciousProduct,
+        currentStock: 5,
+        threshold: 10
+    );
 
     Log::shouldReceive('warning')
         ->once()
@@ -128,12 +129,15 @@ test('never throws exceptions - implements Fail Silent protocol', function () {
     Log::shouldReceive('warning')->andReturnNull();
 
     foreach ($scenarios as $scenario) {
-        $event = Mockery::mock(LowStockThresholdReached::class);
-        $event->product = $this->productA;
-        $event->currentStock = 5;
-        $event->threshold = 10;
-        $event->shouldReceive('aggregateId')->andReturn($scenario['aggregateId']);
-        $event->shouldReceive('tenantId->toString')->andReturn($scenario['tenantId']);
+        $fakeProduct = Mockery::mock(\App\Models\Product::class)->makePartial();
+        $fakeProduct->id = $scenario['aggregateId'];
+        $fakeProduct->tenant_id = $scenario['tenantId'];
+
+        $event = new LowStockThresholdReached(
+            product: $fakeProduct,
+            currentStock: 5,
+            threshold: 10
+        );
 
         // No debe lanzar ninguna excepción
         expect(fn() => $this->listener->handle($event))->not->toThrow(Exception::class);

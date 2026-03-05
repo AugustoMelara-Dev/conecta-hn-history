@@ -11,7 +11,7 @@ use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Domain\Product\Exceptions\ProductNotFoundException;
 
 /**
  * UpdateProductHandler - Command Handler for Product Update
@@ -39,7 +39,7 @@ final readonly class UpdateProductHandler
     /**
      * Handle product update command.
      *
-     * @throws ModelNotFoundException If product not found or tenant mismatch
+     * @throws ProductNotFoundException If product not found or tenant mismatch
      */
     public function handle(UpdateProductCommand $command): UpdateProductResult
     {
@@ -48,7 +48,7 @@ final readonly class UpdateProductHandler
 
         // 2. Guard: Product Existence
         if ($product === null) {
-            throw new ModelNotFoundException("Product not found: {$command->productId}");
+            throw new ProductNotFoundException("Product not found: {$command->productId}");
         }
 
         // 3. SECURITY GUARD: Tenant Ownership Verification (IDOR Protection)
@@ -59,7 +59,7 @@ final readonly class UpdateProductHandler
                 'requesting_tenant_id' => $command->tenantId,
                 'actual_tenant_id' => $product->tenant_id,
             ]);
-            throw new ModelNotFoundException("Product not found: {$command->productId}");
+            throw new ProductNotFoundException("Product not found: {$command->productId}");
         }
 
         // 4. Update Product Properties

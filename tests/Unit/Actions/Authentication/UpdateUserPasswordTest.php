@@ -10,7 +10,7 @@ use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
 use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
 use Illuminate\Contracts\Validation\Validator;
 
-uses(\Tests\TestCase::class);
+// uses(\Tests\TestCase::class);
 
 test('update user password action uses id generator for idempotency key', function () {
     // Arrange

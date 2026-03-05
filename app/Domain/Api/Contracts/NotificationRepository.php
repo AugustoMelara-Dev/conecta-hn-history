@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Api\Contracts;
 
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Domain\Shared\Contracts\PaginatedResult;
 
 /**
  * NotificationRepository - Domain Contract for User Notifications
@@ -17,7 +17,7 @@ interface NotificationRepository
     /**
      * Get paginated notifications for a user.
      */
-    public function getUserNotifications(int $userId, int $perPage = 20): LengthAwarePaginator;
+    public function getUserNotifications(int $userId, int $perPage = 20): PaginatedResult;
 
     /**
      * Mark a specific notification as read.

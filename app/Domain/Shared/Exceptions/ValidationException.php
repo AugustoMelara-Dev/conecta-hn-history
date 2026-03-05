@@ -10,7 +10,7 @@ namespace App\Domain\Shared\Exceptions;
  * Thrown when input data fails validation rules.
  * Framework-agnostic alternative to Illuminate\Validation\ValidationException.
  */
-class ValidationException extends \RuntimeException
+final class ValidationException extends \RuntimeException
 {
     /**
      * @param  string  $message  Human-readable error message

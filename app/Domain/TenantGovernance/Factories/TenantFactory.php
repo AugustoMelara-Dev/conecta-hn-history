@@ -9,7 +9,6 @@ use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use DateTimeImmutable;
-use Illuminate\Support\Str;
 
 final readonly class TenantFactory
 {
@@ -29,10 +28,10 @@ final readonly class TenantFactory
 
         $finalSlug = ($customSlug !== null && $customSlug !== '')
             ? $customSlug
-            : Str::slug($finalName);
+            : self::slugify($finalName);
 
         $tenant = TenantEntity::create(
-            id: (string) Str::orderedUuid(),
+            id: \Ramsey\Uuid\Uuid::uuid7()->toString(),
             name: $finalName,
             domain: $finalSlug
         );
@@ -53,12 +52,26 @@ final readonly class TenantFactory
         ?string $whatsapp = null,
     ): TenantEntity {
         $tenant = TenantEntity::create(
-            id: (string) Str::orderedUuid(),
+            id: \Ramsey\Uuid\Uuid::uuid7()->toString(),
             name: $name,
             domain: $slug
         );
         $tenant->upgradeToPlan($planType->value);
 
         return $tenant;
+    }
+
+    /**
+     * Generate a URL-safe slug from a string without framework helpers.
+     * Equivalent to Laravel's Str::slug($value, '-').
+     */
+    private static function slugify(string $value): string
+    {
+        // Transliterate to ASCII
+        $slug = transliterator_transliterate('Any-Latin; Latin-ASCII; Lower()', $value) ?? strtolower($value);
+        // Replace non-alphanumeric with hyphens
+        $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
+        // Trim leading/trailing hyphens
+        return trim($slug, '-');
     }
 }

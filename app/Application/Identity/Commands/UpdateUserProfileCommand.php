@@ -13,8 +13,10 @@ namespace App\Application\Identity\Commands;
  * ║  IMMUTABLE: final readonly prevents tampering after dispatch.           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class UpdateUserProfileCommand
+final readonly class UpdateUserProfileCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** User ID to update (UUID string) */
         public string $userId,
@@ -30,6 +32,7 @@ final readonly class UpdateUserProfileCommand
         public string $name,
 
         /** New email address */
-        public string $email,
+        #[\SensitiveParameter] public string $email,
+        public int $schemaVersion = 1,
     ) {}
 }

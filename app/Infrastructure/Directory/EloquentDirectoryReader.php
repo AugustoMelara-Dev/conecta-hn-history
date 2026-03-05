@@ -6,11 +6,11 @@ namespace App\Infrastructure\Directory;
 
 use App\Domain\Directory\Contracts\DirectoryReader;
 use App\Domain\Directory\DTOs\DirectorySearchData;
+use App\Domain\Shared\Contracts\PaginatedResult;
+use App\Infrastructure\Shared\EloquentPaginatedResult;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Tenant;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 final class EloquentDirectoryReader implements DirectoryReader
@@ -19,25 +19,21 @@ final class EloquentDirectoryReader implements DirectoryReader
 
     private const LONG_CACHE_TTL_HOURS = 1;
 
-    public function getFeaturedTenants(int $limit = 8): Collection
+    public function getFeaturedTenants(int $limit = 8): array
     {
         return Cache::remember("directory_featured_{$limit}", now()->addMinutes(self::CACHE_TTL_MINUTES), function () use ($limit) {
             return Tenant::query()
-                ->select([
-                    'id', 'name', 'slug', 'description', 'tags', 'is_active',
-                    'hero_image', 'banner_path', 'cover_path', 'blur_hash',
-                    'brand_color', 'plan_type', 'subscription_status', 'city_id', 'category_id',
-                ])
+                ->select(['id', 'name', 'slug', 'description', 'tags', 'is_active', 'hero_image', 'banner_path', 'cover_path', 'blur_hash', 'brand_color', 'plan_type', 'subscription_status', 'city_id', 'category_id'])
                 ->published()
                 ->inPriorityOrder()
                 ->take($limit)
-                ->get();
+                ->get()
+                ->toArray();
         });
     }
 
-    public function searchTenants(DirectorySearchData $filters): LengthAwarePaginator
+    public function searchTenants(DirectorySearchData $filters): PaginatedResult
     {
-        // Deterministic cache key (includes search hash for uniqueness)
         $cacheKey = sprintf(
             'directory_page_%d_cat_%s_city_%s_search_%s',
             $filters->page,
@@ -46,44 +42,38 @@ final class EloquentDirectoryReader implements DirectoryReader
             md5($filters->search ?? '')
         );
 
-        return Cache::remember(
+        $paginator = Cache::remember(
             $cacheKey,
             now()->addMinutes(self::CACHE_TTL_MINUTES),
             function () use ($filters) {
                 return Tenant::query()
-                    // PROJECTION: Only fields needed for card rendering
-                    ->select([
-                        'id', 'name', 'slug', 'description', 'tags', 'is_active',
-                        'hero_image', 'banner_path', 'cover_path', 'blur_hash',
-                        'brand_color', 'plan_type', 'subscription_status', 'subscription_ends_at',
-                        'city_id', 'category_id', 'created_at',
-                    ])
+                    ->select(['id', 'name', 'slug', 'description', 'tags', 'is_active', 'hero_image', 'banner_path', 'cover_path', 'blur_hash', 'brand_color', 'plan_type', 'subscription_status', 'subscription_ends_at', 'city_id', 'category_id', 'created_at'])
                     ->published()
                     ->search($filters->search)
                     ->inCategory($filters->categorySlug)
                     ->inCity($filters->citySlug)
                     ->inPriorityOrder()
                     ->latest('created_at')
-                    ->with([
-                        'city:id,name,slug',
-                        'category:id,name,slug,icon',
-                    ])
+                    ->with(['city:id,name,slug', 'category:id,name,slug,icon'])
                     ->paginate($filters->perPage, ['*'], 'page', $filters->page);
             }
         );
+
+        return new EloquentPaginatedResult($paginator);
     }
 
-    public function getCitiesWithTenants(): Collection
+    public function getCitiesWithTenants(): array
     {
         return Cache::remember("v".config('app.version')."_directory_cities", now()->addHours(self::LONG_CACHE_TTL_HOURS), function () {
             return City::query()
                 ->select(['id', 'name', 'slug'])
                 ->orderBy('name')
-                ->get();
+                ->get()
+                ->toArray();
         });
     }
 
-    public function getCategoriesWithTenants(): Collection
+    public function getCategoriesWithTenants(): array
     {
         return Cache::remember("v".config('app.version')."_directory_categories", now()->addHours(self::LONG_CACHE_TTL_HOURS), function () {
             return Category::query()
@@ -96,7 +86,8 @@ final class EloquentDirectoryReader implements DirectoryReader
                     'name' => $cat->name,
                     'slug' => $cat->slug,
                     'icon' => $cat->icon ?? '🏪',
-                ]);
+                ])
+                ->toArray();
         });
     }
 

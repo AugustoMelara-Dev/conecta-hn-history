@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog\Contracts;
 
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
+use App\Domain\Shared\Contracts\PaginatedResult;
 
 interface ProductCatalogReader
 {
@@ -14,7 +13,7 @@ interface ProductCatalogReader
      *
      * @return Collection<int, object>
      */
-    public function getFeaturedProducts(int $tenantId, int $limit = 10): Collection;
+    public function getFeaturedProducts(int $tenantId, int $limit = 10): array;
 
     /**
      * Get a single product by slug and tenant.
@@ -26,5 +25,5 @@ interface ProductCatalogReader
      *
      * @param  array  $filters  ['category_id', 'search', 'min_price', 'max_price', 'sort']
      */
-    public function searchProducts(int $tenantId, array $filters, int $perPage = 20): LengthAwarePaginator;
+    public function searchProducts(int $tenantId, array $filters, int $perPage = 20): PaginatedResult;
 }

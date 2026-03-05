@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
-use App\Application\Tenant\Transformers\TenantMicrositeTransformer;
+use App\Infrastructure\Tenant\Transformers\TenantMicrositeTransformer;
 use App\Domain\Public\Contracts\TenantStorefrontRepository;
 use App\Domain\Tenant\Services\TenantVisibilityService;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;

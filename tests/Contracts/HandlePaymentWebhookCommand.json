@@ -16,18 +16,19 @@
             "type": "array"
         },
         "tenantId": {
-            "type": [
-                "integer",
-                "null"
-            ],
-            "default": null
+            "type": "string"
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "default": 1
         }
     },
     "required": [
         "provider",
         "externalEventId",
         "eventType",
-        "payload"
+        "payload",
+        "tenantId"
     ],
     "additionalProperties": false
 }

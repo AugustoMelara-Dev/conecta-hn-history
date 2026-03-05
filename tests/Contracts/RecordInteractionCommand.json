@@ -57,6 +57,10 @@
                 "null"
             ],
             "default": null
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "default": 1
         }
     },
     "required": [

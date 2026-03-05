@@ -4,7 +4,7 @@
     "type": "object",
     "properties": {
         "tenantId": {
-            "type": "integer",
+            "type": "string",
             "description": "Target tenant identifier"
         },
         "description": {
@@ -23,6 +23,10 @@
             "type": "boolean",
             "description": "Allow re-enhancement of previously AI-generated content",
             "default": false
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "default": 1
         }
     },
     "required": [

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Listeners\Sales;
 
 use App\Domain\Sales\Events\OrderCreated;
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Models\Order; // Added for re-fetching
 use App\Notifications\NewOrderNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;

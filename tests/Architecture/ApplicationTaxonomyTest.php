@@ -18,7 +18,7 @@ declare(strict_types=1);
  * These tests permanently seal the Application Layer's boundary against
  * ORM leakage and global state. Violations were eradicated in:
  * - ResetUserPasswordHandler (App\Models\User → UserRepositoryInterface)
- * - TenantMicrositeTransformer (dead App\Models imports removed)
+ * - TenantMicrositeTransformer (moved to Infrastructure layer — C-01)
  * - RateLimitedReportPaymentHandler (Facade → injected LoggerInterface)
  * - RateLimitedGenerateUploadUrlHandler (same pattern)
  *

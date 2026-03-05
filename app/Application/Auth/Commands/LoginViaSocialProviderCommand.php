@@ -16,8 +16,10 @@ use App\Domain\Shared\Enums\ProviderName;
  * â•‘  TYPE SAFETY: Enforced via ProviderName Enum.                           â•‘
  * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class LoginViaSocialProviderCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, \App\Application\Shared\Contracts\SensitiveDataInterface
+final readonly class LoginViaSocialProviderCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, \App\Application\Shared\Contracts\SensitiveDataInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) - Social login is always INTO a specific tenant */
         public string $tenantId,
@@ -29,10 +31,10 @@ final readonly class LoginViaSocialProviderCommand implements \App\Application\S
         public string $providerId,
 
         /** Verified email address */
-        public string $email,
+        #[\SensitiveParameter] public string $email,
 
         /** Display name */
-        public string $name,
+        #[\SensitiveParameter] public string $name,
 
         /** Avatar URL */
         public ?string $avatarUrl,
@@ -45,6 +47,7 @@ final readonly class LoginViaSocialProviderCommand implements \App\Application\S
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
+        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string

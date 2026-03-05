@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Reviews\Results;
 
-use Carbon\Carbon;
+use DateTimeImmutable;
 
 /**
  * SubmitReviewResult - Immutable Output Contract for Review Submission
@@ -20,7 +20,7 @@ final readonly class SubmitReviewResult
         public string $status,
         public float $rating,
         public bool $isPublished,
-        public Carbon $submittedAt,
+        public DateTimeImmutable $submittedAt,
     ) {}
 
     /**
@@ -33,7 +33,9 @@ final readonly class SubmitReviewResult
             status: $review->is_approved ? 'APPROVED' : 'PENDING_MODERATION',
             rating: (float) $review->rating,
             isPublished: (bool) $review->is_approved,
-            submittedAt: $review->created_at instanceof Carbon ? $review->created_at : Carbon::parse($review->created_at),
+            submittedAt: $review->created_at instanceof DateTimeImmutable
+                ? $review->created_at
+                : new DateTimeImmutable((string) $review->created_at),
         );
     }
 }

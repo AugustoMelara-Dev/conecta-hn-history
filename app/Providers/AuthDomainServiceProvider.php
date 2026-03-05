@@ -34,7 +34,7 @@ class AuthDomainServiceProvider extends ServiceProvider
 
         // 3. Bind Password Hashing Service (Shared Infrastructure)
         $this->app->bind(
-            \App\Domain\Shared\Services\PasswordHasherInterface::class,
+            \App\Domain\Shared\PasswordHasherInterface::class,
             \App\Infrastructure\Shared\Services\LaravelPasswordHasher::class
         );
 

@@ -2,16 +2,20 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Validators\Products;
+namespace App\Application\Products\Validators;
 
 use App\Application\Products\Commands\UpdateProductCommand;
-use Illuminate\Validation\Rule;
+use App\Application\Products\Validators\Rules\UniqueProductSkuRule;
+use App\Domain\Product\Repositories\ProductRepositoryInterface;
 
 /**
  * UpdateProductValidator - Structural Validation
  */
-final class UpdateProductValidator
+final readonly class UpdateProductValidator
 {
+    public function __construct(
+        private ProductRepositoryInterface $productRepository
+    ) {}
     public function rules(UpdateProductCommand $command): array
     {
         return [
@@ -19,7 +23,7 @@ final class UpdateProductValidator
                 'required',
                 'string',
                 'max:100',
-                Rule::unique('products')->ignore($command->productId),
+                new UniqueProductSkuRule($this->productRepository, $command->productId),
             ],
             // Add other fields if command has them (Assuming Command mirrors params)
             'name' => ['required', 'string', 'max:255'],

@@ -13,13 +13,16 @@ namespace App\Application\Identity\Commands;
  * ║  TENANT AWARE: Carries tenantId for ownership validation.              ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class ReactivateUserCommand
+final readonly class ReactivateUserCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** UUID of the user to reactivate */
         public string $userId,
 
         /** UUID of the requesting tenant context */
         public string $tenantId,
+        public int $schemaVersion = 1,
     ) {}
 }

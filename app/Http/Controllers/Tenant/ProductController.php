@@ -13,7 +13,7 @@ use App\Domain\Tenant\Contracts\TenantProductRepository;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use App\Infrastructure\Security\MetadataSanitizer;
+use App\Application\Shared\Contracts\MetadataSanitizerInterface;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -28,7 +28,8 @@ final class ProductController extends Controller
 {
     public function __construct(
         private readonly TenantProductRepository $repository,
-        private readonly TenantContext $tenantContext
+        private readonly TenantContext $tenantContext,
+        private readonly MetadataSanitizerInterface $sanitizer
     ) {}
 
     public function index(): Response
@@ -83,7 +84,7 @@ final class ProductController extends Controller
         // So I hope the Action accepts ID. If not, this is a blocker for "True" Hexagonal without rewriting Actions.
         // I'll proceed with passing what I can.
 
-        $safePayload = MetadataSanitizer::clean($request->all());
+        $safePayload = $this->sanitizer->clean($request->all());
         $action->execute($safePayload, $tenantId);
 
         return redirect()->route('tenant.products.index');
@@ -97,7 +98,7 @@ final class ProductController extends Controller
     public function update(Request $request, UpdateProductAction $action, int $id): RedirectResponse
     {
         $tenantId = $this->tenantContext->getTenantId();
-        $safePayload = MetadataSanitizer::clean($request->all());
+        $safePayload = $this->sanitizer->clean($request->all());
         $action->execute($id, $safePayload, $tenantId);
 
         return back();

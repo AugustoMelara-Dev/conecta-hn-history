@@ -11,8 +11,10 @@ use App\Application\Shared\Contracts\IdempotentCommandInterface;
  *
  * Enforcing strict Idempotency Key requirement for Level 11 Resilience.
  */
-final readonly class ReportPaymentCommand implements IdempotentCommandInterface
+final readonly class ReportPaymentCommand implements IdempotentCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         public string $tenantId,
         public string $paymentReference,

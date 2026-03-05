@@ -23,7 +23,7 @@ namespace App\Domain\TenantGovernance\Services;
  * ║  HERE, not in 50 scattered files.                                         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * @see \App\Application\Tenant\Transformers\TenantMicrositeTransformer - Uses this service
+ * @see \App\Infrastructure\Tenant\Transformers\TenantMicrositeTransformer - Uses this service
  */
 final class PlanFeatureFlagService
 {

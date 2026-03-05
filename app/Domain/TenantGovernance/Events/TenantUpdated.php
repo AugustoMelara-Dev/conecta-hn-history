@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Events;
 
-use App\Contracts\Events\DomainEvent;
+use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\TenantAwareEvent;
-use App\Traits\HasDomainMetadata;
+use App\Domain\Shared\Traits\HasDomainMetadata;
 use App\Domain\Shared\ValueObjects\TenantId;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * TenantUpdated - Event fired when a tenant updates their profile/slug.

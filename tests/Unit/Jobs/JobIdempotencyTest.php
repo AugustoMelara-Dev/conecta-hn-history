@@ -6,7 +6,7 @@ namespace Tests\Unit\Jobs;
 
 
 
-use App\Application\DTOs\ReportRequestData;
+use App\Application\Shared\DTOs\ReportRequestData;
 use App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob;
 use App\Infrastructure\Jobs\Media\GenerateProductBlurhash;
 use App\Infrastructure\Jobs\Reporting\GeneratePdfReportJob;
@@ -44,7 +44,7 @@ class JobIdempotencyTest extends TestCase
         $job = new GenerateProductBlurhash(productId: 100, tenantId: '00000000-0000-0000-0000-000000000001');
 
         $this->assertInstanceOf(ShouldBeUnique::class, $job);
-        $this->assertEquals('blurhash_1_100', $job->uniqueId());
+        $this->assertEquals('blurhash_00000000-0000-0000-0000-000000000001_100', $job->uniqueId());
     }
 
     /**
@@ -61,7 +61,7 @@ class JobIdempotencyTest extends TestCase
         $job = new GeneratePdfReportJob($data, requestorId: 1);
 
         $this->assertInstanceOf(ShouldBeUnique::class, $job);
-        $this->assertEquals('pdf_1_sales_2026-01-01', $job->uniqueId());
+        $this->assertEquals('pdf_00000000-0000-0000-0000-000000000001_sales_2026-01-01', $job->uniqueId());
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

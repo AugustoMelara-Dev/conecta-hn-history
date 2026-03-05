@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\Media;
 
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Models\Product;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -29,7 +29,7 @@ final class GenerateProductBlurhash implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public readonly int $productId,
-        public readonly int $tenantId
+        public readonly string $tenantId
     ) {}
 
     /**
@@ -45,7 +45,11 @@ final class GenerateProductBlurhash implements ShouldQueue, ShouldBeUnique
         // SECURITY: Verify product belongs to this tenant (VC-AUDIT-003 fix)
         $product = Product::where('id', $this->productId)
             ->where('tenant_id', $this->tenantId)
-            ->firstOrFail();
+            ->first();
+
+        if (! $product) {
+            throw new \App\Domain\Product\Exceptions\ProductNotFoundException("Product {$this->productId} not found");
+        }
 
         if (! $product->image_path) {
             return;

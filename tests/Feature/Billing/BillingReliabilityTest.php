@@ -21,7 +21,7 @@ class BillingReliabilityTest extends TestCase
     {
         parent::setUp();
         
-        $this->app->make(\App\Domain\Shared\Services\TenantContext::class)->setAsSystemRoot();
+        $this->app->make(\App\Domain\Shared\Services\TenantContext::class)->setAsSystemRoot(isConsoleOrTesting: true);
 
         DB::table('tenants')->insert([
             'id' => '00000000-0000-0000-0000-000000000123',

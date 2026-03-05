@@ -27,7 +27,7 @@ final class MetadataSanitizer implements MetadataSanitizerInterface
      * @param  int           $depth  Current recursion depth (internal)
      * @return array<mixed>          Sanitized payload
      */
-    public static function clean(array $data, int $depth = 0): array
+    public function clean(array $metadata, int $depth = 0): array
     {
         if ($depth >= self::MAX_DEPTH) {
             return []; // Prune beyond max depth
@@ -35,12 +35,12 @@ final class MetadataSanitizer implements MetadataSanitizerInterface
 
         $sanitized = [];
 
-        foreach ($data as $key => $value) {
+        foreach ($metadata as $key => $value) {
             // Sanitize key
             $safeKey = strip_tags((string) $key);
 
             if (is_array($value)) {
-                $sanitized[$safeKey] = self::clean($value, $depth + 1);
+                $sanitized[$safeKey] = $this->clean($value, $depth + 1);
             } elseif (is_string($value)) {
                 $clean = strip_tags($value);
                 $sanitized[$safeKey] = mb_substr($clean, 0, self::MAX_STRING_LENGTH);

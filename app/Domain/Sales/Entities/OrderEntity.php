@@ -8,8 +8,12 @@ use DateTimeImmutable;
 
 /**
  * OrderEntity - Aggregate Root for Sales Order
+ *
+ * FINANCIAL PRECISION (PCI-DSS): All monetary values stored as int (centavos).
+ * e.g. $subtotal = 10000 represents 100.00 HNL
+ * Infrastructure hydration: (int) round($model->subtotal * 100)
  */
-final class OrderEntity
+final readonly class OrderEntity
 {
     public function __construct(
         public ?int $id,
@@ -19,8 +23,8 @@ final class OrderEntity
         public string $customerName,
         public string $customerEmail,
         public string $currency,
-        public float $subtotal,
-        public float $total,
+        public int $subtotal,
+        public int $total,
         public string $status,
         public DateTimeImmutable $createdAt,
         public ?string $customerPhone = null,
@@ -28,18 +32,14 @@ final class OrderEntity
         public ?string $customerNotes = null,
         public string $deliveryType = 'pickup',
         public string $paymentMethod = 'pending',
-        public float $taxAmount = 0.0,
-        public float $deliveryFee = 0.0,
-        public float $discountAmount = 0.0,
+        public int $taxAmount = 0,
+        public int $deliveryFee = 0,
+        public int $discountAmount = 0,
         public ?string $couponCode = null,
         /** @var array<int, array> $items Raw item data for now, ideally LineItemEntity[] */
         public array $items = []
     ) {}
 
-    public function setId(int $id): self
-    {
-        $this->id = $id;
-
-        return $this;
-    }
+    // setId() removed to enforce strict immutability (A1).
+    // Infrastructure must hydrate $id via constructor at reconstitution time.
 }

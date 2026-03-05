@@ -8,29 +8,12 @@ use App\Application\Shared\Contracts\LoggerInterface;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
 use App\Domain\Reviews\Events\ReviewCreated;
 use App\Domain\Reviews\Repositories\ReviewRepositoryInterface;
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
-/**
- * UpdateProductRating - Async Listener for Product Aggregate Recalculation
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  EVENTUAL CONSISTENCY: Runs async after ReviewCreated event.            ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  - Heavy SQL aggregation moved here (no blocking on user request)       ║
- * ║  - Tenant-aware via TenantQueueMiddleware                               ║
- * ║  - Retryable: If it fails, the queue will retry automatically          ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- */
-final class UpdateProductRating implements ShouldQueue
+final readonly class UpdateProductRating
 {
-    public int $tries = 3;
-
-    public int $timeout = 60;
-
     public function __construct(
-        private readonly ProductRepositoryInterface $productRepository,
-        private readonly ReviewRepositoryInterface $reviewRepository,
+        private ProductRepositoryInterface $productRepository,
+        private ReviewRepositoryInterface $reviewRepository,
         private LoggerInterface $logger,
     ) {}
 
@@ -66,20 +49,5 @@ final class UpdateProductRating implements ShouldQueue
             'new_average' => $metrics['average_rating'] ?? 0,
             'total_reviews' => $metrics['total_reviews'] ?? 0,
         ]);
-    }
-
-    /**
-     * Middleware for tenant-aware queue processing.
-     *
-     * SECURITY CRITICAL: Ensures the listener runs in the correct tenant context.
-     * Without this, database writes could target the wrong tenant.
-     *
-     * @return array<int, object>
-     */
-    public function middleware(ReviewCreated $event): array
-    {
-        return [
-            new TenantQueueMiddleware($event->tenantId),
-        ];
     }
 }

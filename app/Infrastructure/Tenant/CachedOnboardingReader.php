@@ -7,7 +7,6 @@ namespace App\Infrastructure\Tenant;
 use App\Domain\Tenant\Contracts\OnboardingReader;
 use App\Models\Category;
 use App\Models\City;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 final class CachedOnboardingReader implements OnboardingReader
@@ -17,24 +16,24 @@ final class CachedOnboardingReader implements OnboardingReader
     /**
      * Get available cities with caching strategy.
      */
-    public function getAvailableCities(): Collection
+    public function getAvailableCities(): array
     {
         return Cache::remember(
             'registration_cities',
             self::TTL,
-            fn () => City::orderBy('name')->get(['id', 'name', 'slug'])
+            fn () => City::orderBy('name')->get(['id', 'name', 'slug'])->toArray()
         );
     }
 
     /**
      * Get business categories with caching strategy.
      */
-    public function getBusinessCategories(): Collection
+    public function getBusinessCategories(): array
     {
         return Cache::remember(
             'registration_categories',
             self::TTL,
-            fn () => Category::orderBy('name')->get(['id', 'name', 'slug'])
+            fn () => Category::orderBy('name')->get(['id', 'name', 'slug'])->toArray()
         );
     }
 }

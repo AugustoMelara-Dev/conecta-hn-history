@@ -19,7 +19,7 @@ use App\Models\User;
  * - updateAvatarIfMissing() now accepts string $userId
  * - Added delete(UserEntity) method
  */
-final class EloquentUserRepository implements UserRepositoryInterface
+final readonly class EloquentUserRepository implements UserRepositoryInterface
 {
     public function __construct(
         private readonly DomainEventBus $eventBus

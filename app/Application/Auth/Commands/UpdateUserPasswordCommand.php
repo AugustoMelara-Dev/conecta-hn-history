@@ -16,8 +16,10 @@ use App\Application\Shared\Contracts\SensitiveDataInterface;
  * â•‘  P1-REDACT: SensitiveDataInterface for Outbox/log sanitization.        â•‘
  * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class UpdateUserPasswordCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, SensitiveDataInterface
+final readonly class UpdateUserPasswordCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, SensitiveDataInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** User ID to update (UUID string) */
         public string $userId,
@@ -40,6 +42,7 @@ final readonly class UpdateUserPasswordCommand implements \App\Application\Share
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
+        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string

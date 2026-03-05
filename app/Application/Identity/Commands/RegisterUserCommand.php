@@ -13,11 +13,13 @@ use App\Application\Shared\Contracts\SensitiveDataInterface;
  * Includes Idempotency Key for robust distributed processing.
  * P1-REDACT: SensitiveDataInterface for Outbox/log sanitization.
  */
-final readonly class RegisterUserCommand implements IdempotentCommandInterface, SensitiveDataInterface
+final readonly class RegisterUserCommand implements IdempotentCommandInterface, SensitiveDataInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         public string $name,
-        public string $email,
+        #[\SensitiveParameter] public string $email,
         #[\SensitiveParameter] public string $password,
         public ?string $tenantName = null,
         public ?string $slug = null,

@@ -13,7 +13,7 @@ interface TenantRateLimiterInterface
      * @param  string  $tenantId
      * @param  int  $maxAttempts
      * @param  int  $decayMinutes
-     * @throws \Illuminate\Http\Exceptions\ThrottleRequestsException
+     * @throws \App\Application\Shared\Common\Exceptions\RateLimitExceededException
      */
     public function ensureNotExceeded(string $actionName, string $tenantId, int $maxAttempts = 100, int $decayMinutes = 1): void;
 }

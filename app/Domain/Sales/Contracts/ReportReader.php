@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Sales\Contracts;
 
-use Carbon\Carbon;
-use Illuminate\Support\Collection;
+use DateTimeImmutable;
 
 /**
  * ReportReader - Domain Contract for Sales Report Data
@@ -25,9 +24,9 @@ interface ReportReader
      * @param  int  $tenantId  Tenant ID
      * @param  Carbon  $startDate  Range start (inclusive)
      * @param  Carbon  $endDate  Range end (inclusive)
-     * @return Collection Orders with items eager loaded
+     * @return array<int, mixed> Orders with items eager loaded
      */
-    public function getSalesData(int $tenantId, Carbon $startDate, Carbon $endDate): Collection;
+    public function getSalesData(int $tenantId, DateTimeImmutable $startDate, DateTimeImmutable $endDate): array;
 
     /**
      * Get sales summary statistics.
@@ -42,8 +41,8 @@ interface ReportReader
      */
     public function getSalesSummary(
         int $tenantId,
-        Carbon $startDate,
-        Carbon $endDate,
-        ?Collection $preloadedOrders = null
+        DateTimeImmutable $startDate,
+        DateTimeImmutable $endDate,
+        ?array $preloadedOrders = null
     ): array;
 }

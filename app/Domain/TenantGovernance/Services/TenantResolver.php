@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 
 /**
@@ -28,7 +29,7 @@ final class TenantResolver
      * SECURITY: Only returns active, publicly visible tenants.
      * Returns null for inactive or non-existent tenants (no information leak).
      */
-    public function findPublicById(int $tenantId): ?object
+    public function findPublicById(int $tenantId): ?TenantEntity
     {
         // Cache responsibility delegated to Infrastructure (Repository Decorator)
         $tenant = $this->repository->findById($tenantId);
@@ -52,7 +53,7 @@ final class TenantResolver
     /**
      * Find a PUBLIC tenant by slug.
      */
-    public function findPublicBySlug(string $slug): ?object
+    public function findPublicBySlug(string $slug): ?TenantEntity
     {
         // Cache responsibility delegated to Infrastructure
         $tenant = $this->repository->findBySlug($slug);
@@ -71,7 +72,7 @@ final class TenantResolver
     /**
      * Find a PUBLIC tenant by domain.
      */
-    public function findPublicByDomain(string $domain): ?object
+    public function findPublicByDomain(string $domain): ?TenantEntity
     {
         $tenant = $this->repository->findByDomain($domain);
 

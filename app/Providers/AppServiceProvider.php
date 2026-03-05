@@ -36,11 +36,76 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // ═══════════════════════════════════════════════════════════════════════
-        // TITANIUM EVENT STORE: The One True Store (DB + Outbox)
+        // EVENT UPCASTING: Schema Evolution Registry (Singleton)
         // ═══════════════════════════════════════════════════════════════════════
-        $this->app->bind(
-            \App\Domain\Common\Contracts\EventStoreRepositoryInterface::class,
-            \App\Infrastructure\Common\EventStore\DatabaseEventStore::class
+        $this->app->singleton(
+            \App\Application\Shared\Services\EventUpcasterRegistry::class,
+            function ($app) {
+                $registry = new \App\Application\Shared\Services\EventUpcasterRegistry();
+
+                // Tagged upcasters can be resolved here in the future:
+                // foreach ($app->tagged('event.upcasters') as $upcaster) {
+                //     $registry->register($upcaster);
+                // }
+
+                return $registry;
+            }
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // COMMAND VALIDATOR REGISTRY: Explicit Command → Validator Mapping (A5)
+        // Replaces Service Locator pattern in ValidationMiddleware.
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->singleton(
+            \App\Application\Shared\Contracts\CommandValidatorRegistryInterface::class,
+            function ($app) {
+                $registry = new \App\Infrastructure\Shared\Middleware\CommandValidatorRegistry();
+
+                if (class_exists(\App\Application\Identity\Commands\RegisterUserCommand::class)) {
+                    $registry->register(
+                        \App\Application\Identity\Commands\RegisterUserCommand::class,
+                        $app->make(\App\Application\Identity\Validators\RegisterUserValidator::class)
+                    );
+                }
+                if (class_exists(\App\Application\Auth\Commands\DeleteUserCommand::class)) {
+                    $registry->register(
+                        \App\Application\Auth\Commands\DeleteUserCommand::class,
+                        $app->make(\App\Application\Auth\Validators\DeleteUserCommandValidator::class)
+                    );
+                }
+                if (class_exists(\App\Application\Auth\Commands\LoginViaSocialProviderCommand::class)) {
+                    $registry->register(
+                        \App\Application\Auth\Commands\LoginViaSocialProviderCommand::class,
+                        $app->make(\App\Application\Auth\Validators\LoginViaSocialProviderCommandValidator::class)
+                    );
+                }
+                if (class_exists(\App\Application\Auth\Commands\UpdateUserPasswordCommand::class)) {
+                    $registry->register(
+                        \App\Application\Auth\Commands\UpdateUserPasswordCommand::class,
+                        $app->make(\App\Application\Auth\Validators\UpdateUserPasswordCommandValidator::class)
+                    );
+                }
+                if (class_exists(\App\Application\Auth\Commands\VerifyOtpCommand::class)) {
+                    $registry->register(
+                        \App\Application\Auth\Commands\VerifyOtpCommand::class,
+                        $app->make(\App\Application\Auth\Validators\VerifyOtpCommandValidator::class)
+                    );
+                }
+                if (class_exists(\App\Application\Billing\Commands\ReportPaymentCommand::class)) {
+                    $registry->register(
+                        \App\Application\Billing\Commands\ReportPaymentCommand::class,
+                        $app->make(\App\Application\Billing\Validators\ReportPaymentCommandValidator::class)
+                    );
+                }
+                if (class_exists(\App\Application\Billing\Commands\RequestUpgradeCommand::class)) {
+                    $registry->register(
+                        \App\Application\Billing\Commands\RequestUpgradeCommand::class,
+                        $app->make(\App\Application\Billing\Validators\RequestUpgradeCommandValidator::class)
+                    );
+                }
+
+                return $registry;
+            }
         );
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -592,6 +657,24 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // ═══════════════════════════════════════════════════════════════════════
+        // APPLICATION LAYER: DIP Ports → Infrastructure Adapters
+        // Binds Application\Shared\Contracts (Ports) to App\Services (Adapters)
+        // Required by CreateOrderHandler after concrete service decoupling.
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Application\Shared\Contracts\CouponValidatorInterface::class,
+            \App\Services\CouponValidatorService::class
+        );
+        $this->app->bind(
+            \App\Application\Shared\Contracts\InventoryManagerInterface::class,
+            \App\Services\InventoryManager::class
+        );
+        $this->app->bind(
+            \App\Application\Shared\Contracts\PriceCalculatorInterface::class,
+            \App\Services\PriceCalculatorService::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
         // ORDERS DOMAIN: Receipt PDF Generator
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
@@ -671,6 +754,15 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Identity\RamseyUuidGenerator::class
         );
 
+        // ═══════════════════════════════════════════════════════════════════════
+        // TENANT GOVERNANCE: Plan Limits Abstraction (A5 - Settings Isolation)
+        // Binds PlanLimitsInterface to Infrastructure adapter wrapping GeneralSettings
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Domain\TenantGovernance\Contracts\PlanLimitsInterface::class,
+            \App\Infrastructure\TenantGovernance\Settings\SettingsPlanLimits::class
+        );
+
         $this->app->bind(
             \App\Domain\Shared\Contracts\EventDispatcherInterface::class,
             \App\Infrastructure\Bus\TransactionalEventDispatcher::class
@@ -710,6 +802,16 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Application\Shared\Contracts\SlugGeneratorInterface::class,
             \App\Infrastructure\Services\LaravelSlugGenerator::class
+        );
+
+        $this->app->bind(
+            \App\Application\Shared\Contracts\FileUrlResolverInterface::class,
+            \App\Infrastructure\Storage\LaravelFileUrlResolver::class
+        );
+
+        $this->app->bind(
+            \App\Application\Shared\Contracts\ValidatorFactoryInterface::class,
+            \App\Infrastructure\Shared\Services\LaravelValidatorFactory::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════

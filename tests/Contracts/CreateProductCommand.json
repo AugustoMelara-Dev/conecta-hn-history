@@ -4,7 +4,7 @@
     "type": "object",
     "properties": {
         "tenantId": {
-            "type": "integer"
+            "type": "string"
         },
         "sku": {
             "type": "string"
@@ -17,6 +17,9 @@
         },
         "price": {
             "type": "integer"
+        },
+        "idempotencyKey": {
+            "type": "string"
         },
         "stock": {
             "type": "integer",
@@ -39,6 +42,10 @@
         "isVisible": {
             "type": "boolean",
             "default": true
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "default": 1
         }
     },
     "required": [
@@ -46,7 +53,8 @@
         "sku",
         "name",
         "description",
-        "price"
+        "price",
+        "idempotencyKey"
     ],
     "additionalProperties": false
 }

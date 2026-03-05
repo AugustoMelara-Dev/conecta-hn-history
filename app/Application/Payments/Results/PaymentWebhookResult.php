@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Application\Payments\Results;
 
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * PaymentWebhookResult - Immutable Output Contract for Webhook Processing
@@ -13,7 +12,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  * ║  FINANCIAL CRITICAL: Provides deterministic status for gateway ACK.     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-#[TypeScript]
 final readonly class PaymentWebhookResult
 {
     public function __construct(

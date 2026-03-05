@@ -8,7 +8,7 @@ use App\Policies\ProductPolicy;
 use Illuminate\Auth\Access\Response;
 
 // Bootstrap Laravel app — needed for Filament::shouldReceive() in create() tests
-uses(Tests\TestCase::class);
+// uses(Tests\TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER: Build a User mock with tenant IDs (reuses OrderPolicy pattern)

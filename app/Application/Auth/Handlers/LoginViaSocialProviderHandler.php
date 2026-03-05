@@ -16,7 +16,7 @@ use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Shared\Exceptions\DuplicateEntityException;
 use Psr\Log\LoggerInterface;
-use Ramsey\Uuid\Uuid;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
 
 /**
  * LoginViaSocialProviderHandler - Atomic Protocol Edition
@@ -34,6 +34,7 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
         private UserRepositoryInterface $userRepository,
         private OutboxRepositoryInterface $outboxRepository,
         private ClockInterface $clock,
+        private IdGeneratorInterface $idGenerator,
         private LoggerInterface $logger,
     ) {}
 
@@ -148,7 +149,7 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
     private function persistToOutbox(object $event, string $idempotencyKey, string $tenantId, ?int $aggregateId): void
     {
         $message = new DomainEventMessage(
-            eventId: Uuid::uuid7()->toString(),
+            eventId: $this->idGenerator->generate(),
             type: get_class($event),
             aggregateId: (string) $aggregateId,
             payload: json_encode($event->toPayload()),

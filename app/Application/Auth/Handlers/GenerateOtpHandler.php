@@ -20,7 +20,7 @@ use App\Domain\Shared\Exceptions\SecurityException;
 use App\Application\Shared\Contracts\IdempotencyContextInterface;
 use App\Application\Shared\Contracts\TraceContextInterface;
 use Psr\Log\LoggerInterface;
-use Ramsey\Uuid\Uuid;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
 
 /**
  * GenerateOtpHandler - Pure Business Logic Handler
@@ -40,6 +40,7 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         private OtpRepositoryInterface $otpRepository,
         private OutboxRepositoryInterface $outboxRepository,
         private ClockInterface $clock,
+        private IdGeneratorInterface $idGenerator,
         private LoggerInterface $logger,
         private EntropyGeneratorInterface $entropyGenerator,
         private OtpHasherInterface $hasher,
@@ -99,7 +100,7 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         ]);
 
         $message = new DomainEventMessage(
-            eventId: Uuid::uuid7()->toString(),
+            eventId: $this->idGenerator->generate(),
             type: OtpGenerated::class,
             aggregateId: $otpEntity->id,
             payload: json_encode($outboxPayload),

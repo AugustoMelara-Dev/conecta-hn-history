@@ -15,7 +15,7 @@ use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Shared\PasswordHasherInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity as Tenant;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use Carbon\CarbonImmutable;
+
 use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Application\Shared\Contracts\SlugGeneratorInterface;
 
@@ -49,7 +49,7 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
 
         // 1. Generate Deterministic IDs & Time
         $userId = $this->idGenerator->generate();
-        $now = CarbonImmutable::now();
+        $now = new \DateTimeImmutable();
 
         // 2. Security Hardening (Hashing BEFORE Domain/Persistence)
         $passwordHash = $this->hasher->hash($command->password);
@@ -121,7 +121,6 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
                 user_id: $userId,
                 name: $command->name,
                 email: $command->email,
-                password_hash: $passwordHash,
                 role: $finalRole,
                 tenant_id: $tenantId,
                 occurredOn: $now

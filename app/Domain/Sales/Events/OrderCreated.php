@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domain\Sales\Events;
 
-use App\Contracts\Events\DomainEvent;
+use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldBeStoredInOutbox;
 // use App\Models\Order; // REMOVED
 use App\Traits\HasDomainMetadata;
 use App\Domain\Shared\ValueObjects\TenantId;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * OrderCreated - Domain Event with Transactional Outbox Support
@@ -26,7 +26,7 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
         public string $tenantId,
         public string $orderNumber,
         public string $customerName,
-        public float $total,
+        public int $total,
         public string $status,
         // Restoration parameters
         ?string $restoredEventId = null,
@@ -78,7 +78,7 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
             tenantId: (string) $payload['tenant_id'],
             orderNumber: (string) $payload['order_number'],
             customerName: (string) ($payload['customer_name'] ?? 'Guest'),
-            total: (float) $payload['total'],
+            total: (int) $payload['total'],
             status: (string) ($payload['status'] ?? 'pending'),
             restoredEventId: $payload['event_id'] ?? null,
             restoredOccurredAt: $payload['occurred_at'] ?? null,

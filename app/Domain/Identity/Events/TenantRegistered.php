@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domain\Identity\Events;
 
-use App\Contracts\Events\DomainEvent;
+use App\Domain\Shared\Contracts\Events\DomainEvent;
 // use App\Models\Tenant; // REMOVED
 // use App\Models\User; // REMOVED
-use App\Traits\HasDomainMetadata;
+use App\Domain\Shared\Traits\HasDomainMetadata;
 use App\Domain\Shared\ValueObjects\TenantId;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * TenantRegistered - Domain Event
@@ -21,9 +21,13 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
 {
     use HasDomainMetadata;
 
+    private const SCHEMA_VERSION = 1;
+    public function schemaVersion(): int { return self::SCHEMA_VERSION; }
+
     public function __construct(
         public string $tenantId,
         public string $userId,
+        public string $selectedPlan = 'free',
         // Restoration parameters
         ?string $restoredEventId = null,
         ?string $restoredOccurredAt = null,
@@ -49,8 +53,10 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
     public function toPrimitives(): array
     {
         return [
+            'schema_version' => self::SCHEMA_VERSION,
             'tenant_id' => $this->tenantId,
             'user_id' => $this->userId,
+            'selected_plan' => $this->selectedPlan,
             'event_id' => $this->eventId,
             'occurred_at' => $this->occurredAt->format(DATE_ATOM),
         ];

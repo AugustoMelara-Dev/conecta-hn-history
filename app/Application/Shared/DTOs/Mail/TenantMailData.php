@@ -14,7 +14,7 @@ final readonly class TenantMailData
     public function __construct(
         public int $id,
         public string $name,
-        public string $email,
+        #[\SensitiveParameter] public string $email,
         public string $planType,
         public ?string $subscriptionEndsAt = null,
     ) {}
@@ -22,7 +22,7 @@ final readonly class TenantMailData
     /**
      * Create from Tenant model (snapshot at dispatch time).
      */
-    public static function fromTenant(\App\Models\Tenant $tenant): self
+    public static function fromTenant(object $tenant): self
     {
         return new self(
             id: $tenant->id,

@@ -83,7 +83,10 @@ final class SettingsController extends Controller
     ): RedirectResponse {
         $tenantId = $this->tenantContext->getTenantId();
 
-        $data = UpdateScheduleResult::fromRequest($request);
+        $data = UpdateScheduleResult::fromArray(
+            $request->validated()['schedule'] ?? [],
+            $tenantId
+        );
 
         // We pass ID and Data. Action should find tenant.
         // Previous code passed `Tenant $tenant` model.

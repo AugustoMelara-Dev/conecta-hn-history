@@ -13,7 +13,7 @@ use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Entities\DomainEventMessage;
-use Ramsey\Uuid\Uuid;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
 
 /**
  * DeleteUserHandler - Pure Core Edition (Russian Doll Pattern)
@@ -24,6 +24,7 @@ final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
         private UserRepositoryInterface $userRepository,
         private OutboxRepositoryInterface $outboxRepository,
         private ClockInterface $clock,
+        private IdGeneratorInterface $idGenerator,
     ) {}
 
     public function handle(DeleteUserCommand $command): DeleteUserResult
@@ -46,8 +47,6 @@ final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
         // 3. Domain Logic: Delete
         $userId = $user->id;
         $tenantId = $user->tenantId;
-        $email = $user->email;
-        $name = $user->name;
 
         $this->userRepository->delete($user);
 
@@ -55,12 +54,10 @@ final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
         $event = UserDeleted::fromSnapshot(
             userId: $userId,
             tenantId: $tenantId,
-            email: $email,
-            name: $name,
         );
 
         $message = new DomainEventMessage(
-            eventId: Uuid::uuid7()->toString(),
+            eventId: $this->idGenerator->generate(),
             type: UserDeleted::class,
             aggregateId: (string) $userId,
             payload: json_encode($event->toPayload()),

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog\Contracts;
 
-use Illuminate\Support\Collection;
 
 /**
  * PublicCatalogReader - Data Access for Public Pages
@@ -16,15 +15,15 @@ interface PublicCatalogReader
     /**
      * Get featured products for the welcome page.
      */
-    public function getFeaturedProducts(int $limit = 6): Collection;
+    public function getFeaturedProducts(int $limit = 6): array;
 
     /**
      * Get all active locations (tenants) with coordinates.
      */
-    public function getLocations(): Collection;
+    public function getLocations(): array;
 
     /**
      * Get directory listing.
      */
-    public function getDirectoryListing(): Collection;
+    public function getDirectoryListing(): array;
 }

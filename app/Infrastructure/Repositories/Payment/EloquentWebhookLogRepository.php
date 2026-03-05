@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Repositories\Payment;
 
-use App\Domain\Payment\Repositories\WebhookLogRepositoryInterface;
+use App\Domain\Billing\Repositories\WebhookLogRepositoryInterface;
 use App\Models\WebhookLog;
 
 /**

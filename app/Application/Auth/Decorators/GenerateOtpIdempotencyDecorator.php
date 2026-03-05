@@ -43,7 +43,7 @@ final readonly class GenerateOtpIdempotencyDecorator implements GenerateOtpHandl
                 $this->inner->handle($command);
 
                 // Return success marker for idempotency record
-                return ['status' => 'success', 'processed_at' => now()->toIso8601String()];
+                return ['status' => 'success', 'processed_at' => \Carbon\CarbonImmutable::now()->toIso8601String()];
             }
         );
     }

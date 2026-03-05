@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Bus\Upcasting;
 
-use App\Application\Shared\Contracts\UpcasterInterface;
+use App\Domain\Shared\Contracts\UpcasterInterface;
 
 /**
  * CommandUpcasterRegistry - Sequential Schema Migration Pipeline

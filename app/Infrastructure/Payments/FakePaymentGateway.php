@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Payments;
 
-use App\Domain\Payments\DTOs\ChargeResult;
-use App\Domain\Payments\Gateways\PaymentGatewayInterface;
+use App\Domain\Billing\DTOs\ChargeResult;
+use App\Domain\Billing\Gateways\PaymentGatewayInterface;
 
 /**
  * FakePaymentGateway - Test Double for Payment Processing

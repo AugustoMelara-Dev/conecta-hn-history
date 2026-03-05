@@ -10,7 +10,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Log;
 
 // Bootstrap Laravel app — needed because toMail() calls loadMissing()
-uses(Tests\TestCase::class);
+// uses(Tests\TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER: Build a fully-mocked Order for status-change notification testing

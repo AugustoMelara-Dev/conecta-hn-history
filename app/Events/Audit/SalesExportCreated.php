@@ -144,7 +144,7 @@ final readonly class SalesExportCreated implements AuditEvent
 
         return new self(
             exportId: $data['export_id'] ?? uniqid('exp_'),
-            tenantId: new TenantId($tenantId),
+            tenantId: TenantId::fromString($tenantId),
             userId: $userId,
             format: $data['format'] ?? 'unknown',
             criteriaHash: $data['criteria_hash'] ?? '',

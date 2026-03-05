@@ -6,12 +6,12 @@ namespace App\Application\Identity\Validators\Rules;
 
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use Closure;
-use Illuminate\Contracts\Validation\ValidationRule;
+use App\Application\Shared\Contracts\ValidationRuleInterface;
 
 /**
  * UniqueTenantSlugRule - Optimized for Performance
  */
-final readonly class UniqueTenantSlugRule implements ValidationRule
+final readonly class UniqueTenantSlugRule implements ValidationRuleInterface
 {
     public function __construct(
         private TenantRepositoryInterface $tenantRepository

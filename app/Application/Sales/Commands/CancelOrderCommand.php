@@ -12,11 +12,13 @@ namespace App\Application\Sales\Commands;
  * ║  TENANT ISOLATED: Requires tenant ID for ownership verification.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class CancelOrderCommand
+final readonly class CancelOrderCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** Tenant ID for ownership verification */
-        public int $tenantId,
+        public string $tenantId,
 
         /** Order ID to cancel */
         public int $orderId,

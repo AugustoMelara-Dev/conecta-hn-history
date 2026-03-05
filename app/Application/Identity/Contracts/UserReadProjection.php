@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Contracts;
 
-use Illuminate\Contracts\Auth\Authenticatable;
+use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
 
 /**
  * UserReadProjection - Read-Side User Retrieval Port
@@ -27,6 +27,6 @@ interface UserReadProjection
      * @param string|null $tenantId Tenant scope for isolation
      * @return Authenticatable      The user as an Authenticatable contract
      */
-    public function getById(string $userId, ?string $tenantId = null): Authenticatable;
+    public function getById(string $userId, ?string $tenantId = null): TenantAwareAuthenticatable;
 }
 

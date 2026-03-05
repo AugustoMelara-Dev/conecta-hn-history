@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\EventVersioning\Upcasters;
 
-use App\Application\Shared\Contracts\UpcasterInterface;
+use App\Domain\Shared\Contracts\UpcasterInterface;
 
 /**
  * PaymentReportedV1ToV2Upcaster - Schema Evolution Example

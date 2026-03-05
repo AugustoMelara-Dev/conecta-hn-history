@@ -4,10 +4,14 @@
     "type": "object",
     "properties": {
         "tenantId": {
-            "type": "integer"
+            "type": "string"
         },
         "scheduleData": {
             "type": "array"
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "default": 1
         }
     },
     "required": [

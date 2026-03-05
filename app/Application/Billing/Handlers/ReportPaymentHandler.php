@@ -18,7 +18,7 @@ use App\Domain\Shared\Contracts\UuidGeneratorInterface;
 use App\Domain\Shared\ValueObjects\Money;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use DateTimeImmutable;
-use Illuminate\Database\QueryException;
+use App\Domain\Billing\Exceptions\PaymentProcessingException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -100,10 +100,10 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
 
             return ReportPaymentResult::fromEntity($payment);
 
-        } catch (QueryException $e) {
+        } catch (PaymentProcessingException $e) {
             // SCENARIO 2: COLLISION (We Lost)
             // Code 23000 = Integrity Constraint Violation (Duplicate Key)
-            if ($e->getCode() !== '23000' && $e->errorInfo[1] !== 1062) {
+            if (strval($e->getCode()) !== '23000' && ($e->errorInfo[1] ?? null) !== 1062) {
                 throw $e; // Real error
             }
 
@@ -112,7 +112,7 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
         }
     }
 
-    private function handleDuplicate(ReportPaymentCommand $command, QueryException $e): ReportPaymentResult
+    private function handleDuplicate(ReportPaymentCommand $command, PaymentProcessingException $e): ReportPaymentResult
     {
         $existingPayment = $this->paymentRepository->findByIdempotencyKey(
             $command->tenantId,

@@ -13,8 +13,10 @@ namespace App\Application\Auth\Commands;
  * â•‘  PRIMITIVES ONLY: No Eloquent models - just scalar types.               â•‘
  * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class DeleteUserCommand implements \App\Application\Shared\Contracts\HashableCommandInterface
+final readonly class DeleteUserCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** User ID to delete (UUID string) */
         public string $userId,
@@ -27,6 +29,7 @@ final readonly class DeleteUserCommand implements \App\Application\Shared\Contra
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
+        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string

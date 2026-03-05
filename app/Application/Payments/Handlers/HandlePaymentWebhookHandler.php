@@ -14,7 +14,7 @@ use App\Domain\Billing\Events\PaymentReceived;
 use App\Domain\Payment\Repositories\WebhookLogRepositoryInterface;
 use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use Illuminate\Support\Str;
+
 
 /**
  * HandlePaymentWebhookHandler - Gateway for External Payment Webhooks
@@ -58,7 +58,6 @@ final readonly class HandlePaymentWebhookHandler
                 providerReference: $payload['id'] ?? $command->externalEventId,
                 amount: (int) ($payload['amount'] ?? $payload['data']['object']['amount'] ?? 0),
                 currency: $payload['currency'] ?? $payload['data']['object']['currency'] ?? 'HNL',
-                payerEmail: $payload['receipt_email'] ?? $payload['data']['object']['receipt_email'] ?? null,
                 tenantId: $command->tenantId,
             ),
 
@@ -71,10 +70,10 @@ final readonly class HandlePaymentWebhookHandler
                 reason: $payload['failure_message']
                     ?? $payload['data']['object']['failure_message']
                     ?? 'Payment failed',
+                tenantId: $command->tenantId,
                 failureCode: $payload['failure_code']
                     ?? $payload['data']['object']['failure_code']
                     ?? null,
-                tenantId: $command->tenantId,
             ),
 
             // Unhandled events - log but don't fail

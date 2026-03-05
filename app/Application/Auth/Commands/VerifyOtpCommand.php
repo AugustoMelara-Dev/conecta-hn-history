@@ -13,23 +13,26 @@ namespace App\Application\Auth\Commands;
  * â•‘  TENANT AWARE: Mandatory tenantId to prevent cross-tenant verification. â•‘
  * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class VerifyOtpCommand implements \App\Application\Shared\Contracts\HashableCommandInterface
+final readonly class VerifyOtpCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) */
         public string $tenantId,
 
         /** Email or phone number associated with OTP */
-        public string $identifier,
+        #[\SensitiveParameter] public string $identifier,
 
         /** 6-digit OTP code entered by user (plain text) */
-        public string $code,
+        #[\SensitiveParameter] public string $code,
 
         /** Client IP for security audit and brute-force detection */
-        public string $ipAddress,
+        #[\SensitiveParameter] public string $ipAddress,
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
+        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string

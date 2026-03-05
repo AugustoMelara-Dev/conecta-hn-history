@@ -15,11 +15,13 @@ use App\Application\Shared\Contracts\IdempotentCommandInterface;
  * ║  IDEMPOTENT: Network retries must not cause inconsistent updates.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class UpdateProductCommand implements IdempotentCommandInterface
+final readonly class UpdateProductCommand implements IdempotentCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** Tenant ID for ownership verification */
-        public int $tenantId,
+        public string $tenantId,
 
         /** Product ID to update */
         public int $productId,

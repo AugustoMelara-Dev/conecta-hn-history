@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Shared\Services\Upcasting\Upcasters;
 
-use App\Application\Shared\Contracts\UpcasterInterface;
+use App\Domain\Shared\Contracts\UpcasterInterface;
 
 /**
  * UserRegisteredV1toV2Upcaster

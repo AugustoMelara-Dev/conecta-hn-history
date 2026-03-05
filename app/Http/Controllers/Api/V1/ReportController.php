@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Application\DTOs\ReportRequestData;
+use App\Application\Shared\DTOs\ReportRequestData;
 use App\Domain\ReportingAndExports\Jobs\GeneratePdfReportJob;
 use App\Domain\ReportingAndExports\Jobs\GenerateSalesExport;
 use App\Domain\Shared\Contracts\TenantContext;

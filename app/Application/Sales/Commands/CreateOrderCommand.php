@@ -18,8 +18,10 @@ use App\Application\Shared\Contracts\IdempotentCommandInterface;
  * - No HTTP dependencies
  * - Idempotency Aware
  */
-final readonly class CreateOrderCommand implements IdempotentCommandInterface
+final readonly class CreateOrderCommand implements IdempotentCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     /**
      * @param  array<int, array{product_id: int, quantity: int, options?: array, notes?: string}>  $items
      */
@@ -28,9 +30,9 @@ final readonly class CreateOrderCommand implements IdempotentCommandInterface
         public string $customerId,
         public string $currency,
         public ?string $customerName = null,
-        public ?string $customerPhone = null,
-        public ?string $customerEmail = null,
-        public ?string $customerAddress = null,
+        #[\SensitiveParameter] public ?string $customerPhone = null,
+        #[\SensitiveParameter] public ?string $customerEmail = null,
+        #[\SensitiveParameter] public ?string $customerAddress = null,
         public ?string $customerNotes = null,
         public string $deliveryType = 'pickup',
         public string $paymentMethod = 'pending',

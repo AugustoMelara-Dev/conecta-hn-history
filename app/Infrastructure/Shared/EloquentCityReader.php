@@ -6,7 +6,6 @@ namespace App\Infrastructure\Shared;
 
 use App\Domain\Shared\Contracts\CityReader;
 use App\Models\City;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -30,12 +29,13 @@ final class EloquentCityReader implements CityReader
      *
      * Uses Cache-Aside pattern for performance optimization.
      */
-    public function getAllCities(): Collection
+    public function getAllCities(): array
     {
         return Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
             return City::with('municipality.department')
                 ->orderBy('name')
-                ->get();
+                ->get()
+                ->toArray();
         });
     }
 }

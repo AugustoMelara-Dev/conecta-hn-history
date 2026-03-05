@@ -15,26 +15,29 @@ use App\Application\Shared\Contracts\HashableCommandInterface;
  * â•‘  AUDIT METADATA: Carries IP/UserAgent for security logging.             â•‘
  * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class GenerateOtpCommand implements HashableCommandInterface
+final readonly class GenerateOtpCommand implements HashableCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
+    use \App\Application\Shared\Traits\HasSchemaVersion;
+
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) */
         public string $tenantId,
 
         /** Email or phone number to send OTP */
-        public string $identifier,
+        #[\SensitiveParameter] public string $identifier,
 
         /** OTP type (email, sms) */
         public string $type,
 
         /** Client IP for security audit */
-        public string $ipAddress,
+        #[\SensitiveParameter] public string $ipAddress,
 
         /** Client User-Agent for fingerprinting */
-        public string $userAgent,
+        #[\SensitiveParameter] public string $userAgent,
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey = '',
+        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string

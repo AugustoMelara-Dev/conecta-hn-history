@@ -24,14 +24,14 @@ final readonly class UserMailData
     public function __construct(
         public int $id,
         public string $name,
-        public string $email,
+        #[\SensitiveParameter] public string $email,
         public ?int $tenantId = null,
     ) {}
 
     /**
      * Create from User model (snapshot at dispatch time).
      */
-    public static function fromUser(\App\Models\User $user): self
+    public static function fromUser(object $user): self
     {
         return new self(
             id: $user->id,

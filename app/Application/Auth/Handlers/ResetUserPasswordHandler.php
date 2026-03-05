@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\ResetUserPasswordCommand;
+use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use Illuminate\Auth\Events\PasswordReset;
-use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Contracts\Hashing\Hasher;
-use Illuminate\Support\Str;
+use App\Domain\Identity\Events\UserPasswordResetRequested;
+use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Contracts\IdGeneratorInterface;
+use App\Domain\Shared\Entities\DomainEventMessage;
+use App\Domain\Security\Contracts\HasherInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -17,19 +19,21 @@ use Psr\Log\LoggerInterface;
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  RESPONSIBILITY: Hash → Delegate to Repository → Dispatch Event.      ║
- * ║  FRAMEWORK AGNOSTIC: Uses Hasher/Dispatcher/Repository contracts.     ║
+ * ║  FRAMEWORK AGNOSTIC: Uses HasherInterface/EventDispatcherInterface.   ║
  * ║  TENANT AWARE: Validates tenant ownership via repository scope.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * REFACTORED: Eliminated direct App\Models\User dependency.
- * Now delegates persistence to UserRepositoryInterface::resetPassword().
+ * REFACTORED: Eliminated Illuminate\Contracts coupling.
+ * Now uses Domain contracts (HasherInterface, EventDispatcherInterface).
  */
 final readonly class ResetUserPasswordHandler
 {
     public function __construct(
         private UserRepositoryInterface $userRepository,
-        private Hasher $hasher,
-        private Dispatcher $dispatcher,
+        private HasherInterface $hasher,
+        private OutboxRepositoryInterface $outboxRepository,
+        private ClockInterface $clock,
+        private IdGeneratorInterface $idGenerator,
         private LoggerInterface $logger,
     ) {}
 
@@ -41,7 +45,7 @@ final readonly class ResetUserPasswordHandler
     public function handle(ResetUserPasswordCommand $command): void
     {
         $passwordHash = $this->hasher->make($command->password);
-        $rememberToken = Str::random(60);
+        $rememberToken = bin2hex(random_bytes(30));
 
         $this->userRepository->resetPassword(
             $command->userId,
@@ -50,12 +54,20 @@ final readonly class ResetUserPasswordHandler
             $rememberToken,
         );
 
-        // Dispatch Laravel's native PasswordReset event for framework hooks
+        // Dispatch domain event. Infrastructure listeners will handle framework hooks
         // (e.g., session invalidation, auth guard refresh).
-        // Note: This uses the user object from findById for event compatibility.
         $user = $this->userRepository->findById($command->userId, $command->tenantId);
         if ($user !== null) {
-            $this->dispatcher->dispatch(new PasswordReset($user));
+            $event = new UserPasswordResetRequested($command->userId, $command->tenantId);
+            $message = new DomainEventMessage(
+                eventId: $this->idGenerator->generate(),
+                type: get_class($event),
+                aggregateId: $command->userId,
+                payload: json_encode(['userId' => $event->userId, 'tenantId' => $event->tenantId]),
+                occurredAt: $this->clock->now(),
+                metadata: ['tenant_id' => $command->tenantId]
+            );
+            $this->outboxRepository->save($message);
         }
 
         $this->logger->info('Password reset completed', [

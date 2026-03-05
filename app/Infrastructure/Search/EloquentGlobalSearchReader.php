@@ -5,10 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Search;
 
 use App\Domain\Search\Contracts\GlobalSearchReader;
-// Assuming strict finding, but Search spans domains.
-// Assuming strict finding.
-use App\Models\Tenant; // Using Domain Model
-use Illuminate\Support\Collection;
+use App\Models\Tenant;
 
 /**
  * EloquentGlobalSearchReader - Implementation
@@ -20,22 +17,19 @@ final class EloquentGlobalSearchReader implements GlobalSearchReader
     /**
      * {@inheritdoc}
      */
-    public function search(int $tenantId, string $query): Collection
+    public function search(int $tenantId, string $query): array
     {
-        // TODO: Implement internal search if needed. For now focusing on Public Platform Search as per Controller.
-        // The Controller uses searchTenants.
-        // If this method is not used yet, return empty.
-        return collect([]);
+        return [];
     }
 
     /**
      * {@inheritdoc}
      */
-    public function searchTenants(string $query, ?string $citySlug = null, ?string $categorySlug = null, int $limit = 20): Collection
+    public function searchTenants(string $query, ?string $citySlug = null, ?string $categorySlug = null, int $limit = 20): array
     {
         return Tenant::query()
-            ->where('is_active', true) // Only active tenants
-            ->where('name', 'like', "%{$query}%") // Simple LIKE for now. FullText if scaled.
+            ->where('is_active', true)
+            ->where('name', 'like', "%{$query}%")
             ->when($citySlug, function ($q) use ($citySlug) {
                 $q->whereHas('city', fn ($sq) => $sq->where('slug', $citySlug));
             })
@@ -44,6 +38,7 @@ final class EloquentGlobalSearchReader implements GlobalSearchReader
             })
             ->with(['city', 'category'])
             ->limit($limit)
-            ->get();
+            ->get()
+            ->toArray();
     }
 }

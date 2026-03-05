@@ -4,7 +4,7 @@ use App\Application\Billing\Actions\HandlePaymentWebhookAction;
 use App\Domain\ValueObjects\Payment\PaymentWebhook;
 use Illuminate\Support\Facades\Log;
 use App\Application\Shared\Contracts\Payment\PaymentWebhookHandlerInterface;
-use App\Events\Payment\PaymentWebhookReceived;
+use App\Domain\Billing\Events\PaymentWebhookReceived;
 use Illuminate\Support\Facades\Event;
 use App\Application\Shared\Contracts\EventBusInterface;
 use App\Application\Shared\Contracts\LoggerInterface;

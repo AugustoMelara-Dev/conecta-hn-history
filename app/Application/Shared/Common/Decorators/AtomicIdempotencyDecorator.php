@@ -14,7 +14,7 @@ use InvalidArgumentException;
  * Standardized generic decorator for Atomic Protocol.
  * Requires the command to implement HashableCommand.
  */
-final class AtomicIdempotencyDecorator
+final readonly class AtomicIdempotencyDecorator
 {
     public function __construct(
         private object $inner,
