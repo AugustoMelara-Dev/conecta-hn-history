@@ -98,7 +98,7 @@ class OrderStateServiceTest extends TestCase
             ->once()
             ->with(Mockery::on(function ($event) use ($tenantId) {
                 return $event instanceof OrderCancelled
-                    && $event->aggregateId() === 123
+                    && $event->aggregateId() === '123'
                     && $event->tenantId()->toString() === $tenantId
                     && $event->orderNumber->toString() === 'ORD-1001'
                     && $event->reason === 'customer_request'
