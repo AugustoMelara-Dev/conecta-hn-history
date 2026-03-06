@@ -31,7 +31,8 @@ final class BookingController extends Controller
         private ServiceRepositoryInterface $serviceRepository,
         private ServiceProviderRepositoryInterface $providerRepository,
         private AppointmentRepositoryInterface $appointmentRepository,
-        private CommandBusInterface $commandBus
+        private CommandBusInterface $commandBus,
+        private \App\Domain\Booking\Services\SlotCalculator $slotCalculator
     ) {}
     /**
      * Display the booking wizard page.
@@ -127,9 +128,9 @@ final class BookingController extends Controller
             abort(404, 'Service not found');
         }
 
-        // Generate slots based on actual opening hours (Spatie integration)
-        $slots = $this->generateAvailableSlots(
-            $tenant,
+        // Generate slots using domain service
+        $slots = $this->slotCalculator->calculate(
+            (string) $tenant->id,
             $date,
             $service->duration_minutes,
             $validated['provider_id'] ?? null
@@ -240,68 +241,4 @@ final class BookingController extends Controller
         ]);
     }
 
-    /**
-     * Generate available time slots for a given date.
-     *
-     * Uses spatie/opening-hours to respect tenant business hours
-     * and provider schedule overrides.
-     *
-     * @param string $tenantId The tenant ID for fallback hours
-     * @param Carbon $date The date to generate slots for
-     * @param int $durationMinutes Service duration in minutes
-     * @param int|null $providerId Optional provider ID for schedule override
-     * @return array<array{time: string, display: string}>
-     */
-    private function generateAvailableSlots(
-        string $tenantId,
-        Carbon $date,
-        int $durationMinutes,
-        ?string $providerId
-    ): array {
-        $slots = [];
-
-        // Decoupled OpeningHours abstraction
-        $openingHours = clone $this->tenantRepository->getOpeningHours($tenantId);
-        if ($providerId) {
-            $openingHours = $this->providerRepository->getOpeningHours($providerId) ?? $openingHours;
-        }
-
-        // Get open ranges for the requested date (handles closed days automatically)
-        $ranges = $openingHours->forDate($date);
-
-        // Each range is a Spatie\OpeningHours\TimeRange with start/end
-        foreach ($ranges as $range) {
-            $rangeStart = $date->copy()->setTimeFromTimeString($range->start()->format('H:i:s'));
-            $rangeEnd = $date->copy()->setTimeFromTimeString($range->end()->format('H:i:s'));
-
-            // Round duration to nearest 15 minutes for reasonable slot intervals
-            $interval = max(15, min($durationMinutes, 60));
-            $current = $rangeStart->copy();
-
-            while ($current < $rangeEnd) {
-                $slotEnd = $current->copy()->addMinutes($durationMinutes);
-
-                // Slot must fit strictly within the open range
-                if ($slotEnd <= $rangeEnd) {
-                    $isAvailable = true;
-
-                    // If provider specified, check for appointment conflicts
-                    if ($providerId) {
-                        $isAvailable = $this->providerRepository->isAvailableAt($providerId, $current, $slotEnd);
-                    }
-
-                    if ($isAvailable) {
-                        $slots[] = [
-                            'time' => $current->format('H:i'),
-                            'display' => $current->format('h:i A'),
-                        ];
-                    }
-                }
-
-                $current->addMinutes($interval);
-            }
-        }
-
-        return $slots;
-    }
 }

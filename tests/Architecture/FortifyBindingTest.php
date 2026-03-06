@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Identity\CreateNewUser;
+use App\Infrastructure\Identity\Fortify\Actions\Identity\CreateNewUser;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 /**

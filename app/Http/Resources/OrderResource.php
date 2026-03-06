@@ -25,7 +25,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'payment_instructions', type: 'object', nullable: true, description: 'Dynamic limits for UI rendering'),
     ]
 )]
-class OrderResource extends JsonResource
+final class OrderResource extends JsonResource
 {
     /**
      * Transform the resource into an array.

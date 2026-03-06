@@ -2,40 +2,34 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Interactions;
+namespace App\Infrastructure\Interactions\Actions;
 
 use App\Application\Interactions\Commands\RecordInteractionCommand;
-use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Interactions\DTOs\InteractionData;
+use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\MetadataSanitizerInterface;
+use App\Application\Shared\Contracts\TenantRateLimiterInterface;
 
 /**
  * RecordInteractionAction - Infrastructure Adapter
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ADAPTER PATTERN: Maps InteractionData DTO → Command → CommandBus.     ║
- * ║  PURE DELEGATION: Zero business logic, zero persistence, zero events.  ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * REFACTORED: Extracted all orchestration logic to RecordInteractionHandler.
- * Deduplication, persistence, lead conversion, and event dispatch now live
- * in the Application Layer handler.
+ * Relocated from app/Actions/Interactions to Infrastructure layer.
+ * ADAPTER PATTERN: Maps InteractionData DTO → Command → CommandBus.
+ * PURE DELEGATION: Zero business logic, zero persistence, zero events.
  */
 final readonly class RecordInteractionAction
 {
-    /** Maximum metadata payload size in bytes (10KB). */
     private const MAX_METADATA_BYTES = 10240;
 
     public function __construct(
         private CommandBusInterface $commandBus,
-        private \App\Application\Shared\Contracts\TenantRateLimiterInterface $tenantRateLimiter,
+        private TenantRateLimiterInterface $tenantRateLimiter,
         private MetadataSanitizerInterface $metadataSanitizer,
     ) {}
 
     /**
-     * Dispatch interaction recording command.
-     *
      * @throws \InvalidArgumentException If metadata exceeds MAX_METADATA_BYTES.
+     * @throws \RuntimeException If tenant context is missing.
      */
     public function execute(InteractionData $data): void
     {
@@ -43,7 +37,6 @@ final readonly class RecordInteractionAction
             throw new \RuntimeException('Cannot record interaction: missing tenant context.');
         }
 
-        // RATE LIMITING: Tenant-Aware Protection (1000 requests per minute per tenant)
         $this->tenantRateLimiter->ensureNotExceeded(
             actionName: self::class,
             tenantId: $data->tenantId,
@@ -51,7 +44,6 @@ final readonly class RecordInteractionAction
             decayMinutes: 1
         );
 
-        // RISK MITIGATION: Cap 'metadata' payload to prevent Queue/DB DoS.
         $encodedMetadata = json_encode($data->metadata ?? []);
         if ($encodedMetadata !== false && strlen($encodedMetadata) > self::MAX_METADATA_BYTES) {
             throw new \InvalidArgumentException(
@@ -59,7 +51,6 @@ final readonly class RecordInteractionAction
             );
         }
 
-        // SECURITY: Sanitize metadata to neutralize XSS payloads, depth bombs, and oversized strings.
         $cleanMetadata = $this->metadataSanitizer->clean($data->metadata ?? []);
 
         $this->commandBus->dispatch(

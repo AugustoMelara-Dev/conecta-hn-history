@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Application\Shared\DTOs\ReportRequestData;
-use App\Domain\ReportingAndExports\Jobs\GeneratePdfReportJob;
-use App\Domain\ReportingAndExports\Jobs\GenerateSalesExport;
+use App\Infrastructure\Jobs\Reporting\GeneratePdfReportJob;
+use App\Infrastructure\Jobs\Exports\GenerateSalesExport;
 use App\Domain\Shared\Contracts\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Reports\InventoryReportRequest;

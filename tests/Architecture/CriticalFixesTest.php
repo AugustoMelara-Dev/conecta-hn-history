@@ -12,7 +12,7 @@ declare(strict_types=1);
 test('interaction controller imports correct action namespace', function () {
     $content = file_get_contents(__DIR__ . '/../../app/Http/Controllers/Public/InteractionController.php');
     expect($content)
-        ->toContain('use App\Actions\Interactions\RecordInteractionAction;')
+        ->toContain('use App\Infrastructure\Interactions\Actions\RecordInteractionAction;')
         ->not->toContain('App\Application\Actions');
 });
 

@@ -6,11 +6,12 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Marketing\Contracts\CouponReader;
 use App\Http\Controllers\Controller;
-use App\Services\TenantCacheManager;
+use App\Application\Shared\Contracts\TenantCacheManagerInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Validation\Factory as ValidationFactory;
+use OpenApi\Attributes as OA;
 
 /**
  * CouponController - Discount Validation Engine
@@ -25,7 +26,7 @@ final class CouponController extends Controller
     private const CACHE_TTL_MINUTES = 15;
 
     public function __construct(
-        private TenantCacheManager $cacheManager,
+        private TenantCacheManagerInterface $cacheManager,
         private CouponReader $reader,
         private CacheRepository $cache,
         private ValidationFactory $validator
@@ -35,6 +36,16 @@ final class CouponController extends Controller
      * Verify a coupon code against cart subtotal.
      * POST /api/coupons/verify
      */
+    #[OA\Post(
+        path: '/api/coupons/verify',
+        summary: 'Verify a coupon',
+        tags: ['Coupons'],
+        requestBody: new OA\RequestBody(required: true, description: 'Verification payload'),
+        responses: [
+            new OA\Response(response: 200, description: 'Coupon Valid'),
+            new OA\Response(response: 422, description: 'Unprocessable Entity'),
+        ]
+    )]
     public function verify(Request $request): JsonResponse
     {
         $validator = $this->validator->make($request->all(), [
@@ -85,6 +96,18 @@ final class CouponController extends Controller
      * Get available coupons for a tenant.
      * GET /api/coupons?tenant_id=X
      */
+    #[OA\Get(
+        path: '/api/coupons',
+        summary: 'List tenant coupons',
+        tags: ['Coupons'],
+        parameters: [
+            new OA\Parameter(name: 'tenant_id', in: 'query', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'List of coupons'),
+            new OA\Response(response: 400, description: 'Bad Request'),
+        ]
+    )]
     public function index(Request $request): JsonResponse
     {
         $tenantId = (int) $request->input('tenant_id');

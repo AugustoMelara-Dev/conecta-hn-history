@@ -34,7 +34,7 @@ final readonly class UserRegistered implements DomainEventInterface, ShouldDispa
     public function __construct(
         public string $user_id,
         public string $name, // Added for Read Model Completeness
-        public string $email,
+        public \App\Domain\Shared\ValueObjects\EncryptedEmail $email,
         public string $role,
         public string $tenant_id,
         public DateTimeImmutable $occurredOn,
@@ -50,7 +50,7 @@ final readonly class UserRegistered implements DomainEventInterface, ShouldDispa
         return new self(
             user_id: $user_id,
             name: $name,
-            email: $email,
+            email: new \App\Domain\Shared\ValueObjects\EncryptedEmail(\Illuminate\Support\Facades\Crypt::encryptString($email)),
             role: $role,
             tenant_id: $tenant_id,
             occurredOn: new DateTimeImmutable,
@@ -63,7 +63,7 @@ final readonly class UserRegistered implements DomainEventInterface, ShouldDispa
         return new static(
             user_id: (string) ($payload['user_id'] ?? ''),
             name: (string) ($payload['name'] ?? 'Unknown User'),
-            email: (string) ($payload['email'] ?? ''),
+            email: new \App\Domain\Shared\ValueObjects\EncryptedEmail((string) ($payload['email'] ?? '')),
             role: (string) ($payload['role'] ?? 'customer'),
             tenant_id: (string) ($payload['tenant_id'] ?? ''),
             occurredOn: isset($payload['occurred_on'])
@@ -78,7 +78,7 @@ final readonly class UserRegistered implements DomainEventInterface, ShouldDispa
             'schema_version' => self::SCHEMA_VERSION,
             'user_id'        => $this->user_id,
             'name'           => $this->name,
-            'email'          => $this->email,
+            'email'          => $this->email->value(),
             'role'           => $this->role,
             'tenant_id'      => $this->tenant_id,
             'occurred_on'    => $this->occurredOn->format(\DateTimeInterface::ATOM),
@@ -93,5 +93,10 @@ final readonly class UserRegistered implements DomainEventInterface, ShouldDispa
     public function aggregateId(): string
     {
         return $this->user_id;
+    }
+
+    public function jsonSerialize(): mixed
+    {
+        return $this->toPayload();
     }
 }

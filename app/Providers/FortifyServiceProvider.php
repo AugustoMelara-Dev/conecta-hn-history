@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Actions\Authentication\ResetPasswordAction;
-use App\Actions\Authentication\UpdateUserPassword;
-use App\Actions\Identity\UpdateUserProfileInformation;
-use App\Actions\Identity\CreateNewUser;
+use App\Infrastructure\Identity\Fortify\Actions\Authentication\ResetPasswordAction;
+use App\Infrastructure\Identity\Fortify\Actions\Authentication\UpdateUserPassword;
+use App\Infrastructure\Identity\Fortify\Actions\Identity\UpdateUserProfileInformation;
+use App\Infrastructure\Identity\Fortify\Actions\Identity\CreateNewUser;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;

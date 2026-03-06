@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Domain\AIEnrichment\Jobs\GenerateBusinessProfile;
+use App\Infrastructure\Jobs\AI\GenerateBusinessProfile;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Cache\RateLimiter;
+use OpenApi\Attributes as OA;
 
 /**
  * AiController - The Guardian of Resources
@@ -23,6 +24,17 @@ final class AiController extends Controller
     /**
      * Dispatch AI generation asynchronously.
      */
+    #[OA\Post(
+        path: '/api/ai/generate',
+        summary: 'Generate AI Profile',
+        tags: ['AI'],
+        requestBody: new OA\RequestBody(required: true, description: 'AI generation payload containing business details'),
+        responses: [
+            new OA\Response(response: 202, description: 'Processing Accepted'),
+            new OA\Response(response: 403, description: 'Forbidden'),
+            new OA\Response(response: 429, description: 'Too Many Requests'),
+        ]
+    )]
     public function generate(Request $request): JsonResponse
     {
         // 1. Sanitization & Validation (Framework Concern)

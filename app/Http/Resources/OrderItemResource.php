@@ -22,7 +22,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'notes', type: 'string', nullable: true),
     ]
 )]
-class OrderItemResource extends JsonResource
+final class OrderItemResource extends JsonResource
 {
     /**
      * Transform the resource into an array.

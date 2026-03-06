@@ -17,6 +17,13 @@ final readonly class TenantUpdated implements DomainEvent, ShouldDispatchAfterCo
 {
     use HasDomainMetadata;
 
+    public const SCHEMA_VERSION = 1;
+
+    public function schemaVersion(): int
+    {
+        return self::SCHEMA_VERSION;
+    }
+
     public function __construct(
         private TenantId $tenantId,
         public string $oldSlug,
@@ -46,6 +53,7 @@ final readonly class TenantUpdated implements DomainEvent, ShouldDispatchAfterCo
     public function toPrimitives(): array
     {
         return [
+            'schema_version' => self::SCHEMA_VERSION,
             'tenant_id' => $this->tenantId->toString(),
             'old_slug' => $this->oldSlug,
             'new_slug' => $this->newSlug,

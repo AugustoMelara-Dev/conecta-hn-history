@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Authentication\UpdateUserPassword;
+use App\Infrastructure\Identity\Fortify\Actions\Authentication\UpdateUserPassword;
 use App\Application\Auth\Commands\UpdateUserPasswordCommand;
 use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Application\Shared\Contracts\CommandBusInterface;

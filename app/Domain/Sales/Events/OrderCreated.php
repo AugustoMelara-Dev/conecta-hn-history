@@ -21,6 +21,13 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
 {
     use HasDomainMetadata;
 
+    public const SCHEMA_VERSION = 1;
+
+    public function schemaVersion(): int
+    {
+        return self::SCHEMA_VERSION;
+    }
+
     public function __construct(
         public int $orderId,
         public string $tenantId,
@@ -59,6 +66,7 @@ final readonly class OrderCreated implements DomainEvent, ShouldBeStoredInOutbox
     public function toPayload(): array
     {
         return [
+            'schema_version' => self::SCHEMA_VERSION,
             'order_id' => $this->orderId,
             'tenant_id' => $this->tenantId,
             'order_number' => $this->orderNumber,

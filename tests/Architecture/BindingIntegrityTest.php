@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Authentication\ResetPasswordAction;
+use App\Infrastructure\Identity\Fortify\Actions\Authentication\ResetPasswordAction;
 
 /**
  * BindingIntegrityTest - Container Wiring Governance
@@ -14,18 +14,18 @@ use App\Actions\Authentication\ResetPasswordAction;
 test('reset password action exists in authentication namespace', function () {
     expect(class_exists(ResetPasswordAction::class))->toBeTrue();
     expect((new ReflectionClass(ResetPasswordAction::class))->getNamespaceName())
-        ->toBe('App\Actions\Authentication');
+        ->toBe('App\Infrastructure\Identity\Fortify\Actions\Authentication');
 });
 
 test('app service provider does not reference phantom fortify namespace', function () {
     $content = file_get_contents(__DIR__ . '/../../app/Providers/AppServiceProvider.php');
     expect($content)
-        ->not->toContain('App\Actions\Fortify\ResetPasswordAction')
+        ->not->toContain('App\Infrastructure\Identity\Fortify\Actions\ResetPasswordAction')
         ->not->toContain('ResetsUserPasswords'); // Binding moved to FortifyServiceProvider
 });
 
 test('reset password action enforces tenant context and delegates to bus', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Actions/Authentication/ResetPasswordAction.php');
+    $content = file_get_contents(__DIR__ . '/../../app/Infrastructure/Identity/Fortify/Actions/Authentication/ResetPasswordAction.php');
     expect($content)
         ->toContain('TenantAware')
         ->toContain('getTenantId()')

@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
 
-class TenantSettingsResource extends JsonResource
+final class TenantSettingsResource extends JsonResource
 {
     /**
      * Transform the resource into an array.

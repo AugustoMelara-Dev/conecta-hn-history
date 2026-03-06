@@ -122,6 +122,7 @@ final class StoreOrderRequest extends FormRequest
             paymentMethod: $validated['payment_method'] ?? null,
             couponCode: $validated['coupon_code'] ?? null,
             requestorUserId: $this->user()?->id, // Nullable for guests
+            schemaVersion: 1,
         );
     }
 }

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Contracts\Events\DomainEventBus;
-use App\Events\Order\OrderCancelled;
+use App\Application\Sales\Contracts\OrderStateServiceInterface;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
+use App\Domain\Sales\Events\OrderCancelled;
+use App\Domain\Sales\Events\OrderDelivered;
 use App\Contracts\InventoryManagerInterface;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
@@ -29,7 +31,7 @@ use Illuminate\Support\Facades\DB;
  * 2. Execute side-effects (restock on cancel, timestamp on deliver)
  * 3. Dispatch broadcasting events for real-time updates
  */
-class OrderStateService
+class OrderStateService implements OrderStateServiceInterface
 {
     /**
      * FSM TOPOLOGY: Defines allowed transitions from each state.
@@ -70,7 +72,7 @@ class OrderStateService
      */
     public function __construct(
         private readonly InventoryManagerInterface $inventoryManager,
-        private readonly DomainEventBus $eventBus,
+        private readonly EventDispatcherInterface $eventDispatcher,
     ) {}
 
     /**
@@ -239,7 +241,7 @@ class OrderStateService
     private function dispatchStatusEvent(Order $order, string $oldStatus, string $newStatus): void
     {
         $event = match ($newStatus) {
-            Order::STATUS_CANCELLED => OrderCancelled::create(
+            Order::STATUS_CANCELLED => new OrderCancelled(
                 tenantId: $order->tenant_id,
                 orderId: $order->id,
                 orderNumber: $order->order_number,
@@ -247,7 +249,7 @@ class OrderStateService
                 cancelledById: auth()->id(),
                 wasPaid: $order->isPaid(),
             ),
-            Order::STATUS_DELIVERED => \App\Events\Order\OrderDelivered::create(
+            Order::STATUS_DELIVERED => new OrderDelivered(
                 tenantId: $order->tenant_id,
                 orderId: $order->id,
                 orderNumber: $order->order_number,
@@ -258,7 +260,7 @@ class OrderStateService
         };
 
         if ($event !== null) {
-            $this->eventBus->publish($event);
+            $this->eventDispatcher->dispatch($event);
         }
     }
 }

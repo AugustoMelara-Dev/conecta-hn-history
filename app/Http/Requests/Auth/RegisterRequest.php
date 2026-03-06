@@ -44,7 +44,8 @@ final class RegisterRequest extends FormRequest
             tenantName: $validated['tenant_name'] ?? null,
             slug: null, // Let Handler generate it
             source: 'api_registration', // Traceability
-            idempotencyKey: $idempotencyKey
+            idempotencyKey: $idempotencyKey,
+            schemaVersion: 1
         );
     }
 }

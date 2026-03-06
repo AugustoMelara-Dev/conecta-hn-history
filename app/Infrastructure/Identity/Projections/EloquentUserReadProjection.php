@@ -6,7 +6,7 @@ namespace App\Infrastructure\Identity\Projections;
 
 use App\Application\Identity\Contracts\UserReadProjection;
 use App\Models\User;
-use Illuminate\Contracts\Auth\Authenticatable;
+use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
 
 /**
  * EloquentUserReadProjection - Infrastructure Implementation
@@ -19,7 +19,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
  */
 final readonly class EloquentUserReadProjection implements UserReadProjection
 {
-    public function getById(string $userId, ?string $tenantId = null): Authenticatable
+    public function getById(string $userId, ?string $tenantId = null): TenantAwareAuthenticatable
     {
         $query = User::query();
 
