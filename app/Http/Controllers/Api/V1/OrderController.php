@@ -24,7 +24,8 @@ final class OrderController extends Controller
         private readonly OrderReader $reader,
         private readonly \App\Application\Shared\Contracts\CommandBusInterface $bus,
         private readonly OrderStateServiceInterface $orderStateService,
-        private readonly CancelOrderAction $cancelOrderAction
+        private readonly CancelOrderAction $cancelOrderAction,
+        private readonly \App\Domain\Shared\Contracts\TenantContext $tenantContext
     ) {}
 
     // ... (Other methods: index, store, show, updateStatus kept same or omitted for brevity, focusing on destroy)
@@ -32,7 +33,7 @@ final class OrderController extends Controller
 
     public function index(Request $request): AnonymousResourceCollection
     {
-        $tenantId = (int) $request->user()?->tenant_id;
+        $tenantId = (int) $this->tenantContext->getTenantId();
         if (! $tenantId) {
             abort(403);
         }
@@ -60,7 +61,7 @@ final class OrderController extends Controller
 
     public function show(Request $request, int $id): OrderResource
     {
-        $tenantId = (int) $request->user()?->tenant_id;
+        $tenantId = (int) $this->tenantContext->getTenantId();
         if (! $tenantId) {
             abort(403, 'Tenant context required');
         }
@@ -75,7 +76,7 @@ final class OrderController extends Controller
 
     public function updateStatus(UpdateOrderStatusRequest $request, int $orderId): OrderResource
     {
-        $tenantId = (int) $request->user()?->tenant_id;
+        $tenantId = (int) $this->tenantContext->getTenantId();
         if (! $tenantId) {
             abort(403, 'Tenant context required');
         }
@@ -98,7 +99,7 @@ final class OrderController extends Controller
     {
         // DELEGATED: Action handles lookup and deletion
         // We use request->user()->tenant_id to authorize ownership in action
-        $tenantId = (int) $request->user()?->tenant_id;
+        $tenantId = (int) $this->tenantContext->getTenantId();
 
         $this->cancelOrderAction->execute($orderId, $tenantId);
 
