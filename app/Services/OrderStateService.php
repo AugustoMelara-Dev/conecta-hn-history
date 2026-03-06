@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Application\Sales\Contracts\OrderStateServiceInterface;
 use App\Contracts\Events\DomainEventBus;
 use App\Events\Order\OrderCancelled;
 use App\Contracts\InventoryManagerInterface;
@@ -29,7 +30,7 @@ use Illuminate\Support\Facades\DB;
  * 2. Execute side-effects (restock on cancel, timestamp on deliver)
  * 3. Dispatch broadcasting events for real-time updates
  */
-class OrderStateService
+class OrderStateService implements OrderStateServiceInterface
 {
     /**
      * FSM TOPOLOGY: Defines allowed transitions from each state.

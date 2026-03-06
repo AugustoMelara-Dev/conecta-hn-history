@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Public;
 use App\Exceptions\InvalidCouponException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\StoreCheckoutRequest;
-use App\Services\CouponValidatorService;
+use App\Application\Shared\Contracts\CouponValidatorInterface;
 use Illuminate\Http\JsonResponse;
 use Psr\Log\LoggerInterface;
 

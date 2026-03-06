@@ -10,7 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
-use App\Services\OrderStateService;
+use App\Application\Sales\Contracts\OrderStateServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -23,7 +23,7 @@ final class OrderController extends Controller
     public function __construct(
         private readonly OrderReader $reader,
         private readonly \App\Application\Shared\Contracts\CommandBusInterface $bus,
-        private readonly OrderStateService $orderStateService,
+        private readonly OrderStateServiceInterface $orderStateService,
         private readonly CancelOrderAction $cancelOrderAction
     ) {}
 

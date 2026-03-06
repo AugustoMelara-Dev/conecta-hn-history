@@ -9,6 +9,7 @@ use App\Application\Tenant\Results\UpdateBrandingResult;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateTenantSettingsRequest;
 use App\Http\Resources\TenantSettingsResource;
+use Illuminate\Http\Request;
 
 final class TenantSettingsController extends Controller
 {
@@ -23,9 +24,9 @@ final class TenantSettingsController extends Controller
         return new TenantSettingsResource($tenant);
     }
 
-    public function show(): TenantSettingsResource
+    public function show(Request $request): TenantSettingsResource
     {
-        $tenant = auth()->user()->tenant;
+        $tenant = $request->user()?->tenant;
 
         if (! $tenant) {
             abort(403, 'No tenant associated with user.');

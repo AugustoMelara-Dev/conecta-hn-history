@@ -9,7 +9,7 @@ use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
-use App\Services\TenantRegistrationService;
+use App\Domain\TenantGovernance\Policies\SlugPolicy;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -65,7 +65,7 @@ final class RegistrationController extends Controller
         $slug = Str::slug($request->input('slug'));
 
         // Check reserved slugs
-        if (TenantRegistrationService::isReservedSlug($slug)) {
+        if (SlugPolicy::isReservedSlug($slug)) {
             return response()->json([
                 'available' => false,
                 'message' => 'Esta dirección está reservada por el sistema.',
@@ -79,7 +79,7 @@ final class RegistrationController extends Controller
             return response()->json([
                 'available' => false,
                 'message' => 'Esta dirección ya está en uso.',
-                'suggestions' => TenantRegistrationService::generateSuggestions($slug, 3),
+                'suggestions' => SlugPolicy::generateSuggestions($slug, 3),
             ]);
         }
 

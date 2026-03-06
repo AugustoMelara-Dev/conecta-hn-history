@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Marketing\Contracts\CouponReader;
 use App\Http\Controllers\Controller;
-use App\Services\TenantCacheManager;
+use App\Application\Shared\Contracts\TenantCacheManagerInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
@@ -25,7 +25,7 @@ final class CouponController extends Controller
     private const CACHE_TTL_MINUTES = 15;
 
     public function __construct(
-        private TenantCacheManager $cacheManager,
+        private TenantCacheManagerInterface $cacheManager,
         private CouponReader $reader,
         private CacheRepository $cache,
         private ValidationFactory $validator

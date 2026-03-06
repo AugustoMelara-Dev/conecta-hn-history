@@ -51,6 +51,19 @@ class AppServiceProvider extends ServiceProvider
             });
 
         // ═══════════════════════════════════════════════════════════════════════
+        // W-03: Application Service Contracts (DIP Compliance)
+        // Replaces direct App\Services imports in Http layer with contracts.
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->bind(
+            \App\Application\Sales\Contracts\OrderStateServiceInterface::class,
+            \App\Services\OrderStateService::class
+        );
+        $this->app->bind(
+            \App\Application\Shared\Contracts\TenantCacheManagerInterface::class,
+            \App\Services\TenantCacheManager::class
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
         // EVENT UPCASTING: Schema Evolution Registry (Singleton)
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->singleton(
