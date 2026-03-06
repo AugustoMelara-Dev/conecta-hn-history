@@ -20,7 +20,7 @@ use Inertia\Middleware;
  * ║  TENANT VALIDATED: instanceof + exists check                            ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-class HandleInertiaRequests extends Middleware
+final class HandleInertiaRequests extends Middleware
 {
     private const ANNOUNCEMENTS_CACHE_TTL = 300;
 

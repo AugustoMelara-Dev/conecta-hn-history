@@ -7,7 +7,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class TenantCardResource extends JsonResource
+final class TenantCardResource extends JsonResource
 {
     public function toArray(Request $request): array
     {

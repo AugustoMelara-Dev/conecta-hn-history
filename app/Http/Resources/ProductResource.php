@@ -25,7 +25,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'stock_status', type: 'string', enum: ['in_stock', 'out_of_stock'], example: 'in_stock'),
     ]
 )]
-class ProductResource extends JsonResource
+final class ProductResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
