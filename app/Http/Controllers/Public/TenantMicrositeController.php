@@ -31,11 +31,14 @@ final class TenantMicrositeController extends Controller
         private readonly TenantVisibilityService $visibilityService
     ) {}
 
-    public function show(Request $request, \App\Models\Tenant $tenant): Response
+    public function show(Request $request, string $tenant, \App\Domain\Shared\Services\TenantContext $tenantContext): Response
     {
-        // 1. Bind Tenant to Container for downstream services compatibility
-        app()->instance('current_tenant', $tenant);
-        app(\App\Domain\Shared\Services\TenantContext::class)->setTenant($tenant->id);
+        $tenant = $this->repository->findBySlug($tenant);
+        if (!$tenant) {
+            abort(404);
+        }
+
+        $tenantContext->setTenant($tenant->id);
 
         // 2. Gatekeeper Logic (Domain Service)
         $this->visibilityService->check($tenant);
