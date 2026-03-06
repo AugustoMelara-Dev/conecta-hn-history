@@ -22,6 +22,11 @@ class IdempotencyContext implements IdempotencyContextInterface
         $this->key = $key;
     }
 
+    public function key(): ?string
+    {
+        return $this->key;
+    }
+
     public function getKey(): string
     {
         if ($this->key === null) {
