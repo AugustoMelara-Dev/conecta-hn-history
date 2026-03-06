@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Application\Sales\Contracts\OrderStateServiceInterface;
-use App\Contracts\Events\DomainEventBus;
-use App\Events\Order\OrderCancelled;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
+use App\Domain\Sales\Events\OrderCancelled;
+use App\Domain\Sales\Events\OrderDelivered;
 use App\Contracts\InventoryManagerInterface;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
@@ -71,7 +72,7 @@ class OrderStateService implements OrderStateServiceInterface
      */
     public function __construct(
         private readonly InventoryManagerInterface $inventoryManager,
-        private readonly DomainEventBus $eventBus,
+        private readonly EventDispatcherInterface $eventDispatcher,
     ) {}
 
     /**
@@ -240,7 +241,7 @@ class OrderStateService implements OrderStateServiceInterface
     private function dispatchStatusEvent(Order $order, string $oldStatus, string $newStatus): void
     {
         $event = match ($newStatus) {
-            Order::STATUS_CANCELLED => OrderCancelled::create(
+            Order::STATUS_CANCELLED => new OrderCancelled(
                 tenantId: $order->tenant_id,
                 orderId: $order->id,
                 orderNumber: $order->order_number,
@@ -248,7 +249,7 @@ class OrderStateService implements OrderStateServiceInterface
                 cancelledById: auth()->id(),
                 wasPaid: $order->isPaid(),
             ),
-            Order::STATUS_DELIVERED => \App\Events\Order\OrderDelivered::create(
+            Order::STATUS_DELIVERED => new OrderDelivered(
                 tenantId: $order->tenant_id,
                 orderId: $order->id,
                 orderNumber: $order->order_number,
@@ -259,7 +260,7 @@ class OrderStateService implements OrderStateServiceInterface
         };
 
         if ($event !== null) {
-            $this->eventBus->publish($event);
+            $this->eventDispatcher->dispatch($event);
         }
     }
 }
