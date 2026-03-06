@@ -65,4 +65,9 @@ final readonly class TenantCreated implements DomainEventInterface, ShouldDispat
                 : new DateTimeImmutable,
         );
     }
+
+    public function jsonSerialize(): mixed
+    {
+        return $this->toPayload();
+    }
 }

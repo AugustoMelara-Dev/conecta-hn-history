@@ -94,4 +94,9 @@ final readonly class UserRegistered implements DomainEventInterface, ShouldDispa
     {
         return $this->user_id;
     }
+
+    public function jsonSerialize(): mixed
+    {
+        return $this->toPayload();
+    }
 }
