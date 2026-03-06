@@ -19,24 +19,11 @@ use Psr\Log\LoggerInterface;
  */
 final class PaymentWebhookController extends Controller
 {
-    /**
-     * Webhook secret for verification.
-     */
-    private string $webhookSecret;
-
     public function __construct(
         private HandlePaymentWebhookAction $webhookAction,
-        private LoggerInterface $logger
-    ) {
-        $secret = config('services.payment.webhook_secret');
-
-        if (! is_string($secret) || empty($secret)) {
-            // Strictly fail if secret is missing to prevent bypasses.
-            throw new \RuntimeException('Webhook secret is not configured.');
-        }
-
-        $this->webhookSecret = $secret;
-    }
+        private LoggerInterface $logger,
+        private string $webhookSecret,
+    ) {}
 
     /**
      * Handle incoming webhook payload from payment provider.

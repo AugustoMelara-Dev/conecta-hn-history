@@ -36,6 +36,21 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // ═══════════════════════════════════════════════════════════════════════
+        // C-03: Contextual Binding — PaymentWebhookController::$webhookSecret
+        // Resolves webhook secret via container, not config() in constructor.
+        // ═══════════════════════════════════════════════════════════════════════
+        $this->app->when(\App\Http\Controllers\Webhook\PaymentWebhookController::class)
+            ->needs('$webhookSecret')
+            ->give(function () {
+                $secret = config('services.payment.webhook_secret');
+                if (! is_string($secret) || empty($secret)) {
+                    throw new \RuntimeException('Webhook secret is not configured.');
+                }
+
+                return $secret;
+            });
+
+        // ═══════════════════════════════════════════════════════════════════════
         // EVENT UPCASTING: Schema Evolution Registry (Singleton)
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->singleton(
