@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Analytics\Enums\InteractionType;
-use App\Domain\Analytics\Jobs\RecordInteraction;
+use App\Infrastructure\Jobs\Analytics\RecordInteraction;
 use App\Domain\TenantGovernance\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
