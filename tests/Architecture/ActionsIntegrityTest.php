@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\Validator;
  */
 
 test('actions do not use validator facade', function () {
-    expect('App\Actions')
+    expect('App\Infrastructure\Identity\Fortify\Actions')
+        ->not->toUse(Validator::class);
+    expect('App\Infrastructure\Interactions\Actions')
         ->not->toUse(Validator::class);
 });
 
@@ -25,7 +27,7 @@ test('interaction data uses string for tenant identifier', function () {
 });
 
 test('update user profile command namespace is correct', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Actions/Identity/UpdateUserProfileInformation.php');
+    $content = file_get_contents(__DIR__ . '/../../app/Infrastructure/Identity/Fortify/Actions/Identity/UpdateUserProfileInformation.php');
     expect($content)
         ->toContain('App\Application\Identity\Commands\UpdateUserProfileCommand')
         ->not->toContain('App\Application\Auth\Commands\UpdateUserProfileCommand');

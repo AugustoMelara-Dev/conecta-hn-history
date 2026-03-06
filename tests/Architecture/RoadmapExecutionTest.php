@@ -25,7 +25,7 @@ test('P1: actions layer test has no stale ignores', function () {
 
 test('P2: custom actions use execute method', function () {
     $actions = [
-        \App\Actions\Interactions\RecordInteractionAction::class,
+        \App\Infrastructure\Interactions\Actions\RecordInteractionAction::class,
     ];
 
     foreach ($actions as $action) {

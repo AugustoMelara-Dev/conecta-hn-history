@@ -14,9 +14,9 @@ use App\Infrastructure\Identity\Fortify\Actions\Identity\UpdateUserProfileInform
 test('update user profile information resides in identity namespace', function () {
     expect(class_exists(UpdateUserProfileInformation::class))->toBeTrue();
     expect((new ReflectionClass(UpdateUserProfileInformation::class))->getNamespaceName())
-        ->toBe('App\Actions\Identity');
+        ->toBe('App\Infrastructure\Identity\Fortify\Actions\Identity');
 });
 
 test('authentication namespace does not contain profile updates', function () {
-    expect(class_exists('App\Actions\Authentication\UpdateUserProfileInformation'))->toBeFalse();
+    expect(class_exists('App\Infrastructure\Identity\Fortify\Actions\Authentication\UpdateUserProfileInformation'))->toBeFalse();
 });
