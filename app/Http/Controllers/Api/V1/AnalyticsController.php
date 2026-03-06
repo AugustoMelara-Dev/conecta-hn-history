@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
 use Illuminate\Validation\Rule;
+use OpenApi\Attributes as OA;
 
 /**
  * AnalyticsController - IDOR-Hardened Conversion Event API
@@ -34,6 +35,16 @@ final class AnalyticsController extends Controller
     /**
      * Record a conversion event asynchronously.
      */
+    #[OA\Post(
+        path: '/api/analytics/track',
+        summary: 'Track generic analytics event',
+        tags: ['Analytics'],
+        requestBody: new OA\RequestBody(required: true, description: 'Tracking payload'),
+        responses: [
+            new OA\Response(response: 202, description: 'Accepted'),
+            new OA\Response(response: 404, description: 'Not Found'),
+        ]
+    )]
     public function track(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -70,6 +81,15 @@ final class AnalyticsController extends Controller
      *
      * SECURITY: Uses TenantResolver for slug lookup.
      */
+    #[OA\Post(
+        path: '/api/analytics/conversion',
+        summary: 'Track conversion/purchase event',
+        tags: ['Analytics'],
+        requestBody: new OA\RequestBody(required: true, description: 'Conversion payload'),
+        responses: [
+            new OA\Response(response: 200, description: 'Status OK'),
+        ]
+    )]
     public function conversion(Request $request): JsonResponse
     {
         try {

@@ -22,8 +22,12 @@ class IdempotencyContext implements IdempotencyContextInterface
         $this->key = $key;
     }
 
-    public function key(): ?string
+    public function key(): string
     {
+        if ($this->key === null) {
+            throw new RuntimeException('Idempotency Context not hydrated. Ensure EnsureIdempotencyKey middleware is executing.');
+        }
+
         return $this->key;
     }
 
