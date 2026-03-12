@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────
-# CONECTA HN - GITIGNORE COMPLETO
+# VITO BUSINESS OS - GITIGNORE COMPLETO
 # Actualizado para deployment seguro y Git Flow
 # ─────────────────────────────────────────────────────
 
@@ -109,3 +109,23 @@ todo.md
 notes.md
 scratch.php
 test.php
+# GENERATED DEBUG / EVIDENCE ARTIFACTS
+/analysis_out.txt
+/evidence*.txt
+/*_result*.txt
+/*_output*.txt
+/*_final*.txt
+/*_error*.txt
+/*_evidence*.txt
+/*_install*.txt
+/git_status*.txt
+/debug_*.txt
+/full_pest.txt
+/pest*.txt
+/test*.txt
+/tests_output.txt
+/discovery*.txt
+/optimize*.txt
+/latest_error*.txt
+/http_evidence.txt
+/spatie_result.txt

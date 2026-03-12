@@ -131,4 +131,14 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     {
         Product::where('id', $productId)->increment('stock', $quantity);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function existsBySkuExcludingId(string $sku, string $productId): bool
+    {
+        return Product::where('sku', $sku)
+            ->where('id', '!=', $productId)
+            ->exists();
+    }
 }

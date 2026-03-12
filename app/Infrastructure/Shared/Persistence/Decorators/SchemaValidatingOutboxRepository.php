@@ -42,7 +42,7 @@ final readonly class SchemaValidatingOutboxRepository implements OutboxRepositor
         $this->inner->append($event);
     }
 
-    public function retrieveNextStaleBatch(int $batchSize, int $staleThresholdSeconds, array $ownedPartitionKeys): \Illuminate\Support\Collection
+    public function retrieveNextStaleBatch(int $batchSize, int $staleThresholdSeconds, array $ownedPartitionKeys): array
     {
         // Pure delegation — schema validation is only for writes
         return $this->inner->retrieveNextStaleBatch($batchSize, $staleThresholdSeconds, $ownedPartitionKeys);

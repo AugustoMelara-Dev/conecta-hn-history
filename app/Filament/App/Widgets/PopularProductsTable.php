@@ -18,7 +18,7 @@ use Filament\Widgets\TableWidget as BaseWidget;
  */
 class PopularProductsTable extends BaseWidget
 {
-    protected ?string $heading = 'Productos Más Vistos';
+    protected static ?string $heading = 'Productos Más Vistos';
 
     public function getColumnSpan(): int|string|array
     {
