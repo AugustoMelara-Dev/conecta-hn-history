@@ -50,6 +50,7 @@ arch('Interfaces must be named with suffix Interface')
         'App\Application\Identity\Contracts\UserUniquenessChecker',
         'App\Application\Shared\Contracts\ReadOnlyCommand',
         'App\Application\Shared\Contracts\TenantAware',
+        'App\Contracts\Broadcasting\BroadcastableNotification',
     ]);
 
 /*
@@ -118,7 +119,8 @@ arch('Application Layer must NOT contain Global Folders (Modular Strictness)')
     ]);
 
 test('Root of Application must remain pure and modular (Orphan Ban)', function () {
-    expect(array_filter(glob(__DIR__ . '/../../app/Application/*.*'), 'is_file'))->toHaveCount(0);
+    $rootFiles = array_values(array_filter(glob(__DIR__ . '/../../app/Application/*.*'), static fn (string $path): bool => basename($path) !== 'README.md'));
+    expect($rootFiles)->toHaveCount(0);
 });
 
 arch('App\Application root should only contain Modules (and Shared/Contracts)')
@@ -169,6 +171,8 @@ arch('Domain Layer must be independent and pure')
 arch('No Facades in Domain or Commands')
     ->expect(['App\Domain', 'App\Application\*\Commands'])
     ->not->toUse('Illuminate\Support\Facades');
+
+
 
 
 

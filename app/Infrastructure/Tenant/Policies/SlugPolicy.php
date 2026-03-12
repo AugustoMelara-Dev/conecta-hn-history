@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\TenantGovernance\Policies;
+namespace App\Infrastructure\Tenant\Policies;
 
 use App\Models\Tenant;
 use Illuminate\Support\Str;
@@ -103,3 +103,4 @@ final class SlugPolicy
         return $suggestions;
     }
 }
+
