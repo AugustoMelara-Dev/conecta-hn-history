@@ -49,10 +49,10 @@ test('Interfaces must be named with suffix Interface', function () {
     ];
 
     $ignored = [
-        ''App\Application\Identity\Contracts\UserReadProjection'',
-        ''App\Application\Identity\Contracts\UserUniquenessChecker'',
-        ''App\Application\Shared\Contracts\ReadOnlyCommand'',
-        ''App\Application\Shared\Contracts\TenantAware'',
+        'App\Application\Identity\Contracts\UserReadProjection',
+        'App\Application\Identity\Contracts\UserUniquenessChecker',
+        'App\Application\Shared\Contracts\ReadOnlyCommand',
+        'App\Application\Shared\Contracts\TenantAware',
     ];
 
     $checked = 0;
@@ -62,29 +62,30 @@ test('Interfaces must be named with suffix Interface', function () {
             continue;
         }
 
+        $rootNamespace = match (basename($baseDir)) {
+            'Application' => 'App\Application',
+            'Domain' => 'App\Domain',
+            'Infrastructure' => 'App\Infrastructure',
+        };
+
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($baseDir, RecursiveDirectoryIterator::SKIP_DOTS)
         );
 
         foreach ($iterator as $file) {
-            if ($file->getExtension() !== ''php'') {
+            if ($file->getExtension() !== 'php') {
                 continue;
             }
 
-            $relative = str_replace($baseDir . DIRECTORY_SEPARATOR, '''', $file->getPathname());
-            $rootNamespace = match (basename($baseDir)) {
-                ''Application'' => ''App\Application'',
-                ''Domain'' => ''App\Domain'',
-                ''Infrastructure'' => ''App\Infrastructure'',
-            };
-            $class = $rootNamespace . ''\'' . str_replace([DIRECTORY_SEPARATOR, '.php'], [''\'', ''''], $relative);
+            $relativePath = str_replace($baseDir . DIRECTORY_SEPARATOR, '', $file->getPathname());
+            $className = $rootNamespace . '\' . str_replace([DIRECTORY_SEPARATOR, '.php'], ['\', ''], $relativePath);
 
-            if (! interface_exists($class) || in_array($class, $ignored, true)) {
+            if (! interface_exists($className) || in_array($className, $ignored, true)) {
                 continue;
             }
 
-            expect(str_ends_with(class_basename($class), 'Interface'))->toBeTrue(
-                "Interface [{$class}] must have suffix Interface."
+            expect(str_ends_with(class_basename($className), 'Interface'))->toBeTrue(
+                "Interface [{$className}] must have suffix Interface."
             );
 
             $checked++;
@@ -101,7 +102,6 @@ test('Interfaces must be named with suffix Interface', function () {
 | Enforces the use of "final" and "readonly" to prevent inheritance abuse
 | and state mutation.
 */
-
 arch('Handlers must be final (Composition over Inheritance)')
     ->expect('App\Application\*\Handlers')
     ->classes()
@@ -212,6 +212,10 @@ arch('Domain Layer must be independent and pure')
 arch('No Facades in Domain or Commands')
     ->expect(['App\Domain', 'App\Application\*\Commands'])
     ->not->toUse('Illuminate\Support\Facades');
+
+
+
+
 
 
 
