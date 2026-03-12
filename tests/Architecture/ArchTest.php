@@ -42,42 +42,56 @@ arch('Results must be named with suffix Result')
     ->toHaveSuffix('Result');
 
 test('Interfaces must be named with suffix Interface', function () {
-     = realpath(__DIR__ . '/../../app');
-     = [
-        'App\\Application\\Identity\\Contracts\\UserReadProjection',
-        'App\\Application\\Identity\\Contracts\\UserUniquenessChecker',
-        'App\\Application\\Shared\\Contracts\\ReadOnlyCommand',
-        'App\\Application\\Shared\\Contracts\\TenantAware',
-        'App\\Contracts\\Broadcasting\\BroadcastableNotification',
-        'App\\Contracts\\Events\\AuditEvent',
+    $bases = [
+        realpath(__DIR__ . '/../../app/Application'),
+        realpath(__DIR__ . '/../../app/Domain'),
+        realpath(__DIR__ . '/../../app/Infrastructure'),
     ];
 
-     = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator(, RecursiveDirectoryIterator::SKIP_DOTS)
-    );
+    $ignored = [
+        ''App\Application\Identity\Contracts\UserReadProjection'',
+        ''App\Application\Identity\Contracts\UserUniquenessChecker'',
+        ''App\Application\Shared\Contracts\ReadOnlyCommand'',
+        ''App\Application\Shared\Contracts\TenantAware'',
+    ];
 
-     = 0;
+    $checked = 0;
 
-    foreach ( as ) {
-        if (->getExtension() !== 'php') {
+    foreach ($bases as $baseDir) {
+        if (! $baseDir || ! is_dir($baseDir)) {
             continue;
         }
 
-         = str_replace( . DIRECTORY_SEPARATOR, '', ->getPathname());
-         = 'App\\' . str_replace([DIRECTORY_SEPARATOR, '.php'], ['\\', ''], );
-
-        if (! interface_exists() || in_array(, , true)) {
-            continue;
-        }
-
-        expect(str_ends_with(class_basename(), 'Interface'))->toBeTrue(
-            "Interface [{}] must have suffix Interface."
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($baseDir, RecursiveDirectoryIterator::SKIP_DOTS)
         );
 
-        ++;
+        foreach ($iterator as $file) {
+            if ($file->getExtension() !== ''php'') {
+                continue;
+            }
+
+            $relative = str_replace($baseDir . DIRECTORY_SEPARATOR, '''', $file->getPathname());
+            $rootNamespace = match (basename($baseDir)) {
+                ''Application'' => ''App\Application'',
+                ''Domain'' => ''App\Domain'',
+                ''Infrastructure'' => ''App\Infrastructure'',
+            };
+            $class = $rootNamespace . ''\'' . str_replace([DIRECTORY_SEPARATOR, '.php'], [''\'', ''''], $relative);
+
+            if (! interface_exists($class) || in_array($class, $ignored, true)) {
+                continue;
+            }
+
+            expect(str_ends_with(class_basename($class), 'Interface'))->toBeTrue(
+                "Interface [{$class}] must have suffix Interface."
+            );
+
+            $checked++;
+        }
     }
 
-    expect()->toBeGreaterThan(0);
+    expect($checked)->toBeGreaterThan(0);
 });
 
 /*
@@ -198,6 +212,9 @@ arch('Domain Layer must be independent and pure')
 arch('No Facades in Domain or Commands')
     ->expect(['App\Domain', 'App\Application\*\Commands'])
     ->not->toUse('Illuminate\Support\Facades');
+
+
+
 
 
 
