@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Laravel\Scout\Searchable;
+
 
 /**
  * Product Model - E-Commerce Catalog Entity
@@ -68,7 +68,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     /** @var int Maximum impulse candidates to fetch before shuffling */
     public const IMPULSE_CANDIDATES_LIMIT = 50;
 
-    use BelongsToTenant, HasFactory, Searchable, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
+    use BelongsToTenant, HasFactory, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
 
     /**
      * Attributes to automatically append to JSON/Array serialization.
