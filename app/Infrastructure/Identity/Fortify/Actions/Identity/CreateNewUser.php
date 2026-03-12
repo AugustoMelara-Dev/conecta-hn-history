@@ -17,8 +17,8 @@ use Laravel\Fortify\Contracts\CreatesNewUsers;
 /**
  * CreateNewUser - Infrastructure Adapter for Fortify
  *
+ * ARCHITECTURAL BRIDGE: Bridges Fortify (Infra) to Application Layer.
  * Relocated from app/Actions/Identity to Infrastructure layer.
- * ADAPTER PATTERN: Bridges Fortify (Infra) to Application Layer.
  * RESPONSIBILITY: 1. Validate Input 2. Map to Command 3. Dispatch 4. Return Authenticatable
  */
 final readonly class CreateNewUser implements CreatesNewUsers

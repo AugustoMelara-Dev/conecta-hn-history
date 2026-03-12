@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * SanctumAuthTokenService - Laravel Sanctum Token Adapter
  *
+ * ARCHITECTURAL BRIDGE: Bridges Sanctum (Infra) and Eloquent User to Application.
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  SECURITY: ALL token issuance is tenant-context validated               ║
  * ╠══════════════════════════════════════════════════════════════════════════╣

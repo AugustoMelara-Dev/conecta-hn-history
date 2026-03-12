@@ -63,7 +63,7 @@ function phpFilesIn(string $dir): Generator
 
 test('all Actions and Application PHP files declare strict_types', function () {
     $dirs = [
-        realpath(__DIR__ . '/../../app/Actions'),
+        realpath(__DIR__ . '/../../app/Infrastructure'),
         realpath(__DIR__ . '/../../app/Application'),
     ];
 
@@ -71,7 +71,13 @@ test('all Actions and Application PHP files declare strict_types', function () {
 
     foreach ($dirs as $dir) {
         foreach (phpFilesIn($dir) as $file) {
-            $content = file_get_contents($file->getPathname());
+            $pathname = $file->getPathname();
+            // SKIP GENERATED CODE (e.g. gRPC, Protos)
+            if (str_contains($pathname, 'Generated') || str_contains($pathname, 'Protos')) {
+                continue;
+            }
+
+            $content = file_get_contents($pathname);
             $relative = str_replace(
                 realpath(__DIR__ . '/../../app') . DIRECTORY_SEPARATOR,
                 '',
@@ -97,11 +103,17 @@ test('all Actions and Application PHP files declare strict_types', function () {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('all Actions are final readonly classes', function () {
-    $dir = realpath(__DIR__ . '/../../app/Actions');
+    $dir = realpath(__DIR__ . '/../../app/Infrastructure');
     $checked = 0;
 
     foreach (phpFilesIn($dir) as $file) {
-        $class = governancePathToNamespace($file->getPathname(), $dir, 'App\\Actions');
+        $pathname = $file->getPathname();
+        // ONLY ENFORCE ON ADAPTER ACTIONS (relocated from app/Actions)
+        if (! str_contains($pathname, DIRECTORY_SEPARATOR . 'Actions' . DIRECTORY_SEPARATOR)) {
+            continue;
+        }
+
+        $class = governancePathToNamespace($pathname, $dir, 'App\\Infrastructure');
         if (! $class || ! class_exists($class)) {
             continue;
         }
@@ -149,11 +161,17 @@ test('all Application Commands are final readonly classes', function () {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('actions do not extend framework base classes', function () {
-    $dir = realpath(__DIR__ . '/../../app/Actions');
+    $dir = realpath(__DIR__ . '/../../app/Infrastructure');
     $checked = 0;
 
     foreach (phpFilesIn($dir) as $file) {
-        $class = governancePathToNamespace($file->getPathname(), $dir, 'App\\Actions');
+        $pathname = $file->getPathname();
+        // ONLY ENFORCE ON ADAPTER ACTIONS
+        if (! str_contains($pathname, DIRECTORY_SEPARATOR . 'Actions' . DIRECTORY_SEPARATOR)) {
+            continue;
+        }
+
+        $class = governancePathToNamespace($pathname, $dir, 'App\\Infrastructure');
         if (! $class || ! class_exists($class)) {
             continue;
         }
@@ -273,3 +291,4 @@ test('Commands handling passwords or registration implement SensitiveDataInterfa
 
     expect($checked)->toBeGreaterThan(0, 'No sensitive Commands found — expected at least Password/Register Commands.');
 });
+

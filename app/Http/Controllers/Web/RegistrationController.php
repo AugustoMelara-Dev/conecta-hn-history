@@ -9,7 +9,7 @@ use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
-use App\Domain\TenantGovernance\Policies\SlugPolicy;
+use App\Infrastructure\Tenant\Policies\SlugPolicy;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

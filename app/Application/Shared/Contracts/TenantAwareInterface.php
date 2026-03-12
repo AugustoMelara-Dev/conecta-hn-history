@@ -16,8 +16,7 @@ namespace App\Application\Shared\Contracts;
  *
  * @see App\Actions\Authentication\ResetPasswordAction
  * @see App\Actions\Authentication\UpdateUserPassword
- */
-interface TenantAware
+interface TenantAwareInterface
 {
     /**
      * Get the identifier of the tenant the user belongs to.

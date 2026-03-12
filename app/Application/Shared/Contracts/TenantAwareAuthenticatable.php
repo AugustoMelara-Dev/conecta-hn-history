@@ -15,10 +15,10 @@ namespace App\Application\Shared\Contracts;
  * ║  Eliminates dual-assertion boilerplate in Actions.                      ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * @see App\Application\Shared\Contracts\TenantAware
- * @see App\Actions\Authentication\ResetPasswordAction
+ * @see App\Application\Shared\Contracts\TenantAwareInterface
+ * @see App\Infrastructure\Identity\Fortify\Actions\Authentication\ResetPasswordAction
  */
-interface TenantAwareAuthenticatable extends TenantAware
+interface TenantAwareAuthenticatable extends TenantAwareInterface
 {
     // Inherits getTenantId(): int|string from TenantAware
     // Explicit auth contract — mirrors Illuminate\Contracts\Auth\Authenticatable

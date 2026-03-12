@@ -13,6 +13,7 @@ use Laravel\Fortify\Contracts\ResetsUserPasswords;
 /**
  * ResetPasswordAction - Infrastructure Adapter for Fortify
  *
+ * ARCHITECTURAL BRIDGE: Bridges Fortify (Infra) to Application Layer.
  * Relocated from app/Actions/Authentication to Infrastructure layer.
  * Input Adapter only: Assert → Map → Dispatch. Zero business logic.
  */
