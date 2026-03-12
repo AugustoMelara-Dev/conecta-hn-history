@@ -129,3 +129,12 @@ test.php
 /latest_error*.txt
 /http_evidence.txt
 /spatie_result.txt
+# ROOT-LEVEL LOCAL DIAGNOSTICS
+/*.py
+/discovery.ps1
+/run_evidence.sh
+/test.php
+/cols.json
+/http_diagnostic.md
+/pest_arch_result*.txt
+bootstrap/cache/*.tmp
