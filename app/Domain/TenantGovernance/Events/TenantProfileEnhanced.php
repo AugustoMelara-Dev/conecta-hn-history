@@ -48,7 +48,7 @@ final readonly class TenantProfileEnhanced implements DomainEvent, ShouldDispatc
 
     // ─── Serialization ────────────────────────────────────────────────────────
 
-    public static function fromPayload(array $payload): self
+    public static function fromPayload(array $payload): static
     {
         return new self(
             tenant_id:              (string) ($payload['tenant_id']      ?? ''),

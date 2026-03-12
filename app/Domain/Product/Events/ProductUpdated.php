@@ -76,7 +76,7 @@ final readonly class ProductUpdated implements DomainEvent, ShouldDispatchAfterC
     /**
      * @param array<string, mixed> $payload
      */
-    public static function fromPayload(array $payload): self
+    public static function fromPayload(array $payload): static
     {
         return new self(
             productId:              (int)    ($payload['product_id']     ?? 0),

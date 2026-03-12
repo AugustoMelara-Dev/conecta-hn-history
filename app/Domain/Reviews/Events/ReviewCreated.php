@@ -79,7 +79,7 @@ final readonly class ReviewCreated implements DomainEvent, ShouldDispatchAfterCo
     /**
      * @param array<string, mixed> $payload
      */
-    public static function fromPayload(array $payload): self
+    public static function fromPayload(array $payload): static
     {
         return new self(
             reviewId:               (int)    ($payload['review_id']      ?? 0),

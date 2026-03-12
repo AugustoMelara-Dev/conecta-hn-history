@@ -72,7 +72,7 @@ final readonly class SubscriptionUpgraded implements DomainEvent, ShouldDispatch
 
     // ─── Serialization ────────────────────────────────────────────────────────
 
-    public static function fromPayload(array $payload): self
+    public static function fromPayload(array $payload): static
     {
         return new self(
             tenantId:               (string) ($payload['tenant_id']      ?? ''),

@@ -53,7 +53,7 @@ final readonly class PaymentFailed implements DomainEvent, ShouldDispatchAfterCo
     /**
      * @param array<string, mixed> $payload
      */
-    public static function fromPayload(array $payload): self
+    public static function fromPayload(array $payload): static
     {
         return new self(
             transactionId:          (string) ($payload['transaction_id']    ?? ''),

@@ -80,7 +80,7 @@ final readonly class UserDeleted implements DomainEvent, ShouldDispatchAfterComm
     /**
      * @param array<string, mixed> $payload
      */
-    public static function fromPayload(array $payload): self
+    public static function fromPayload(array $payload): static
     {
         return new self(
             userId:                 (string) ($payload['user_id']       ?? ''),
