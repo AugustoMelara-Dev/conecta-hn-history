@@ -13,7 +13,7 @@ declare(strict_types=1);
  * - Registry passes through payloads when no upcasters match
  */
 
-use App\Application\Shared\Contracts\UpcasterInterface;
+use App\Domain\Shared\Contracts\UpcasterInterface;
 use App\Infrastructure\Bus\Upcasting\CommandUpcasterRegistry;
 
 test('upcaster interface exists at canonical path', function () {
