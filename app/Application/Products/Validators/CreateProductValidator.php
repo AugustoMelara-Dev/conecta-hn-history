@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Validators\Products;
+namespace App\Application\Products\Validators;
 
 use App\Application\Products\Commands\CreateProductCommand;
 

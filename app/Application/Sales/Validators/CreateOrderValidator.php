@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Validators\Sales;
+namespace App\Application\Sales\Validators;
 
 use App\Application\Sales\Commands\CreateOrderCommand;
 

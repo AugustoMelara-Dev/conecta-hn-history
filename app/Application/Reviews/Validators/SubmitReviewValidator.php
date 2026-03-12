@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Validators\Reviews;
+namespace App\Application\Reviews\Validators;
 
 use App\Application\Reviews\Commands\SubmitReviewCommand;
 
