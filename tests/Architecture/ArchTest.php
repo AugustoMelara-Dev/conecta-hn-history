@@ -78,7 +78,7 @@ test('Interfaces must be named with suffix Interface', function () {
             }
 
             $relativePath = str_replace($baseDir . DIRECTORY_SEPARATOR, '', $file->getPathname());
-            $className = $rootNamespace . '\' . str_replace([DIRECTORY_SEPARATOR, '.php'], ['\', ''], $relativePath);
+            $className = $rootNamespace . '\\' . str_replace([DIRECTORY_SEPARATOR, '.php'], ['\\', ''], $relativePath);
 
             if (! interface_exists($className) || in_array($className, $ignored, true)) {
                 continue;
@@ -212,6 +212,8 @@ arch('Domain Layer must be independent and pure')
 arch('No Facades in Domain or Commands')
     ->expect(['App\Domain', 'App\Application\*\Commands'])
     ->not->toUse('Illuminate\Support\Facades');
+
+
 
 
 
