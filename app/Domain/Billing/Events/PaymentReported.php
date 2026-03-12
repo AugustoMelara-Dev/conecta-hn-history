@@ -63,7 +63,7 @@ final readonly class PaymentReported implements DomainEvent, ShouldBeStoredInOut
      * Reconstruct event from safe payload.
      * Eliminates "Metadata Bomb" and resolves Case Mismatch.
      */
-    public static function fromPayload(array $payload): self
+    public static function fromPayload(array $payload): static
     {
         return new self(
             paymentId:              (string) ($payload['payment_id']       ?? ''),
