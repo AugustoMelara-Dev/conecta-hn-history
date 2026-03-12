@@ -8,7 +8,7 @@ use App\Filament\App\Resources\MenuSectionResource\Pages;
 use App\Models\MenuSection;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -29,7 +29,7 @@ class MenuSectionResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function getNavigationLabel(): string
     {
@@ -104,9 +104,9 @@ class MenuSectionResource extends Resource
     // - is_active por defecto encendido
     // ═══════════════════════════════════════════════════════════════════════
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Forms\Components\Section::make('Nueva Sección')
                     ->description('Crea categorías para organizar tu menú: Entradas, Bebidas, Postres...')

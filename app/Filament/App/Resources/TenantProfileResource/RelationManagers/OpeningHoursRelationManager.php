@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\TenantProfileResource\RelationManagers;
 
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -26,9 +26,9 @@ class OpeningHoursRelationManager extends RelationManager
 
     protected static ?string $pluralModelLabel = 'Horarios';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Forms\Components\Select::make('day_of_week')
                     ->label('Día de la Semana')

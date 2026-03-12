@@ -7,8 +7,10 @@ namespace App\Filament\Resources\OrderResource\Pages;
 use App\Filament\Resources\OrderResource;
 use App\Models\Order;
 use Filament\Actions;
-use Filament\Infolists;
-use Filament\Infolists\Infolist;
+use Filament\Schemas\Components\Section;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\RepeatableEntry;
+
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewOrder extends ViewRecord
@@ -60,20 +62,20 @@ class ViewOrder extends ViewRecord
         ];
     }
 
-    public function infolist(Infolist $infolist): Infolist
+    public function infolist(\Filament\Schemas\Schema $schema): \Filament\Schemas\Schema
     {
-        return $infolist
+        return $schema
             ->schema([
-                Infolists\Components\Section::make('Información del Pedido')
+                \Section::make('Información del Pedido')
                     ->columns(3)
                     ->schema([
-                        Infolists\Components\TextEntry::make('order_number')
+                        \TextEntry::make('order_number')
                             ->label('Número de Orden')
                             ->size('lg')
                             ->weight('bold')
                             ->color('primary'),
 
-                        Infolists\Components\TextEntry::make('status')
+                        \TextEntry::make('status')
                             ->label('Estado')
                             ->badge()
                             ->color(fn ($state) => match ($state) {
@@ -87,47 +89,47 @@ class ViewOrder extends ViewRecord
                             })
                             ->formatStateUsing(fn ($state) => Order::KANBAN_STATUSES[$state] ?? ucfirst($state)),
 
-                        Infolists\Components\TextEntry::make('created_at')
+                        \TextEntry::make('created_at')
                             ->label('Recibido')
                             ->since(),
                     ]),
 
-                Infolists\Components\Section::make('Cliente')
+                \Section::make('Cliente')
                     ->columns(2)
                     ->schema([
-                        Infolists\Components\TextEntry::make('customer_name')
+                        \TextEntry::make('customer_name')
                             ->label('Nombre'),
-                        Infolists\Components\TextEntry::make('customer_phone')
+                        \TextEntry::make('customer_phone')
                             ->label('Teléfono')
                             ->url(fn ($state) => "tel:{$state}"),
-                        Infolists\Components\TextEntry::make('customer_email')
+                        \TextEntry::make('customer_email')
                             ->label('Email')
                             ->url(fn ($state) => $state ? "mailto:{$state}" : null),
-                        Infolists\Components\TextEntry::make('delivery_type')
+                        \TextEntry::make('delivery_type')
                             ->label('Tipo de Entrega')
                             ->badge()
                             ->formatStateUsing(fn ($state) => $state === 'delivery' ? 'Domicilio' : 'Recoger'),
-                        Infolists\Components\TextEntry::make('customer_address')
+                        \TextEntry::make('customer_address')
                             ->label('Dirección')
                             ->columnSpanFull(),
-                        Infolists\Components\TextEntry::make('customer_notes')
+                        \TextEntry::make('customer_notes')
                             ->label('Notas')
                             ->columnSpanFull(),
                     ]),
 
-                Infolists\Components\Section::make('Productos')
+                \Section::make('Productos')
                     ->schema([
-                        Infolists\Components\RepeatableEntry::make('items')
+                        \RepeatableEntry::make('items')
                             ->schema([
-                                Infolists\Components\TextEntry::make('quantity')
+                                \TextEntry::make('quantity')
                                     ->label('Cant.')
                                     ->weight('bold'),
-                                Infolists\Components\TextEntry::make('product_name')
+                                \TextEntry::make('product_name')
                                     ->label('Producto'),
-                                Infolists\Components\TextEntry::make('options_description')
+                                \TextEntry::make('options_description')
                                     ->label('Opciones')
                                     ->color('gray'),
-                                Infolists\Components\TextEntry::make('line_total')
+                                \TextEntry::make('line_total')
                                     ->label('Total')
                                     ->formatStateUsing(fn ($state) => 'L. '.number_format($state, 2))
                                     ->weight('bold'),
@@ -135,19 +137,19 @@ class ViewOrder extends ViewRecord
                             ->columns(4),
                     ]),
 
-                Infolists\Components\Section::make('Totales')
+                \Section::make('Totales')
                     ->columns(4)
                     ->schema([
-                        Infolists\Components\TextEntry::make('subtotal')
+                        \TextEntry::make('subtotal')
                             ->label('Subtotal')
                             ->formatStateUsing(fn ($state) => 'L. '.number_format($state, 2)),
-                        Infolists\Components\TextEntry::make('delivery_fee')
+                        \TextEntry::make('delivery_fee')
                             ->label('Envío')
                             ->formatStateUsing(fn ($state) => 'L. '.number_format($state, 2)),
-                        Infolists\Components\TextEntry::make('discount_amount')
+                        \TextEntry::make('discount_amount')
                             ->label('Descuento')
                             ->formatStateUsing(fn ($state) => '-L. '.number_format($state, 2)),
-                        Infolists\Components\TextEntry::make('total')
+                        \TextEntry::make('total')
                             ->label('Total')
                             ->formatStateUsing(fn ($state) => 'L. '.number_format($state, 2))
                             ->size('lg')

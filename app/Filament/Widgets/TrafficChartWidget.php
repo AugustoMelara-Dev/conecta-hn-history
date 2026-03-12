@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\Auth;
  */
 class TrafficChartWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Tráfico del Mes';
+    protected ?string $heading = 'Tráfico del Mes';
 
-    protected static ?string $pollingInterval = '60s';
+    protected ?string $pollingInterval = '60s';
 
     protected static ?int $sort = 2;
 

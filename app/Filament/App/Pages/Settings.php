@@ -8,7 +8,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 
@@ -16,7 +16,7 @@ class Settings extends Page
 {
     // Navigation Icon removed to fix type error
 
-    protected static string $view = 'filament.app.pages.settings';
+    protected string $view = 'filament.app.pages.settings';
 
     public ?array $data = [];
 
@@ -27,9 +27,9 @@ class Settings extends Page
         );
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Section::make('Configuración General')
                     ->schema([

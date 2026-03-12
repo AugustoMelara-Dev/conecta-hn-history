@@ -15,7 +15,7 @@ use Filament\Widgets\ChartWidget;
  */
 class PeakHoursChart extends ChartWidget
 {
-    protected static ?string $heading = 'Horarios de Mayor Tráfico';
+    protected ?string $heading = 'Horarios de Mayor Tráfico';
 
     public function getColumnSpan(): int|string|array
     {

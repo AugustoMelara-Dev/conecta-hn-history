@@ -10,7 +10,7 @@ use App\Models\Product;
 use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -36,7 +36,7 @@ class ProductResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shopping-bag';
 
     public static function getNavigationLabel(): string
     {
@@ -128,9 +128,9 @@ class ProductResource extends Resource
     // FORMULARIO VISUAL OPTIMIZADO PARA MÓVIL
     // ═══════════════════════════════════════════════════════════════════════
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 1: IMAGEN INSTAGRAM-STYLE

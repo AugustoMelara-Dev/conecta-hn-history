@@ -9,7 +9,7 @@ use Filament\Widgets\ChartWidget;
 
 class AcquisitionGrowthChart extends ChartWidget
 {
-    protected static ?string $heading = 'Curva de Crecimiento de Adquisicion';
+    protected ?string $heading = 'Curva de Crecimiento de Adquisicion';
 
     protected static ?int $sort = 2;
 

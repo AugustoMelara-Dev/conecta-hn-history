@@ -11,7 +11,7 @@ class UpgradeToPro extends Page
 {
     // Navigation Icon removed to fix type error in Filament v4
 
-    protected static string $view = 'filament.app.pages.upgrade-to-pro';
+    protected string $view = 'filament.app.pages.upgrade-to-pro';
 
     public static function getNavigationLabel(): string
     {

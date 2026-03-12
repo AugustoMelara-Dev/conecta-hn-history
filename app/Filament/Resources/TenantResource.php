@@ -8,7 +8,7 @@ use App\Filament\Resources\TenantResource\Pages;
 // MIGRATION: Updated to Domain namespace (2026-01-05)
 use App\Models\Tenant;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -20,7 +20,7 @@ class TenantResource extends Resource
 
     protected static ?string $modelPolicy = \App\Policies\TenantPolicy::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-building-storefront';
 
     public static function getNavigationLabel(): string
     {
@@ -37,9 +37,9 @@ class TenantResource extends Resource
         return 'Negocios';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Forms\Components\Section::make('Informacion Principal')
                     ->schema([

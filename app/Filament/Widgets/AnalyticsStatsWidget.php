@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class AnalyticsStatsWidget extends StatsOverviewWidget
 {
-    protected static ?string $pollingInterval = '30s';
+    protected ?string $pollingInterval = '30s';
 
     protected static ?int $sort = 1;
 

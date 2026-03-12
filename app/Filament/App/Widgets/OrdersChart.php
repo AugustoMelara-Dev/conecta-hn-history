@@ -20,7 +20,7 @@ use Flowframe\Trend\TrendValue;
  */
 class OrdersChart extends ChartWidget
 {
-    protected static ?string $heading = 'Citas por Día (Última Semana)';
+    protected ?string $heading = 'Citas por Día (Última Semana)';
 
     protected static ?int $sort = 3;
 

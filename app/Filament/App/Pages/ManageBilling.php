@@ -13,7 +13,7 @@ use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -38,9 +38,9 @@ class ManageBilling extends Page implements HasForms, HasTable
     use InteractsWithForms;
     use InteractsWithTable;
 
-    protected static string $view = 'filament.app.pages.manage-billing';
+    protected string $view = 'filament.app.pages.manage-billing';
 
-    protected static ?string $navigationIcon = 'heroicon-o-credit-card';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-credit-card';
 
     public static function getNavigationLabel(): string
     {
@@ -169,9 +169,9 @@ class ManageBilling extends Page implements HasForms, HasTable
     /**
      * Formulario del Wizard de Pago (para usuarios FREE)
      */
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Forms\Components\Wizard::make([
                     // ═══════════════════════════════════════════════════════

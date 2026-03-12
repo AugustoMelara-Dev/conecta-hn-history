@@ -6,7 +6,7 @@ namespace App\Filament\App\Pages;
 
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Pages\Tenancy\EditTenantProfile as BaseEditTenantProfile;
 use Illuminate\Support\HtmlString;
 
@@ -24,7 +24,7 @@ class EditTenantProfile extends BaseEditTenantProfile
         return 'Perfil de mi Negocio';
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
         $isPro = Filament::getTenant()?->is_pro ?? false;
         $billingUrl = '#';
@@ -35,7 +35,7 @@ class EditTenantProfile extends BaseEditTenantProfile
             // Route may not exist during app boot
         }
 
-        return $form
+        return $schema
             ->schema([
                 Forms\Components\Tabs::make('ProfileSettings')
                     ->tabs([

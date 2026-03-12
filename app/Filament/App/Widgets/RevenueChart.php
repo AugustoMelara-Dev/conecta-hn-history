@@ -21,7 +21,7 @@ use Flowframe\Trend\TrendValue;
  */
 class RevenueChart extends ChartWidget
 {
-    protected static ?string $heading = 'Ingresos Estimados (Últimos 30 días)';
+    protected ?string $heading = 'Ingresos Estimados (Últimos 30 días)';
 
     protected static ?int $sort = 2;
 

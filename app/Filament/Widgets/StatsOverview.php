@@ -16,7 +16,7 @@ class StatsOverview extends BaseWidget
     // OPERATIONAL CONFIGURATION (Heartbeat Strategy)
     // ═══════════════════════════════════════════════════════════════════════════
     // Real-time Polling: 30s heartbeat to keep the dashboard feeling "alive".
-    protected static ?string $pollingInterval = '30s';
+    protected ?string $pollingInterval = '30s';
 
     public static function canView(): bool
     {
