@@ -16,6 +16,7 @@ namespace App\Application\Shared\Contracts;
  *
  * @see App\Actions\Authentication\ResetPasswordAction
  * @see App\Actions\Authentication\UpdateUserPassword
+ */
 interface TenantAwareInterface
 {
     /**
@@ -23,4 +24,6 @@ interface TenantAwareInterface
      */
     public function getTenantId(): int|string|null;
 }
+
+
 
