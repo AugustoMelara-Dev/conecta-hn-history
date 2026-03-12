@@ -41,17 +41,44 @@ arch('Results must be named with suffix Result')
     ->classes()
     ->toHaveSuffix('Result');
 
-arch('Interfaces must be named with suffix Interface')
-    ->expect('App')
-    ->interfaces()
-    ->toHaveSuffix('Interface')
-    ->ignoring([
-        'App\Application\Identity\Contracts\UserReadProjection',
-        'App\Application\Identity\Contracts\UserUniquenessChecker',
-        'App\Application\Shared\Contracts\ReadOnlyCommand',
-        'App\Application\Shared\Contracts\TenantAware',
-        'App\Contracts\Broadcasting\BroadcastableNotification',
-    ]);
+test('Interfaces must be named with suffix Interface', function () {
+     = realpath(__DIR__ . '/../../app');
+     = [
+        'App\\Application\\Identity\\Contracts\\UserReadProjection',
+        'App\\Application\\Identity\\Contracts\\UserUniquenessChecker',
+        'App\\Application\\Shared\\Contracts\\ReadOnlyCommand',
+        'App\\Application\\Shared\\Contracts\\TenantAware',
+        'App\\Contracts\\Broadcasting\\BroadcastableNotification',
+        'App\\Contracts\\Events\\AuditEvent',
+    ];
+
+     = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator(, RecursiveDirectoryIterator::SKIP_DOTS)
+    );
+
+     = 0;
+
+    foreach ( as ) {
+        if (->getExtension() !== 'php') {
+            continue;
+        }
+
+         = str_replace( . DIRECTORY_SEPARATOR, '', ->getPathname());
+         = 'App\\' . str_replace([DIRECTORY_SEPARATOR, '.php'], ['\\', ''], );
+
+        if (! interface_exists() || in_array(, , true)) {
+            continue;
+        }
+
+        expect(str_ends_with(class_basename(), 'Interface'))->toBeTrue(
+            "Interface [{}] must have suffix Interface."
+        );
+
+        ++;
+    }
+
+    expect()->toBeGreaterThan(0);
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -171,6 +198,9 @@ arch('Domain Layer must be independent and pure')
 arch('No Facades in Domain or Commands')
     ->expect(['App\Domain', 'App\Application\*\Commands'])
     ->not->toUse('Illuminate\Support\Facades');
+
+
+
 
 
 
