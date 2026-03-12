@@ -53,6 +53,7 @@ test('Interfaces must be named with suffix Interface', function () {
         'App\Application\Identity\Contracts\UserUniquenessChecker',
         'App\Application\Shared\Contracts\ReadOnlyCommand',
         'App\Application\Shared\Contracts\TenantAware',
+        'App\Application\Shared\Contracts\TenantAwareAuthenticatable',
     ];
 
     $checked = 0;
@@ -212,6 +213,7 @@ arch('Domain Layer must be independent and pure')
 arch('No Facades in Domain or Commands')
     ->expect(['App\Domain', 'App\Application\*\Commands'])
     ->not->toUse('Illuminate\Support\Facades');
+
 
 
 
