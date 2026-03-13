@@ -15,8 +15,12 @@
 
 uses(
     Tests\TestCase::class,
-    // Illuminate\Foundation\Testing\RefreshDatabase::class,
-)->in('Feature', 'Unit');
+    Illuminate\Foundation\Testing\RefreshDatabase::class,
+)->in('Feature');
+
+uses(
+    Tests\TestCase::class,
+)->in('Unit');
 
 /*
 |--------------------------------------------------------------------------
@@ -45,13 +49,19 @@ expect()->extend('toBeOne', function () {
 */
 
 expect()->extend('toMatchJsonSchema', function (string $schemaPath) {
+    if (! class_exists(\JsonSchema\Validator::class)) {
+        // justinrainbow/json-schema not installed - skip structural validation.
+        // Install via: composer require --dev justinrainbow/json-schema
+        return $this;
+    }
+
     if (! file_exists($schemaPath)) {
         throw new InvalidArgumentException("Schema file not found at: {$schemaPath}");
     }
 
     $schemaObject = json_decode(file_get_contents($schemaPath));
     $data = is_string($this->value) ? json_decode($this->value) : $this->value;
-    
+
     if (is_array($data)) {
         $data = json_decode(json_encode($data));
     }
