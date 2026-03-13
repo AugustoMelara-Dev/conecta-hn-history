@@ -5,8 +5,8 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -33,7 +33,7 @@ class AppointmentResource extends Resource
                             ->relationship('user', 'name')
                             ->searchable()
                             ->preload()
-                            ->helperText('Dejar vacío para clientes sin cuenta'),
+                            ->helperText('Dejar vacio para clientes sin cuenta'),
 
                         Forms\Components\Grid::make(2)
                             ->schema([
@@ -42,7 +42,7 @@ class AppointmentResource extends Resource
                                     ->maxLength(255),
 
                                 Forms\Components\TextInput::make('customer_phone')
-                                    ->label('Teléfono')
+                                    ->label('Telefono')
                                     ->tel(),
                             ]),
 
@@ -57,7 +57,7 @@ class AppointmentResource extends Resource
                                     $service = \App\Models\Service::find($state);
                                     if ($service) {
                                         $start = \Carbon\Carbon::parse($get('scheduled_at'));
-                                        $set('end_at', $start->copy()->addMinutes($service->duration_minutes)->format('Y-m-d H:i:s'));
+                                        $set('end_at', $start->copy()->addMinutes($service->total_duration)->format('Y-m-d H:i:s'));
                                     }
                                 }
                             }),
@@ -80,7 +80,7 @@ class AppointmentResource extends Resource
                                             $service = \App\Models\Service::find($get('service_id'));
                                             if ($service) {
                                                 $start = \Carbon\Carbon::parse($state);
-                                                $set('end_at', $start->copy()->addMinutes($service->duration_minutes)->format('Y-m-d H:i:s'));
+                                                $set('end_at', $start->copy()->addMinutes($service->total_duration)->format('Y-m-d H:i:s'));
                                             }
                                         }
                                     }),
@@ -94,10 +94,10 @@ class AppointmentResource extends Resource
                         Forms\Components\Select::make('status')
                             ->label('Estado')
                             ->options([
-                                'pending' => '⏳ Pendiente',
-                                'confirmed' => '✅ Confirmada',
-                                'completed' => '🎉 Completada',
-                                'cancelled' => '❌ Cancelada',
+                                'pending' => 'Pendiente',
+                                'confirmed' => 'Confirmada',
+                                'completed' => 'Completada',
+                                'cancelled' => 'Cancelada',
                             ])
                             ->default('confirmed')
                             ->required()

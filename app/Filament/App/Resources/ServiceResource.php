@@ -5,8 +5,8 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\ServiceResource\Pages;
 use App\Models\Service;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -18,7 +18,7 @@ class ServiceResource extends Resource
 
     protected static string | \UnitEnum | null $navigationGroup = 'Servicios';
 
-    protected static ?string $navigationLabel = 'Catálogo de Servicios';
+    protected static ?string $navigationLabel = 'Catalogo de Servicios';
 
     protected static ?int $navigationSort = 1;
 
@@ -34,7 +34,7 @@ class ServiceResource extends Resource
                             ->maxLength(255),
 
                         Forms\Components\Textarea::make('description')
-                            ->label('Descripción')
+                            ->label('Descripcion')
                             ->rows(3)
                             ->columnSpanFull(),
 
@@ -47,12 +47,31 @@ class ServiceResource extends Resource
                                     ->required(),
 
                                 Forms\Components\TextInput::make('duration_minutes')
-                                    ->label('Duración')
+                                    ->label('Duracion')
                                     ->numeric()
                                     ->suffix('minutos')
                                     ->required()
                                     ->step(5)
+                                    ->minValue(5)
                                     ->default(30),
+
+                                Forms\Components\TextInput::make('buffer_before')
+                                    ->label('Margen Antes (Preparacion)')
+                                    ->numeric()
+                                    ->suffix('minutos')
+                                    ->required()
+                                    ->step(5)
+                                    ->minValue(0)
+                                    ->default(0),
+
+                                Forms\Components\TextInput::make('buffer_after')
+                                    ->label('Margen Despues (Limpieza)')
+                                    ->numeric()
+                                    ->suffix('minutos')
+                                    ->required()
+                                    ->step(5)
+                                    ->minValue(0)
+                                    ->default(0),
                             ]),
 
                         Forms\Components\Toggle::make('is_active')
@@ -76,7 +95,7 @@ class ServiceResource extends Resource
                     ->label('Precio'),
 
                 Tables\Columns\TextColumn::make('formatted_duration')
-                    ->label('Duración')
+                    ->label('Duracion')
                     ->badge()
                     ->color('info'),
 
