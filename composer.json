@@ -65,6 +65,7 @@
         ],
         "test": [
             "@php artisan config:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
             "@php artisan test"
         ],
         "post-autoload-dump": [
@@ -103,3 +104,4 @@
     "minimum-stability": "stable",
     "prefer-stable": true
 }
+
