@@ -28,19 +28,19 @@ class Service extends Model
         'name',
         'description',
         'duration_minutes',
+        'buffer_before',
+        'buffer_after',
         'price',
         'is_active',
     ];
 
     protected $casts = [
         'duration_minutes' => 'integer',
+        'buffer_before' => 'integer',
+        'buffer_after' => 'integer',
         'price' => 'decimal:2',
         'is_active' => 'boolean',
     ];
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // RELATIONSHIPS
-    // ═══════════════════════════════════════════════════════════════════════════
 
     /**
      * Get all appointments for this service.
@@ -50,10 +50,6 @@ class Service extends Model
         return $this->hasMany(Appointment::class);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // SCOPES
-    // ═══════════════════════════════════════════════════════════════════════════
-
     /**
      * Scope to only active services.
      */
@@ -62,9 +58,13 @@ class Service extends Model
         return $query->where('is_active', true);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ACCESSORS
-    // ═══════════════════════════════════════════════════════════════════════════
+    /**
+     * Get the total duration of the service including buffers.
+     */
+    public function getTotalDurationAttribute(): int
+    {
+        return $this->duration_minutes + $this->buffer_before + $this->buffer_after;
+    }
 
     /**
      * Get formatted duration (e.g., "30 min", "1h 30min").
@@ -79,7 +79,7 @@ class Service extends Model
         } elseif ($hours > 0) {
             return "{$hours}h";
         }
-        
+
         return "{$minutes} min";
     }
 
