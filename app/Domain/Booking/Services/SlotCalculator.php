@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Services;
 
-use Carbon\Carbon;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Application\Shared\Contracts\ServiceProviderRepositoryInterface;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use Carbon\Carbon;
 
 final class SlotCalculator
 {
@@ -25,44 +25,48 @@ final class SlotCalculator
      * @param Carbon $date The date to generate slots for
      * @param int $durationMinutes Service duration in minutes
      * @param string|null $providerId Optional provider ID for schedule override
+     * @param int $bufferBefore Minutes required before the appointment
+     * @param int $bufferAfter Minutes required after the appointment
      * @return array<array{time: string, display: string}>
      */
     public function calculate(
         string $tenantId,
         Carbon $date,
         int $durationMinutes,
-        ?string $providerId
+        ?string $providerId,
+        int $bufferBefore = 0,
+        int $bufferAfter = 0
     ): array {
         $slots = [];
 
-        // Decoupled OpeningHours abstraction
         $openingHours = clone $this->tenantRepository->getOpeningHours($tenantId);
         if ($providerId) {
             $openingHours = $this->providerRepository->getOpeningHours($providerId) ?? $openingHours;
         }
 
-        // Get open ranges for the requested date (handles closed days automatically)
         $ranges = $openingHours->forDate($date);
 
-        // Each range is a Spatie\OpeningHours\TimeRange with start/end
         foreach ($ranges as $range) {
             $rangeStart = $date->copy()->setTimeFromTimeString($range->start()->format('H:i:s'));
             $rangeEnd = $date->copy()->setTimeFromTimeString($range->end()->format('H:i:s'));
 
-            // Round duration to nearest 15 minutes for reasonable slot intervals
             $interval = max(15, min($durationMinutes, 60));
             $current = $rangeStart->copy();
 
             while ($current < $rangeEnd) {
                 $slotEnd = $current->copy()->addMinutes($durationMinutes);
 
-                // Slot must fit strictly within the open range
                 if ($slotEnd <= $rangeEnd) {
                     $isAvailable = true;
 
-                    // If provider specified, check for appointment conflicts
                     if ($providerId) {
-                        $isAvailable = $this->providerRepository->isAvailableAt($providerId, $current, $slotEnd);
+                        $isAvailable = $this->providerRepository->isAvailableAt(
+                            $providerId,
+                            $current,
+                            $slotEnd,
+                            $bufferBefore,
+                            $bufferAfter
+                        );
                     }
 
                     if ($isAvailable) {

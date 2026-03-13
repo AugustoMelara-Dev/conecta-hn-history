@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
-use App\Http\Controllers\Controller;
 use App\Application\Shared\Contracts\AppointmentRepositoryInterface;
 use App\Application\Shared\Contracts\CommandBusInterface;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Application\Shared\Contracts\ServiceRepositoryInterface;
 use App\Application\Shared\Contracts\ServiceProviderRepositoryInterface;
+use App\Application\Shared\Contracts\ServiceRepositoryInterface;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,10 +18,10 @@ use Inertia\Response;
 
 /**
  * BookingController - Public Appointment Booking Flow
- * 
+ *
  * Handles the customer-facing booking wizard for SERVICE-type tenants.
  * This is a PUBLIC controller - no authentication required.
- * 
+ *
  * SECURITY: All queries are scoped to the resolved tenant via route binding.
  */
 final class BookingController extends Controller
@@ -34,19 +34,19 @@ final class BookingController extends Controller
         private CommandBusInterface $commandBus,
         private \App\Domain\Booking\Services\SlotCalculator $slotCalculator
     ) {}
+
     /**
      * Display the booking wizard page.
-     * 
+     *
      * GET /{tenant:slug}/book
      */
     public function index(string $tenantSlug): Response
     {
         $tenant = $this->tenantRepository->findBySlug($tenantSlug);
-        if (!$tenant) {
+        if (! $tenant) {
             abort(404, 'Tenant not found.');
         }
 
-        // Ensure tenant has service-type business
         $services = $this->serviceRepository->getActiveForTenant($tenant->id)
             ->map(fn (array $s) => [
                 'id' => $s['id'],
@@ -74,7 +74,7 @@ final class BookingController extends Controller
 
     /**
      * Get available providers for a specific service.
-     * 
+     *
      * GET /{tenant:slug}/book/providers/{service}
      */
     public function getProviders(string $tenantSlug, string $serviceId): JsonResponse
@@ -82,11 +82,10 @@ final class BookingController extends Controller
         $tenant = $this->tenantRepository->findBySlug($tenantSlug);
         $service = $this->serviceRepository->findById($serviceId);
 
-        if (!$tenant || !$service) {
+        if (! $tenant || ! $service) {
             abort(404, 'Tenant or Service not found.');
         }
 
-        // Security: Ensure service belongs to this tenant
         if ($service->tenant_id !== $tenant->id) {
             abort(404, 'Service not found');
         }
@@ -100,13 +99,13 @@ final class BookingController extends Controller
 
     /**
      * Get available time slots for a specific date.
-     * 
+     *
      * GET /{tenant:slug}/book/slots
      */
     public function getSlots(Request $request, string $tenantSlug): JsonResponse
     {
         $tenant = $this->tenantRepository->findBySlug($tenantSlug);
-        if (!$tenant) {
+        if (! $tenant) {
             abort(404, 'Tenant not found.');
         }
 
@@ -119,21 +118,21 @@ final class BookingController extends Controller
         $date = Carbon::parse($validated['date']);
         $service = $this->serviceRepository->findById($validated['service_id']);
 
-        if (!$service) {
+        if (! $service) {
             abort(404, 'Service not found.');
         }
-        
-        // Security: Ensure service belongs to tenant
+
         if ($service->tenant_id !== $tenant->id) {
             abort(404, 'Service not found');
         }
 
-        // Generate slots using domain service
         $slots = $this->slotCalculator->calculate(
             (string) $tenant->id,
             $date,
             $service->duration_minutes,
-            $validated['provider_id'] ?? null
+            $validated['provider_id'] ?? null,
+            $service->buffer_before,
+            $service->buffer_after
         );
 
         return response()->json(['slots' => $slots]);
@@ -141,13 +140,13 @@ final class BookingController extends Controller
 
     /**
      * Create a new appointment.
-     * 
+     *
      * POST /{tenant:slug}/book
      */
     public function store(Request $request, string $tenantSlug)
     {
         $tenant = $this->tenantRepository->findBySlug($tenantSlug);
-        if (!$tenant) {
+        if (! $tenant) {
             abort(404, 'Tenant not found.');
         }
 
@@ -165,23 +164,26 @@ final class BookingController extends Controller
         $service = $this->serviceRepository->findById($validated['service_id']);
         $provider = $this->providerRepository->findById($validated['service_provider_id']);
 
-        if (!$service || !$provider) {
+        if (! $service || ! $provider) {
             abort(404, 'Service or Provider not found.');
         }
 
-        // Security: Verify both belong to this tenant
         if ($service->tenant_id !== $tenant->id || $provider->tenant_id !== $tenant->id) {
             abort(403, 'Invalid service or provider');
         }
 
-        $scheduledAt = Carbon::parse($validated['date'] . ' ' . $validated['time']);
+        $scheduledAt = Carbon::parse($validated['date'].' '.$validated['time']);
         $endAt = $scheduledAt->copy()->addMinutes($service->duration_minutes);
 
-        // Check provider availability (prevent double-booking)
-        // Since we decoupled from Eloquent, the repository pattern should handle the domain check
-        if (!$this->providerRepository->isAvailableAt($provider->id, $scheduledAt, $endAt)) {
+        if (! $this->providerRepository->isAvailableAt(
+            $provider->id,
+            $scheduledAt,
+            $endAt,
+            $service->buffer_before,
+            $service->buffer_after
+        )) {
             return back()->withErrors([
-                'time' => 'Este horario ya no está disponible. Por favor selecciona otro.',
+                'time' => 'Este horario ya no esta disponible. Por favor selecciona otro.',
             ]);
         }
 
@@ -207,13 +209,13 @@ final class BookingController extends Controller
 
     /**
      * Display booking success page.
-     * 
+     *
      * GET /{tenant:slug}/book/success
      */
     public function success(string $tenantSlug, Request $request): Response
     {
         $tenant = $this->tenantRepository->findBySlug($tenantSlug);
-        if (!$tenant) {
+        if (! $tenant) {
             abort(404, 'Tenant not found.');
         }
 
@@ -240,5 +242,4 @@ final class BookingController extends Controller
             ] : null,
         ]);
     }
-
 }
