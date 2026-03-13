@@ -1,6 +1,8 @@
 <?php
 
-// \DG\BypassFinals::enable();
+if (class_exists(\DG\BypassFinals::class)) {
+    \DG\BypassFinals::enable();
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -77,3 +79,5 @@ expect()->extend('toMatchJsonSchema', function (string $schemaPath) {
 
     return $this;
 });
+
+

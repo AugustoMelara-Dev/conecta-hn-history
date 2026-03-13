@@ -40,7 +40,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::disableForeignKeyConstraints();
         Schema::dropIfExists('campaigns');
         Schema::dropIfExists('leads');
+        Schema::enableForeignKeyConstraints();
     }
 };
+
