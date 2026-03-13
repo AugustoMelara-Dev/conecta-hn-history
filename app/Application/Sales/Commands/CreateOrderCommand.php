@@ -41,6 +41,7 @@ final readonly class CreateOrderCommand implements IdempotentCommandInterface, \
 
         // Context - Strict Scalar ID only.
         public ?string $requestorId = null,
+        public ?string $sessionId = null,
 
         // Explicit Idempotency
         public ?string $idempotencyKey = null,
@@ -51,15 +52,10 @@ final readonly class CreateOrderCommand implements IdempotentCommandInterface, \
 
     public function getIdempotencyKey(): string
     {
-        // Use explicit key if provided (best practice for frontend apps)
         if ($this->idempotencyKey) {
             return $this->idempotencyKey;
         }
 
-        // Fallback: Generate generic hash based on critical parameters
-        // To prevent collisions on legit same-orders, frontend MUST send a unique key.
-        // Hashing content is a "lazy" dedupe but risky if user unintentionally orders twice.
-        // However, for "Double Click" protection, this is effective within a short window.
         $payload = json_encode([
             'tenant' => $this->tenantId,
             'customer' => $this->customerId,

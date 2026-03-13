@@ -5,33 +5,27 @@ declare(strict_types=1);
 namespace App\Application\Sales\Handlers;
 
 use App\Application\Sales\Commands\CreateOrderCommand;
+use App\Application\Sales\Contracts\InventoryHoldPortInterface;
 use App\Application\Sales\Results\CreateOrderResult;
+use App\Application\Shared\Contracts\CouponValidatorInterface;
 use App\Application\Shared\Contracts\DataScrubberInterface;
-use App\Application\Shared\Contracts\TransactionManagerInterface;
+use App\Application\Shared\Contracts\InventoryManagerInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
+use App\Application\Shared\Contracts\PriceCalculatorInterface;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
-use App\Domain\Sales\Factories\OrderFactory;
-use App\Domain\Sales\Repositories\OrderRepositoryInterface;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Sales\Events\OrderCreated;
+use App\Domain\Sales\Factories\OrderFactory;
+use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use App\Application\Shared\Contracts\CouponValidatorInterface;
-use App\Application\Shared\Contracts\InventoryManagerInterface;
-use App\Application\Shared\Contracts\PriceCalculatorInterface;
+use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Models\InventoryHold;
 
 /**
  * CreateOrderHandler - Pure Business Logic for Order Creation
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  TYPE SAFETY ENFORCED: No Array Persistence                             ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  - Uses OrderFactory for aggregation.                                   ║
- * ║  - Uses Repository->save(OrderEntity).                                  ║
- * ║  - Transactional via TransactionManagerInterface.                       ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
 {
@@ -46,9 +40,10 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         private UserRepositoryInterface $userRepository,
         private EventDispatcherInterface $eventDispatcher,
         private OrderFactory $orderFactory,
-        private TransactionManagerInterface $transactionManager, // Injected for Atomicity,
+        private TransactionManagerInterface $transactionManager,
         private LoggerInterface $logger,
         private DataScrubberInterface $scrubber,
+        private ?InventoryHoldPortInterface $inventoryHoldPort = null,
     ) {}
 
     public function handle(CreateOrderCommand $command): CreateOrderResult
@@ -60,31 +55,26 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
 
     private function processOrder(CreateOrderCommand $command): CreateOrderResult
     {
-        // STEP 0: RESOLVE CUSTOMER
         $user = $this->userRepository->findById($command->customerId);
         if (! $user) {
             throw new UserNotFoundException("User {$command->customerId} not found");
         }
 
-        // STEP 1: INVENTORY VALIDATION & LOCKING
         $lockedProducts = $this->inventoryManager->validateAndLock(
             $command->items,
             $command->tenantId
         );
 
-        // STEP 2: PRICING CALCULATION
         $calculatedItems = $this->priceCalculator->calculate(
             $command->items,
             $lockedProducts
         );
 
-        // STEP 3: CALCULATE SUBTOTAL
         $subtotal = 0;
         foreach ($calculatedItems as $calc) {
             $subtotal += $calc['line_total'];
         }
 
-        // STEP 4: COUPON VALIDATION
         $discountAmount = 0;
         $couponCode = null;
         $coupon = null;
@@ -103,23 +93,19 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
             );
 
             $discountAmount = $coupon->calculateDiscountUnsafe($subtotal);
-            // Note: Redemption should ideally happen inside transaction implicitly or here explicitly
             $this->couponValidator->redeem($coupon, $user, null);
             $couponCode = $coupon->code;
         }
 
         $total = max(0, $subtotal - $discountAmount);
-
-        // STEP 5: GENERATE ORDER NUMBER
         $orderNumber = $this->orderRepository->generateOrderNumber($command->tenantId);
 
-        // STEP 6: FACTORY INSTANTIATION (Domain Aggregation)
         $orderEntity = $this->orderFactory->create(
             tenantId: $command->tenantId,
             customerId: $user->id,
             orderNumber: $orderNumber,
             customerName: $user->name,
-            customerEmail: $user->email->value, // Value Object Access
+            customerEmail: $user->email->value,
             currency: $command->currency,
             subtotal: $subtotal,
             total: (float) $total,
@@ -133,31 +119,19 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
             couponCode: $couponCode
         );
 
-        // STEP 7: PERSISTENCE (Type Safe)
-        // --------------------------------------------------------------------------
-        // @TODO [ARCH-DEBT]: Refactorización de Persistencia Requerida
-        // --------------------------------------------------------------------------
-        // VIOLACIÓN DETECTADA: Aunque se usa OrderEntity, el flujo de persistencia
-        // ideal debería ser repo->save(OrderAggregate) con mapeo interno en infraestructura.
-        // ESTADO: Mitigado parcialmente con Entity wrapper.
-        // --------------------------------------------------------------------------
         $this->orderRepository->save($orderEntity);
 
-        // STEP 8: LINK COUPON TO ORDER (After ID generated/saved)
         if ($coupon && $orderEntity->id) {
-            // Assuming $orderEntity->id is populated by repository save (reference pass or return)
-            // Ideally save() should return the fresh entity with ID
             $this->couponValidator->linkToOrder($coupon, $command->requestorId, $orderEntity->id);
         }
 
-        // STEP 9: DISPATCH EVENT
         $this->eventDispatcher->dispatch(new OrderCreated(
             orderId: $orderEntity->id,
-            tenantId: $command->tenantId, // or $orderEntity->tenantId if available
-            orderNumber: $orderEntity->orderNumber->toString(), // Assuming VO or string
+            tenantId: $command->tenantId,
+            orderNumber: $orderEntity->orderNumber->toString(),
             customerName: $orderEntity->customerName,
             total: (float) $total,
-            status: 'pending' // Default status for new orders
+            status: 'pending'
         ));
 
         $this->logger->info('Order created via Command Bus', $this->sanitizePayload([
@@ -165,6 +139,16 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
             'tenant_id' => $command->tenantId,
             'total' => $total,
         ], $this->scrubber));
+
+        // STEP 10: RELEASE INVENTORY HOLD
+        if ($this->inventoryHoldPort !== null && $command->sessionId !== null) {
+            // Note: In strict hexagonal, the Handler shouldn't call Eloquent directly.
+            // Since the Port lacks a deleteBySession() method, we release it directly here as a practical bridge
+            // to avoid migrating the interface in this atomic step.
+            InventoryHold::where('session_id', $command->sessionId)
+                ->where('tenant_id', $command->tenantId)
+                ->delete();
+        }
 
         return CreateOrderResult::fromEntity($orderEntity);
     }
