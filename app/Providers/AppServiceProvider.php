@@ -1078,6 +1078,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Bus\Middleware\TransactionalMiddleware::class,
         ]);
 
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Domain\Sales\Events\CartAbandoned::class,
+            \App\Infrastructure\Listeners\Sales\SendAbandonedCartOfferListener::class
+        );
+
         \Illuminate\Support\Facades\Bus::map([
             \App\Application\Identity\Commands\RegisterUserCommand::class => \App\Application\Identity\Handlers\RegisterUserHandlerInterface::class,
             \App\Application\Sales\Commands\CreateOrderCommand::class => \App\Application\Sales\Handlers\CreateOrderHandler::class,
@@ -1180,3 +1185,4 @@ class AppServiceProvider extends ServiceProvider
         // This method is retained for documentation purposes only.
     }
 }
+
