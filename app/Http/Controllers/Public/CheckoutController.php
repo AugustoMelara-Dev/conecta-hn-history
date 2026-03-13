@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Application\Sales\Commands\HoldCartInventoryCommand;
+use App\Application\Sales\Commands\SyncCheckoutSessionCommand;
 use App\Application\Sales\Handlers\HoldCartInventoryHandler;
+use App\Application\Sales\Handlers\SyncCheckoutSessionHandler;
 use App\Application\Shared\Contracts\CouponValidatorInterface;
 use App\Exceptions\InvalidCouponException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\HoldInventoryRequest;
 use App\Http\Requests\Public\StoreCheckoutRequest;
+use App\Http\Requests\Public\SyncCartRequest;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Psr\Log\LoggerInterface;
@@ -27,8 +30,35 @@ final class CheckoutController extends Controller
 {
     public function __construct(
         private LoggerInterface $log,
-        private HoldCartInventoryHandler $holdInventoryHandler
+        private HoldCartInventoryHandler $holdInventoryHandler,
+        private SyncCheckoutSessionHandler $syncSessionHandler
     ) {}
+
+    public function getCartSummary(SyncCartRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+        $tenantId = $request->route('tenant') ?? $request->get('tenant');
+
+        if (! $tenantId) {
+            return response()->json(['message' => 'Tenant identification required.'], 400);
+        }
+
+        $command = new SyncCheckoutSessionCommand(
+            tenantId: $tenantId,
+            sessionId: $validated['session_id'],
+            items: $validated['items'],
+            subtotal: (float) $validated['subtotal'],
+            userId: $request->user()?->id
+        );
+
+        $this->syncSessionHandler->handle($command);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cart synchronized successfully',
+            'subtotal' => $validated['subtotal'],
+        ]);
+    }
 
     public function holdInventory(HoldInventoryRequest $request): JsonResponse
     {
@@ -72,12 +102,9 @@ final class CheckoutController extends Controller
         $cartTotal = (float) $validated['cart_total'];
         $shippingCost = (float) ($validated['shipping_cost'] ?? 0);
 
-        // Tenant resolution: middleware-set attribute or route parameter
         $tenant = $request->route('tenant') ?? $request->get('tenant');
 
         try {
-            // CouponValidatorService returns a validated Coupon model internally,
-            // but we only extract primitives from it for the response.
             $coupon = $couponValidator->validate(
                 code: $code,
                 user: $request->user(),
@@ -85,11 +112,9 @@ final class CheckoutController extends Controller
                 tenant: $tenant
             );
 
-            // Extract primitives BEFORE returning - no Model dependency in Controller
             $discountAmount = $coupon->calculateDiscountUnsafe($cartTotal, $shippingCost);
             $newTotal = max(0, $cartTotal - $discountAmount);
 
-            // Extract primitive data for message generation
             $couponType = (string) $coupon->type;
             $couponValue = (float) $coupon->value;
             $couponCode = (string) $coupon->code;
@@ -121,15 +146,8 @@ final class CheckoutController extends Controller
         }
     }
 
-    /**
-     * Generate success message using primitives only.
-     *
-     * @param  string  $type  Coupon type constant value (percent, fixed, free_shipping)
-     * @param  float  $value  Discount value
-     */
     private function getSuccessMessage(string $type, float $value): string
     {
-        // Using string literals instead of Model constants to avoid import
         return match ($type) {
             'percent' => "¡Cupón aplicado! {$value}% de descuento",
             'fixed' => '¡Cupón aplicado! L. '.number_format($value, 2).' de descuento',
