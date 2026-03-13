@@ -12,4 +12,6 @@ interface InventoryHoldPortInterface
     public function createHolds(string|int $tenantId, string $sessionId, array $items, int $expiresInMinutes): void;
 
     public function releaseExpired(string|int $tenantId): int;
+
+    public function releaseAllExpired(): int;
 }

@@ -69,4 +69,9 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
             ->where('expires_at', '<=', now())
             ->delete();
     }
+
+    public function releaseAllExpired(): int
+    {
+        return InventoryHold::where('expires_at', '<=', now())->delete();
+    }
 }
