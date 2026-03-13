@@ -19,11 +19,11 @@ use App\Domain\Shared\Entities\DomainEventMessage;
 /**
  * VerifyOtpHandler - Atomic Protocol Edition
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ATOMIC PROTOCOL: "Insert-or-Die" Gatekeeper                            ║
- * ║  CONSISTENCY: Transactional Outbox within Atomic Lock                   ║
- * ║  PURITY: No side effects (Events/Mailers) outside Outbox                ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  ATOMIC PROTOCOL: "Insert-or-Die" Gatekeeper                            â•‘
+ * â•‘  CONSISTENCY: Transactional Outbox within Atomic Lock                   â•‘
+ * â•‘  PURITY: No side effects (Events/Mailers) outside Outbox                â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
 {
@@ -49,7 +49,7 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
             throw new InvalidOtpException;
         }
 
-        if ($otp->isExpired($this->clock->immutablenow())) {
+        if ($otp->isExpired($this->clock->now())) {
             $this->otpRepository->invalidateByIdentifier($command->identifier, $command->tenantId);
             throw new OtpExpiredException;
         }
@@ -63,7 +63,7 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
             // and stop the flow immediately.
             $this->otpRepository->incrementAttemptsAtomically((string) $otp->id, $this->maxOtpAttempts);
 
-            throw new InvalidOtpException('Código incorrecto.');
+            throw new InvalidOtpException('CÃ³digo incorrecto.');
         }
 
         // 2. Consume OTP (Effect)

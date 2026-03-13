@@ -7,28 +7,25 @@ namespace App\Application\Auth\Validators;
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface;
 use App\Application\Auth\Results\SocialLoginResult;
-use App\Domain\Shared\Enums\ProviderName;
 use App\Application\Shared\Contracts\ValidatorFactoryInterface;
+use App\Domain\Shared\Enums\ProviderName;
 
 /**
  * LoginViaSocialProviderCommandValidator - Clean Architecture Edition
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  DI COMPLIANT: Injects ValidatorFactory contract, no static Facades.    ║
- * ║  DECORATOR PATTERN: Wraps inner handler with validation layer.          ║
- * ║  TESTABLE: Factory can be mocked in unit tests.                         ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * Accepts a generic inner handler so it can wrap the shared middleware
+ * decorators produced by PipelineBuilder while still exposing the typed
+ * LoginViaSocialProviderHandlerInterface at the boundary.
  */
 final readonly class LoginViaSocialProviderCommandValidator implements LoginViaSocialProviderHandlerInterface
 {
     public function __construct(
-        private LoginViaSocialProviderHandlerInterface $inner,
+        private object $inner,
         private ValidatorFactoryInterface $validatorFactory,
     ) {}
 
     public function handle(LoginViaSocialProviderCommand $command): SocialLoginResult
     {
-        // Convert Enum cases to 'in:' rule — no framework coupling
         $allowedProviders = implode(',', array_column(ProviderName::cases(), 'value'));
 
         $this->validatorFactory->validate([

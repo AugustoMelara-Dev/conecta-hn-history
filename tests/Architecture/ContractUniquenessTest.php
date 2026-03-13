@@ -10,15 +10,12 @@ declare(strict_types=1);
  */
 
 test('upcaster interface is unique and canonical', function () {
-    // Canonical must exist
-    expect(interface_exists(\App\Application\Shared\Contracts\UpcasterInterface::class))->toBeTrue();
+    // Canonical location: Domain\Shared\Contracts after the A5 Domain Purity migration.
+    expect(interface_exists(\App\Domain\Shared\Contracts\UpcasterInterface::class))->toBeTrue();
 
-    // Duplicates must NOT exist on disk
+    // Duplicate must NOT exist in the legacy Infrastructure\EventVersioning chain.
     $appDir = __DIR__ . '/../../app';
 
-    expect(file_exists($appDir . '/Domain/Shared/Contracts/UpcasterInterface.php'))
-        ->toBeFalse('Duplicate UpcasterInterface found in Domain.');
-
     expect(file_exists($appDir . '/Infrastructure/EventVersioning/UpcasterInterface.php'))
-        ->toBeFalse('Duplicate UpcasterInterface found in Infrastructure.');
+        ->toBeFalse('Duplicate UpcasterInterface found in Infrastructure EventVersioning.');
 });

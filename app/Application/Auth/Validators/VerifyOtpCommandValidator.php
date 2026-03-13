@@ -12,16 +12,14 @@ use App\Application\Shared\Contracts\ValidatorFactoryInterface;
 /**
  * VerifyOtpCommandValidator - Clean Architecture Edition
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  DI COMPLIANT: Injects ValidatorFactory contract, no static Facades.    ║
- * ║  DECORATOR PATTERN: Wraps inner handler with validation layer.          ║
- * ║  TESTABLE: Factory can be mocked in unit tests.                         ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * Accepts a generic inner handler so it can wrap the shared middleware
+ * decorators produced by PipelineBuilder while still exposing the typed
+ * VerifyOtpHandlerInterface at the boundary.
  */
 final readonly class VerifyOtpCommandValidator implements VerifyOtpHandlerInterface
 {
     public function __construct(
-        private VerifyOtpHandlerInterface $inner,
+        private object $inner,
         private ValidatorFactoryInterface $validatorFactory,
     ) {}
 

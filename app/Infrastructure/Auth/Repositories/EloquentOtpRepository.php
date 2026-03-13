@@ -13,12 +13,12 @@ use DateTimeImmutable;
 /**
  * EloquentOtpRepository - Tenant-Isolated Data Mapper
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  MULTI-TENANT: All queries filter by tenant_id (Axiom A).               ║
- * ║  ATOMIC WRITE: Uses database-level increments for concurrency safety.   ║
- * ║  STRICT HYDRATION: Maps Eloquent Models manually to Pure Entities.      ║
- * ║  INFRASTRUCTURE BARRIER: Translates Carbon -> DateTimeImmutable.        ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  MULTI-TENANT: All queries filter by tenant_id (Axiom A).               â•‘
+ * â•‘  ATOMIC WRITE: Uses database-level increments for concurrency safety.   â•‘
+ * â•‘  STRICT HYDRATION: Maps Eloquent Models manually to Pure Entities.      â•‘
+ * â•‘  INFRASTRUCTURE BARRIER: Translates Carbon -> DateTimeImmutable.        â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final class EloquentOtpRepository implements OtpRepositoryInterface
 {
@@ -94,10 +94,17 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
             ->where('attempts', '<', $maxAttempts)
             ->increment('attempts');
 
-        // Affected rows will be 0 if the record doesn't exist OR if attempts >= maxAttempts
+        // Affected rows will be 0 if the record doesn't exist OR if attempts >= maxAttempts.
         if ($affected === 0) {
-            // We assume it's exceeded because existence is usually checked prior, but even if not,
-            // failing secure is better.
+            throw new \App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
+        }
+
+        // Re-read the persisted counter so concurrent readers do not rely on stale in-memory state.
+        $currentAttempts = (int) OneTimePassword::query()
+            ->where('id', $otpId)
+            ->value('attempts');
+
+        if ($currentAttempts >= $maxAttempts) {
             throw new \App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
         }
     }

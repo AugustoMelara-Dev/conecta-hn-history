@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Application\Auth\Commands\VerifyOtpCommand;
-use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
+use App\Application\Auth\Handlers\VerifyOtpHandler;
 use App\Domain\Auth\Exceptions\InvalidOtpException;
 use App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
 use Illuminate\Console\Command;
@@ -17,7 +17,7 @@ class AttackOtpCommand extends Command
 
     protected $description = 'Simulate an OTP attack attempt';
 
-    public function handle(VerifyOtpHandlerInterface $handler): int
+    public function handle(VerifyOtpHandler $handler): int
     {
         $identifier = $this->argument('identifier');
         $tenantId = $this->argument('tenantId');
@@ -28,15 +28,17 @@ class AttackOtpCommand extends Command
             code: $code,
             tenantId: $tenantId,
             ipAddress: '127.0.0.1',
-            userAgent: 'AttackBot/1.0',
             idempotencyKey: Uuid::uuid7()->toString()
         );
 
         try {
+            // Intentionally bypasses outer decorators so the command can stress
+            // the OTP attempts counter itself without requiring unrelated tables
+            // such as processed_commands in isolated concurrency tests.
             $handler->handle($command);
             $this->info('SUCCESS');
 
-            return 0; // Should not happen with wrong code
+            return 0;
         } catch (MaxOtpAttemptsExceededException $e) {
             $this->error('BLOCKED');
 

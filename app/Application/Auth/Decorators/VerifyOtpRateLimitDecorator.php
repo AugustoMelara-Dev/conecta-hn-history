@@ -7,8 +7,8 @@ namespace App\Application\Auth\Decorators;
 use App\Application\Auth\Commands\VerifyOtpCommand;
 use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
 use App\Application\Auth\Results\VerifyOtpResult;
-use App\Domain\Shared\Contracts\RateLimitServiceInterface;
 use App\Application\Shared\Common\Exceptions\RateLimitExceededException;
+use App\Domain\Shared\Contracts\RateLimitServiceInterface;
 
 final readonly class VerifyOtpRateLimitDecorator implements VerifyOtpHandlerInterface
 {
@@ -21,14 +21,11 @@ final readonly class VerifyOtpRateLimitDecorator implements VerifyOtpHandlerInte
 
     public function handle(VerifyOtpCommand $command): VerifyOtpResult
     {
-        // Key: verify_otp:{tenant}:{ip}
         $key = sprintf('verify_otp:%s:%s', $command->tenantId, $command->ipAddress);
 
-        if ($this->rateLimiter->tooManyAttempts($key, $this->maxAttempts)) {
-            throw new RateLimitExceededException('Demasiados intentos. Intente más tarde.');
+        if ($this->rateLimiter->hitAndCheck($key, $this->maxAttempts, $this->decaySeconds)) {
+            throw new RateLimitExceededException('Demasiados intentos. Intente mas tarde.');
         }
-
-        $this->rateLimiter->hit($key, $this->decaySeconds);
 
         return $this->inner->handle($command);
     }

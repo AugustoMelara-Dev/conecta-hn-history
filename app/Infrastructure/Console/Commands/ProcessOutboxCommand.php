@@ -16,13 +16,13 @@ use Throwable;
 /**
  * ProcessOutboxCommand - Level 66: The Obsidian Monolith
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  IMMORTAL: Global Exception Sentinel (No Exit Policy)                    ║
- * ║  AMNESTIC: Total state wipe on infra failure (No Split-Brain)            ║
- * ║  OBSERVABLE: Hibernate with Heartbeats & Signal Awareness                ║
- * ║  ENTROPY: Jittered Exponential Backoff (No Thundering Herd)              ║
- * ║  DISCRIMINATION: Smart Death on Code Errors vs Infra Sleep               ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  IMMORTAL: Global Exception Sentinel (No Exit Policy)                    â•‘
+ * â•‘  AMNESTIC: Total state wipe on infra failure (No Split-Brain)            â•‘
+ * â•‘  OBSERVABLE: Hibernate with Heartbeats & Signal Awareness                â•‘
+ * â•‘  ENTROPY: Jittered Exponential Backoff (No Thundering Herd)              â•‘
+ * â•‘  DISCRIMINATION: Smart Death on Code Errors vs Infra Sleep               â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final class ProcessOutboxCommand extends Command
 {
@@ -411,12 +411,13 @@ final class ProcessOutboxCommand extends Command
 
                 } while ($loopCount < $maxLoops && $this->keepRunning);
 
-                // Soft Recycle (Max Loops Reached)
+                // Max-loops is an explicit exit contract for tests and controlled workers.
                 if ($this->keepRunning) {
                     $this->info("Max loops ({$maxLoops}) reached. Recycling worker state...");
                     $this->releaseLeases();
-                    $this->leaseManager = null; // Force re-init next loop
+                    $this->leaseManager = null;
                     gc_collect_cycles();
+                    $this->keepRunning = false;
                 }
 
             } catch (\Throwable $e) {

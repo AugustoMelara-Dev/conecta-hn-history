@@ -12,16 +12,14 @@ use App\Application\Shared\Contracts\ValidatorFactoryInterface;
 /**
  * DeleteUserCommandValidator - Clean Architecture Edition
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  DI COMPLIANT: Injects ValidatorFactory contract, no static Facades.    ║
- * ║  DECORATOR PATTERN: Wraps inner handler with validation layer.          ║
- * ║  TESTABLE: Factory can be mocked in unit tests.                         ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * Accepts a generic inner handler so it can wrap the shared middleware
+ * decorators produced by PipelineBuilder while still exposing the typed
+ * DeleteUserHandlerInterface at the boundary.
  */
 final readonly class DeleteUserCommandValidator implements DeleteUserHandlerInterface
 {
     public function __construct(
-        private DeleteUserHandlerInterface $inner,
+        private object $inner,
         private ValidatorFactoryInterface $validatorFactory,
     ) {}
 

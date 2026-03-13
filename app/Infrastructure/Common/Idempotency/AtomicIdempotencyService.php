@@ -109,7 +109,7 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
 
         // Security Check: Hash Integrity
         if ($record->command_hash !== $hash) {
-            throw new IdempotencyKeyReuseException('Idempotency key reused for different payload.');
+            throw new IdempotencyKeyReuseException('Idempotency key reused with different payload');
         }
 
         if ($record->status === 'COMPLETED') {

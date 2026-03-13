@@ -99,7 +99,7 @@ class OtpConcurrencyTest extends TestCase
             $blockedCounts = 0;
             $errorCounts = 0;
 
-            foreach ($results as $result) {
+            foreach ($results->collect() as $result) {
                 $output = trim($result->output().$result->errorOutput());
                 if (str_contains($output, 'INVALID')) {
                     $invalidCounts++;

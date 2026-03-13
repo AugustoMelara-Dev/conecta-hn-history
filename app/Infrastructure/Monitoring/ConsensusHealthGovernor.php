@@ -10,59 +10,34 @@ use Illuminate\Support\Facades\Redis;
 
 /**
  * ConsensusHealthGovernor - Level 62 Topological Transcendence
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  POST-STALL THERMAL CALIBRATION: "Probing Warm-Up" after heavy freezes   ║
- * ║  STALL DETECTION: >5s pause triggers 5s Calibration Window               ║
- * ║  TEMPORAL SOVEREIGNTY: Monotonic Clock detects time dilation             ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final class ConsensusHealthGovernor
 {
     private const GLOBAL_STATE_KEY = 'outbox:fleet:health';
-
     private const EWMA_LAMBDA = 0.2;
-
     private const BASE_HYSTERESIS_WINDOW_S = 60;
-
     private const HALF_TRUST_DURATION_S = 120;
-
     private const REDIS_TIMEOUT_MS = 100;
-
     private const VOLATILITY_DECAY_S = 3600;
-
-    // Level 62 Strict Constants
-    private const STALL_THRESHOLD_NS = 5_000_000_000; // 5 seconds (Thermal Trigger)
-
+    private const STALL_THRESHOLD_NS = 5_000_000_000;
     private const CALIBRATION_WINDOW_S = 5;
-
     private const DECAY_LAMBDA = 0.5;
-
     private const JOLT_BRAKING_THRESHOLD = 0.5;
 
     private float $alpha = 0.5;
-
     private float $localHealthEWMA = 1.0;
-
     private float $localHealthEWMASq = 1.0;
-
     private float $joltSmoothed = 0.0;
-
     private int $hysteresisLockUntil = 0;
-
     private int $halfTrustUntil = 0;
-
     private int $stateFlipCount = 0;
-
-    // Thermal Calibration State
     private int $thermalCalibrationUntil = 0;
-
-    // Monotonic Clock State
     private int $lastTickNs = 0;
+    private readonly string $workerId;
 
-    public function __construct(
-        private readonly string $workerId
-    ) {
+    public function __construct(string $workerId = '')
+    {
+        $this->workerId = $workerId !== '' ? $workerId : gethostname().':'.getmypid();
         $this->loadLocalState();
         $this->lastTickNs = hrtime(true);
     }
@@ -77,9 +52,7 @@ final class ConsensusHealthGovernor
         $this->localHealthEWMA = (self::EWMA_LAMBDA * $x) + ((1 - self::EWMA_LAMBDA) * $this->localHealthEWMA);
         $this->localHealthEWMASq = (self::EWMA_LAMBDA * ($x * $x)) + ((1 - self::EWMA_LAMBDA) * $this->localHealthEWMASq);
 
-        // Thermal Integrity Check
         if ($this->isThermalCalibrationActive()) {
-            // If health drops during calibration, break the lock and panic
             if ($this->localHealthEWMA < $prevHealth && $this->localHealthEWMA < 0.90) {
                 $this->triggerHysteresisLock('Thermal Calibration Failure');
             }
@@ -112,23 +85,18 @@ final class ConsensusHealthGovernor
         return time() < $this->thermalCalibrationUntil;
     }
 
-    /**
-     * Level 62: Post-Stall Thermal Calibration Logic
-     */
     private function compensateForStall(): void
     {
         $nowNs = hrtime(true);
         $deltaNs = $nowNs - $this->lastTickNs;
         $this->lastTickNs = $nowNs;
 
-        // Fast-Forward Decay (Always active for any stall > 1s effectively, but formalized here for 5s trigger)
         if ($deltaNs > 1_000_000_000) {
             $deltaSeconds = $deltaNs / 1_000_000_000.0;
             $decayFactor = exp(-self::DECAY_LAMBDA * $deltaSeconds);
             $this->stateFlipCount = (int) ($this->stateFlipCount * $decayFactor);
         }
 
-        // Thermal Trigger (>5s)
         if ($deltaNs > self::STALL_THRESHOLD_NS) {
             $deltaSeconds = $deltaNs / 1_000_000_000.0;
 
@@ -136,7 +104,6 @@ final class ConsensusHealthGovernor
                 'stall_duration_s' => round($deltaSeconds, 2),
             ]);
 
-            // Enter Thermal Calibration
             $this->thermalCalibrationUntil = time() + self::CALIBRATION_WINDOW_S;
             $this->persistLocalState();
         }
