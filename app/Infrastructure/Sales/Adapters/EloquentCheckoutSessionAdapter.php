@@ -30,4 +30,28 @@ class EloquentCheckoutSessionAdapter implements CheckoutSessionPortInterface
             ]
         );
     }
+
+    public function markAsAbandoned(int $timeoutMinutes): array
+    {
+        $threshold = now()->subMinutes($timeoutMinutes);
+
+        $abandoned = CheckoutSession::where('status', 'active')
+            ->where('last_active_at', '<=', $threshold)
+            ->get();
+
+        if ($abandoned->isEmpty()) {
+            return [];
+        }
+
+        CheckoutSession::whereIn('id', $abandoned->pluck('id'))
+            ->update(['status' => 'abandoned']);
+
+        return $abandoned->map(fn ($session) => [
+            'id' => $session->id,
+            'tenant_id' => (string) $session->tenant_id,
+            'session_id' => $session->session_id,
+            'user_id' => $session->user_id,
+            'subtotal' => (float) $session->subtotal,
+        ])->toArray();
+    }
 }

@@ -58,6 +58,12 @@ Schedule::command('outbox:process')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/outbox-worker.log'));
 
+// ABANDONED CART RECOVERY - Detect and Dispatch Events
+Schedule::call(function () {
+    app(\App\Application\Sales\Handlers\DetectAbandonedCartsHandler::class)
+        ->handle(new \App\Application\Sales\Commands\DetectAbandonedCartsCommand(30));
+})->everyFifteenMinutes()->name('sales:detect-abandoned-carts')->withoutOverlapping();
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // STORAGE MAINTENANCE - Data Hygiene (Prunable Models)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -102,4 +108,6 @@ Schedule::call(function () {
         dispatch(new \App\Application\Billing\Commands\ReconcilePendingSubscriptionsCommand($tenantId));
     }
 })->hourly()->name('billing:reconcile-pending');
+
+
 
