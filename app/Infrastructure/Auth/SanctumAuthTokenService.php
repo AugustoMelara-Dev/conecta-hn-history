@@ -75,9 +75,7 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
             }
 
             // User genuinely doesn't exist
-            throw new \App\Domain\Identity\Exceptions\UserNotFoundException(
-                "User {$userId} not found"
-            );
+            throw \App\Domain\Identity\Exceptions\UserNotFoundException::withId((string) $userId);
         }
 
         $token = $user->createToken($tokenName)->plainTextToken;
@@ -88,3 +86,4 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
         ];
     }
 }
+
