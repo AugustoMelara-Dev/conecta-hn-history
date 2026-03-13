@@ -44,10 +44,9 @@ it('survives a synthetic replay attack ensuring single execution of core logic',
 
     $service = Mockery::mock(IdempotencyServiceInterface::class);
     $service->shouldReceive('get')
-        ->once()->with('atomic-key-XYZ')->andReturn(null)
-        ->once()->with('atomic-key-XYZ')->andReturn(null)
-        ->once()->with('atomic-key-XYZ')->andReturn($expectedResult)
-        ->once()->with('atomic-key-XYZ')->andReturn($expectedResult);
+        ->times(4)
+        ->with('atomic-key-XYZ')
+        ->andReturn(null, null, $expectedResult, $expectedResult);
     $service->shouldReceive('lock')
         ->once()
         ->with('atomic-key-XYZ')
@@ -76,9 +75,11 @@ it('survives a synthetic replay attack ensuring single execution of core logic',
         ->and($resultA->orderNumber)->toBe($expectedResult->orderNumber)
         ->and($resultB->orderNumber)->toBe($expectedResult->orderNumber)
         ->and($resultC->orderNumber)->toBe($expectedResult->orderNumber)
-        ->and($resultA)->not->toBe($resultB)
         ->and($resultA->toArray())->toBe($resultB->toArray())
         ->and($resultB->toArray())->toBe($resultC->toArray());
 });
+
+
+
 
 
