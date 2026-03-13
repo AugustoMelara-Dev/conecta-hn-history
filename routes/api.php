@@ -90,6 +90,9 @@ Route::prefix('v1')->group(function () {
     Route::prefix('checkout')->group(function () {
         // Note: CheckoutController is Public (Storefront), not Api/V1 yet, but used in API contexts.
         // Keeping as is for now, assuming it handles JSON.
+        Route::post('/hold-inventory', [\App\Http\Controllers\Public\CheckoutController::class, 'holdInventory'])
+            ->name('checkout.hold-inventory');
+
         Route::post('/validate-coupon', [\App\Http\Controllers\Public\CheckoutController::class, 'validateCoupon'])
             ->middleware('throttle:api.verification')
             ->name('checkout.validate-coupon');
@@ -175,3 +178,4 @@ Route::prefix('v1')->group(function () {
 Route::post('/webhooks/payment', [\App\Http\Controllers\Webhook\PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+

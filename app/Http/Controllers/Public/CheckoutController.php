@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
+use App\Application\Sales\Commands\HoldCartInventoryCommand;
+use App\Application\Sales\Handlers\HoldCartInventoryHandler;
+use App\Application\Shared\Contracts\CouponValidatorInterface;
 use App\Exceptions\InvalidCouponException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Public\HoldInventoryRequest;
 use App\Http\Requests\Public\StoreCheckoutRequest;
-use App\Application\Shared\Contracts\CouponValidatorInterface;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Psr\Log\LoggerInterface;
 
@@ -22,8 +26,44 @@ use Psr\Log\LoggerInterface;
 final class CheckoutController extends Controller
 {
     public function __construct(
-        private LoggerInterface $log
+        private LoggerInterface $log,
+        private HoldCartInventoryHandler $holdInventoryHandler
     ) {}
+
+    public function holdInventory(HoldInventoryRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+        $tenantId = $request->route('tenant') ?? $request->get('tenant');
+
+        if (! $tenantId) {
+            return response()->json(['message' => 'Tenant identification required.'], 400);
+        }
+
+        try {
+            $command = new HoldCartInventoryCommand(
+                tenantId: $tenantId,
+                sessionId: $validated['session_id'],
+                items: $validated['items']
+            );
+
+            $this->holdInventoryHandler->handle($command);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Inventory successfully held for 15 minutes.',
+            ]);
+        } catch (DomainException $e) {
+            $this->log->warning('Inventory hold failed', [
+                'session_id' => $validated['session_id'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
 
     public function validateCoupon(StoreCheckoutRequest $request, CouponValidatorService $couponValidator): JsonResponse
     {
