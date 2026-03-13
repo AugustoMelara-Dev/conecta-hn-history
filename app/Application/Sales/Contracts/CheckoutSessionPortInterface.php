@@ -18,4 +18,6 @@ interface CheckoutSessionPortInterface
      * @return array<int, array{id: int, tenant_id: string, session_id: string, user_id: string|int|null, subtotal: float}>
      */
     public function markAsAbandoned(int $timeoutMinutes): array;
+
+    public function markAsConverted(string|int $tenantId, string $sessionId): void;
 }

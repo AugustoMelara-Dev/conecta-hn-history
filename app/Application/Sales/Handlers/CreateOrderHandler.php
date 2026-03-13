@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Sales\Handlers;
 
 use App\Application\Sales\Commands\CreateOrderCommand;
+use App\Application\Sales\Contracts\CheckoutSessionPortInterface;
 use App\Application\Sales\Contracts\InventoryHoldPortInterface;
 use App\Application\Sales\Results\CreateOrderResult;
 use App\Application\Shared\Contracts\CouponValidatorInterface;
@@ -44,6 +45,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         private LoggerInterface $logger,
         private DataScrubberInterface $scrubber,
         private ?InventoryHoldPortInterface $inventoryHoldPort = null,
+        private ?CheckoutSessionPortInterface $checkoutSessionPort = null,
     ) {}
 
     public function handle(CreateOrderCommand $command): CreateOrderResult
@@ -140,14 +142,21 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
             'total' => $total,
         ], $this->scrubber));
 
-        // STEP 10: RELEASE INVENTORY HOLD
-        if ($this->inventoryHoldPort !== null && $command->sessionId !== null) {
-            // Note: In strict hexagonal, the Handler shouldn't call Eloquent directly.
-            // Since the Port lacks a deleteBySession() method, we release it directly here as a practical bridge
-            // to avoid migrating the interface in this atomic step.
-            InventoryHold::where('session_id', $command->sessionId)
-                ->where('tenant_id', $command->tenantId)
-                ->delete();
+        if ($command->sessionId !== null) {
+            // STEP 10: RELEASE INVENTORY HOLD
+            if ($this->inventoryHoldPort !== null) {
+                // Note: In strict hexagonal, the Handler shouldn't call Eloquent directly.
+                // Since the Port lacks a deleteBySession() method, we release it directly here as a practical bridge
+                // to avoid migrating the interface in this atomic step.
+                InventoryHold::where('session_id', $command->sessionId)
+                    ->where('tenant_id', $command->tenantId)
+                    ->delete();
+            }
+
+            // STEP 11: MARK CHECKOUT SESSION AS CONVERTED (Prevent Abandoned Cart False Positives)
+            if ($this->checkoutSessionPort !== null) {
+                $this->checkoutSessionPort->markAsConverted($command->tenantId, $command->sessionId);
+            }
         }
 
         return CreateOrderResult::fromEntity($orderEntity);

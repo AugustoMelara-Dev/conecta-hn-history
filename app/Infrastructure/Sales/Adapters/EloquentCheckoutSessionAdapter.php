@@ -54,4 +54,11 @@ class EloquentCheckoutSessionAdapter implements CheckoutSessionPortInterface
             'subtotal' => (float) $session->subtotal,
         ])->toArray();
     }
+
+    public function markAsConverted(string|int $tenantId, string $sessionId): void
+    {
+        CheckoutSession::where('tenant_id', $tenantId)
+            ->where('session_id', $sessionId)
+            ->update(['status' => 'converted']);
+    }
 }
