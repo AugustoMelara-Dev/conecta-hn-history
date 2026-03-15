@@ -14,6 +14,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\HoldInventoryRequest;
 use App\Http\Requests\Public\StoreCheckoutRequest;
 use App\Http\Requests\Public\SyncCartRequest;
+use App\Services\CouponValidatorService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Psr\Log\LoggerInterface;

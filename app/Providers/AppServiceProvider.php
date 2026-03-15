@@ -641,14 +641,15 @@ class AppServiceProvider extends ServiceProvider
                 // LAYER 1: Resilience (Fail-Open Rate Limiter)
                 $rateLimited = new \App\Application\Billing\Decorators\RateLimitedReportPaymentHandler(
                     $core,
-                    $app->make(\App\Application\Shared\Contracts\RateLimiterInterface::class)
+                    $app->make(\App\Application\Shared\Contracts\RateLimiterInterface::class),
+                    $app->make(\App\Application\Shared\Contracts\LoggerInterface::class)
                 );
 
                 // LAYER 2: Validation Decorator (Outermost)
                 // Validator ensures data integrity BEFORE rate limiting logic (to access ClientID/TenantID safely)
                 return new \App\Application\Billing\Validators\ReportPaymentCommandValidator(
                     inner: $rateLimited,
-                    validatorFactory: $app->make(\Illuminate\Contracts\Validation\Factory::class)
+                    validatorFactory: $app->make(\App\Application\Shared\Contracts\ValidatorFactoryInterface::class)
                 );
             }
         );
