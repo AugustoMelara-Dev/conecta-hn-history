@@ -29,7 +29,6 @@ final class SubmitReviewAction
         }
 
         $review = $this->reviewRepository->create([
-            'tenant_id' => $data->tenantId,
             'product_id' => $data->productId,
             'rating' => $data->rating,
             'comment' => $data->comment,

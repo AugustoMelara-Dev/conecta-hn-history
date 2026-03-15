@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { useState } from 'react';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { MessageCircle, Star } from 'lucide-react';
@@ -6,45 +5,24 @@ import { MessageCircle, Star } from 'lucide-react';
 export default function ReviewSection({ tenant, reviews = [] }) {
     const { auth } = usePage().props;
     const [hoveredStar, setHoveredStar] = useState(0);
-    const [formErrors, setFormErrors] = useState({});
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [submitted, setSubmitted] = useState(false);
     const safeReviews = Array.isArray(reviews) ? reviews : [];
 
-    const { data, setData, reset } = useForm({
+    const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
         tenant_id: tenant.id,
         product_id: '',
         rating: 5,
         comment: '',
     });
 
-    const submit = async (e) => {
+    const submit = (e) => {
         e.preventDefault();
-        setIsSubmitting(true);
-        setSubmitted(false);
-        setFormErrors({});
-
-        try {
-            await axios.post(route('reviews.store'), data, {
-                headers: {
-                    Accept: 'application/json',
-                },
-            });
-
-            reset('comment');
-            setData('rating', 5);
-            setSubmitted(true);
-        } catch (error) {
-            if (error.response?.status === 422) {
-                setFormErrors(error.response.data.errors || {});
-            } else {
-                setFormErrors({
-                    general: 'No pudimos enviar tu resena. Intenta nuevamente.',
-                });
-            }
-        } finally {
-            setIsSubmitting(false);
-        }
+        post(route('reviews.store'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                reset('comment');
+                setData('rating', 5);
+            },
+        });
     };
 
     const getReviewDate = (review) => {
@@ -71,15 +49,15 @@ export default function ReviewSection({ tenant, reviews = [] }) {
 
                 {auth.user ? (
                     <form onSubmit={submit} className="space-y-6">
-                        {submitted && (
+                        {recentlySuccessful && (
                             <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-sm">
                                 Tu resena ha sido enviada y esta pendiente de moderacion. Gracias.
                             </div>
                         )}
 
-                        {formErrors.general && (
+                        {errors.error && (
                             <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm">
-                                {formErrors.general}
+                                {errors.error}
                             </div>
                         )}
 
@@ -105,7 +83,7 @@ export default function ReviewSection({ tenant, reviews = [] }) {
                                     </button>
                                 ))}
                             </div>
-                            {formErrors.rating && <p className="text-red-400 text-xs mt-1">{formErrors.rating}</p>}
+                            {errors.rating && <p className="text-red-400 text-xs mt-1">{errors.rating}</p>}
                         </div>
 
                         <div>
@@ -120,16 +98,16 @@ export default function ReviewSection({ tenant, reviews = [] }) {
                                 className="w-full bg-slate-900 border border-white/10 rounded-xl p-4 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-white/20 focus:border-white/20 transition-all resize-none"
                                 placeholder="Como fue tu experiencia con este negocio?"
                             />
-                            {formErrors.comment && <p className="text-red-400 text-xs mt-1">{formErrors.comment}</p>}
-                            {formErrors.tenant_id && <p className="text-red-400 text-xs mt-1">{formErrors.tenant_id}</p>}
+                            {errors.comment && <p className="text-red-400 text-xs mt-1">{errors.comment}</p>}
+                            {errors.tenant_id && <p className="text-red-400 text-xs mt-1">{errors.tenant_id}</p>}
                         </div>
 
                         <button
                             type="submit"
-                            disabled={isSubmitting}
+                            disabled={processing}
                             className="bg-white text-black hover:bg-slate-200 px-6 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 flex items-center gap-2"
                         >
-                            {isSubmitting ? 'Enviando...' : 'Publicar Resena'}
+                            {processing ? 'Enviando...' : 'Publicar Resena'}
                         </button>
                     </form>
                 ) : (
