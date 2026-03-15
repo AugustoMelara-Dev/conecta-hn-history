@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Application\Sales\Contracts\InventoryHoldPortInterface;
 use App\Contracts\Scope\TenantContextInterface;
 use App\Infrastructure\Scope\FilamentTenantContext;
+use App\Infrastructure\Sales\Adapters\EloquentInventoryHoldAdapter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -127,6 +129,11 @@ class InfrastructureServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Application\Auth\Contracts\AuthTokenServiceInterface::class,
             \App\Infrastructure\Auth\SanctumAuthTokenService::class
+        );
+
+        $this->app->bind(
+            InventoryHoldPortInterface::class,
+            EloquentInventoryHoldAdapter::class
         );
     }
 
