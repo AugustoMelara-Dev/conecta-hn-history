@@ -14,6 +14,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import FollowButton from '@/Components/Public/FollowButton';
+import ReviewSection from '@/Components/Public/ReviewSection';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { Badge } from '@/Components/ui/badge';
 import {
@@ -393,11 +394,7 @@ export default function TenantShow({
 
                         {/* Reviews Tab */}
                         <TabsContent value="reviews" className="mt-8">
-                            <div className="text-center py-12 bg-slate-900/50 rounded-2xl border border-dashed border-white/10">
-                                <MessageCircle className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-white">Reseñas</h3>
-                                <p className="text-slate-400">Próximamente disponible.</p>
-                            </div>
+                            <ReviewSection tenant={tenant} reviews={tenant.reviews || []} />
                         </TabsContent>
                     </main>
                 </Tabs>
