@@ -13,6 +13,7 @@
 
 import { Head, Link } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import FollowButton from '@/Components/Public/FollowButton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { Badge } from '@/Components/ui/badge';
 import {
@@ -231,16 +232,30 @@ export default function TenantShow({
 
                         {/* Info */}
                         <div className={cn(isPro ? "flex-1 mb-2" : "")}>
-                            <h1 className={cn(
-                                "font-bold text-white flex items-center gap-3",
-                                isPro ? "text-3xl md:text-5xl" : "text-2xl justify-center"
+                            <div className={cn(
+                                "flex flex-wrap items-center gap-4",
+                                !isPro && "justify-center"
                             )}>
-                                {tenant.name}
-                                {isPro && <BadgeCheck className="w-8 h-8 text-indigo-400 fill-indigo-900/50" />}
-                            </h1>
+                                <h1 className={cn(
+                                    "font-bold text-white flex items-center gap-3",
+                                    isPro ? "text-3xl md:text-5xl" : "text-2xl"
+                                )}>
+                                    {tenant.name}
+                                    {isPro && <BadgeCheck className="w-8 h-8 text-indigo-400 fill-indigo-900/50" />}
+                                </h1>
+
+                                {!isOwner && (
+                                    <FollowButton
+                                        tenantId={tenant.id}
+                                        isFollowing={isFollowing}
+                                        followersCount={followersCount}
+                                        className="bg-white/10 hover:bg-white/20 border-white/20 text-white shadow-sm backdrop-blur-md"
+                                    />
+                                )}
+                            </div>
 
                             <div className={cn(
-                                "flex flex-wrap items-center gap-3 text-white/90 mt-2",
+                                "flex flex-wrap items-center gap-3 text-white/90 mt-3",
                                 !isPro && "justify-center"
                             )}>
                                 <Badge className="bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md">
