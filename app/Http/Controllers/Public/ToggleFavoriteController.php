@@ -33,7 +33,7 @@ final class ToggleFavoriteController extends Controller
     public function __invoke(Request $request): Response
     {
         $validated = $request->validate([
-            'tenant_id' => ['required', 'integer'],
+            'tenant_id' => ['required', 'string'],
         ]);
 
         // SECURE: Use TenantResolver - only returns public, active tenants
