@@ -10,27 +10,11 @@ use App\Exceptions\TenantMismatchException;
 use App\Infrastructure\Auth\SanctumAuthTokenService;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    if (! Schema::hasTable('personal_access_tokens')) {
-        Schema::create('personal_access_tokens', function (Blueprint $table) {
-            $table->id();
-            $table->uuidMorphs('tokenable');
-            $table->string('name');
-            $table->string('token', 64)->unique();
-            $table->text('abilities')->nullable();
-            $table->timestamp('last_used_at')->nullable();
-            $table->timestamp('expires_at')->nullable();
-            $table->timestamps();
-        });
-    }
-
+    // personal_access_tokens already exists after migrate:fresh via Sanctum.
+    // Recreating it here would run DDL inside RefreshDatabase transactions.
     // Crear dos tenants separados
     $this->tenantA = Tenant::factory()->create([
         'name' => 'Tenant A',
