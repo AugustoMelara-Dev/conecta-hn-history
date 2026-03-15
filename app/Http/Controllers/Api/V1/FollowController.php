@@ -23,9 +23,9 @@ final class FollowController extends Controller
     ) {}
 
     /**
-     * @param  int  $tenantId  Route parameter as int, not Model
+     * @param  string  $tenantId  Route parameter as string (UUID)
      */
-    public function toggle(Request $request, int $tenantId): JsonResponse
+    public function toggle(Request $request, string $tenantId): JsonResponse
     {
         $user = $request->user();
 
