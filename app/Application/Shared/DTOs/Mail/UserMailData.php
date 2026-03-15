@@ -22,10 +22,10 @@ namespace App\Application\Shared\DTOs\Mail;
 final readonly class UserMailData
 {
     public function __construct(
-        public int $id,
+        public string|int $id,
         public string $name,
         #[\SensitiveParameter] public string $email,
-        public ?int $tenantId = null,
+        public string|int|null $tenantId = null,
     ) {}
 
     /**
