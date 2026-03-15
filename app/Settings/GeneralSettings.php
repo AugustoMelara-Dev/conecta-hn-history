@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Settings;
 
-use Spatie\LaravelSettings\Settings;
+use App\Settings\BaseSettings;
 
 /**
  * GeneralSettings - Torre de Control del Sistema
@@ -12,7 +12,7 @@ use Spatie\LaravelSettings\Settings;
  * DTO tipado para gestión centralizada de configuraciones.
  * Uso: app(GeneralSettings::class)->pro_plan_price
  */
-class GeneralSettings extends Settings
+class GeneralSettings extends BaseSettings
 {
     // ═══════════════════════════════════════════════════════════════════════
     // FINANZAS Y SUSCRIPCIONES
