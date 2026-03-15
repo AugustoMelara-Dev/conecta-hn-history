@@ -21,6 +21,7 @@ class Campaign extends Model
         'subject',
         'content',
         'type',
+        'audience_type',
         'status',
         'scheduled_at',
         'sent_at',
@@ -34,6 +35,7 @@ class Campaign extends Model
     protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
 
     protected $casts = [
+        'audience_type' => \App\Domain\Marketing\Enums\AudienceType::class,
         'scheduled_at' => 'datetime',
         'sent_at' => 'datetime',
         'recipients_count' => 'integer',
