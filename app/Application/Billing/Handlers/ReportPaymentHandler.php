@@ -19,6 +19,7 @@ use App\Domain\Shared\ValueObjects\Money;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use DateTimeImmutable;
 use App\Domain\Billing\Exceptions\PaymentProcessingException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -100,6 +101,11 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
 
             return ReportPaymentResult::fromEntity($payment);
 
+        } catch (UniqueConstraintViolationException $e) {
+            // SCENARIO 2a: COLLISION via Eloquent (UniqueConstraintViolationException)
+            // Eloquent wraps PDO constraint violations before they reach PaymentProcessingException.
+            return $this->handleDuplicateFromConstraint($command);
+
         } catch (PaymentProcessingException $e) {
             // SCENARIO 2: COLLISION (We Lost)
             // Code 23000 = Integrity Constraint Violation (Duplicate Key)
@@ -110,6 +116,26 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
             // RECOVERY LOGIC
             return $this->handleDuplicate($command, $e);
         }
+    }
+
+    private function handleDuplicateFromConstraint(ReportPaymentCommand $command): ReportPaymentResult
+    {
+        $existingPayment = $this->paymentRepository->findByIdempotencyKey(
+            $command->tenantId,
+            $command->idempotencyKey
+        );
+
+        if (! $existingPayment) {
+            throw new \RuntimeException('Concurrency anomaly: Unique constraint violated but record not found.');
+        }
+
+        $this->logger->info('Recovered existing payment (Eloquent constraint)', [
+            'tenant_id' => $command->tenantId,
+            'key' => $command->idempotencyKey,
+            'existing_id' => $existingPayment->id,
+        ]);
+
+        return ReportPaymentResult::fromEntity($existingPayment);
     }
 
     private function handleDuplicate(ReportPaymentCommand $command, PaymentProcessingException $e): ReportPaymentResult
