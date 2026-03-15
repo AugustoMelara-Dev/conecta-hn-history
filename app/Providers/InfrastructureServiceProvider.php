@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Application\Sales\Contracts\CheckoutSessionPortInterface;
 use App\Application\Sales\Contracts\InventoryHoldPortInterface;
 use App\Contracts\Scope\TenantContextInterface;
 use App\Infrastructure\Scope\FilamentTenantContext;
+use App\Infrastructure\Sales\Adapters\EloquentCheckoutSessionAdapter;
 use App\Infrastructure\Sales\Adapters\EloquentInventoryHoldAdapter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -134,6 +136,11 @@ class InfrastructureServiceProvider extends ServiceProvider
         $this->app->bind(
             InventoryHoldPortInterface::class,
             EloquentInventoryHoldAdapter::class
+        );
+
+        $this->app->bind(
+            CheckoutSessionPortInterface::class,
+            EloquentCheckoutSessionAdapter::class
         );
     }
 
