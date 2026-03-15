@@ -241,5 +241,23 @@ class InfrastructureServiceProvider extends ServiceProvider
         RateLimiter::for('notifications', function (Request $request) {
             return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
         });
+
+        // 9. API VERIFICATION: Coupon validation, OTP verify, identity checks
+        // 10 attempts per minute per user/IP (stricter than global api)
+        RateLimiter::for('api.verification', function (Request $request) {
+            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // 10. API OTP GENERATION: Prevent SMS bombing / cost overflow
+        // 3 attempts per minute per IP (same policy as otp-request)
+        RateLimiter::for('api.otp-generation', function (Request $request) {
+            return Limit::perMinute(3)->by($request->ip());
+        });
+
+        // 11. API TRANSACTIONS: Order creation, payment submission
+        // 20 attempts per minute per user/IP
+        RateLimiter::for('api.transactions', function (Request $request) {
+            return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
+        });
     }
 }
