@@ -13,15 +13,15 @@ use Illuminate\Http\Request;
 /**
  * ReviewController - Public HTTP Gateway
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  REFACTORED: The Dumb Gateway                                            ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  Responsibility:                                                         ║
- * ║  1. Validate Input (Framework Level)                                     ║
- * ║  2. Hydrate DTO                                                          ║
- * ║  3. Invoke Action                                                        ║
- * ║  4. Return Response                                                      ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  REFACTORED: The Dumb Gateway                                            â•‘
+ * â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•£
+ * â•‘  Responsibility:                                                         â•‘
+ * â•‘  1. Validate Input (Framework Level)                                     â•‘
+ * â•‘  2. Hydrate DTO                                                          â•‘
+ * â•‘  3. Invoke Action                                                        â•‘
+ * â•‘  4. Return Response                                                      â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final class ReviewController extends Controller
 {
@@ -32,7 +32,7 @@ final class ReviewController extends Controller
     {
         // 1. Framework Validation
         $request->validate([
-            'tenant_id' => ['required', 'integer', 'exists:tenants,id'],
+            'tenant_id' => ['required', 'string', 'exists:tenants,id'],
             'product_id' => ['nullable', 'integer', 'exists:products,id'],
             'rating' => ['required', 'integer', 'min:1', 'max:5'],
             'comment' => ['nullable', 'string', 'max:1000'],
@@ -48,7 +48,7 @@ final class ReviewController extends Controller
             // 4. Return Standard Response
             return response()->json([
                 'status' => 'success',
-                'message' => 'Reseña enviada correctamente.',
+                'message' => 'ReseÃ±a enviada correctamente.',
             ], 201);
 
         } catch (\Exception $e) {
@@ -57,7 +57,7 @@ final class ReviewController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Ocurrió un error al procesar tu reseña.',
+                'message' => 'OcurriÃ³ un error al procesar tu reseÃ±a.',
             ], 500);
         }
     }
