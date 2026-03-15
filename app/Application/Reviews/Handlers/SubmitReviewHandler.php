@@ -15,14 +15,14 @@ use App\Domain\Shared\Contracts\EventDispatcherInterface;
 /**
  * SubmitReviewHandler - Minimalist Command Handler for Review Submission
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  SINGLE RESPONSIBILITY: Persist Review ONLY. No aggregate updates.      ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  - NO ProductRepository injection (decoupling from Product aggregate)   ║
- * ║  - NO SQL aggregation queries (moved to async listener)                 ║
- * ║  - Dispatches ReviewCreated for eventual consistency processing         ║
- * ║  - STRICT RETURN: SubmitReviewResult DTO (no object/array leak)         ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  SINGLE RESPONSIBILITY: Persist Review ONLY. No aggregate updates.      â•‘
+ * â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•£
+ * â•‘  - NO ProductRepository injection (decoupling from Product aggregate)   â•‘
+ * â•‘  - NO SQL aggregation queries (moved to async listener)                 â•‘
+ * â•‘  - Dispatches ReviewCreated for eventual consistency processing         â•‘
+ * â•‘  - STRICT RETURN: SubmitReviewResult DTO (no object/array leak)         â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final readonly class SubmitReviewHandler
 {
@@ -55,7 +55,7 @@ final readonly class SubmitReviewHandler
             'user_id' => $command->userId,
             'rating' => $command->rating,
             'comment' => $command->comment,
-            'is_approved' => true, // Auto-approve per business rule
+            'is_approved' => false, // Default to pending moderation
         ]);
 
         // 2. Dispatch Domain Event (Transactional Outbox)
