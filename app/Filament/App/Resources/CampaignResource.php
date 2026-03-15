@@ -151,17 +151,16 @@ class CampaignResource extends Resource
                             return;
                         }
 
-                        \App\Domain\Marketing\Jobs\SendCampaignEmail::dispatch($record->id, $tenant->id);
+                        \App\Domain\Marketing\Jobs\DispatchCampaignSegment::dispatch($record->id, $tenant->id);
 
                         $record->update([
-                            'sent_at' => now(),
-                            'recipients_count' => $audienceCount,
+                            'status' => 'queued',
                         ]);
 
                         Notification::make()
-                            ->title('Campana Enviada')
+                            ->title('Campana Encolada')
                             ->success()
-                            ->body("Se envio la campana a {$audienceCount} destinatarios.")
+                            ->body("Se procesara el envio a {$audienceCount} destinatarios en breve.")
                             ->send();
                     }),
 
@@ -192,9 +191,21 @@ class CampaignResource extends Resource
     {
         return match ($audienceType) {
             AudienceType::FOLLOWERS, null => $tenant->followers()->count(),
-            AudienceType::LEADS => \Illuminate\Support\Facades\DB::table('leads')->where('tenant_id', $tenant->id)->count(),
-            AudienceType::ALL_CUSTOMERS => 0,
-            AudienceType::WAITLIST => 0,
+            AudienceType::LEADS => \Illuminate\Support\Facades\DB::table('leads')
+                ->where('tenant_id', $tenant->id)
+                ->join('users', 'leads.email', '=', 'users.email')
+                ->distinct()
+                ->count('users.id'),
+            AudienceType::ALL_CUSTOMERS => \Illuminate\Support\Facades\DB::table('appointments')
+                ->where('tenant_id', $tenant->id)
+                ->whereNotNull('user_id')
+                ->distinct()
+                ->count('user_id'),
+            AudienceType::WAITLIST => \Illuminate\Support\Facades\DB::table('waitlists')
+                ->where('tenant_id', $tenant->id)
+                ->whereNotNull('user_id')
+                ->distinct()
+                ->count('user_id'),
         };
     }
 }
