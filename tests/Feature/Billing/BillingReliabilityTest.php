@@ -6,7 +6,6 @@ use App\Application\Billing\Commands\ReportPaymentCommand;
 use App\Application\Billing\Handlers\ReportPaymentHandlerInterface;
 use App\Application\Shared\Common\Contracts\RateLimiterInterface;
 use App\Domain\Billing\Services\DocumentStorageServiceInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
@@ -15,8 +14,6 @@ use Exception;
 
 class BillingReliabilityTest extends TestCase
 {
-    use RefreshDatabase;
-
     protected function setUp(): void
     {
         parent::setUp();
