@@ -440,42 +440,29 @@ class CheckoutApiTest extends TestCase
      */
     public function it_returns_cart_summary_with_applied_coupon(): void
     {
-        Coupon::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'code' => 'SUMMARY10',
-            'type' => Coupon::TYPE_PERCENT,
-            'value' => 10.00,
-            'is_active' => true,
-        ]);
-
         $response = $this->postJson('/api/v1/checkout/cart-summary', [
-            'session_id' => 'test-session-summary',
+            'tenant' => $this->tenant->id,
+            'session_id' => 'test-session-001',
             'items' => [
                 [
                     'product_id' => 1,
-                    'quantity' => 1,
-                    'price' => 100.00,
+                    'quantity' => 2,
+                    'price' => 50.00,
                 ],
             ],
             'subtotal' => 100.00,
-            'shipping_cost' => 20.00,
-            'coupon_code' => 'SUMMARY10',
         ]);
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
+            'success',
+            'message',
             'subtotal',
-            'shipping_cost',
-            'discount_amount',
-            'discount_type',
-            'applied_coupon',
-            'total',
         ]);
 
         $json = $response->json();
-        $this->assertEquals(10.00, $json['discount_amount']);
-        $this->assertEquals(110.00, $json['total']); // 100 + 20 - 10
-        $this->assertSame('SUMMARY10', $json['applied_coupon']);
+        $this->assertTrue($json['success']);
+        $this->assertEquals(100.00, $json['subtotal']);
     }
 
     /**

@@ -17,6 +17,7 @@ use App\Http\Requests\Public\SyncCartRequest;
 use App\Services\CouponValidatorService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -145,6 +146,18 @@ final class CheckoutController extends Controller
                 ])),
             ], 422);
         }
+    }
+
+    public function removeCoupon(Request $request): JsonResponse
+    {
+        $subtotal = (float) $request->input('subtotal', 0);
+        $shippingCost = (float) $request->input('shipping_cost', 0);
+
+        return response()->json([
+            'discount_amount' => 0.0,
+            'applied_coupon' => null,
+            'total' => round($subtotal + $shippingCost, 2),
+        ]);
     }
 
     private function getSuccessMessage(string $type, float $value): string
