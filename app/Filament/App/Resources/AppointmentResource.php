@@ -167,6 +167,14 @@ class AppointmentResource extends Resource
                     ->visible(fn ($record) => $record->status === 'confirmed')
                     ->action(fn ($record) => $record->complete()),
 
+                Tables\Actions\Action::make('no_show')
+                    ->label('No Asistió')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn ($record) => in_array($record->status, ['pending', 'confirmed']))
+                    ->requiresConfirmation()
+                    ->action(fn ($record) => $record->markAsNoShow()),
+
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
