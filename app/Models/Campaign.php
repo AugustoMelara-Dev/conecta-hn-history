@@ -20,6 +20,9 @@ class Campaign extends Model
     protected $fillable = [
         'subject',
         'content',
+        'type',
+        'status',
+        'scheduled_at',
         'sent_at',
         'recipients_count',
     ];
@@ -31,6 +34,7 @@ class Campaign extends Model
     protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
 
     protected $casts = [
+        'scheduled_at' => 'datetime',
         'sent_at' => 'datetime',
         'recipients_count' => 'integer',
     ];

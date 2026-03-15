@@ -26,7 +26,7 @@ final readonly class CampaignMailData
         return new self(
             id: $campaign->id,
             subject: $campaign->subject ?? '',
-            body: $campaign->body ?? '',
+            body: $campaign->content ?? '',
             tenantName: $campaign->tenant?->name ?? 'Conecta HN',
         );
     }
