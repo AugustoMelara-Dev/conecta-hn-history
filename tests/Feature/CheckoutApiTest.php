@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Coupon;
 use App\Models\Tenant;
 use App\Models\User;
@@ -44,8 +45,18 @@ class CheckoutApiTest extends TestCase
 
         // Bind tenant to container
         app()->instance('currentTenant', $this->tenant);
+        // Initialize TenantContext so TenantScope can resolve tenant ID
+        app()->make(TenantContext::class)->setTenant($this->tenant->id);
 
         $this->apiEndpoint = '/api/v1/checkout/validate-coupon';
+    }
+
+    protected function tearDown(): void
+    {
+        // Reset TenantContext singleton to avoid contaminating subsequent tests
+        app()->make(TenantContext::class)->reset();
+
+        parent::tearDown();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -438,6 +449,14 @@ class CheckoutApiTest extends TestCase
         ]);
 
         $response = $this->postJson('/api/v1/checkout/cart-summary', [
+            'session_id' => 'test-session-summary',
+            'items' => [
+                [
+                    'product_id' => 1,
+                    'quantity' => 1,
+                    'price' => 100.00,
+                ],
+            ],
             'subtotal' => 100.00,
             'shipping_cost' => 20.00,
             'coupon_code' => 'SUMMARY10',
