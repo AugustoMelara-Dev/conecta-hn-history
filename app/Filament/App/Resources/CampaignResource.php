@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\Marketing\Enums\AudienceType;
 use App\Models\Campaign;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -20,17 +21,17 @@ class CampaignResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'Campañas';
+        return 'Campanas';
     }
 
     public static function getModelLabel(): string
     {
-        return 'Campaña';
+        return 'Campana';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Campañas';
+        return 'Campanas';
     }
 
     public static function getNavigationGroup(): ?string
@@ -42,18 +43,27 @@ class CampaignResource extends Resource
     {
         return $schema
             ->schema([
-                Forms\Components\Section::make('Detalles de la Campaña')
+                Forms\Components\Section::make('Detalles de la Campana')
                     ->schema([
+                        Forms\Components\Select::make('audience_type')
+                            ->label('Destinatarios (Audiencia)')
+                            ->options(fn (): array => collect(AudienceType::cases())
+                                ->mapWithKeys(fn (AudienceType $type) => [$type->value => $type->label()])
+                                ->all())
+                            ->required()
+                            ->default(AudienceType::FOLLOWERS->value)
+                            ->helperText('A que segmento deseas enviar esta campana?'),
+
                         Forms\Components\TextInput::make('subject')
                             ->label('Asunto')
                             ->required()
                             ->maxLength(255)
-                            ->placeholder('Ej: ¡Black Friday! 50% de descuento'),
+                            ->placeholder('Ej: Black Friday! 50% de descuento'),
 
                         Forms\Components\RichEditor::make('content')
                             ->label('Contenido')
                             ->required()
-                            ->placeholder('Escribe tu mensaje aquí...')
+                            ->placeholder('Escribe tu mensaje aqui...')
                             ->columnSpanFull()
                             ->toolbarButtons([
                                 'bold',
@@ -65,15 +75,15 @@ class CampaignResource extends Resource
                             ]),
                     ]),
 
-                Forms\Components\Section::make('Estadísticas')
+                Forms\Components\Section::make('Estadisticas')
                     ->schema([
                         Forms\Components\Placeholder::make('recipients_count')
                             ->label('Destinatarios')
-                            ->content(fn (?Campaign $record) => $record ? $record->recipients_count.' seguidores' : 'Se calculará al enviar'),
+                            ->content(fn (?Campaign $record) => $record ? $record->recipients_count.' personas' : 'Se calculara al enviar'),
 
                         Forms\Components\Placeholder::make('sent_at')
-                            ->label('Fecha de envío')
-                            ->content(fn (?Campaign $record) => $record && $record->sent_at ? $record->sent_at->format('d/m/Y H:i') : 'Aún no enviada'),
+                            ->label('Fecha de envio')
+                            ->content(fn (?Campaign $record) => $record && $record->sent_at ? $record->sent_at->format('d/m/Y H:i') : 'Aun no enviada'),
                     ])
                     ->columns(2)
                     ->hidden(fn (string $operation) => $operation === 'create'),
@@ -89,6 +99,13 @@ class CampaignResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->limit(50),
+
+                Tables\Columns\TextColumn::make('audience_type')
+                    ->label('Audiencia')
+                    ->formatStateUsing(fn (?AudienceType $state) => $state?->label() ?? 'Seguidores')
+                    ->badge()
+                    ->color('info')
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('recipients_count')
                     ->label('Destinatarios')
@@ -117,36 +134,34 @@ class CampaignResource extends Resource
                     ->icon('heroicon-o-paper-airplane')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Enviar Campaña')
-                    ->modalDescription(fn (Campaign $record) => 'Se enviará esta campaña a todos tus seguidores. ¿Estás seguro?')
+                    ->modalHeading('Enviar Campana')
+                    ->modalDescription(fn (Campaign $record) => 'Se enviara esta campana al segmento seleccionado. Estas seguro?')
                     ->visible(fn (Campaign $record) => ! $record->sent_at)
                     ->action(function (Campaign $record) {
                         $tenant = \Filament\Facades\Filament::getTenant();
-                        $followersCount = $tenant->followers()->count();
+                        $audienceCount = self::calculateAudienceCount($tenant, $record->audience_type);
 
-                        if ($followersCount === 0) {
+                        if ($audienceCount === 0) {
                             Notification::make()
-                                ->title('Sin seguidores')
+                                ->title('Audiencia vacia')
                                 ->warning()
-                                ->body('No tienes seguidores para enviar esta campaña.')
+                                ->body('No tienes contactos en este segmento para enviar la campana.')
                                 ->send();
 
                             return;
                         }
 
-                        // Dispatch the job to send emails (with tenant ID for security)
                         \App\Domain\Marketing\Jobs\SendCampaignEmail::dispatch($record->id, $tenant->id);
 
-                        // Update campaign status
                         $record->update([
                             'sent_at' => now(),
-                            'recipients_count' => $followersCount,
+                            'recipients_count' => $audienceCount,
                         ]);
 
                         Notification::make()
-                            ->title('Campaña Enviada')
+                            ->title('Campana Enviada')
                             ->success()
-                            ->body("Se envió la campaña a {$followersCount} seguidores.")
+                            ->body("Se envio la campana a {$audienceCount} destinatarios.")
                             ->send();
                     }),
 
@@ -159,8 +174,8 @@ class CampaignResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('No hay campañas')
-            ->emptyStateDescription('Crea tu primera campaña de marketing para conectar con tus seguidores.')
+            ->emptyStateHeading('No hay campanas')
+            ->emptyStateDescription('Crea tu primera campana de marketing para conectar con tu audiencia.')
             ->emptyStateIcon('heroicon-o-megaphone');
     }
 
@@ -171,5 +186,15 @@ class CampaignResource extends Resource
             'create' => \App\Filament\App\Resources\CampaignResource\Pages\CreateCampaign::route('/create'),
             'edit' => \App\Filament\App\Resources\CampaignResource\Pages\EditCampaign::route('/{record}/edit'),
         ];
+    }
+
+    private static function calculateAudienceCount($tenant, ?AudienceType $audienceType): int
+    {
+        return match ($audienceType) {
+            AudienceType::FOLLOWERS, null => $tenant->followers()->count(),
+            AudienceType::LEADS => \Illuminate\Support\Facades\DB::table('leads')->where('tenant_id', $tenant->id)->count(),
+            AudienceType::ALL_CUSTOMERS => 0,
+            AudienceType::WAITLIST => 0,
+        };
     }
 }
