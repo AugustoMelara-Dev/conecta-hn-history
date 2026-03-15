@@ -6,11 +6,13 @@ namespace App\Infrastructure\Listeners\Booking;
 
 use App\Domain\Booking\Events\AppointmentCancelled;
 use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
+use App\Mail\WaitlistSlotFreedMail;
 use App\Models\Waitlist;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 final class CheckWaitlistOnCancellation implements ShouldQueue
 {
@@ -44,9 +46,33 @@ final class CheckWaitlistOnCancellation implements ShouldQueue
             'match_count' => $waitlistedCustomers->count(),
         ]);
 
+        $tenant = \App\Models\Tenant::find($event->tenantId);
+        $service = \App\Models\Service::find($event->serviceId);
+
+        if (! $tenant || ! $service) {
+            Log::warning('CheckWaitlistOnCancellation: Missing Tenant or Service info for email dispatch');
+            return;
+        }
+
+        $bookingUrl = url("/t/{$tenant->slug}/book");
+
         foreach ($waitlistedCustomers as $customer) {
-            // Future step: Dispatch email/SMS notification to $customer->customer_email
-            // and update status to 'notified'.
+            try {
+                Mail::to($customer->customer_email)->send(new WaitlistSlotFreedMail(
+                    customerName: $customer->customer_name ?? 'Cliente',
+                    tenantName: $tenant->name,
+                    serviceName: $service->name,
+                    date: $date,
+                    bookingUrl: $bookingUrl
+                ));
+
+                $customer->update(['status' => 'notified']);
+            } catch (\Exception $e) {
+                Log::error('CheckWaitlistOnCancellation: Failed to send waitlist email', [
+                    'waitlist_id' => $customer->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 }
