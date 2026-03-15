@@ -6,14 +6,13 @@ namespace App\Policies;
 
 use App\Models\Product;
 use App\Models\User;
+use App\Settings\GeneralSettings;
 use Illuminate\Auth\Access\Response;
 
 /**
  * ProductPolicy - Tenant-Aware Authorization for Products
  *
- * ══════════════════════════════════════════════════════════════════════════════
- * SECURITY: Enforces tenant ownership for all product operations
- * ══════════════════════════════════════════════════════════════════════════════
+ * SECURITY: Enforces tenant ownership for all product operations.
  */
 class ProductPolicy extends TenantAwarePolicy
 {
@@ -52,19 +51,22 @@ class ProductPolicy extends TenantAwarePolicy
             return Response::deny('Debes tener un negocio para crear productos.');
         }
 
-        // PRO tenants have unlimited products
-        if ($tenant->is_pro) {
+        $settings = app(GeneralSettings::class);
+        $limit = $tenant->is_pro
+            ? $settings->pro_plan_product_limit
+            : $settings->free_plan_product_limit;
+
+        if ($tenant->products()->count() < $limit) {
             return Response::allow();
         }
 
-        // Free tenants limited to 10 products
-        if ($tenant->products()->count() < 10) {
-            return Response::allow();
-        }
+        $planName = $tenant->is_pro ? 'PRO' : 'Gratuito';
+        $upgradePrompt = $tenant->is_pro
+            ? 'Contacta a soporte para aumentar tu capacidad.'
+            : 'Actualiza a PRO para expandir tu catalogo.';
 
         return Response::deny(
-            'Has alcanzado el límite de 10 productos de tu Plan Gratuito. '.
-            'Actualiza a PRO para ilimitados.'
+            "Has alcanzado el límite de {$limit} productos de tu Plan {$planName}. {$upgradePrompt}"
         );
     }
 
