@@ -7,7 +7,9 @@ namespace App\Providers;
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
 use App\Infrastructure\Auth\Repositories\EloquentOtpRepository;
+use App\Infrastructure\Auth\Services\CacheOtpDeliveryPayloadStore;
 use App\Infrastructure\Auth\Services\HmacOtpHasher;
+use App\Infrastructure\Auth\Services\OtpNotifierRouter;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
 
@@ -32,24 +34,20 @@ class AuthDomainServiceProvider extends ServiceProvider
         // 2. Bind Persistent Repository
         $this->app->bind(OtpRepositoryInterface::class, EloquentOtpRepository::class);
 
+        // 2.1. Bind ephemeral OTP delivery payload store
+        $this->app->bind(
+            \App\Application\Auth\Contracts\OtpDeliveryPayloadStoreInterface::class,
+            CacheOtpDeliveryPayloadStore::class
+        );
+
         // 3. Bind Password Hashing Service (Shared Infrastructure)
         $this->app->bind(
             \App\Domain\Shared\PasswordHasherInterface::class,
             \App\Infrastructure\Shared\Services\LaravelPasswordHasher::class
         );
 
-        // 4. Bind OTP Notifier with Circuit Breaker (Resilience Layer)
-        $this->app->bind(\App\Domain\Auth\Contracts\OtpNotifierInterface::class, function ($app) {
-            // Instantiate concrete provider (e.g., Email or SMS based on config)
-            $concreteService = $app->make(\App\Infrastructure\Notifications\EmailOtpNotifier::class);
-
-            // Wrap with Circuit Breaker
-            return new \App\Infrastructure\Shared\Resilience\CircuitBreakerDecorator(
-                innerService: $concreteService,
-                cache: $app->make(\Illuminate\Contracts\Cache\Repository::class),
-                serviceName: 'otp_notifier_email'
-            );
-        });
+        // 4. Bind OTP Notifier router. Channel-specific resilience is handled by the listener.
+        $this->app->bind(\App\Domain\Auth\Contracts\OtpNotifierInterface::class, OtpNotifierRouter::class);
     }
 
     /**

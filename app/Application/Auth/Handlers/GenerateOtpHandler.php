@@ -6,6 +6,7 @@ namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
+use App\Application\Auth\Contracts\OtpDeliveryPayloadStoreInterface;
 use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\EntropyGeneratorInterface;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
@@ -43,6 +44,7 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         private LoggerInterface $logger,
         private EntropyGeneratorInterface $entropyGenerator,
         private OtpHasherInterface $hasher,
+        private OtpDeliveryPayloadStoreInterface $deliveryPayloadStore,
         private TraceContextInterface $traceContext,
         private IdempotencyContextInterface $idempotencyContext,
         private DataScrubberInterface $scrubber,
@@ -57,8 +59,8 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         // ═══════════════════════════════════════════════════════════════════
         $user = $this->userRepository->findByEmail($command->identifier, $command->tenantId);
 
-        if ($user !== null && $user->tenantId !== $command->tenantId) {
-            throw SecurityException::crossTenantAccess($user->id ?? 'unknown', $command->tenantId);
+        if ($user !== null && $user->tenantId() !== $command->tenantId) {
+            throw SecurityException::crossTenantAccess($user->id(), $command->tenantId);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -72,7 +74,7 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
 
         // Create new OTP
         $otpEntity = $this->otpRepository->create(
-            userId: $user?->id,
+            userId: $user?->id(),
             identifier: $command->identifier,
             tenantId: $command->tenantId,
             hashedCode: $hashedCode,
@@ -87,8 +89,15 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         // ═══════════════════════════════════════════════════════════════════
         $event = OtpGenerated::now(
             otpId: $otpEntity->id,
-            userId: $user?->id,
+            userId: $user?->id(),
             tenantId: $command->tenantId,
+        );
+
+        $this->deliveryPayloadStore->put(
+            otpId: $otpEntity->id,
+            plainTextCode: $plainCode,
+            identifier: $command->identifier,
+            expiryMinutes: $this->otpExpiryMinutes,
         );
 
         $this->outboxRepository->append($event);

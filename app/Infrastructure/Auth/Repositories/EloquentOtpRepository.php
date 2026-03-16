@@ -50,7 +50,7 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
      * SECURITY: OTP record MUST be associated with tenantId.
      */
     public function create(
-        ?int $userId,
+        ?string $userId,
         string $identifier,
         string $tenantId,
         string $hashedCode,

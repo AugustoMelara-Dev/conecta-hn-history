@@ -34,7 +34,7 @@ interface OtpRepositoryInterface
      * to ensure tenant isolation in persistence layer.
      */
     public function create(
-        ?int $userId,
+        ?string $userId,
         string $identifier,
         string $tenantId,
         string $hashedCode,

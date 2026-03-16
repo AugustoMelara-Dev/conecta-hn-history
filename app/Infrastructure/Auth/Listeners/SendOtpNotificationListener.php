@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Listeners;
 
+use App\Application\Auth\Contracts\OtpDeliveryPayloadStoreInterface;
 use App\Application\Shared\Contracts\CircuitBreakerInterface;
 use App\Domain\Auth\Contracts\OtpNotifierInterface;
 use App\Domain\Auth\Events\OtpGenerated;
+use App\Models\OneTimePassword;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +31,7 @@ final class SendOtpNotificationListener implements ShouldQueue
     public function __construct(
         private OtpNotifierInterface $notifier,
         private CircuitBreakerInterface $circuitBreaker,
+        private OtpDeliveryPayloadStoreInterface $deliveryPayloadStore,
     ) {}
 
     /**
@@ -38,8 +41,33 @@ final class SendOtpNotificationListener implements ShouldQueue
      */
     public function handle(OtpGenerated $event): void
     {
-        $serviceName = 'sms_provider';
-        $maskedIdentifier = $this->maskIdentifier($event->identifier);
+        $otp = OneTimePassword::query()
+            ->whereKey($event->otpId)
+            ->where('tenant_id', $event->tenantId)
+            ->first();
+
+        if ($otp === null) {
+            Log::warning('OTP notification skipped: OTP record not found', [
+                'otp_id' => $event->otpId,
+                'tenant_id' => $event->tenantId,
+            ]);
+
+            return;
+        }
+
+        $deliveryPayload = $this->deliveryPayloadStore->get($event->otpId);
+
+        if ($deliveryPayload === null) {
+            Log::error('OTP notification skipped: missing ephemeral delivery payload', [
+                'otp_id' => $event->otpId,
+                'tenant_id' => $event->tenantId,
+            ]);
+
+            return;
+        }
+
+        $serviceName = $otp->type === 'email' ? 'email_provider' : 'sms_provider';
+        $maskedIdentifier = $this->maskIdentifier($deliveryPayload['identifier']);
 
         // 1. FAIL FAST CHECK
         if (! $this->circuitBreaker->isAvailable($serviceName)) {
@@ -54,12 +82,14 @@ final class SendOtpNotificationListener implements ShouldQueue
         try {
             // 2. ATTEMPT OPERATION (Now with tenant context for branding/routing)
             $this->notifier->send(
-                otpCode: $event->code,
-                recipientIdentifier: $event->identifier,
-                recipientName: $event->recipientName,
+                recipient: null,
+                plainTextCode: $deliveryPayload['plain_text_code'],
+                identifier: $deliveryPayload['identifier'],
                 tenantId: $event->tenantId,
-                expiryMinutes: $event->expiryMinutes
+                expiryMinutes: (int) $deliveryPayload['expiry_minutes'],
             );
+
+            $this->deliveryPayloadStore->forget($event->otpId);
 
             // 3. REPORT SUCCESS
             $this->circuitBreaker->reportSuccess($serviceName);
