@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\Shared\Traits\HasDomainEvents;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
@@ -595,5 +597,10 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         }
 
         return $query->get();
+    }
+
+    public function hasCapability(Capability $capability): bool
+    {
+        return app(CapabilityManagerInterface::class)->has($this, $capability);
     }
 }
