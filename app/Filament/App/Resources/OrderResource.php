@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\OrderResource\Pages;
 use App\Models\Order;
 use Filament\Facades\Filament;
@@ -23,6 +24,16 @@ class OrderResource extends Resource
     protected static ?string $model = Order::class;
 
     protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-clipboard-document-list';
+
+    public static function canViewAny(): bool
+    {
+        return Filament::getTenant()?->hasCapability(Capability::CHECKOUT_BASIC) ?? false;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
 
     public static function getNavigationLabel(): string
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\MenuSectionResource\Pages;
 use App\Models\MenuSection;
 use Filament\Facades\Filament;
@@ -60,9 +61,7 @@ class MenuSectionResource extends Resource
      */
     public static function canViewAny(): bool
     {
-        $tenant = Filament::getTenant();
-
-        return $tenant?->is_pro ?? false;
+        return Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ?? false;
     }
 
     /**
@@ -70,9 +69,7 @@ class MenuSectionResource extends Resource
      */
     public static function shouldRegisterNavigation(): bool
     {
-        $tenant = Filament::getTenant();
-
-        return $tenant?->is_pro ?? false;
+        return static::canViewAny();
     }
 
     /**

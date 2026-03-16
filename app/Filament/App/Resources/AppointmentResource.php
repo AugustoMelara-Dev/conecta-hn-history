@@ -2,8 +2,10 @@
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -21,6 +23,16 @@ class AppointmentResource extends Resource
     protected static ?string $navigationLabel = 'Agenda de Citas';
 
     protected static ?int $navigationSort = 3;
+
+    public static function canViewAny(): bool
+    {
+        return Filament::getTenant()?->hasCapability(Capability::APPOINTMENT_BOOKING) ?? false;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
 
     public static function form(Schema $schema): Schema
     {

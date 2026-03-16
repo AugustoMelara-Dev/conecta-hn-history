@@ -2,8 +2,10 @@
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\ServiceResource\Pages;
 use App\Models\Service;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -21,6 +23,16 @@ class ServiceResource extends Resource
     protected static ?string $navigationLabel = 'Catalogo de Servicios';
 
     protected static ?int $navigationSort = 1;
+
+    public static function canViewAny(): bool
+    {
+        return Filament::getTenant()?->hasCapability(Capability::SERVICE_PACKAGES) ?? false;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
 
     public static function form(Schema $schema): Schema
     {

@@ -2,8 +2,10 @@
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\ServiceProviderResource\Pages;
 use App\Models\ServiceProvider;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -21,6 +23,16 @@ class ServiceProviderResource extends Resource
     protected static ?string $navigationLabel = 'Personal / Staff';
 
     protected static ?int $navigationSort = 2;
+
+    public static function canViewAny(): bool
+    {
+        return Filament::getTenant()?->hasCapability(Capability::STAFF_CALENDAR) ?? false;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
 
     public static function form(Schema $schema): Schema
     {
