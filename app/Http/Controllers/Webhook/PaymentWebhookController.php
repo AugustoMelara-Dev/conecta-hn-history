@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Webhook;
 
 use App\Application\Billing\Actions\HandlePaymentWebhookAction;
+use App\Domain\ValueObjects\Payment\PaymentWebhook;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -48,7 +49,12 @@ final class PaymentWebhookController extends Controller
 
         try {
             // 2. Delegate to Transactional Action
-            $result = $this->webhookAction->execute($eventType ?? 'unknown', $eventData);
+            $webhookDto = PaymentWebhook::fromArray(
+                (string) ($eventType ?? 'unknown'),
+                $payload
+            );
+
+            $result = $this->webhookAction->handle($webhookDto);
 
             // Map result to status code
             $status = match ($result['status'] ?? 'ok') {
