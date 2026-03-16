@@ -1,0 +1,219 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Inventory\Adapters;
+
+use App\Application\Inventory\Contracts\InventoryHoldPortInterface;
+use App\Domain\Inventory\Enums\MovementType;
+use App\Models\InventoryHold;
+use App\Models\InventoryLevel;
+use App\Models\InventoryMovement;
+use App\Models\Location;
+use App\Models\Product;
+use DomainException;
+use Illuminate\Support\Facades\DB;
+
+class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
+{
+    public function reserve(
+        string $tenantId,
+        string $locationId,
+        string $sessionId,
+        int $productId,
+        float $quantity,
+        int $expiresInMinutes = 15
+    ): void {
+        DB::transaction(function () use ($tenantId, $locationId, $sessionId, $productId, $quantity, $expiresInMinutes) {
+            $this->assertValidLocation($tenantId, $locationId);
+
+            $product = Product::query()
+                ->where('id', $productId)
+                ->where('tenant_id', $tenantId)
+                ->first();
+
+            if (! $product) {
+                throw new DomainException("Product {$productId} not found or does not belong to tenant.");
+            }
+
+            $hold = InventoryHold::query()
+                ->where('tenant_id', $tenantId)
+                ->where('session_id', $sessionId)
+                ->where('location_id', $locationId)
+                ->where('product_id', $productId)
+                ->lockForUpdate()
+                ->first();
+
+            $oldQuantity = $hold !== null ? (float) $hold->quantity : 0.0;
+            $newQuantity = round($quantity, 3);
+            $delta = round($newQuantity - $oldQuantity, 3);
+
+            $level = null;
+
+            if ($product->manage_stock) {
+                InventoryLevel::query()->firstOrCreate(
+                    [
+                        'location_id' => $locationId,
+                        'product_id' => $productId,
+                    ],
+                    [
+                        'tenant_id' => $tenantId,
+                        'on_hand' => 0,
+                        'reserved' => 0,
+                        'low_stock_threshold' => $product->low_stock_threshold,
+                    ]
+                );
+
+                $level = InventoryLevel::query()
+                    ->where('location_id', $locationId)
+                    ->where('product_id', $productId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($level === null) {
+                    throw new DomainException("Inventory level missing for product {$productId} at location {$locationId}.");
+                }
+
+                if ($delta > 0 && ! $product->allow_backorders) {
+                    $available = round((float) $level->on_hand - (float) $level->reserved, 3);
+
+                    if ($available < $delta) {
+                        throw new DomainException("Insufficient stock available for product {$productId}.");
+                    }
+                }
+
+                if ($delta !== 0.0) {
+                    $level->reserved = max(0.0, round((float) $level->reserved + $delta, 3));
+                    $level->save();
+                }
+            }
+
+            if ($newQuantity <= 0.0) {
+                $hold?->delete();
+
+                return;
+            }
+
+            InventoryHold::query()->updateOrCreate(
+                [
+                    'tenant_id' => $tenantId,
+                    'session_id' => $sessionId,
+                    'location_id' => $locationId,
+                    'product_id' => $productId,
+                ],
+                [
+                    'quantity' => $newQuantity,
+                    'expires_at' => now()->addMinutes($expiresInMinutes),
+                ]
+            );
+        });
+    }
+
+    public function commit(string $tenantId, string $sessionId, string|int|null $referenceId = null): void
+    {
+        DB::transaction(function () use ($tenantId, $sessionId, $referenceId) {
+            $holds = InventoryHold::query()
+                ->where('tenant_id', $tenantId)
+                ->where('session_id', $sessionId)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($holds as $hold) {
+                $product = Product::query()
+                    ->withTrashed()
+                    ->where('id', $hold->product_id)
+                    ->where('tenant_id', $tenantId)
+                    ->first();
+
+                $level = InventoryLevel::query()
+                    ->where('location_id', $hold->location_id)
+                    ->where('product_id', $hold->product_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (($product?->manage_stock || $level !== null) && $level === null) {
+                    throw new DomainException("Inventory level missing for product {$hold->product_id} at location {$hold->location_id}.");
+                }
+
+                if ($level !== null) {
+                    $quantity = round((float) $hold->quantity, 3);
+
+                    if (! ($product?->allow_backorders ?? false) && (float) $level->on_hand < $quantity) {
+                        throw new DomainException("Insufficient on-hand stock to commit product {$hold->product_id}.");
+                    }
+
+                    $level->on_hand = round((float) $level->on_hand - $quantity, 3);
+                    $level->reserved = max(0.0, round((float) $level->reserved - $quantity, 3));
+                    $level->save();
+
+                    InventoryMovement::query()->create([
+                        'tenant_id' => $tenantId,
+                        'location_id' => $hold->location_id,
+                        'product_id' => $hold->product_id,
+                        'quantity_delta' => -$quantity,
+                        'type' => MovementType::SALE,
+                        'reference_type' => $referenceId !== null ? 'order' : 'inventory_hold_commit',
+                        'reference_id' => $referenceId !== null ? (string) $referenceId : null,
+                        'notes' => "Order fulfilled for session {$sessionId}",
+                    ]);
+                }
+
+                $hold->delete();
+            }
+        });
+    }
+
+    public function releaseExpired(): int
+    {
+        return $this->releaseExpiredForTenant();
+    }
+
+    public function releaseExpiredForTenant(?string $tenantId = null): int
+    {
+        return DB::transaction(function () use ($tenantId) {
+            $query = InventoryHold::query()
+                ->where('expires_at', '<=', now())
+                ->lockForUpdate();
+
+            if ($tenantId !== null) {
+                $query->where('tenant_id', $tenantId);
+            }
+
+            $holds = $query->get();
+            $released = 0;
+
+            foreach ($holds as $hold) {
+                $level = InventoryLevel::query()
+                    ->where('location_id', $hold->location_id)
+                    ->where('product_id', $hold->product_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($level !== null) {
+                    $level->reserved = max(0.0, round((float) $level->reserved - (float) $hold->quantity, 3));
+                    $level->save();
+                }
+
+                $hold->delete();
+                $released++;
+            }
+
+            return $released;
+        });
+    }
+
+    private function assertValidLocation(string $tenantId, string $locationId): void
+    {
+        $exists = Location::query()
+            ->where('id', $locationId)
+            ->where('tenant_id', $tenantId)
+            ->where('is_active', true)
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        throw new DomainException("Invalid or inactive location {$locationId}.");
+    }
+}

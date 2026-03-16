@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Sales\Handlers;
 
+use App\Application\Inventory\Contracts\InventoryHoldPortInterface;
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Contracts\CheckoutSessionPortInterface;
-use App\Application\Sales\Contracts\InventoryHoldPortInterface;
 use App\Application\Sales\Results\CreateOrderResult;
 use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
 use App\Application\Shared\Contracts\CouponValidatorInterface;
@@ -25,7 +25,6 @@ use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Models\InventoryHold;
 use App\Models\Location;
 use DomainException;
 
@@ -152,17 +151,14 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         ], $this->scrubber));
 
         if ($command->sessionId !== null) {
-            // STEP 10: RELEASE INVENTORY HOLD
             if ($this->inventoryHoldPort !== null) {
-                // Note: In strict hexagonal, the Handler shouldn't call Eloquent directly.
-                // Since the Port lacks a deleteBySession() method, we release it directly here as a practical bridge
-                // to avoid migrating the interface in this atomic step.
-                InventoryHold::where('session_id', $command->sessionId)
-                    ->where('tenant_id', $command->tenantId)
-                    ->delete();
+                $this->inventoryHoldPort->commit(
+                    $command->tenantId,
+                    $command->sessionId,
+                    $persistedOrder->id
+                );
             }
 
-            // STEP 11: MARK CHECKOUT SESSION AS CONVERTED (Prevent Abandoned Cart False Positives)
             if ($this->checkoutSessionPort !== null) {
                 $this->checkoutSessionPort->markAsConverted($command->tenantId, $command->sessionId);
             }

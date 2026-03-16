@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Sales\Handlers;
 
+use App\Application\Inventory\Contracts\InventoryHoldPortInterface;
 use App\Application\Sales\Commands\HoldCartInventoryCommand;
-use App\Application\Sales\Contracts\InventoryHoldPortInterface;
+use Illuminate\Support\Facades\DB;
 
 final class HoldCartInventoryHandler
 {
@@ -15,11 +16,17 @@ final class HoldCartInventoryHandler
 
     public function handle(HoldCartInventoryCommand $command): void
     {
-        $this->holdPort->createHolds(
-            $command->tenantId,
-            $command->sessionId,
-            $command->items,
-            $command->expiresInMinutes
-        );
+        DB::transaction(function () use ($command) {
+            foreach ($command->items as $item) {
+                $this->holdPort->reserve(
+                    (string) $command->tenantId,
+                    $command->locationId,
+                    $command->sessionId,
+                    (int) $item['product_id'],
+                    (float) $item['quantity'],
+                    $command->expiresInMinutes
+                );
+            }
+        });
     }
 }

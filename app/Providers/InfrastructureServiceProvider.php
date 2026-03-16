@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Application\Inventory\Contracts\InventoryHoldPortInterface as TransactionalInventoryHoldPortInterface;
 use App\Application\Sales\Contracts\CheckoutSessionPortInterface;
 use App\Application\Sales\Contracts\InventoryHoldPortInterface;
 use App\Contracts\Scope\TenantContextInterface;
+use App\Infrastructure\Inventory\Adapters\EloquentInventoryHoldAdapter as TransactionalInventoryHoldAdapter;
 use App\Infrastructure\Scope\FilamentTenantContext;
 use App\Infrastructure\Sales\Adapters\EloquentCheckoutSessionAdapter;
 use App\Infrastructure\Sales\Adapters\EloquentInventoryHoldAdapter;
@@ -131,6 +133,11 @@ class InfrastructureServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Application\Auth\Contracts\AuthTokenServiceInterface::class,
             \App\Infrastructure\Auth\SanctumAuthTokenService::class
+        );
+
+        $this->app->bind(
+            TransactionalInventoryHoldPortInterface::class,
+            TransactionalInventoryHoldAdapter::class
         );
 
         $this->app->bind(

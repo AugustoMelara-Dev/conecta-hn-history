@@ -19,6 +19,7 @@ use App\Services\CouponValidatorService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -73,8 +74,19 @@ final class CheckoutController extends Controller
         }
 
         try {
+            $locationId = $validated['location_id'] ?? DB::table('locations')
+                ->where('tenant_id', $tenantId)
+                ->where('is_primary', true)
+                ->where('is_active', true)
+                ->value('id');
+
+            if (! is_string($locationId) || $locationId === '') {
+                throw new DomainException('No active primary location found for this tenant.');
+            }
+
             $command = new HoldCartInventoryCommand(
                 tenantId: $tenantId,
+                locationId: $locationId,
                 sessionId: $validated['session_id'],
                 items: $validated['items']
             );
