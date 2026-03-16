@@ -47,6 +47,8 @@ class FortifyServiceProvider extends ServiceProvider
 
         // Views (if needed, but actions are the priority)
         // Checks if views exist or basic registration
+        Fortify::ignoreRoutes();
+
         if (config('fortify.views', true)) {
             Fortify::registerView(fn () => view('auth.register'));
             Fortify::loginView(fn () => view('auth.login'));
