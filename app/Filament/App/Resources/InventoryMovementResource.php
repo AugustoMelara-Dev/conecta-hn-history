@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Filament\Resources;
+namespace App\Filament\App\Resources;
 
-use App\Filament\Resources\InventoryMovementResource\Pages;
+use App\Filament\App\Resources\InventoryMovementResource\Pages;
 use App\Filament\Traits\ScopesToTenant;
 use App\Models\InventoryMovement;
 use Filament\Resources\Resource;
@@ -22,22 +22,22 @@ class InventoryMovementResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Gerencia';
+        return 'Inventory';
     }
 
     public static function getNavigationLabel(): string
     {
-        return 'Movimientos de Inventario';
+        return 'Inventory Movements';
     }
 
     public static function getModelLabel(): string
     {
-        return 'Movimiento de Inventario';
+        return 'Inventory Movement';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Movimientos de Inventario';
+        return 'Inventory Movements';
     }
 
     public static function form(Schema $schema): Schema
@@ -50,29 +50,29 @@ class InventoryMovementResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Fecha')
+                    ->label('Date')
                     ->dateTime()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('product.name')
-                    ->label('Producto')
+                    ->label('Product')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('location.name')
-                    ->label('Sucursal')
+                    ->label('Location')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('type')
-                    ->label('Tipo')
+                    ->label('Type')
                     ->badge()
                     ->formatStateUsing(fn ($state): string => $state instanceof \BackedEnum ? $state->value : (string) $state),
                 Tables\Columns\TextColumn::make('quantity_delta')
                     ->label('Delta')
                     ->numeric(decimalPlaces: 3),
                 Tables\Columns\TextColumn::make('user.name')
-                    ->label('Usuario')
+                    ->label('User')
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('notes')
-                    ->label('Notas')
-                    ->limit(40),
+                    ->label('Notes')
+                    ->limit(30),
             ])
             ->defaultSort('created_at', 'desc')
             ->actions([])
@@ -94,11 +94,6 @@ class InventoryMovementResource extends Resource
         return false;
     }
 
-    public static function canDeleteAny(): bool
-    {
-        return false;
-    }
-
     public static function getPages(): array
     {
         return [
@@ -106,4 +101,3 @@ class InventoryMovementResource extends Resource
         ];
     }
 }
-

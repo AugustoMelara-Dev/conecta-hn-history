@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Filament\Resources;
+namespace App\Filament\App\Resources;
 
 use App\Domain\Inventory\Enums\MovementType;
-use App\Filament\Resources\InventoryLevelResource\Pages;
+use App\Filament\App\Resources\InventoryLevelResource\Pages;
 use App\Filament\Traits\ScopesToTenant;
 use App\Models\InventoryLevel;
 use App\Models\InventoryMovement;
@@ -26,22 +26,22 @@ class InventoryLevelResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Gerencia';
+        return 'Inventory';
     }
 
     public static function getNavigationLabel(): string
     {
-        return 'Niveles de Inventario';
+        return 'Inventory Levels';
     }
 
     public static function getModelLabel(): string
     {
-        return 'Nivel de Inventario';
+        return 'Inventory Level';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Niveles de Inventario';
+        return 'Inventory Levels';
     }
 
     public static function form(Schema $schema): Schema
@@ -54,20 +54,20 @@ class InventoryLevelResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('product.name')
-                    ->label('Producto')
+                    ->label('Product')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('location.name')
-                    ->label('Sucursal')
+                    ->label('Location')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('on_hand')
-                    ->label('Disponible Fisico')
+                    ->label('On Hand')
                     ->numeric(decimalPlaces: 3)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('reserved')
-                    ->label('Reservado')
+                    ->label('Reserved')
                     ->numeric(decimalPlaces: 3),
                 Tables\Columns\TextColumn::make('low_stock_threshold')
-                    ->label('Umbral Bajo')
+                    ->label('Low Stock Threshold')
                     ->numeric(decimalPlaces: 3)
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -81,8 +81,7 @@ class InventoryLevelResource extends Resource
                             ->numeric()
                             ->required()
                             ->helperText('Use positive values to add, negative to subtract.'),
-                        Forms\Components\Textarea::make('notes')
-                            ->required(),
+                        Forms\Components\Textarea::make('notes')->required(),
                     ])
                     ->action(function (InventoryLevel $record, array $data): void {
                         DB::transaction(function () use ($record, $data): void {
@@ -95,7 +94,7 @@ class InventoryLevelResource extends Resource
                             $level->on_hand = round((float) $level->on_hand + $delta, 3);
                             $level->save();
 
-                            InventoryMovement::query()->create([
+                            InventoryMovement::create([
                                 'tenant_id' => $level->tenant_id,
                                 'location_id' => $level->location_id,
                                 'product_id' => $level->product_id,
@@ -116,8 +115,7 @@ class InventoryLevelResource extends Resource
                             ->numeric()
                             ->required()
                             ->minValue(0.001),
-                        Forms\Components\Textarea::make('notes')
-                            ->required(),
+                        Forms\Components\Textarea::make('notes')->required(),
                     ])
                     ->action(function (InventoryLevel $record, array $data): void {
                         DB::transaction(function () use ($record, $data): void {
@@ -130,7 +128,7 @@ class InventoryLevelResource extends Resource
                             $level->on_hand = round((float) $level->on_hand - $loss, 3);
                             $level->save();
 
-                            InventoryMovement::query()->create([
+                            InventoryMovement::create([
                                 'tenant_id' => $level->tenant_id,
                                 'location_id' => $level->location_id,
                                 'product_id' => $level->product_id,
@@ -160,11 +158,6 @@ class InventoryLevelResource extends Resource
         return false;
     }
 
-    public static function canDeleteAny(): bool
-    {
-        return false;
-    }
-
     public static function getPages(): array
     {
         return [
@@ -172,4 +165,3 @@ class InventoryLevelResource extends Resource
         ];
     }
 }
-

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Filament\Resources\InventoryMovementResource\Pages;
+namespace App\Filament\App\Resources\InventoryMovementResource\Pages;
 
-use App\Filament\Resources\InventoryMovementResource;
+use App\Filament\App\Resources\InventoryMovementResource;
 use Filament\Resources\Pages\ListRecords;
 
 class ListInventoryMovements extends ListRecords
@@ -16,4 +16,3 @@ class ListInventoryMovements extends ListRecords
         return [];
     }
 }
-
