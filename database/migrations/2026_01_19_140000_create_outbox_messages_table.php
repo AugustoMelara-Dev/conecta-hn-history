@@ -14,13 +14,24 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('type'); // Event Class Name
             $table->json('payload'); // Serialized Data
+            $table->string('aggregate_id')->nullable();
+            $table->integer('partition_key')->default(0);
+            $table->bigInteger('sequence_number')->default(0);
+            $table->string('batch_correlation_id')->nullable();
+            $table->string('worker_id')->nullable();
+            $table->timestamp('locked_at')->nullable();
+            $table->timestamp('quarantined_at')->nullable();
+            $table->integer('recovery_count')->default(0);
+            $table->text('error')->nullable();
             $table->timestamp('occurred_at');
             $table->timestamp('published_at')->nullable();
-            $table->string('status')->default('PENDING'); // PENDING, PUBLISHED, FAILED
+            $table->string('status')->default('PENDING'); // PENDING, PROCESSING, COMPLETED, FAILED, PENDING_AUTOPSY
             $table->timestamps();
 
-            // Critical Index for Polling Performance
-            $table->index(['status', 'occurred_at']);
+            // High availability lease and recovery indexes.
+            $table->index(['status', 'partition_key', 'sequence_number']);
+            $table->index(['worker_id', 'status', 'batch_correlation_id'], 'idx_outbox_worker_batch');
+            $table->index(['aggregate_id', 'sequence_number']);
         });
     }
 

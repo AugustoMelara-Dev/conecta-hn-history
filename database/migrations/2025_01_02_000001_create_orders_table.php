@@ -46,6 +46,11 @@ return new class extends Migration
 
             $table->timestamps();
             $table->softDeletes();
+
+            // Critical indexes for dashboard queries and background workers.
+            $table->index(['tenant_id', 'status', 'created_at']);
+            $table->index(['tenant_id', 'payment_status']);
+            $table->index('user_id');
         });
     }
 
