@@ -7,8 +7,8 @@ namespace App\Services;
 use App\Application\Sales\Contracts\OrderStateServiceInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\Sales\Events\OrderCancelled;
-use App\Domain\Sales\Events\OrderDelivered;
 use App\Contracts\InventoryManagerInterface;
+use App\Events\Order\OrderDelivered;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
 use App\Models\OrderEvent;
@@ -241,18 +241,18 @@ class OrderStateService implements OrderStateServiceInterface
     private function dispatchStatusEvent(Order $order, string $oldStatus, string $newStatus): void
     {
         $event = match ($newStatus) {
-            Order::STATUS_CANCELLED => new OrderCancelled(
-                tenantId: $order->tenant_id,
-                orderId: $order->id,
-                orderNumber: $order->order_number,
+            Order::STATUS_CANCELLED => OrderCancelled::create(
+                tenantId: (string) $order->tenant_id,
+                orderId: (int) $order->id,
+                orderNumber: (string) $order->order_number,
                 reason: 'status_transition',
                 cancelledById: auth()->id(),
-                wasPaid: $order->isPaid(),
+                wasPaid: $order->wasPaid(),
             ),
-            Order::STATUS_DELIVERED => new OrderDelivered(
-                tenantId: $order->tenant_id,
-                orderId: $order->id,
-                orderNumber: $order->order_number,
+            Order::STATUS_DELIVERED => OrderDelivered::create(
+                tenantId: (string) $order->tenant_id,
+                orderId: (int) $order->id,
+                orderNumber: (string) $order->order_number,
             ),
             // NOTE: OrderPaid is dispatched from PaymentService, not here
             // NOTE: OrderShipped is dispatched from ShippingService, not here

@@ -7,10 +7,9 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\OrderResource\Pages;
 use App\Models\Order;
 use Filament\Facades\Filament;
-use Filament\Schemas\Schema;
 use Filament\Infolists;
-
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\BulkActionGroup;
@@ -276,7 +275,7 @@ class OrderResource extends Resource
     }
 
     // ═══ VISTA DETALLADA CON INFOLIST ═══
-    public static function deprecated_infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
         return $schema
             ->schema([
@@ -427,7 +426,7 @@ class OrderResource extends Resource
                                                     })
                                                     ->implode(' | ');
 
-                                                return $schemaatted;
+                                                return $formatted;
                                             })
                                             ->visible(fn ($state) => ! empty($state))
                                             ->color('gray')
