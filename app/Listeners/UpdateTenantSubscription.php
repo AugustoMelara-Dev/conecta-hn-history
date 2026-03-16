@@ -7,9 +7,9 @@ namespace App\Listeners;
 use App\Events\PaymentApproved;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * UpdateTenantSubscription - Transactional Listener with Zero-Tolerance Enforcement
@@ -24,18 +24,8 @@ use Illuminate\Support\Facades\Log;
  * SECURITY: Uses row-level database locks to mathematically eliminate
  * race conditions when two admins approve payments simultaneously.
  */
-class UpdateTenantSubscription implements ShouldQueue
+class UpdateTenantSubscription
 {
-    /**
-     * Number of times the job may be attempted.
-     */
-    public int $tries = 3;
-
-    /**
-     * The number of seconds to wait before retrying.
-     */
-    public int $backoff = 5;
-
     /**
      * Handle the PaymentApproved event.
      *
@@ -94,7 +84,11 @@ class UpdateTenantSubscription implements ShouldQueue
             // STEP 3: CALCULATE AND APPLY SUBSCRIPTION EXTENSION
             // Base date logic: extend from current end or start fresh from today
             // ═══════════════════════════════════════════════════════════════
-            $baseDate = $tenant->subscription_ends_at ?? now();
+            $legacyPlanExpiresAt = Schema::hasColumn('tenants', 'plan_expires_at')
+                ? $tenant->getAttribute('plan_expires_at')
+                : null;
+
+            $baseDate = $tenant->subscription_ends_at ?? $legacyPlanExpiresAt ?? now();
 
             // If subscription already expired, start from today
             if ($baseDate->isPast()) {
@@ -103,12 +97,20 @@ class UpdateTenantSubscription implements ShouldQueue
 
             $newEndDate = $baseDate->copy()->addDays($event->daysToAdd);
 
-            $tenant->update([
+            $tenantUpdates = [
+                'is_active' => true,
                 'is_pro' => true,
                 'subscription_status' => 'active',
                 'subscription_ends_at' => $newEndDate,
+                'next_billing_date' => $newEndDate->toDateString(),
                 'plan_type' => 'pro',
-            ]);
+            ];
+
+            if (Schema::hasColumn('tenants', 'plan_expires_at')) {
+                $tenantUpdates['plan_expires_at'] = $newEndDate;
+            }
+
+            $tenant->forceFill($tenantUpdates)->save();
 
             // ═══════════════════════════════════════════════════════════════
             // STEP 4: MARK PAYMENT AS CONSUMED (Idempotency Flag)
@@ -127,22 +129,5 @@ class UpdateTenantSubscription implements ShouldQueue
                 'reviewer_id' => $event->reviewerId,
             ]);
         }, 3); // 3 retry attempts for deadlock recovery
-    }
-
-    /**
-     * Handle a job failure.
-     */
-    public function failed(PaymentApproved $event, \Throwable $exception): void
-    {
-        Log::critical('PaymentApproved: Listener FAILED - manual intervention required', [
-            'payment_id' => $event->paymentId,
-            'tenant_id' => $event->tenantId()->toString(),
-            'reviewer_id' => $event->reviewerId,
-            'exception_class' => get_class($exception),
-            'exception_message' => $exception->getMessage(),
-            'exception_trace' => $exception->getTraceAsString(),
-        ]);
-
-        // TODO: Notify admin via Slack/Email about failed subscription extension
     }
 }

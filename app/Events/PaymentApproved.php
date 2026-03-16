@@ -19,14 +19,14 @@ final class PaymentApproved implements ShouldDispatchAfterCommit
     public function __construct(
         private TenantId $tenantId,
         public string $paymentId,
-        public string $reviewerId,
+        public ?string $reviewerId,
         public int $daysToAdd,
     ) {}
 
     public static function fromPayment(
         string $tenantId,
         string $paymentId,
-        string $reviewerId,
+        ?string $reviewerId,
         int $daysToAdd = 30,
     ): self {
         return new self(

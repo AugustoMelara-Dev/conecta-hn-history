@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -55,6 +54,7 @@ class SubscriptionPayment extends Model
         'admin_notes',
         'reviewed_by',
         'reviewed_at',
+        'subscription_extended_at',
     ];
 
     /**
@@ -66,6 +66,7 @@ class SubscriptionPayment extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'reviewed_at' => 'datetime',
+        'subscription_extended_at' => 'datetime',
         'id' => 'string',
         'version' => 'integer',
     ];
@@ -147,42 +148,18 @@ class SubscriptionPayment extends Model
      * @param  string  $reviewerId  The admin who approved the payment
      * @param  int  $daysToAdd  Number of subscription days to add (default: 30)
      */
-    public function approve(string $reviewerId, int $daysToAdd = 30): void
+    public function approve(?string $reviewerId = null, int $daysToAdd = 30): void
     {
+        if ($this->isApproved()) {
+            return;
+        }
+
         // Only update payment's own state (SRP compliance)
         $this->update([
             'status' => self::STATUS_APPROVED,
             'reviewed_by' => $reviewerId,
             'reviewed_at' => now(),
         ]);
-
-        if ($this->tenant) {
-            $legacyPlanExpiresAt = Schema::hasColumn('tenants', 'plan_expires_at')
-                ? $this->tenant->getAttribute('plan_expires_at')
-                : null;
-
-            $baseDate = $this->tenant->subscription_ends_at ?? $legacyPlanExpiresAt ?? now();
-
-            if ($baseDate->isPast()) {
-                $baseDate = now();
-            }
-
-            $newEndDate = $baseDate->copy()->addDays($daysToAdd);
-
-            $updates = [
-                'is_active' => true,
-                'plan_type' => 'pro',
-                'subscription_status' => 'active',
-                'subscription_ends_at' => $newEndDate,
-                'next_billing_date' => $newEndDate->toDateString(),
-            ];
-
-            if (Schema::hasColumn('tenants', 'plan_expires_at')) {
-                $updates['plan_expires_at'] = $newEndDate;
-            }
-
-            $this->tenant->forceFill($updates)->save();
-        }
 
         // Dispatch immutable event for downstream listeners and notifications.
         event(\App\Events\PaymentApproved::fromPayment(

@@ -4,7 +4,6 @@ $boundaryNamespace = [
     App\Http\Controllers\Api\V1\TenantSettingsController::class,
     App\Http\Controllers\Api\V1\NotificationController::class,
     App\Http\Controllers\Webhook\PaymentWebhookController::class,
-    App\Http\Controllers\Payment\PaymentWebhookController::class,
     App\Http\Controllers\Web\RegistrationController::class,
     App\Http\Controllers\Tenant\ProductController::class,
     App\Http\Controllers\Tenant\OrderController::class,

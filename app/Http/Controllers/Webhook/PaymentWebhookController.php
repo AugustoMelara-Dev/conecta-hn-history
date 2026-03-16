@@ -29,7 +29,7 @@ final class PaymentWebhookController extends Controller
     /**
      * Handle incoming webhook payload from payment provider.
      */
-    public function handle(Request $request, string $provider): JsonResponse
+    public function handle(Request $request): JsonResponse
     {
         // 1. Verify Signature
         if (! $this->verifySignature($request)) {

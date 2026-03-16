@@ -1105,7 +1105,6 @@ class AppServiceProvider extends ServiceProvider
             \App\Application\Products\Commands\DeleteProductCommand::class => \App\Application\Products\Handlers\DeleteProductHandler::class,
             \App\Application\Products\Commands\ToggleProductVisibilityCommand::class => \App\Application\Products\Handlers\ToggleProductVisibilityHandler::class,
             \App\Application\Sales\Commands\CancelOrderCommand::class => \App\Application\Sales\Handlers\CancelOrderHandler::class,
-            \App\Application\Payments\Commands\HandlePaymentWebhookCommand::class => \App\Application\Payments\Handlers\HandlePaymentWebhookHandler::class,
             \App\Application\Billing\Commands\RequestUpgradeCommand::class => \App\Application\Billing\Handlers\RequestUpgradeHandlerInterface::class,
             \App\Application\Auth\Commands\LoginViaSocialProviderCommand::class => \App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface::class,
             \App\Application\Auth\Commands\UpdateUserPasswordCommand::class => \App\Application\Auth\Handlers\UpdateUserPasswordHandlerInterface::class,

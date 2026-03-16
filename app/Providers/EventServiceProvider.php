@@ -35,6 +35,12 @@ class EventServiceProvider extends ServiceProvider
         \App\Domain\Billing\Events\PaymentReported::class => [
             \App\Application\Billing\Listeners\PromotePaymentEvidence::class,
         ],
+        \App\Domain\Billing\Events\PaymentWebhookReceived::class => [
+            \App\Application\Billing\Listeners\ProcessPaymentWebhookReceived::class,
+        ],
+        \App\Events\PaymentApproved::class => [
+            \App\Listeners\UpdateTenantSubscription::class,
+        ],
 
         // APPOINTMENT NOTIFICATIONS
         \App\Events\Appointment\AppointmentCreated::class => [

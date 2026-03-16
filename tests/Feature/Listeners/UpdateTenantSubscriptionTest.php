@@ -3,36 +3,51 @@
 declare(strict_types=1);
 
 use App\Models\Tenant;
+use App\Models\SubscriptionPayment;
 use App\Models\User;
-use App\Events\Payment\PaymentApproved;
+use App\Events\PaymentApproved;
 use App\Listeners\UpdateTenantSubscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
-test('listener resolves tenant via uuid and processes payment approved event safely', function () {
-    // Setup isolated tenant context
+test('listener extends subscription exactly once for approved payments', function () {
     $user = User::factory()->create();
-    $tenantA = Tenant::factory()->create(['user_id' => $user->id]);
-    $tenantB = Tenant::factory()->create(['user_id' => $user->id]);
+    $tenant = Tenant::factory()->create(['user_id' => $user->id, 'subscription_ends_at' => null]);
 
-    // Utilize the discovered static factory. Passing the UUID string.
-    $event = PaymentApproved::create(
-        $tenantA->uuid,
-        12345,
-        'ORD-12345',
-        'TXN-67890',
-        'Stripe',
-        5000,
-        'HNL'
+    $payment = SubscriptionPayment::forceCreate([
+        'id' => (string) Str::uuid(),
+        'tenant_id' => $tenant->id,
+        'amount' => 99,
+        'bank' => 'stripe',
+        'reference_number' => 'WEBHOOK-123',
+        'proof_path' => '',
+        'status' => SubscriptionPayment::STATUS_APPROVED,
+    ]);
+
+    $event = PaymentApproved::fromPayment(
+        tenantId: $tenant->id,
+        paymentId: $payment->id,
+        reviewerId: null,
+        daysToAdd: 30,
     );
 
     $listener = app(UpdateTenantSubscription::class);
 
-    // Execute: This asserts the UUID unwrapping and Tenant::lockForUpdate()->find()
-    // do not throw TypeError or query exceptions.
     $listener->handle($event);
+    $payment->refresh();
+    $tenant->refresh();
 
-    // Behavioral verification: If it reached here without Exception, the VO extraction succeeded.
-    expect(true)->toBeTrue();
+    expect($payment->subscription_extended_at)->not->toBeNull()
+        ->and($tenant->subscription_status)->toBe('active')
+        ->and($tenant->subscription_ends_at)->not->toBeNull();
+
+    $originalEndDate = $tenant->subscription_ends_at;
+
+    $listener->handle($event);
+    $tenant->refresh();
+
+    expect($tenant->subscription_ends_at?->toIso8601String())
+        ->toBe($originalEndDate?->toIso8601String());
 });

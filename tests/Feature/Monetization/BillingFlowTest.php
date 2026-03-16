@@ -47,8 +47,5 @@ test('subscription payment state machine accepts uuid reviewers', function () {
 
     expect($payment->isApproved())->toBeTrue()
         ->and($payment->reviewed_by)->toBe($adminId)
-        ->and($payment->reviewed_at)->not->toBeNull()
-        ->and($tenant->subscription_status)->toBe('active')
-        ->and($tenant->subscription_ends_at)->not->toBeNull()
-        ->and($tenant->plan_type instanceof \BackedEnum ? $tenant->plan_type->value : $tenant->plan_type)->toBe('pro');
+        ->and($payment->reviewed_at)->not->toBeNull();
 });
