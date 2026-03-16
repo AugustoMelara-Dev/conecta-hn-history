@@ -8,6 +8,7 @@ use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
@@ -100,6 +101,7 @@ class Order extends Model
         // FOREIGN KEYS (user_id is nullable, set by authenticated orders)
         // ═══════════════════════════════════════════════════════════════════════
         'user_id',
+        'location_id',
         'order_number',
         'tracking_uuid', // Real-time tracking token (UUID v4)
         // PII fields
@@ -170,6 +172,11 @@ class Order extends Model
     public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 
     /**

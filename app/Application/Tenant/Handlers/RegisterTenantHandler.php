@@ -19,6 +19,7 @@ use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\TenantGovernance\Factories\TenantFactory;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
+use App\Models\Location;
 use App\Models\TenantMembership;
 
 /**
@@ -110,6 +111,18 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             [
                 'role' => Role::OWNER->value,
                 'accepted_at' => now(),
+            ]
+        );
+
+        Location::query()->updateOrCreate(
+            [
+                'tenant_id' => $tenantEntity->id(),
+                'slug' => 'principal',
+            ],
+            [
+                'name' => 'Principal',
+                'is_primary' => true,
+                'is_active' => true,
             ]
         );
 
