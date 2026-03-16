@@ -196,15 +196,7 @@ class ProductResource extends Resource
                                             return;
                                         }
 
-                                        $rawUserId = $user->getAuthIdentifier();
-                                        $aiUserId = is_numeric($rawUserId) ? (int) $rawUserId : 0;
-
-                                        if ($aiUserId === 0) {
-                                            \Illuminate\Support\Facades\Log::warning('[ProductResource] OpenAIService still expects a legacy integer user ID.', [
-                                                'user_id' => $rawUserId,
-                                                'tenant_id' => $tenant->id,
-                                            ]);
-                                        }
+                                        $userId = (string) $user->getAuthIdentifier();
 
                                         try {
                                             $aiService = app(\App\Services\AI\OpenAIService::class);
@@ -212,7 +204,7 @@ class ProductResource extends Resource
                                             $result = $aiService->generateStructuredProfile(
                                                 businessName: $productName,
                                                 description: $currentDescription,
-                                                userId: $aiUserId,
+                                                userId: $userId,
                                                 tenantId: (string) $tenant->id
                                             );
 
@@ -232,7 +224,7 @@ class ProductResource extends Resource
                                         } catch (\Throwable $e) {
                                             \Illuminate\Support\Facades\Log::error('[ProductResource] AI generation failed', [
                                                 'tenant_id' => $tenant->id,
-                                                'user_id' => $rawUserId,
+                                                'user_id' => $userId,
                                                 'error' => $e->getMessage(),
                                             ]);
 
@@ -314,15 +306,7 @@ class ProductResource extends Resource
                                             return;
                                         }
 
-                                        $rawUserId = $user->getAuthIdentifier();
-                                        $aiUserId = is_numeric($rawUserId) ? (int) $rawUserId : 0;
-
-                                        if ($aiUserId === 0) {
-                                            \Illuminate\Support\Facades\Log::warning('[ProductResource] OpenAIService still expects a legacy integer user ID.', [
-                                                'user_id' => $rawUserId,
-                                                'tenant_id' => $tenant->id,
-                                            ]);
-                                        }
+                                        $userId = (string) $user->getAuthIdentifier();
 
                                         try {
                                             $aiService = app(\App\Services\AI\OpenAIService::class);
@@ -330,7 +314,7 @@ class ProductResource extends Resource
                                             $result = $aiService->generateStructuredProfile(
                                                 businessName: $productName,
                                                 description: $currentDescription,
-                                                userId: $aiUserId,
+                                                userId: $userId,
                                                 tenantId: (string) $tenant->id
                                             );
 
@@ -350,7 +334,7 @@ class ProductResource extends Resource
                                         } catch (\Throwable $e) {
                                             \Illuminate\Support\Facades\Log::error('[ProductResource] AI generation failed', [
                                                 'tenant_id' => $tenant->id,
-                                                'user_id' => $rawUserId,
+                                                'user_id' => $userId,
                                                 'error' => $e->getMessage(),
                                             ]);
 

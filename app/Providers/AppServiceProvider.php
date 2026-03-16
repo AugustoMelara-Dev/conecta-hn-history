@@ -760,8 +760,12 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Shared\Time\SystemClock::class
         );
         $this->app->bind(
-            \App\Application\Shared\Interfaces\EntropyGeneratorInterface::class,
+            \App\Application\Shared\Contracts\EntropyGeneratorInterface::class,
             \App\Infrastructure\Shared\Security\NativeEntropyGenerator::class
+        );
+        $this->app->bind(
+            \App\Domain\Common\Contracts\EventStoreRepositoryInterface::class,
+            \App\Infrastructure\Common\EventStore\DatabaseEventStore::class
         );
         $this->app->bind(
             \App\Domain\Auth\Services\OtpHasherInterface::class,

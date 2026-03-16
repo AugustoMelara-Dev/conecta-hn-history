@@ -90,7 +90,7 @@ final class OpenAIService
     public function generateStructuredProfile(
         string $businessName,
         string $description,
-        int $userId,
+        string $userId,
         string $tenantId,
         ?string $targetAudience = null,
         ?string $tone = null,
@@ -279,4 +279,3 @@ EOT;
         }
     }
 }
-

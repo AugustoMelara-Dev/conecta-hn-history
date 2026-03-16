@@ -19,14 +19,14 @@ describe('GenerateBusinessProfileJob', function () {
         GenerateBusinessProfileJob::dispatch(
             businessName: 'Test Business',
             description: 'A sample business description',
-            userId: 1,
+            userId: '00000000-0000-0000-0000-000000000002',
             tenantId: '00000000-0000-0000-0000-000000000001'
         );
 
         Queue::assertPushed(GenerateBusinessProfileJob::class, function ($job) {
             return $job->businessName === 'Test Business'
                 && $job->description === 'A sample business description'
-                && $job->userId === 1
+                && $job->userId === '00000000-0000-0000-0000-000000000002'
                 && $job->tenantId === '00000000-0000-0000-0000-000000000001';
         });
     });
@@ -35,7 +35,7 @@ describe('GenerateBusinessProfileJob', function () {
         $job = new GenerateBusinessProfileJob(
             businessName: 'Test',
             description: 'Desc',
-            userId: 1,
+            userId: '00000000-0000-0000-0000-000000000002',
             tenantId: '00000000-0000-0000-0000-000000000001'
         );
 
@@ -47,14 +47,14 @@ describe('GenerateBusinessProfileJob', function () {
         $job = new GenerateBusinessProfileJob(
             businessName: 'My Business',
             description: 'My Description',
-            userId: 999,
+            userId: '00000000-0000-0000-0000-000000000999',
             tenantId: '00000000-0000-0000-0000-000000000001'
         );
 
         // Verify all properties are scalars (safe for Redis/DB queue)
         expect($job->businessName)->toBeString();
         expect($job->description)->toBeString();
-        expect($job->userId)->toBeInt();
+        expect($job->userId)->toBeString();
         expect($job->tenantId)->toBeString();
     });
 
@@ -64,7 +64,7 @@ describe('GenerateBusinessProfileJob', function () {
         $job = new GenerateBusinessProfileJob(
             businessName: 'Tenant Business',
             description: 'Description',
-            userId: 1,
+            userId: '00000000-0000-0000-0000-000000000002',
             tenantId: $tenantId
         );
 

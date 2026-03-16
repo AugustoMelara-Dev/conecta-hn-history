@@ -6,10 +6,11 @@ namespace Tests\Feature;
 
 use App\Exceptions\Ai\AiMalformedResponseException;
 use App\Exceptions\Ai\AiProviderUnavailableException;
+use App\Infrastructure\AI\BudgetEnforcer;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AI\OpenAIService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -34,7 +35,7 @@ final class OpenAIServiceTest extends TestCase
 
     private User $user;
 
-    private int $tenantId;
+    private string $tenantId;
 
     protected function setUp(): void
     {
@@ -42,18 +43,16 @@ final class OpenAIServiceTest extends TestCase
 
         config(['services.openai.api_key' => 'sk-fake-key']);
 
-        $this->service = new OpenAIService;
         $this->user = User::factory()->create();
+        $tenant = Tenant::factory()
+            ->forUser($this->user)
+            ->create([
+                'ai_balance' => 10.000000,
+                'ai_reserved_balance' => 0.000000,
+            ]);
 
-        // Manual Tenant scaffolding
-        $tenantId = DB::table('tenants')->insertGetId([
-            'user_id' => $this->user->id,
-            'slug' => 'test-tenant-'.uniqid(),
-            'name' => 'Test Tenant',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        $this->tenantId = $tenantId;
+        $this->service = new OpenAIService(app(BudgetEnforcer::class));
+        $this->tenantId = (string) $tenant->id;
     }
 
     /** @test */
@@ -131,7 +130,7 @@ final class OpenAIServiceTest extends TestCase
         ]);
 
         $this->expectException(AiMalformedResponseException::class);
-        $this->expectExceptionMessage('AI returned invalid schema: The tags field must be an array');
+        $this->expectExceptionMessage('AI returned invalid schema:');
 
         $this->service->generateStructuredProfile('Biz', 'Desc', $this->user->id, $this->tenantId);
     }

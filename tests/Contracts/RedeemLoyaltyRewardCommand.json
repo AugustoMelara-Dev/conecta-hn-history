@@ -1,0 +1,22 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "RedeemLoyaltyRewardCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "userId": {
+            "type": "integer"
+        },
+        "rewardId": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "tenantId",
+        "userId",
+        "rewardId"
+    ],
+    "additionalProperties": false
+}
