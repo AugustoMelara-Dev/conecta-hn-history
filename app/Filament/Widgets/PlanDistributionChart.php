@@ -34,8 +34,8 @@ class PlanDistributionChart extends ChartWidget
                 [
                     'label' => 'Negocios',
                     'data' => [$proCount, $freeCount],
-                    'backgroundColor' => ['#10b981', '#64748b'],
-                    'borderColor' => ['#059669', '#475569'],
+                    'backgroundColor' => ['#000000', '#e5e7eb'],
+                    'borderColor' => ['#000000', '#d1d5db'],
                     'borderWidth' => 2,
                 ],
             ],
