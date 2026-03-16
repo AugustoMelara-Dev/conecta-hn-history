@@ -83,8 +83,22 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
 
         try {
             // 4. ATOMIC TRAP (Insert-or-Recover)
-            // Atomic Insert + Event Dispatch (retry handled by outer decorators)
-            $this->transactionManager->transaction(function () use ($payment, $command) {
+            // Atomic check + insert + event dispatch (retry handled by outer decorators)
+            $finalPayment = $this->transactionManager->transaction(function () use ($payment, $command) {
+                $existingPayment = $this->paymentRepository->findByIdempotencyKey(
+                    $command->tenantId,
+                    $command->idempotencyKey
+                );
+
+                if ($existingPayment) {
+                    $this->logger->warning('Idempotency hit during transaction. Skipping creation.', [
+                        'tenant_id' => $command->tenantId,
+                        'key' => $command->idempotencyKey,
+                    ]);
+
+                    return $existingPayment;
+                }
+
                 $this->paymentRepository->save($payment);
 
                 // Dispatch Event
@@ -97,9 +111,11 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
                     idempotencyKey: $command->idempotencyKey,
                     occurredAt: new DateTimeImmutable
                 ));
+
+                return $payment;
             });
 
-            return ReportPaymentResult::fromEntity($payment);
+            return ReportPaymentResult::fromEntity($finalPayment);
 
         } catch (UniqueConstraintViolationException $e) {
             // SCENARIO 2a: COLLISION via Eloquent (UniqueConstraintViolationException)
