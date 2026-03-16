@@ -46,6 +46,7 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
         $model->password = $user->password();   // Hash ya cocinado
         $model->tenant_id = $user->tenantId();  // UUID del tenant
         $model->role = $user->role()->value;    // Enum -> string
+        $model->avatar = $user->avatar();       // Avatar social / perfil
 
         // Campos opcionales
         if ($user->rememberToken() !== null) {
@@ -86,8 +87,8 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
     {
         $user = User::find($userId);
 
-        if ($user && empty($user->avatar_url)) {
-            $user->update(['avatar_url' => $avatarUrl]);
+        if ($user && empty($user->avatar)) {
+            $user->update(['avatar' => $avatarUrl]);
 
             return true;
         }
@@ -142,6 +143,7 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
             'role' => $model->role instanceof \UnitEnum ? $model->role->value : ($model->role ?? 'user'),
             'tenant_id' => $tenantId,
             'remember_token' => $model->remember_token,
+            'avatar' => $model->avatar,
             'created_at' => $model->created_at?->format(\DateTimeImmutable::ATOM),
             'updated_at' => $model->updated_at?->format(\DateTimeImmutable::ATOM),
         ]);

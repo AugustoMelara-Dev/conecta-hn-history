@@ -6,9 +6,8 @@ namespace Tests\Feature\Auth;
 
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
+use App\Domain\Shared\Exceptions\ValidationException;
 use App\Infrastructure\Shared\Telemetry\TraceContext;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
@@ -39,7 +38,8 @@ class TelemetryIntegrationTest extends TestCase
             type: 'email',
             tenantId: $tenantId,
             ipAddress: '127.0.0.1',
-            userAgent: 'TestAgent'
+            userAgent: 'TestAgent',
+            idempotencyKey: $idempotencyKey,
         );
 
         // Inject Idempotency Key via Context (simulating Middleware)
@@ -57,9 +57,9 @@ class TelemetryIntegrationTest extends TestCase
             'tenant_id' => $tenantId,
         ]);
 
-        $this->assertDatabaseHas('domain_outbox', [
+        $this->assertDatabaseHas('outbox_messages', [
             'type' => 'App\Domain\Auth\Events\OtpGenerated',
-            'metadata->trace_id' => $traceId,
+            'payload->meta->trace_id' => $traceId,
         ]);
 
         // Outbox should be created
@@ -83,7 +83,8 @@ class TelemetryIntegrationTest extends TestCase
             type: 'telepathy',
             tenantId: 'bad-uuid',
             ipAddress: '127.0.0.1',
-            userAgent: 'TestAgent'
+            userAgent: 'TestAgent',
+            idempotencyKey: Uuid::uuid7()->toString(),
         );
 
         // Even for invalid commands, we need the context key IF the decorator/middleware runs before validation.

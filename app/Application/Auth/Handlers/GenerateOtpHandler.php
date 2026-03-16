@@ -15,7 +15,6 @@ use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
-use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Shared\Exceptions\SecurityException;
 use App\Application\Shared\Contracts\IdempotencyContextInterface;
 use App\Application\Shared\Contracts\TraceContextInterface;
@@ -92,33 +91,12 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
             tenantId: $command->tenantId,
         );
 
-        // Enriched payload for the Notifier (Relay will pick this up)
-        $outboxPayload = array_merge($event->toPayload(), [
-            'plain_text_code' => $plainCode, // REQUIRED for delivery
-            'identifier' => $command->identifier,
-            'expiry_minutes' => $this->otpExpiryMinutes,
-        ]);
-
-        $message = new DomainEventMessage(
-            eventId: $this->idGenerator->generate(),
-            type: OtpGenerated::class,
-            aggregateId: $otpEntity->id,
-            payload: json_encode($outboxPayload),
-            occurredAt: $this->clock->now(),
-            metadata: [
-                'tenant_id' => $command->tenantId,
-                'causation_id' => $this->idempotencyContext->getKey(),
-                'ip_address' => $command->ipAddress,
-                'trace_id' => $this->traceContext->getTraceId(),
-            ]
-        );
-
-        $this->outboxRepository->save($message);
+        $this->outboxRepository->append($event);
 
         $this->logger->info('OTP generated and persisted to Outbox', $this->sanitizePayload([
             'identifier' => $command->identifier,
             'tenant_id' => $command->tenantId,
-            'outbox_id' => $message->eventId,
+            'outbox_type' => OtpGenerated::class,
         ], $this->scrubber));
         // Idempotency result captured by decorator via closure return
         // No explicit return needed from pure handler

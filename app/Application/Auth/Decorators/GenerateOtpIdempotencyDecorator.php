@@ -36,7 +36,7 @@ final readonly class GenerateOtpIdempotencyDecorator implements GenerateOtpHandl
         ]));
 
         $this->atomicService->execute(
-            idempotencyKey: $command->idempotencyKey,
+            idempotencyKey: $command->getIdempotencyKey(),
             tenantId: $command->tenantId,
             commandHash: $payloadHash,
             operation: function () use ($command) {
