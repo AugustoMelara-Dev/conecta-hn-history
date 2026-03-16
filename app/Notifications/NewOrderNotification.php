@@ -12,6 +12,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\WebPush\WebPushChannel;
+use NotificationChannels\WebPush\WebPushMessage;
 
 /**
  * NewOrderNotification - Tenant Alerting System
@@ -52,7 +54,7 @@ class NewOrderNotification extends Notification implements ShouldQueue, ShouldBr
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail', 'broadcast'];
+        return ['database', 'mail', 'broadcast', WebPushChannel::class];
     }
 
     /**
@@ -150,5 +152,25 @@ class NewOrderNotification extends Notification implements ShouldQueue, ShouldBr
             'action_url' => "/app/orders/{$this->order->id}",
             'message' => "Nuevo pedido {$this->order->order_number} de {$this->order->customer_name} por {$formattedTotal}",
         ];
+    }
+
+    /**
+     * Get the web push representation of the notification.
+     */
+    public function toWebPush(object $notifiable, $notification): WebPushMessage
+    {
+        $formattedTotal = 'L. ' . number_format((float) ($this->order->total ?? 0), 2);
+        $orderUrl = url("/app/orders/{$this->order->id}");
+        $customerName = $this->order->customer_name ?? 'Cliente';
+
+        return (new WebPushMessage)
+            ->title('Nuevo pedido recibido')
+            ->icon('/favicon.ico')
+            ->body("{$this->order->order_number} de {$customerName} por {$formattedTotal}")
+            ->action('Abrir pedido', 'open_order')
+            ->data([
+                'url' => $orderUrl,
+                'order_id' => $this->order->id,
+            ]);
     }
 }

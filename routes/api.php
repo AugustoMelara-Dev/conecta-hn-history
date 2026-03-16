@@ -28,6 +28,13 @@ Route::prefix('v1')->group(function () {
     })->middleware(['auth:sanctum', 'throttle:api'])
       ->name('api.users.show'); // Maps to /user (profile) for now, ignoring parameter if passed, or we can add specific route
 
+    Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+        Route::post('/push-subscriptions', [\App\Http\Controllers\Api\V1\PushSubscriptionController::class, 'update'])
+            ->name('api.push-subscriptions.update');
+        Route::delete('/push-subscriptions', [\App\Http\Controllers\Api\V1\PushSubscriptionController::class, 'destroy'])
+            ->name('api.push-subscriptions.destroy');
+    });
+
     // ═══════════════════════════════════════════════════════════════════════════
     // AUTHENTICATION: OTP Routes
     // ═══════════════════════════════════════════════════════════════════════════
