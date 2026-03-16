@@ -38,6 +38,23 @@ class ManageBilling extends Page implements HasForms, HasTable
     use InteractsWithForms;
     use InteractsWithTable;
 
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        $tenant = \Filament\Facades\Filament::getTenant();
+
+        if (! $user instanceof \App\Models\User || ! $tenant instanceof \App\Models\Tenant) {
+            return false;
+        }
+
+        return app(\App\Application\Access\Contracts\TenantPermissionGuardInterface::class)->allows(
+            $user,
+            $tenant,
+            \App\Domain\TenantGovernance\Enums\Capability::CATALOG_BASIC,
+            \App\Domain\Access\Enums\Permission::BILLING_VIEW
+        );
+    }
+
     protected string $view = 'filament.app.pages.manage-billing';
 
     protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-credit-card';

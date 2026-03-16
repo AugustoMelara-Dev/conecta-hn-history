@@ -26,7 +26,7 @@ class AppointmentResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return Filament::getTenant()?->hasCapability(Capability::APPOINTMENT_BOOKING) ?? false;
+        return \Illuminate\Support\Facades\Gate::allows('viewAny', \App\Models\Appointment::class);
     }
 
     public static function shouldRegisterNavigation(): bool

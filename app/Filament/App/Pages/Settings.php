@@ -14,6 +14,23 @@ use Filament\Pages\Page;
 
 class Settings extends Page
 {
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        $tenant = \Filament\Facades\Filament::getTenant();
+
+        if (! $user instanceof \App\Models\User || ! $tenant instanceof \App\Models\Tenant) {
+            return false;
+        }
+
+        return app(\App\Application\Access\Contracts\TenantPermissionGuardInterface::class)->allows(
+            $user,
+            $tenant,
+            \App\Domain\TenantGovernance\Enums\Capability::CATALOG_BASIC,
+            \App\Domain\Access\Enums\Permission::SETTINGS_VIEW
+        );
+    }
+
     // Navigation Icon removed to fix type error
 
     protected string $view = 'filament.app.pages.settings';

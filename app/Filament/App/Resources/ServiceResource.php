@@ -26,7 +26,7 @@ class ServiceResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return Filament::getTenant()?->hasCapability(Capability::SERVICE_PACKAGES) ?? false;
+        return \Illuminate\Support\Facades\Gate::allows('viewAny', \App\Models\Service::class);
     }
 
     public static function shouldRegisterNavigation(): bool
