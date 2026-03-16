@@ -75,6 +75,7 @@ class InventoryLevelResource extends Resource
                 Tables\Actions\Action::make('adjust_stock')
                     ->label('Adjust Stock')
                     ->icon('heroicon-o-adjustments-horizontal')
+                    ->visible(fn (InventoryLevel $record): bool => auth()->user()?->can('update', $record) ?? false)
                     ->form([
                         Forms\Components\TextInput::make('quantity_delta')
                             ->label('Adjustment Quantity')
@@ -109,6 +110,7 @@ class InventoryLevelResource extends Resource
                     ->label('Report Loss')
                     ->icon('heroicon-o-exclamation-triangle')
                     ->color('danger')
+                    ->visible(fn (InventoryLevel $record): bool => auth()->user()?->can('update', $record) ?? false)
                     ->form([
                         Forms\Components\TextInput::make('loss_quantity')
                             ->label('Quantity Lost')
