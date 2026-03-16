@@ -159,7 +159,92 @@ class ProductResource extends Resource
                             ->multiple(fn () => Filament::getTenant()?->is_pro)
                             ->reorderable(fn () => Filament::getTenant()?->is_pro)
                             ->panelLayout('grid')
-                            ->columnSpanFull(),
+                            ->columnSpanFull(), /*
+                            ->hintAction(
+                                \Filament\Forms\Components\Actions\Action::make('generate_ai_profile')
+                                    ->label('Generar con IA (PRO)')
+                                    ->icon('heroicon-m-sparkles')
+                                    ->color('gray')
+                                    ->visible(fn () => Filament::getTenant()?->is_pro ?? false)
+                                    ->requiresConfirmation()
+                                    ->modalHeading('GeneraciÃ³n Inteligente')
+                                    ->modalDescription('Usaremos tu descripciÃ³n actual para generar un texto persuasivo y optimizado. Esto consumirÃ¡ crÃ©ditos de tu presupuesto de IA.')
+                                    ->modalSubmitActionLabel('Generar Perfil')
+                                    ->action(function (Forms\Set $set, Forms\Get $get): void {
+                                        $tenant = Filament::getTenant();
+                                        $user = auth()->user();
+                                        $productName = trim((string) ($get('name') ?? ''));
+                                        $currentDescription = trim((string) ($get('description') ?? ''));
+
+                                        if (! $tenant || ! $user) {
+                                            Notification::make()
+                                                ->title('SesiÃ³n no disponible')
+                                                ->body('No pudimos identificar tu sesiÃ³n o negocio actual.')
+                                                ->danger()
+                                                ->send();
+
+                                            return;
+                                        }
+
+                                        if ($productName === '' || $currentDescription === '') {
+                                            Notification::make()
+                                                ->title('Faltan datos')
+                                                ->body('Ingresa un nombre y una descripciÃ³n bÃ¡sica primero.')
+                                                ->warning()
+                                                ->send();
+
+                                            return;
+                                        }
+
+                                        $rawUserId = $user->getAuthIdentifier();
+                                        $aiUserId = is_numeric($rawUserId) ? (int) $rawUserId : 0;
+
+                                        if ($aiUserId === 0) {
+                                            \Illuminate\Support\Facades\Log::warning('[ProductResource] OpenAIService still expects a legacy integer user ID.', [
+                                                'user_id' => $rawUserId,
+                                                'tenant_id' => $tenant->id,
+                                            ]);
+                                        }
+
+                                        try {
+                                            $aiService = app(\App\Services\AI\OpenAIService::class);
+
+                                            $result = $aiService->generateStructuredProfile(
+                                                businessName: $productName,
+                                                description: $currentDescription,
+                                                userId: $aiUserId,
+                                                tenantId: (string) $tenant->id
+                                            );
+
+                                            $set('description', strip_tags((string) ($result['description'] ?? $currentDescription)));
+
+                                            Notification::make()
+                                                ->title('Magia aplicada')
+                                                ->body('La descripciÃ³n de tu producto ha sido optimizada.')
+                                                ->success()
+                                                ->send();
+                                        } catch (\App\Exceptions\InsufficientAiCreditsException $e) {
+                                            Notification::make()
+                                                ->title('Presupuesto agotado')
+                                                ->body('Has alcanzado tu lÃ­mite de IA este mes.')
+                                                ->danger()
+                                                ->send();
+                                        } catch (\Throwable $e) {
+                                            \Illuminate\Support\Facades\Log::error('[ProductResource] AI generation failed', [
+                                                'tenant_id' => $tenant->id,
+                                                'user_id' => $rawUserId,
+                                                'error' => $e->getMessage(),
+                                            ]);
+
+                                            Notification::make()
+                                                ->title('Error del motor')
+                                                ->body('La IA estÃ¡ descansando. Intenta de nuevo.')
+                                                ->danger()
+                                                ->send();
+                                        }
+                                    })
+                            ),
+                            */
                     ])
                     ->collapsible(),
 
@@ -192,7 +277,91 @@ class ProductResource extends Resource
                             ->rows(3)
                             ->maxLength(500)
                             ->placeholder('Describe tu producto brevemente...')
-                            ->columnSpanFull(),
+                            ->columnSpanFull()
+                            ->hintAction(
+                                \Filament\Forms\Components\Actions\Action::make('generate_ai_profile')
+                                    ->label('Generar con IA (PRO)')
+                                    ->icon('heroicon-m-sparkles')
+                                    ->color('gray')
+                                    ->visible(fn () => Filament::getTenant()?->is_pro ?? false)
+                                    ->requiresConfirmation()
+                                    ->modalHeading('Generacion inteligente')
+                                    ->modalDescription('Usaremos tu descripcion actual para generar un texto persuasivo y optimizado. Esto consumira creditos de tu presupuesto de IA.')
+                                    ->modalSubmitActionLabel('Generar perfil')
+                                    ->action(function (Forms\Set $set, Forms\Get $get): void {
+                                        $tenant = Filament::getTenant();
+                                        $user = auth()->user();
+                                        $productName = trim((string) ($get('name') ?? ''));
+                                        $currentDescription = trim((string) ($get('description') ?? ''));
+
+                                        if (! $tenant || ! $user) {
+                                            Notification::make()
+                                                ->title('Sesion no disponible')
+                                                ->body('No pudimos identificar tu sesion o negocio actual.')
+                                                ->danger()
+                                                ->send();
+
+                                            return;
+                                        }
+
+                                        if ($productName === '' || $currentDescription === '') {
+                                            Notification::make()
+                                                ->title('Faltan datos')
+                                                ->body('Ingresa un nombre y una descripcion basica primero.')
+                                                ->warning()
+                                                ->send();
+
+                                            return;
+                                        }
+
+                                        $rawUserId = $user->getAuthIdentifier();
+                                        $aiUserId = is_numeric($rawUserId) ? (int) $rawUserId : 0;
+
+                                        if ($aiUserId === 0) {
+                                            \Illuminate\Support\Facades\Log::warning('[ProductResource] OpenAIService still expects a legacy integer user ID.', [
+                                                'user_id' => $rawUserId,
+                                                'tenant_id' => $tenant->id,
+                                            ]);
+                                        }
+
+                                        try {
+                                            $aiService = app(\App\Services\AI\OpenAIService::class);
+
+                                            $result = $aiService->generateStructuredProfile(
+                                                businessName: $productName,
+                                                description: $currentDescription,
+                                                userId: $aiUserId,
+                                                tenantId: (string) $tenant->id
+                                            );
+
+                                            $set('description', strip_tags((string) ($result['description'] ?? $currentDescription)));
+
+                                            Notification::make()
+                                                ->title('Magia aplicada')
+                                                ->body('La descripcion de tu producto ha sido optimizada.')
+                                                ->success()
+                                                ->send();
+                                        } catch (\App\Exceptions\InsufficientAiCreditsException $e) {
+                                            Notification::make()
+                                                ->title('Presupuesto agotado')
+                                                ->body('Has alcanzado tu limite de IA este mes.')
+                                                ->danger()
+                                                ->send();
+                                        } catch (\Throwable $e) {
+                                            \Illuminate\Support\Facades\Log::error('[ProductResource] AI generation failed', [
+                                                'tenant_id' => $tenant->id,
+                                                'user_id' => $rawUserId,
+                                                'error' => $e->getMessage(),
+                                            ]);
+
+                                            Notification::make()
+                                                ->title('Error del motor')
+                                                ->body('La IA esta descansando. Intenta de nuevo.')
+                                                ->danger()
+                                                ->send();
+                                        }
+                                    })
+                            ),
                     ])
                     ->columns(2),
 
