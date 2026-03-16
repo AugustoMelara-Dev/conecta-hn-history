@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
+use App\Domain\Access\Enums\Role;
 use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
@@ -18,6 +19,7 @@ use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\TenantGovernance\Factories\TenantFactory;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
+use App\Models\TenantMembership;
 
 /**
  * RegisterTenantHandler - Command Handler for Tenant Registration
@@ -96,6 +98,20 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         // 5.1 Link User to Tenant (Resolves Foreign Key constraint)
         $userEntity->assignToTenant($tenantEntity->id());
         $this->userRepository->save($userEntity);
+
+        // 5.2 Bootstrap RBAC membership (owner of the newly created tenant)
+        // Pragmatic bridge: we persist the RBAC membership directly until
+        // the access context gets its own repository port.
+        TenantMembership::query()->updateOrCreate(
+            [
+                'tenant_id' => $tenantEntity->id(),
+                'user_id' => $userEntity->id(),
+            ],
+            [
+                'role' => Role::OWNER->value,
+                'accepted_at' => now(),
+            ]
+        );
 
         // 6. Handle Payment (DELEGATED TO PROCESS MANAGER)
         // Billing setup is now eventually consistent to prevent cross-context DB locking.

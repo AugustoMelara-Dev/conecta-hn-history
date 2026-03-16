@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
@@ -137,6 +138,16 @@ class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthen
 
     public function isTenantOwner(): bool
     {
+        $membership = $this->tenantMemberships()
+            ->where('tenant_id', $this->tenant_id)
+            ->where('role', \App\Domain\Access\Enums\Role::OWNER->value)
+            ->whereNotNull('accepted_at')
+            ->first();
+
+        if ($membership !== null) {
+            return true;
+        }
+
         if ($this->tenant_id === null) {
             return false;
         }
@@ -147,7 +158,7 @@ class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthen
             return false;
         }
 
-        return (int) $tenant->user_id === (int) $this->id;
+        return (string) $tenant->user_id === (string) $this->id;
     }
 
     /**
@@ -212,20 +223,45 @@ class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthen
         return $this->hasMany(Tenant::class);
     }
 
+    public function tenantMemberships(): HasMany
+    {
+        return $this->hasMany(TenantMembership::class);
+    }
+
+    public function memberTenants(): BelongsToMany
+    {
+        return $this->belongsToMany(Tenant::class, 'tenant_memberships')
+            ->withPivot(['role', 'accepted_at'])
+            ->withTimestamps();
+    }
+
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // FILAMENT MULTI-TENANCY CONTRACT (HasTenants)
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     public function getTenants(Panel $panel): Collection
     {
-        $tenant = $this->tenant;
+        $tenants = $this->memberTenants()
+            ->wherePivotNotNull('accepted_at')
+            ->get();
 
-        return $tenant ? collect([$tenant]) : collect();
+        if ($tenant = $this->tenant) {
+            $tenants->prepend($tenant);
+        }
+
+        return $tenants->unique('id')->values();
     }
 
     public function canAccessTenant(Model $tenant): bool
     {
-        return $this->tenant_id !== null && $this->tenant_id === $tenant->id;
+        if ($this->tenant_id !== null && (string) $this->tenant_id === (string) $tenant->id) {
+            return true;
+        }
+
+        return $this->tenantMemberships()
+            ->where('tenant_id', $tenant->id)
+            ->whereNotNull('accepted_at')
+            ->exists();
     }
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

@@ -416,6 +416,11 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->belongsTo(User::class);
     }
 
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(TenantMembership::class);
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
