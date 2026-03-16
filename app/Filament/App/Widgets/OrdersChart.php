@@ -4,23 +4,23 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
-use App\Models\Appointment;
+use App\Models\Order;
 use Filament\Facades\Filament;
 use Filament\Widgets\ChartWidget;
 use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
 
 /**
- * OrdersChart - 7-Day Appointment Volume
+ * OrdersChart - 7-Day Order Volume
  *
- * Bar chart showing daily appointment counts for quick
+ * Bar chart showing daily order counts for quick
  * visualization of booking trends.
  *
  * SECURITY: Data is strictly scoped to current tenant.
  */
 class OrdersChart extends ChartWidget
 {
-    protected ?string $heading = 'Citas por Día (Última Semana)';
+    protected ?string $heading = 'Ordenes por Dia (Ultima Semana)';
 
     protected static ?int $sort = 3;
 
@@ -29,10 +29,10 @@ class OrdersChart extends ChartWidget
         $tenant = Filament::getTenant();
 
         $data = Trend::query(
-            Appointment::query()
+            Order::query()
                 ->where('tenant_id', $tenant->id)
         )
-            ->dateColumn('scheduled_at')
+            ->dateColumn('created_at')
             ->between(
                 start: now()->subDays(7),
                 end: now(),
@@ -43,7 +43,7 @@ class OrdersChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Citas',
+                    'label' => 'Ordenes',
                     'data' => $data->map(fn (TrendValue $value) => $value->aggregate),
                     'backgroundColor' => '#000000',
                     'borderRadius' => 4,

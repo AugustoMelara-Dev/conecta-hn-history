@@ -8,7 +8,7 @@ use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 /**
- * StatsOverview - Widget de Estadísticas Generales
+ * StatsOverview - Widget de Estadisticas Generales
  *
  * Filament v4 Compatible: Extiende StatsOverviewWidget.
  */
@@ -37,19 +37,31 @@ class StatsOverview extends StatsOverviewWidget
 
         $conversionRate = $views > 0 ? round(($clicks / $views) * 100, 1) : 0;
 
+        $pendingOrders = \App\Models\Order::where('tenant_id', $tenant->id)
+            ->where('status', 'pending')
+            ->count();
+
+        $totalRevenue = \App\Models\Order::where('tenant_id', $tenant->id)
+            ->where('status', 'delivered')
+            ->sum('total');
+
         return [
+            Stat::make('Ingresos Totales', 'L. ' . number_format((float) $totalRevenue, 2))
+                ->description('Ordenes entregadas')
+                ->descriptionIcon('heroicon-m-banknotes')
+                ->color('gray'),
+            Stat::make('Pedidos Pendientes', $pendingOrders)
+                ->description('Requieren tu atencion')
+                ->descriptionIcon('heroicon-m-clock')
+                ->color($pendingOrders > 0 ? 'warning' : 'gray'),
             Stat::make('Visitas Totales', $views)
-                ->description('Vistas de tu página')
+                ->description('Vistas de tu pagina')
                 ->descriptionIcon('heroicon-m-eye')
                 ->color('gray'),
-            Stat::make('Clics en WhatsApp', $clicks)
-                ->description('Intenciones de compra')
-                ->descriptionIcon('heroicon-m-chat-bubble-left-right')
-                ->color('success'),
-            Stat::make('Tasa de Conversión', $conversionRate.'%')
+            Stat::make('Tasa de Conversion', $conversionRate . '%')
                 ->description('De visitas a clics')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('primary'),
+                ->color('gray'),
         ];
     }
 }
