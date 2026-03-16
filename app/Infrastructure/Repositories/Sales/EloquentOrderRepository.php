@@ -52,13 +52,17 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
             $model->items()->delete();
 
             foreach ($order->items as $itemData) {
+                $lineTotal = $itemData['line_total']
+                    ?? (($itemData['unit_price'] ?? $itemData['price'] ?? 0) * ($itemData['quantity'] ?? 1));
+
                 $model->items()->create([
                     'product_id' => $itemData['product_id'] ?? null,
                     'product_name' => $itemData['name'] ?? '',
                     'product_price' => $itemData['unit_price'] ?? ($itemData['price'] ?? 0),
                     'unit_price' => $itemData['unit_price'] ?? ($itemData['price'] ?? 0),
                     'quantity' => $itemData['quantity'] ?? 1,
-                    'total_price' => $itemData['line_total'] ?? 0,
+                    'line_total' => $lineTotal,
+                    'total_price' => $lineTotal,
                     'selected_options' => $itemData['validated_options'] ?? ($itemData['options'] ?? []),
                     'notes' => $itemData['notes'] ?? null,
                 ]);

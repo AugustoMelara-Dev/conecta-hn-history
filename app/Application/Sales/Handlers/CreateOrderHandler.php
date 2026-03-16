@@ -132,7 +132,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
             tenantId: $command->tenantId,
             orderNumber: $persistedOrder->orderNumber,
             customerName: $persistedOrder->customerName,
-            total: (float) $total,
+            total: (int) round($total),
             status: 'pending'
         ));
 
