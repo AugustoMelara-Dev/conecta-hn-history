@@ -6,5 +6,7 @@ namespace App\Application\Sales\Commands;
 
 final readonly class ReleaseExpiredHoldsCommand
 {
-    public function __construct() {}
+    public function __construct(
+        public ?string $tenantId = null,
+    ) {}
 }

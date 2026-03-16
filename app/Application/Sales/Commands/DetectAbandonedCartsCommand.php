@@ -7,6 +7,7 @@ namespace App\Application\Sales\Commands;
 final readonly class DetectAbandonedCartsCommand
 {
     public function __construct(
-        public int $timeoutMinutes = 30
+        public int $timeoutMinutes = 30,
+        public ?string $tenantId = null,
     ) {}
 }

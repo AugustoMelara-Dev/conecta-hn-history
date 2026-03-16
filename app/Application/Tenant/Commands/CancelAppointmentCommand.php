@@ -8,5 +8,6 @@ final readonly class CancelAppointmentCommand
 {
     public function __construct(
         public string|int $appointmentId,
+        public ?string $tenantId = null,
     ) {}
 }
