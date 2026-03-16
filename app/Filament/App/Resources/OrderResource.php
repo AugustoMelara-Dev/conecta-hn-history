@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\OrderResource\Pages;
+use App\Models\Location;
 use App\Models\Order;
 use Filament\Facades\Filament;
 use Filament\Infolists;
@@ -85,6 +86,7 @@ class OrderResource extends Resource
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query
                 ->where('tenant_id', Filament::getTenant()->id)
+                ->with('location')
                 ->latest())
             ->columns([
                 // ═══ NÚMERO DE ORDEN ═══
@@ -101,6 +103,12 @@ class OrderResource extends Resource
                     ->label('Cliente')
                     ->searchable()
                     ->description(fn (Order $record): string => $record->customer_phone),
+
+                Tables\Columns\TextColumn::make('location.name')
+                    ->label('Sucursal')
+                    ->badge()
+                    ->color('info')
+                    ->toggleable(),
 
                 // ═══ ESTADO CON COLORES ═══
                 Tables\Columns\TextColumn::make('status')
@@ -176,6 +184,16 @@ class OrderResource extends Resource
                         'delivered' => 'Entregado',
                         'cancelled' => 'Cancelado',
                     ]),
+                Tables\Filters\SelectFilter::make('location_id')
+                    ->label('Sucursal')
+                    ->options(fn (): array => Location::query()
+                        ->where('tenant_id', Filament::getTenant()?->id)
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->all())
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('Todas las sucursales'),
                 Tables\Filters\Filter::make('today')
                     ->label('Solo Hoy')
                     ->query(fn (Builder $query): Builder => $query->whereDate('created_at', today()))

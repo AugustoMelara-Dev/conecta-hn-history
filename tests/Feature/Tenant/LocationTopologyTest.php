@@ -39,3 +39,26 @@ it('can associate an order with a location', function () {
     expect($order->location_id)->toBe($location->id)
         ->and($order->location->name)->toBe('Main Branch');
 });
+
+it('keeps only one primary location per tenant', function () {
+    $tenant = Tenant::factory()->create();
+
+    $first = Location::create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Centro',
+        'slug' => 'centro',
+        'is_primary' => true,
+        'is_active' => true,
+    ]);
+
+    $second = Location::create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Norte',
+        'slug' => 'norte',
+        'is_primary' => true,
+        'is_active' => true,
+    ]);
+
+    expect($second->fresh()->is_primary)->toBeTrue()
+        ->and($first->fresh()->is_primary)->toBeFalse();
+});
