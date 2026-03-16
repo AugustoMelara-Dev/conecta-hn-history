@@ -1,695 +1,167 @@
-/**
- * Tenant/Show.jsx - Unified Microsite View
- * 
- * ARCHITECTURE: Single Source of Truth (DRY Principle)
- * This is the ONE and ONLY view for tenant microsites.
- * It adapts dynamically based on tenantPlan using:
- * 1. Shared components (TenantHeader, ProductGrid, etc.)
- * 2. Strategy pattern (ProductActionArea)
- * 3. Conditional rendering for tier-specific features
- * 
- * NO separate Free/Pro pages exist - everything is unified here.
- */
-
-import { Head, Link } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
+import { useCallback, useEffect, useState } from 'react';
 import FollowButton from '@/Components/Public/FollowButton';
 import ReviewSection from '@/Components/Public/ReviewSection';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
-import { Badge } from '@/Components/ui/badge';
-import {
-    MapPin, Clock, Globe, Star, MessageCircle, ShoppingBag,
-    BadgeCheck, ExternalLink, Phone, Store, Lock
-} from 'lucide-react';
+import { BadgeCheck, Clock, ExternalLink, Globe, Lock, MapPin, MessageCircle, Phone, ShoppingBag, Star, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-// Tenant Components (Strategy Pattern + Shared)
 import FloatingCart from '@/Components/Tenant/FloatingCart';
 import ProductActionArea from '@/Components/Tenant/ProductActionArea';
-import UpsellCard from '@/Components/Tenant/UpsellCard';
 import useCartStore from '@/Stores/useCartStore';
+import { buildWhatsAppUrl, isValidWhatsAppPhone } from '@/Utils/phoneUtils';
 
-// Color Utilities for WCAG-compliant contrast
-import { getContrastColor } from '@/Utils/colorUtils';
-
-/**
- * PLAN CONSTANTS
- */
-const PLAN = {
-    SEMILLA: 'semilla',
-    PRO: 'pro',
-    ENTERPRISE: 'enterprise',
-};
+const PLAN = { SEMILLA: 'semilla', PRO: 'pro', ENTERPRISE: 'enterprise' };
 
 export default function TenantShow({
-    tenant,
-    products,
-    tenantPlan = PLAN.SEMILLA,
-    // Soft Gate: Data awareness props from backend
-    hasHiddenProducts = false,
-    totalProductsCount = 0,
-    hiddenProductsCount = 0,
-    // Role awareness: Is viewer the tenant owner?
-    isOwner = false,
-    // Other props
-    isFollowing,
-    followersCount,
-    seoStructuredData,
-    isOpen = true,
-    openingHours = [],
+    tenant, products, filters = {}, tenantPlan = PLAN.SEMILLA, hasHiddenProducts = false, totalProductsCount = 0,
+    hiddenProductsCount = 0, isOwner = false, isFollowing, followersCount, seoStructuredData, isOpen = true,
+    openingHours = [], canonicalUrl,
 }) {
-    // Cart initialization (Pro tier only)
-    const initForTenant = useCartStore(state => state.initForTenant);
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
+    const initForTenant = useCartStore((state) => state.initForTenant);
 
+    useEffect(() => setSearchQuery(filters.search || ''), [filters.search]);
     useEffect(() => {
         if (tenantPlan !== PLAN.SEMILLA && tenant?.slug) {
-            initForTenant(
-                tenant.slug,
-                tenant.whatsapp || tenant.whatsapp_number,
-                tenant.name
-            );
+            initForTenant(tenant.slug, tenant.whatsapp || tenant.whatsapp_number, tenant.name, tenant.id);
         }
-    }, [tenant?.slug, tenantPlan]);
+    }, [initForTenant, tenant, tenantPlan]);
 
-    // Loading state
     if (!tenant) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-slate-950 text-white">
-                <div className="text-center animate-pulse">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center">
-                        <Store className="w-8 h-8 text-slate-600" />
-                    </div>
-                    <p className="text-lg font-medium text-slate-400">Cargando tienda...</p>
-                </div>
-            </div>
-        );
+        return <div className="flex min-h-screen items-center justify-center bg-white text-black"><Store className="h-8 w-8" /></div>;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // DATA ABSTRACTION LAYER: Safe Fallbacks for all nullable fields
-    // These constants guarantee non-null values for DOM injection
-    // ═══════════════════════════════════════════════════════════════════════
-    const safeProducts = Array.isArray(products) ? products : (Array.isArray(tenant.products) ? tenant.products : []);
-    const primaryColor = tenant.brand_color || tenant.primary_color || '#6366f1';
-    const primaryTextColor = getContrastColor(primaryColor);
+    const safeProducts = Array.isArray(products?.data) ? products.data : Array.isArray(products) ? products : Array.isArray(tenant.products) ? tenant.products : [];
+    const pagination = Array.isArray(products?.links) ? products.links : [];
+    const visibleTotal = Number(products?.total ?? safeProducts.length);
     const isPro = tenantPlan !== PLAN.SEMILLA;
-    const isRestaurant = ['Restaurantes', 'Comida', 'Restaurante'].includes(tenant.category?.name);
+    const whatsapp = tenant.whatsapp || tenant.whatsapp_number || '';
     const cityName = typeof tenant.city === 'string' ? tenant.city : (tenant.city?.name || 'Honduras');
-    const whatsappNumber = tenant.whatsapp || tenant.whatsapp_number || '';
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // SEO METADATA: Guaranteed safe strings (never null/undefined)
-    // Title Format: "Nombre | Categoría en Ciudad | Conecta HN"
-    // ═══════════════════════════════════════════════════════════════════════
-    const categoryName = tenant.category?.name || 'Negocios';
-    const pageTitle = `${tenant.name || 'Tienda'} | ${categoryName} en ${cityName} | Conecta HN`;
-    const pageDescription = String(
-        tenant.description ||
-        tenant.slogan ||
-        `Descubre ${tenant.name} en Conecta HN. Tu marketplace local de Honduras.`
-    ).substring(0, 160);
-    // og:image MUST never be null - use system fallback
+    const pageTitle = `${tenant.name || 'Tienda'} | ${tenant.category?.name || 'Negocios'} en ${cityName} | Conecta HN`;
+    const pageDescription = String(tenant.description || tenant.slogan || `Descubre ${tenant.name} en Conecta HN.`).substring(0, 160);
     const pageImage = tenant.hero_image || tenant.cover || tenant.banner_path || 'https://conecta-hn.com/og-default.jpg';
 
+    const handleSearch = useCallback((event) => {
+        event.preventDefault();
+        router.get(route('tenant.microsite.show', tenant.slug), { search: searchQuery || undefined }, { preserveState: true, preserveScroll: true, replace: true });
+    }, [searchQuery, tenant.slug]);
+
+    const shell = (
+        <>
+            <nav className="fixed inset-x-0 top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+                    <Link href={route('directory.index')} className="border border-black px-4 py-2 text-[10px] font-bold uppercase tracking-[0.24em] hover:bg-black hover:text-white">Directorio</Link>
+                    <Link href="/" className="flex h-9 w-9 items-center justify-center border border-black bg-black text-xs font-black uppercase tracking-[0.24em] text-white">C</Link>
+                </div>
+            </nav>
+
+            <header className="border-b border-gray-200 bg-white pt-16">
+                <div className={cn('relative overflow-hidden border-b border-gray-200 bg-gray-50', isPro ? 'min-h-[22rem]' : 'min-h-[14rem]')}>
+                    {tenant.cover ? <img src={tenant.cover} alt={tenant.name} className="absolute inset-0 h-full w-full object-cover grayscale" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop'; }} /> : <div className="absolute inset-0 flex items-center justify-center text-4xl font-black uppercase tracking-[0.4em] text-gray-100 md:text-7xl">{tenant.name}</div>}
+                    <div className="absolute inset-0 bg-white/35" />
+                </div>
+
+                <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[160px_minmax(0,1fr)] lg:px-8">
+                    <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden border-4 border-black bg-white lg:mx-0">
+                        {tenant.logo ? <img src={tenant.logo} alt={`${tenant.name} logo`} className="h-full w-full object-cover grayscale" /> : <span className="text-3xl font-black uppercase tracking-[0.24em]">{tenant.name?.substring(0, 2).toUpperCase()}</span>}
+                    </div>
+                    <div className="space-y-5 text-center lg:text-left">
+                        <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+                            <span className="border border-black px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em]">{tenant.category?.name || 'General'}</span>
+                            <span className="border border-gray-300 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-gray-500">{tenantPlan}</span>
+                            {isPro ? <span className="inline-flex items-center gap-2 border border-black bg-black px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-white"><BadgeCheck className="h-3.5 w-3.5" />Verificado</span> : null}
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-black uppercase tracking-[0.18em] md:text-5xl">{tenant.name}</h1>
+                            <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-xs font-bold uppercase tracking-[0.18em] text-gray-500 lg:justify-start">
+                                <span className="inline-flex items-center gap-2"><MapPin className="h-4 w-4 text-black" />{cityName}</span>
+                                <span className="inline-flex items-center gap-2"><span className={cn('h-2 w-2 border border-black', isOpen ? 'bg-black' : 'bg-white')} />{isOpen ? 'Abierto' : 'Cerrado'}</span>
+                                {tenant.reviews_count ? <span className="inline-flex items-center gap-2"><Star className="h-4 w-4 fill-black text-black" />{tenant.rating || '4.8'} ({tenant.reviews_count})</span> : null}
+                            </div>
+                        </div>
+                        <div className="grid gap-4 border-t border-gray-200 pt-5 md:grid-cols-3">
+                            <Metric label="Catalogo visible" value={visibleTotal} />
+                            <Metric label="Productos totales" value={totalProductsCount} />
+                            <Metric label="Ocultos por plan" value={hiddenProductsCount} />
+                        </div>
+                        <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+                            {!isOwner ? <FollowButton tenantId={tenant.id} isFollowing={isFollowing} followersCount={followersCount} className="rounded-none border-black bg-black text-white hover:bg-gray-800" /> : null}
+                            {whatsapp ? <a href={`https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${tenant.name}!`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-black bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.24em] text-white hover:bg-gray-800"><MessageCircle className="h-4 w-4" />WhatsApp</a> : null}
+                            {tenant.phone ? <a href={`tel:${tenant.phone}`} className="inline-flex items-center gap-2 border border-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.24em] hover:bg-black hover:text-white"><Phone className="h-4 w-4" />Llamar</a> : null}
+                        </div>
+                    </div>
+                </div>
+            </header>
+        </>
+    );
+
     return (
-        <div
-            style={{
-                '--primary': primaryColor,
-                '--primary-color': primaryColor,
-                '--primary-text-color': primaryTextColor,
-            }}
-            className="min-h-screen bg-slate-950 font-sans"
-        >
-            {/* ═══════════════════════════════════════════════════════════════
-                SEO HEAD: Defensive rendering with guaranteed string values
-                - All content attributes are pre-sanitized
-                - og:image ALWAYS rendered (never null - fallback provided)
-            ═══════════════════════════════════════════════════════════════ */}
+        <div style={{ '--primary': '#000000', '--primary-color': '#000000', '--primary-text-color': '#ffffff' }} className="min-h-screen bg-white text-black selection:bg-black selection:text-white">
             <Head title={pageTitle}>
                 <meta name="description" content={pageDescription} />
                 <meta property="og:title" content={pageTitle} />
                 <meta property="og:description" content={pageDescription} />
                 <meta property="og:type" content="business.business" />
                 <meta property="og:image" content={pageImage} />
+                {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
+                {seoStructuredData ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(seoStructuredData) }} /> : null}
             </Head>
 
-            {/* Fixed Navigation */}
-            <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <Link
-                        href={route('directory.index')}
-                        className="pointer-events-auto flex items-center gap-2 text-white/80 hover:text-white bg-black/30 hover:bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full transition-all text-sm font-medium mt-4"
-                    >
-                        ← Directorio
-                    </Link>
-
-                    {/* Branding for Semilla tier */}
-                    {tenantPlan === PLAN.SEMILLA && (
-                        <Link href="/" className="pointer-events-auto mt-4">
-                            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg border border-white/10">
-                                <span className="text-white font-bold text-sm">C</span>
-                            </div>
-                        </Link>
-                    )}
-                </div>
-            </nav>
-
-            {/* ═══════════════════════════════════════════════════════════════
-                HERO SECTION - Adaptive based on plan
-            ═══════════════════════════════════════════════════════════════ */}
-            <header className="relative">
-                {/* Cover Image - min-h prevents CLS */}
-                <div className={cn(
-                    "relative overflow-hidden bg-slate-900",
-                    isPro ? "min-h-[40vh] md:min-h-[50vh]" : "min-h-[12rem]"
-                )}>
-                    {tenant.cover ? (
-                        <img
-                            src={tenant.cover}
-                            alt={tenant.name}
-                            className="w-full h-full object-cover opacity-70"
-                            onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop';
-                            }}
-                        />
-                    ) : (
-                        <div
-                            className="w-full h-full flex items-center justify-center"
-                            style={{ backgroundColor: primaryColor }}
-                        >
-                            {isPro ? (
-                                <span className="text-white/10 font-sans text-5xl md:text-9xl font-bold tracking-widest uppercase select-none">
-                                    {tenant.name}
-                                </span>
-                            ) : (
-                                <Store className="w-20 h-20 text-white/20" />
-                            )}
-                        </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
-                </div>
-
-                {/* Profile Info */}
-                <div className={cn(
-                    "relative z-10 px-4 md:px-6 lg:px-8",
-                    isPro
-                        ? "absolute bottom-0 left-0 w-full p-6 md:p-12"
-                        : "max-w-3xl mx-auto -mt-16 pb-6 text-center"
-                )}>
-                    <div className={cn(
-                        "flex gap-6",
-                        isPro
-                            ? "flex-col md:flex-row items-end md:items-center max-w-7xl mx-auto"
-                            : "flex-col items-center"
-                    )}>
-                        {/* Logo */}
-                        <div className={cn(
-                            "bg-slate-800 rounded-2xl border-4 border-slate-950 shadow-2xl overflow-hidden flex-shrink-0",
-                            isPro ? "w-24 h-24 md:w-32 md:h-32" : "w-24 h-24"
-                        )}>
-                            {tenant.logo ? (
-                                <img
-                                    src={tenant.logo}
-                                    alt="Logo"
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                        e.target.onerror = null;
-                                        e.target.style.display = 'none';
-                                        e.target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center" style="background-color: ${primaryColor}"><span class="text-3xl font-bold text-white">${tenant.name?.substring(0, 2).toUpperCase() || 'CN'}</span></div>`;
-                                    }}
-                                />
-                            ) : (
-                                <div
-                                    className="w-full h-full flex items-center justify-center"
-                                    style={{ backgroundColor: primaryColor }}
-                                >
-                                    <span className="text-3xl font-bold text-white">
-                                        {tenant.name?.substring(0, 2).toUpperCase()}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Info */}
-                        <div className={cn(isPro ? "flex-1 mb-2" : "")}>
-                            <div className={cn(
-                                "flex flex-wrap items-center gap-4",
-                                !isPro && "justify-center"
-                            )}>
-                                <h1 className={cn(
-                                    "font-bold text-white flex items-center gap-3",
-                                    isPro ? "text-3xl md:text-5xl" : "text-2xl"
-                                )}>
-                                    {tenant.name}
-                                    {isPro && <BadgeCheck className="w-8 h-8 text-indigo-400 fill-indigo-900/50" />}
-                                </h1>
-
-                                {!isOwner && (
-                                    <FollowButton
-                                        tenantId={tenant.id}
-                                        isFollowing={isFollowing}
-                                        followersCount={followersCount}
-                                        className="bg-white/10 hover:bg-white/20 border-white/20 text-white shadow-sm backdrop-blur-md"
-                                    />
-                                )}
-                            </div>
-
-                            <div className={cn(
-                                "flex flex-wrap items-center gap-3 text-white/90 mt-3",
-                                !isPro && "justify-center"
-                            )}>
-                                <Badge className="bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md">
-                                    {tenant.category?.name || 'General'}
-                                </Badge>
-
-                                {/* Rating - Pro only */}
-                                {isPro && (
-                                    <>
-                                        <div className="flex items-center gap-1">
-                                            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                                            <span className="font-bold">{tenant.rating || '4.8'}</span>
-                                            <span className="opacity-70">({tenant.reviews_count || 0})</span>
-                                        </div>
-                                        <span className="hidden md:inline text-white/40">•</span>
-                                    </>
-                                )}
-
-                                <div className="flex items-center gap-1 text-sm text-slate-300">
-                                    <MapPin className="w-4 h-4" />
-                                    <span>{cityName}</span>
-                                </div>
-                            </div>
-
-                            {/* Status & Actions - Pro */}
-                            {isPro && (
-                                <div className="flex items-center gap-4 mt-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className={cn(
-                                            "w-2 h-2 rounded-full",
-                                            isOpen ? "bg-emerald-500" : "bg-slate-500"
-                                        )} />
-                                        <span className={cn(
-                                            "text-sm",
-                                            isOpen ? "text-emerald-400" : "text-slate-400"
-                                        )}>
-                                            {isOpen ? 'Abierto' : 'Cerrado'}
-                                        </span>
-                                    </div>
-
-                                    {whatsappNumber && (
-                                        <a
-                                            href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${tenant.name}!`)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-4 py-2 rounded-full text-sm font-medium transition-colors border border-emerald-500/20"
-                                        >
-                                            <MessageCircle className="w-4 h-4" />
-                                            WhatsApp
-                                        </a>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Contact Buttons - Semilla */}
-                            {!isPro && (
-                                <div className="flex gap-3 mt-4 justify-center">
-                                    {whatsappNumber && (
-                                        <a
-                                            href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${tenant.name}!`)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
-                                        >
-                                            <MessageCircle className="w-4 h-4" />
-                                            WhatsApp
-                                        </a>
-                                    )}
-                                    {tenant.phone && (
-                                        <a
-                                            href={`tel:${tenant.phone}`}
-                                            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors border border-white/10"
-                                        >
-                                            <Phone className="w-4 h-4" />
-                                            Llamar
-                                        </a>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            {/* ═══════════════════════════════════════════════════════════════
-                MAIN CONTENT - Tabs for Pro, Simple list for Semilla
-            ═══════════════════════════════════════════════════════════════ */}
+            {shell}
             {isPro ? (
-                // PRO TIER: Full tabs experience
                 <Tabs defaultValue="products" className="w-full">
-                    {/* Tab Navigation */}
-                    <div className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-white/5">
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                            <TabsList className="h-16 bg-transparent p-0 w-full justify-start gap-6">
-                                <TabsTrigger
-                                    value="products"
-                                    className="h-full rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 px-0 font-medium text-base bg-transparent text-slate-400"
-                                >
-                                    {isRestaurant ? 'Menú' : 'Catálogo'}
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="info"
-                                    className="h-full rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 px-0 font-medium text-base bg-transparent text-slate-400"
-                                >
-                                    Información
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="reviews"
-                                    className="h-full rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 px-0 font-medium text-base bg-transparent text-slate-400"
-                                >
-                                    Reseñas
-                                </TabsTrigger>
+                    <div className="sticky top-16 z-40 border-b border-gray-200 bg-white">
+                        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                            <TabsList className="h-14 bg-transparent p-0">
+                                <TabsTrigger value="products" className="h-full rounded-none border-b-2 border-transparent px-0 pr-8 text-[11px] font-bold uppercase tracking-[0.24em] text-gray-500 data-[state=active]:border-black data-[state=active]:text-black">Catalogo</TabsTrigger>
+                                <TabsTrigger value="info" className="h-full rounded-none border-b-2 border-transparent px-0 pr-8 text-[11px] font-bold uppercase tracking-[0.24em] text-gray-500 data-[state=active]:border-black data-[state=active]:text-black">Informacion</TabsTrigger>
+                                <TabsTrigger value="reviews" className="h-full rounded-none border-b-2 border-transparent px-0 text-[11px] font-bold uppercase tracking-[0.24em] text-gray-500 data-[state=active]:border-black data-[state=active]:text-black">Resenas</TabsTrigger>
                             </TabsList>
                         </div>
                     </div>
-
-                    <main id="catalogo" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32">
-                        {/* Products Tab */}
-                        <TabsContent value="products" className="mt-0">
-                            <ProductGridSection
-                                products={safeProducts}
-                                tenant={tenant}
-                                tenantPlan={tenantPlan}
-                                columns={3}
-                                hasHiddenProducts={hasHiddenProducts}
-                                hiddenProductsCount={hiddenProductsCount}
-                                isOwner={isOwner}
-                            />
-                        </TabsContent>
-
-                        {/* Info Tab */}
-                        <TabsContent value="info" className="mt-8">
-                            <InfoSection tenant={tenant} isOpen={isOpen} />
-                        </TabsContent>
-
-                        {/* Reviews Tab */}
-                        <TabsContent value="reviews" className="mt-8">
-                            <ReviewSection tenant={tenant} reviews={tenant.reviews || []} />
-                        </TabsContent>
+                    <main id="catalogo" className="mx-auto max-w-7xl px-4 py-10 pb-32 sm:px-6 lg:px-8">
+                        <TabsContent value="products" className="mt-0 space-y-8"><Toolbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} handleSearch={handleSearch} visibleTotal={visibleTotal} currentCount={safeProducts.length} hiddenProductsCount={hiddenProductsCount} hasHiddenProducts={hasHiddenProducts} /><ProductGridSection products={safeProducts} pagination={pagination} tenant={tenant} tenantPlan={tenantPlan} columns={3} hiddenProductsCount={hiddenProductsCount} hasHiddenProducts={hasHiddenProducts} isOwner={isOwner} /></TabsContent>
+                        <TabsContent value="info" className="mt-8"><InfoSection tenant={tenant} isOpen={isOpen} openingHours={openingHours} /></TabsContent>
+                        <TabsContent value="reviews" className="mt-8"><ReviewSection tenant={tenant} reviews={tenant.reviews || []} /></TabsContent>
                     </main>
                 </Tabs>
             ) : (
-                // SEMILLA TIER: Simple product list
-                <main className="max-w-3xl mx-auto px-4 py-8 pb-24">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-lg font-bold text-white">Productos</h2>
-                        <span className="text-sm text-slate-500">
-                            {safeProducts.length} de {totalProductsCount}
-                        </span>
-                    </div>
-
-                    <ProductGridSection
-                        products={safeProducts}
-                        tenant={tenant}
-                        tenantPlan={tenantPlan}
-                        columns={2}
-                        hasHiddenProducts={hasHiddenProducts}
-                        hiddenProductsCount={hiddenProductsCount}
-                        isOwner={isOwner}
-                    />
-
-                    {/* Business Info */}
-                    <div className="mt-8 bg-slate-900 rounded-2xl border border-white/5 p-6">
-                        <h3 className="font-bold text-white mb-3">Información del negocio</h3>
-                        <p className="text-sm text-slate-400 mb-4">
-                            {tenant.description || 'Bienvenido a nuestro negocio.'}
-                        </p>
-                        <div className="space-y-3 text-sm text-slate-400">
-                            <div className="flex items-center gap-3">
-                                <MapPin className="w-4 h-4 text-slate-500" />
-                                <span>{tenant.address || 'Honduras'}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Clock className="w-4 h-4 text-slate-500" />
-                                <span>{isOpen ? 'Abierto ahora' : 'Cerrado'}</span>
-                            </div>
-                        </div>
-                    </div>
-                </main>
+                <main className="mx-auto max-w-4xl px-4 py-10 pb-28"><Toolbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} handleSearch={handleSearch} visibleTotal={visibleTotal} currentCount={safeProducts.length} hiddenProductsCount={hiddenProductsCount} hasHiddenProducts={hasHiddenProducts} /><ProductGridSection products={safeProducts} pagination={pagination} tenant={tenant} tenantPlan={tenantPlan} columns={2} hiddenProductsCount={hiddenProductsCount} hasHiddenProducts={hasHiddenProducts} isOwner={isOwner} /><div className="mt-12 border border-gray-200 bg-white p-6"><h3 className="mb-4 text-sm font-black uppercase tracking-[0.24em]">Informacion del negocio</h3><p className="mb-6 text-sm leading-7 text-gray-600">{tenant.description || 'Bienvenido a nuestro negocio.'}</p><div className="space-y-3 text-xs font-bold uppercase tracking-[0.18em] text-gray-500"><div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-black" />{tenant.address || 'Honduras'}</div><div className="flex items-center gap-3"><Clock className="h-4 w-4 text-black" />{isOpen ? 'Abierto ahora' : 'Cerrado'}</div></div></div></main>
             )}
 
-            {/* ═══════════════════════════════════════════════════════════════
-                FLOATING ELEMENTS - Conditional by plan
-            ═══════════════════════════════════════════════════════════════ */}
-
-            {/* Floating Cart - PRO ONLY (Desktop) */}
-            {tenantPlan !== PLAN.SEMILLA && <FloatingCart />}
-
-            {/* ═══════════════════════════════════════════════════════════════
-                MOBILE SHOP NAVIGATION - Walled Garden Pattern
-                Commerce-focused navigation: NO directory links, NO FAB
-                Only actions that drive conversion within the store
-            ═══════════════════════════════════════════════════════════════ */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-xl border-t border-white/10 pb-safe">
-                <div className="flex items-center justify-around h-16">
-                    {/* Home - Store main */}
-                    <Link
-                        href={`/${tenant.slug}`}
-                        className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
-                    >
-                        <Store className="w-5 h-5" />
-                        <span className="text-[10px] font-medium">Inicio</span>
-                    </Link>
-
-                    {/* Catalog - Scroll to products */}
-                    <a
-                        href="#catalogo"
-                        className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
-                    >
-                        <ShoppingBag className="w-5 h-5" />
-                        <span className="text-[10px] font-medium">Catálogo</span>
-                    </a>
-
-                    {/* Phone - Direct call */}
-                    {whatsappNumber && (
-                        <a
-                            href={`tel:${whatsappNumber}`}
-                            className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
-                        >
-                            <Phone className="w-5 h-5" />
-                            <span className="text-[10px] font-medium">Llamar</span>
-                        </a>
-                    )}
-
-                    {/* WhatsApp - Primary CTA */}
-                    {whatsappNumber && (
-                        <a
-                            href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${tenant.name}!`)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex flex-col items-center gap-1 px-4 py-2"
-                            style={{ color: '#25D366' }}
-                        >
-                            <MessageCircle className="w-5 h-5" />
-                            <span className="text-[10px] font-medium">WhatsApp</span>
-                        </a>
-                    )}
-                </div>
-            </nav>
-
-            {/* Footer - Powered by Conecta HN (Desktop only) */}
-            <footer className="hidden md:block py-6 text-center border-t border-white/5 mt-12">
-                <p className="text-xs text-slate-500">
-                    Powered by{' '}
-                    <Link href="/" className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium">
-                        Conecta HN
-                    </Link>
-                </p>
-            </footer>
+            {isPro ? <FloatingCart /> : null}
+            <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white md:hidden"><div className="grid h-16 grid-cols-4"><Link href={`/${tenant.slug}`} className="flex flex-col items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500 hover:text-black"><Store className="h-5 w-5" /><span>Inicio</span></Link><a href="#catalogo" className="flex flex-col items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500 hover:text-black"><ShoppingBag className="h-5 w-5" /><span>Catalogo</span></a>{tenant.phone ? <a href={`tel:${tenant.phone}`} className="flex flex-col items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500 hover:text-black"><Phone className="h-5 w-5" /><span>Llamar</span></a> : <div />}{whatsapp ? <a href={`https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${tenant.name}!`)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-[0.18em] text-black"><MessageCircle className="h-5 w-5" /><span>WhatsApp</span></a> : <div />}</div></nav>
+            <footer className="hidden border-t border-gray-200 bg-white py-8 md:block"><div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8"><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-gray-500">Powered by <Link href="/" className="text-black hover:text-gray-600">Conecta HN</Link></p></div></footer>
         </div>
     );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   EXTRACTED COMPONENTS - Keep file self-contained but modular
-══════════════════════════════════════════════════════════════════════════════ */
+function Metric({ label, value }) { return <div className="border border-gray-200 p-4 text-center lg:text-left"><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-gray-500">{label}</p><p className="mt-2 text-2xl font-black uppercase tracking-[0.12em]">{value}</p></div>; }
 
-/**
- * ProductGridSection - Renders product grid with action buttons
- * Now includes Soft Gate UX: UpsellCard injection when products are hidden
- * Role-aware: Different UpsellCard content for owner vs customer
- */
-function ProductGridSection({
-    products,
-    tenant,
-    tenantPlan,
-    columns = 3,
-    hasHiddenProducts = false,
-    hiddenProductsCount = 0,
-    isOwner = false
-}) {
-    const isPro = tenantPlan !== PLAN.SEMILLA;
+function Toolbar({ searchQuery, setSearchQuery, handleSearch, visibleTotal, currentCount, hiddenProductsCount, hasHiddenProducts }) {
+    return <section className="space-y-6 border border-gray-200 bg-white p-6"><div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-gray-500">Catalogo publico</p><h2 className="mt-2 text-2xl font-black uppercase tracking-[0.18em]">Productos</h2><p className="mt-2 text-sm text-gray-600">Mostrando {currentCount} de {visibleTotal} productos visibles.</p></div><form onSubmit={handleSearch} className="flex w-full max-w-xl flex-col gap-3 sm:flex-row"><input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Buscar por nombre o descripcion" className="min-w-0 flex-1 border border-black px-4 py-3 text-sm outline-none placeholder:text-gray-400 focus:bg-gray-50" /><button type="submit" className="border border-black bg-black px-6 py-3 text-[10px] font-bold uppercase tracking-[0.24em] text-white hover:bg-gray-800">Buscar</button></form></div>{hasHiddenProducts ? <div className="flex items-start gap-3 border border-gray-200 bg-gray-50 p-4"><Lock className="mt-0.5 h-4 w-4 text-black" /><p className="text-sm text-gray-600">Hay {hiddenProductsCount} productos ocultos por limite de plan.</p></div> : null}</section>;
+}
 
-    // Empty state with Soft Gate awareness
-    if (!products || products.length === 0) {
-        // If there ARE hidden products but none visible, show special message
-        if (hasHiddenProducts && hiddenProductsCount > 0) {
-            return (
-                <div className="text-center py-12 bg-slate-900/50 rounded-2xl border border-dashed border-indigo-500/20">
-                    <Lock className="w-12 h-12 text-indigo-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-white">Productos disponibles en Plan Pro</h3>
-                    <p className="text-slate-400 mb-4">
-                        Este negocio tiene {hiddenProductsCount} productos que no se muestran en el Plan Semilla.
-                    </p>
-                    <Link
-                        href="/"
-                        className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                    >
-                        Ver planes Pro
-                    </Link>
-                </div>
-            );
-        }
-
-        return (
-            <div className="text-center py-12 bg-slate-900/50 rounded-2xl border border-dashed border-white/10">
-                <ShoppingBag className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white">Catálogo vacío</h3>
-                <p className="text-slate-400">Este negocio aún no ha publicado productos.</p>
-            </div>
-        );
-    }
-
+function ProductGridSection({ products, pagination = [], tenant, tenantPlan, columns = 3, hiddenProductsCount = 0, hasHiddenProducts = false, isOwner = false }) {
+    if (!products?.length) return <div className="border border-dashed border-gray-300 bg-gray-50 p-12 text-center"><ShoppingBag className="mx-auto mb-4 h-10 w-10 text-black" /><h3 className="text-sm font-black uppercase tracking-[0.24em]">No se encontraron productos</h3></div>;
     const hasModifiers = (product) => product.has_modifiers || (product.modifier_groups?.length > 0);
-
-    return (
-        <div className={cn(
-            "grid gap-4",
-            columns === 3
-                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                : "grid-cols-1 sm:grid-cols-2"
-        )}>
-            {products.map((product) => (
-                <div
-                    key={product.id}
-                    className="group bg-slate-900 rounded-2xl border border-white/5 overflow-hidden hover:border-indigo-500/30 transition-all"
-                >
-                    {/* Image */}
-                    <div className="aspect-[4/3] bg-slate-800 relative overflow-hidden">
-                        <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
-                            loading="lazy"
-                            onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop';
-                            }}
-                        />
-
-                        {/* Price Badge */}
-                        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-sm font-bold text-white border border-white/10">
-                            {hasModifiers(product) && isPro ? 'Desde ' : ''}
-                            {product.formatted_price || `L. ${product.price}`}
-                        </div>
-
-                        {/* Modifiers badge - Pro only */}
-                        {hasModifiers(product) && isPro && (
-                            <div className="absolute bottom-3 left-3 bg-indigo-600/90 backdrop-blur-md px-2 py-1 rounded-full text-xs font-medium text-white">
-                                {product.modifier_groups?.length || 0} opciones
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Info */}
-                    <div className="p-4">
-                        <h3 className="font-bold text-white mb-1 truncate group-hover:text-indigo-400 transition-colors">
-                            {product.name}
-                        </h3>
-                        <p className="text-sm text-slate-400 line-clamp-2 mb-4 min-h-[2.5rem]">
-                            {product.description || 'Producto disponible.'}
-                        </p>
-
-                        {/* Strategy Pattern Action Button */}
-                        <ProductActionArea
-                            product={product}
-                            tenantPlan={tenantPlan}
-                            tenantWhatsapp={tenant.whatsapp || tenant.whatsapp_number}
-                            tenantName={tenant.name}
-                            tenantSlug={tenant.slug}
-                            variant="default"
-                            className="w-full"
-                        />
-                    </div>
-                </div>
-            ))}
-
-            {/* ═══════════════════════════════════════════════════════════════
-                SOFT GATE: UpsellCard injection when products are hidden
-                Role-aware: Different content for owner vs customer
-            ═══════════════════════════════════════════════════════════════ */}
-            {hasHiddenProducts && (
-                <UpsellCard
-                    hiddenCount={hiddenProductsCount}
-                    isOwner={isOwner}
-                    tenantWhatsapp={tenant?.whatsapp || tenant?.whatsapp_number}
-                    tenantName={tenant?.name}
-                />
-            )}
-        </div>
-    );
+    return <div className="space-y-10"><div className={cn('grid gap-6', columns === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2')}>{products.map((product) => <article key={product.id} className="group flex flex-col overflow-hidden border border-gray-200 bg-white transition hover:border-black hover:shadow-[8px_8px_0_0_rgba(0,0,0,1)]"><div className="relative aspect-[4/3] overflow-hidden border-b border-gray-200 bg-gray-50"><img src={product.image} alt={product.name} className="h-full w-full object-cover grayscale transition duration-700 group-hover:scale-105 group-hover:grayscale-0" loading="lazy" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop'; }} /><div className="absolute right-3 top-3 border border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em]">{hasModifiers(product) && tenantPlan !== PLAN.SEMILLA ? 'Desde ' : ''}{product.formatted_price || `L. ${product.price}`}</div>{hasModifiers(product) && tenantPlan !== PLAN.SEMILLA ? <div className="absolute bottom-3 left-3 bg-black px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white">{product.modifier_groups?.length || 0} opciones</div> : null}</div><div className="flex flex-1 flex-col gap-4 p-5"><div><h3 className="line-clamp-2 text-lg font-black uppercase tracking-[0.12em]">{product.name}</h3><p className="mt-3 min-h-[3rem] text-sm leading-6 text-gray-600">{product.description || 'Producto disponible.'}</p></div><ProductCta product={product} tenant={tenant} tenantPlan={tenantPlan} /></div></article>)}</div>{pagination.length > 3 ? <Pagination pagination={pagination} /> : null}{hasHiddenProducts ? <div className="border border-gray-200 bg-white p-5"><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-gray-500">Limite de plan</p><h3 className="mt-2 text-sm font-black uppercase tracking-[0.18em]">{hiddenProductsCount} productos siguen fuera del escaparate</h3><p className="mt-3 text-sm text-gray-600">Amplia el plan para publicar mas articulos sin recortar la experiencia del visitante.</p>{isOwner ? <Link href="/app" className="mt-4 inline-flex border border-black bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.24em] text-white hover:bg-gray-800">Administrar plan</Link> : null}</div> : null}</div>;
 }
 
-/**
- * InfoSection - Business information tab content
- */
-function InfoSection({ tenant, isOpen }) {
-    return (
-        <div className="grid md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-6">
-                <div className="bg-slate-900 border border-white/5 rounded-2xl p-6">
-                    <h3 className="font-bold text-lg text-white mb-4">Sobre Nosotros</h3>
-                    <p className="text-slate-400 leading-relaxed whitespace-pre-line">
-                        {tenant.description || 'Bienvenido a nuestro negocio.'}
-                    </p>
-                </div>
-            </div>
-            <div className="space-y-6">
-                <div className="bg-slate-900 border border-white/5 rounded-2xl p-6 space-y-4">
-                    <div className="flex items-start gap-3">
-                        <MapPin className="w-5 h-5 mt-0.5 text-indigo-400" />
-                        <div>
-                            <h4 className="font-medium text-white">Ubicación</h4>
-                            <p className="text-sm text-slate-400">{tenant.address || 'No especificada'}</p>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <Clock className="w-5 h-5 mt-0.5 text-indigo-400" />
-                        <div>
-                            <h4 className="font-medium text-white">Horario</h4>
-                            <p className={cn("text-sm", isOpen ? "text-emerald-400" : "text-rose-400")}>
-                                {isOpen ? 'Abierto ahora' : 'Cerrado'}
-                            </p>
-                        </div>
-                    </div>
-                    {tenant.website_url && (
-                        <div className="flex items-start gap-3">
-                            <Globe className="w-5 h-5 mt-0.5 text-indigo-400" />
-                            <div>
-                                <h4 className="font-medium text-white">Sitio Web</h4>
-                                <a
-                                    href={tenant.website_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-sm text-indigo-400 hover:underline flex items-center gap-1"
-                                >
-                                    Visitar <ExternalLink className="w-3 h-3" />
-                                </a>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
+function ProductCta({ product, tenant, tenantPlan }) {
+    if (tenantPlan === PLAN.SEMILLA) {
+        const phone = tenant.whatsapp || tenant.whatsapp_number || '';
+        const url = buildWhatsAppUrl(phone, `Hola ${tenant.name || 'equipo'}, me interesa ${product?.name || 'este producto'}.`);
+        if (!isValidWhatsAppPhone(phone) || !url) return <div className="border border-gray-300 px-4 py-3 text-center text-[10px] font-bold uppercase tracking-[0.24em] text-gray-400">No disponible</div>;
+        return <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.24em] text-white hover:bg-gray-800"><MessageCircle className="h-4 w-4" />Consultar</a>;
+    }
+    return <ProductActionArea product={product} tenantId={tenant.id} tenantPlan={tenantPlan} tenantWhatsapp={tenant.whatsapp || tenant.whatsapp_number} tenantName={tenant.name} tenantSlug={tenant.slug} variant="default" className="!w-full !rounded-none !bg-black !text-white !shadow-none hover:!bg-gray-800 text-[10px] font-bold uppercase tracking-[0.24em]" />;
+}
+
+function Pagination({ pagination }) {
+    return <nav className="flex flex-wrap items-center justify-center gap-2">{pagination.map((link, index) => !link.url ? <span key={`${link.label}-${index}`} className="border border-gray-200 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-300" dangerouslySetInnerHTML={{ __html: String(link.label || '').replace('&laquo;', '<<').replace('&raquo;', '>>') }} /> : <Link key={`${link.label}-${index}`} href={link.url} preserveState preserveScroll className={cn('border px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em]', link.active ? 'border-black bg-black text-white' : 'border-gray-200 bg-white hover:border-black')} dangerouslySetInnerHTML={{ __html: String(link.label || '').replace('&laquo;', '<<').replace('&raquo;', '>>') }} />)}</nav>;
+}
+
+function InfoSection({ tenant, isOpen, openingHours = [] }) {
+    return <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]"><div className="border border-gray-200 bg-white p-8"><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-gray-500">Presentacion</p><h3 className="mt-2 text-2xl font-black uppercase tracking-[0.18em]">Sobre nosotros</h3><p className="mt-6 whitespace-pre-line text-base leading-8 text-gray-600">{tenant.description || 'Bienvenido a nuestro negocio.'}</p></div><div className="space-y-6"><div className="border border-gray-200 bg-white p-6 space-y-5"><div className="flex items-start gap-4"><MapPin className="h-5 w-5 text-black" /><div><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-gray-500">Ubicacion</p><p className="text-sm text-gray-600">{tenant.address || 'No especificada'}</p></div></div><div className="flex items-start gap-4"><Clock className="h-5 w-5 text-black" /><div><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-gray-500">Estado</p><p className="text-sm text-gray-600">{isOpen ? 'Abierto ahora' : 'Cerrado'}</p></div></div>{tenant.website_url ? <div className="flex items-start gap-4"><Globe className="h-5 w-5 text-black" /><div><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-gray-500">Sitio web</p><a href={tenant.website_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.18em] text-black underline decoration-2 underline-offset-4 hover:text-gray-600">Visitar<ExternalLink className="h-4 w-4" /></a></div></div> : null}</div>{openingHours.length > 0 ? <div className="border border-gray-200 bg-white p-6"><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-gray-500">Horarios</p><div className="mt-4 space-y-3">{openingHours.map((slot, index) => <div key={`${slot.day || slot.label || 'day'}-${index}`} className="flex items-center justify-between border-b border-gray-100 pb-3 text-xs font-bold uppercase tracking-[0.18em] text-gray-500 last:border-b-0 last:pb-0"><span className="text-black">{slot.day || slot.label || `Dia ${index + 1}`}</span><span>{slot.hours || slot.open || slot.value || 'Consultar'}</span></div>)}</div></div> : null}</div></div>;
 }

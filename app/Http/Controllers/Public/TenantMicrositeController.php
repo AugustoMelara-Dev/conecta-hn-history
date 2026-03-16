@@ -64,12 +64,46 @@ final class TenantMicrositeController extends Controller
         $tenantData = $this->transformer->transform($tenant);
         $visibleProductsCount = count($tenantData['products']);
 
+        // Preserve the transformed DTO contract, then paginate the in-memory collection.
+        $search = (string) $request->input('search', '');
+        $productsCollection = collect($tenantData['products']);
+
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+
+            $productsCollection = $productsCollection
+                ->filter(function (array $product) use ($needle): bool {
+                    $name = mb_strtolower((string) ($product['name'] ?? ''));
+                    $description = mb_strtolower((string) ($product['description'] ?? ''));
+
+                    return str_contains($name, $needle) || str_contains($description, $needle);
+                })
+                ->values();
+        }
+
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = 12;
+
+        $paginatedProducts = new \Illuminate\Pagination\LengthAwarePaginator(
+            $productsCollection->forPage($page, $perPage)->values(),
+            $productsCollection->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
         $isOwner = $request->user() && $request->user()->id === $tenant->user_id;
 
         return Inertia::render('Tenant/Show', [
             'tenantPlan' => $this->planService->determinePlan($tenant),
             'tenant' => $tenantData,
-            'products' => $tenantData['products'],
+            'products' => $paginatedProducts,
+            'filters' => [
+                'search' => $search,
+            ],
             'hasHiddenProducts' => $totalProductsCount > $visibleProductsCount,
             'totalProductsCount' => $totalProductsCount,
             'hiddenProductsCount' => max(0, $totalProductsCount - $visibleProductsCount),
