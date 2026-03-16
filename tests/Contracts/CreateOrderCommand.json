@@ -6,6 +6,12 @@
         "tenantId": {
             "type": "string"
         },
+        "locationId": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
         "customerId": {
             "type": "string"
         },
@@ -73,6 +79,13 @@
             ],
             "default": null
         },
+        "sessionId": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
         "idempotencyKey": {
             "type": [
                 "string",
@@ -87,6 +100,7 @@
     },
     "required": [
         "tenantId",
+        "locationId",
         "customerId",
         "currency"
     ],

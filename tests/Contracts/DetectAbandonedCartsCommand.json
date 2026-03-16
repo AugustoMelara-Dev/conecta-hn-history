@@ -1,0 +1,20 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "DetectAbandonedCartsCommand",
+    "type": "object",
+    "properties": {
+        "timeoutMinutes": {
+            "type": "integer",
+            "default": 30
+        },
+        "tenantId": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        }
+    },
+    "required": [],
+    "additionalProperties": false
+}

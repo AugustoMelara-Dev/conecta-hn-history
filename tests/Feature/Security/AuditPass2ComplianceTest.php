@@ -21,7 +21,7 @@ test('report download controller uses urldecode not urnDecode', function () {
 });
 
 test('report download validates path without fatal error', function () {
-    $controller = new \App\Http\Controllers\Api\V1\ReportDownloadController();
+    $controller = app(\App\Http\Controllers\Api\V1\ReportDownloadController::class);
     $method = new ReflectionMethod($controller, 'validateAndSanitizePath');
     $method->setAccessible(true);
 
@@ -33,7 +33,7 @@ test('report download validates path without fatal error', function () {
 });
 
 test('report download blocks path traversal', function () {
-    $controller = new \App\Http\Controllers\Api\V1\ReportDownloadController();
+    $controller = app(\App\Http\Controllers\Api\V1\ReportDownloadController::class);
     $method = new ReflectionMethod($controller, 'validateAndSanitizePath');
     $method->setAccessible(true);
 

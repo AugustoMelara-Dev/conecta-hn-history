@@ -1,0 +1,33 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "SyncCheckoutSessionCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "sessionId": {
+            "type": "string"
+        },
+        "items": {
+            "type": "array"
+        },
+        "subtotal": {
+            "type": "number"
+        },
+        "userId": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        }
+    },
+    "required": [
+        "tenantId",
+        "sessionId",
+        "items",
+        "subtotal"
+    ],
+    "additionalProperties": false
+}

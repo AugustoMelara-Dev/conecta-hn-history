@@ -23,6 +23,7 @@
         "spatie/laravel-health": "^1.34",
         "spatie/laravel-medialibrary": "*",
         "spatie/laravel-permission": "^6.23",
+        "spatie/laravel-settings": "^3.7",
         "spatie/opening-hours": "^4.2",
         "tightenco/ziggy": "^2.0"
     },
