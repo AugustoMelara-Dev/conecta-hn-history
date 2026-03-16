@@ -20,6 +20,7 @@ use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class TenantUserResource extends Resource
@@ -30,7 +31,7 @@ class TenantUserResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return Filament::getTenant()?->hasCapability(Capability::STAFF_BASIC) ?? false;
+        return Gate::allows('viewAny', TenantMembership::class);
     }
 
     public static function shouldRegisterNavigation(): bool

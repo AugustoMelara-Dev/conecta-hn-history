@@ -18,6 +18,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 /**
@@ -68,6 +69,10 @@ class ProductResource extends Resource
      */
     public static function canCreate(): bool
     {
+        if (! Gate::allows('create', Product::class)) {
+            return false;
+        }
+
         $tenant = Filament::getTenant();
 
         if (! $tenant) {

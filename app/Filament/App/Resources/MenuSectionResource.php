@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\MenuSectionResource\Pages;
 use App\Models\MenuSection;
 use Filament\Facades\Filament;
@@ -13,6 +12,7 @@ use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * MenuSectionResource - Velvet Rope Feature (PRO-Only)
@@ -61,7 +61,7 @@ class MenuSectionResource extends Resource
      */
     public static function canViewAny(): bool
     {
-        return Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ?? false;
+        return Gate::allows('viewAny', MenuSection::class);
     }
 
     /**

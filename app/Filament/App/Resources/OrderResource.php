@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\OrderResource\Pages;
 use App\Models\Order;
 use Filament\Facades\Filament;
@@ -18,6 +17,7 @@ use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 
 class OrderResource extends Resource
 {
@@ -27,7 +27,7 @@ class OrderResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return Filament::getTenant()?->hasCapability(Capability::CHECKOUT_BASIC) ?? false;
+        return Gate::allows('viewAny', Order::class);
     }
 
     public static function shouldRegisterNavigation(): bool
