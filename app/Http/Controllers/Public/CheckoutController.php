@@ -14,6 +14,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\HoldInventoryRequest;
 use App\Http\Requests\Public\StoreCheckoutRequest;
 use App\Http\Requests\Public\SyncCartRequest;
+use App\Http\Requests\Public\ValidateCouponRequest;
 use App\Services\CouponValidatorService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -97,7 +98,7 @@ final class CheckoutController extends Controller
         }
     }
 
-    public function validateCoupon(StoreCheckoutRequest $request, CouponValidatorService $couponValidator): JsonResponse
+    public function validateCoupon(ValidateCouponRequest $request, CouponValidatorService $couponValidator): JsonResponse
     {
         $validated = $request->validated();
         $code = (string) $validated['code'];

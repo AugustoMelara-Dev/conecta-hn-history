@@ -24,8 +24,8 @@ final readonly class CreateOrderValidator
     public function rules(CreateOrderCommand $command): array
     {
         return [
-            'tenantId' => ['required', 'integer', 'exists:tenants,id'],
-            'customerId' => ['required', 'integer', 'exists:users,id'],
+            'tenantId' => ['required', 'string', 'exists:tenants,id'],
+            'customerId' => ['required', 'string', 'exists:users,id'],
             'currency' => ['required', 'string', 'size:3'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],

@@ -84,7 +84,7 @@ Route::prefix('v1')->group(function () {
     // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC CHECKOUT
     // ═══════════════════════════════════════════════════════════════════════════
-    Route::post('/orders', [OrderController::class, 'store'])
+    Route::post('/orders', [\App\Http\Controllers\Public\OrderController::class, 'store'])
         ->middleware('throttle:api.transactions');
 
     Route::prefix('checkout')->group(function () {
@@ -171,6 +171,9 @@ Route::prefix('v1')->group(function () {
             ->name('api.ai.optimize-profile');
     });
 });
+
+Route::post('/orders', [\App\Http\Controllers\Public\OrderController::class, 'store'])
+    ->middleware('throttle:api.transactions');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // WEBHOOKS (Legacy path maintained)

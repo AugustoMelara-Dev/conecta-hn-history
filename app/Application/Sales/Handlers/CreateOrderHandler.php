@@ -57,7 +57,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
 
     private function processOrder(CreateOrderCommand $command): CreateOrderResult
     {
-        $user = $this->userRepository->findById($command->customerId);
+        $user = $this->userRepository->findById($command->customerId, $command->tenantId);
         if (! $user) {
             throw new UserNotFoundException("User {$command->customerId} not found");
         }
