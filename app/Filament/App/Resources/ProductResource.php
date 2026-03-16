@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\ProductResource\Pages;
 use App\Filament\App\Resources\ProductResource\RelationManagers\OptionGroupsRelationManager;
 use App\Models\Product;
@@ -369,8 +370,8 @@ class ProductResource extends Resource
                         // - Creación en línea con modal
                         // ═══════════════════════════════════════════════════
                         Forms\Components\Select::make('menu_section_id')
-                            // Solo visible para usuarios PRO
-                            ->visible(fn () => Filament::getTenant()?->is_pro ?? false)
+                            // Solo visible para tenants con organizacion de menu
+                            ->visible(fn () => Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ?? false)
 
                             // SEGURIDAD: Filtro estricto por tenant_id
                             ->relationship(
@@ -418,8 +419,8 @@ class ProductResource extends Resource
                         // - Link persuasivo hacia upgrade
                         // ═══════════════════════════════════════════════════
                         Forms\Components\Select::make('menu_section_id_locked')
-                            // Solo visible para usuarios FREE
-                            ->visible(fn () => ! (Filament::getTenant()?->is_pro ?? false))
+                            // Mostrar version bloqueada cuando el tenant no tenga esta capacidad
+                            ->visible(fn () => ! (Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ?? false))
 
                             // Estado bloqueado
                             ->disabled()
@@ -526,7 +527,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 Forms\Components\Section::make('🎨 Variantes del Producto')
                     ->description('Define opciones como talla, color, tamaño.')
-                    ->visible(fn () => Filament::getTenant()?->is_pro)
+                    ->visible(fn () => Filament::getTenant()?->hasCapability(Capability::PRODUCT_VARIANTS) ?? false)
                     ->schema([
                         Forms\Components\Repeater::make('variants')
                             ->label('')
@@ -601,6 +602,7 @@ class ProductResource extends Resource
                     ->label('Sección')
                     ->badge()
                     ->color('gray')
+                    ->visible(fn () => Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ?? false)
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 // ═══════════════════════════════════════════════════════════
@@ -636,7 +638,9 @@ class ProductResource extends Resource
                     ->collapsible()
                     ->titlePrefixedWithLabel(false),
             ])
-            ->defaultGroup('menuSection.name')
+            ->defaultGroup(
+                Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ? 'menuSection.name' : null
+            )
             ->defaultSort('name', 'asc')
             ->filters([
                 Tables\Filters\TernaryFilter::make('is_visible')
@@ -647,6 +651,7 @@ class ProductResource extends Resource
 
                 Tables\Filters\SelectFilter::make('menu_section_id')
                     ->relationship('menuSection', 'name')
+                    ->visible(fn () => Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ?? false)
                     ->label('Sección'),
             ])
             ->actions([
@@ -699,8 +704,8 @@ class ProductResource extends Resource
                         ->icon('heroicon-o-folder-arrow-down')
                         ->color('primary')
 
-                        // VELVET ROPE: Solo PRO puede usar esta herramienta
-                        ->visible(fn () => Filament::getTenant()?->is_pro ?? false)
+                        // Solo visible cuando el tenant tiene organización de menú
+                        ->visible(fn () => Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ?? false)
 
                         // Modal con selector de sección
                         ->form([
