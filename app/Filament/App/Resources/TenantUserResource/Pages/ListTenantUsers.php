@@ -16,7 +16,7 @@ class ListTenantUsers extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Agregar Miembro')
+                ->label('Invitar Miembro')
                 ->icon('heroicon-o-user-plus'),
         ];
     }

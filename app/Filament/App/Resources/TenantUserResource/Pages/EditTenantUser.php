@@ -16,7 +16,7 @@ class EditTenantUser extends EditRecord
     {
         return [
             Actions\DeleteAction::make()
-                ->visible(fn () => $this->record->role !== 'owner'),
+                ->visible(fn () => ! $this->record->isOwner()),
         ];
     }
 
@@ -27,6 +27,6 @@ class EditTenantUser extends EditRecord
 
     public function getTitle(): string
     {
-        return 'Editar Miembro: '.$this->record->user->name;
+        return 'Editar Miembro: '.($this->record->user->name ?? 'Equipo');
     }
 }
