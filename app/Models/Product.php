@@ -101,6 +101,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'price',
         // Inventory Management
         'manage_stock',
+        'unit_code',
         'stock_quantity',
         'low_stock_threshold',
         'allow_backorders',
@@ -124,6 +125,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'variants' => 'array',
         // Inventory
         'manage_stock' => 'boolean',
+        'unit_code' => 'string',
         'stock_quantity' => 'integer',
         'low_stock_threshold' => 'integer',
         'allow_backorders' => 'boolean',
