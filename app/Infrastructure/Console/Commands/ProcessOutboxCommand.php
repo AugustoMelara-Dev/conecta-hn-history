@@ -7,6 +7,7 @@ namespace App\Infrastructure\Console\Commands;
 use App\Infrastructure\Models\OutboxMessage;
 use DateTimeInterface;
 use Illuminate\Console\Command;
+use Illuminate\Database\QueryException;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -26,9 +27,9 @@ use Throwable;
  */
 final class ProcessOutboxCommand extends Command
 {
-    protected $signature = 'infrastructure:process-outbox 
+    protected $signature = 'outbox:process 
                             {--batch-size=50 : Number of messages to process per batch}
-                            {--max-loops=100 : Maximum number of loops before exiting}
+                            {--max-loops=1 : Maximum number of loops before exiting}
                             {--max-shards=4 : Maximum number of shards to acquire}';
 
     protected $description = 'Relay events from Outbox to Event Bus with Unified Atomic Ownership';
@@ -324,6 +325,8 @@ final class ProcessOutboxCommand extends Command
                     // $this->failedAggregateIds is already reset at the start of the `do` loop (Level 79).
 
                     // PHASE 2: PROCESS
+                    $processedInBatch = 0;
+
                     foreach ($messages as $message) {
                         if (! $this->keepRunning) {
                             break;
@@ -399,7 +402,7 @@ final class ProcessOutboxCommand extends Command
                         }
                     }
 
-                    $processedTotal += $messages->count();
+                    $processedTotal += $processedInBatch;
                     $loopCount++;
 
                     if ($loopCount % 10 === 0) {
@@ -641,11 +644,11 @@ final class ProcessOutboxCommand extends Command
             // LEVEL 70: SQL PREDICATE PUSHDOWN
             // We pass the owned shards explicitly to force the DB to filter before returning rows.
             // This prevents "Blinding Fog" where 5000 stale messages from other shards hide our own 10 messages.
-            $staleMessages = $repository->retrieveNextStaleBatch(
+            $staleMessages = collect($repository->retrieveNextStaleBatch(
                 batchSize: 50, // Standard batch chunk
                 staleThresholdSeconds: 300, // 5 minutes
                 ownedPartitionKeys: $ownedShards
-            );
+            ));
 
             // LEVEL 70: MEMORY FILTER REMOVED
             // The repository now guarantees strictly owned data via SQL WHERE IN clause.
@@ -774,30 +777,11 @@ final class ProcessOutboxCommand extends Command
             // PHASE 3: THE CLAIM EXECUTION (Conditional Writing)
             // Only proceeded if validLeaseCount confirmed sovereignty.
 
-            $shardPlaceholders = implode(',', array_fill(0, count($ownedShards), '?'));
-
-            $claimedCount = DB::affectingStatement(
-                "UPDATE outbox_messages 
-                 SET status = 'PROCESSING', 
-                     worker_id = ?, 
-                     batch_correlation_id = ?,
-                     locked_at = NOW()
-                 WHERE id IN (
-                     SELECT id FROM (
-                         SELECT id FROM outbox_messages 
-                         WHERE status = 'PENDING' 
-                           AND partition_key IN ({$shardPlaceholders})
-                           AND recovery_count < ?
-                         ORDER BY partition_key ASC, sequence_number ASC
-                         LIMIT ?
-                         FOR UPDATE SKIP LOCKED
-                     ) AS candidates
-                 )",
-                array_merge(
-                    [$workerId, $batchCorrelationId],
-                    $ownedShards,
-                    [OutboxMessage::QUARANTINE_THRESHOLD, $batchSize]
-                )
+            $claimedCount = $this->claimMessages(
+                workerId: $workerId,
+                batchCorrelationId: $batchCorrelationId,
+                ownedShards: $ownedShards,
+                batchSize: $batchSize
             );
 
             if ($claimedCount === 0) {
@@ -865,6 +849,121 @@ final class ProcessOutboxCommand extends Command
 
             return $pipelinedMessages;
         });
+    }
+
+    /**
+     * @param  array<int>  $ownedShards
+     */
+    private function claimMessages(
+        string $workerId,
+        string $batchCorrelationId,
+        array $ownedShards,
+        int $batchSize
+    ): int {
+        try {
+            return $this->claimMessagesWithSkipLocked(
+                workerId: $workerId,
+                batchCorrelationId: $batchCorrelationId,
+                ownedShards: $ownedShards,
+                batchSize: $batchSize
+            );
+        } catch (QueryException $e) {
+            if (! $this->isSkipLockedSyntaxError($e)) {
+                throw $e;
+            }
+
+            Log::warning('OUTBOX FALLBACK: Database does not support SKIP LOCKED, using pessimistic lock fallback.', [
+                'connection' => DB::getDriverName(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->claimMessagesWithPessimisticLock(
+                workerId: $workerId,
+                batchCorrelationId: $batchCorrelationId,
+                ownedShards: $ownedShards,
+                batchSize: $batchSize
+            );
+        }
+    }
+
+    /**
+     * @param  array<int>  $ownedShards
+     */
+    private function claimMessagesWithSkipLocked(
+        string $workerId,
+        string $batchCorrelationId,
+        array $ownedShards,
+        int $batchSize
+    ): int {
+        $shardPlaceholders = implode(',', array_fill(0, count($ownedShards), '?'));
+
+        return DB::affectingStatement(
+            "UPDATE outbox_messages 
+             SET status = 'PROCESSING', 
+                 worker_id = ?, 
+                 batch_correlation_id = ?,
+                 locked_at = NOW()
+             WHERE id IN (
+                 SELECT id FROM (
+                     SELECT id FROM outbox_messages 
+                     WHERE status = 'PENDING' 
+                       AND partition_key IN ({$shardPlaceholders})
+                       AND recovery_count < ?
+                     ORDER BY partition_key ASC, sequence_number ASC
+                     LIMIT ?
+                     FOR UPDATE SKIP LOCKED
+                 ) AS candidates
+             )",
+            array_merge(
+                [$workerId, $batchCorrelationId],
+                $ownedShards,
+                [OutboxMessage::QUARANTINE_THRESHOLD, $batchSize]
+            )
+        );
+    }
+
+    /**
+     * @param  array<int>  $ownedShards
+     */
+    private function claimMessagesWithPessimisticLock(
+        string $workerId,
+        string $batchCorrelationId,
+        array $ownedShards,
+        int $batchSize
+    ): int {
+        $messageIds = DB::table('outbox_messages')
+            ->where('status', OutboxMessage::STATUS_PENDING)
+            ->whereIn('partition_key', $ownedShards)
+            ->where('recovery_count', '<', OutboxMessage::QUARANTINE_THRESHOLD)
+            ->orderBy('partition_key', 'asc')
+            ->orderBy('sequence_number', 'asc')
+            ->limit($batchSize)
+            ->lockForUpdate()
+            ->pluck('id')
+            ->all();
+
+        if ($messageIds === []) {
+            return 0;
+        }
+
+        return DB::table('outbox_messages')
+            ->whereIn('id', $messageIds)
+            ->update([
+                'status' => OutboxMessage::STATUS_PROCESSING,
+                'worker_id' => $workerId,
+                'batch_correlation_id' => $batchCorrelationId,
+                'locked_at' => now(),
+            ]);
+    }
+
+    private function isSkipLockedSyntaxError(QueryException $e): bool
+    {
+        $message = strtolower($e->getMessage());
+
+        return str_contains($message, 'skip locked')
+            || (str_contains($message, 'for update') && str_contains($message, 'syntax error'))
+            || (str_contains($message, 'for update') && str_contains($message, 'access violation'))
+            || (str_contains($message, 'near "for"') && str_contains($message, 'syntax error'));
     }
 
     /**

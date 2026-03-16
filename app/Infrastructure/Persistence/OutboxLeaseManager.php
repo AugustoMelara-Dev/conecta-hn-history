@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -78,37 +79,30 @@ final class OutboxLeaseManager
 
         // LEVEL 49: Wrap entire acquire in transaction for atomicity
         return DB::transaction(function () use ($now, $expiresAt, $maxShards, $startOffset) {
-            // Try from startOffset to end, then wrap around from 0
-            // This creates a deterministic but distributed selection pattern
-            $availableShards = DB::table(self::TABLE)
-                ->where(function ($q) use ($now) {
-                    $q->whereNull('owner_worker_id')
-                        ->orWhere('expires_at', '<', $now);
-                })
-                ->where('shard_id', '>=', $startOffset)
-                ->orderBy('shard_id', 'asc') // O(1) with primary key index
-                ->limit($maxShards)
-                ->lock('FOR UPDATE SKIP LOCKED')
-                ->pluck('shard_id')
-                ->toArray();
+            try {
+                $availableShards = $this->fetchAvailableShards(
+                    now: $now,
+                    maxShards: $maxShards,
+                    startOffset: $startOffset,
+                    useSkipLocked: true
+                );
+            } catch (QueryException $e) {
+                if (! $this->isSkipLockedSyntaxError($e)) {
+                    throw $e;
+                }
 
-            // If we didn't get enough, wrap around to beginning
-            if (count($availableShards) < $maxShards) {
-                $remaining = $maxShards - count($availableShards);
-                $wrapShards = DB::table(self::TABLE)
-                    ->where(function ($q) use ($now) {
-                        $q->whereNull('owner_worker_id')
-                            ->orWhere('expires_at', '<', $now);
-                    })
-                    ->where('shard_id', '<', $startOffset)
-                    ->whereNotIn('shard_id', $availableShards)
-                    ->orderBy('shard_id', 'asc')
-                    ->limit($remaining)
-                    ->lock('FOR UPDATE SKIP LOCKED')
-                    ->pluck('shard_id')
-                    ->toArray();
+                Log::warning('OUTBOX LEASE FALLBACK: Database does not support SKIP LOCKED, using lockForUpdate fallback.', [
+                    'worker_id' => $this->workerId,
+                    'connection' => DB::getDriverName(),
+                    'error' => $e->getMessage(),
+                ]);
 
-                $availableShards = array_merge($availableShards, $wrapShards);
+                $availableShards = $this->fetchAvailableShards(
+                    now: $now,
+                    maxShards: $maxShards,
+                    startOffset: $startOffset,
+                    useSkipLocked: false
+                );
             }
 
             if (empty($availableShards)) {
@@ -147,6 +141,70 @@ final class OutboxLeaseManager
 
             return $this->ownedShards;
         });
+    }
+
+    /**
+     * @return array<int>
+     */
+    private function fetchAvailableShards(
+        \Illuminate\Support\Carbon $now,
+        int $maxShards,
+        int $startOffset,
+        bool $useSkipLocked
+    ): array {
+        $availableShards = $this->buildAvailableShardQuery($now, $startOffset, $useSkipLocked)
+            ->limit($maxShards)
+            ->pluck('shard_id')
+            ->toArray();
+
+        if (count($availableShards) >= $maxShards) {
+            return $availableShards;
+        }
+
+        $remaining = $maxShards - count($availableShards);
+        $wrapShards = $this->buildAvailableShardQuery($now, null, $useSkipLocked)
+            ->where('shard_id', '<', $startOffset)
+            ->when($availableShards !== [], fn ($query) => $query->whereNotIn('shard_id', $availableShards))
+            ->limit($remaining)
+            ->pluck('shard_id')
+            ->toArray();
+
+        return array_merge($availableShards, $wrapShards);
+    }
+
+    private function buildAvailableShardQuery(
+        \Illuminate\Support\Carbon $now,
+        ?int $minimumShardId,
+        bool $useSkipLocked
+    ): \Illuminate\Database\Query\Builder {
+        $query = DB::table(self::TABLE)
+            ->where(function ($q) use ($now) {
+                $q->whereNull('owner_worker_id')
+                    ->orWhere('expires_at', '<', $now);
+            })
+            ->orderBy('shard_id', 'asc');
+
+        if ($minimumShardId !== null) {
+            $query->where('shard_id', '>=', $minimumShardId);
+        }
+
+        if ($useSkipLocked) {
+            $query->lock('FOR UPDATE SKIP LOCKED');
+        } else {
+            $query->lockForUpdate();
+        }
+
+        return $query;
+    }
+
+    private function isSkipLockedSyntaxError(QueryException $e): bool
+    {
+        $message = strtolower($e->getMessage());
+
+        return str_contains($message, 'skip locked')
+            || (str_contains($message, 'for update') && str_contains($message, 'syntax error'))
+            || (str_contains($message, 'for update') && str_contains($message, 'access violation'))
+            || (str_contains($message, 'near "for"') && str_contains($message, 'syntax error'));
     }
 
     /**

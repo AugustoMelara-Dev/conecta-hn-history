@@ -57,7 +57,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('outbox_messages', function (Blueprint $table) {
-            $table->dropIndex('idx_outbox_partition_query');
+            $table->dropIndex('idx_outbox_partition_sequence');
             $table->dropIndex('idx_outbox_aggregate_status');
             $table->dropColumn(['aggregate_id', 'partition_key', 'sequence_number']);
         });

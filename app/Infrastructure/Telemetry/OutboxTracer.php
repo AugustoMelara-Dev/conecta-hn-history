@@ -84,9 +84,7 @@ final class OutboxTracer
      */
     public function recordHydraulicPressure(int $pressure): void
     {
-        // Update the gauge in Redis for real-time dashboarding
-        Redis::set('outbox:hydraulic_pressure', $pressure);
-        Redis::expire('outbox:hydraulic_pressure', 60);
+        $this->safeRedisSet('outbox:hydraulic_pressure', $pressure, 60);
 
         if ($pressure > 2500) {
             Log::info('HYDRAULIC PRESSURE RISING', ['pressure' => $pressure]);
@@ -184,17 +182,11 @@ final class OutboxTracer
         $now = time();
         $statusKey = $success ? 'success' : 'failure';
 
-        // Pipeline Redis commands for performance
-        Redis::pipeline(function ($pipe) use ($fingerprint, $now, $statusKey) {
-            foreach ([self::HORIZON_SHORT, self::HORIZON_MEDIUM, self::HORIZON_LONG] as $window) {
-                // Bucketing by window size to prevent key explosion
-                $bucket = floor($now / $window);
-                $key = "outbox:horizon:{$window}:{$bucket}:{$fingerprint}:{$statusKey}";
-
-                $pipe->incr($key);
-                $pipe->expire($key, $window * 2);
-            }
-        });
+        foreach ([self::HORIZON_SHORT, self::HORIZON_MEDIUM, self::HORIZON_LONG] as $window) {
+            $bucket = floor($now / $window);
+            $key = "outbox:horizon:{$window}:{$bucket}:{$fingerprint}:{$statusKey}";
+            $this->safeRedisIncrement($key, $window * 2);
+        }
     }
 
     private function monitorErrorAcceleration(string $resourceDomain = 'fault:app_logic'): void
@@ -212,12 +204,13 @@ final class OutboxTracer
             default => ['threshold' => 20, 'multiplier' => 0.5],
         };
 
-        if (Redis::incr($key) > $config['threshold']) {
-            $prev = (int) Redis::get("outbox:errors:{$resourceDomain}:".($min - 1));
+        if ($this->safeRedisIncrement($key, 120) > $config['threshold']) {
+            $prev = (int) $this->safeRedisGet("outbox:errors:{$resourceDomain}:".($min - 1), 0);
 
             // Dampening: Only signal if acceleration is real (growth > 0)
             if ($prev > 0) {
-                $acceleration = (\Redis::get($key) - $prev) / $prev;
+                $current = (int) $this->safeRedisGet($key, 0);
+                $acceleration = ($current - $prev) / $prev;
 
                 // Apply Surgical Multiplier
                 $signalStrength = $acceleration * $config['multiplier'];
@@ -227,18 +220,48 @@ final class OutboxTracer
                 }
             }
         }
-        \Redis::expire($key, 120);
     }
 
     public function emitPredictiveAggregationSpan($message, string $diagnosis): void
     {
         $fingerprint = sha1(($message->last_error ?? '').$diagnosis.$message->type);
-        if (\Redis::incr("outbox:topology:breach:{$fingerprint}") > 3) {
+        if ($this->safeRedisIncrement("outbox:topology:breach:{$fingerprint}", 300) > 3) {
             Cache::put("vaccine:{$fingerprint}", $diagnosis, 300);
-            try {
-                \Redis::setex("vaccine:{$fingerprint}", 300, $diagnosis);
-            } catch (\Throwable $e) {
-            }
+            $this->safeRedisSet("vaccine:{$fingerprint}", $diagnosis, 300);
+        }
+    }
+
+    private function safeRedisSet(string $key, mixed $value, int $ttlSeconds): void
+    {
+        try {
+            Redis::set($key, $value);
+            Redis::expire($key, $ttlSeconds);
+        } catch (\Throwable) {
+            Cache::put($key, $value, $ttlSeconds);
+        }
+    }
+
+    private function safeRedisIncrement(string $key, int $ttlSeconds): int
+    {
+        try {
+            $value = (int) Redis::incr($key);
+            Redis::expire($key, $ttlSeconds);
+
+            return $value;
+        } catch (\Throwable) {
+            $value = ((int) Cache::get($key, 0)) + 1;
+            Cache::put($key, $value, $ttlSeconds);
+
+            return $value;
+        }
+    }
+
+    private function safeRedisGet(string $key, mixed $default = null): mixed
+    {
+        try {
+            return Redis::get($key) ?? $default;
+        } catch (\Throwable) {
+            return Cache::get($key, $default);
         }
     }
 }

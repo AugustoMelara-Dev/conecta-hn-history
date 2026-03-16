@@ -61,6 +61,16 @@ final class ConsensusHealthGovernor
         $this->persistLocalState();
     }
 
+    /**
+     * Backward-compatible adapter for legacy worker calls.
+     */
+    public function emitPulse(string $signal): void
+    {
+        $normalized = strtoupper($signal);
+
+        $this->recordLocalOutcome($normalized === 'HEALTHY');
+    }
+
     public function isGlobalWarningActive(): bool
     {
         $this->compensateForStall();

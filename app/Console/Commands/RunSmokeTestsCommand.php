@@ -370,7 +370,7 @@ final class RunSmokeTestsCommand extends Command
 
             DB::table('outbox_messages')->insert($insert);
 
-            $exitCode = Artisan::call('infrastructure:process-outbox', [
+            $exitCode = Artisan::call('outbox:process', [
                 '--batch-size' => 1,
                 '--max-loops' => 1,
                 '--max-shards' => 64,

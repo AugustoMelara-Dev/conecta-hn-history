@@ -19,12 +19,12 @@ return new class extends Migration
             $table->bigInteger('sequence_number')->default(0);
             $table->string('batch_correlation_id')->nullable();
             $table->string('worker_id')->nullable();
-            $table->timestamp('locked_at')->nullable();
-            $table->timestamp('quarantined_at')->nullable();
+            $table->dateTime('locked_at')->nullable();
+            $table->dateTime('quarantined_at')->nullable();
             $table->integer('recovery_count')->default(0);
             $table->text('error')->nullable();
-            $table->timestamp('occurred_at');
-            $table->timestamp('published_at')->nullable();
+            $table->dateTime('occurred_at');
+            $table->dateTime('published_at')->nullable();
             $table->string('status')->default('PENDING'); // PENDING, PROCESSING, COMPLETED, FAILED, PENDING_AUTOPSY
             $table->timestamps();
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Persistence;
 
 use App\Infrastructure\Models\OutboxMessage;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -50,40 +51,41 @@ final class AtomicOwnershipTransfer
         // Generate batch correlation ID for telemetric audit
         $batchCorrelationId = (string) Str::uuid();
 
-        // Build placeholders for partition keys
-        $shardPlaceholders = implode(',', array_fill(0, count($partitionKeys), '?'));
+        try {
+            $claimedCount = $this->claimWithSkipLocked(
+                workerId: $workerId,
+                batchCorrelationId: $batchCorrelationId,
+                partitionKeys: $partitionKeys,
+                quarantineThreshold: $quarantineThreshold,
+                batchSize: $batchSize
+            );
+        } catch (QueryException $e) {
+            if (! $this->isSkipLockedSyntaxError($e)) {
+                Log::error('ATOMIC GRAB FAILED', [
+                    'worker_id' => $workerId,
+                    'error' => $e->getMessage(),
+                    'partition_keys' => $partitionKeys,
+                ]);
 
-        // PHASE 1: UNIFIED ATOMIC GRAB
-        // This is the physical ownership transfer - a single SQL statement that:
-        // - Locks candidate rows with FOR UPDATE SKIP LOCKED
-        // - Updates them to PROCESSING state IN THE SAME LOCK
-        // - Assigns worker_id atomically
-        // Result: The row is OWNED the moment it's touched by DB engine
+                throw $e;
+            }
+
+            Log::warning('ATOMIC GRAB FALLBACK: Database does not support SKIP LOCKED, using lockForUpdate fallback.', [
+                'worker_id' => $workerId,
+                'connection' => DB::getDriverName(),
+                'error' => $e->getMessage(),
+            ]);
+
+            $claimedCount = $this->claimWithPessimisticLock(
+                workerId: $workerId,
+                batchCorrelationId: $batchCorrelationId,
+                partitionKeys: $partitionKeys,
+                quarantineThreshold: $quarantineThreshold,
+                batchSize: $batchSize
+            );
+        }
 
         try {
-            $claimedCount = DB::affectingStatement(
-                "UPDATE outbox_messages 
-                 SET status = 'PROCESSING', 
-                     worker_id = ?, 
-                     batch_correlation_id = ?,
-                     locked_at = NOW()
-                 WHERE id IN (
-                     SELECT id FROM (
-                         SELECT id FROM outbox_messages 
-                         WHERE status = 'PENDING' 
-                           AND partition_key IN ({$shardPlaceholders})
-                           AND recovery_count < ?
-                         ORDER BY partition_key ASC, sequence_number ASC
-                         LIMIT ?
-                         FOR UPDATE SKIP LOCKED
-                     ) AS candidates
-                 )",
-                array_merge(
-                    [$workerId, $batchCorrelationId],
-                    $partitionKeys,
-                    [$quarantineThreshold, $batchSize]
-                )
-            );
 
             Log::info('ATOMIC GRAB: Ownership transferred', [
                 'worker_id' => $workerId,
@@ -138,6 +140,88 @@ final class AtomicOwnershipTransfer
 
             throw $e;
         }
+    }
+
+    /**
+     * @param  array<int>  $partitionKeys
+     */
+    private function claimWithSkipLocked(
+        string $workerId,
+        string $batchCorrelationId,
+        array $partitionKeys,
+        int $quarantineThreshold,
+        int $batchSize
+    ): int {
+        $shardPlaceholders = implode(',', array_fill(0, count($partitionKeys), '?'));
+
+        return DB::affectingStatement(
+            "UPDATE outbox_messages 
+             SET status = 'PROCESSING', 
+                 worker_id = ?, 
+                 batch_correlation_id = ?,
+                 locked_at = NOW()
+             WHERE id IN (
+                 SELECT id FROM (
+                     SELECT id FROM outbox_messages 
+                     WHERE status = 'PENDING' 
+                       AND partition_key IN ({$shardPlaceholders})
+                       AND recovery_count < ?
+                     ORDER BY partition_key ASC, sequence_number ASC
+                     LIMIT ?
+                     FOR UPDATE SKIP LOCKED
+                 ) AS candidates
+             )",
+            array_merge(
+                [$workerId, $batchCorrelationId],
+                $partitionKeys,
+                [$quarantineThreshold, $batchSize]
+            )
+        );
+    }
+
+    /**
+     * @param  array<int>  $partitionKeys
+     */
+    private function claimWithPessimisticLock(
+        string $workerId,
+        string $batchCorrelationId,
+        array $partitionKeys,
+        int $quarantineThreshold,
+        int $batchSize
+    ): int {
+        $messageIds = DB::table('outbox_messages')
+            ->where('status', OutboxMessage::STATUS_PENDING)
+            ->whereIn('partition_key', $partitionKeys)
+            ->where('recovery_count', '<', $quarantineThreshold)
+            ->orderBy('partition_key', 'asc')
+            ->orderBy('sequence_number', 'asc')
+            ->limit($batchSize)
+            ->lockForUpdate()
+            ->pluck('id')
+            ->all();
+
+        if ($messageIds === []) {
+            return 0;
+        }
+
+        return DB::table('outbox_messages')
+            ->whereIn('id', $messageIds)
+            ->update([
+                'status' => OutboxMessage::STATUS_PROCESSING,
+                'worker_id' => $workerId,
+                'batch_correlation_id' => $batchCorrelationId,
+                'locked_at' => now(),
+            ]);
+    }
+
+    private function isSkipLockedSyntaxError(QueryException $e): bool
+    {
+        $message = strtolower($e->getMessage());
+
+        return str_contains($message, 'skip locked')
+            || (str_contains($message, 'for update') && str_contains($message, 'syntax error'))
+            || (str_contains($message, 'for update') && str_contains($message, 'access violation'))
+            || (str_contains($message, 'near "for"') && str_contains($message, 'syntax error'));
     }
 
     /**

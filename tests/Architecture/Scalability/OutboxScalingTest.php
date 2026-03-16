@@ -53,7 +53,7 @@ class OutboxScalingTest extends TestCase
 
         $results = Process::pool(function (Pool $pool) use ($workerCount, $limitPerWorker) {
             for ($i = 0; $i < $workerCount; $i++) {
-                $pool->command("php artisan infrastructure:process-outbox --batch-size={$limitPerWorker} --max-loops=1 --max-shards=1")
+                $pool->command("php artisan outbox:process --batch-size={$limitPerWorker} --max-loops=1 --max-shards=1")
                     ->timeout(60);
             }
         })->wait();
@@ -94,7 +94,7 @@ class OutboxScalingTest extends TestCase
         OutboxMessage::query()->delete();
 
         $result = Process::timeout(15)
-            ->run('php artisan infrastructure:process-outbox --max-loops=1 --max-shards=1');
+            ->run('php artisan outbox:process --max-loops=1 --max-shards=1');
 
         $this->assertTrue($result->successful(), 'Command should complete successfully on empty queue');
         $this->assertSame(0, OutboxMessage::count(), 'Empty queue run must not create or mutate outbox messages');
@@ -106,7 +106,7 @@ class OutboxScalingTest extends TestCase
         $this->restrictAvailableShards([0]);
         $this->seedPendingMessages(50, [0]);
 
-        $result = Process::run('php artisan infrastructure:process-outbox --batch-size=20 --max-loops=1 --max-shards=1');
+        $result = Process::run('php artisan outbox:process --batch-size=20 --max-loops=1 --max-shards=1');
 
         $this->assertTrue($result->successful(), $result->errorOutput());
 
