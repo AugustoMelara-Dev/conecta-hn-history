@@ -67,8 +67,8 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             role: 'seller'
         );
 
-        // 2. Persist User & CAPTURE HYDRATED ENTITY (Fix for Phantom Client)
-        // CRITICAL: The ID is assigned by DB. Must update memory reference.
+        // 2. Persist User
+        // UserEntity already carries a pre-allocated UUID, so the owner ID is safe to propagate.
         $this->userRepository->save($userEntity);
 
         // 3. Determine Limits (Domain Service)
@@ -80,6 +80,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         $tenantEntity = $this->tenantFactory->createCommercialTenant(
             name: $command->businessName,
             slug: $command->slug,
+            ownerId: $userEntity->id(),
             planType: $planType,
             isPro: $isPro,
             productLimit: $productLimit,

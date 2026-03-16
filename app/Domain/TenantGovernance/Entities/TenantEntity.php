@@ -38,6 +38,21 @@ final class TenantEntity
 
     private ?string $subscriptionReference = null;
 
+    // Profile & Configuration
+    private ?string $ownerId = null;
+
+    private ?int $categoryId = null;
+
+    private ?int $cityId = null;
+
+    private ?string $logoPath = null;
+
+    private ?string $whatsapp = null;
+
+    private bool $isPro = false;
+
+    private int $productLimit = 10;
+
     private function __construct() {}
 
     /**
@@ -146,6 +161,25 @@ final class TenantEntity
         return $this->subscriptionReference ?? null;
     }
 
+    public function setupProfile(
+        string $ownerId,
+        ?int $categoryId = null,
+        ?int $cityId = null,
+        ?string $logoPath = null,
+        ?string $whatsapp = null,
+        bool $isPro = false,
+        int $productLimit = 10
+    ): void {
+        $this->ownerId = $ownerId;
+        $this->categoryId = $categoryId;
+        $this->cityId = $cityId;
+        $this->logoPath = $logoPath;
+        $this->whatsapp = $whatsapp;
+        $this->isPro = $isPro;
+        $this->productLimit = $productLimit;
+        $this->updatedAt = new DateTimeImmutable;
+    }
+
     // -- SNAPSHOT COMPATIBILITY (Memento Pattern) --
 
     /**
@@ -173,6 +207,15 @@ final class TenantEntity
             'plan_id' => $this->planId,
             'subscription_ends_at' => $this->subscriptionEndsAt?->format(\DateTimeInterface::ATOM),
             'subscription_reference' => $this->subscriptionReference,
+
+            // Profile & Settings
+            'owner_id' => $this->ownerId,
+            'category_id' => $this->categoryId,
+            'city_id' => $this->cityId,
+            'logo_path' => $this->logoPath,
+            'whatsapp' => $this->whatsapp,
+            'is_pro' => $this->isPro,
+            'product_limit' => $this->productLimit,
         ];
     }
 
@@ -210,6 +253,15 @@ final class TenantEntity
         $tenant->subscriptionReference = isset($state['subscription_reference'])
             ? (string) $state['subscription_reference']
             : null;
+
+        // Profile & Settings
+        $tenant->ownerId = isset($state['owner_id']) ? (string) $state['owner_id'] : null;
+        $tenant->categoryId = isset($state['category_id']) ? (int) $state['category_id'] : null;
+        $tenant->cityId = isset($state['city_id']) ? (int) $state['city_id'] : null;
+        $tenant->logoPath = isset($state['logo_path']) ? (string) $state['logo_path'] : null;
+        $tenant->whatsapp = isset($state['whatsapp']) ? (string) $state['whatsapp'] : null;
+        $tenant->isPro = isset($state['is_pro']) ? (bool) $state['is_pro'] : false;
+        $tenant->productLimit = isset($state['product_limit']) ? (int) $state['product_limit'] : 10;
 
         // Event Sourcing compatibility
         $tenant->version = (int) ($state['version'] ?? 0);

@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Factories;
 
-use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
-use DateTimeImmutable;
 
 final readonly class TenantFactory
 {
@@ -43,6 +41,7 @@ final readonly class TenantFactory
     public function createCommercialTenant(
         string $name,
         string $slug,
+        string $ownerId,
         TenantPlan $planType,
         bool $isPro = false,
         int $productLimit = 10,
@@ -56,6 +55,17 @@ final readonly class TenantFactory
             name: $name,
             domain: $slug
         );
+
+        $tenant->setupProfile(
+            ownerId: $ownerId,
+            categoryId: $categoryId,
+            cityId: $cityId,
+            logoPath: $logoPath,
+            whatsapp: $whatsapp,
+            isPro: $isPro,
+            productLimit: $productLimit
+        );
+
         $tenant->upgradeToPlan($planType->value);
 
         return $tenant;

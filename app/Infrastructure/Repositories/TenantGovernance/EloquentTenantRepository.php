@@ -72,14 +72,23 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
     {
         // Find existing or create new model instance
         $model = Tenant::find($tenant->id()) ?? new Tenant;
+        $state = $tenant->toStateArray();
 
         // Use forceFill to bypass mass assignment protection for guarded fields
         $model->forceFill([
-            'id' => $tenant->id(),
-            'name' => $tenant->name(),
-            'slug' => $tenant->domain(), // TenantEntity uses "domain" for what Eloquent calls "slug"
-            'plan' => 'SEED', // Default plan for new registrations
-            'is_active' => $tenant->isActive(),
+            'id' => $state['id'],
+            'user_id' => $state['owner_id'] ?? null,
+            'name' => $state['name'],
+            'slug' => $state['domain'],
+            'is_active' => $state['is_active'],
+            'category_id' => $state['category_id'] ?? null,
+            'city_id' => $state['city_id'] ?? null,
+            'logo_path' => $state['logo_path'] ?? null,
+            'whatsapp_number' => $state['whatsapp'] ?? null,
+            'is_pro' => $state['is_pro'] ?? false,
+            'product_limit' => $state['product_limit'] ?? 10,
+            'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
+            'subscription_ends_at' => $state['subscription_ends_at'] ?? null,
         ]);
 
         $model->save();
@@ -116,8 +125,15 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'plan_id' => $plan->value,
             'subscription_ends_at' => $model->subscription_ends_at?->toIso8601String(),
             'subscription_reference' => null,
-            // 'user_id' is NOT present in Domain Entity? 
-            // If it were, we'd add it here. For now, we omit to prevent crash.
+
+            // Profile & Settings
+            'owner_id' => $model->user_id,
+            'category_id' => $model->category_id,
+            'city_id' => $model->city_id,
+            'logo_path' => $model->logo_path,
+            'whatsapp' => $model->whatsapp_number,
+            'is_pro' => (bool) $model->is_pro,
+            'product_limit' => (int) $model->product_limit,
         ]);
     }
 }
