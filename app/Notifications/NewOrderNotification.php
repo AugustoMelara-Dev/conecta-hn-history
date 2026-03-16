@@ -103,11 +103,11 @@ class NewOrderNotification extends Notification implements ShouldQueue, ShouldBr
         $itemsCount = $this->order->items->count();
         $customerName = $this->order->customer_name ?? 'Cliente';
         $orderNumber = $this->order->order_number;
-        $formattedTotal = $this->order->formatted_total;
+        $formattedTotal = 'L. ' . number_format((float) ($this->order->total ?? 0), 2);
         $tenantName = $this->order->tenant?->name ?? 'Tu Negocio';
 
-        // Deep link to Filament Order Resource
-        $orderUrl = url("/admin/orders/{$this->order->id}/edit");
+        // Deep link to Filament Order Resource in the App Panel
+        $orderUrl = url("/app/orders/{$this->order->id}");
 
         return (new MailMessage)
             ->subject("🛒 Nuevo Pedido {$orderNumber} - {$tenantName}")
@@ -139,14 +139,16 @@ class NewOrderNotification extends Notification implements ShouldQueue, ShouldBr
         // Defensive: Ensure relationships are loaded
         $this->order->loadMissing(['items']);
 
+        $formattedTotal = 'L. ' . number_format((float) ($this->order->total ?? 0), 2);
+
         return [
             'order_id' => $this->order->id,
             'order_number' => $this->order->order_number,
-            'formatted_total' => $this->order->formatted_total,
+            'formatted_total' => $formattedTotal,
             'customer_name' => $this->order->customer_name ?? 'Cliente',
             'items_count' => $this->order->items->count(),
-            'action_url' => "/admin/orders/{$this->order->id}/edit",
-            'message' => "Nuevo pedido {$this->order->order_number} de {$this->order->customer_name} por {$this->order->formatted_total}",
+            'action_url' => "/app/orders/{$this->order->id}",
+            'message' => "Nuevo pedido {$this->order->order_number} de {$this->order->customer_name} por {$formattedTotal}",
         ];
     }
 }
