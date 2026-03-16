@@ -1155,30 +1155,39 @@ final class ProcessOutboxCommand extends Command
         $reflection = new \ReflectionClass($className);
 
         if (! $constructor = $reflection->getConstructor()) {
-            // No constructor: create instance and set properties
             $object = new $className;
             foreach ($data as $key => $val) {
-                if (property_exists($object, $key)) {
-                    $object->$key = $val;
+                if ($reflection->hasProperty($key)) {
+                    $property = $reflection->getProperty($key);
+                    // Prevent modifying readonly properties after instantiation
+                    if (! $property->isReadOnly()) {
+                        $property->setAccessible(true);
+                        $property->setValue($object, $val);
+                    }
                 }
             }
 
             return $object;
         }
 
-        // Constructor injection hydration
         $args = [];
         foreach ($constructor->getParameters() as $param) {
             $name = $param->getName();
             $type = $param->getType();
-
             $value = $data[$name] ?? null;
 
-            // SPECIAL TYPE CASTING: DateTime
-            if ($value && $type && ! $type->isBuiltin()) {
+            if ($value !== null && $type && ! $type->isBuiltin()) {
                 $typeName = $type->getName();
+
+                // Handle DateTime rehydration
                 if (is_string($value) && is_a($typeName, DateTimeInterface::class, true)) {
                     $value = new \DateTimeImmutable($value);
+                } elseif (is_array($value) && class_exists($typeName)) {
+                    // Handle nested object rehydration (Value Objects, nested DTOs)
+                    $value = $this->hydrateFromArray($typeName, $value);
+                } elseif ((is_string($value) || is_int($value)) && enum_exists($typeName)) {
+                    // Handle Enum rehydration
+                    $value = $typeName::from($value);
                 }
             }
 
