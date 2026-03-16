@@ -14,7 +14,6 @@ use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
-use App\Domain\Shared\Entities\DomainEventMessage;
 
 /**
  * VerifyOtpHandler - Atomic Protocol Edition
@@ -79,26 +78,12 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
             tenantId: $command->tenantId
         );
 
-        $message = new DomainEventMessage(
-            eventId: $event->eventId,
-            type: OtpVerified::class,
-            aggregateId: (string) $otp->id,
-            payload: json_encode($event->toPayload()),
-            occurredAt: $this->clock->now(),
-            metadata: [
-                'tenant_id' => $command->tenantId,
-                'causation_id' => $command->idempotencyKey,
-                'user_id' => $otp->userId,
-                'trace_id' => null,
-            ]
-        );
-
-        $this->outboxRepository->save($message);
+        $this->outboxRepository->append($event);
 
         return $result;
     }
 
-    private function resolveUserOrNew(?int $userId, string $identifier, string $tenantId): VerifyOtpResult
+    private function resolveUserOrNew(?string $userId, string $identifier, string $tenantId): VerifyOtpResult
     {
         if ($userId === null) {
             return VerifyOtpResult::forNewUser($identifier);

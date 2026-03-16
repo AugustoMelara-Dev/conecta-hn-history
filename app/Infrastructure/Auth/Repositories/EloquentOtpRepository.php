@@ -34,7 +34,6 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
             ->where('identifier', $identifier)
             ->where('tenant_id', $tenantId) // TENANT ISOLATION
             ->where('expires_at', '>', Carbon::now()) // Not expired
-            ->whereNull('used_at') // Not consumed
             ->first();
 
         if ($model === null) {

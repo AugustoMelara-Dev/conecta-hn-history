@@ -162,8 +162,8 @@ class ConcurrencyRestockTest extends TestCase
 
     public function test_restock_uses_lock_for_update(): void
     {
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            $this->markTestSkipped('SQLite no soporta row-level locking');
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            $this->markTestSkipped('This lock inspection test requires the MySQL-compatible testing database.');
         }
 
         DB::enableQueryLog();
@@ -188,8 +188,8 @@ class ConcurrencyRestockTest extends TestCase
 
     public function test_lock_includes_tenant_isolation(): void
     {
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            $this->markTestSkipped('SQLite no soporta este test');
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            $this->markTestSkipped('This tenant lock inspection test requires the MySQL-compatible testing database.');
         }
 
         DB::enableQueryLog();

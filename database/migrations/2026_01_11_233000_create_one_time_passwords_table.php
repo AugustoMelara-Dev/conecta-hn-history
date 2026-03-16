@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('type'); // login, recovery, etc.
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
-            $table->timestamp('expires_at');
+            $table->dateTime('expires_at');
             $table->unsignedTinyInteger('attempts')->default(0); // Defense depth
             $table->timestamps();
         });
