@@ -33,7 +33,7 @@ final class SubmitReviewAction
             'rating' => $data->rating,
             'comment' => $data->comment,
             'is_approved' => false,
-            'user_id' => auth()->id(),
+            'user_id' => $data->userId,
         ]);
 
         if ($data->productId !== null) {
@@ -48,3 +48,4 @@ final class SubmitReviewAction
         return $review;
     }
 }
+

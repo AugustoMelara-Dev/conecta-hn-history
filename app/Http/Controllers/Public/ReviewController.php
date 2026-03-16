@@ -34,7 +34,13 @@ final class ReviewController extends Controller
         ]);
 
         try {
-            $data = SubmitReviewResult::fromRequest($request);
+            $data = new SubmitReviewResult(
+                tenantId: (string) $request->input('tenant_id'),
+                productId: $request->filled('product_id') ? (int) $request->input('product_id') : null,
+                rating: (int) $request->input('rating'),
+                comment: $request->input('comment'),
+                userId: $request->user()?->id !== null ? (string) $request->user()?->id : null,
+            );
             $action->execute($data);
 
             return back()
