@@ -16,6 +16,7 @@ use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\PriceCalculatorInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
+use App\Domain\Inventory\Contracts\LocationReaderInterface;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Sales\Events\OrderCreated;
@@ -25,7 +26,6 @@ use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Models\Location;
 use DomainException;
 
 /**
@@ -45,6 +45,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         private EventDispatcherInterface $eventDispatcher,
         private OrderFactory $orderFactory,
         private TransactionManagerInterface $transactionManager,
+        private LocationReaderInterface $locationReader,
         private LoggerInterface $logger,
         private DataScrubberInterface $scrubber,
         private CapabilityManagerInterface $capabilityManager,
@@ -196,11 +197,10 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
             throw new DomainException('Location is required to create an order.');
         }
 
-        $locationExists = Location::query()
-            ->where('id', $command->locationId)
-            ->where('tenant_id', $command->tenantId)
-            ->where('is_active', true)
-            ->exists();
+        $locationExists = $this->locationReader->existsActiveForTenant(
+            $command->locationId,
+            $command->tenantId
+        );
 
         if ($locationExists) {
             return;
