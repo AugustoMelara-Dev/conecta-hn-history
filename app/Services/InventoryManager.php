@@ -29,7 +29,7 @@ use Illuminate\Validation\ValidationException;
  * This abstraction layer allows future swap to "Variant Inventory"
  * without breaking controller code.
  */
-class InventoryManager implements \App\Contracts\InventoryManagerInterface
+class InventoryManager implements \App\Contracts\InventoryManagerInterface, \App\Application\Shared\Contracts\InventoryManagerInterface
 {
     /**
      * Validate and lock product inventory for order creation.
@@ -49,7 +49,7 @@ class InventoryManager implements \App\Contracts\InventoryManagerInterface
      *
      * @throws ValidationException If product unavailable or deleted
      */
-    public function validateAndLock(array $cartItems, int $tenantId): Collection
+    public function validateAndLock(array $cartItems, int|string $tenantId): Collection
     {
         // ═══════════════════════════════════════════════════════════════════════
         // STEP 1: Extract and sort product IDs (canonical lock order)

@@ -6,7 +6,9 @@ namespace App\Infrastructure\Common\Idempotency;
 
 use App\Application\Shared\Contracts\IdempotencyServiceInterface;
 use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
+use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Redis\Connections\Connection;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * RedisIdempotencyService - Distributed Idempotency with Redis Backend
@@ -107,6 +109,14 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
             $ttlSeconds,
             $payload
         );
+    }
+
+    /**
+     * Exposes a framework-backed lock for atomic decorator execution.
+     */
+    public function lock(string $key, int $ttlSeconds = 60): Lock
+    {
+        return Cache::lock($this->formatKey($key).':lock', $ttlSeconds);
     }
 
     private function formatKey(string $key): string

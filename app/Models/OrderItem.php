@@ -26,6 +26,8 @@ class OrderItem extends Model
         'unit_price',    // Price with modifiers applied
         'total_price',   // unit_price * quantity
         'selected_options', // JSON with variant/addon selections
+        'line_total',
+        'options',
         'notes',
     ];
 
@@ -33,8 +35,10 @@ class OrderItem extends Model
         'product_price' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'total_price' => 'decimal:2',
+        'line_total' => 'decimal:2',
         'quantity' => 'integer',
         'selected_options' => 'array',
+        'options' => 'array',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -75,6 +79,24 @@ class OrderItem extends Model
             ->map(fn ($opt) => $opt['option'] ?? '')
             ->filter()
             ->implode(', ');
+    }
+
+    public function getOptionsAttribute($value): array
+    {
+        if ($value !== null) {
+            return is_array($value) ? $value : (json_decode((string) $value, true) ?: []);
+        }
+
+        return $this->selected_options ?? [];
+    }
+
+    public function getLineTotalAttribute($value): float
+    {
+        if ($value !== null) {
+            return (float) $value;
+        }
+
+        return (float) ($this->total_price ?? 0);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

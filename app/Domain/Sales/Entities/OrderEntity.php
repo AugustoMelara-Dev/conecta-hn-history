@@ -17,14 +17,14 @@ final readonly class OrderEntity
 {
     public function __construct(
         public ?int $id,
-        public int $tenantId,
-        public int $customerId,
+        public string $tenantId,
+        public string $customerId,
         public string $orderNumber,
         public string $customerName,
         public string $customerEmail,
         public string $currency,
-        public int $subtotal,
-        public int $total,
+        public float $subtotal,
+        public float $total,
         public string $status,
         public DateTimeImmutable $createdAt,
         public ?string $customerPhone = null,
@@ -32,9 +32,9 @@ final readonly class OrderEntity
         public ?string $customerNotes = null,
         public string $deliveryType = 'pickup',
         public string $paymentMethod = 'pending',
-        public int $taxAmount = 0,
-        public int $deliveryFee = 0,
-        public int $discountAmount = 0,
+        public float $taxAmount = 0,
+        public float $deliveryFee = 0,
+        public float $discountAmount = 0,
         public ?string $couponCode = null,
         /** @var array<int, array> $items Raw item data for now, ideally LineItemEntity[] */
         public array $items = []

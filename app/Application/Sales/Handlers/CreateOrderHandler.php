@@ -107,7 +107,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
             customerId: $user->id,
             orderNumber: $orderNumber,
             customerName: $user->name,
-            customerEmail: $user->email->value,
+            customerEmail: $user->email(),
             currency: $command->currency,
             subtotal: $subtotal,
             total: (float) $total,
@@ -121,23 +121,23 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
             couponCode: $couponCode
         );
 
-        $this->orderRepository->save($orderEntity);
+        $persistedOrder = $this->orderRepository->save($orderEntity);
 
-        if ($coupon && $orderEntity->id) {
-            $this->couponValidator->linkToOrder($coupon, $command->requestorId, $orderEntity->id);
+        if ($coupon && $persistedOrder->id) {
+            $this->couponValidator->linkToOrder($coupon, null, $persistedOrder->id);
         }
 
         $this->eventDispatcher->dispatch(new OrderCreated(
-            orderId: $orderEntity->id,
+            orderId: $persistedOrder->id,
             tenantId: $command->tenantId,
-            orderNumber: $orderEntity->orderNumber->toString(),
-            customerName: $orderEntity->customerName,
+            orderNumber: $persistedOrder->orderNumber,
+            customerName: $persistedOrder->customerName,
             total: (float) $total,
             status: 'pending'
         ));
 
         $this->logger->info('Order created via Command Bus', $this->sanitizePayload([
-            'order_id' => $orderEntity->id,
+            'order_id' => $persistedOrder->id,
             'tenant_id' => $command->tenantId,
             'total' => $total,
         ], $this->scrubber));
@@ -159,6 +159,6 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
             }
         }
 
-        return CreateOrderResult::fromEntity($orderEntity);
+        return CreateOrderResult::fromEntity($persistedOrder);
     }
 }

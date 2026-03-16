@@ -78,14 +78,20 @@ final readonly class CreateOrderResult
      */
     public static function fromEntity(object $order): self
     {
+        $itemsCount = 0;
+        if (method_exists($order, 'items')) {
+            $itemsCount = $order->items()->count();
+        } elseif (isset($order->items) && is_array($order->items)) {
+            $itemsCount = count($order->items);
+        }
+
         return new self(
-            id: $order->id,
-            orderNumber: $order->order_number,
-            totalAmount: (float) $order->total,
-            status: $order->status,
-            itemsCount: method_exists($order, 'items') ? $order->items()->count() : 0,
-            currency: $order->currency ?? 'HNL',
-            // Ideally map items here too
+            id: (int) ($order->id ?? 0),
+            orderNumber: (string) ($order->orderNumber ?? $order->order_number ?? ''),
+            totalAmount: (float) ($order->totalAmount ?? $order->total ?? 0),
+            status: (string) ($order->status ?? 'pending'),
+            itemsCount: $itemsCount,
+            currency: (string) ($order->currency ?? 'HNL'),
             items: []
         );
     }

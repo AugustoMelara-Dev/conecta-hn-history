@@ -26,10 +26,10 @@ interface OrderRepositoryInterface
      * Persist a new or updated order aggregate.
      * Replaces createWithItems(array).
      */
-    public function save(OrderEntity $order): void;
+    public function save(OrderEntity $order): OrderEntity;
 
     /**
      * Generate a unique order number for a tenant.
      */
-    public function generateOrderNumber(int $tenantId): string;
+    public function generateOrderNumber(int|string $tenantId): string;
 }

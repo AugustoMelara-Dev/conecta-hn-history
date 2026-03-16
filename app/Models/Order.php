@@ -269,11 +269,11 @@ class Order extends Model
      * @param  int  $tenantId  The tenant to generate order number for
      * @return string The next order number (e.g., "#1001")
      */
-    public static function generateOrderNumber(int $tenantId): string
+    public static function generateOrderNumber(int|string $tenantId): string
     {
         return \Illuminate\Support\Facades\DB::transaction(function () use ($tenantId) {
             // Acquire exclusive lock on tenant row to serialize order creation
-            $tenant = \App\Models\Tenant::lockForUpdate()->find($tenantId);
+            $tenant = \App\Models\Tenant::whereKey($tenantId)->lockForUpdate()->first();
 
             if (! $tenant) {
                 throw new \RuntimeException("Tenant {$tenantId} not found during order number generation");

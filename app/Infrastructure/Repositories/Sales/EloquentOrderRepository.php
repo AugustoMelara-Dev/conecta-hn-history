@@ -25,55 +25,50 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
         return $model ? $this->toEntity($model) : null;
     }
 
-    public function save(OrderEntity $order): void
+    public function save(OrderEntity $order): OrderEntity
     {
         $model = $order->id
             ? Order::find($order->id) ?? throw new \App\Domain\Sales\Exceptions\OrderNotFoundException("Order {$order->id} not found")
             : new Order;
 
         $model->tenant_id = $order->tenantId;
-        $model->customer_id = $order->customerId;
+        $model->user_id = $order->customerId;
         $model->order_number = $order->orderNumber;
         $model->customer_name = $order->customerName;
         $model->customer_email = $order->customerEmail;
         $model->customer_phone = $order->customerPhone;
-        $model->customer_address = $order->customerAddress;
+        $model->delivery_address = $order->customerAddress;
         $model->customer_notes = $order->customerNotes;
-        $model->currency = $order->currency;
         $model->subtotal = $order->subtotal;
         $model->total = $order->total;
         $model->status = $order->status;
-        $model->delivery_type = $order->deliveryType;
         $model->payment_method = $order->paymentMethod;
-        $model->tax_amount = $order->taxAmount;
         $model->delivery_fee = $order->deliveryFee;
-        $model->discount_amount = $order->discountAmount;
-        $model->coupon_code = $order->couponCode;
+        $model->discount = $order->discountAmount;
 
         $model->save();
 
-        // Handle items if provided
         if (! empty($order->items)) {
             $model->items()->delete();
 
             foreach ($order->items as $itemData) {
                 $model->items()->create([
                     'product_id' => $itemData['product_id'] ?? null,
-                    'name' => $itemData['name'] ?? '',
-                    'price' => $itemData['price'] ?? 0,
+                    'product_name' => $itemData['name'] ?? '',
+                    'product_price' => $itemData['unit_price'] ?? ($itemData['price'] ?? 0),
+                    'unit_price' => $itemData['unit_price'] ?? ($itemData['price'] ?? 0),
                     'quantity' => $itemData['quantity'] ?? 1,
-                    'options' => $itemData['options'] ?? [],
+                    'total_price' => $itemData['line_total'] ?? 0,
+                    'selected_options' => $itemData['validated_options'] ?? ($itemData['options'] ?? []),
                     'notes' => $itemData['notes'] ?? null,
-                    'line_total' => $itemData['line_total'] ?? 0,
                 ]);
             }
         }
 
-        // ID is immutable post-construction. Callers needing the persisted ID
-        // after a new insert must use findById() or orderNumber as aggregate key.
+        return $this->toEntity($model->load('items', 'tenant'));
     }
 
-    public function generateOrderNumber(int $tenantId): string
+    public function generateOrderNumber(int|string $tenantId): string
     {
         return Order::generateOrderNumber($tenantId);
     }
@@ -82,12 +77,12 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
     {
         return new OrderEntity(
             id: $model->id,
-            tenantId: $model->tenant_id,
-            customerId: $model->customer_id,
+            tenantId: (string) $model->tenant_id,
+            customerId: (string) $model->user_id,
             orderNumber: $model->order_number,
             customerName: $model->customer_name,
             customerEmail: $model->customer_email,
-            currency: $model->currency,
+            currency: 'HNL',
             subtotal: (float) $model->subtotal,
             total: (float) $model->total,
             status: $model->status,
@@ -95,13 +90,13 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
                 ? DateTimeImmutable::createFromMutable($model->created_at)
                 : new DateTimeImmutable($model->created_at ?? 'now'),
             customerPhone: $model->customer_phone,
-            customerAddress: $model->customer_address,
+            customerAddress: $model->delivery_address,
             customerNotes: $model->customer_notes,
-            deliveryType: $model->delivery_type ?? 'pickup',
+            deliveryType: 'pickup',
             paymentMethod: $model->payment_method ?? 'pending',
-            taxAmount: (float) ($model->tax_amount ?? 0),
+            taxAmount: 0.0,
             deliveryFee: (float) ($model->delivery_fee ?? 0),
-            discountAmount: (float) ($model->discount_amount ?? 0),
+            discountAmount: (float) ($model->discount ?? 0),
             couponCode: $model->coupon_code,
             items: $model->items?->toArray() ?? [],
         );

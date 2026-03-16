@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Log;
  *   $coupon = $service->validate('SAVE10', $user, 150.00, $tenant);
  *   $service->redeem($coupon, $user, $orderId);
  */
-final class CouponValidatorService
+final class CouponValidatorService implements \App\Application\Shared\Contracts\CouponValidatorInterface
 {
     /** @var string Honduras timezone for all datetime operations */
     private const TIMEZONE = 'America/Tegucigalpa';

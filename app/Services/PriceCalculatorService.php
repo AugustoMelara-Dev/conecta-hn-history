@@ -26,7 +26,7 @@ use Illuminate\Validation\ValidationException;
  * - Server-side price enforcement (ignores client prices)
  * - Throws ValidationException on parameter tampering attempts
  */
-class PriceCalculatorService
+class PriceCalculatorService implements \App\Application\Shared\Contracts\PriceCalculatorInterface
 {
     /**
      * Calculate composite prices for all cart items in a single batch.

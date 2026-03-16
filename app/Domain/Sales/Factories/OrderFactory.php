@@ -10,8 +10,8 @@ use DateTimeImmutable;
 final readonly class OrderFactory
 {
     public function create(
-        int $tenantId,
-        int $customerId,
+        string $tenantId,
+        string $customerId,
         string $orderNumber,
         string $customerName,
         string $customerEmail,
