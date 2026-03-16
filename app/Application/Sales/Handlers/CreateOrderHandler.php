@@ -8,6 +8,7 @@ use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Contracts\CheckoutSessionPortInterface;
 use App\Application\Sales\Contracts\InventoryHoldPortInterface;
 use App\Application\Sales\Results\CreateOrderResult;
+use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
 use App\Application\Shared\Contracts\CouponValidatorInterface;
 use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\InventoryManagerInterface;
@@ -21,9 +22,11 @@ use App\Domain\Sales\Events\OrderCreated;
 use App\Domain\Sales\Factories\OrderFactory;
 use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Models\InventoryHold;
+use DomainException;
 
 /**
  * CreateOrderHandler - Pure Business Logic for Order Creation
@@ -44,6 +47,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         private TransactionManagerInterface $transactionManager,
         private LoggerInterface $logger,
         private DataScrubberInterface $scrubber,
+        private CapabilityManagerInterface $capabilityManager,
         private ?InventoryHoldPortInterface $inventoryHoldPort = null,
         private ?CheckoutSessionPortInterface $checkoutSessionPort = null,
     ) {}
@@ -57,6 +61,13 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
 
     private function processOrder(CreateOrderCommand $command): CreateOrderResult
     {
+        $tenant = $this->tenantRepository->findById($command->tenantId);
+        if ($tenant === null) {
+            throw new TenantNotFoundException("Tenant {$command->tenantId} not found");
+        }
+
+        $this->assertFulfillmentCapability($command);
+
         $user = $this->userRepository->findById($command->customerId, $command->tenantId);
         if (! $user) {
             throw new UserNotFoundException("User {$command->customerId} not found");
@@ -82,11 +93,6 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         $coupon = null;
 
         if (! empty($command->couponCode)) {
-            $tenant = $this->tenantRepository->findById($command->tenantId);
-            if ($tenant === null) {
-                throw new TenantNotFoundException("Tenant {$command->tenantId} not found");
-            }
-
             $coupon = $this->couponValidator->validate(
                 $command->couponCode,
                 $user,
@@ -160,5 +166,28 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         }
 
         return CreateOrderResult::fromEntity($persistedOrder);
+    }
+
+    private function assertFulfillmentCapability(CreateOrderCommand $command): void
+    {
+        $capability = match ($command->deliveryType) {
+            'pickup' => Capability::PICKUP_ORDERS,
+            'delivery' => Capability::DELIVERY_ORDERS,
+            'shipping' => Capability::SHIPPING_ORDERS,
+            default => throw new DomainException('Tipo de entrega no soportado.'),
+        };
+
+        if ($this->capabilityManager->hasForTenantId($command->tenantId, $capability)) {
+            return;
+        }
+
+        $message = match ($command->deliveryType) {
+            'pickup' => 'Este comercio no permite retiro en tienda.',
+            'delivery' => 'Este comercio no ofrece entrega a domicilio.',
+            'shipping' => 'Este comercio no realiza envios nacionales.',
+            default => 'Tipo de entrega no soportado.',
+        };
+
+        throw new DomainException($message);
     }
 }

@@ -11,6 +11,8 @@ interface CapabilityManagerInterface
 {
     public function has(Tenant $tenant, Capability $capability): bool;
 
+    public function hasForTenantId(string $tenantId, Capability $capability): bool;
+
     /**
      * @return array<int, Capability>
      */

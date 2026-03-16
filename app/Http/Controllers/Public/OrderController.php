@@ -6,12 +6,15 @@ namespace App\Http\Controllers\Public;
 
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
+use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Sales\Contracts\OrderReader;
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\StoreCheckoutRequest;
 use DomainException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -29,6 +32,7 @@ final class OrderController extends Controller
         private readonly CreateOrderHandlerInterface $createOrderHandler,
         private readonly UserRepositoryInterface $userRepository,
         private readonly OrderReader $orderReader,
+        private readonly CapabilityManagerInterface $capabilityManager,
     ) {}
 
     public function store(StoreCheckoutRequest $request): JsonResponse
@@ -57,6 +61,11 @@ final class OrderController extends Controller
                 'message' => 'Customer identification required.',
             ], 422);
         }
+
+        $this->assertFulfillmentCapability(
+            $tenantId,
+            (string) ($validated['delivery_type'] ?? 'pickup')
+        );
 
         try {
             $command = new CreateOrderCommand(
@@ -116,5 +125,32 @@ final class OrderController extends Controller
                 'message' => 'Ocurrio un error inesperado al procesar tu pedido.',
             ], 500);
         }
+    }
+
+    private function assertFulfillmentCapability(string $tenantId, string $deliveryType): void
+    {
+        $capability = match ($deliveryType) {
+            'pickup' => Capability::PICKUP_ORDERS,
+            'delivery' => Capability::DELIVERY_ORDERS,
+            'shipping' => Capability::SHIPPING_ORDERS,
+            default => throw ValidationException::withMessages([
+                'delivery_type' => 'Tipo de entrega no soportado.',
+            ]),
+        };
+
+        if ($this->capabilityManager->hasForTenantId($tenantId, $capability)) {
+            return;
+        }
+
+        $message = match ($deliveryType) {
+            'pickup' => 'Este comercio no permite retiro en tienda.',
+            'delivery' => 'Este comercio no ofrece entrega a domicilio.',
+            'shipping' => 'Este comercio no realiza envios nacionales.',
+            default => 'Tipo de entrega no soportado.',
+        };
+
+        throw ValidationException::withMessages([
+            'delivery_type' => $message,
+        ]);
     }
 }

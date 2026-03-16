@@ -16,6 +16,17 @@ final class ConfigCapabilityManager implements CapabilityManagerInterface
         return in_array($capability, $this->allForTenant($tenant), true);
     }
 
+    public function hasForTenantId(string $tenantId, Capability $capability): bool
+    {
+        $tenant = Tenant::query()->find($tenantId);
+
+        if (! $tenant instanceof Tenant) {
+            return false;
+        }
+
+        return $this->has($tenant, $capability);
+    }
+
     /**
      * @return array<int, Capability>
      */
