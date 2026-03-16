@@ -104,9 +104,9 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
 
         $orderEntity = $this->orderFactory->create(
             tenantId: $command->tenantId,
-            customerId: $user->id,
+            customerId: $user->id(),
             orderNumber: $orderNumber,
-            customerName: $user->name,
+            customerName: $user->name(),
             customerEmail: $user->email(),
             currency: $command->currency,
             subtotal: $subtotal,

@@ -52,6 +52,38 @@ test('create order handler persists order and items securely to the database', f
         requestorId: (string) $user->id,
     );
 
+    // Dynamic mock injection keeps the integration path real while bypassing the
+    // missing phpredis extension behind the idempotency decorator in tests.
+    $reflection = new \ReflectionClass(\App\Application\Sales\Decorators\IdempotentCreateOrderHandler::class);
+    if ($constructor = $reflection->getConstructor()) {
+        foreach ($constructor->getParameters() as $parameter) {
+            $type = $parameter->getType();
+
+            if (! $type instanceof \ReflectionNamedType) {
+                continue;
+            }
+
+            if (! str_ends_with($type->getName(), 'IdempotencyServiceInterface')) {
+                continue;
+            }
+
+            $lock = \Mockery::mock();
+            $lock->shouldReceive('get')->andReturnTrue();
+            $lock->shouldReceive('release')->andReturnNull();
+
+            $mock = \Mockery::mock($type->getName())->shouldIgnoreMissing();
+            $mock->shouldReceive('get')->andReturnNull();
+            $mock->shouldReceive('lock')->andReturn($lock);
+            $mock->shouldReceive('store')->andReturnNull();
+
+            app()->instance($type->getName(), $mock);
+        }
+    }
+
+    $tenantContext = app(\App\Domain\Shared\Services\TenantContext::class);
+    $tenantContext->reset();
+    $tenantContext->setTenant((string) $tenant->id);
+
     /** @var CreateOrderHandlerInterface $handler */
     $handler = app(CreateOrderHandlerInterface::class);
     $result = $handler->handle($command);
