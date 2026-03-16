@@ -4,95 +4,49 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Application\Access\Contracts\TenantPermissionGuardInterface;
+use App\Domain\Access\Enums\Permission;
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Campaign;
+use App\Models\Tenant;
 use App\Models\User;
+use Filament\Facades\Filament;
 
 class CampaignPolicy
 {
-    /**
-     * Determine whether the user can view any campaigns.
-     * CRITICAL: Only PRO tenants can access campaigns.
-     */
+    public function __construct(private TenantPermissionGuardInterface $guard) {}
+
     public function viewAny(User $user): bool
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
-
-        if (! $tenant) {
-            return false;
-        }
-
-        return $tenant->is_pro === true;
+        return $this->tenant() instanceof Tenant
+            && $this->guard->allows($user, $this->tenant(), Capability::NOTIFICATIONS_BASIC, Permission::MARKETING_VIEW);
     }
 
-    /**
-     * Determine whether the user can view the campaign.
-     */
     public function view(User $user, Campaign $campaign): bool
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
-
-        if (! $tenant || ! $tenant->is_pro) {
-            return false;
-        }
-
-        return $campaign->tenant_id === $tenant->id;
+        return $this->viewAny($user);
     }
 
-    /**
-     * Determine whether the user can create campaigns.
-     */
     public function create(User $user): bool
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
-
-        if (! $tenant) {
-            return false;
-        }
-
-        return $tenant->is_pro === true;
+        return $this->tenant() instanceof Tenant
+            && $this->guard->allows($user, $this->tenant(), Capability::NOTIFICATIONS_BASIC, Permission::MARKETING_MANAGE);
     }
 
-    /**
-     * Determine whether the user can update the campaign.
-     */
     public function update(User $user, Campaign $campaign): bool
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
-
-        if (! $tenant || ! $tenant->is_pro) {
-            return false;
-        }
-
-        return $campaign->tenant_id === $tenant->id;
+        return $this->create($user);
     }
 
-    /**
-     * Determine whether the user can delete the campaign.
-     */
     public function delete(User $user, Campaign $campaign): bool
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
-
-        if (! $tenant || ! $tenant->is_pro) {
-            return false;
-        }
-
-        return $campaign->tenant_id === $tenant->id;
+        return $this->create($user);
     }
 
-    /**
-     * Determine whether the user can restore the campaign.
-     */
-    public function restore(User $user, Campaign $campaign): bool
+    private function tenant(): ?Tenant
     {
-        return $this->update($user, $campaign);
-    }
+        $tenant = Filament::getTenant();
 
-    /**
-     * Determine whether the user can permanently delete the campaign.
-     */
-    public function forceDelete(User $user, Campaign $campaign): bool
-    {
-        return $this->delete($user, $campaign);
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }
