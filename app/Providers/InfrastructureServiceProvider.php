@@ -7,7 +7,9 @@ namespace App\Providers;
 use App\Application\Inventory\Contracts\InventoryHoldPortInterface as TransactionalInventoryHoldPortInterface;
 use App\Application\Sales\Contracts\CheckoutSessionPortInterface;
 use App\Application\Sales\Contracts\InventoryHoldPortInterface;
+use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
 use App\Contracts\Scope\TenantContextInterface;
+use App\Infrastructure\Common\Snapshots\DatabaseSnapshotRepository;
 use App\Infrastructure\Inventory\Adapters\EloquentInventoryHoldAdapter as TransactionalInventoryHoldAdapter;
 use App\Infrastructure\Scope\FilamentTenantContext;
 use App\Infrastructure\Sales\Adapters\EloquentCheckoutSessionAdapter;
@@ -148,6 +150,11 @@ class InfrastructureServiceProvider extends ServiceProvider
         $this->app->bind(
             CheckoutSessionPortInterface::class,
             EloquentCheckoutSessionAdapter::class
+        );
+
+        $this->app->bind(
+            SnapshotRepositoryInterface::class,
+            DatabaseSnapshotRepository::class
         );
     }
 
