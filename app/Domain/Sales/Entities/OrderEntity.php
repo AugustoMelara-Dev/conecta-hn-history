@@ -18,6 +18,7 @@ final readonly class OrderEntity
     public function __construct(
         public ?int $id,
         public string $tenantId,
+        public ?string $locationId,
         public string $customerId,
         public string $orderNumber,
         public string $customerName,

@@ -11,6 +11,7 @@ final readonly class OrderFactory
 {
     public function create(
         string $tenantId,
+        string $locationId,
         string $customerId,
         string $orderNumber,
         string $customerName,
@@ -30,6 +31,7 @@ final readonly class OrderFactory
         return new OrderEntity(
             id: null,
             tenantId: $tenantId,
+            locationId: $locationId,
             customerId: $customerId,
             orderNumber: $orderNumber,
             customerName: $customerName,

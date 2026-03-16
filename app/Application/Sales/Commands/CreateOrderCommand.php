@@ -27,6 +27,7 @@ final readonly class CreateOrderCommand implements IdempotentCommandInterface, \
      */
     public function __construct(
         public string $tenantId,
+        public ?string $locationId = null,
         public string $customerId,
         public string $currency,
         public ?string $customerName = null,
@@ -58,6 +59,7 @@ final readonly class CreateOrderCommand implements IdempotentCommandInterface, \
 
         $payload = json_encode([
             'tenant' => $this->tenantId,
+            'location' => $this->locationId,
             'customer' => $this->customerId,
             'items' => $this->items,
             'total_items' => count($this->items),

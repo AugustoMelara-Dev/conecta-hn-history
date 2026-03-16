@@ -2,6 +2,7 @@
 
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
@@ -29,8 +30,17 @@ test('create order handler persists order and items securely to the database', f
             'price' => 150.00,
         ]);
 
+    $location = Location::query()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Principal',
+        'slug' => 'principal',
+        'is_primary' => true,
+        'is_active' => true,
+    ]);
+
     $command = new CreateOrderCommand(
         tenantId: (string) $tenant->id,
+        locationId: (string) $location->id,
         customerId: (string) $user->id,
         currency: 'HNL',
         customerName: 'Integration Tester',
@@ -95,6 +105,7 @@ test('create order handler persists order and items securely to the database', f
     $this->assertDatabaseHas('orders', [
         'id' => $result->id,
         'tenant_id' => $tenant->id,
+        'location_id' => $location->id,
         'user_id' => $user->id,
         'customer_name' => 'Integration Tester',
         'status' => 'pending',

@@ -17,6 +17,7 @@ final class StoreCheckoutRequest extends FormRequest
     {
         return [
             'tenant_id' => ['nullable', 'string', 'exists:tenants,id'],
+            'location_id' => ['nullable', 'string', 'uuid'],
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_phone' => ['required', 'string', 'max:20'],
             'customer_email' => ['nullable', 'email', 'max:255'],

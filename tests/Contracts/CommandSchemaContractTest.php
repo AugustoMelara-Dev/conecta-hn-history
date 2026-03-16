@@ -11,6 +11,7 @@ uses(\Tests\TestCase::class);
 it('validates CreateOrderCommand against its JSON schema contract', function () {
     $command = new CreateOrderCommand(
         tenantId: 'tnt_123456789',
+        locationId: 'loc_123456789',
         customerId: 'cus_987654321',
         currency: 'USD',
         customerName: 'John Doe',

@@ -4,6 +4,7 @@
   "type": "object",
   "properties": {
     "tenantId": { "type": "string" },
+    "locationId": { "type": ["string", "null"] },
     "customerId": { "type": "string" },
     "currency": { "type": "string" },
     "customerName": { "type": ["string", "null"] },

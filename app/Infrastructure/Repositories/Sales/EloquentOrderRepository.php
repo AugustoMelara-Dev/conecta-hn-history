@@ -32,6 +32,7 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
             : new Order;
 
         $model->tenant_id = $order->tenantId;
+        $model->location_id = $order->locationId;
         $model->user_id = $order->customerId;
         $model->order_number = $order->orderNumber;
         $model->customer_name = $order->customerName;
@@ -82,6 +83,7 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
         return new OrderEntity(
             id: $model->id,
             tenantId: (string) $model->tenant_id,
+            locationId: $model->location_id !== null ? (string) $model->location_id : null,
             customerId: (string) $model->user_id,
             orderNumber: $model->order_number,
             customerName: $model->customer_name,

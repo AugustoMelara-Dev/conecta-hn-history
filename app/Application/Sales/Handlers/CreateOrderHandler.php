@@ -26,6 +26,7 @@ use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Models\InventoryHold;
+use App\Models\Location;
 use DomainException;
 
 /**
@@ -67,6 +68,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         }
 
         $this->assertFulfillmentCapability($command);
+        $this->assertValidLocation($command);
 
         $user = $this->userRepository->findById($command->customerId, $command->tenantId);
         if (! $user) {
@@ -110,6 +112,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
 
         $orderEntity = $this->orderFactory->create(
             tenantId: $command->tenantId,
+            locationId: $command->locationId,
             customerId: $user->id(),
             orderNumber: $orderNumber,
             customerName: $user->name(),
@@ -189,5 +192,24 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         };
 
         throw new DomainException($message);
+    }
+
+    private function assertValidLocation(CreateOrderCommand $command): void
+    {
+        if ($command->locationId === null || $command->locationId === '') {
+            throw new DomainException('Location is required to create an order.');
+        }
+
+        $locationExists = Location::query()
+            ->where('id', $command->locationId)
+            ->where('tenant_id', $command->tenantId)
+            ->where('is_active', true)
+            ->exists();
+
+        if ($locationExists) {
+            return;
+        }
+
+        throw new DomainException("Invalid or inactive location {$command->locationId}");
     }
 }

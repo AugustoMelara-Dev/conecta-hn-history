@@ -59,6 +59,7 @@ it('survives a synthetic replay attack ensuring single execution of core logic',
 
     $command = new CreateOrderCommand(
         tenantId: '1',
+        locationId: 'loc-primary',
         customerId: '10',
         currency: 'HNL',
         items: [['product_id' => 1, 'quantity' => 1]],

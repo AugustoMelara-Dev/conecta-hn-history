@@ -12,6 +12,7 @@ use App\Domain\Sales\Contracts\OrderReader;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\StoreCheckoutRequest;
+use App\Models\Location;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
@@ -67,9 +68,15 @@ final class OrderController extends Controller
             (string) ($validated['delivery_type'] ?? 'pickup')
         );
 
+        $locationId = $this->resolveLocationId(
+            $tenantId,
+            $validated['location_id'] ?? null
+        );
+
         try {
             $command = new CreateOrderCommand(
                 tenantId: $tenantId,
+                locationId: $locationId,
                 customerId: (string) $customerId,
                 currency: 'HNL',
                 customerName: (string) ($validated['customer_name'] ?? ''),
@@ -151,6 +158,39 @@ final class OrderController extends Controller
 
         throw ValidationException::withMessages([
             'delivery_type' => $message,
+        ]);
+    }
+
+    private function resolveLocationId(string $tenantId, ?string $locationId): string
+    {
+        if ($locationId !== null && $locationId !== '') {
+            $location = Location::query()
+                ->where('id', $locationId)
+                ->where('tenant_id', $tenantId)
+                ->where('is_active', true)
+                ->first();
+
+            if ($location !== null) {
+                return (string) $location->id;
+            }
+
+            throw ValidationException::withMessages([
+                'location_id' => 'Invalid or inactive location for this tenant.',
+            ]);
+        }
+
+        $primaryLocationId = Location::query()
+            ->where('tenant_id', $tenantId)
+            ->where('is_primary', true)
+            ->where('is_active', true)
+            ->value('id');
+
+        if ($primaryLocationId !== null) {
+            return (string) $primaryLocationId;
+        }
+
+        throw ValidationException::withMessages([
+            'location_id' => 'No active primary location found for this tenant.',
         ]);
     }
 }
