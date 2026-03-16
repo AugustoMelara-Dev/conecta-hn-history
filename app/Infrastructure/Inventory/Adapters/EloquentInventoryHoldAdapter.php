@@ -28,6 +28,7 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
             $this->assertValidLocation($tenantId, $locationId);
 
             $product = Product::query()
+                ->withoutGlobalScopes()
                 ->where('id', $productId)
                 ->where('tenant_id', $tenantId)
                 ->first();
@@ -37,6 +38,7 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
             }
 
             $hold = InventoryHold::query()
+                ->withoutGlobalScopes()
                 ->where('tenant_id', $tenantId)
                 ->where('session_id', $sessionId)
                 ->where('location_id', $locationId)
@@ -51,20 +53,24 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
             $level = null;
 
             if ($product->manage_stock) {
-                InventoryLevel::query()->firstOrCreate(
-                    [
-                        'location_id' => $locationId,
-                        'product_id' => $productId,
-                    ],
-                    [
-                        'tenant_id' => $tenantId,
-                        'on_hand' => 0,
-                        'reserved' => 0,
-                        'low_stock_threshold' => $product->low_stock_threshold,
-                    ]
-                );
+                InventoryLevel::query()
+                    ->withoutGlobalScopes()
+                    ->firstOrCreate(
+                        [
+                            'tenant_id' => $tenantId,
+                            'location_id' => $locationId,
+                            'product_id' => $productId,
+                        ],
+                        [
+                            'on_hand' => 0,
+                            'reserved' => 0,
+                            'low_stock_threshold' => $product->low_stock_threshold,
+                        ]
+                    );
 
                 $level = InventoryLevel::query()
+                    ->withoutGlobalScopes()
+                    ->where('tenant_id', $tenantId)
                     ->where('location_id', $locationId)
                     ->where('product_id', $productId)
                     ->lockForUpdate()
@@ -94,18 +100,20 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
                 return;
             }
 
-            InventoryHold::query()->updateOrCreate(
-                [
-                    'tenant_id' => $tenantId,
-                    'session_id' => $sessionId,
-                    'location_id' => $locationId,
-                    'product_id' => $productId,
-                ],
-                [
-                    'quantity' => $newQuantity,
-                    'expires_at' => now()->addMinutes($expiresInMinutes),
-                ]
-            );
+            InventoryHold::query()
+                ->withoutGlobalScopes()
+                ->updateOrCreate(
+                    [
+                        'tenant_id' => $tenantId,
+                        'session_id' => $sessionId,
+                        'location_id' => $locationId,
+                        'product_id' => $productId,
+                    ],
+                    [
+                        'quantity' => $newQuantity,
+                        'expires_at' => now()->addMinutes($expiresInMinutes),
+                    ]
+                );
         });
     }
 
@@ -113,6 +121,7 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
     {
         DB::transaction(function () use ($tenantId, $sessionId, $referenceId) {
             $holds = InventoryHold::query()
+                ->withoutGlobalScopes()
                 ->where('tenant_id', $tenantId)
                 ->where('session_id', $sessionId)
                 ->lockForUpdate()
@@ -120,12 +129,15 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
 
             foreach ($holds as $hold) {
                 $product = Product::query()
+                    ->withoutGlobalScopes()
                     ->withTrashed()
                     ->where('id', $hold->product_id)
                     ->where('tenant_id', $tenantId)
                     ->first();
 
                 $level = InventoryLevel::query()
+                    ->withoutGlobalScopes()
+                    ->where('tenant_id', $tenantId)
                     ->where('location_id', $hold->location_id)
                     ->where('product_id', $hold->product_id)
                     ->lockForUpdate()
@@ -172,6 +184,7 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
     {
         return DB::transaction(function () use ($tenantId) {
             $query = InventoryHold::query()
+                ->withoutGlobalScopes()
                 ->where('expires_at', '<=', now())
                 ->lockForUpdate();
 
@@ -184,6 +197,8 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
 
             foreach ($holds as $hold) {
                 $level = InventoryLevel::query()
+                    ->withoutGlobalScopes()
+                    ->where('tenant_id', $hold->tenant_id)
                     ->where('location_id', $hold->location_id)
                     ->where('product_id', $hold->product_id)
                     ->lockForUpdate()
@@ -217,3 +232,4 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
         throw new DomainException("Invalid or inactive location {$locationId}.");
     }
 }
+
