@@ -27,7 +27,7 @@ final readonly class CreateOrderCommand implements IdempotentCommandInterface, \
      */
     public function __construct(
         public string $tenantId,
-        public ?string $locationId = null,
+        public ?string $locationId,
         public string $customerId,
         public string $currency,
         public ?string $customerName = null,
