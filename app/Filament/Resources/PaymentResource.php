@@ -5,28 +5,21 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PaymentResource\Pages;
-use App\Models\Payment;
+use App\Models\SubscriptionPayment;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 
 /**
- * PaymentResource - Centro de Comando Financiero
- *
- * Este recurso es un Disparador de Eventos de Negocio:
- * - Aprobar Pago → Activa cuenta PRO + is_active + plan_expires_at
- * - Rechazar Pago → Notifica al usuario con motivo
- *
- * Panel Administrativo con auto-refresh cada 30s.
+ * PaymentResource - Subscription payment review center.
  */
 class PaymentResource extends Resource
 {
-    protected static ?string $model = Payment::class;
+    protected static ?string $model = SubscriptionPayment::class;
 
     protected static ?int $navigationSort = 1;
 
@@ -52,12 +45,9 @@ class PaymentResource extends Resource
         return 'Finanzas';
     }
 
-    /**
-     * Badge dinámico: Cuenta pagos pendientes
-     */
     public static function getNavigationBadge(): ?string
     {
-        $count = Payment::where('status', 'pending')->count();
+        $count = SubscriptionPayment::where('status', SubscriptionPayment::STATUS_PENDING)->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -67,14 +57,11 @@ class PaymentResource extends Resource
         return 'warning';
     }
 
-    /**
-     * Formulario de Solo-Lectura (Vista de Detalles)
-     */
     public static function form(Schema $schema): Schema
     {
         return $schema
             ->schema([
-                Forms\Components\Section::make('Información del Pago')
+                Forms\Components\Section::make('Informacion del Pago')
                     ->schema([
                         Forms\Components\Select::make('tenant_id')
                             ->relationship('tenant', 'name')
@@ -90,20 +77,20 @@ class PaymentResource extends Resource
                             ->numeric()
                             ->disabled(),
 
-                        Forms\Components\TextInput::make('bank_reference')
+                        Forms\Components\TextInput::make('reference_number')
                             ->label('Referencia Bancaria')
                             ->disabled(),
 
                         Forms\Components\Select::make('status')
                             ->label('Estado')
                             ->options([
-                                'pending' => 'Pendiente',
-                                'approved' => 'Aprobado',
-                                'rejected' => 'Rechazado',
+                                SubscriptionPayment::STATUS_PENDING => 'Pendiente',
+                                SubscriptionPayment::STATUS_APPROVED => 'Aprobado',
+                                SubscriptionPayment::STATUS_REJECTED => 'Rechazado',
                             ])
                             ->disabled(),
 
-                        Forms\Components\FileUpload::make('proof_image_path')
+                        Forms\Components\FileUpload::make('proof_path')
                             ->label('Comprobante de Pago')
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
                             ->maxSize(5120)
@@ -111,7 +98,7 @@ class PaymentResource extends Resource
                             ->disabled()
                             ->columnSpanFull(),
 
-                        Forms\Components\Textarea::make('notes')
+                        Forms\Components\Textarea::make('admin_notes')
                             ->label('Notas Administrativas')
                             ->rows(3)
                             ->columnSpanFull(),
@@ -120,17 +107,11 @@ class PaymentResource extends Resource
             ]);
     }
 
-    /**
-     * Tabla de Datos con Semáforo Visual
-     */
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                // ═══════════════════════════════════════════════════════
-                // REFERENCIA BANCARIA (Copyable para verificación)
-                // ═══════════════════════════════════════════════════════
-                Tables\Columns\TextColumn::make('bank_reference')
+                Tables\Columns\TextColumn::make('reference_number')
                     ->label('Referencia')
                     ->searchable()
                     ->copyable()
@@ -140,20 +121,13 @@ class PaymentResource extends Resource
                     ->fontFamily('mono')
                     ->size('sm'),
 
-                // ═══════════════════════════════════════════════════════
-                // CLIENTE (Con email del propietario para contacto)
-                // ═══════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('tenant.name')
                     ->label('Negocio')
                     ->searchable()
                     ->sortable()
                     ->weight('bold')
-                    ->description(fn (Payment $record): ?string => $record->tenant?->user?->email ?? 'Sin email'
-                    ),
+                    ->description(fn (SubscriptionPayment $record): ?string => $record->tenant?->user?->email ?? 'Sin email'),
 
-                // ═══════════════════════════════════════════════════════
-                // MONTO (Formateado como Lempiras)
-                // ═══════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Monto')
                     ->money('HNL')
@@ -161,42 +135,33 @@ class PaymentResource extends Resource
                     ->color('success')
                     ->weight('bold'),
 
-                // ═══════════════════════════════════════════════════════
-                // COMPROBANTE (Imagen thumbnail)
-                // ═══════════════════════════════════════════════════════
-                Tables\Columns\ImageColumn::make('proof_image_path')
+                Tables\Columns\ImageColumn::make('proof_path')
                     ->label('Comprobante')
                     ->circular()
                     ->size(40),
 
-                // ═══════════════════════════════════════════════════════
-                // ESTADO (Semáforo con Iconos)
-                // ═══════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'pending' => 'warning',
-                        'approved' => 'success',
-                        'rejected' => 'danger',
+                        SubscriptionPayment::STATUS_PENDING => 'warning',
+                        SubscriptionPayment::STATUS_APPROVED => 'success',
+                        SubscriptionPayment::STATUS_REJECTED => 'danger',
                         default => 'gray',
                     })
                     ->icon(fn (string $state): string => match ($state) {
-                        'pending' => 'heroicon-m-clock',
-                        'approved' => 'heroicon-m-check-circle',
-                        'rejected' => 'heroicon-m-x-circle',
+                        SubscriptionPayment::STATUS_PENDING => 'heroicon-m-clock',
+                        SubscriptionPayment::STATUS_APPROVED => 'heroicon-m-check-circle',
+                        SubscriptionPayment::STATUS_REJECTED => 'heroicon-m-x-circle',
                         default => 'heroicon-m-question-mark-circle',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'pending' => 'Pendiente',
-                        'approved' => 'Aprobado',
-                        'rejected' => 'Rechazado',
+                        SubscriptionPayment::STATUS_PENDING => 'Pendiente',
+                        SubscriptionPayment::STATUS_APPROVED => 'Aprobado',
+                        SubscriptionPayment::STATUS_REJECTED => 'Rechazado',
                         default => $state,
                     }),
 
-                // ═══════════════════════════════════════════════════════
-                // FECHAS
-                // ═══════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Reportado')
                     ->dateTime('d/m/Y H:i')
@@ -207,21 +172,19 @@ class PaymentResource extends Resource
                 Tables\Columns\TextColumn::make('reviewed_at')
                     ->label('Procesado')
                     ->dateTime('d/m/Y H:i')
-                    ->placeholder('—')
+                    ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                // Filtro por estado
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Estado')
                     ->options([
-                        'pending' => '🕐 Pendiente',
-                        'approved' => '✅ Aprobado',
-                        'rejected' => '❌ Rechazado',
+                        SubscriptionPayment::STATUS_PENDING => 'Pendiente',
+                        SubscriptionPayment::STATUS_APPROVED => 'Aprobado',
+                        SubscriptionPayment::STATUS_REJECTED => 'Rechazado',
                     ]),
 
-                // Filtro de período
                 Tables\Filters\Filter::make('created_at')
                     ->form([
                         Forms\Components\DatePicker::make('created_from')
@@ -232,90 +195,66 @@ class PaymentResource extends Resource
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
-                                $data['created_from'],
+                                $data['created_from'] ?? null,
                                 fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
-                                $data['created_until'],
+                                $data['created_until'] ?? null,
                                 fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     }),
             ])
             ->actions([
-                // ═══════════════════════════════════════════════════════
-                // ACCIÓN CRÍTICA: APROBAR PAGO
-                // Dispara: status=approved, is_pro=true, is_active=true,
-                //          plan_expires_at=+30 días
-                // ═══════════════════════════════════════════════════════
                 Tables\Actions\Action::make('approve')
                     ->label('Aprobar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalIcon('heroicon-o-banknotes')
-                    ->modalHeading('¿Confirmar recepción de fondos?')
-                    ->modalDescription('Al aprobar, el negocio será elevado a Plan PRO por 30 días.')
-                    ->modalSubmitActionLabel('Sí, aprobar pago')
-                    ->visible(fn (Payment $record) => $record->status === 'pending')
-                    ->action(function (Payment $record) {
-                        DB::transaction(function () use ($record) {
-                            // 1. Actualizar estado del pago
-                            $record->update([
-                                'status' => 'approved',
-                                'reviewed_at' => now(),
-                            ]);
+                    ->modalHeading('Confirmar recepcion de fondos?')
+                    ->modalDescription('Al aprobar, el negocio sera elevado a Plan PRO por 30 dias.')
+                    ->modalSubmitActionLabel('Si, aprobar pago')
+                    ->visible(fn (SubscriptionPayment $record) => $record->isPending())
+                    ->action(function (SubscriptionPayment $record): void {
+                        $adminId = (string) auth()->id();
 
-                            // 2. Activar Tenant (Upgrade a PRO)
-                            $tenant = $record->tenant;
+                        if ($adminId === '') {
+                            Notification::make()
+                                ->danger()
+                                ->title('Sesion invalida')
+                                ->body('No se pudo identificar al administrador revisor.')
+                                ->send();
 
-                            if ($tenant) {
-                                // Calcular fecha de expiración
-                                $currentExpiry = $tenant->plan_expires_at;
+                            return;
+                        }
 
-                                // Si ya es PRO y no ha expirado, sumar 30 días
-                                if ($tenant->is_pro && $currentExpiry && $currentExpiry->isFuture()) {
-                                    $newExpiry = $currentExpiry->addDays(30);
-                                } else {
-                                    // Nueva suscripción: 30 días desde ahora
-                                    $newExpiry = now()->addDays(30);
-                                }
+                        $record->approve($adminId);
+                        $record->refresh();
+                        $record->loadMissing('tenant.user');
 
-                                // Aplicar cambios al Tenant
-                                $tenant->update([
-                                    'is_pro' => true,
-                                    'is_active' => true, // Reactivar si estaba suspendido
-                                    'plan_expires_at' => $newExpiry,
-                                ]);
+                        $user = $record->tenant?->user;
+                        $endDate = $record->tenant?->subscription_ends_at?->format('d/m/Y');
 
-                                // 3. Notificar al usuario propietario
-                                $user = $tenant->user;
-                                if ($user) {
-                                    Notification::make()
-                                        ->success()
-                                        ->title('🎉 ¡Pago Aprobado!')
-                                        ->body("Tu Plan PRO para {$tenant->name} está activo hasta el {$newExpiry->format('d/m/Y')}.")
-                                        ->sendToDatabase($user);
-                                }
-                            }
-                        });
+                        if ($user && $endDate) {
+                            Notification::make()
+                                ->success()
+                                ->title('Pago Aprobado')
+                                ->body("Tu Plan PRO para {$record->tenant->name} esta activo hasta el {$endDate}.")
+                                ->sendToDatabase($user);
+                        }
 
-                        // Notificación al admin
                         Notification::make()
                             ->success()
                             ->title('Pago aprobado')
-                            ->body('Cuenta PRO activada correctamente.')
+                            ->body('Cuenta PRO activada y pago marcado correctamente.')
                             ->send();
                     }),
 
-                // ═══════════════════════════════════════════════════════
-                // ACCIÓN: RECHAZAR PAGO
-                // Solicita motivo y notifica al usuario
-                // ═══════════════════════════════════════════════════════
                 Tables\Actions\Action::make('reject')
                     ->label('Rechazar')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn (Payment $record) => $record->status === 'pending')
+                    ->visible(fn (SubscriptionPayment $record) => $record->isPending())
                     ->form([
                         Forms\Components\Textarea::make('rejection_reason')
                             ->label('Motivo del Rechazo')
@@ -323,15 +262,23 @@ class PaymentResource extends Resource
                             ->rows(3)
                             ->placeholder('Ej: Comprobante ilegible, monto incorrecto, etc.'),
                     ])
-                    ->action(function (Payment $record, array $data) {
-                        $record->update([
-                            'status' => 'rejected',
-                            'notes' => $data['rejection_reason'],
-                            'reviewed_at' => now(),
-                        ]);
+                    ->action(function (SubscriptionPayment $record, array $data): void {
+                        $adminId = (string) auth()->id();
 
-                        // Notificar al usuario
+                        if ($adminId === '') {
+                            Notification::make()
+                                ->danger()
+                                ->title('Sesion invalida')
+                                ->body('No se pudo identificar al administrador revisor.')
+                                ->send();
+
+                            return;
+                        }
+
+                        $record->reject($adminId, $data['rejection_reason']);
+
                         $user = $record->tenant?->user;
+
                         if ($user) {
                             Notification::make()
                                 ->danger()
@@ -343,15 +290,15 @@ class PaymentResource extends Resource
                         Notification::make()
                             ->warning()
                             ->title('Pago rechazado')
-                            ->body('Se notificó al cliente.')
+                            ->body('Se notifico al cliente.')
                             ->send();
                     }),
             ])
             ->bulkActions([])
             ->emptyStateHeading('Sin pagos pendientes')
-            ->emptyStateDescription('Los pagos reportados aparecerán aquí.')
+            ->emptyStateDescription('Los pagos reportados apareceran aqui.')
             ->emptyStateIcon('heroicon-o-banknotes')
-            ->poll('30s'); // Auto-refresh cada 30 segundos
+            ->poll('30s');
     }
 
     public static function getRelations(): array
@@ -367,13 +314,10 @@ class PaymentResource extends Resource
         ];
     }
 
-    /**
-     * Query base: Prioriza pendientes, luego por fecha
-     */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['tenant.user']) // Eager load para performance
+            ->with(['tenant.user'])
             ->orderByRaw("CASE status
                 WHEN 'pending' THEN 1
                 WHEN 'approved' THEN 2

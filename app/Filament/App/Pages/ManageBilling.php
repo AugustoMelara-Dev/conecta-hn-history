@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
-use App\Models\Payment;
+use App\Models\SubscriptionPayment;
 use App\Settings\GeneralSettings;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -71,7 +71,7 @@ class ManageBilling extends Page implements HasForms, HasTable
     public bool $isFree = true;
 
     /** Pago pendiente actual (si existe) */
-    public ?Payment $pendingPayment = null;
+    public ?SubscriptionPayment $pendingPayment = null;
 
     /** Días restantes de suscripción PRO */
     public int $daysRemaining = 0;
@@ -131,7 +131,7 @@ class ManageBilling extends Page implements HasForms, HasTable
         // ═══════════════════════════════════════════════════════════════════
 
         // Verificar si hay pago pendiente
-        $this->pendingPayment = Payment::where('tenant_id', $tenant->id)
+        $this->pendingPayment = SubscriptionPayment::where('tenant_id', $tenant->id)
             ->where('status', 'pending')
             ->latest()
             ->first();
@@ -148,9 +148,11 @@ class ManageBilling extends Page implements HasForms, HasTable
             $this->isFree = false;
 
             // Calcular días restantes para semáforo de vencimiento
-            if ($tenant->plan_expires_at) {
-                $this->daysRemaining = max(0, Carbon::now()->diffInDays($tenant->plan_expires_at, false));
-                $this->expiresAt = $tenant->plan_expires_at->format('d/m/Y');
+            $subscriptionEndsAt = $tenant->subscription_ends_at ?? $tenant->plan_expires_at;
+
+            if ($subscriptionEndsAt) {
+                $this->daysRemaining = max(0, Carbon::now()->diffInDays($subscriptionEndsAt, false));
+                $this->expiresAt = $subscriptionEndsAt->format('d/m/Y');
             }
         } else {
             // Estado 3: FREE - Mostrar wizard de pago
@@ -306,7 +308,7 @@ class ManageBilling extends Page implements HasForms, HasTable
         }
 
         // Verificar que no haya otro pago pendiente
-        $existingPending = Payment::where('tenant_id', $tenant->id)
+        $existingPending = SubscriptionPayment::where('tenant_id', $tenant->id)
             ->where('status', 'pending')
             ->exists();
 
@@ -321,11 +323,12 @@ class ManageBilling extends Page implements HasForms, HasTable
         }
 
         // Crear registro de pago
-        Payment::create([
+        SubscriptionPayment::forceCreate([
             'tenant_id' => $tenant->id,
             'amount' => $this->subscriptionAmount,
-            'bank_reference' => $data['bank_reference'],
-            'proof_image_path' => $data['proof_image_path'],
+            'bank' => 'bank_transfer',
+            'reference_number' => $data['bank_reference'],
+            'proof_path' => $data['proof_image_path'],
             'status' => 'pending',
         ]);
 
@@ -348,8 +351,8 @@ class ManageBilling extends Page implements HasForms, HasTable
 
         return $table
             ->query(
-                Payment::query()
-                    ->where('tenant_id', $tenant?->id ?? 0)
+                SubscriptionPayment::query()
+                    ->where('tenant_id', $tenant?->id ?? '')
                     ->orderBy('created_at', 'desc')
             )
             ->columns([
@@ -358,7 +361,7 @@ class ManageBilling extends Page implements HasForms, HasTable
                     ->date('d/m/Y')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('bank_reference')
+                Tables\Columns\TextColumn::make('reference_number')
                     ->label('Referencia')
                     ->searchable()
                     ->placeholder('—'),
@@ -389,8 +392,8 @@ class ManageBilling extends Page implements HasForms, HasTable
                     ->label('Recibo')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
-                    ->visible(fn (Payment $record) => $record->status === 'approved')
-                    ->action(function (Payment $record) {
+                    ->visible(fn (SubscriptionPayment $record) => $record->status === 'approved')
+                    ->action(function (SubscriptionPayment $record) {
                         return $this->downloadReceipt($record);
                     }),
             ])
@@ -402,7 +405,7 @@ class ManageBilling extends Page implements HasForms, HasTable
     /**
      * Generar y descargar recibo PDF
      */
-    public function downloadReceipt(Payment $payment)
+    public function downloadReceipt(SubscriptionPayment $payment)
     {
         $tenant = Filament::getTenant();
 

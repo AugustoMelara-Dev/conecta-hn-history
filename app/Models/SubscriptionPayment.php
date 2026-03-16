@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * SubscriptionPayment - Payment Transaction Record
@@ -29,7 +32,11 @@ use Illuminate\Support\Facades\Storage;
  */
 class SubscriptionPayment extends Model
 {
-    use BelongsToTenant, HasFactory;
+    use BelongsToTenant, HasFactory, HasUuids;
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
 
     public const STATUS_PENDING = 'pending';
 
@@ -43,6 +50,8 @@ class SubscriptionPayment extends Model
         'reference_number',
         'proof_path',
         'status',
+        'idempotency_key',
+        'version',
         'admin_notes',
         'reviewed_by',
         'reviewed_at',
@@ -57,7 +66,22 @@ class SubscriptionPayment extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'reviewed_at' => 'datetime',
+        'id' => 'string',
+        'version' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $payment): void {
+            if (blank($payment->idempotency_key)) {
+                $payment->idempotency_key = (string) Str::uuid();
+            }
+
+            if ($payment->version === null) {
+                $payment->version = 1;
+            }
+        });
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // RELATIONSHIPS
@@ -116,14 +140,14 @@ class SubscriptionPayment extends Model
      * This method follows Single Responsibility Principle:
      * - Only updates the payment's own state
      * - Dispatches PaymentApproved immutable DTO for side-effects
-     * - Uses primitive types (int, not models) for serialization safety
+     * - Uses primitive types (UUID strings, not models) for serialization safety
      * - The UpdateTenantSubscription listener handles subscription logic
      *   with pessimistic locking and idempotency guards
      *
-     * @param  int  $reviewerId  The admin who approved the payment
+     * @param  string  $reviewerId  The admin who approved the payment
      * @param  int  $daysToAdd  Number of subscription days to add (default: 30)
      */
-    public function approve(int $reviewerId, int $daysToAdd = 30): void
+    public function approve(string $reviewerId, int $daysToAdd = 30): void
     {
         // Only update payment's own state (SRP compliance)
         $this->update([
@@ -132,20 +156,47 @@ class SubscriptionPayment extends Model
             'reviewed_at' => now(),
         ]);
 
-        // Dispatch IMMUTABLE DTO event for decoupled subscription extension
-        // Uses factory method with primitives, not model objects
-        \App\Events\PaymentApproved::fromPayment(
+        if ($this->tenant) {
+            $legacyPlanExpiresAt = Schema::hasColumn('tenants', 'plan_expires_at')
+                ? $this->tenant->getAttribute('plan_expires_at')
+                : null;
+
+            $baseDate = $this->tenant->subscription_ends_at ?? $legacyPlanExpiresAt ?? now();
+
+            if ($baseDate->isPast()) {
+                $baseDate = now();
+            }
+
+            $newEndDate = $baseDate->copy()->addDays($daysToAdd);
+
+            $updates = [
+                'is_active' => true,
+                'plan_type' => 'pro',
+                'subscription_status' => 'active',
+                'subscription_ends_at' => $newEndDate,
+                'next_billing_date' => $newEndDate->toDateString(),
+            ];
+
+            if (Schema::hasColumn('tenants', 'plan_expires_at')) {
+                $updates['plan_expires_at'] = $newEndDate;
+            }
+
+            $this->tenant->forceFill($updates)->save();
+        }
+
+        // Dispatch immutable event for downstream listeners and notifications.
+        event(\App\Events\PaymentApproved::fromPayment(
             tenantId: $this->tenant_id,
             paymentId: $this->id,
             reviewerId: $reviewerId,
             daysToAdd: $daysToAdd
-        )->dispatch();
+        ));
     }
 
     /**
      * Reject payment with reason
      */
-    public function reject(int $reviewerId, string $reason): void
+    public function reject(string $reviewerId, string $reason): void
     {
         $this->update([
             'status' => self::STATUS_REJECTED,
