@@ -2,17 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Application\Access\Contracts\TenantPermissionGuardInterface;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\Product;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Policies\ProductPolicy;
+use App\Settings\GeneralSettings;
 use Illuminate\Auth\Access\Response;
-
-// Bootstrap Laravel app — needed for Filament::shouldReceive() in create() tests
-// uses(Tests\TestCase::class);
-
-// ═══════════════════════════════════════════════════════════════════════════
-// HELPER: Build a User mock with tenant IDs (reuses OrderPolicy pattern)
-// ═══════════════════════════════════════════════════════════════════════════
 
 function normalizeProductTenantId(int|string $tenantId): string
 {
@@ -21,6 +18,22 @@ function normalizeProductTenantId(int|string $tenantId): string
     }
 
     return '00000000-0000-0000-0000-0000000000'.str_pad((string) $tenantId, 2, '0', STR_PAD_LEFT);
+}
+
+function bindProductPolicyServices(): void
+{
+    $guard = Mockery::mock(TenantPermissionGuardInterface::class);
+    $guard->shouldReceive('allows')->andReturn(true);
+    app()->instance(TenantPermissionGuardInterface::class, $guard);
+
+    $settings = new class
+    {
+        public int $free_plan_product_limit = 10;
+
+        public int $pro_plan_product_limit = 1000;
+    };
+
+    app()->instance(GeneralSettings::class, $settings);
 }
 
 function makeUserForProduct(array $tenantIds, string $role = 'seller'): User
@@ -52,10 +65,6 @@ function makeProduct(int $tenantId): Product
     return $product;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TENANT ISOLATION: Cross-tenant denial
-// ═══════════════════════════════════════════════════════════════════════════
-
 test('denies view for cross-tenant product', function () {
     $user = makeUserForProduct([1]);
     $product = makeProduct(tenantId: 2);
@@ -83,10 +92,6 @@ test('denies restore for cross-tenant product', function () {
 
     expect((new ProductPolicy())->restore($user, $product))->toBeFalse();
 });
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TENANT ISOLATION: Same-tenant access
-// ═══════════════════════════════════════════════════════════════════════════
 
 test('allows view for same-tenant product', function () {
     $user = makeUserForProduct([5]);
@@ -116,10 +121,6 @@ test('allows restore for same-tenant product', function () {
     expect((new ProductPolicy())->restore($user, $product))->toBeTrue();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// EDGE: User with no tenants
-// ═══════════════════════════════════════════════════════════════════════════
-
 test('denies viewAny when user has no tenants', function () {
     $user = makeUserForProduct([]);
 
@@ -139,14 +140,6 @@ test('denies view when user has no tenants', function () {
     expect((new ProductPolicy())->view($user, $product))->toBeFalse();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PLAN LIMITS: create() — Pro vs Free
-//
-// NOTE: In test context (no Filament panel), Filament::getTenant() returns null,
-// so the policy falls through to $user->tenants()->first().
-// We control the tenant via the mock returned by tenants()->first().
-// ═══════════════════════════════════════════════════════════════════════════
-
 function makeUserForCreate(bool $isPro, int $productCount, array $tenantIds = [10]): User
 {
     $normalizedTenantIds = array_map(fn ($id) => normalizeProductTenantId($id), $tenantIds);
@@ -155,12 +148,16 @@ function makeUserForCreate(bool $isPro, int $productCount, array $tenantIds = [1
     $user->role = 'seller';
     $user->_memoized_tenant_ids = $normalizedTenantIds;
 
-    // Build a tenant mock with is_pro and products() support
-    $productsRelation = Mockery::mock();
+    $productsRelation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
     $productsRelation->shouldReceive('count')->andReturn($productCount);
 
-    $tenant = Mockery::mock();
-    $tenant->is_pro = $isPro;
+    $tenant = Mockery::mock(Tenant::class)->makePartial();
+    $tenant->id = $normalizedTenantIds[0] ?? null;
+    $tenant->forceFill([
+        'plan_type' => $isPro ? TenantPlan::PRO : TenantPlan::SEMILLA,
+        'subscription_status' => 'active',
+        'subscription_ends_at' => null,
+    ]);
     $tenant->shouldReceive('products')->andReturn($productsRelation);
 
     $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
@@ -175,6 +172,7 @@ function makeUserForCreate(bool $isPro, int $productCount, array $tenantIds = [1
 }
 
 test('create allows PRO tenant with unlimited products', function () {
+    bindProductPolicyServices();
     $user = makeUserForCreate(isPro: true, productCount: 999);
 
     $result = (new ProductPolicy())->create($user);
@@ -184,6 +182,7 @@ test('create allows PRO tenant with unlimited products', function () {
 });
 
 test('create allows FREE tenant under 10 products', function () {
+    bindProductPolicyServices();
     $user = makeUserForCreate(isPro: false, productCount: 5);
 
     $result = (new ProductPolicy())->create($user);
@@ -192,12 +191,13 @@ test('create allows FREE tenant under 10 products', function () {
 });
 
 test('create denies FREE tenant at 10 products', function () {
+    bindProductPolicyServices();
     $user = makeUserForCreate(isPro: false, productCount: 10);
 
     $result = (new ProductPolicy())->create($user);
 
     expect($result->allowed())->toBeFalse();
-    expect($result->message())->toContain('límite de 10 productos');
+    expect($result->message())->toContain('limite de 10 productos');
 });
 
 test('create denies user with no tenant', function () {
@@ -209,14 +209,26 @@ test('create denies user with no tenant', function () {
     expect($result->message())->toContain('negocio');
 });
 
-
-// ═══════════════════════════════════════════════════════════════════════════
-// FORCE DELETE: Requires admin + ownership
-// ═══════════════════════════════════════════════════════════════════════════
-
 test('allows forceDelete for super_admin owning product', function () {
-    $user = makeUserForProduct([10], role: 'super_admin');
+    bindProductPolicyServices();
+
+    $tenantId = normalizeProductTenantId(10);
+    $tenant = Mockery::mock(Tenant::class)->makePartial();
+    $tenant->id = $tenantId;
+    $tenant->user_id = '00000000-0000-0000-0000-000000000123';
+
+    $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
+    $relation->shouldReceive('pluck')->with('id')->andReturn(collect([$tenantId]));
+    $relation->shouldReceive('exists')->andReturn(true);
+    $relation->shouldReceive('first')->andReturn($tenant);
+
+    $user = Mockery::mock(User::class)->makePartial();
+    $user->id = '00000000-0000-0000-0000-000000000123';
+    $user->role = 'super_admin';
+    $user->_memoized_tenant_ids = [$tenantId];
+    $user->shouldReceive('tenants')->andReturn($relation);
     $user->shouldReceive('hasRole')->with('super_admin')->andReturn(true);
+
     $product = makeProduct(tenantId: 10);
 
     expect((new ProductPolicy())->forceDelete($user, $product))->toBeTrue();
