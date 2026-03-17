@@ -38,7 +38,7 @@ class UpcasterChain
 
             // Advance version pointer
             $oldVersion = $currentVersion;
-            $currentVersion = $upcaster->getTargetVersion();
+            $currentVersion = (string) $upcaster->toVersion();
 
             Log::info("Upcasted {$eventType} from {$oldVersion} to {$currentVersion}");
         }

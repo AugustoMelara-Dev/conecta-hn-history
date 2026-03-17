@@ -33,6 +33,8 @@ test('listener extends subscription exactly once for approved payments', functio
         daysToAdd: 30,
     );
 
+    app(\App\Domain\Shared\Services\TenantContext::class)->setAsSystemRoot(true);
+
     $listener = app(UpdateTenantSubscription::class);
 
     $listener->handle($event);

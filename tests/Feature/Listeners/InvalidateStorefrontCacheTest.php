@@ -17,7 +17,7 @@ test('storefront cache listener bypasses integer guards and resolves tenant via 
     $tenant = Tenant::factory()->create(['user_id' => $user->id]);
 
     // Create an anonymous stub fulfilling the TenantAwareEvent contract with a valid VO
-    $event = new class($tenant->uuid) implements TenantAwareEvent {
+    $event = new class((string) $tenant->id) implements TenantAwareEvent {
         public function __construct(private readonly string $uuid) {}
 
         public function tenantId(): TenantId
