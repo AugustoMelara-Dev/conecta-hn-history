@@ -1,20 +1,26 @@
 <?php
 
 use App\Settings\GeneralSettings;
+use App\Settings\BaseSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
 test('native general settings abstraction loads from database', function () {
-    DB::table('settings')->insert([
-        'group' => 'general',
-        'name' => 'pro_plan_price',
-        'payload' => json_encode(1499.99),
-        'locked' => false,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
+    DB::table('settings')->updateOrInsert(
+        ['group' => 'general', 'name' => 'pro_plan_price'],
+        [
+            'payload' => json_encode(1499.99),
+            'locked' => false,
+            'updated_at' => now(),
+        ]
+    );
+
+    Cache::forget('settings.general');
+    $property = new ReflectionProperty(BaseSettings::class, 'runtimeCache');
+    $property->setValue([]);
 
     $settings = new GeneralSettings();
 
