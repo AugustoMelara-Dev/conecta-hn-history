@@ -14,8 +14,18 @@ class OneTimePassword extends Model
 {
     use HasFactory, HasUuids;
 
-    // VC-AUDIT-103: Hardened to prevent mass assignment of sensitive fields
-    protected $guarded = ['id', 'user_id', 'created_at', 'updated_at'];
+    // VC-AUDIT-103: Allow only the fields the system needs during OTP creation.
+    protected $fillable = [
+        'user_id',
+        'tenant_id',
+        'identifier',
+        'code',
+        'type',
+        'ip_address',
+        'user_agent',
+        'expires_at',
+        'attempts',
+    ];
 
     protected $casts = [
         'expires_at' => 'datetime',

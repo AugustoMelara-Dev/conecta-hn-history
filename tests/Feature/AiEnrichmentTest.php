@@ -207,12 +207,32 @@ test('service handles flagged content response', function () {
 test('job dispatches command to handler regardless of tenant existence', function () {
     $data = new ResultsProfileData(tenantId: '999999');
     $job = new EnhanceTenantProfileJob($data);
-    $mockService = Mockery::mock(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class);
-    $mockService->shouldReceive('handle')
-        ->once()
-        ->withArgs(fn($cmd) => $cmd instanceof \App\Application\Tenant\Commands\EnhanceTenantProfileCommand
-            && $cmd->tenantId === 999999);
-    $job->handle($mockService);
+
+    $repository = Mockery::mock(\App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface::class);
+    $repository->shouldReceive('findById')->once()->with('999999')->andReturn(null);
+    $repository->shouldNotReceive('save');
+
+    $aiService = Mockery::mock(\App\Application\Shared\Contracts\AiProfileGeneratorInterface::class);
+    $aiService->shouldNotReceive('generate');
+
+    $transactionManager = Mockery::mock(\App\Application\Shared\Contracts\TransactionManagerInterface::class);
+    $transactionManager->shouldReceive('transaction')->once()->andReturnUsing(fn (callable $callback) => $callback());
+
+    $logger = Mockery::mock(\App\Application\Shared\Contracts\LoggerInterface::class);
+    $logger->shouldNotReceive('info');
+
+    $scrubber = Mockery::mock(\App\Application\Shared\Contracts\DataScrubberInterface::class);
+
+    $handler = new \App\Application\Tenant\Handlers\EnhanceTenantProfileHandler(
+        $repository,
+        $aiService,
+        $transactionManager,
+        $logger,
+        $scrubber,
+    );
+
+    expect(fn () => $job->handle($handler))
+        ->toThrow(\App\Domain\TenantGovernance\Exceptions\TenantDomainException::class);
 });
 
 test('job dispatches command to handler for already enriched tenant', function () {
@@ -222,12 +242,49 @@ test('job dispatches command to handler for already enriched tenant', function (
 
     $data = new ResultsProfileData(tenantId: (string) $tenant->id);
     $job = new EnhanceTenantProfileJob($data);
-    $mockService = Mockery::mock(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class);
-    $mockService->shouldReceive('handle')
+
+    $repository = Mockery::mock(\App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface::class);
+    $repository->shouldReceive('findById')
         ->once()
-        ->withArgs(fn($cmd) => $cmd instanceof \App\Application\Tenant\Commands\EnhanceTenantProfileCommand
-            && $cmd->tenantId === (int) $tenant->id);
-    $job->handle($mockService);
+        ->with((string) $tenant->id)
+        ->andReturn(\App\Domain\TenantGovernance\Entities\TenantEntity::fromStateArray([
+            'id' => (string) $tenant->id,
+            'name' => $tenant->name,
+            'domain' => $tenant->slug,
+            'is_active' => true,
+            'is_ai_enhanced' => true,
+        ]));
+    $repository->shouldNotReceive('save');
+
+    $aiService = Mockery::mock(\App\Application\Shared\Contracts\AiProfileGeneratorInterface::class);
+    $aiService->shouldReceive('generate')
+        ->once()
+        ->with($tenant->name, '', 'General')
+        ->andReturn([
+            'status' => 'success',
+            'business_name_clean' => $tenant->name,
+            'tagline' => 'Tagline',
+            'short_description' => 'Description',
+        ]);
+
+    $transactionManager = Mockery::mock(\App\Application\Shared\Contracts\TransactionManagerInterface::class);
+    $transactionManager->shouldReceive('transaction')->once()->andReturnUsing(fn (callable $callback) => $callback());
+
+    $logger = Mockery::mock(\App\Application\Shared\Contracts\LoggerInterface::class);
+    $logger->shouldNotReceive('info');
+
+    $scrubber = Mockery::mock(\App\Application\Shared\Contracts\DataScrubberInterface::class);
+
+    $handler = new \App\Application\Tenant\Handlers\EnhanceTenantProfileHandler(
+        $repository,
+        $aiService,
+        $transactionManager,
+        $logger,
+        $scrubber,
+    );
+
+    expect(fn () => $job->handle($handler))
+        ->toThrow(\App\Domain\TenantGovernance\Exceptions\TenantDomainException::class);
 });
 
 test('job can be dispatched to queue', function () {
