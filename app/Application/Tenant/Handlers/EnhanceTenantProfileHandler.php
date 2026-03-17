@@ -52,21 +52,29 @@ final readonly class EnhanceTenantProfileHandler
             }
 
             // Phase 2: Generate AI enhancements
+            $name = $tenant->name();
+
+            if ($name === '') {
+                throw new TenantDomainException('Business name cannot be empty. AI enrichment requires at least a name.');
+            }
+
+            $description = $command->description ?? $tenant->description() ?? '';
+
             $enhancedData = $this->aiService->generate(
-                $tenant->name ?? '',
-                $command->description ?? $tenant->description ?? '',
-                ($command->tags !== []) ? implode(',', $command->tags) : ($tenant->category?->name ?? 'General')
+                $name,
+                $description,
+                ($command->tags !== []) ? implode(',', $command->tags) : 'General'
             );
 
             // Phase 3: Delegate to Domain
-            $tenant->applyAiEnhancement($enhancedData, allowReEnhancement: $command->isAiGenerated);
+            $tenant->applyAiEnhancement($enhancedData, $command->isAiGenerated);
 
             // Phase 4: Persist
             $this->repository->save($tenant);
 
             $this->logger->info('Tenant Profile Enhanced via AI', $this->sanitizePayload([
-                'tenant_id' => $tenant->id,
-                'ai_tags' => $enhancedData['tags'] ?? [],
+                'tenant_id' => $tenant->id(),
+                'ai_tags' => $enhancedData['seo_keywords'] ?? ($enhancedData['tags'] ?? []),
             ], $this->scrubber));
         });
     }

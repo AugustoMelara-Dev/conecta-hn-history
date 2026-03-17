@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Entities;
 
 use App\Domain\Common\Traits\EventSourcedAggregate;
+use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Domain\TenantGovernance\Events\TenantCreated;
 use DateTimeImmutable;
 
@@ -52,6 +53,12 @@ final class TenantEntity
     private bool $isPro = false;
 
     private int $productLimit = 10;
+
+    private ?string $description = null;
+
+    private ?string $slogan = null;
+
+    private bool $isAiEnhanced = false;
 
     private function __construct() {}
 
@@ -102,6 +109,11 @@ final class TenantEntity
     public function domain(): string
     {
         return $this->domain;
+    }
+
+    public function description(): ?string
+    {
+        return $this->description;
     }
 
     // Additional getters if needed by Repository mapping,
@@ -166,6 +178,28 @@ final class TenantEntity
         return $this->subscriptionReference ?? null;
     }
 
+    public function applyAiEnhancement(array $enhancedData, bool $allowReEnhancement = false): void
+    {
+        if ($this->isAiEnhanced && ! $allowReEnhancement) {
+            throw TenantDomainException::alreadyEnhanced();
+        }
+
+        if (($this->name === '') && isset($enhancedData['business_name_clean']) && $enhancedData['business_name_clean'] !== '') {
+            $this->name = (string) $enhancedData['business_name_clean'];
+        }
+
+        if (isset($enhancedData['tagline'])) {
+            $this->slogan = (string) $enhancedData['tagline'];
+        }
+
+        if (isset($enhancedData['short_description'])) {
+            $this->description = (string) $enhancedData['short_description'];
+        }
+
+        $this->isAiEnhanced = true;
+        $this->updatedAt = new DateTimeImmutable;
+    }
+
     public function setupProfile(
         string $ownerId,
         ?int $categoryId = null,
@@ -221,6 +255,9 @@ final class TenantEntity
             'whatsapp' => $this->whatsapp,
             'is_pro' => $this->isPro,
             'product_limit' => $this->productLimit,
+            'description' => $this->description,
+            'slogan' => $this->slogan,
+            'is_ai_enhanced' => $this->isAiEnhanced,
         ];
     }
 
@@ -267,6 +304,9 @@ final class TenantEntity
         $tenant->whatsapp = isset($state['whatsapp']) ? (string) $state['whatsapp'] : null;
         $tenant->isPro = isset($state['is_pro']) ? (bool) $state['is_pro'] : false;
         $tenant->productLimit = isset($state['product_limit']) ? (int) $state['product_limit'] : 10;
+        $tenant->description = isset($state['description']) ? (string) $state['description'] : null;
+        $tenant->slogan = isset($state['slogan']) ? (string) $state['slogan'] : null;
+        $tenant->isAiEnhanced = isset($state['is_ai_enhanced']) ? (bool) $state['is_ai_enhanced'] : false;
 
         // Event Sourcing compatibility
         $tenant->version = (int) ($state['version'] ?? 0);
