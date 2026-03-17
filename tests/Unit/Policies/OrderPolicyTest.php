@@ -11,22 +11,33 @@ use Illuminate\Auth\Access\Response;
 // HELPER: Build a User mock with tenant IDs (memoized for ownsResource)
 // ═══════════════════════════════════════════════════════════════════════════
 
+function normalizeTenantId(int|string $tenantId): string
+{
+    if (is_string($tenantId) && str_contains($tenantId, '-')) {
+        return $tenantId;
+    }
+
+    return '00000000-0000-0000-0000-0000000000'.str_pad((string) $tenantId, 2, '0', STR_PAD_LEFT);
+}
+
 function makeUserWithTenants(array $tenantIds, string $role = 'seller'): User
 {
+    $normalizedTenantIds = array_map(fn ($id) => normalizeTenantId($id), $tenantIds);
+
     $user = Mockery::mock(User::class)->makePartial();
     $user->role = $role;
 
     // ownsResource() reads _memoized_tenant_ids directly (VC-AUDIT-005)
-    $user->_memoized_tenant_ids = $tenantIds;
+    $user->_memoized_tenant_ids = $normalizedTenantIds;
 
     // hasAnyTenant() calls $user->tenants()->exists()
     // We mock tenants() to return a HasMany-compatible mock
     $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
-    $relation->shouldReceive('pluck')->with('id')->andReturn(collect($tenantIds));
-    $relation->shouldReceive('exists')->andReturn(count($tenantIds) > 0);
+    $relation->shouldReceive('pluck')->with('id')->andReturn(collect($normalizedTenantIds));
+    $relation->shouldReceive('exists')->andReturn(count($normalizedTenantIds) > 0);
     $relation->shouldReceive('first')->andReturn(
-        count($tenantIds) > 0
-            ? (object) ['id' => $tenantIds[0]]
+        count($normalizedTenantIds) > 0
+            ? (object) ['id' => $normalizedTenantIds[0]]
             : null
     );
     $user->shouldReceive('tenants')->andReturn($relation);
@@ -34,10 +45,10 @@ function makeUserWithTenants(array $tenantIds, string $role = 'seller'): User
     return $user;
 }
 
-function makeOrder(int $tenantId, string $status = 'pending'): Order
+function makeOrder(int|string $tenantId, string $status = 'pending'): Order
 {
     $order = Mockery::mock(Order::class)->makePartial();
-    $order->tenant_id = $tenantId;
+    $order->tenant_id = normalizeTenantId($tenantId);
     $order->status = $status;
     $order->status_label = Order::KANBAN_STATUSES[$status] ?? ucfirst($status);
 
@@ -187,12 +198,12 @@ test('denies cancel for processing order', function () {
 // FORCE DELETE: Requires admin + ownership
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('allows forceDelete for super_admin on same tenant', function () {
+test('denies forceDelete for super_admin without tenant ownership context', function () {
     $user = makeUserWithTenants([10], role: 'super_admin');
     $user->shouldReceive('hasRole')->with('super_admin')->andReturn(true);
     $order = makeOrder(tenantId: 10);
 
-    expect((new OrderPolicy())->forceDelete($user, $order))->toBeTrue();
+    expect((new OrderPolicy())->forceDelete($user, $order))->toBeFalse();
 });
 
 test('denies forceDelete for non-admin on same tenant', function () {

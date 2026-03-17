@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserRole;
+use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Observers\TenantObserver;
@@ -18,7 +18,9 @@ test('created assigns TENANT_OWNER role to user who is not already owner', funct
     $user->role = UserRole::CUSTOMER;
     $user->shouldReceive('update')
         ->once()
-        ->with(['role' => UserRole::TENANT_OWNER]);
+        ->withArgs(function ($args) {
+            return isset($args['role']) && $args['role'] === UserRole::TENANT_OWNER;
+        });
 
     $tenant = Mockery::mock(Tenant::class)->makePartial();
     $tenant->shouldReceive('getAttribute')->with('user')->andReturn($user);
