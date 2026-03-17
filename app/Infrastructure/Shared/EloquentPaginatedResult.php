@@ -13,9 +13,14 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  *
  * Allowed in Infrastructure (not Domain) — this is the Anti-Corruption Layer.
  */
-final class EloquentPaginatedResult implements PaginatedResult
+final class EloquentPaginatedResult implements PaginatedResult, \JsonSerializable
 {
     public function __construct(private readonly LengthAwarePaginator $paginator) {}
+
+    public function jsonSerialize(): mixed
+    {
+        return $this->paginator->toArray();
+    }
 
     /** @return array<int, mixed> */
     public function items(): array
@@ -41,5 +46,12 @@ final class EloquentPaginatedResult implements PaginatedResult
     public function lastPage(): int
     {
         return $this->paginator->lastPage();
+    }
+
+    public function through(callable $callback): self
+    {
+        $this->paginator->through($callback);
+
+        return $this;
     }
 }

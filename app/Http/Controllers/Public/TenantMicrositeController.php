@@ -8,6 +8,7 @@ use App\Infrastructure\Tenant\Transformers\TenantMicrositeTransformer;
 use App\Domain\Public\Contracts\TenantStorefrontRepository;
 use App\Domain\Tenant\Services\TenantVisibilityService;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
+use App\Models\Tenant;
 // Assumed Event exists or will be created
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -33,12 +34,22 @@ final class TenantMicrositeController extends Controller
 
     public function show(Request $request, string $tenant, \App\Domain\Shared\Services\TenantContext $tenantContext): Response
     {
+        $tenantLookup = Tenant::query()
+            ->withoutGlobalScopes()
+            ->select(['id', 'slug'])
+            ->where('slug', $tenant)
+            ->first();
+
+        if (! $tenantLookup) {
+            abort(404);
+        }
+
+        $tenantContext->setTenant($tenantLookup->id);
+
         $tenant = $this->repository->findBySlug($tenant);
         if (!$tenant) {
             abort(404);
         }
-
-        $tenantContext->setTenant($tenant->id);
 
         // 2. Gatekeeper Logic (Domain Service)
         $this->visibilityService->check($tenant);

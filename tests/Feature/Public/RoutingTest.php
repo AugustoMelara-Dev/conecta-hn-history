@@ -41,7 +41,6 @@ describe('Luxury Entrance Routing', function () {
         ]);
 
         app(TenantContext::class)->reset();
-        app(TenantContext::class)->setAsSystemRoot(true);
 
         $response = $this->get('/t/test-barbershop');
 
@@ -62,7 +61,6 @@ describe('Luxury Entrance Routing', function () {
 
     it('returns 404 for non-existent tenant', function () {
         app(TenantContext::class)->reset();
-        app(TenantContext::class)->setAsSystemRoot(true);
 
         $response = $this->get('/t/non-existent-tenant');
 
