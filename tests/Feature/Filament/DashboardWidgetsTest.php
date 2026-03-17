@@ -5,10 +5,6 @@ declare(strict_types=1);
 use App\Filament\App\Widgets\OrdersChart;
 use App\Filament\App\Widgets\RevenueChart;
 
-// ═══════════════════════════════════════════════════════════════════════
-// DASHBOARD CHART WIDGETS TESTS
-// ═══════════════════════════════════════════════════════════════════════
-
 describe('RevenueChart Widget', function () {
     it('exists and is properly configured', function () {
         expect(class_exists(RevenueChart::class))->toBeTrue();
@@ -16,6 +12,7 @@ describe('RevenueChart Widget', function () {
 
     it('extends ChartWidget', function () {
         $reflection = new ReflectionClass(RevenueChart::class);
+
         expect($reflection->getParentClass()->getName())
             ->toBe(\Filament\Widgets\ChartWidget::class);
     });
@@ -24,7 +21,7 @@ describe('RevenueChart Widget', function () {
         $reflection = new ReflectionClass(RevenueChart::class);
         $heading = $reflection->getProperty('heading');
 
-        expect($heading->getDefaultValue())->toBe('Ingresos Estimados (Últimos 30 días)');
+        expect($heading->getDefaultValue())->toBe('Ingresos por Ordenes (Ultimos 30 dias)');
     });
 
     it('is configured as line chart', function () {
@@ -50,6 +47,7 @@ describe('OrdersChart Widget', function () {
 
     it('extends ChartWidget', function () {
         $reflection = new ReflectionClass(OrdersChart::class);
+
         expect($reflection->getParentClass()->getName())
             ->toBe(\Filament\Widgets\ChartWidget::class);
     });
@@ -58,7 +56,7 @@ describe('OrdersChart Widget', function () {
         $reflection = new ReflectionClass(OrdersChart::class);
         $heading = $reflection->getProperty('heading');
 
-        expect($heading->getDefaultValue())->toBe('Citas por Día (Última Semana)');
+        expect($heading->getDefaultValue())->toBe('Ordenes por Dia (Ultima Semana)');
     });
 
     it('is configured as bar chart', function () {

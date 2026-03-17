@@ -25,6 +25,7 @@ beforeEach(function () {
     ]);
 
     $this->victimTenant = Tenant::factory()->create([
+        'id' => '2001',
         'user_id' => $this->victimUser->id,
         'name' => 'Pizzería Delicia',
         'slug' => 'pizzeria-delicia',
@@ -37,6 +38,7 @@ beforeEach(function () {
     ]);
 
     $this->attackerTenant = Tenant::factory()->create([
+        'id' => '2002',
         'user_id' => $this->attackerUser->id,
         'name' => 'Tienda Maliciosa',
         'slug' => 'tienda-maliciosa',
@@ -172,7 +174,9 @@ test('it prevents cross tenant coupon usage', function () {
         'is_active' => true,
     ]);
 
-    $response = $this->postJson('/api/coupons/verify', [
+    $this->actingAsTenant((string) $this->attackerTenant->id);
+
+    $response = $this->postJson('/api/v1/coupons/verify', [
         'tenant_id' => $this->attackerTenant->id,
         'code' => 'VICTIM_EXCLUSIVE_50',
         'cart_subtotal' => 1000.00,

@@ -38,7 +38,7 @@ class TenantPersistenceAuditTest extends TestCase
 
         // 3. Audit Event Store
         $this->assertDatabaseHas('stored_events', [
-            'aggregate_id' => $id,
+            'aggregate_uuid' => $id,
             'aggregate_type' => 'Tenant',
             'event_type' => TenantCreated::class,
         ]);
