@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\Notification;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    \DG\BypassFinals::enable();
     // Crear dos tenants
     $this->tenantA = Tenant::factory()->create(['name' => 'Tenant A']);
     $this->tenantB = Tenant::factory()->create(['name' => 'Tenant B']);
