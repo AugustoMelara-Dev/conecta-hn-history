@@ -14,18 +14,29 @@ use Illuminate\Auth\Access\Response;
 // HELPER: Build a User mock with tenant IDs (reuses OrderPolicy pattern)
 // ═══════════════════════════════════════════════════════════════════════════
 
+function normalizeProductTenantId(int|string $tenantId): string
+{
+    if (is_string($tenantId) && str_contains($tenantId, '-')) {
+        return $tenantId;
+    }
+
+    return '00000000-0000-0000-0000-0000000000'.str_pad((string) $tenantId, 2, '0', STR_PAD_LEFT);
+}
+
 function makeUserForProduct(array $tenantIds, string $role = 'seller'): User
 {
+    $normalizedTenantIds = array_map(fn ($id) => normalizeProductTenantId($id), $tenantIds);
+
     $user = Mockery::mock(User::class)->makePartial();
     $user->role = $role;
-    $user->_memoized_tenant_ids = $tenantIds;
+    $user->_memoized_tenant_ids = $normalizedTenantIds;
 
     $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
-    $relation->shouldReceive('pluck')->with('id')->andReturn(collect($tenantIds));
-    $relation->shouldReceive('exists')->andReturn(count($tenantIds) > 0);
+    $relation->shouldReceive('pluck')->with('id')->andReturn(collect($normalizedTenantIds));
+    $relation->shouldReceive('exists')->andReturn(count($normalizedTenantIds) > 0);
     $relation->shouldReceive('first')->andReturn(
-        count($tenantIds) > 0
-            ? (object) ['id' => $tenantIds[0]]
+        count($normalizedTenantIds) > 0
+            ? (object) ['id' => $normalizedTenantIds[0]]
             : null
     );
     $user->shouldReceive('tenants')->andReturn($relation);
@@ -36,7 +47,7 @@ function makeUserForProduct(array $tenantIds, string $role = 'seller'): User
 function makeProduct(int $tenantId): Product
 {
     $product = Mockery::mock(Product::class)->makePartial();
-    $product->tenant_id = $tenantId;
+    $product->tenant_id = normalizeProductTenantId($tenantId);
 
     return $product;
 }
@@ -138,9 +149,11 @@ test('denies view when user has no tenants', function () {
 
 function makeUserForCreate(bool $isPro, int $productCount, array $tenantIds = [10]): User
 {
+    $normalizedTenantIds = array_map(fn ($id) => normalizeProductTenantId($id), $tenantIds);
+
     $user = Mockery::mock(User::class)->makePartial();
     $user->role = 'seller';
-    $user->_memoized_tenant_ids = $tenantIds;
+    $user->_memoized_tenant_ids = $normalizedTenantIds;
 
     // Build a tenant mock with is_pro and products() support
     $productsRelation = Mockery::mock();
@@ -151,10 +164,10 @@ function makeUserForCreate(bool $isPro, int $productCount, array $tenantIds = [1
     $tenant->shouldReceive('products')->andReturn($productsRelation);
 
     $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
-    $relation->shouldReceive('pluck')->with('id')->andReturn(collect($tenantIds));
-    $relation->shouldReceive('exists')->andReturn(count($tenantIds) > 0);
+    $relation->shouldReceive('pluck')->with('id')->andReturn(collect($normalizedTenantIds));
+    $relation->shouldReceive('exists')->andReturn(count($normalizedTenantIds) > 0);
     $relation->shouldReceive('first')->andReturn(
-        count($tenantIds) > 0 ? $tenant : null
+        count($normalizedTenantIds) > 0 ? $tenant : null
     );
     $user->shouldReceive('tenants')->andReturn($relation);
 
