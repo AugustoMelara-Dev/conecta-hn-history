@@ -46,10 +46,17 @@ class CouponServiceTest extends TestCase
 
         // Bind tenant to container (simulates TenantMiddleware)
         app()->instance('currentTenant', $this->tenant);
+
+        // Initialize strict TenantContext to satisfy TenantScope
+        $tenantContext = app(\App\Domain\Shared\Services\TenantContext::class);
+        $tenantContext->reset();
+        $tenantContext->setTenant((string) $this->tenant->id);
     }
 
     protected function tearDown(): void
     {
+        app(\App\Domain\Shared\Services\TenantContext::class)->reset();
+
         // Reset schema cache after tests
         CouponValidatorService::resetSchemaCache();
         parent::tearDown();

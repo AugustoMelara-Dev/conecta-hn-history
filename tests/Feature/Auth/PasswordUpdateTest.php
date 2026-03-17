@@ -13,8 +13,24 @@ class PasswordUpdateTest extends TestCase
 
     public function test_password_can_be_updated(): void
     {
+        app()->instance(
+            \App\Application\Auth\Validators\DeleteUserCommandValidator::class,
+            new \App\Application\Auth\Validators\DeleteUserCommandValidator(
+                new class implements \App\Application\Auth\Handlers\DeleteUserHandlerInterface
+                {
+                    public function handle(\App\Application\Auth\Commands\DeleteUserCommand $command): \App\Application\Auth\Results\DeleteUserResult
+                    {
+                        return new \App\Application\Auth\Results\DeleteUserResult('ok', $command->userId);
+                    }
+                },
+                app(\App\Application\Shared\Contracts\ValidatorFactoryInterface::class)
+            )
+        );
         $tenant = \App\Models\Tenant::factory()->create();
         $user = User::factory()->create(['tenant_id' => $tenant->id]);
+        $tenantContext = app(\App\Domain\Shared\Services\TenantContext::class);
+        $tenantContext->reset();
+        $tenantContext->setTenant((string) $tenant->id);
 
         $response = $this
             ->actingAs($user)
@@ -35,8 +51,24 @@ class PasswordUpdateTest extends TestCase
 
     public function test_correct_password_must_be_provided_to_update_password(): void
     {
+        app()->instance(
+            \App\Application\Auth\Validators\DeleteUserCommandValidator::class,
+            new \App\Application\Auth\Validators\DeleteUserCommandValidator(
+                new class implements \App\Application\Auth\Handlers\DeleteUserHandlerInterface
+                {
+                    public function handle(\App\Application\Auth\Commands\DeleteUserCommand $command): \App\Application\Auth\Results\DeleteUserResult
+                    {
+                        return new \App\Application\Auth\Results\DeleteUserResult('ok', $command->userId);
+                    }
+                },
+                app(\App\Application\Shared\Contracts\ValidatorFactoryInterface::class)
+            )
+        );
         $tenant = \App\Models\Tenant::factory()->create();
         $user = User::factory()->create(['tenant_id' => $tenant->id]);
+        $tenantContext = app(\App\Domain\Shared\Services\TenantContext::class);
+        $tenantContext->reset();
+        $tenantContext->setTenant((string) $tenant->id);
 
         $response = $this
             ->actingAs($user)

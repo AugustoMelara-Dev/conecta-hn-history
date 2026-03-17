@@ -111,7 +111,7 @@ final class UserEntity
     {
         $this->id = $event->user_id;
         $this->name = $event->name;
-        $this->email = $event->email;
+        $this->email = \Illuminate\Support\Facades\Crypt::decryptString($event->email->value());
         // NOTE: $password is set directly in register() before recordThat().
         // It is intentionally absent from the event payload (A6 — no credentials in events).
         $this->role = UserRole::from($event->role);

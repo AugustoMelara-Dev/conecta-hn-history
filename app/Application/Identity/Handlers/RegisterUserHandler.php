@@ -120,7 +120,9 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
             $event = new UserRegistered(
                 user_id: $userId,
                 name: $command->name,
-                email: $command->email,
+                email: new \App\Domain\Shared\ValueObjects\EncryptedEmail(
+                    \Illuminate\Support\Facades\Crypt::encryptString($command->email)
+                ),
                 role: $finalRole,
                 tenant_id: $tenantId,
                 occurredOn: $now

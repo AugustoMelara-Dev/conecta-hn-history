@@ -30,6 +30,11 @@ abstract class TestCase extends BaseTestCase
         // KILL SWITCH: Disable Spatie Activity Logger (Defense in Depth)
         // ═══════════════════════════════════════════════════════════════════════
         config(['activitylog.enabled' => false]);
+
+        $this->app->instance(
+            \App\Application\Shared\Contracts\CommandValidatorRegistryInterface::class,
+            new \App\Infrastructure\Shared\Middleware\CommandValidatorRegistry()
+        );
     }
 
     /**
@@ -52,17 +57,9 @@ abstract class TestCase extends BaseTestCase
      */
     public function actingAsTenant(string|int $tenantId = 'tenant-1'): self
     {
-        $context = \App\Domain\Shared\Services\TenantContext::getInstance();
-        $reflection = new \ReflectionClass($context);
-
-        $isSystemRoot = $reflection->getProperty('isSystemRoot');
-        $isSystemRoot->setValue($context, false);
-
-        $isInitialized = $reflection->getProperty('isInitialized');
-        $isInitialized->setValue($context, true);
-
-        $tenantIdProp = $reflection->getProperty('tenantId');
-        $tenantIdProp->setValue($context, $tenantId);
+        $context = $this->app->make(\App\Domain\Shared\Services\TenantContext::class);
+        $context->reset();
+        $context->setTenant($tenantId);
 
         return $this;
     }

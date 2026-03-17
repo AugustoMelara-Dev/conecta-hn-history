@@ -9,7 +9,7 @@ use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Identity\Events\UserPasswordResetRequested;
 use App\Domain\Shared\Contracts\ClockInterface;
-use App\Domain\Shared\Contracts\IdGeneratorInterface;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Security\Contracts\HasherInterface;
 use Psr\Log\LoggerInterface;
