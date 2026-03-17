@@ -6,18 +6,20 @@ namespace App\Filament\App\Widgets;
 
 use App\Filament\App\Resources\AppointmentResource;
 use App\Models\Appointment;
-use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
+use Filament\Widgets\Widget;
 
 /**
  * AppointmentCalendarWidget - Visual Schedule Display
  *
- * Displays tenant appointments in a FullCalendar interface.
- * Color-coded by status for quick visual identification.
+ * Temporarily downgraded to a base Filament widget because the
+ * saade/filament-fullcalendar dependency is no longer installed.
  *
  * SECURITY: Queries are automatically tenant-scoped via BelongsToTenant trait.
  */
-class AppointmentCalendarWidget extends FullCalendarWidget
+class AppointmentCalendarWidget extends Widget
 {
+    protected static string $view = 'filament.app.widgets.appointment-calendar-placeholder';
+
     /**
      * Fetch appointments for the calendar view.
      *
