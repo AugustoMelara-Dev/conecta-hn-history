@@ -31,6 +31,8 @@ test('payment model guards tenant_id against mass assignment', function () {
         'status' => 'pending',
         'reference_number' => 'REF-TEST-001',
         'bank' => 'Test Bank',
+        'proof_path' => 'payments/proof-mock.jpg',
+        'idempotency_key' => (string) Str::uuid(),
     ]);
 
     // Assert: tenant_id should be injected from context (tenant1)
