@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 use App\Models\Tenant;
 use App\Models\User;
+use App\Domain\Shared\Services\TenantContext;
 
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
@@ -32,36 +33,38 @@ describe('Luxury Entrance Routing', function () {
         $response->assertInertia(fn ($page) => $page->component('Public/Home'));
     });
 
-    it('routes tenant via @ symbol', function () {
+    it('routes tenant via /t prefix', function () {
         $user = User::factory()->create();
         $tenant = Tenant::factory()->create([
             'user_id' => $user->id,
             'slug' => 'test-barbershop',
-            'is_visible' => true,
         ]);
 
-        $response = $this->get('/@test-barbershop');
+        app(TenantContext::class)->reset();
+        app(TenantContext::class)->setAsSystemRoot(true);
+
+        $response = $this->get('/t/test-barbershop');
 
         $response->assertStatus(200);
     });
 
-    it('redirects legacy tenant route to @ version', function () {
+    it('does not expose legacy bare slug route', function () {
         $user = User::factory()->create();
         $tenant = Tenant::factory()->create([
             'user_id' => $user->id,
             'slug' => 'legacy-business',
-            'is_visible' => true,
         ]);
 
         $response = $this->get('/legacy-business');
 
-        // Should 301 redirect to /@legacy-business
-        $response->assertStatus(301);
-        $response->assertRedirect('/@legacy-business');
+        $response->assertStatus(404);
     });
 
     it('returns 404 for non-existent tenant', function () {
-        $response = $this->get('/@non-existent-tenant');
+        app(TenantContext::class)->reset();
+        app(TenantContext::class)->setAsSystemRoot(true);
+
+        $response = $this->get('/t/non-existent-tenant');
 
         $response->assertStatus(404);
     });
@@ -97,7 +100,7 @@ describe('System Routes Protection', function () {
 
 describe('Named Routes', function () {
     it('generates correct URL for home route', function () {
-        expect(route('home'))->toEndWith('/');
+        expect(route('home', [], false))->toBe('/');
     });
 
     it('generates correct URL for explore route', function () {
@@ -111,6 +114,6 @@ describe('Named Routes', function () {
             'slug' => 'my-business',
         ]);
 
-        expect(route('tenant.microsite.show', $tenant->slug))->toContain('/@my-business');
+        expect(route('tenant.microsite.show', $tenant->slug))->toContain('/t/my-business');
     });
 });

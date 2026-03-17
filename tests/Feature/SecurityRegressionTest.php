@@ -140,7 +140,7 @@ class SecurityRegressionTest extends TestCase
 
         // Document: tenant_id IS in $guarded (immutable ownership)
         // Protection comes from: $guarded + BelongsToTenant trait auto-assignment
-        $this->assertContains('tenant_id', $product->getGuarded());
+        $this->assertFalse($product->isFillable('tenant_id'));
     }
 
     /**
@@ -162,9 +162,8 @@ class SecurityRegressionTest extends TestCase
         $product = new Product;
 
         // tenant_id MUST be guarded (immutable) to prevent mass assignment attacks
-        $this->assertContains(
-            'tenant_id',
-            $product->getGuarded(),
+        $this->assertFalse(
+            $product->isFillable('tenant_id'),
             'tenant_id must be guarded for security - it should be auto-assigned by BelongsToTenant trait'
         );
 
