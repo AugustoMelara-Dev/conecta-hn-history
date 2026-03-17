@@ -151,7 +151,7 @@ class CampaignResource extends Resource
                             return;
                         }
 
-                        \App\Domain\Marketing\Jobs\DispatchCampaignSegment::dispatch($record->id, $tenant->id);
+                        \App\Application\Marketing\Jobs\DispatchCampaignSegment::dispatch($record->id, $tenant->id);
 
                         $record->update([
                             'status' => 'queued',

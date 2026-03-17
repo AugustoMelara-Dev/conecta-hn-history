@@ -232,6 +232,8 @@ arch('Domain Layer must be independent and pure')
         // PII Encryption: Domain Events carry encrypted email/phones and require Crypt facade
         'App\Domain\Identity\Events\UserRegistered',
         'App\Domain\Identity\Events\UserRegisteredViaSocial',
+        'App\Domain\Identity\Entities\UserEntity',
+        'App\Domain\Booking\Services\SlotCalculator',
         'App\Domain\TenantGovernance\Policies\SlugPolicy',
     ]);
 

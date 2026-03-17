@@ -7,7 +7,7 @@ use App\Models\Tenant;
 /**
  * Directory Route — Attribute Safety Tests
  *
- * INVARIANT: /directory and /explore must return 200 OK without
+ * INVARIANT: /directorio and /explore must return 200 OK without
  * triggering MissingAttributeException on Tenant model.
  */
 
@@ -17,15 +17,15 @@ it('loads the directory without missing attribute exceptions', function () {
         'is_active' => true,
     ]);
 
-    $response = $this->get('/directory');
+    $response = $this->get('/directorio');
 
     $response->assertStatus(200);
 });
 
 it('loads explore without missing attribute exceptions', function () {
-    // Ensure at least one visible tenant with logo exists
+    // Ensure at least one active tenant with logo exists
     $tenant = Tenant::factory()->create([
-        'is_visible' => true,
+        'is_active' => true,
         'logo_path' => 'logos/test.png',
     ]);
 

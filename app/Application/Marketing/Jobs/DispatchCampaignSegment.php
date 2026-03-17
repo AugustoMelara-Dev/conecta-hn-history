@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Marketing\Jobs;
+namespace App\Application\Marketing\Jobs;
 
 use App\Domain\Marketing\Enums\AudienceType;
 use App\Infrastructure\Jobs\Marketing\SendCampaignEmail;
@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\DB;
  *
  * Resolves the audience segment into individual user IDs and pushes
  * individual SendCampaignEmail jobs to the queue.
+ *
+ * Lives in Application because it orchestrates infra-facing concerns.
  */
 final class DispatchCampaignSegment implements ShouldBeUnique, ShouldQueue
 {
