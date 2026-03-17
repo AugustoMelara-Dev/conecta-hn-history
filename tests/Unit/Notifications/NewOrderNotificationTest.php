@@ -122,7 +122,7 @@ test('toMail includes View Order action button', function () {
     $mail = $notification->toMail((object) []);
 
     expect($mail->actionText)->toBe('Ver Pedido');
-    expect($mail->actionUrl)->toContain('/admin/orders/100/edit');
+    expect($mail->actionUrl)->toContain('/app/orders/100');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -178,7 +178,7 @@ test('toArray contains correct values', function () {
     expect($array['order_id'])->toBe(100);
     expect($array['order_number'])->toBe('#1042');
     expect($array['formatted_total'])->toBe('L. 350.50');
-    expect($array['action_url'])->toBe('/admin/orders/100/edit');
+    expect($array['action_url'])->toBe('/app/orders/100');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -191,7 +191,10 @@ test('via returns database mail and broadcast channels', function () {
 
     $channels = $notification->via((object) []);
 
-    expect($channels)->toBe(['database', 'mail', 'broadcast']);
+    expect($channels)->toContain('database')
+        ->toContain('mail')
+        ->toContain('broadcast')
+        ->toContain(\NotificationChannels\WebPush\WebPushChannel::class);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -205,7 +208,7 @@ test('toBroadcast includes order_id and tenant_id', function () {
     $broadcast = $notification->toBroadcast((object) []);
 
     expect($broadcast->data['order_id'])->toBe(100);
-    expect($broadcast->data['tenant_id'])->toBe(5);
+    expect($broadcast->data['tenant_id'])->toBe('00000000-0000-0000-0000-000000000001');
     expect($broadcast->data['customer_name'])->toBe('María López');
 });
 
@@ -220,5 +223,5 @@ test('broadcasts on tenant-scoped private channel', function () {
     $channels = $notification->broadcastOn();
 
     expect($channels)->toHaveCount(1);
-    expect($channels[0]->name)->toBe('private-tenant.5.admins');
+    expect($channels[0]->name)->toBe('private-tenant.00000000-0000-0000-0000-000000000001.admins');
 });
