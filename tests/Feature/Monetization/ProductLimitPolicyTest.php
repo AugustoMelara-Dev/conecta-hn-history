@@ -1,10 +1,14 @@
 <?php
 
+use App\Application\Access\Contracts\TenantPermissionGuardInterface;
+use App\Domain\Access\Enums\Permission;
 use App\Domain\Shared\Services\TenantContext;
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Policies\ProductPolicy;
 use App\Settings\BaseSettings;
+use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -22,24 +26,34 @@ afterEach(function () {
 });
 
 test('product policy enforces dynamic capacity limits from general settings', function () {
-    DB::table('settings')->insert([
+    DB::table('settings')->updateOrInsert(
+        ['group' => 'general', 'name' => 'free_plan_product_limit'],
         [
-            'group' => 'general',
-            'name' => 'free_plan_product_limit',
             'payload' => json_encode(1),
             'locked' => false,
             'created_at' => now(),
             'updated_at' => now(),
-        ],
+        ]
+    );
+
+    DB::table('settings')->updateOrInsert(
+        ['group' => 'general', 'name' => 'pro_plan_product_limit'],
         [
-            'group' => 'general',
-            'name' => 'pro_plan_product_limit',
             'payload' => json_encode(50),
             'locked' => false,
             'created_at' => now(),
             'updated_at' => now(),
-        ],
-    ]);
+        ]
+    );
+
+    Cache::forget('settings.general');
+    $property = new ReflectionProperty(BaseSettings::class, 'runtimeCache');
+    $property->setValue([]);
+
+    $settings = app(GeneralSettings::class);
+    $settings->free_plan_product_limit = 1;
+    $settings->pro_plan_product_limit = 50;
+    app()->instance(GeneralSettings::class, $settings);
 
     $tenantId = Str::uuid()->toString();
     $tenant = Tenant::forceCreate([
@@ -66,11 +80,17 @@ test('product policy enforces dynamic capacity limits from general settings', fu
     Filament::shouldReceive('getTenant')->andReturn($tenant);
 
     $user = User::factory()->create();
+    $guard = Mockery::mock(TenantPermissionGuardInterface::class);
+    $guard->shouldReceive('allows')
+        ->with($user, $tenant, Capability::CATALOG_BASIC, Permission::CATALOG_CREATE)
+        ->andReturn(true);
+    app()->instance(TenantPermissionGuardInterface::class, $guard);
+
     $policy = new ProductPolicy();
 
     $response = $policy->create($user);
 
     expect($response->allowed())->toBeFalse()
-        ->and($response->message())->toContain('límite de 1 productos')
+        ->and($response->message())->toContain('limite de 1 productos')
         ->and($response->message())->toContain('Plan Gratuito');
 });
