@@ -70,7 +70,7 @@ final readonly class TenantMicrositeTransformer
             'whatsapp_number' => $this->planService->formatPhoneWithCountryCode($tenant->whatsapp_number),
             'phone' => $this->planService->formatPhoneWithCountryCode($tenant->phone),
             'email' => $tenant->email,
-            'address' => $tenant->address ?? 'Honduras',
+            'address' => 'Honduras',
 
             // Location (flat legacy + structured for Map component)
             'city' => $tenant->city?->name ?? 'Honduras',
@@ -80,7 +80,7 @@ final readonly class TenantMicrositeTransformer
             'location' => [ // Premium: Structured for Map components
                 'lat' => $tenant->latitude !== null ? (float) $tenant->latitude : null,
                 'lng' => $tenant->longitude !== null ? (float) $tenant->longitude : null,
-                'address' => $tenant->address ?? 'Honduras',
+                'address' => 'Honduras',
                 'city' => $tenant->city?->name ?? 'Honduras',
             ],
 

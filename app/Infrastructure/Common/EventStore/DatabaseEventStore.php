@@ -60,16 +60,20 @@ final readonly class DatabaseEventStore implements EventStoreRepositoryInterface
                     ]);
 
                     // 2. TRANSACTIONAL OUTBOX (Guaranteed Delivery)
-                    // 2. TRANSACTIONAL OUTBOX (Guaranteed Delivery)
-                    DB::table('domain_outbox_messages')->insert([
+                    DB::table('outbox_messages')->insert([
                         'id' => $this->idGenerator->generate(),
                         'type' => $eventClass,
-                        'aggregate_id' => $aggregateId, // Debug context
-                        'aggregate_type' => $aggregateType,
                         'payload' => $payloadJson,
-                        'published_at' => null, // PENDING
-                        'occurred_at' => now(), // Mapped from created_at
+                        'aggregate_id' => $aggregateId,
+                        'partition_key' => 0,
+                        'sequence_number' => $currentVersion,
+                        'occurred_at' => now(),
+                        'published_at' => null,
+                        'status' => 'PENDING',
                         'attempts' => 0,
+                        'recovery_count' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
 
                 } catch (QueryException $e) {

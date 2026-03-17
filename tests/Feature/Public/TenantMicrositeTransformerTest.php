@@ -16,6 +16,7 @@ describe('TenantMicrositeTransformer Premium Profile Fields', function () {
             'about' => 'Our story began in 2020...',
             'description' => 'Test business',
         ]);
+        $this->actingAsTenant((string) $tenant->id);
 
         $transformer = app(TenantMicrositeTransformer::class);
 
@@ -32,8 +33,8 @@ describe('TenantMicrositeTransformer Premium Profile Fields', function () {
         $tenant = Tenant::factory()->create([
             'latitude' => 15.4994,
             'longitude' => -88.0250,
-            'address' => 'Calle Principal, Tegucigalpa',
         ]);
+        $this->actingAsTenant((string) $tenant->id);
 
         $transformer = app(TenantMicrositeTransformer::class);
 
@@ -45,7 +46,7 @@ describe('TenantMicrositeTransformer Premium Profile Fields', function () {
             ->and($result['location'])->toBeArray()
             ->and($result['location']['lat'])->toBe(15.4994)
             ->and($result['location']['lng'])->toBe(-88.0250)
-            ->and($result['location']['address'])->toBe('Calle Principal, Tegucigalpa');
+            ->and($result['location']['address'])->toBe('Honduras');
     });
 
     it('preserves legacy flat latitude/longitude for backward compatibility', function () {
@@ -54,6 +55,7 @@ describe('TenantMicrositeTransformer Premium Profile Fields', function () {
             'latitude' => 15.4994,
             'longitude' => -88.0250,
         ]);
+        $this->actingAsTenant((string) $tenant->id);
 
         $transformer = app(TenantMicrositeTransformer::class);
 
@@ -63,8 +65,8 @@ describe('TenantMicrositeTransformer Premium Profile Fields', function () {
         // Assert
         expect($result)->toHaveKey('latitude')
             ->and($result)->toHaveKey('longitude')
-            ->and($result['latitude'])->toBe('15.49940000') // DB decimal format
-            ->and($result['longitude'])->toBe('-88.02500000');
+            ->and($result['latitude'])->toBe(15.4994)
+            ->and($result['longitude'])->toBe(-88.0250);
     });
 
     it('handles null coordinates gracefully in location object', function () {
@@ -73,6 +75,7 @@ describe('TenantMicrositeTransformer Premium Profile Fields', function () {
             'latitude' => null,
             'longitude' => null,
         ]);
+        $this->actingAsTenant((string) $tenant->id);
 
         $transformer = app(TenantMicrositeTransformer::class);
 

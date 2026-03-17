@@ -4,6 +4,7 @@ use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
 use App\Application\Sales\Results\CreateOrderResult;
 use App\Domain\Sales\Contracts\OrderReader;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
@@ -15,6 +16,15 @@ test('public order controller returns correct json format for cart store', funct
     $user = User::factory()->create();
     $tenant = Tenant::factory()->forUser($user)->create();
     $user->forceFill(['tenant_id' => $tenant->id])->save();
+
+    Location::create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Main Location',
+        'slug' => 'main-location',
+        'address' => 'Tegucigalpa',
+        'is_primary' => true,
+        'is_active' => true,
+    ]);
 
     $product = Product::factory()->forTenant($tenant)->create();
 
@@ -81,6 +91,15 @@ test('public order controller blocks unsupported delivery types for the tenant',
         'business_type' => BusinessType::RETAIL,
     ]);
     $user->forceFill(['tenant_id' => $tenant->id])->save();
+
+    Location::create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Main Location',
+        'slug' => 'main-location',
+        'address' => 'Tegucigalpa',
+        'is_primary' => true,
+        'is_active' => true,
+    ]);
 
     $product = Product::factory()->forTenant($tenant)->create();
 
