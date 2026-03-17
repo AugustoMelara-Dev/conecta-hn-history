@@ -54,7 +54,8 @@ final readonly class IntegrationEventMapper
                 'registered_at' => $event->occurredOn()->format(\DateTimeInterface::ATOM),
             ]),
             'occurred_at' => $this->clock->now(),
-            'processed_at' => null,
+            'published_at' => null,
+            'status' => 'PENDING',
         ];
     }
 
@@ -70,7 +71,8 @@ final readonly class IntegrationEventMapper
                 'created_at' => $event->occurredOn()->format(\DateTimeInterface::ATOM),
             ]),
             'occurred_at' => $this->clock->now(),
-            'processed_at' => null,
+            'published_at' => null,
+            'status' => 'PENDING',
         ];
     }
 }
