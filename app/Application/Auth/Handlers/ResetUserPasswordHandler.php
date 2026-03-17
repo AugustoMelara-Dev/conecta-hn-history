@@ -58,7 +58,11 @@ final readonly class ResetUserPasswordHandler
         // (e.g., session invalidation, auth guard refresh).
         $user = $this->userRepository->findById($command->userId, $command->tenantId);
         if ($user !== null) {
-            $event = new UserPasswordResetRequested($command->userId, $command->tenantId);
+            $event = new UserPasswordResetRequested(
+                $command->userId,
+                $command->tenantId,
+                $this->clock->now()
+            );
             $message = new DomainEventMessage(
                 eventId: $this->idGenerator->generate(),
                 type: get_class($event),
