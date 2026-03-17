@@ -203,7 +203,7 @@ final readonly class TenantMicrositeTransformer
         }
 
         $result = [];
-        $currentTime = now(OpeningHour::BUSINESS_TIMEZONE);
+        $currentTime = now(\App\Models\OpeningHour::BUSINESS_TIMEZONE);
 
         foreach ($culturalDayOrder as $day) {
             if (isset($hoursMap[$day])) {
@@ -217,7 +217,7 @@ final readonly class TenantMicrositeTransformer
                 ];
             } else {
                 $result[] = [
-                    'day_name' => OpeningHour::DAY_LABELS[$day] ?? 'Desconocido',
+                    'day_name' => \App\Models\OpeningHour::DAY_LABELS[$day] ?? 'Desconocido',
                     'formatted' => 'Cerrado',
                     'is_open_now' => false,
                     'day_of_week' => $day,
@@ -234,7 +234,7 @@ final readonly class TenantMicrositeTransformer
      */
     public function isCurrentlyOpen(Tenant $tenant): bool
     {
-        $now = now(OpeningHour::BUSINESS_TIMEZONE);
+        $now = now(\App\Models\OpeningHour::BUSINESS_TIMEZONE);
         $today = $now->dayOfWeek;
 
         $todaySchedule = $tenant->openingHours->firstWhere('day_of_week', $today);
