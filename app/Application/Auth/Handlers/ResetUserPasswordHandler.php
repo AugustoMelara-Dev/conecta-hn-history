@@ -71,7 +71,7 @@ final readonly class ResetUserPasswordHandler
                 occurredAt: $this->clock->now(),
                 metadata: ['tenant_id' => $command->tenantId]
             );
-            $this->outboxRepository->save($message);
+            $this->outboxRepository->append($message);
         }
 
         $this->logger->info('Password reset completed', [
