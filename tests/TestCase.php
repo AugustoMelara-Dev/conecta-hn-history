@@ -44,4 +44,26 @@ abstract class TestCase extends BaseTestCase
     {
         return Model::withoutEvents($callback);
     }
+
+    /**
+     * Hermetically initialize the Tenant Context for testing.
+     * Uses Reflection to safely mutate the strict state machine properties
+     * without assuming public setter names.
+     */
+    public function actingAsTenant(string|int $tenantId = 'tenant-1'): self
+    {
+        $context = \App\Domain\Shared\Services\TenantContext::getInstance();
+        $reflection = new \ReflectionClass($context);
+
+        $isSystemRoot = $reflection->getProperty('isSystemRoot');
+        $isSystemRoot->setValue($context, false);
+
+        $isInitialized = $reflection->getProperty('isInitialized');
+        $isInitialized->setValue($context, true);
+
+        $tenantIdProp = $reflection->getProperty('tenantId');
+        $tenantIdProp->setValue($context, $tenantId);
+
+        return $this;
+    }
 }
