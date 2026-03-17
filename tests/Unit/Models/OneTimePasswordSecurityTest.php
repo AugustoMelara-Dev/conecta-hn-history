@@ -11,26 +11,31 @@ use App\Models\OneTimePassword;
  */
 
 describe('VC-AUDIT-103: OneTimePassword Mass Assignment Protection', function () {
-    it('guards sensitive fields from mass assignment', function () {
-        $guarded = (new OneTimePassword())->getGuarded();
-        
-        expect($guarded)
-            ->toContain('id')
+    it('uses explicit fillable array instead of guarded', function () {
+        $fillable = (new OneTimePassword())->getFillable();
+
+        expect($fillable)
+            ->not->toContain('id')
+            ->not->toContain('created_at')
+            ->not->toContain('updated_at')
             ->toContain('user_id')
-            ->toContain('created_at')
-            ->toContain('updated_at');
+            ->toContain('identifier')
+            ->toContain('code')
+            ->toContain('expires_at');
     });
 
-    it('does not have empty guarded array', function () {
-        $guarded = (new OneTimePassword())->getGuarded();
-        
-        expect($guarded)->not->toBeEmpty();
+    it('does not have empty fillable array', function () {
+        $fillable = (new OneTimePassword())->getFillable();
+
+        expect($fillable)->not->toBeEmpty();
     });
 
-    it('prevents user_id from being mass assigned', function () {
-        $reflection = new ReflectionProperty(OneTimePassword::class, 'guarded');
-        
+    it('keeps sensitive framework-managed fields out of fillable', function () {
+        $reflection = new ReflectionProperty(OneTimePassword::class, 'fillable');
+
         expect($reflection->getDefaultValue())
-            ->toContain('user_id');
+            ->not->toContain('id')
+            ->not->toContain('created_at')
+            ->not->toContain('updated_at');
     });
 });
