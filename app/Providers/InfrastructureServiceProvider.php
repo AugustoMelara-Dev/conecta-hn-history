@@ -8,12 +8,14 @@ use App\Application\Inventory\Contracts\InventoryHoldPortInterface as Transactio
 use App\Application\Sales\Contracts\CheckoutSessionPortInterface;
 use App\Application\Sales\Contracts\InventoryHoldPortInterface;
 use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
+use App\Domain\Inventory\Contracts\LocationReaderInterface;
 use App\Contracts\Scope\TenantContextInterface;
 use App\Infrastructure\Common\Snapshots\DatabaseSnapshotRepository;
 use App\Infrastructure\Inventory\Adapters\EloquentInventoryHoldAdapter as TransactionalInventoryHoldAdapter;
 use App\Infrastructure\Scope\FilamentTenantContext;
 use App\Infrastructure\Sales\Adapters\EloquentCheckoutSessionAdapter;
 use App\Infrastructure\Sales\Adapters\EloquentInventoryHoldAdapter;
+use App\Infrastructure\Sales\Adapters\EloquentLocationReader;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -155,6 +157,11 @@ class InfrastructureServiceProvider extends ServiceProvider
         $this->app->bind(
             SnapshotRepositoryInterface::class,
             DatabaseSnapshotRepository::class
+        );
+
+        $this->app->bind(
+            LocationReaderInterface::class,
+            EloquentLocationReader::class
         );
     }
 
