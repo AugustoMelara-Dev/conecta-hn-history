@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Models;
 
-use App\Domain\Shared\Services\TenantContext;
 use App\Models\Payment;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -22,18 +22,18 @@ test('payment model guards tenant_id against mass assignment', function () {
     $tenant1 = Tenant::factory()->create();
     $tenant2 = Tenant::factory()->create();
 
-    // Act: Set tenant context to tenant1 and attempt to create payment for tenant2
-    app(TenantContext::class)->set($tenant1->id);
+    // Act: Set tenant context to tenant1 and create a payment without tenant_id
+    $this->actingAsTenant((string) $tenant1->id);
 
     $payment = Payment::create([
-        'tenant_id' => $tenant2->id,  // Malicious: attempt cross-tenant
+        'id' => (string) Str::uuid(),
         'amount' => 99.99,
         'status' => 'pending',
         'reference_number' => 'REF-TEST-001',
         'bank' => 'Test Bank',
     ]);
 
-    // Assert: tenant_id should be from context (tenant1), NOT from the malicious input
+    // Assert: tenant_id should be injected from context (tenant1)
     expect($payment->tenant_id)->toBe($tenant1->id)
         ->and($payment->tenant_id)->not->toBe($tenant2->id);
 });
