@@ -81,12 +81,13 @@ class SalesExportTest extends TestCase
     public function export_contains_only_data_from_requesting_tenant(): void
     {
         $data = $this->createTestData();
+        $this->actingAsTenant((string) $data['tenantA']->id);
         $this->createOrdersWithoutEvents(5, ['tenant_id' => $data['tenantA']->id]);
         $this->createOrdersWithoutEvents(3, ['tenant_id' => $data['tenantB']->id]);
 
         // Ejecución bajo el contexto del Tenant A
         $export = SalesExport::create(
-            tenantId: TenantId::fromString($data['tenantA']->uuid),
+            tenantId: TenantId::fromString((string) $data['tenantA']->id),
             criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
             ipAddress: '127.0.0.1',
@@ -117,7 +118,7 @@ class SalesExportTest extends TestCase
         $this->createOrdersWithoutEvents(2, ['tenant_id' => $data['tenantA']->id]);
 
         SalesExport::create(
-            tenantId: TenantId::fromString($data['tenantA']->uuid),
+            tenantId: TenantId::fromString((string) $data['tenantA']->id),
             criteria: SalesExportCriteria::create('2025-01-01', '2025-12-31'),
             userId: 42,
             ipAddress: '192.168.1.100',
@@ -125,7 +126,7 @@ class SalesExportTest extends TestCase
         );
 
         Event::assertDispatched(SalesExportCreated::class, function ($event) use ($data) {
-            return $event->tenantId->toString() === $data['tenantA']->uuid
+            return $event->tenantId->toString() === (string) $data['tenantA']->id
                 && $event->userId === 42
                 && $event->format === 'xlsx'
                 && ! empty($event->criteriaHash);
@@ -155,6 +156,7 @@ class SalesExportTest extends TestCase
     public function date_filter_works_within_tenant_context(): void
     {
         $data = $this->createTestData();
+        $this->actingAsTenant((string) $data['tenantA']->id);
 
         Model::withoutEvents(function () use ($data) {
             Order::factory()->create([
@@ -174,7 +176,7 @@ class SalesExportTest extends TestCase
         });
 
         $export = SalesExport::create(
-            tenantId: TenantId::fromString($data['tenantA']->uuid),
+            tenantId: TenantId::fromString((string) $data['tenantA']->id),
             criteria: SalesExportCriteria::forLastDays(45),
             userId: 1,
         );
@@ -192,6 +194,7 @@ class SalesExportTest extends TestCase
     public function status_filter_works_within_tenant_context(): void
     {
         $data = $this->createTestData();
+        $this->actingAsTenant((string) $data['tenantA']->id);
 
         Model::withoutEvents(function () use ($data) {
             Order::factory()->create([
@@ -211,7 +214,7 @@ class SalesExportTest extends TestCase
         });
 
         $export = SalesExport::create(
-            tenantId: TenantId::fromString($data['tenantA']->uuid),
+            tenantId: TenantId::fromString((string) $data['tenantA']->id),
             criteria: SalesExportCriteria::create(status: Order::STATUS_DELIVERED),
             userId: 1,
         );
@@ -231,11 +234,12 @@ class SalesExportTest extends TestCase
     public function empty_tenant_returns_no_orders(): void
     {
         $data = $this->createTestData();
+        $this->actingAsTenant((string) $data['tenantB']->id);
         $this->createOrdersWithoutEvents(5, ['tenant_id' => $data['tenantA']->id]);
 
         // Export for Tenant B (which has no orders)
         $export = SalesExport::create(
-            tenantId: TenantId::fromString($data['tenantB']->uuid),
+            tenantId: TenantId::fromString((string) $data['tenantB']->id),
             criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
         );
@@ -255,13 +259,13 @@ class SalesExportTest extends TestCase
         $data = $this->createTestData();
 
         $export1 = SalesExport::create(
-            tenantId: TenantId::fromString($data['tenantA']->uuid),
+            tenantId: TenantId::fromString((string) $data['tenantA']->id),
             criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
         );
 
         $export2 = SalesExport::create(
-            tenantId: TenantId::fromString($data['tenantA']->uuid),
+            tenantId: TenantId::fromString((string) $data['tenantA']->id),
             criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
         );
