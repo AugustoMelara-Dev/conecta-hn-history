@@ -69,7 +69,7 @@ final class EnhanceTenantProfileJob implements ShouldBeUnique, ShouldQueue
         \App\Application\Tenant\Handlers\EnhanceTenantProfileHandler $handler
     ): void {
         $command = new \App\Application\Tenant\Commands\EnhanceTenantProfileCommand(
-            tenantId: (int) $this->data->tenantId,
+            tenantId: (string) $this->data->tenantId,
             description: $this->data->description,
             tags: $this->data->tags,
             isAiGenerated: $this->data->isAiGenerated,
