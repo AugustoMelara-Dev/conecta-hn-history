@@ -45,6 +45,7 @@ storage/framework/sessions/*
 storage/framework/views/*
 !storage/framework/views/.gitkeep
 bootstrap/cache/*.php
+/bootstrap/cache/filament/
 
 # ═══ IDEs Y EDITORES ═══
 .idea/
@@ -129,6 +130,10 @@ test.php
 /latest_error*.txt
 /http_evidence.txt
 /spatie_result.txt
+# PHPSTAN / STATIC ANALYSIS SNAPSHOTS
+/phpstan*.json
+/arch_*detailed.txt
+/fortify_actions_inspect.txt
 # ROOT-LEVEL LOCAL DIAGNOSTICS
 /*.py
 /discovery.ps1
