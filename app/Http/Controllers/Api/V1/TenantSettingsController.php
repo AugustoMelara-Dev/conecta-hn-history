@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Application\Actions\Tenant\UpdateTenantBrandingAction;
-use App\Application\Tenant\Results\UpdateBrandingResult;
+use App\Application\Tenant\Commands\UpdateTenantBrandingCommand;
+use App\Application\Tenant\Handlers\UpdateTenantBrandingHandler;
+use App\Domain\Shared\DTOs\FileTransferObject;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateTenantSettingsRequest;
 use App\Http\Resources\TenantSettingsResource;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use OpenApi\Attributes as OA;
 
 final class TenantSettingsController extends Controller
@@ -25,11 +29,41 @@ final class TenantSettingsController extends Controller
     )]
     public function update(
         UpdateTenantSettingsRequest $request,
-        UpdateTenantBrandingAction $action
+        UpdateTenantBrandingHandler $handler
     ): TenantSettingsResource {
+        $user = $request->user();
 
-        $data = UpdateBrandingResult::fromRequest($request);
-        $tenant = $action->execute($data);
+        if (! $user instanceof User || ! $user->tenant instanceof Tenant) {
+            abort(403, 'No tenant associated with user.');
+        }
+
+        $tenant = $user->tenant;
+        $validated = $request->validated();
+
+        if ($request->boolean('remove_logo') && is_string($tenant->logo_path) && $tenant->logo_path !== '') {
+            Storage::disk('public')->delete($tenant->logo_path);
+            $tenant->forceFill(['logo_path' => null])->save();
+        }
+
+        if ($request->file('logo') !== null || array_key_exists('whatsapp_number', $validated)) {
+            $handler->handle(new UpdateTenantBrandingCommand(
+                tenantId: (string) $tenant->getKey(),
+                logo: $request->file('logo') !== null
+                    ? FileTransferObject::fromUploadedFile($request->file('logo'))
+                    : null,
+                whatsapp: isset($validated['whatsapp_number']) ? (string) $validated['whatsapp_number'] : null,
+            ));
+
+            $tenant->refresh();
+        }
+
+        $tenant->forceFill([
+            'bank_name' => $validated['bank_name'] ?? $tenant->bank_name,
+            'bank_account' => $validated['bank_account'] ?? $tenant->bank_account,
+            'bank_account_name' => $validated['bank_account_name'] ?? $tenant->bank_account_name,
+            'bank_account_type' => $validated['bank_account_type'] ?? $tenant->bank_account_type,
+            'whatsapp_number' => $validated['whatsapp_number'] ?? $tenant->whatsapp_number,
+        ])->save();
 
         return new TenantSettingsResource($tenant);
     }
@@ -45,12 +79,12 @@ final class TenantSettingsController extends Controller
     )]
     public function show(Request $request): TenantSettingsResource
     {
-        $tenant = $request->user()?->tenant;
+        $user = $request->user();
 
-        if (! $tenant) {
+        if (! $user instanceof User || ! $user->tenant instanceof Tenant) {
             abort(403, 'No tenant associated with user.');
         }
 
-        return new TenantSettingsResource($tenant);
+        return new TenantSettingsResource($user->tenant);
     }
 }

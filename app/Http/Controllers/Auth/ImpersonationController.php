@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
-use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,7 +29,6 @@ use Psr\Log\LoggerInterface;
 final class ImpersonationController extends Controller
 {
     public function __construct(
-        private UserRepositoryInterface $userRepository,
         private StatefulGuard $auth,
         private LoggerInterface $logger
     ) {}
@@ -49,7 +48,7 @@ final class ImpersonationController extends Controller
             return redirect()->route('home');
         }
 
-        $impersonatorId = (int) $request->session()->get('impersonator_id');
+        $impersonatorId = (string) $request->session()->get('impersonator_id');
         $impersonatedUserId = $request->user()?->id;
 
         // 2. Forensic Audit Log
@@ -68,10 +67,9 @@ final class ImpersonationController extends Controller
         $this->auth->logout();
 
         try {
-            // DIP COMPLIANT: Uses repository interface instead of User::findOrFail()
-            $admin = $this->userRepository->findById($impersonatorId);
+            $admin = User::query()->find($impersonatorId);
 
-            if (! $admin) {
+            if (! $admin instanceof User) {
                 throw new \RuntimeException("Admin user with ID {$impersonatorId} not found");
             }
 

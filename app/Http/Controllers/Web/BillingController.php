@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web;
 
+use App\Domain\Billing\Enums\PaymentStatus;
 use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Http\Controllers\Controller;
+use App\Models\Tenant;
+use App\Models\User;
 use App\Settings\GeneralSettings;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * BillingController - Payment Flow Pages
@@ -25,35 +29,36 @@ final class BillingController extends Controller
     /**
      * Show the payment pending page.
      */
-    public function showPaymentPending(string $paymentId): Response
+    public function showPaymentPending(string $paymentId): InertiaResponse|Response
     {
-        $result = $this->paymentRepository->findByIdWithTenant($paymentId);
+        $payment = $this->paymentRepository->findById($paymentId);
 
-        if (! $result) {
+        if ($payment === null) {
             abort(404, 'Pago no encontrado.');
         }
 
-        $payment = $result['payment'];
-        $tenantName = $result['tenant_name'];
-        $tenantUserId = $result['tenant_user_id'];
+        $tenant = Tenant::query()->find($payment->tenantId);
 
-        // Security: Verify ownership
-        $user = auth()->user();
-        if ($user && $tenantUserId !== $user->id) {
-            abort(403, 'No tienes permiso para ver esta página.');
+        if (! $tenant instanceof Tenant) {
+            abort(404, 'Negocio asociado no encontrado.');
         }
 
-        // If payment is already approved, redirect
-        if ($payment->isApproved()) {
+        $tenantName = $tenant->name;
+        $tenantUserId = $tenant->user_id;
+
+        $user = auth()->user();
+        if ($user instanceof User && (string) $tenantUserId !== (string) $user->id) {
+            abort(403, 'No tienes permiso para ver esta pagina.');
+        }
+
+        if ($payment->status === PaymentStatus::PAID) {
             return Inertia::location(route('login'));
         }
 
-        // Load settings
         $settings = app(GeneralSettings::class);
         $bankInstructions = $settings->bank_transfer_instructions ?? '';
         $supportWhatsApp = $settings->support_whatsapp_number ?? '';
 
-        // Generate WhatsApp URL
         $whatsappUrl = $this->generateWhatsAppUrl(
             $payment->referenceNumber,
             $payment->amount->format(),
@@ -90,15 +95,14 @@ final class BillingController extends Controller
             return '#';
         }
 
-        // Add country code if missing
         if (strlen($phone) === 8) {
             $phone = '504'.$phone;
         }
 
         $message = "Hola, acabo de registrar mi negocio *{$tenantName}* en Conecta HN.\n\n";
         $message .= "Adjunto el comprobante de pago:\n";
-        $message .= "📋 Referencia: *{$reference}*\n";
-        $message .= "💰 Monto: *{$formattedAmount}*";
+        $message .= "Referencia: *{$reference}*\n";
+        $message .= "Monto: *{$formattedAmount}*";
 
         return "https://wa.me/{$phone}?text=".urlencode($message);
     }

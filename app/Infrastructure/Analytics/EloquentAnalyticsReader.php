@@ -19,7 +19,7 @@ final class EloquentAnalyticsReader implements AnalyticsReader
     /**
      * {@inheritdoc}
      */
-    public function getAnalyticsData(int $tenantId, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
+    public function getAnalyticsData(string $tenantId, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
     {
         $carbonStart = Carbon::instance($startDate);
         $carbonEnd = Carbon::instance($endDate);
@@ -44,7 +44,7 @@ final class EloquentAnalyticsReader implements AnalyticsReader
     /**
      * {@inheritdoc}
      */
-    public function getFilledAnalytics(int $tenantId, int $days): array
+    public function getFilledAnalytics(string $tenantId, int $days): array
     {
         $startDate = now()->subDays($days)->startOfDay();
         $endDate = now()->endOfDay();

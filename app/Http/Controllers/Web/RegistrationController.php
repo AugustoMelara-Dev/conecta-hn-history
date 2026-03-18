@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * RegistrationController - React/Inertia Tenant Registration
@@ -35,7 +36,7 @@ final class RegistrationController extends Controller
     /**
      * Display the registration form.
      */
-    public function create(): Response
+    public function create(): Response|SymfonyResponse
     {
         // Redirect if already authenticated
         if ($this->guard->check()) {

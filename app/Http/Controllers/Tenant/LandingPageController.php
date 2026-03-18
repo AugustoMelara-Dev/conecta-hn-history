@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
-use App\Application\Actions\Tenant\UpdateLandingPageAction;
+use App\Application\Tenant\Commands\UpdateLandingPageCommand;
+use App\Application\Tenant\Handlers\UpdateLandingPageHandler;
 use App\Domain\Shared\Contracts\TenantContext;
+use App\Domain\Tenant\Exceptions\FeatureRequiresProException;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,7 +28,7 @@ final class LandingPageController extends Controller
 {
     public function __construct(
         private readonly TenantContext $tenantContext,
-        private readonly UpdateLandingPageAction $updateAction
+        private readonly UpdateLandingPageHandler $updateHandler
     ) {}
 
     public function index(Request $request): Response
@@ -50,12 +52,15 @@ final class LandingPageController extends Controller
             'sections' => ['present', 'array'],
         ]);
 
-        $tenantId = $this->tenantContext->getTenantId();
+        $tenantId = $this->tenantContext->getTenantUuid();
 
         // DELEGATED: All mutation logic in Action
         try {
-            $this->updateAction->execute($tenantId, $validated['sections']);
-        } catch (\RuntimeException $e) {
+            $this->updateHandler->handle(new UpdateLandingPageCommand(
+                tenantId: $tenantId,
+                landingData: is_array($validated['sections']) ? $validated['sections'] : [],
+            ));
+        } catch (FeatureRequiresProException|\RuntimeException $e) {
             return back()->withErrors(['landing_page' => $e->getMessage()]);
         }
 

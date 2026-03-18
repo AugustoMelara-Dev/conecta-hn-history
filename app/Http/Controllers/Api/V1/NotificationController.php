@@ -4,27 +4,71 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Domain\TenantGovernance\Repositories\NotificationRepository;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\NotificationResource;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Notifications\DatabaseNotification;
 
 final class NotificationController extends Controller
 {
-    public function __construct(
-        private NotificationRepository $notificationRepository
-    ) {}
-
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
-        $notifications = $this->notificationRepository->getUnreadPaginated(10);
+        /** @var User $user */
+        $user = $request->user();
 
-        return \Illuminate\Http\Resources\Json\JsonResource::collection($notifications);
+        $notifications = DatabaseNotification::query()
+            ->where('notifiable_id', (string) $user->getAuthIdentifier())
+            ->where('notifiable_type', User::class)
+            ->orderByRaw('read_at IS NULL DESC')
+            ->orderByDesc('created_at')
+            ->paginate(10);
+
+        return NotificationResource::collection($notifications);
     }
 
-    public function markAsRead(string $id): JsonResponse
+    public function count(Request $request): JsonResponse
     {
-        $this->notificationRepository->markAsRead($id);
+        /** @var User $user */
+        $user = $request->user();
+
+        $unreadCount = DatabaseNotification::query()
+            ->where('notifiable_id', (string) $user->getAuthIdentifier())
+            ->where('notifiable_type', User::class)
+            ->whereNull('read_at')
+            ->count();
+
+        return response()->json([
+            'count' => $unreadCount,
+        ]);
+    }
+
+    public function markAllAsRead(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        DatabaseNotification::query()
+            ->where('notifiable_id', (string) $user->getAuthIdentifier())
+            ->where('notifiable_type', User::class)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        return response()->json(['status' => 'success']);
+    }
+
+    public function markAsRead(Request $request, string $id): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        DatabaseNotification::query()
+            ->where('notifiable_id', (string) $user->getAuthIdentifier())
+            ->where('notifiable_type', User::class)
+            ->where('id', $id)
+            ->update(['read_at' => now()]);
 
         return response()->json(['status' => 'success']);
     }

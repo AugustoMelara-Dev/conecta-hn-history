@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
-use App\Application\Actions\Orders\GenerateOrderPdfAction;
+use App\Domain\Orders\Contracts\ReceiptGeneratorInterface;
 use App\Domain\Shared\Contracts\TenantContext;
 use App\Domain\Tenant\Contracts\OrderRepository;
 use App\Http\Controllers\Controller;
@@ -29,7 +29,7 @@ final class OrderController extends Controller
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
-        private readonly GenerateOrderPdfAction $pdfAction,
+        private readonly ReceiptGeneratorInterface $receiptGenerator,
         private readonly TenantContext $tenantContext
     ) {}
 
@@ -90,7 +90,10 @@ final class OrderController extends Controller
             abort(404, 'Order not found.');
         }
 
-        return view('orders.ticket', [
+        /** @var view-string $view */
+        $view = 'orders.ticket';
+
+        return view($view, [
             'order' => $order,
             'tenant' => $this->tenantContext->getTenantData(),
         ]);
@@ -110,8 +113,12 @@ final class OrderController extends Controller
             abort(404, 'Order not found.');
         }
 
-        // DELEGATED: PDF generation via Action
-        // Note: Action may need refactoring to accept ID or DTO instead of Model
-        return $this->pdfAction->execute($order, $this->tenantContext->getTenantData());
+        $pdfContent = $this->receiptGenerator->generate($order);
+        $filename = sprintf('recibo-%d.pdf', $orderId);
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => sprintf('inline; filename="%s"', $filename),
+        ]);
     }
 }
