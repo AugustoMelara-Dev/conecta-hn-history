@@ -4,42 +4,40 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
-use App\Application\Actions\Products\CreateProductAction;
-use App\Application\Actions\Products\DeleteProductAction;
-use App\Application\Actions\Products\ToggleProductVisibilityAction;
-use App\Application\Actions\Products\UpdateProductAction;
-use App\Application\Shared\Contracts\MetadataSanitizerInterface;
+use App\Application\Products\Commands\CreateProductCommand;
+use App\Application\Products\Commands\DeleteProductCommand;
+use App\Application\Products\Commands\ToggleProductVisibilityCommand;
+use App\Application\Products\Commands\UpdateProductCommand;
+use App\Application\Products\Handlers\CreateProductHandler;
+use App\Application\Products\Handlers\DeleteProductHandler;
+use App\Application\Products\Handlers\ToggleProductVisibilityHandler;
+use App\Application\Products\Handlers\UpdateProductHandler;
 use App\Domain\Shared\Contracts\TenantContext;
 use App\Domain\Tenant\Contracts\TenantProductRepository;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\StoreProductRequest;
+use App\Http\Requests\Tenant\UpdateProductRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/**
- * ProductController - Final Sanitized Version
- *
- * ARCHITECTURAL STATE: PURE HEXAGONAL
- * - Context: Injected via TenantContext.
- * - Sorting: Enforced by Repository.
- */
 final class ProductController extends Controller
 {
     public function __construct(
         private readonly TenantProductRepository $repository,
         private readonly TenantContext $tenantContext,
-        private readonly MetadataSanitizerInterface $sanitizer
     ) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $tenantId = $this->tenantContext->getTenantId();
-
-        $products = $this->repository->getDashboardList($tenantId, 10);
+        $search = $request->string('search')->toString();
+        $products = $this->repository->getDashboardList($tenantId, $search, 10);
 
         return Inertia::render('Tenant/Products/Index', [
             'products' => $products,
+            'filters' => ['search' => $search],
         ]);
     }
 
@@ -48,73 +46,127 @@ final class ProductController extends Controller
         return Inertia::render('Tenant/Products/Create');
     }
 
-    public function store(Request $request, CreateProductAction $action): RedirectResponse
+    public function store(StoreProductRequest $request, CreateProductHandler $handler): RedirectResponse
     {
-        // For Write operations, we might still need request input, holding plain data.
-        // The TenantContext ensures we pass the correct ID to the action.
-        $tenantId = $this->tenantContext->getTenantId();
+        $validated = $request->validated();
+        $tenantUuid = $this->tenantContext->getTenantUuid();
+        $imagePath = $request->file('image')?->store("tenants/{$tenantUuid}/products", 'public');
+        $sku = $this->resolveSku($validated, $tenantUuid);
 
-        // Actions typically expect a Tenant Model or ID. If Action expects Model,
-        // we might need to change Action signature or fetch Model via Repo.
-        // BUT, for this Refactor scope "Saneamiento Controller", we focus on Controller purity.
-        // Assuming Actions can accept ID or we pass what they need.
-        // To be SAFE and COMPLIANT with "No App\Models in Controller":
-        // We should pass ID to Action, or Action should handle resolution.
-        // Since I cannot rewrite Actions right now (out of scope), I will assume Actions take what they take.
-        // IF Actions strictly require `Tenant $tenant`, then we have a problem.
-        // However, `request->user()->tenant` was passed before.
-        // I will attempt to pass `$request->all()` and let Action handle it, or Refactor Action call if I know it accepts ID.
-        // Most Clean Actions accept DTOs or Primitives.
-        // Let's assume for this exercise that we pass strict params.
+        $handler->handle(new CreateProductCommand(
+            tenantId: $tenantUuid,
+            sku: $sku,
+            name: (string) $validated['name'],
+            description: (string) ($validated['description'] ?? ''),
+            price: (int) round((float) $validated['price'] * 100),
+            idempotencyKey: $this->resolveIdempotencyKey($request, [
+                'tenant_id' => $tenantUuid,
+                'sku' => $validated['sku'] ?? null,
+                'name' => $validated['name'],
+            ]),
+            stock: 0,
+            categoryId: null,
+            imagePath: $imagePath,
+            isVisible: (bool) ($validated['is_visible'] ?? true),
+        ));
 
-        // IMPORTANT: The prompt prohibits `use App\Models`. It does NOT prohibit `use App\Application\Actions...`.
-        // If the Action signature forces `Tenant $tenant`, this file HAS to import it to type hint or docblock...
-        // UNLESS the action is untyped or takes ID.
-        // I will assume for the sake of "Hexagonal Purity" that passing ID is preferred.
-        // If I must pass a model, I would need a `TenantRepository::find($id)` here.
-        // But let's stick to the prompt: NO App\Models usage in this file.
-        // So I will call action with `...$request->all(), tenantId: $tenantId`.
-
-        // Wait, looking at previous code: `$action->execute($request->all(), $request->user()->tenant);`
-        // Inspecting `UpdateProductAction` from "Other open documents": It seemed to verify context.
-        // I'll try to pass tenantId if possible. If strict signature mismatch occurs, user will get error,
-        // but I satisfy the "No Model Import" rule.
-
-        // Actually, if I can't import Tenant, I can't look it up to pass it.
-        // So I hope the Action accepts ID. If not, this is a blocker for "True" Hexagonal without rewriting Actions.
-        // I'll proceed with passing what I can.
-
-        $safePayload = $this->sanitizer->clean($request->all());
-        $action->execute($safePayload, $tenantId);
-
-        return redirect()->route('tenant.products.index');
+        return redirect()->route('tenant.products.index')->with('success', 'Producto creado.');
     }
 
     public function edit(int $id): Response
     {
-        return Inertia::render('Tenant/Products/Edit');
+        return Inertia::render('Tenant/Products/Edit', [
+            'productId' => $id,
+        ]);
     }
 
-    public function update(Request $request, UpdateProductAction $action, int $id): RedirectResponse
+    public function update(UpdateProductRequest $request, UpdateProductHandler $handler, int $id): RedirectResponse
     {
-        $tenantId = $this->tenantContext->getTenantId();
-        $safePayload = $this->sanitizer->clean($request->all());
-        $action->execute($id, $safePayload, $tenantId);
+        $validated = $request->validated();
+        $tenantUuid = $this->tenantContext->getTenantUuid();
+        $imagePath = $request->file('image')?->store("tenants/{$tenantUuid}/products", 'public');
 
-        return back();
+        $handler->handle(new UpdateProductCommand(
+            tenantId: $tenantUuid,
+            productId: $id,
+            name: (string) $validated['name'],
+            description: (string) ($validated['description'] ?? ''),
+            price: (int) round((float) $validated['price'] * 100),
+            idempotencyKey: $this->resolveIdempotencyKey($request, [
+                'tenant_id' => $tenantUuid,
+                'product_id' => $id,
+                'name' => $validated['name'],
+            ]),
+            sku: isset($validated['sku']) ? (string) $validated['sku'] : null,
+            stock: 0,
+            categoryId: null,
+            imagePath: $imagePath,
+            isVisible: (bool) ($validated['is_visible'] ?? true),
+        ));
+
+        return back()->with('success', 'Producto actualizado.');
     }
 
-    public function destroy(DeleteProductAction $action, int $id): RedirectResponse
+    public function destroy(Request $request, DeleteProductHandler $handler, int $id): RedirectResponse
     {
-        $action->execute($id);
+        $tenantUuid = $this->tenantContext->getTenantUuid();
 
-        return back();
+        $handler->handle(new DeleteProductCommand(
+            tenantId: $tenantUuid,
+            productId: $id,
+            idempotencyKey: $this->resolveIdempotencyKey($request, [
+                'tenant_id' => $tenantUuid,
+                'product_id' => $id,
+                'action' => 'delete',
+            ]),
+        ));
+
+        return back()->with('success', 'Producto eliminado.');
     }
 
-    public function toggleVisibility(ToggleProductVisibilityAction $action, int $id): RedirectResponse
+    public function toggleVisibility(Request $request, ToggleProductVisibilityHandler $handler, int $id): RedirectResponse
     {
-        $action->execute($id);
+        $tenantUuid = $this->tenantContext->getTenantUuid();
 
-        return back();
+        $handler->handle(new ToggleProductVisibilityCommand(
+            tenantId: $tenantUuid,
+            productId: $id,
+            idempotencyKey: $this->resolveIdempotencyKey($request, [
+                'tenant_id' => $tenantUuid,
+                'product_id' => $id,
+                'action' => 'toggle_visibility',
+            ]),
+        ));
+
+        return back()->with('success', 'Visibilidad actualizada.');
+    }
+
+    private function resolveIdempotencyKey(Request $request, array $payload): string
+    {
+        $headerKey = $request->header('Idempotency-Key');
+        if (! is_string($headerKey) || $headerKey === '') {
+            $headerKey = $request->header('X-Idempotency-Key');
+        }
+
+        if (is_string($headerKey) && $headerKey !== '') {
+            return $headerKey;
+        }
+
+        return hash('xxh128', json_encode($payload, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveSku(array $validated, string $tenantUuid): string
+    {
+        $sku = isset($validated['sku']) ? trim((string) $validated['sku']) : '';
+        if ($sku !== '') {
+            return $sku;
+        }
+
+        $slug = strtoupper((string) preg_replace('/[^a-zA-Z0-9]+/', '-', (string) $validated['name']));
+
+        return substr($slug, 0, 8).'-'.substr(hash('xxh128', $tenantUuid.(string) $validated['name']), 0, 12);
     }
 }

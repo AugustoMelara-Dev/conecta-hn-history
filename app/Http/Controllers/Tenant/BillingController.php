@@ -4,35 +4,25 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
-use App\Application\Actions\Billing\ReportPaymentAction;
-use App\Application\Actions\Billing\RequestUpgradeAction;
-use App\Application\Billing\Results\ReportPaymentResult;
-use App\Application\Billing\Results\RequestUpgradeResult;
+use App\Application\Billing\Commands\ReportPaymentCommand;
+use App\Application\Billing\Commands\RequestUpgradeCommand;
+use App\Application\Billing\Handlers\ReportPaymentHandler;
+use App\Application\Billing\Handlers\RequestUpgradeHandler;
 use App\Domain\Shared\Contracts\TenantContext;
 use App\Domain\Tenant\Contracts\BillingRepository;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\ReportPaymentRequest;
 use App\Http\Requests\Tenant\UpgradePlanRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/**
- * BillingController - Final Sanitized Version
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ARCHITECTURAL COMPLIANCE: PURE HEXAGONAL                                ║
- * ║  - Context: Injected via TenantContext (No User Model coupling)          ║
- * ║  - Read: Via BillingRepository                                           ║
- * ║  - Write: Via FormRequest -> Action                                      ║
- * ║  - Config: Bank options externalized to config/billing.php               ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- */
 final class BillingController extends Controller
 {
     public function __construct(
         private readonly BillingRepository $billingRepository,
-        private readonly TenantContext $tenantContext
+        private readonly TenantContext $tenantContext,
     ) {}
 
     public function index(): Response
@@ -41,8 +31,6 @@ final class BillingController extends Controller
 
         $invoices = $this->billingRepository->getInvoices($tenantId);
         $subscription = $this->billingRepository->getSubscriptionStatus($tenantId);
-
-        // Simple Transform
         $paymentsFormatted = $invoices->through(fn ($payment) => [
             'id' => $payment->id,
             'bank' => $payment->bank,
@@ -58,37 +46,71 @@ final class BillingController extends Controller
         return Inertia::render('Tenant/Billing/Index', [
             'subscription' => $subscription,
             'payments' => $paymentsFormatted,
-            // EXTERNALIZED: Bank options now come from config file
             'bankOptions' => config('billing.bank_options'),
         ]);
     }
 
     public function reportPayment(
         ReportPaymentRequest $request,
-        ReportPaymentAction $action
+        ReportPaymentHandler $handler
     ): RedirectResponse {
-        $tenantId = $this->tenantContext->getTenantId();
+        $validated = $request->validated();
+        $tenantUuid = $this->tenantContext->getTenantUuid();
+        $receiptPath = $request->file('receipt')?->store("temp/{$tenantUuid}/payments", 'public');
 
-        // PRE-PROCESS: File upload handled in Controller (Infrastructure Layer)
-        $receiptPath = $request->file('receipt')?->store('tenants/receipts', 'public');
-
-        $dto = ReportPaymentResult::fromRequest($request, $tenantId, $receiptPath);
-        $action->execute($dto);
+        $handler->handle(new ReportPaymentCommand(
+            tenantId: $tenantUuid,
+            paymentReference: (string) $validated['reference_number'],
+            amountInCents: (int) round((float) $validated['amount'] * 100),
+            currency: 'HNL',
+            bank: (string) $validated['bank'],
+            idempotencyKey: $this->resolveIdempotencyKey($request, [
+                'tenant_id' => $tenantUuid,
+                'reference_number' => $validated['reference_number'],
+                'amount' => $validated['amount'],
+            ]),
+            proofOfPaymentPath: $receiptPath,
+        ));
 
         return back()->with('success', 'Pago reportado.');
     }
 
     public function upgrade(
         UpgradePlanRequest $request,
-        RequestUpgradeAction $action
+        RequestUpgradeHandler $handler
     ): RedirectResponse {
-        $tenantId = $this->tenantContext->getTenantId();
+        $validated = $request->validated();
+        $tenantUuid = $this->tenantContext->getTenantUuid();
+        $idempotencyKey = $this->resolveIdempotencyKey($request, [
+            'tenant_id' => $tenantUuid,
+            'plan' => $validated['plan'],
+            'payment_method' => $validated['payment_method'],
+        ]);
 
-        $dto = RequestUpgradeResult::fromRequest($request, $tenantId);
-        $action->execute($dto);
+        $handler->handle(new RequestUpgradeCommand(
+            tenantId: $tenantUuid,
+            newPlanIdentifier: (string) $validated['plan'],
+            currency: 'HNL',
+            idempotencyKey: $idempotencyKey,
+            clientIdempotencyKey: $idempotencyKey,
+        ));
 
         return redirect()
             ->route('tenant.billing.index')
             ->with('success', 'Solicitud recibida.');
+    }
+
+    private function resolveIdempotencyKey(Request $request, array $payload): string
+    {
+        $headerKey = $request->header('Idempotency-Key');
+        if (! is_string($headerKey) || $headerKey === '') {
+            $headerKey = $request->header('X-Idempotency-Key');
+        }
+
+        if (is_string($headerKey) && $headerKey !== '') {
+            return $headerKey;
+        }
+
+        return hash('xxh128', json_encode($payload, JSON_THROW_ON_ERROR));
     }
 }

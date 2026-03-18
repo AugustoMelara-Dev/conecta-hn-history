@@ -4,37 +4,25 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Application\Interactions\DTOs\InteractionData;
 use App\Domain\Analytics\Enums\InteractionType;
 use App\Domain\TenantGovernance\Services\TenantResolver;
 use App\Http\Controllers\Controller;
-use App\Infrastructure\Jobs\Analytics\RecordInteraction;
+use App\Infrastructure\Interactions\Actions\RecordInteractionAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
 use Psr\Log\LoggerInterface;
 
-/**
- * AnalyticsController - IDOR-Hardened Conversion Event API
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ARCHITECTURAL COMPLIANCE:                                               ║
- * ║  - Zero App\Models imports (DIP compliant)                               ║
- * ║  - Uses Domain Enum for validation instead of Model constants            ║
- * ║  - Uses TenantResolver instead of direct Tenant::where()                 ║
- * ║  - Validates tenant is public before recording events                    ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- */
 final class AnalyticsController extends Controller
 {
     public function __construct(
         private TenantResolver $tenantResolver,
-        private LoggerInterface $log
+        private LoggerInterface $log,
+        private RecordInteractionAction $recordInteractionAction,
     ) {}
 
-    /**
-     * Record a conversion event asynchronously.
-     */
     #[OA\Post(
         path: '/api/analytics/track',
         summary: 'Track generic analytics event',
@@ -48,27 +36,34 @@ final class AnalyticsController extends Controller
     public function track(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'tenant_id' => ['required', 'integer'],
-            // DIP COMPLIANT: Uses Domain Enum instead of Model constant
+            'tenant_id' => ['required', 'string'],
             'type' => ['required', 'string', Rule::in(InteractionType::values())],
             'product_id' => ['nullable', 'integer', 'exists:products,id'],
             'metadata' => ['nullable', 'array'],
         ]);
 
-        // SECURE: Validate tenant exists and is public via resolver
-        if (! $this->tenantResolver->isPublic($validated['tenant_id'])) {
+        $tenantId = (string) $validated['tenant_id'];
+        if (! $this->tenantResolver->isPublic($tenantId)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tenant not found or not available',
             ], 404);
         }
 
-        RecordInteraction::dispatch(
-            tenantId: $validated['tenant_id'],
-            type: $validated['type'],
-            productId: $validated['product_id'] ?? null,
-            metadata: $validated['metadata'] ?? [],
-        );
+        $metadata = $validated['metadata'] ?? [];
+        if (isset($validated['product_id'])) {
+            $metadata['product_id'] = (int) $validated['product_id'];
+        }
+
+        $this->recordInteractionAction->execute(new InteractionData(
+            tenantId: $tenantId,
+            type: (string) $validated['type'],
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+            sessionId: $request->session()->getId(),
+            productId: isset($validated['product_id']) ? (string) $validated['product_id'] : null,
+            metadata: $metadata,
+        ));
 
         return response()->json([
             'success' => true,
@@ -76,11 +71,6 @@ final class AnalyticsController extends Controller
         ], 202);
     }
 
-    /**
-     * Log a conversion event from Beacon API (purchase).
-     *
-     * SECURITY: Uses TenantResolver for slug lookup.
-     */
     #[OA\Post(
         path: '/api/analytics/conversion',
         summary: 'Track conversion/purchase event',
@@ -94,28 +84,28 @@ final class AnalyticsController extends Controller
     {
         try {
             $data = $request->json()->all();
+            $tenantSlug = isset($data['tenant_slug']) && is_string($data['tenant_slug']) ? $data['tenant_slug'] : null;
+            $transactionId = isset($data['transaction_id']) && is_string($data['transaction_id']) ? $data['transaction_id'] : null;
+            $value = isset($data['value']) ? (float) $data['value'] : 0.0;
+            $currency = isset($data['currency']) && is_string($data['currency']) ? $data['currency'] : 'HNL';
+            $event = isset($data['event']) && is_string($data['event']) ? $data['event'] : InteractionType::PURCHASE->value;
+            $timestamp = isset($data['timestamp']) && is_string($data['timestamp']) ? $data['timestamp'] : now()->toISOString();
 
-            $tenantSlug = $data['tenant_slug'] ?? null;
-            $transactionId = $data['transaction_id'] ?? null;
-            $value = $data['value'] ?? 0;
-            $currency = $data['currency'] ?? 'HNL';
-            $event = $data['event'] ?? 'purchase';
-            $timestamp = $data['timestamp'] ?? now()->toISOString();
-
-            if (! $tenantSlug) {
+            if ($tenantSlug === null || $tenantSlug === '') {
                 return response()->json(['status' => 'skipped', 'reason' => 'no_tenant']);
             }
 
-            // SECURE: Use TenantResolver instead of direct Tenant::where()
             $tenant = $this->tenantResolver->findPublicBySlug($tenantSlug);
-
-            if (! $tenant) {
+            if ($tenant === null) {
                 return response()->json(['status' => 'skipped', 'reason' => 'tenant_not_found']);
             }
 
-            RecordInteraction::dispatch(
-                tenantId: $tenant->id,
-                type: InteractionType::CONVERSION->value,
+            $this->recordInteractionAction->execute(new InteractionData(
+                tenantId: $tenant->id(),
+                type: $event,
+                ipAddress: $request->ip(),
+                userAgent: $request->userAgent(),
+                sessionId: $request->session()->getId(),
                 productId: null,
                 metadata: [
                     'event' => $event,
@@ -125,7 +115,7 @@ final class AnalyticsController extends Controller
                     'source' => 'beacon',
                     'original_timestamp' => $timestamp,
                 ],
-            );
+            ));
 
             $this->log->info('Conversion tracked', [
                 'tenant' => $tenantSlug,
