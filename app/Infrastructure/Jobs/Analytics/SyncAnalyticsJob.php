@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\Analytics;
 
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Models\Tenant;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -49,7 +50,7 @@ final class SyncAnalyticsJob implements ShouldBeUnique, ShouldQueue
 
         // T-103: Instrument Process
         event(new \App\Domain\Analytics\Events\AnalyticsSynced(
-            tenantId: 0, // System context or aggregate 0
+            tenantId: TenantId::fromInt(0), // System context
             processedRecords: $processedCount,
             occurredOn: new \DateTimeImmutable
         ));

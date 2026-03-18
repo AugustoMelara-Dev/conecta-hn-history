@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Jobs;
 
 use App\Domain\Shared\Services\TenantContext;
-use App\Infrastructure\Jobs\Middleware\TenantAwareMiddleware;
+use App\Infrastructure\Queue\Middleware\TenantAwareMiddleware;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -22,7 +22,7 @@ abstract class TenantJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tenantId;
+    public string|int $tenantId;
 
     public function __construct()
     {

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Infrastructure\Services;
 
 use App\Application\Shared\Contracts\PresignedUrlGeneratorInterface;
-use Aws\S3\S3Client;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * S3PresignerService - The Authorizer (Level 30)
@@ -20,9 +20,7 @@ use Illuminate\Support\Facades\Config;
  */
 final class S3PresignerService implements PresignedUrlGeneratorInterface
 {
-    private S3Client $client;
-
-    private string $bucket;
+    private string $disk;
 
     public function __construct()
     {
@@ -32,18 +30,7 @@ final class S3PresignerService implements PresignedUrlGeneratorInterface
             throw new \RuntimeException('Critical Configuration Failure: S3 Disk (filesystems.disks.s3) is misconfigured or missing required keys.');
         }
 
-        $this->bucket = $config['bucket'];
-
-        $this->client = new S3Client([
-            'version' => 'latest',
-            'region' => $config['region'],
-            'credentials' => [
-                'key' => $config['key'],
-                'secret' => $config['secret'],
-            ],
-            'endpoint' => $config['endpoint'] ?? null,
-            'use_path_style_endpoint' => $config['use_path_style_endpoint'] ?? false,
-        ]);
+        $this->disk = 's3';
     }
 
     /**
@@ -56,21 +43,23 @@ final class S3PresignerService implements PresignedUrlGeneratorInterface
      */
     public function generatePutUrl(string $key, string $mimeType, int $sizeBytes): array
     {
-        $cmd = $this->client->getCommand('PutObject', [
-            'Bucket' => $this->bucket,
-            'Key' => $key,
+        /** @var array{url: string, headers: array<string, mixed>} $signed */
+        $signed = Storage::disk($this->disk)->temporaryUploadUrl($key, now()->addMinutes(5), [
             'ContentType' => $mimeType,
             'ContentLength' => $sizeBytes,
         ]);
 
-        $request = $this->client->createPresignedRequest($cmd, '+5 minutes');
+        $headers = [];
 
-        return [
-            'url' => (string) $request->getUri(),
-            'headers' => [
-                'Content-Type' => $mimeType,
-                'Content-Length' => (string) $sizeBytes,
-            ],
-        ];
+        foreach ($signed['headers'] as $header => $value) {
+            $headers[$header] = is_array($value)
+                ? implode(', ', array_map(static fn (mixed $item): string => (string) $item, $value))
+                : (string) $value;
+        }
+
+        $headers['Content-Type'] = $mimeType;
+        $headers['Content-Length'] = (string) $sizeBytes;
+
+        return ['url' => $signed['url'], 'headers' => $headers];
     }
 }

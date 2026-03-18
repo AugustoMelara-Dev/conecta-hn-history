@@ -26,7 +26,7 @@ class TenantAwareMiddleware
         try {
             if (property_exists($job, 'tenantId') && $job->tenantId !== null) {
                 // Restore Context
-                $context->setTenant((int) $job->tenantId);
+                $context->setTenant($job->tenantId);
             }
 
             $next($job);

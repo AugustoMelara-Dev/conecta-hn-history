@@ -25,7 +25,7 @@ final class SyncTenantAnalytics implements ShouldQueue
     public int $timeout = 300;
 
     public function __construct(
-        public readonly int $tenantId,
+        public readonly string $tenantId,
         public readonly string $date
     ) {}
 

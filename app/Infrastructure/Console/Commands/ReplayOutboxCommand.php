@@ -71,7 +71,7 @@ class ReplayOutboxCommand extends Command
             ]);
         });
 
-        $this->success("Successfully queued {$count} events for replay.");
+        $this->info("Successfully queued {$count} events for replay.");
 
         return Command::SUCCESS;
     }

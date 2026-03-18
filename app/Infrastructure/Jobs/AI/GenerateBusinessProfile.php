@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\AI;
 
-use App\Domain\Identity\Exceptions\TenantNotFoundException;
+use App\Application\Shared\Contracts\AiProfileGeneratorInterface;
+use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Services\AiProfileGeneratorService;
@@ -27,20 +28,25 @@ final class GenerateBusinessProfile implements ShouldQueue
     public int $timeout = 120;
 
     public function __construct(
-        public readonly int $tenantId
+        public readonly string $tenantId,
+        public readonly string $businessName = '',
+        public readonly string $description = '',
     ) {}
 
     public function handle(
         TenantRepositoryInterface $tenantRepository,
-        AiProfileGeneratorService $aiService
+        AiProfileGeneratorInterface $aiService
     ): void {
         $tenant = $tenantRepository->findById($this->tenantId);
         if ($tenant === null) {
-            throw new TenantNotFoundException("Tenant {$this->tenantId} not found");
+            throw TenantNotFoundException::withId($this->tenantId);
         }
 
-        $profile = $aiService->generateProfile($tenant);
-        $tenant->ai_profile = $profile;
+        $businessName = $this->businessName !== '' ? $this->businessName : $tenant->name();
+        $description = $this->description !== '' ? $this->description : ($tenant->description() ?? '');
+        $profile = $aiService->generate($businessName, $description, 'General');
+        $tenant->applyAiEnhancement($profile, allowReEnhancement: true);
+
         $tenantRepository->save($tenant);
     }
 
