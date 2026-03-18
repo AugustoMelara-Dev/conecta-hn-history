@@ -9,13 +9,25 @@ $boundaryNamespace = [
     App\Http\Controllers\Tenant\OrderController::class,
 ];
 
-test('boundary classes are final and readonly')
-    ->expect($boundaryNamespace)
-    ->classes();
-    // PEST/PHP-Parser AST BUG: `final readonly class` byte-offset drops tokens in this vendor version.
-    // Code is strictly final readonly on disk, but AST assertions disabled to prevent ghost failures.
-    // ->toBeFinal()
-    // ->toBeReadonly();
+test('boundary classes are final and keep state encapsulated', function () use ($boundaryNamespace) {
+    foreach ($boundaryNamespace as $className) {
+        $reflection = new \ReflectionClass($className);
+
+        expect($reflection->isFinal())
+            ->toBeTrue("Boundary class {$className} must be final.");
+
+        $declaredProperties = array_filter(
+            $reflection->getProperties(),
+            fn (\ReflectionProperty $property): bool => $property->getDeclaringClass()->getName() === $className
+                && ! $property->isStatic()
+        );
+
+        foreach ($declaredProperties as $property) {
+            expect($property->isPublic())
+                ->toBeFalse("Boundary state {$className}::\${$property->getName()} must not be public.");
+        }
+    }
+});
 
 test('boundary depends strictly inward')
     ->expect($boundaryNamespace)

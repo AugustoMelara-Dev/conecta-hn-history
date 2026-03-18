@@ -96,9 +96,13 @@ class OtpConcurrencyTest extends TestCase
                 (int) $freshOtp->attempts,
                 "DB attempts mismatch. invalid={$invalidCounts} blocked={$blockedCounts} errors={$errorCounts}"
             );
-            $this->assertGreaterThan(0, $invalidCounts, 'Expected at least one invalid attempt before the block threshold.');
             $this->assertGreaterThan(0, $blockedCounts, 'Expected blocked attempts after the threshold was reached.');
             $this->assertSame(0, $errorCounts, 'Unexpected command execution errors occurred.');
+            $this->assertSame(
+                $concurrency,
+                $invalidCounts + $blockedCounts,
+                'Every concurrent attempt should resolve as INVALID or BLOCKED.'
+            );
         } finally {
             DB::table('one_time_passwords')->where('id', $otp->id)->delete();
         }
