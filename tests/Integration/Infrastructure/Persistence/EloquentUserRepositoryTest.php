@@ -9,6 +9,7 @@ use App\Infrastructure\Identity\Persistence\EloquentUserRepository;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class EloquentUserRepositoryTest extends TestCase
@@ -25,7 +26,7 @@ class EloquentUserRepositoryTest extends TestCase
         $this->repository = $this->app->make(EloquentUserRepository::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_persists_a_new_user_entity_with_pregenerated_uuid(): void
     {
         // 1. Arrange: Create Valid Domain Entity with UUID v7
@@ -56,7 +57,7 @@ class EloquentUserRepositoryTest extends TestCase
         $this->assertDatabaseCount('users', 1);
     }
 
-    /** @test */
+    #[Test]
     public function it_updates_an_existing_user_without_creating_duplicates(): void
     {
         // 1. Arrange: Persist Initial State
@@ -97,7 +98,7 @@ class EloquentUserRepositoryTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_reconstitutes_domain_entity_from_database_accurately(): void
     {
         // 1. Arrange: Persist User
@@ -130,7 +131,7 @@ class EloquentUserRepositoryTest extends TestCase
         $this->assertNotNull($retrieved->createdAt());
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_null_when_user_does_not_exist(): void
     {
         // 1. Arrange: Generate Non-Existent UUID
