@@ -8,6 +8,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $name
+ * @property float|string $price_modifier
+ * @property-read ProductOptionGroup|null $optionGroup
+ */
 class ProductOption extends Model
 {
     use HasFactory;
@@ -42,7 +47,13 @@ class ProductOption extends Model
      */
     public function getProduct(): ?Product
     {
-        return $this->optionGroup?->product;
+        $group = $this->optionGroup;
+
+        if (! $group instanceof ProductOptionGroup) {
+            return null;
+        }
+
+        return $group->product;
     }
 
     /**
@@ -50,13 +61,15 @@ class ProductOption extends Model
      */
     public function getFormattedPriceModifier(): string
     {
-        if ($this->price_modifier == 0) {
+        $priceModifier = (float) $this->price_modifier;
+
+        if ($priceModifier == 0.0) {
             return '';
         }
 
-        $sign = $this->price_modifier > 0 ? '+' : '';
+        $sign = $priceModifier > 0 ? '+' : '';
 
-        return sprintf('%sL. %.2f', $sign, $this->price_modifier);
+        return sprintf('%sL. %.2f', $sign, $priceModifier);
     }
 
     /**

@@ -30,8 +30,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $business_id
  * @property string $type
  * @property string $content
- * @property CarbonImmutable $starts_at_utc
- * @property CarbonImmutable $expires_at_utc
+ * @property CarbonImmutable|null $starts_at_utc
+ * @property CarbonImmutable|null $expires_at_utc
  * @property bool $is_active
  */
 class Announcement extends Model
@@ -59,11 +59,6 @@ class Announcement extends Model
     {
         // Auto-invalidate cache on any announcement change
         $invalidateCache = function (Announcement $announcement): void {
-            // Guard: Only invalidate if business_id is set
-            if ($announcement->business_id === null) {
-                return;
-            }
-
             \App\Http\Middleware\HandleInertiaRequests::invalidateAnnouncementsCache(
                 $announcement->business_id
             );
@@ -94,7 +89,7 @@ class Announcement extends Model
      * PERFORMANCE NOTE: These accessors are computed on every serialization.
      * For bulk operations, use ->setAppends([]) to disable.
      *
-     * @var array<string>
+     * @var list<string>
      */
     protected $appends = ['content_html'];
 
@@ -252,11 +247,11 @@ class Announcement extends Model
 
         $now = CarbonImmutable::now('America/Tegucigalpa');
 
-        if ($now->isBefore($this->starts_at)) {
+        if ($this->starts_at_utc !== null && $now->isBefore($this->starts_at_utc)) {
             return 'Programado';
         }
 
-        if ($now->isAfter($this->expires_at)) {
+        if ($this->expires_at_utc !== null && $now->isAfter($this->expires_at_utc)) {
             return 'Expirado';
         }
 

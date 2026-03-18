@@ -40,12 +40,14 @@ class Location extends Model
     protected static function booted(): void
     {
         static::creating(function (Location $location): void {
-            if ($location->tenant_id === null || $location->tenant_id === '') {
+            $tenantId = (string) $location->tenant_id;
+
+            if ($tenantId === '') {
                 return;
             }
 
             $hasPrimary = static::query()
-                ->where('tenant_id', $location->tenant_id)
+                ->where('tenant_id', $tenantId)
                 ->where('is_primary', true)
                 ->exists();
 

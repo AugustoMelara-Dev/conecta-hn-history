@@ -76,7 +76,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      * The React frontend expects 'image_url' in every product object.
      * Without this, catalog grids would be "blind" (no visual data).
      *
-     * @var array<string>
+     * @var list<string>
      */
     protected $appends = [
         'image_url',
@@ -157,17 +157,17 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     {
         // 1. Minuatura cuadrada para Tablas/Grid (400x400)
         $this->addMediaConversion('thumb')
+            ->nonQueued()
             ->width(400)
             ->height(400)
-            ->sharpen(10)
-            ->nonQueued(); // Procesamiento síncrono para desarrollo (cambiar en prod)
+            ->sharpen(10); // Procesamiento síncrono para desarrollo (cambiar en prod)
 
         // 2. Versión WebP optimizada para Detalle (LCP)
         $this->addMediaConversion('optimized')
+            ->nonQueued()
             ->width(800)
             ->format('webp')
-            ->quality(80)
-            ->nonQueued();
+            ->quality(80);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -328,7 +328,10 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
             ->orderByRaw('FIELD(id, '.$sanitizedIds.')')
             ->get();
 
-        return static::hydrate($rows->toArray());
+        /** @var \Illuminate\Database\Eloquent\Collection<int, static> $products */
+        $products = static::hydrate($rows->all());
+
+        return $products;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -430,7 +433,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         $paginator = $query->orderByDesc('created_at')->paginate(12);
 
         // Hydrate results to return actual Product models
-        $paginator->setCollection(static::hydrate($paginator->items()->all()));
+        $paginator->setCollection(static::hydrate($paginator->items()));
 
         return $paginator;
     }

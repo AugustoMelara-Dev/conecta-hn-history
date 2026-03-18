@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
+use DateTimeImmutable;
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +20,9 @@ use Spatie\OpeningHours\OpeningHours;
  * override tenant-level opening hours via spatie/opening-hours.
  *
  * SECURITY: Uses BelongsToTenant for automatic tenant isolation.
+ *
+ * @property array<string, mixed>|null $schedule_config
+ * @property-read Tenant $tenant
  */
 class ServiceProvider extends Model
 {
@@ -62,8 +67,10 @@ class ServiceProvider extends Model
      */
     public function isAvailableAt(\DateTimeInterface $start, \DateTimeInterface $end, int $bufferBefore = 0, int $bufferAfter = 0): bool
     {
-        $paddedStart = (clone $start)->modify("-{$bufferBefore} minutes");
-        $paddedEnd = (clone $end)->modify("+{$bufferAfter} minutes");
+        $startAt = CarbonImmutable::instance(DateTimeImmutable::createFromInterface($start));
+        $endAt = CarbonImmutable::instance(DateTimeImmutable::createFromInterface($end));
+        $paddedStart = $startAt->subMinutes($bufferBefore);
+        $paddedEnd = $endAt->addMinutes($bufferAfter);
 
         return ! $this->appointments()
             ->where('status', '!=', 'cancelled')

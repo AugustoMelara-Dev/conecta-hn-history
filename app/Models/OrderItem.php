@@ -61,12 +61,12 @@ class OrderItem extends Model
 
     public function getFormattedUnitPriceAttribute(): string
     {
-        return 'L. '.number_format($this->unit_price, 2);
+        return 'L. '.number_format((float) $this->unit_price, 2);
     }
 
     public function getFormattedTotalPriceAttribute(): string
     {
-        return 'L. '.number_format($this->total_price, 2);
+        return 'L. '.number_format((float) $this->total_price, 2);
     }
 
     public function getOptionsDescriptionAttribute(): string
@@ -108,7 +108,7 @@ class OrderItem extends Model
      *
      * @param  array  $cartItem  Cart item from frontend
      */
-    public static function fromCartItem(array $cartItem): static
+    public static function fromCartItem(array $cartItem): self
     {
         $productPrice = (float) ($cartItem['price'] ?? 0);
         $quantity = (int) ($cartItem['quantity'] ?? 1);
@@ -117,7 +117,7 @@ class OrderItem extends Model
         $unitPrice = $productPrice + $optionsTotal;
         $totalPrice = $unitPrice * $quantity;
 
-        return new static([
+        return new self([
             'product_id' => $cartItem['product_id'] ?? $cartItem['id'] ?? null,
             'product_name' => $cartItem['name'] ?? 'Producto',
             'product_price' => $productPrice,

@@ -23,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *        â†˜ cancelled
  *
  * SECURITY: Uses BelongsToTenant for automatic tenant isolation.
+ *
+ * @property-read User|null $user
  */
 class Appointment extends Model
 {
@@ -38,6 +40,8 @@ class Appointment extends Model
     public const STATUS_CANCELLED = 'cancelled';
 
     public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_NO_SHOW = 'no_show';
 
     protected $fillable = [
         'user_id',
@@ -141,7 +145,13 @@ class Appointment extends Model
      */
     public function getCustomerDisplayNameAttribute(): string
     {
-        return $this->user?->name ?? $this->customer_name ?? 'Cliente';
+        $user = $this->user;
+
+        if ($user instanceof User) {
+            return $user->name;
+        }
+
+        return $this->customer_name ?? 'Cliente';
     }
 
     /**

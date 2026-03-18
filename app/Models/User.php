@@ -34,6 +34,10 @@ use NotificationChannels\WebPush\HasPushSubscriptions;
  * This model serves as the Single Source of Truth for:
  * 1. Authorization (via Enum-based Identity Helpers)
  * 2. Multi-tenancy Context Resolution (Strict Ownership)
+ *
+ * @property UserRole $role
+ * @property string|null $tenant_id
+ * @property-read Tenant|null $tenant
  */
 class User extends Authenticatable implements HasTenants, MustVerifyEmail, TenantAwareAuthenticatable
 {
@@ -133,7 +137,7 @@ class User extends Authenticatable implements HasTenants, MustVerifyEmail, Tenan
             return true;
         }
 
-        return $this->role === UserRole::SUPER_ADMIN;
+        return $this->role->value === UserRole::SUPER_ADMIN->value;
     }
 
     public function isTenantOwner(): bool
@@ -154,7 +158,7 @@ class User extends Authenticatable implements HasTenants, MustVerifyEmail, Tenan
 
         $tenant = $this->tenant;
 
-        if (! $tenant) {
+        if (! $tenant instanceof Tenant) {
             return false;
         }
 
@@ -254,6 +258,10 @@ class User extends Authenticatable implements HasTenants, MustVerifyEmail, Tenan
 
     public function canAccessTenant(Model $tenant): bool
     {
+        if (! $tenant instanceof Tenant) {
+            return false;
+        }
+
         if ($this->tenant_id !== null && (string) $this->tenant_id === (string) $tenant->id) {
             return true;
         }

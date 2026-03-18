@@ -9,6 +9,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property string $name
+ * @property string $type
+ * @property bool $is_required
+ * @property int $min_selections
+ * @property int|null $max_selections
+ * @property-read Product $product
+ */
 class ProductOptionGroup extends Model
 {
     use HasFactory;

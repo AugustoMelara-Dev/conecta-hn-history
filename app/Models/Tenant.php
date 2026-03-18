@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Models\Activity as ActivityModel;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\OpeningHours\OpeningHours;
@@ -195,8 +196,8 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         $this->is_ai_enhanced = true;
         $this->record(new \App\Domain\TenantGovernance\Events\TenantProfileEnhanced(
             tenant_id: (string) $this->id,
-            user_id: (int) $this->user_id,
-            occurred_at: now()->toIso8601String(),
+            user_id: (string) $this->user_id,
+            occurredAt: now()->toDateTimeImmutable(),
             enhanced_fields: $enhancedFields
         ));
     }
@@ -226,8 +227,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public function getIsProAttribute(): bool
     {
-        // Handling Enum or String (if called before cast takes effect or legacy)
-        $value = $this->plan_type instanceof TenantPlan ? $this->plan_type->value : $this->plan_type;
+        $value = $this->plan_type->value;
 
         if (! in_array($value, ['pro', 'enterprise'])) {
             return false;
@@ -290,12 +290,12 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             'canceled' => 'Cancelado',
         ];
 
-        return $labels[$this->subscription_status] ?? 'Desconocido';
+        return $labels[$this->subscription_status];
     }
 
     public function getPlanTypeLabelAttribute(): string
     {
-        $value = $this->plan_type instanceof TenantPlan ? $this->plan_type->value : $this->plan_type;
+        $value = $this->plan_type->value;
 
         $labels = [
             'semilla' => 'Plan Semilla',
@@ -303,7 +303,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             'enterprise' => 'Plan Enterprise',
         ];
 
-        return $labels[$value] ?? 'Desconocido';
+        return $labels[$value];
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -401,7 +401,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             ->useLogName('negocios');
     }
 
-    public function tapActivity(\Spatie\Activitylog\Contracts\Activity $activity, string $eventName)
+    public function tapActivity(ActivityModel $activity, string $eventName): void
     {
         $activity->properties = $activity->properties->merge([
             'ip' => request()->ip(),
@@ -510,6 +510,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         $dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
         foreach ($this->openingHours as $openingHour) {
+            /** @var OpeningHour $openingHour */
             $dayName = $dayMap[$openingHour->day_of_week] ?? null;
             if ($dayName === null) {
                 continue;

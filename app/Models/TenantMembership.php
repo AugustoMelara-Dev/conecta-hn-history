@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property Role $role
+ */
 class TenantMembership extends Model
 {
     use HasFactory;
@@ -56,6 +59,6 @@ class TenantMembership extends Model
 
     public function isOwner(): bool
     {
-        return $this->role === Role::OWNER;
+        return $this->role->value === Role::OWNER->value;
     }
 }

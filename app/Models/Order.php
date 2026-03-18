@@ -26,6 +26,15 @@ use Spatie\Activitylog\Traits\LogsActivity;
  *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  * COMPLIANCE: Uses LogsActivity trait for GDPR forensic audit trail
+ *
+ * @property string $status
+ * @property string|null $payment_status
+ * @property \Illuminate\Support\Carbon|null $paid_at
+ * @property string|null $cancellation_reason
+ * @property \Illuminate\Support\Carbon|null $cancelled_at
+ * @property int|string|null $cancelled_by
+ * @property-read Tenant $tenant
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, OrderItem> $items
  */
 class Order extends Model
 {
@@ -232,20 +241,21 @@ class Order extends Model
 
     public function getStatusColorAttribute(): string
     {
-        return match ($this->status) {
+        $colors = [
             self::STATUS_PENDING => 'warning',
             self::STATUS_CONFIRMED => 'info',
             self::STATUS_PROCESSING => 'primary',
             self::STATUS_READY => 'success',
             self::STATUS_DELIVERED => 'gray',
             self::STATUS_CANCELLED => 'danger',
-            default => 'gray',
-        };
+        ];
+
+        return $colors[$this->status] ?? 'gray';
     }
 
     public function getItemsSummaryAttribute(): string
     {
-        return $this->items->map(function ($item) {
+        return $this->items->map(function (OrderItem $item) {
             return "{$item->quantity}x {$item->product_name}";
         })->implode(', ');
     }
@@ -325,6 +335,7 @@ class Order extends Model
         $lines[] = '📦 *Productos:*';
 
         foreach ($this->items as $item) {
+            /** @var OrderItem $item */
             $line = "• {$item->quantity}x {$item->product_name}";
             if ($item->options) {
                 $options = collect($item->options)->pluck('option')->implode(', ');
@@ -372,7 +383,8 @@ class Order extends Model
      */
     public function getWhatsAppUrl(): ?string
     {
-        $phone = $this->tenant->whatsapp_number ?? $this->tenant->phone;
+        $tenant = $this->tenant;
+        $phone = $tenant->whatsapp_number ?? $tenant->phone;
 
         if (! $phone) {
             return null;

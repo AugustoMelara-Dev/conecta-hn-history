@@ -63,6 +63,6 @@ class ModifierOption extends Model
 
         $sign = $this->price_adjustment > 0 ? '+' : '';
 
-        return $sign.'L.'.number_format(abs($this->price_adjustment), 2);
+        return $sign.'L.'.number_format(abs((float) $this->price_adjustment), 2);
     }
 }

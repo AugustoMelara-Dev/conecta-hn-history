@@ -17,15 +17,15 @@ use Illuminate\Support\Str;
  *
  * State machine: pending → approved/rejected
  *
- * @property int $id
- * @property int $tenant_id
+ * @property string $id
+ * @property string $tenant_id
  * @property float $amount
  * @property string $bank
  * @property string $reference_number
  * @property string $proof_path
  * @property string $status
  * @property string|null $admin_notes
- * @property int|null $reviewed_by
+ * @property string|null $reviewed_by
  * @property \Carbon\Carbon|null $reviewed_at
  *                                            SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
@@ -78,7 +78,7 @@ class SubscriptionPayment extends Model
                 $payment->idempotency_key = (string) Str::uuid();
             }
 
-            if ($payment->version === null) {
+            if (! array_key_exists('version', $payment->getAttributes())) {
                 $payment->version = 1;
             }
         });
@@ -163,8 +163,8 @@ class SubscriptionPayment extends Model
 
         // Dispatch immutable event for downstream listeners and notifications.
         event(\App\Events\PaymentApproved::fromPayment(
-            tenantId: $this->tenant_id,
-            paymentId: $this->id,
+            tenantId: (string) $this->tenant_id,
+            paymentId: (string) $this->id,
             reviewerId: $reviewerId,
             daysToAdd: $daysToAdd
         ));
