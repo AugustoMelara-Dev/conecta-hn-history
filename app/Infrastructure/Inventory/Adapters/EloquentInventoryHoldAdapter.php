@@ -150,7 +150,11 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
                 if ($level !== null) {
                     $quantity = round((float) $hold->quantity, 3);
 
-                    if (! ($product?->allow_backorders ?? false) && (float) $level->on_hand < $quantity) {
+                    $allowsBackorders = $product instanceof Product
+                        ? (bool) $product->allow_backorders
+                        : false;
+
+                    if (! $allowsBackorders && (float) $level->on_hand < $quantity) {
                         throw new DomainException("Insufficient on-hand stock to commit product {$hold->product_id}.");
                     }
 

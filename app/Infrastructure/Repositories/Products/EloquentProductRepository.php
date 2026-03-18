@@ -52,11 +52,11 @@ final class EloquentProductRepository implements ProductRepositoryInterface
 
         $data = [
             'tenant_id' => $product->tenantId,
-            'sku' => $product->sku,
+            'slug' => $product->sku,
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price / 100, // Convert Cents (Entity) to Float/Decimal (DB)
-            'stock' => $product->stockQuantity, // Mapped stock -> stockQuantity
+            'stock_quantity' => $product->stockQuantity,
             'category_id' => $product->categoryId,
             'image_path' => $product->imagePath,
             'is_visible' => $product->isVisible,
@@ -95,11 +95,11 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         return new \App\Domain\Product\Entities\ProductEntity(
             id: $model->id,
             tenantId: $model->tenant_id,
-            sku: $model->sku,
+            sku: (string) $model->getAttribute('slug'),
             name: $model->name,
             description: $model->description ?? '',
             price: (int) ($model->price * 100), // Convert Float (DB) to Cents (Entity)
-            stockQuantity: $model->stock,
+            stockQuantity: (int) $model->getAttribute('stock_quantity'),
             categoryId: $model->category_id,
             imagePath: $model->image_path,
             isVisible: (bool) $model->is_visible,
@@ -129,7 +129,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
      */
     public function incrementStock(int $productId, int $quantity): void
     {
-        Product::where('id', $productId)->increment('stock', $quantity);
+        Product::where('id', $productId)->increment('stock_quantity', $quantity);
     }
 
     /**
@@ -137,7 +137,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
      */
     public function existsBySkuExcludingId(string $sku, int|string $productId): bool
     {
-        return Product::where('sku', $sku)
+        return Product::where('slug', $sku)
             ->where('id', '!=', $productId)
             ->exists();
     }

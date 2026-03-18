@@ -41,7 +41,7 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
         // And "Dentro de la misma transacción DB::transaction".
         // If the Handler already opens one, we just execute.
 
-        $events = method_exists($user, 'getUncommittedEvents') ? $user->getUncommittedEvents() : [];
+        $events = $user->getUncommittedEvents();
 
         if (! empty($events)) {
             // 1. Source of Truth

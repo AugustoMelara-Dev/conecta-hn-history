@@ -7,6 +7,8 @@ namespace App\Infrastructure\Listeners\Sales;
 use App\Domain\Sales\Events\OrderCreated;
 use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Models\Order; // Added for re-fetching
+use App\Models\Tenant;
+use App\Models\User;
 use App\Notifications\NewOrderNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -52,8 +54,11 @@ final class SendOrderConfirmationNotification implements ShouldQueue
         Log::info('AsyncWorker: Sending NewOrderNotification', ['order_id' => $order->id]);
 
         try {
-            if ($order->tenant && $order->tenant->user) {
-                $order->tenant->user->notify(new NewOrderNotification($order));
+            $tenant = $order->tenant;
+            $tenantOwner = $tenant instanceof Tenant ? $tenant->user : null;
+
+            if ($tenantOwner instanceof User) {
+                $tenantOwner->notify(new NewOrderNotification($order));
             } else {
                 Log::warning('AsyncWorker: Cannot notify, tenant owner missing', ['order_id' => $order->id]);
             }

@@ -69,8 +69,7 @@ final class EloquentDashboardMetricsRepository implements DashboardMetricsReposi
         ];
 
         $completed = collect($steps)->where('completed', true)->count();
-        $total = count($steps);
-        $progress = $total > 0 ? round(($completed / $total) * 100) : 100;
+        $progress = round(($completed / count($steps)) * 100);
 
         return ['progress' => $progress, 'steps' => $steps];
     }

@@ -156,7 +156,7 @@ final class JsonSchemaGenerator
     private function extractParamDoc(string $paramName, string $docComment): ?string
     {
         // Match @param or inline /** */ style comments
-        if (preg_match('/@param\s+\S+\s+\$'.preg_quote((string) $paramName).'\s+(.+)/i', $docComment, $matches)) {
+        if (preg_match('/@param\s+\S+\s+\$'.preg_quote((string) $paramName, '/').'\s+(.+)/i', $docComment, $matches)) {
             return trim($matches[1]);
         }
 

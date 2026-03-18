@@ -51,7 +51,7 @@ final class BudgetEnforcer
             // ═══════════════════════════════════════════════════════════════════
             // BLOQUEO PESIMISTA: Serializa todas las operaciones de este tenant
             // ═══════════════════════════════════════════════════════════════════
-            /** @var Tenant $tenant */
+            /** @var Tenant|null $tenant */
             $tenant = Tenant::lockForUpdate()->find($tenantId);
 
             if (! $tenant) {
@@ -113,7 +113,7 @@ final class BudgetEnforcer
         array $usageMetadata = []
     ): void {
         DB::transaction(function () use ($tenantId, $estimatedCost, $actualCost, $reservationId, $usageMetadata) {
-            /** @var Tenant $tenant */
+            /** @var Tenant|null $tenant */
             $tenant = Tenant::lockForUpdate()->find($tenantId);
 
             if (! $tenant) {
@@ -163,7 +163,7 @@ final class BudgetEnforcer
         string $failureReason
     ): void {
         DB::transaction(function () use ($tenantId, $estimatedCost, $reservationId, $failureReason) {
-            /** @var Tenant $tenant */
+            /** @var Tenant|null $tenant */
             $tenant = Tenant::lockForUpdate()->find($tenantId);
 
             if (! $tenant) {

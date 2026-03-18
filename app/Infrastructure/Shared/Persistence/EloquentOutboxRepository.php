@@ -157,33 +157,6 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
     }
 
     /**
-     * LEVEL 45: Get next sequence number for aggregate (ATOMIC).
-     *
-     * Uses SELECT FOR UPDATE to lock aggregate rows during sequence calculation.
-     * This prevents race conditions where two concurrent inserts get the same sequence.
-     *
-     * PREREQUISITE: This method MUST be called within an active transaction
-     * (which is enforced by the transaction check at the start of append()).
-     */
-    private function getNextSequenceNumber(?string $aggregateId): int
-    {
-        if ($aggregateId === null) {
-            return 0;
-        }
-
-        // LEVEL 45: ATOMIC SEQUENCE GENERATION
-        // lockForUpdate() acquires an exclusive lock on rows matching the aggregate_id.
-        // This ensures that concurrent inserts for the same aggregate serialize,
-        // preventing duplicate sequence numbers.
-        $lastSequence = OutboxMessage::query()
-            ->where('aggregate_id', $aggregateId)
-            ->lockForUpdate() // Serialize concurrent access to same aggregate
-            ->max('sequence_number');
-
-        return ($lastSequence ?? 0) + 1;
-    }
-
-    /**
      * LEVEL 70: RECOVER STALE LOCKS WITH SEQUENCE BARRIER & PARTITION PUSHDOWN
      *
      * Retrieves stale messages (locked > threshold) strictly within owned partitions.
@@ -192,7 +165,7 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
      * @param  int  $batchSize  Maximum number of messages to recover
      * @param  int  $staleThresholdSeconds  Seconds after which a lock is considered stale
      * @param  array<int>  $ownedPartitionKeys  Explicit list of partitions this worker owns
-     * @return \Illuminate\Support\Collection<OutboxMessage>
+     * @return array<int, OutboxMessage>
      */
     public function retrieveNextStaleBatch(int $batchSize, int $staleThresholdSeconds, array $ownedPartitionKeys): array
     {

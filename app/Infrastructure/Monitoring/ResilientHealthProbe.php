@@ -73,15 +73,6 @@ final class ResilientHealthProbe
     }
 
     /**
-     * LEVEL 52: Get path to local state file.
-     */
-    private function getLocalStateFilePath(): string
-    {
-        // Use global state file (not per-worker) for fleet-wide Boot Storm prevention
-        return self::LOCAL_STATE_DIR.'/failure_state.json';
-    }
-
-    /**
      * Rehydrate failure state from persistent store with fallback.
      */
     private function rehydrateState(): void
@@ -110,31 +101,26 @@ final class ResilientHealthProbe
      */
     private function rehydrateFromLocalFile(): void
     {
-        $filePath = $this->getLocalStateFilePath();
+        $state = $this->stateStore->rehydrate();
 
-        if (! file_exists($filePath)) {
+        if (! is_array($state)) {
             return;
         }
 
         try {
-            $content = file_get_contents($filePath);
-            $state = json_decode($content, true);
+            $this->localFailureCount = (int) ($state['failures'] ?? 0);
+            $storedCooldownEnd = (int) ($state['cooldown_ends_at'] ?? 0);
 
-            if (is_array($state)) {
-                $this->localFailureCount = (int) ($state['failures'] ?? 0);
-                $storedCooldownEnd = (int) ($state['cooldown_ends_at'] ?? 0);
+            // AMNESIA SHIELD: Enforce remaining cooldown from previous run
+            if ($storedCooldownEnd > time()) {
+                $this->cooldownStartedAt = time();
+                $this->cooldownDuration = $storedCooldownEnd - time();
 
-                // AMNESIA SHIELD: Enforce remaining cooldown from previous run
-                if ($storedCooldownEnd > time()) {
-                    $this->cooldownStartedAt = time();
-                    $this->cooldownDuration = $storedCooldownEnd - time();
-
-                    Log::warning('RESILIENT PROBE: Enforcing remaining cooldown from previous run', [
-                        'worker_id' => $this->workerId,
-                        'remaining_seconds' => $this->cooldownDuration,
-                        'previous_failures' => $this->localFailureCount,
-                    ]);
-                }
+                Log::warning('RESILIENT PROBE: Enforcing remaining cooldown from previous run', [
+                    'worker_id' => $this->workerId,
+                    'remaining_seconds' => $this->cooldownDuration,
+                    'previous_failures' => $this->localFailureCount,
+                ]);
             }
         } catch (\Throwable $e) {
             Log::debug('RESILIENT PROBE: Failed to read local state file', [
@@ -148,7 +134,6 @@ final class ResilientHealthProbe
      */
     private function persistToLocalFile(): void
     {
-        $filePath = $this->getLocalStateFilePath();
         $cooldownEndsAt = $this->cooldownStartedAt > 0
             ? $this->cooldownStartedAt + $this->cooldownDuration
             : 0;
@@ -160,13 +145,7 @@ final class ResilientHealthProbe
             'worker_id' => $this->workerId,
         ];
 
-        try {
-            file_put_contents($filePath, json_encode($state), LOCK_EX);
-        } catch (\Throwable $e) {
-            Log::debug('RESILIENT PROBE: Failed to persist local state', [
-                'error' => $e->getMessage(),
-            ]);
-        }
+        $this->stateStore->persist($state);
     }
 
     /**

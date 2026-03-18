@@ -159,10 +159,8 @@ final class AdaptiveSequenceGenerator
 
         while (count($this->buffers) > $limit) {
             $oldestKey = array_key_first($this->buffers);
-            if ($oldestKey !== null) {
-                unset($this->buffers[$oldestKey]);
-                unset($this->frequencyCache[$oldestKey]);
-            }
+            unset($this->buffers[$oldestKey]);
+            unset($this->frequencyCache[$oldestKey]);
         }
     }
 
@@ -170,7 +168,7 @@ final class AdaptiveSequenceGenerator
     {
         if ($this->machineMemoryLimit === null) {
             $limitStr = ini_get('memory_limit');
-            if ($limitStr === '-1' || $limitStr === false) {
+            if ($limitStr === '-1') {
                 $this->machineMemoryLimit = -1;
             } else {
                 $this->machineMemoryLimit = $this->parseMemoryBytes($limitStr);

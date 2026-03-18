@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * ║  AUTOMATOR: Injects tenant_id during creation (Observer-like).          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
+// Used by Eloquent models outside the Infrastructure scan path.
+// @phpstan-ignore trait.unused
 trait BelongsToTenant
 {
     /**

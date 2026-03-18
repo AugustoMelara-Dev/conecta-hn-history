@@ -24,7 +24,7 @@ final class MetadataSanitizer implements MetadataSanitizerInterface
     /**
      * Recursively sanitize a metadata array.
      *
-     * @param  array<mixed>  $data  Raw metadata payload
+     * @param  array<mixed>  $metadata  Raw metadata payload
      * @param  int  $depth  Current recursion depth (internal)
      * @return array<mixed> Sanitized payload
      */

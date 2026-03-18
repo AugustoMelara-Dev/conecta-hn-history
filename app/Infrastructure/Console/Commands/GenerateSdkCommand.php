@@ -84,7 +84,7 @@ class GenerateSdkCommand extends Command
 
         // Parse Parameters: /users/{id} -> ${id}
         preg_match_all('/\{(\w+)\}/', $endpoint, $matches);
-        $params = $matches[1] ?? [];
+        $params = $matches[1];
 
         $tsParams = [];
         $urlRes = $endpoint;

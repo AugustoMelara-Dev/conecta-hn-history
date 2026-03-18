@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Queries;
 
-use App\Domain\Shared\Services\TenantContext;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -19,10 +18,6 @@ use Illuminate\Database\Eloquent\Collection;
  */
 final class AdminProductQuery
 {
-    public function __construct(
-        private readonly TenantContext $context
-    ) {}
-
     /**
      * Get all products for all tenants (Super Admin View).
      *

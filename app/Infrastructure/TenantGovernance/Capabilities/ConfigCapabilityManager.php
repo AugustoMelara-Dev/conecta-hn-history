@@ -35,10 +35,6 @@ final class ConfigCapabilityManager implements CapabilityManagerInterface
         $always = $this->normalize(config('capabilities.always', []));
         $businessType = $tenant->business_type;
 
-        if (! $businessType instanceof BusinessType) {
-            return $always;
-        }
-
         $typeSpecific = $this->normalize(
             config("capabilities.business_types.{$businessType->value}", [])
         );

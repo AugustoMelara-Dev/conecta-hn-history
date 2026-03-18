@@ -33,21 +33,10 @@ final class EloquentBillingRepository implements BillingRepository
             return [];
         }
 
-        if (method_exists($tenant, 'subscription') && $tenant->subscription) {
-            return [
-                'status' => $tenant->subscription->stripe_status ?? 'active',
-                'renewal_date' => $tenant->subscription->ends_at?->toIso8601String(),
-                'plan' => $tenant->is_pro ? 'PRO' : 'FREE',
-            ];
-        }
-
-        return $tenant->is_pro ? [
-            'status' => 'active',
-            'renewal_date' => now()->addMonth()->toIso8601String(),
-            'plan' => 'PRO',
-        ] : [
-            'status' => 'inactive',
-            'plan' => 'FREE',
+        return [
+            'status' => $tenant->subscription_status ?? ($tenant->is_pro ? 'active' : 'inactive'),
+            'renewal_date' => $tenant->subscription_ends_at?->toIso8601String(),
+            'plan' => $tenant->is_pro ? 'PRO' : 'FREE',
         ];
     }
 }

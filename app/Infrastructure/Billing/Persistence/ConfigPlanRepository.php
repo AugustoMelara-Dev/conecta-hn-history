@@ -47,7 +47,7 @@ final class ConfigPlanRepository implements PlanRepositoryInterface
             id: $plan->value,
             name: ucfirst($plan->value),
             price: new Money(
-                amount: $prices[$plan->value] ?? 9900,
+                amount: $prices[$plan->value],
                 currency: 'HNL'
             ),
             externalGatewayId: 'plan_'.$plan->value

@@ -9,7 +9,9 @@ use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotStrategyInterface;
 use App\Domain\Common\Exceptions\ConcurrencyException;
+use App\Domain\Shared\Exceptions\StaleObjectException;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Infrastructure\Common\Outbox\OutboxRepository;
 use App\Models\Tenant;
@@ -120,7 +122,7 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
 
     public function save(TenantEntity $tenant): TenantEntity
     {
-        $events = method_exists($tenant, 'getUncommittedEvents') ? $tenant->getUncommittedEvents() : [];
+        $events = $tenant->getUncommittedEvents();
 
         if (empty($events)) {
             return $tenant;
@@ -158,19 +160,101 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
         return $tenant;
     }
 
+    public function updateOptimistically(TenantEntity $tenant): void
+    {
+        $state = $tenant->toStateArray();
+        $affected = DB::table('tenants')
+            ->where('id', $tenant->id())
+            ->where('version', max(1, $tenant->version()))
+            ->update([
+                'user_id' => $state['owner_id'] ?? null,
+                'name' => $state['name'],
+                'slug' => $state['domain'],
+                'is_active' => $state['is_active'],
+                'category_id' => $state['category_id'] ?? null,
+                'city_id' => $state['city_id'] ?? null,
+                'logo_path' => $state['logo_path'] ?? null,
+                'phone' => $state['phone'] ?? null,
+                'address' => $state['address'] ?? null,
+                'latitude' => $state['latitude'] ?? null,
+                'longitude' => $state['longitude'] ?? null,
+                'description' => $state['description'] ?? null,
+                'slogan' => $state['slogan'] ?? null,
+                'whatsapp_number' => $state['whatsapp'] ?? null,
+                'is_ai_enhanced' => $state['is_ai_enhanced'] ?? false,
+                'is_pro' => $state['is_pro'] ?? false,
+                'product_limit' => $state['product_limit'] ?? 10,
+                'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
+                'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
+                'subscription_ends_at' => $state['subscription_ends_at'] ?? null,
+                'subscription_reference' => $state['subscription_reference'] ?? null,
+                'updated_at' => $tenant->updatedAt(),
+                'version' => DB::raw('version + 1'),
+            ]);
+
+        if ($affected === 0) {
+            throw new StaleObjectException("Tenant {$tenant->id()} was modified by another process.");
+        }
+    }
+
     private function projectState(TenantEntity $tenant): void
     {
+        $state = $tenant->toStateArray();
+
         DB::table('tenants')->upsert(
             [
                 'id' => $tenant->id(),
                 'name' => $tenant->name(),
-                // 'domain' column does not exist
                 'created_at' => $tenant->createdAt(),
                 'updated_at' => $tenant->updatedAt(),
-                'slug' => $tenant->domain(), // Mapping domain to slug
+                'slug' => $tenant->domain(),
+                'user_id' => $state['owner_id'] ?? null,
+                'is_active' => $state['is_active'],
+                'category_id' => $state['category_id'] ?? null,
+                'city_id' => $state['city_id'] ?? null,
+                'logo_path' => $state['logo_path'] ?? null,
+                'phone' => $state['phone'] ?? null,
+                'address' => $state['address'] ?? null,
+                'latitude' => $state['latitude'] ?? null,
+                'longitude' => $state['longitude'] ?? null,
+                'description' => $state['description'] ?? null,
+                'slogan' => $state['slogan'] ?? null,
+                'whatsapp_number' => $state['whatsapp'] ?? null,
+                'is_ai_enhanced' => $state['is_ai_enhanced'] ?? false,
+                'is_pro' => $state['is_pro'] ?? false,
+                'product_limit' => $state['product_limit'] ?? 10,
+                'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
+                'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
+                'subscription_ends_at' => $state['subscription_ends_at'] ?? null,
+                'subscription_reference' => $state['subscription_reference'] ?? null,
+                'version' => max(1, $tenant->version()),
             ],
             ['id'],
-            ['name', 'slug', 'updated_at'] // Update slug instead of domain
+            [
+                'name',
+                'slug',
+                'user_id',
+                'is_active',
+                'category_id',
+                'city_id',
+                'logo_path',
+                'phone',
+                'address',
+                'latitude',
+                'longitude',
+                'description',
+                'slogan',
+                'whatsapp_number',
+                'is_ai_enhanced',
+                'is_pro',
+                'product_limit',
+                'plan_type',
+                'subscription_status',
+                'subscription_ends_at',
+                'subscription_reference',
+                'updated_at',
+                'version',
+            ]
         );
     }
 }
