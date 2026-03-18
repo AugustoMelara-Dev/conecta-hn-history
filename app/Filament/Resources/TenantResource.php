@@ -7,8 +7,16 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\TenantResource\Pages;
 // MIGRATION: Updated to Domain namespace (2026-01-05)
 use App\Models\Tenant;
+use App\Models\User;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -41,14 +49,14 @@ class TenantResource extends Resource
     {
         return $schema
             ->schema([
-                Forms\Components\Section::make('Informacion Principal')
+                Section::make('Informacion Principal')
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre del Negocio')
                             ->required()
                             ->maxLength(255)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null),
+                            ->afterStateUpdated(fn (string $operation, $state, Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null),
 
                         Forms\Components\TextInput::make('slug')
                             ->required()
@@ -96,7 +104,7 @@ class TenantResource extends Resource
                             ->url(),
                     ])->columns(2),
 
-                Forms\Components\Section::make('Configuracion de Plan')
+                Section::make('Configuracion de Plan')
                     ->schema([
                         Forms\Components\Toggle::make('is_pro')
                             ->label('Plan PRO Activo')
@@ -117,7 +125,7 @@ class TenantResource extends Resource
                             ->helperText('Si se desactiva, el negocio no podra operar.'),
                     ])->columns(3),
 
-                Forms\Components\Section::make('Personalizacion (PRO)')
+                Section::make('Personalizacion (PRO)')
                     ->description('Personaliza la apariencia del micrositio. Exclusivo para planes PRO.')
                     ->schema([
                         Forms\Components\FileUpload::make('logo_path')
@@ -134,34 +142,34 @@ class TenantResource extends Resource
                             ->maxSize(2048)
                             ->image()
                             ->directory('tenants/banners')
-                            ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
-                            ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
+                            ->disabled(fn (Get $get) => ! $get('is_pro'))
+                            ->helperText(fn (Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
 
                         Forms\Components\ColorPicker::make('primary_color')
                             ->label('Color de Marca')
                             ->default('#000000')
-                            ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
-                            ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
+                            ->disabled(fn (Get $get) => ! $get('is_pro'))
+                            ->helperText(fn (Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
 
                         Forms\Components\TextInput::make('whatsapp_number')
                             ->label('WhatsApp Business')
                             ->tel()
-                            ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
-                            ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar el Boton Magico.' : null),
+                            ->disabled(fn (Get $get) => ! $get('is_pro'))
+                            ->helperText(fn (Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar el Boton Magico.' : null),
 
                         Forms\Components\KeyValue::make('social_links')
                             ->label('Redes Sociales')
                             ->keyLabel('Plataforma (facebook, instagram, etc)')
                             ->valueLabel('URL Completa')
-                            ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
-                            ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
+                            ->disabled(fn (Get $get) => ! $get('is_pro'))
+                            ->helperText(fn (Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
                     ])->columns(2),
 
                 // ═══════════════════════════════════════════════════════════════
                 // BRAND IDENTITY SECTION - White-Label Customization
                 // These fields control CSS variable injection on the frontend
                 // ═══════════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Identidad de Marca')
+                Section::make('Identidad de Marca')
                     ->description('Personaliza colores y portada del micrositio. Se aplica automáticamente a botones y elementos interactivos.')
                     ->icon('heroicon-o-paint-brush')
                     ->schema([
@@ -192,7 +200,7 @@ class TenantResource extends Resource
                 // CHECKOUT CONFIGURATION - Operational Settings
                 // These settings control payment and delivery options
                 // ═══════════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Configuración de Checkout')
+                Section::make('Configuración de Checkout')
                     ->description('Controla las opciones de pago y entrega disponibles para tus clientes.')
                     ->icon('heroicon-o-shopping-cart')
                     ->schema([
@@ -235,7 +243,7 @@ class TenantResource extends Resource
                     ->label('')
                     ->circular()
                     ->size(45)
-                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&background=random'),
+                    ->defaultImageUrl(fn (Tenant $record): string => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&background=random'),
 
                 Tables\Columns\TextColumn::make('name')
                     ->label('Negocio')
@@ -337,7 +345,7 @@ class TenantResource extends Resource
                     ->falseIcon('heroicon-o-no-symbol')
                     ->trueColor('success')
                     ->falseColor('danger')
-                    ->tooltip(fn ($record): string => $record->is_active ? 'Negocio operando normalmente' : 'SUSPENDIDO - Kill Switch activado'),
+                    ->tooltip(fn (Tenant $record): string => $record->is_active ? 'Negocio operando normalmente' : 'SUSPENDIDO - Kill Switch activado'),
 
                 Tables\Columns\TextColumn::make('products_count')
                     ->label('Productos')
@@ -394,15 +402,15 @@ class TenantResource extends Resource
             ])
             ->filtersFormColumns(3)
             ->actions([
-                Tables\Actions\Action::make('approve')
+                Action::make('approve')
                     ->label('Aprobar')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
-                    ->visible(fn ($record) => $record->status === 'pending')
+                    ->visible(fn (Tenant $record): bool => $record->status === 'pending')
                     ->requiresConfirmation()
                     ->modalHeading('Aprobar Negocio')
                     ->modalDescription('El negocio sera visible publicamente y el dueno podra operar.')
-                    ->action(function ($record) {
+                    ->action(function (Tenant $record): void {
                         $record->update([
                             'status' => 'approved',
                             'is_active' => true,
@@ -414,18 +422,18 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('reject')
+                Action::make('reject')
                     ->label('Rechazar')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn ($record) => $record->status === 'pending')
+                    ->visible(fn (Tenant $record): bool => $record->status === 'pending')
                     ->requiresConfirmation()
                     ->form([
                         \Filament\Forms\Components\Textarea::make('rejection_reason')
                             ->label('Motivo del rechazo')
                             ->required(),
                     ])
-                    ->action(function ($record, array $data) {
+                    ->action(function (Tenant $record, array $data): void {
                         $record->update([
                             'status' => 'rejected',
                             'is_active' => false,
@@ -437,15 +445,35 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('impersonate')
+                Action::make('impersonate')
                     ->label('Acceder como Cliente')
                     ->icon('heroicon-o-user-circle')
                     ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading('Shadow Login - Soporte Tecnico')
-                    ->modalDescription(fn ($record) => "Seras autenticado como '{$record->user->name}' ({$record->user->email}). Podras ver su panel exactamente como el lo ve. Usa el banner superior para regresar.")
+                    ->modalDescription(function (Tenant $record): string {
+                        $user = $record->user;
+
+                        if (! $user instanceof User) {
+                            return 'Este negocio no tiene un propietario asignado para suplantacion.';
+                        }
+
+                        return "Seras autenticado como '{$user->name}' ({$user->email}). Podras ver su panel exactamente como el lo ve. Usa el banner superior para regresar.";
+                    })
                     ->modalSubmitActionLabel('Iniciar Sesion como Cliente')
-                    ->action(function ($record) {
+                    ->action(function (Tenant $record) {
+                        $user = $record->user;
+
+                        if (! $user instanceof User) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Propietario no disponible')
+                                ->body('El negocio no tiene un usuario propietario asignado.')
+                                ->danger()
+                                ->send();
+
+                            return null;
+                        }
+
                         // VC-AUDIT-107: Rate limit impersonation (max 5/hour per admin)
                         $rateLimitKey = 'impersonate:'.auth()->id();
                         if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
@@ -462,29 +490,29 @@ class TenantResource extends Resource
                         // Audit Log: Non-repudiation for administrative actions
                         activity('security')
                             ->causedBy(auth()->user())
-                            ->performedOn($record->user)
+                            ->performedOn($user)
                             ->withProperties(['tenant_id' => $record->id])
                             ->log('admin_impersonation_started');
 
                         session(['impersonator_id' => auth()->id()]);
                         session(['impersonator_name' => auth()->user()->name]);
-                        \Illuminate\Support\Facades\Auth::login($record->user);
+                        \Illuminate\Support\Facades\Auth::login($user);
                         session()->regenerate(); // Session Fixation Prevention
 
                         return redirect('/app');
                     }),
 
-                Tables\Actions\Action::make('killSwitch')
-                    ->label(fn ($record) => $record->is_active ? 'SUSPENDER' : 'REACTIVAR')
-                    ->icon(fn ($record) => $record->is_active ? 'heroicon-o-no-symbol' : 'heroicon-o-bolt')
-                    ->color(fn ($record) => $record->is_active ? 'danger' : 'success')
+                Action::make('killSwitch')
+                    ->label(fn (Tenant $record): string => $record->is_active ? 'SUSPENDER' : 'REACTIVAR')
+                    ->icon(fn (Tenant $record): string => $record->is_active ? 'heroicon-o-no-symbol' : 'heroicon-o-bolt')
+                    ->color(fn (Tenant $record): string => $record->is_active ? 'danger' : 'success')
                     ->requiresConfirmation()
-                    ->modalHeading(fn ($record) => $record->is_active ? 'KILL SWITCH - Suspension Inmediata' : 'Reactivar Negocio')
-                    ->modalDescription(fn ($record) => $record->is_active
+                    ->modalHeading(fn (Tenant $record): string => $record->is_active ? 'KILL SWITCH - Suspension Inmediata' : 'Reactivar Negocio')
+                    ->modalDescription(fn (Tenant $record): string => $record->is_active
                         ? 'ADVERTENCIA: Esta accion congelara TODA la operacion del negocio inmediatamente. El micrositio mostrara error 403 y el panel de control sera inaccesible.'
                         : 'El negocio sera reactivado y podra funcionar normalmente.')
-                    ->modalSubmitActionLabel(fn ($record) => $record->is_active ? 'Confirmar Suspension' : 'Confirmar Reactivacion')
-                    ->action(function ($record) {
+                    ->modalSubmitActionLabel(fn (Tenant $record): string => $record->is_active ? 'Confirmar Suspension' : 'Confirmar Reactivacion')
+                    ->action(function (Tenant $record): void {
                         $wasActive = $record->is_active;
                         $record->update(['is_active' => ! $record->is_active]);
 
@@ -497,11 +525,11 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('forceUpgrade')
+                Action::make('forceUpgrade')
                     ->label('Forzar PRO')
                     ->icon('heroicon-o-arrow-up-circle')
                     ->color('info')
-                    ->visible(fn ($record) => ! $record->is_pro)
+                    ->visible(fn (Tenant $record): bool => ! $record->is_pro)
                     ->requiresConfirmation()
                     ->modalHeading('Activar Plan PRO Manualmente')
                     ->modalDescription('Esto activara el Plan PRO sin registro de pago. Usar solo para regalos o pruebas.')
@@ -518,7 +546,7 @@ class TenantResource extends Resource
                             ->default('1')
                             ->required(),
                     ])
-                    ->action(function ($record, array $data) {
+                    ->action(function (Tenant $record, array $data): void {
                         $months = $data['duration'] == '999' ? 1200 : (int) $data['duration'];
 
                         $record->update([
@@ -533,11 +561,11 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\EditAction::make(),
+                EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

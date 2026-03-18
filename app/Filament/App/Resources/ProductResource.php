@@ -8,11 +8,23 @@ use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\ProductResource\Pages;
 use App\Filament\App\Resources\ProductResource\RelationManagers\OptionGroupsRelationManager;
 use App\Models\Product;
+use App\Models\Tenant;
 use App\Settings\GeneralSettings;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ReplicateAction;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Actions as SchemaActions;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -73,7 +85,7 @@ class ProductResource extends Resource
             return false;
         }
 
-        $tenant = Filament::getTenant();
+        $tenant = static::getCurrentTenant();
 
         if (! $tenant) {
             return false;
@@ -102,31 +114,31 @@ class ProductResource extends Resource
      */
     public static function getProductLimitInfo(): array
     {
-        $tenant = Filament::getTenant();
+        $tenant = static::getCurrentTenant();
 
         if (! $tenant) {
-            return ['count' => 0, 'limit' => 0, 'percentage' => 0, 'canCreate' => false];
+            return ['count' => 0, 'limit' => 0, 'percentage' => 0, 'canCreate' => false, 'isPro' => false];
         }
-
-        if ($tenant->is_pro) {
-            return ['count' => 0, 'limit' => PHP_INT_MAX, 'percentage' => 0, 'canCreate' => true, 'isPro' => true];
-        }
-
-        $settings = app(GeneralSettings::class);
-        $limit = ($tenant->is_pro) ? '∞' : ($settings->free_plan_product_limit ?? 10);
 
         $currentCount = DB::table('products')
             ->where('tenant_id', $tenant->id)
             ->whereNull('deleted_at')
             ->count();
 
-        $percentage = ($limit === '∞') ? 0 : min(100, round(($currentCount / $limit) * 100));
+        if ($tenant->is_pro) {
+            return ['count' => $currentCount, 'limit' => null, 'percentage' => 0, 'canCreate' => true, 'isPro' => true];
+        }
+
+        $settings = app(GeneralSettings::class);
+        $limit = (int) ($settings->free_plan_product_limit ?? 10);
+        $percentage = $limit > 0 ? min(100, (int) round(($currentCount / $limit) * 100)) : 100;
 
         return [
             'count' => $currentCount,
             'limit' => $limit,
             'percentage' => $percentage,
             'canCreate' => static::canCreate(),
+            'isPro' => false,
         ];
     }
 
@@ -141,8 +153,8 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 1: IMAGEN INSTAGRAM-STYLE
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('📷 Imagen del Producto')
-                    ->description(fn () => Filament::getTenant()?->is_pro
+                Section::make('📷 Imagen del Producto')
+                    ->description(fn (): string => static::currentTenantIsPro()
                         ? 'Sube hasta 5 imágenes. Arrastra para reordenar.'
                         : '⚠️ Plan Gratuito: Solo 1 imagen. Actualiza a PRO para más.')
                     ->schema([
@@ -158,26 +170,26 @@ class ProductResource extends Resource
                             ->imageEditorMode(2)
                             ->imageEditorAspectRatios(['1:1'])
                             ->imageCropAspectRatio('1:1')
-                            ->imageResizeTargetWidth(800)
-                            ->imageResizeTargetHeight(800)
+                            ->imageResizeTargetWidth('800')
+                            ->imageResizeTargetHeight('800')
                             // PRO: múltiples imágenes
-                            ->maxFiles(fn () => Filament::getTenant()?->is_pro ? 5 : 1)
-                            ->multiple(fn () => Filament::getTenant()?->is_pro)
-                            ->reorderable(fn () => Filament::getTenant()?->is_pro)
+                            ->maxFiles(fn (): int => static::currentTenantIsPro() ? 5 : 1)
+                            ->multiple(fn (): bool => static::currentTenantIsPro())
+                            ->reorderable(fn (): bool => static::currentTenantIsPro())
                             ->panelLayout('grid')
                             ->columnSpanFull(), /*
                             ->hintAction(
-                                \Filament\Forms\Components\Actions\Action::make('generate_ai_profile')
+                                Action::make('generate_ai_profile')
                                     ->label('Generar con IA (PRO)')
                                     ->icon('heroicon-m-sparkles')
                                     ->color('gray')
-                                    ->visible(fn () => Filament::getTenant()?->is_pro ?? false)
+                                    ->visible(fn (): bool => static::currentTenantIsPro())
                                     ->requiresConfirmation()
                                     ->modalHeading('GeneraciÃ³n Inteligente')
                                     ->modalDescription('Usaremos tu descripciÃ³n actual para generar un texto persuasivo y optimizado. Esto consumirÃ¡ crÃ©ditos de tu presupuesto de IA.')
                                     ->modalSubmitActionLabel('Generar Perfil')
-                                    ->action(function (Forms\Set $set, Forms\Get $get): void {
-                                        $tenant = Filament::getTenant();
+                                    ->action(function (Set $set, Get $get): void {
+                                        $tenant = static::getCurrentTenant();
                                         $user = auth()->user();
                                         $productName = trim((string) ($get('name') ?? ''));
                                         $currentDescription = trim((string) ($get('description') ?? ''));
@@ -214,7 +226,7 @@ class ProductResource extends Resource
                                                 tenantId: (string) $tenant->id
                                             );
 
-                                            $set('description', strip_tags((string) ($result['description'] ?? $currentDescription)));
+                                            $set('description', strip_tags((string) $result['description']));
 
                                             Notification::make()
                                                 ->title('Magia aplicada')
@@ -249,7 +261,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 2: DATOS ESENCIALES
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('🏷️ Información Básica')
+                Section::make('🏷️ Información Básica')
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre del Producto')
@@ -277,17 +289,17 @@ class ProductResource extends Resource
                             ->placeholder('Describe tu producto brevemente...')
                             ->columnSpanFull()
                             ->hintAction(
-                                \Filament\Forms\Components\Actions\Action::make('generate_ai_profile')
+                                Action::make('generate_ai_profile')
                                     ->label('Generar con IA (PRO)')
                                     ->icon('heroicon-m-sparkles')
                                     ->color('gray')
-                                    ->visible(fn () => Filament::getTenant()?->is_pro ?? false)
+                                    ->visible(fn (): bool => static::currentTenantIsPro())
                                     ->requiresConfirmation()
                                     ->modalHeading('Generacion inteligente')
                                     ->modalDescription('Usaremos tu descripcion actual para generar un texto persuasivo y optimizado. Esto consumira creditos de tu presupuesto de IA.')
                                     ->modalSubmitActionLabel('Generar perfil')
-                                    ->action(function (Forms\Set $set, Forms\Get $get): void {
-                                        $tenant = Filament::getTenant();
+                                    ->action(function (Set $set, Get $get): void {
+                                        $tenant = static::getCurrentTenant();
                                         $user = auth()->user();
                                         $productName = trim((string) ($get('name') ?? ''));
                                         $currentDescription = trim((string) ($get('description') ?? ''));
@@ -324,7 +336,7 @@ class ProductResource extends Resource
                                                 tenantId: (string) $tenant->id
                                             );
 
-                                            $set('description', strip_tags((string) ($result['description'] ?? $currentDescription)));
+                                            $set('description', strip_tags((string) $result['description']));
 
                                             Notification::make()
                                                 ->title('Magia aplicada')
@@ -358,7 +370,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 3: ORGANIZACIÓN
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('📂 Organización')
+                Section::make('📂 Organización')
                     ->schema([
                         Forms\Components\Select::make('category_id')
                             ->relationship('category', 'name')
@@ -376,14 +388,14 @@ class ProductResource extends Resource
                         // ═══════════════════════════════════════════════════
                         Forms\Components\Select::make('menu_section_id')
                             // Solo visible para tenants con organizacion de menu
-                            ->visible(fn () => Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ?? false)
+                            ->visible(fn (): bool => static::currentTenantHasCapability(Capability::MENU_MODIFIERS))
 
                             // SEGURIDAD: Filtro estricto por tenant_id
                             ->relationship(
                                 'menuSection',
                                 'name',
                                 fn ($query) => $query
-                                    ->where('tenant_id', Filament::getTenant()?->id)
+                                    ->where('tenant_id', static::currentTenantId())
                                     ->where('is_active', true)
                                     ->orderBy('sort_order')
                             )
@@ -403,7 +415,7 @@ class ProductResource extends Resource
 
                                 // Inyección automática del tenant_id (seguridad)
                                 Forms\Components\Hidden::make('tenant_id')
-                                    ->default(fn () => Filament::getTenant()?->id),
+                                    ->default(fn (): int|string|null => static::currentTenantId()),
 
                                 // Sección activa por defecto
                                 Forms\Components\Hidden::make('is_active')
@@ -411,7 +423,7 @@ class ProductResource extends Resource
 
                                 // Sort order auto-calculado al final
                                 Forms\Components\Hidden::make('sort_order')
-                                    ->default(fn () => \App\Models\MenuSection::where('tenant_id', Filament::getTenant()?->id)->max('sort_order') + 1),
+                                    ->default(fn (): int => ((int) \App\Models\MenuSection::where('tenant_id', static::currentTenantId())->max('sort_order')) + 1),
                             ])
                             ->createOptionModalHeading('Crear Nueva Sección')
                             ->helperText('✨ Organiza tu catálogo en secciones arrastrables'),
@@ -425,7 +437,7 @@ class ProductResource extends Resource
                         // ═══════════════════════════════════════════════════
                         Forms\Components\Select::make('menu_section_id_locked')
                             // Mostrar version bloqueada cuando el tenant no tenga esta capacidad
-                            ->visible(fn () => ! (Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ?? false))
+                            ->visible(fn (): bool => ! static::currentTenantHasCapability(Capability::MENU_MODIFIERS))
 
                             // Estado bloqueado
                             ->disabled()
@@ -438,7 +450,7 @@ class ProductResource extends Resource
                             // Mensaje persuasivo con link de upsell
                             ->helperText(new \Illuminate\Support\HtmlString(
                                 '<span class="text-gray-600">Organiza tus productos en secciones personalizadas.</span> '.
-                                '<a href="'.route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug ?? '']).'" '.
+                                '<a href="'.route('filament.app.pages.manage-billing', ['tenant' => static::currentTenantSlug()]).'" '.
                                 'class="text-primary-600 font-bold hover:underline">→ Desbloquear con PRO</a>'
                             )),
                     ])
@@ -448,7 +460,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 4: CONTROL DE ESTADO
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('⚙️ Control')
+                Section::make('⚙️ Control')
                     ->schema([
                         Forms\Components\Toggle::make('is_visible')
                             ->label('Visible en Catálogo')
@@ -458,7 +470,7 @@ class ProductResource extends Resource
                         Forms\Components\Toggle::make('is_featured')
                             ->label('Producto Destacado')
                             ->default(false)
-                            ->visible(fn () => Filament::getTenant()?->is_pro)
+                            ->visible(fn (): bool => static::currentTenantIsPro())
                             ->helperText('Aparecerá primero en tu catálogo'),
 
                         // ═══════════════════════════════════════════════════
@@ -468,7 +480,7 @@ class ProductResource extends Resource
                             ->label('Producto de Impulso (Cross-Selling)')
                             ->default(false)
                             ->onColor('success')
-                            ->visible(fn () => Filament::getTenant()?->is_pro)
+                            ->visible(fn (): bool => static::currentTenantIsPro())
                             ->helperText('Activar esta opción sugerirá este producto en el checkout para aumentar el ticket promedio.'),
                     ])
                     ->columns(2)
@@ -477,9 +489,9 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN: UPSELL MARKETING (Solo para Free)
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('✨ Desbloquea Funciones PRO')
+                Section::make('✨ Desbloquea Funciones PRO')
                     ->description('Mejora tu presencia y convierte más clientes.')
-                    ->visible(fn () => ! Filament::getTenant()?->is_pro)
+                    ->visible(fn (): bool => ! static::currentTenantIsPro())
                     ->schema([
                         Forms\Components\Placeholder::make('upsell_features')
                             ->label('')
@@ -516,13 +528,13 @@ class ProductResource extends Resource
                                 </div>
                             ')),
 
-                        Forms\Components\Actions::make([
-                            Forms\Components\Actions\Action::make('upgrade_to_pro')
+                        SchemaActions::make([
+                            Action::make('upgrade_to_pro')
                                 ->label('🚀 Mejorar a Plan PRO')
                                 ->color('warning')
                                 ->size('lg')
                                 ->extraAttributes(['class' => 'w-full justify-center'])
-                                ->url(fn () => route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug])),
+                                ->url(fn (): string => route('filament.app.pages.manage-billing', ['tenant' => static::currentTenantSlug()])),
                         ])->fullWidth(),
                     ])
                     ->collapsible(),
@@ -530,9 +542,9 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 5: VARIANTES (Solo PRO)
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('🎨 Variantes del Producto')
+                Section::make('🎨 Variantes del Producto')
                     ->description('Define opciones como talla, color, tamaño.')
-                    ->visible(fn () => Filament::getTenant()?->hasCapability(Capability::PRODUCT_VARIANTS) ?? false)
+                    ->visible(fn (): bool => static::currentTenantHasCapability(Capability::PRODUCT_VARIANTS))
                     ->schema([
                         Forms\Components\Repeater::make('variants')
                             ->label('')
@@ -607,7 +619,7 @@ class ProductResource extends Resource
                     ->label('Sección')
                     ->badge()
                     ->color('gray')
-                    ->visible(fn () => Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ?? false)
+                    ->visible(fn (): bool => static::currentTenantHasCapability(Capability::MENU_MODIFIERS))
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 // ═══════════════════════════════════════════════════════════
@@ -622,7 +634,7 @@ class ProductResource extends Resource
                 Tables\Columns\ToggleColumn::make('is_featured')
                     ->label('⭐')
                     ->onColor('warning')
-                    ->visible(fn () => Filament::getTenant()?->is_pro)
+                    ->visible(fn (): bool => static::currentTenantIsPro())
                     ->tooltip('Producto destacado'),
 
                 // Fecha de creación
@@ -644,7 +656,7 @@ class ProductResource extends Resource
                     ->titlePrefixedWithLabel(false),
             ])
             ->defaultGroup(
-                Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ? 'menuSection.name' : null
+                static::currentTenantHasCapability(Capability::MENU_MODIFIERS) ? 'menuSection.name' : null
             )
             ->defaultSort('name', 'asc')
             ->filters([
@@ -656,11 +668,11 @@ class ProductResource extends Resource
 
                 Tables\Filters\SelectFilter::make('menu_section_id')
                     ->relationship('menuSection', 'name')
-                    ->visible(fn () => Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ?? false)
+                    ->visible(fn (): bool => static::currentTenantHasCapability(Capability::MENU_MODIFIERS))
                     ->label('Sección'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
+                EditAction::make()
                     ->iconButton(),
 
                 // ═══════════════════════════════════════════════════════════
@@ -668,7 +680,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // Hamburguesa Sencilla → Hamburguesa Doble en 1 clic
                 // ═══════════════════════════════════════════════════════════
-                Tables\Actions\ReplicateAction::make()
+                ReplicateAction::make()
                     ->iconButton()
                     ->icon('heroicon-o-document-duplicate')
                     ->label('Duplicar')
@@ -691,12 +703,12 @@ class ProductResource extends Resource
                     ->modalDescription('Se creará una copia inactiva que podrás editar.')
                     ->modalSubmitActionLabel('Duplicar'),
 
-                Tables\Actions\DeleteAction::make()
+                DeleteAction::make()
                     ->iconButton(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
 
                     // ═══════════════════════════════════════════════════════════
                     // BULK ACTION PRO: Asignación Masiva de Sección
@@ -704,13 +716,13 @@ class ProductResource extends Resource
                     // Resuelve el pain point de migrar 50+ productos al plan PRO
                     // Permite mover múltiples productos a una sección en 1 clic
                     // ═══════════════════════════════════════════════════════════
-                    Tables\Actions\BulkAction::make('assign_section')
+                    BulkAction::make('assign_section')
                         ->label('Mover a Sección')
                         ->icon('heroicon-o-folder-arrow-down')
                         ->color('primary')
 
                         // Solo visible cuando el tenant tiene organización de menú
-                        ->visible(fn () => Filament::getTenant()?->hasCapability(Capability::MENU_MODIFIERS) ?? false)
+                        ->visible(fn (): bool => static::currentTenantHasCapability(Capability::MENU_MODIFIERS))
 
                         // Modal con selector de sección
                         ->form([
@@ -721,7 +733,7 @@ class ProductResource extends Resource
                                 // SEGURIDAD: Scoped al tenant actual
                                 ->options(function () {
                                     return \App\Models\MenuSection::query()
-                                        ->where('tenant_id', Filament::getTenant()?->id)
+                                        ->where('tenant_id', static::currentTenantId())
                                         ->where('is_active', true)
                                         ->orderBy('sort_order')
                                         ->pluck('name', 'id');
@@ -742,7 +754,8 @@ class ProductResource extends Resource
                             });
 
                             // Obtener nombre de la sección para el mensaje
-                            $sectionName = \App\Models\MenuSection::find($sectionId)?->name ?? 'la sección';
+                            $section = \App\Models\MenuSection::find($sectionId);
+                            $sectionName = $section instanceof \App\Models\MenuSection ? $section->name : 'la sección';
 
                             // Notificación de éxito
                             Notification::make()
@@ -783,5 +796,38 @@ class ProductResource extends Resource
             'create' => Pages\CreateProduct::route('/create'),
             'edit' => Pages\EditProduct::route('/{record}/edit'),
         ];
+    }
+
+    protected static function getCurrentTenant(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    protected static function currentTenantId(): int|string|null
+    {
+        return static::getCurrentTenant()?->getKey();
+    }
+
+    protected static function currentTenantSlug(): string
+    {
+        $tenant = static::getCurrentTenant();
+
+        return $tenant instanceof Tenant ? $tenant->slug : '';
+    }
+
+    protected static function currentTenantIsPro(): bool
+    {
+        $tenant = static::getCurrentTenant();
+
+        return $tenant instanceof Tenant ? (bool) $tenant->is_pro : false;
+    }
+
+    protected static function currentTenantHasCapability(Capability $capability): bool
+    {
+        $tenant = static::getCurrentTenant();
+
+        return $tenant?->hasCapability($capability) ?? false;
     }
 }
