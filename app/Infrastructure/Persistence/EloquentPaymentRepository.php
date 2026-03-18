@@ -55,7 +55,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
         $model->reference_number = $payment->referenceNumber;
         $model->status = $payment->status->value;
         $model->proof_path = $payment->proofUrl; // MAPPED
-        $model->created_at = $payment->createdAt;
+        $model->created_at = $payment->createdAt->format('Y-m-d H:i:s');
         $model->idempotency_key = $payment->idempotencyKey ?? null;
         $model->version = $payment->version;
 

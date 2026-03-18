@@ -9,6 +9,7 @@ use App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface;
 use App\Domain\Shared\Exceptions\DuplicateEntityException;
 use App\Infrastructure\Persistence\Mappers\UserMapper;
 use App\Infrastructure\Persistence\Models\SocialIdentityModel;
+use App\Models\User as UserModel;
 
 /**
  * EloquentSocialIdentityRepository - Strict Implementation
@@ -31,12 +32,14 @@ final class EloquentSocialIdentityRepository implements SocialIdentityRepository
             ->first();
 
         // 1. Guard Clause: No Identity or No User Link
-        if ($identity === null || $identity->user === null) {
+        $user = $identity?->user;
+
+        if (! $user instanceof UserModel) {
             return null;
         }
 
         // 2. Mapper Translation (Infrastructure -> Domain)
-        return $this->mapper->toDomain($identity->user);
+        return $this->mapper->toDomain($user);
     }
 
     public function linkIdentity(
@@ -51,7 +54,7 @@ final class EloquentSocialIdentityRepository implements SocialIdentityRepository
             ->where('provider_id', $providerId)
             ->first();
 
-        if ($identity !== null && (string) $identity->user_id !== $user->id()) {
+        if ($identity !== null && (string) $identity->getAttribute('user_id') !== $user->id()) {
             throw new DuplicateEntityException('Social identity already linked to another user.');
         }
 

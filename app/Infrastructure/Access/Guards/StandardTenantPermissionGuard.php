@@ -21,14 +21,15 @@ final class StandardTenantPermissionGuard implements TenantPermissionGuardInterf
         }
 
         $membership = $tenant->memberships()
-            ->accepted()
+            ->whereNotNull('accepted_at')
             ->where('user_id', $user->id)
             ->first();
 
         if ($membership instanceof TenantMembership) {
-            $role = $membership->role instanceof Role
-                ? $membership->role
-                : Role::tryFrom((string) $membership->getRawOriginal('role'));
+            $roleValue = $membership->getAttribute('role');
+            $role = $roleValue instanceof Role
+                ? $roleValue
+                : Role::tryFrom((string) $roleValue);
 
             if ($role === Role::OWNER) {
                 return true;

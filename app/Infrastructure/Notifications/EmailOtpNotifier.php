@@ -31,8 +31,7 @@ final class EmailOtpNotifier implements OtpNotifierInterface
         int $expiryMinutes
     ): void {
         // Use recipient email if available, otherwise use the provided identifier
-        $recipientEmail = $recipient?->email ?? $identifier;
-        $recipientName = $recipient?->name ?? 'User';
+        $recipientEmail = $recipient !== null ? $recipient->email() : $identifier;
 
         Mail::to($recipientEmail)->send(new OtpMail($plainTextCode, $expiryMinutes));
 

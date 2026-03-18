@@ -56,5 +56,12 @@ interface TenantRepositoryInterface
 
     public function save(TenantEntity $tenant): TenantEntity;
 
+    /**
+     * Persist a tenant with optimistic concurrency control.
+     *
+     * @throws \App\Domain\Shared\Exceptions\StaleObjectException
+     */
+    public function updateOptimistically(TenantEntity $tenant): void;
+
     public function delete(TenantEntity $tenant): void;
 }

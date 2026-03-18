@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Infrastructure\Console\Commands;
 
 use App\Domain\Billing\Entities\SubscriptionIntent;
+use App\Domain\Billing\Entities\PlanEntity;
+use App\Domain\Billing\DTOs\SubscriptionSwapResult;
 use App\Domain\Billing\Gateways\SubscriptionGatewayInterface;
 use App\Domain\Billing\Repositories\PlanRepositoryInterface;
 use App\Domain\Shared\Exceptions\StaleObjectException;
@@ -55,14 +57,14 @@ final class ReconcileSubscriptionIntentsCommand extends Command
         if ($stuckIntents->isEmpty()) {
             $this->info('No stuck intents found.');
 
-            return 0;
+            return self::SUCCESS;
         }
 
         foreach ($stuckIntents as $intent) {
             $this->processIntent($intent);
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 
     private function processIntent(object $intent): void
@@ -85,8 +87,7 @@ final class ReconcileSubscriptionIntentsCommand extends Command
             // This is OUTSIDE the transaction loop to avoid holding DB connections during HTTP calls.
             $gatewayResult = $this->gateway->swapPlan(
                 subscriptionReference: $subscriptionRef ?? "tenant_{$intent->tenant_id}",
-                newPlanId: $plan->externalGatewayId,
-                idempotencyKey: $intent->id
+                newPlanExternalId: $plan->externalGatewayId,
             );
 
             if ($gatewayResult->success) {
@@ -108,11 +109,11 @@ final class ReconcileSubscriptionIntentsCommand extends Command
         }
     }
 
-    private function healWithRetry(object $intent, object $plan, object $gatewayResult): void
+    private function healWithRetry(object $intent, PlanEntity $plan, SubscriptionSwapResult $gatewayResult): void
     {
         $attempts = 0;
 
-        do {
+        while (true) {
             $attempts++;
 
             // Start Transaction Scope: Covers Intent State + Tenant State
@@ -153,8 +154,7 @@ final class ReconcileSubscriptionIntentsCommand extends Command
 
                 DB::commit();
 
-                // Success - Break the loop immediately
-                break;
+                return;
 
             } catch (StaleObjectException $e) {
                 DB::rollBack();
@@ -189,7 +189,7 @@ final class ReconcileSubscriptionIntentsCommand extends Command
                 throw $e; // Fatal error, no retry
             }
 
-        } while ($attempts < self::MAX_ATTEMPTS);
+        }
     }
 
     private function markFailed(string $id, ?string $reason): void

@@ -313,6 +313,7 @@ final class TenantEntity
             'description' => $this->description,
             'slogan' => $this->slogan,
             'is_ai_enhanced' => $this->isAiEnhanced,
+            'version' => $this->version,
         ];
     }
 

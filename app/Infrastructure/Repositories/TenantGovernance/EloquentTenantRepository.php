@@ -7,7 +7,9 @@ namespace App\Infrastructure\Repositories\TenantGovernance;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Domain\Shared\Exceptions\StaleObjectException;
 use App\Models\Tenant;
+use Illuminate\Support\Facades\DB;
 use Spatie\OpeningHours\OpeningHours;
 
 /**
@@ -156,11 +158,50 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
             'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
             'subscription_ends_at' => $state['subscription_ends_at'] ?? null,
+            'subscription_reference' => $state['subscription_reference'] ?? null,
+            'version' => max(1, $tenant->version()),
         ]);
 
         $model->save();
 
         return $tenant;
+    }
+
+    public function updateOptimistically(TenantEntity $tenant): void
+    {
+        $state = $tenant->toStateArray();
+        $affected = Tenant::query()
+            ->whereKey($tenant->id())
+            ->where('version', max(1, $tenant->version()))
+            ->update([
+                'user_id' => $state['owner_id'] ?? null,
+                'name' => $state['name'],
+                'slug' => $state['domain'],
+                'is_active' => $state['is_active'],
+                'category_id' => $state['category_id'] ?? null,
+                'city_id' => $state['city_id'] ?? null,
+                'logo_path' => $state['logo_path'] ?? null,
+                'phone' => $state['phone'] ?? null,
+                'address' => $state['address'] ?? null,
+                'latitude' => $state['latitude'] ?? null,
+                'longitude' => $state['longitude'] ?? null,
+                'description' => $state['description'] ?? null,
+                'slogan' => $state['slogan'] ?? null,
+                'whatsapp_number' => $state['whatsapp'] ?? null,
+                'is_ai_enhanced' => $state['is_ai_enhanced'] ?? false,
+                'is_pro' => $state['is_pro'] ?? false,
+                'product_limit' => $state['product_limit'] ?? 10,
+                'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
+                'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
+                'subscription_ends_at' => $state['subscription_ends_at'] ?? null,
+                'subscription_reference' => $state['subscription_reference'] ?? null,
+                'updated_at' => now(),
+                'version' => DB::raw('version + 1'),
+            ]);
+
+        if ($affected === 0) {
+            throw new StaleObjectException("Tenant {$tenant->id()} was modified by another process.");
+        }
     }
 
     public function delete(TenantEntity $tenant): void
@@ -210,6 +251,7 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'is_ai_enhanced' => (bool) $model->getAttribute('is_ai_enhanced'),
             'is_pro' => (bool) $model->is_pro,
             'product_limit' => (int) ($model->getAttribute('product_limit') ?? 10),
+            'version' => (int) ($model->getAttribute('version') ?? 1),
         ]);
     }
 
