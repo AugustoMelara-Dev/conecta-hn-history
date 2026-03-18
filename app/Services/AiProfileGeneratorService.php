@@ -320,7 +320,7 @@ PROMPT;
                 'Content-Type' => 'application/json',
             ])
                 ->timeout(self::TIMEOUT_SECONDS)
-                ->retry(self::RETRY_ATTEMPTS, self::RETRY_DELAY_MS, function (\Exception $exception) {
+                ->retry(self::RETRY_ATTEMPTS, self::RETRY_DELAY_MS, function (\Throwable $exception): bool {
                     if ($exception instanceof ConnectionException) {
                         return true;
                     }
@@ -365,7 +365,10 @@ PROMPT;
         $errorBody = $response->body();
 
         if ($statusCode === 429) {
-            $retryAfter = (int) ($response->header('Retry-After') ?? 60);
+            $retryAfterHeader = $response->header('Retry-After');
+            $retryAfter = $retryAfterHeader !== ''
+                ? (int) $retryAfterHeader
+                : 60;
             $rateLimitUntil = now()->addSeconds($retryAfter);
             Cache::put(self::RATE_LIMIT_CACHE_KEY, $rateLimitUntil, $retryAfter);
 

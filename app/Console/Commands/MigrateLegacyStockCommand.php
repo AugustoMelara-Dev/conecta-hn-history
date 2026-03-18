@@ -7,7 +7,9 @@ namespace App\Console\Commands;
 use App\Domain\Inventory\Enums\MovementType;
 use App\Models\InventoryLevel;
 use App\Models\InventoryMovement;
+use App\Models\Location;
 use App\Models\Product;
+use App\Models\Tenant;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -34,7 +36,7 @@ class MigrateLegacyStockCommand extends Command
                 foreach ($products as $product) {
                     $tenant = $product->tenant;
 
-                    if ($tenant === null) {
+                    if (! $tenant instanceof Tenant) {
                         $skipped++;
 
                         continue;
@@ -45,7 +47,7 @@ class MigrateLegacyStockCommand extends Command
                         ->where('is_active', true)
                         ->first();
 
-                    if ($primaryLocation === null) {
+                    if (! $primaryLocation instanceof Location) {
                         $skipped++;
 
                         continue;

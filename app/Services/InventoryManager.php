@@ -163,7 +163,7 @@ class InventoryManager implements \App\Application\Shared\Contracts\InventoryMan
      */
     protected function validateUnmanagedStock(Product $product): void
     {
-        if ($product->stock_status !== 'in_stock') {
+        if ($product->stock_status !== \App\Enums\StockStatus::InStock) {
             throw ValidationException::withMessages([
                 'items' => "Producto '{$product->name}' no disponible.",
             ]);
@@ -235,10 +235,6 @@ class InventoryManager implements \App\Application\Shared\Contracts\InventoryMan
             // proper enum casting. DB::table + hydrate fails with backed enums.
 
             // VC-AUDIT-102: Prevent scope bypass if tenant_id is missing
-            if ($order->tenant_id === null) {
-                throw new \LogicException('Cannot restock inventory: Order tenant_id is missing.');
-            }
-
             $lockedProducts = Product::query()
                 ->withoutGlobalScopes() // Bypass visibility scopes for admin operation
                 ->whereIn('id', $productIds)

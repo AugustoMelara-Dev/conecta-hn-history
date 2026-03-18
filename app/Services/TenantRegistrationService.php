@@ -66,13 +66,13 @@ class TenantRegistrationService
     /**
      * Registration result DTO
      */
-    public readonly User $user;
+    public User $user;
 
-    public readonly Tenant $tenant;
+    public Tenant $tenant;
 
-    public readonly ?Payment $payment;
+    public ?Payment $payment = null;
 
-    public readonly bool $isPro;
+    public bool $isPro = false;
 
     /**
      * 🛡️ Check if slug is reserved by system

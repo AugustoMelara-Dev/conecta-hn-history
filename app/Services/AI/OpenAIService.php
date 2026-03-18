@@ -181,7 +181,7 @@ EOT;
                         throw new AiProviderUnavailableException("OpenAI Unavailable after {$attempts} attempts.", 0, $e);
                     }
 
-                    $sleepMs = self::RETRY_BACKOFF[$attempts - 1] ?? 1000;
+                    $sleepMs = self::RETRY_BACKOFF[$attempts - 1];
                     usleep($sleepMs * 1000);
                 } catch (Throwable $e) {
                     throw new AiProviderUnavailableException('Unexpected AI Service Failure: '.$e->getMessage(), 0, $e);

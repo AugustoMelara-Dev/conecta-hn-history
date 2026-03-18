@@ -74,7 +74,7 @@ class EventArchitectureMetricsService
         }
 
         // Rule 2: readonly
-        if (method_exists($reflection, 'isReadOnly') && ! $reflection->isReadOnly()) {
+        if (! $reflection->isReadOnly()) {
             $violations['readonly'] = 'Missing readonly keyword';
         }
 

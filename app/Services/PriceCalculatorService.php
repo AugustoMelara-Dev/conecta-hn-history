@@ -118,7 +118,7 @@ class PriceCalculatorService implements \App\Application\Shared\Contracts\PriceC
      */
     protected function extractOptionIds(?array $options): array
     {
-        if (empty($options) || ! is_array($options)) {
+        if (empty($options)) {
             return [];
         }
 

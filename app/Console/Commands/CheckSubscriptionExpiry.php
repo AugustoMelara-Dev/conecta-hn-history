@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Tenant;
+use App\Models\User;
 use App\Notifications\SubscriptionExpiringNotification;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -91,8 +92,9 @@ class CheckSubscriptionExpiry extends Command
             ->chunkById(100, function ($tenants) use (&$processedCount, &$errorCount, $isDryRun) {
                 foreach ($tenants as $tenant) {
                     try {
+                        $user = $tenant->user;
                         // Defensive: Ensure tenant has a valid user to notify
-                        if (! $tenant->user) {
+                        if (! $user instanceof User) {
                             $this->warn("⚠️  Tenant #{$tenant->id} ({$tenant->name}) has no associated user - skipping");
                             Log::warning('CheckSubscriptionExpiry: Tenant has no user', [
                                 'tenant_id' => $tenant->id,
@@ -103,18 +105,18 @@ class CheckSubscriptionExpiry extends Command
                         }
 
                         // Defensive: Ensure user has email
-                        if (empty($tenant->user->email)) {
+                        if ($user->email === '') {
                             $this->warn("⚠️  Tenant #{$tenant->id} user has no email - skipping");
 
                             continue;
                         }
 
                         if ($isDryRun) {
-                            $this->line("  📧 Would notify: {$tenant->name} ({$tenant->user->email})");
+                            $this->line("  📧 Would notify: {$tenant->name} ({$user->email})");
                         } else {
                             // Dispatch async notification to queue
-                            $tenant->user->notify(new SubscriptionExpiringNotification($tenant));
-                            $this->line("  ✅ Notified: {$tenant->name} ({$tenant->user->email})");
+                            $user->notify(new SubscriptionExpiringNotification($tenant));
+                            $this->line("  ✅ Notified: {$tenant->name} ({$user->email})");
                         }
 
                         $processedCount++;

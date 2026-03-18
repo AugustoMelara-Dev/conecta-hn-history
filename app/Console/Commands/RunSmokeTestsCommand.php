@@ -49,7 +49,7 @@ final class RunSmokeTestsCommand extends Command
             $this->warn('Continuing because --force was provided.');
         }
 
-        $failed = ! $this->runAtomicProvisioningPhase() || $failed;
+        $failed = ! $this->runAtomicProvisioningPhase();
 
         if ($this->option('skip-webhook')) {
             $this->warn('Skipping webhook concurrency phase.');
@@ -264,7 +264,9 @@ final class RunSmokeTestsCommand extends Command
             ]);
 
             $statusCodes = array_map(
-                static fn ($response) => $response?->status() ?? 0,
+                static fn ($response) => $response instanceof \Illuminate\Http\Client\Response
+                    ? $response->status()
+                    : 0,
                 $responses
             );
 

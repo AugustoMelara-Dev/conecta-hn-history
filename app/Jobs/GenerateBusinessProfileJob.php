@@ -100,7 +100,7 @@ class GenerateBusinessProfileJob implements ShouldQueue
         Log::info('[GenerateBusinessProfileJob] Profile generation completed.', [
             'tenant_id' => $this->tenantId,
             'user_id' => $this->userId,
-            'seo_title' => $result['seo_title'] ?? 'N/A',
+            'seo_title' => $result['seo_title'],
         ]);
     }
 

@@ -71,7 +71,6 @@ class OrderStateService implements OrderStateServiceInterface
      * This allows pure domain unit tests with InMemoryEventBus.
      */
     public function __construct(
-        private readonly InventoryManagerInterface $inventoryManager,
         private readonly EventDispatcherInterface $eventDispatcher,
     ) {}
 

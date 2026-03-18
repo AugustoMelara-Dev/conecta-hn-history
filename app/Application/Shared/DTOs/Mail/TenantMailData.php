@@ -12,7 +12,7 @@ namespace App\Application\Shared\DTOs\Mail;
 final readonly class TenantMailData
 {
     public function __construct(
-        public int $id,
+        public string|int $id,
         public string $name,
         #[\SensitiveParameter] public string $email,
         public string $planType,
@@ -22,13 +22,13 @@ final readonly class TenantMailData
     /**
      * Create from Tenant model (snapshot at dispatch time).
      */
-    public static function fromTenant(object $tenant): self
+    public static function fromTenant(object $tenant, ?string $email = null): self
     {
         return new self(
             id: $tenant->id,
-            name: $tenant->name,
-            email: $tenant->email ?? '',
-            planType: $tenant->plan_type ?? 'semilla',
+            name: (string) $tenant->name,
+            email: $email ?? (string) ($tenant->email ?? ''),
+            planType: (string) ($tenant->plan_type ?? 'semilla'),
             subscriptionEndsAt: $tenant->subscription_ends_at?->toDateTimeString(),
         );
     }

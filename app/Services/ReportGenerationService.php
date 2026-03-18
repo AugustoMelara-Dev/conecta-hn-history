@@ -41,7 +41,7 @@ final class ReportGenerationService implements ReportGenerationInterface
             'total_revenue' => $orders->sum('total'),
             'avg_order_value' => $orders->avg('total') ?? 0,
             'by_status' => $orders->groupBy('status')->map->count(),
-            'by_payment' => $orders->groupBy(fn ($o) => $o->payment_method?->value ?? 'unknown')->map->count(),
+            'by_payment' => $orders->groupBy(fn (Order $order) => $order->payment_method ?? 'unknown')->map->count(),
         ];
 
         return Pdf::loadView('reports.sales-summary', [
@@ -64,12 +64,17 @@ final class ReportGenerationService implements ReportGenerationInterface
             ->where('manage_stock', true)
             ->orderBy('name')
             ->get(['id', 'name', 'sku', 'stock_quantity', 'low_stock_threshold']);
+        /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\Product> $products */
 
         $pdf = Pdf::loadView('reports.inventory-manifest', [
             'tenant' => $tenant,
             'products' => $products,
-            'low_stock_count' => $products->filter(fn ($p) => $p->stock_quantity <= $p->low_stock_threshold)->count(),
-            'out_of_stock_count' => $products->filter(fn ($p) => $p->stock_quantity <= 0)->count(),
+            'low_stock_count' => $products->filter(
+                static fn (\App\Models\Product $product): bool => $product->stock_quantity <= $product->low_stock_threshold
+            )->count(),
+            'out_of_stock_count' => $products->filter(
+                static fn (\App\Models\Product $product): bool => $product->stock_quantity <= 0
+            )->count(),
             'generated_at' => now(),
         ]);
 

@@ -29,6 +29,10 @@ use Illuminate\Support\Str;
  *
  * W-06 P2: Canonical location. Moved from App\Traits\HasDomainMetadata.
  * App\Traits\HasDomainMetadata kept as backward-compat alias for Infrastructure.
+ *
+ * NOTE:
+ * Readonly metadata must be assigned directly inside each event constructor.
+ * This trait only resolves metadata values for that constructor assignment.
  */
 trait HasDomainMetadata
 {

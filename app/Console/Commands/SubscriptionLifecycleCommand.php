@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Application\Shared\DTOs\Mail\TenantMailData;
 use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
 use App\Mail\SubscriptionExpiredMail;
 use App\Mail\SubscriptionExpiringMail;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Notifications\SubscriptionExpiringNotification;
 use App\Settings\GeneralSettings;
 use Carbon\Carbon;
@@ -150,8 +152,10 @@ class SubscriptionLifecycleCommand extends Command
      */
     protected function sendExpirationWarning(Tenant $tenant, int $daysUntilExpiry): void
     {
+        $user = $this->resolveTenantUser($tenant);
+
         // Guard: Tenant must have an associated user with email
-        if (! $tenant->user || empty($tenant->user->email)) {
+        if ($user === null || $user->email === '') {
             Log::warning('SubscriptionLifecycle: Tenant has no valid user for notification', [
                 'tenant_id' => $tenant->id,
             ]);
@@ -162,7 +166,7 @@ class SubscriptionLifecycleCommand extends Command
         if ($this->dryRun) {
             $this->components->twoColumnDetail(
                 "  Would notify: {$tenant->name}",
-                $tenant->user->email
+                $user->email
             );
             $this->notifiedCount++;
 
@@ -172,20 +176,20 @@ class SubscriptionLifecycleCommand extends Command
         try {
             // Try notification first (queued)
             if (class_exists(SubscriptionExpiringNotification::class)) {
-                $tenant->user->notify(new SubscriptionExpiringNotification($tenant));
+                $user->notify(new SubscriptionExpiringNotification($tenant));
             }
 
             // Also send email for redundancy
             if (class_exists(SubscriptionExpiringMail::class)) {
-                Mail::to($tenant->user->email)->queue(
-                    new SubscriptionExpiringMail($tenant, $daysUntilExpiry)
+                Mail::to($user->email)->queue(
+                    new SubscriptionExpiringMail($this->toTenantMailData($tenant, $user), $daysUntilExpiry)
                 );
             }
 
             $this->notifiedCount++;
             $this->components->twoColumnDetail(
                 "  ✓ Notified: {$tenant->name}",
-                $tenant->user->email
+                $user->email
             );
         } catch (\Exception $e) {
             $this->errorCount++;
@@ -284,19 +288,20 @@ class SubscriptionLifecycleCommand extends Command
 
             // Reload tenant to get confirmed state
             $tenant->refresh();
+            $user = $this->resolveTenantUser($tenant);
 
             // Send expiration notification (now safe - DB is committed)
-            if ($tenant->user && ! empty($tenant->user->email)) {
+            if ($user !== null && $user->email !== '') {
                 if (class_exists(SubscriptionExpiredMail::class)) {
-                    Mail::to($tenant->user->email)->queue(
-                        new SubscriptionExpiredMail($tenant)
+                    Mail::to($user->email)->queue(
+                        new SubscriptionExpiredMail($this->toTenantMailData($tenant, $user))
                     );
                 }
             }
 
             // Dispatch audit job (now safe - DB is committed)
             if (class_exists(AuditTenantLimits::class)) {
-                AuditTenantLimits::dispatch($tenant);
+                AuditTenantLimits::dispatch();
             }
 
             $this->expiredCount++;
@@ -316,5 +321,17 @@ class SubscriptionLifecycleCommand extends Command
 
             $this->components->error("  ✗ Failed: {$tenant->name} - {$e->getMessage()}");
         }
+    }
+
+    private function resolveTenantUser(Tenant $tenant): ?User
+    {
+        $user = $tenant->user;
+
+        return $user instanceof User ? $user : null;
+    }
+
+    private function toTenantMailData(Tenant $tenant, User $user): TenantMailData
+    {
+        return TenantMailData::fromTenant($tenant, (string) $user->email);
     }
 }
