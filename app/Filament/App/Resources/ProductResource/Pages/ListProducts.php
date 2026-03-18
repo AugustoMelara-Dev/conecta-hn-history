@@ -7,6 +7,7 @@ namespace App\Filament\App\Resources\ProductResource\Pages;
 use App\Filament\App\Resources\ProductResource;
 use App\Settings\GeneralSettings;
 use Filament\Actions;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 
@@ -76,7 +77,7 @@ class ListProducts extends ListRecords
                             ->body("Has alcanzado el límite de {$limitInfo['limit']} productos del Plan Gratuito. Mejora a PRO para subir productos ilimitados.")
                             ->persistent()
                             ->actions([
-                                \Filament\Notifications\Actions\Action::make('upgrade')
+                                Action::make('upgrade')
                                     ->button()
                                     ->label("Mejorar a PRO - L. {$price}/mes")
                                     ->url('/admin/billing')

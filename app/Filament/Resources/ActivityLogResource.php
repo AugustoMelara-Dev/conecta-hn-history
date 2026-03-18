@@ -5,20 +5,16 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ActivityLogResource\Pages;
-use Filament\Forms\Components\Section;
+use App\Models\User;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Spatie\Activitylog\Models\Activity;
 
-/**
- * ActivityLogResource - La "Caja Negra" del Sistema
- *
- * Registro forense inmutable de todas las operaciones críticas.
- * Solo usuarios con rol 'super_admin' o 'auditor' pueden acceder.
- */
 class ActivityLogResource extends Resource
 {
     protected static ?string $model = Activity::class;
@@ -47,7 +43,7 @@ class ActivityLogResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereDate('created_at', today())->count();
+        return (string) static::getModel()::query()->whereDate('created_at', today())->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -55,22 +51,21 @@ class ActivityLogResource extends Resource
         return 'warning';
     }
 
-    /**
-     * Control de acceso: Solo super_admin y auditor
-     */
     public static function canViewAny(): bool
     {
         $user = auth()->user();
 
+        if (! $user instanceof User) {
+            return false;
+        }
+
         $superAdmins = config('auth.super_admins', []);
         $isWhitelisted = in_array($user->email ?? '', $superAdmins, true);
+        $rawRole = (string) $user->getRawOriginal('role');
 
-        return $user && ($user->hasRole(['super_admin', 'auditor']) || $isWhitelisted);
+        return $user->isSuperAdmin() || $isWhitelisted || $rawRole === 'auditor';
     }
 
-    /**
-     * INMUTABLE: Nadie puede crear, editar o eliminar registros
-     */
     public static function canCreate(): bool
     {
         return false;
@@ -95,10 +90,7 @@ class ActivityLogResource extends Resource
     {
         return $schema
             ->schema([
-                Section::make('Detalles del Evento')
-                    ->schema([
-                        // Solo lectura
-                    ]),
+                Section::make('Detalles del Evento')->schema([]),
             ]);
     }
 
@@ -106,9 +98,6 @@ class ActivityLogResource extends Resource
     {
         return $table
             ->columns([
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA: Tipo de Evento
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('event')
                     ->label('Evento')
                     ->badge()
@@ -124,53 +113,31 @@ class ActivityLogResource extends Resource
                         'deleted' => 'Eliminado',
                         default => ucfirst($state),
                     }),
-
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA: Modelo Afectado
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('subject_type')
                     ->label('Entidad')
-                    ->formatStateUsing(fn ($state) => class_basename($state))
+                    ->formatStateUsing(fn (?string $state): string => class_basename((string) $state))
                     ->badge()
                     ->color('info'),
-
                 Tables\Columns\TextColumn::make('subject_id')
                     ->label('ID')
                     ->sortable(),
-
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA: Descripcion del Cambio
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('description')
                     ->label('Descripcion')
                     ->limit(50)
-                    ->tooltip(fn ($record) => $record->description),
-
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA: El Causante (Quien ejecuto la accion)
-                // ═══════════════════════════════════════════════════════════
+                    ->tooltip(fn (Activity $record): string => (string) $record->description),
                 Tables\Columns\TextColumn::make('causer.name')
                     ->label('Ejecutado por')
                     ->default('Sistema')
                     ->icon('heroicon-o-user')
                     ->searchable(),
-
                 Tables\Columns\TextColumn::make('causer.email')
                     ->label('Email')
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA: Direccion IP
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('properties.ip')
                     ->label('IP')
                     ->default('N/A')
                     ->badge()
                     ->color('gray'),
-
-                // ═══════════════════════════════════════════════════════════
-                // COLUMNA: Fecha y Hora
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Fecha/Hora')
                     ->dateTime('d/m/Y H:i:s')
@@ -184,7 +151,6 @@ class ActivityLogResource extends Resource
                         'updated' => 'Modificado',
                         'deleted' => 'Eliminado',
                     ]),
-
                 Tables\Filters\SelectFilter::make('subject_type')
                     ->label('Entidad')
                     ->options([
@@ -194,23 +160,19 @@ class ActivityLogResource extends Resource
                         'App\\Models\\Category' => 'Categoria',
                         'App\\Models\\City' => 'Ciudad',
                     ]),
-
                 Tables\Filters\SelectFilter::make('causer_id')
                     ->label('Usuario')
-                    ->options(fn () => \App\Models\User::pluck('name', 'id')->toArray())
+                    ->options(fn (): array => User::query()->pluck('name', 'id')->toArray())
                     ->searchable(),
-
                 Tables\Filters\Filter::make('created_at')
                     ->form([
-                        \Filament\Forms\Components\DatePicker::make('desde')
-                            ->label('Desde'),
-                        \Filament\Forms\Components\DatePicker::make('hasta')
-                            ->label('Hasta'),
+                        DatePicker::make('desde')->label('Desde'),
+                        DatePicker::make('hasta')->label('Hasta'),
                     ])
                     ->query(function ($query, array $data) {
                         return $query
-                            ->when($data['desde'], fn ($q) => $q->whereDate('created_at', '>=', $data['desde']))
-                            ->when($data['hasta'], fn ($q) => $q->whereDate('created_at', '<=', $data['hasta']));
+                            ->when($data['desde'] ?? null, fn ($q, $desde) => $q->whereDate('created_at', '>=', $desde))
+                            ->when($data['hasta'] ?? null, fn ($q, $hasta) => $q->whereDate('created_at', '<=', $hasta));
                     }),
             ])
             ->actions([
@@ -218,9 +180,7 @@ class ActivityLogResource extends Resource
                     ->modalHeading('Detalles del Registro')
                     ->modalContent(fn (Activity $record) => view('filament.resources.activity-log.view', ['record' => $record])),
             ])
-            ->bulkActions([
-                // INMUTABLE: Sin acciones masivas
-            ])
+            ->bulkActions([])
             ->defaultSort('created_at', 'desc');
     }
 

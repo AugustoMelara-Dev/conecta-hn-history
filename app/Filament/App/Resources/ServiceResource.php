@@ -1,14 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\ServiceResource\Pages;
 use App\Models\Service;
-use Filament\Forms;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 
 class ServiceResource extends Resource
 {
@@ -24,7 +35,7 @@ class ServiceResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return \Illuminate\Support\Facades\Gate::allows('viewAny', \App\Models\Service::class);
+        return Gate::allows('viewAny', Service::class);
     }
 
     public static function shouldRegisterNavigation(): bool
@@ -36,27 +47,24 @@ class ServiceResource extends Resource
     {
         return $schema
             ->schema([
-                Forms\Components\Section::make('Detalles del Servicio')
+                Section::make('Detalles del Servicio')
                     ->schema([
-                        Forms\Components\TextInput::make('name')
+                        TextInput::make('name')
                             ->label('Nombre del Servicio')
                             ->required()
                             ->maxLength(255),
-
-                        Forms\Components\Textarea::make('description')
+                        Textarea::make('description')
                             ->label('Descripcion')
                             ->rows(3)
                             ->columnSpanFull(),
-
-                        Forms\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
-                                Forms\Components\TextInput::make('price')
+                                TextInput::make('price')
                                     ->label('Precio')
                                     ->numeric()
                                     ->prefix('L.')
                                     ->required(),
-
-                                Forms\Components\TextInput::make('duration_minutes')
+                                TextInput::make('duration_minutes')
                                     ->label('Duracion')
                                     ->numeric()
                                     ->suffix('minutos')
@@ -64,8 +72,7 @@ class ServiceResource extends Resource
                                     ->step(5)
                                     ->minValue(5)
                                     ->default(30),
-
-                                Forms\Components\TextInput::make('buffer_before')
+                                TextInput::make('buffer_before')
                                     ->label('Margen Antes (Preparacion)')
                                     ->numeric()
                                     ->suffix('minutos')
@@ -73,18 +80,15 @@ class ServiceResource extends Resource
                                     ->step(5)
                                     ->minValue(0)
                                     ->default(0),
-
-                                Forms\Components\TextInput::make('buffer_after')
+                                TextInput::make('buffer_after')
                                     ->label('Margen Despues (Limpieza)')
                                     ->numeric()
                                     ->suffix('minutos')
                                     ->required()
                                     ->step(5)
-                                    ->minValue(0)
-                                    ->default(0),
+                                    ->minValue(0),
                             ]),
-
-                        Forms\Components\Toggle::make('is_active')
+                        Toggle::make('is_active')
                             ->label('Servicio Activo')
                             ->default(true),
                     ]),
@@ -100,15 +104,12 @@ class ServiceResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
-
                 Tables\Columns\TextColumn::make('formatted_price')
                     ->label('Precio'),
-
                 Tables\Columns\TextColumn::make('formatted_duration')
                     ->label('Duracion')
                     ->badge()
                     ->color('info'),
-
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Activo')
                     ->boolean(),
@@ -118,12 +119,12 @@ class ServiceResource extends Resource
                     ->label('Estado'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

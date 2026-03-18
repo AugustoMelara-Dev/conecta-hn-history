@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Models\User;
 use App\Services\EventArchitectureMetricsService;
 use Filament\Pages\Page;
 
@@ -46,9 +47,8 @@ class ArchitectureHealth extends Page
 
     public static function canAccess(): bool
     {
-        // Only super admins can access this page
         $user = auth()->user();
 
-        return $user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        return $user instanceof User && $user->isSuperAdmin();
     }
 }

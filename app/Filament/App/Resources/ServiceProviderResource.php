@@ -1,13 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\App\Resources;
 
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\ServiceProviderResource\Pages;
 use App\Models\ServiceProvider;
+use App\Models\Tenant;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
-use Filament\Forms;
+use Filament\Forms\Components\KeyValue;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -26,7 +36,9 @@ class ServiceProviderResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return Filament::getTenant()?->hasCapability(Capability::STAFF_CALENDAR) ?? false;
+        $tenant = static::getTenantRecord();
+
+        return $tenant?->hasCapability(Capability::STAFF_CALENDAR) ?? false;
     }
 
     public static function shouldRegisterNavigation(): bool
@@ -38,43 +50,36 @@ class ServiceProviderResource extends Resource
     {
         return $schema
             ->schema([
-                Forms\Components\Section::make('Información del Personal')
+                Section::make('Informacion del Personal')
                     ->schema([
-                        Forms\Components\TextInput::make('name')
+                        TextInput::make('name')
                             ->label('Nombre Completo')
                             ->required()
                             ->maxLength(255),
-
-                        Forms\Components\TextInput::make('email')
-                            ->label('Correo Electrónico')
+                        TextInput::make('email')
+                            ->label('Correo Electronico')
                             ->email()
                             ->maxLength(255),
-
-                        Forms\Components\TextInput::make('phone')
-                            ->label('Teléfono')
+                        TextInput::make('phone')
+                            ->label('Telefono')
                             ->tel(),
-
-                        Forms\Components\Toggle::make('is_active')
+                        Toggle::make('is_active')
                             ->label('Disponible para Reservas')
                             ->default(true),
                     ])->columns(2),
-
-                // ═══════════════════════════════════════════════════════════════
-                // SCHEDULE OVERRIDE - Provider-specific availability
-                // ═══════════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Horario Personalizado')
-                    ->description('Opcional: Define un horario específico para este miembro. Si está vacío, se usará el horario general del negocio.')
+                Section::make('Horario Personalizado')
+                    ->description('Opcional: define un horario especifico para este miembro.')
                     ->icon('heroicon-o-clock')
                     ->schema([
-                        Forms\Components\KeyValue::make('schedule_config')
+                        KeyValue::make('schedule_config')
                             ->label('')
-                            ->keyLabel('Día (en inglés)')
+                            ->keyLabel('Dia (en ingles)')
                             ->valueLabel('Horario (ej: 09:00-17:00)')
                             ->keyPlaceholder('monday')
                             ->valuePlaceholder('09:00-17:00')
                             ->reorderable()
-                            ->addActionLabel('Agregar Día')
-                            ->helperText('Días válidos: monday, tuesday, wednesday, thursday, friday, saturday, sunday. Formato de hora: HH:MM-HH:MM'),
+                            ->addActionLabel('Agregar Dia')
+                            ->helperText('Dias validos: monday, tuesday, wednesday, thursday, friday, saturday, sunday.'),
                     ])
                     ->collapsed()
                     ->collapsible(),
@@ -90,19 +95,15 @@ class ServiceProviderResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
-
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
                     ->icon('heroicon-o-envelope'),
-
                 Tables\Columns\TextColumn::make('phone')
-                    ->label('Teléfono')
+                    ->label('Telefono')
                     ->icon('heroicon-o-phone'),
-
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Disponible')
                     ->boolean(),
-
                 Tables\Columns\TextColumn::make('appointments_count')
                     ->label('Citas')
                     ->counts('appointments')
@@ -113,12 +114,12 @@ class ServiceProviderResource extends Resource
                     ->label('Disponibilidad'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -135,5 +136,12 @@ class ServiceProviderResource extends Resource
             'create' => Pages\CreateServiceProvider::route('/create'),
             'edit' => Pages\EditServiceProvider::route('/{record}/edit'),
         ];
+    }
+
+    protected static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

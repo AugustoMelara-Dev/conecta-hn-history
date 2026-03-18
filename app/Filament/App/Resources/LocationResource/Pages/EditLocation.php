@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\LocationResource\Pages;
 
 use App\Filament\App\Resources\LocationResource;
+use App\Models\Location;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
+/**
+ * @property Location $record
+ */
 class EditLocation extends EditRecord
 {
     protected static string $resource = LocationResource::class;
@@ -16,7 +20,22 @@ class EditLocation extends EditRecord
     {
         return [
             DeleteAction::make()
-                ->visible(fn (): bool => ! ((bool) $this->getRecord()->is_primary)),
+                ->visible(function (): bool {
+                    $location = $this->getLocationRecord();
+
+                    if (! $location instanceof Location) {
+                        return true;
+                    }
+
+                    return ! $location->is_primary;
+                }),
         ];
+    }
+
+    private function getLocationRecord(): ?Location
+    {
+        $record = $this->getRecord();
+
+        return $record instanceof Location ? $record : null;
     }
 }

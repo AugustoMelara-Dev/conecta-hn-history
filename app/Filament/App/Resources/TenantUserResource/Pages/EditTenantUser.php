@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\TenantUserResource\Pages;
 
 use App\Filament\App\Resources\TenantUserResource;
+use App\Models\TenantMembership;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
+/**
+ * @property TenantMembership $record
+ */
 class EditTenantUser extends EditRecord
 {
     protected static string $resource = TenantUserResource::class;

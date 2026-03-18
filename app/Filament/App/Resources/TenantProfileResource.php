@@ -7,9 +7,11 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\TenantProfileResource\Pages;
 use App\Filament\App\Resources\TenantProfileResource\RelationManagers;
 use App\Models\Tenant;
+use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -21,8 +23,7 @@ class TenantProfileResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-storefront';
 
-    // NAVIGATION SETTINGS: High Priority
-    protected static string|\UnitEnum|null $navigationGroup = 'Configuración';
+    protected static string|\UnitEnum|null $navigationGroup = 'Configuracion';
 
     protected static ?int $navigationSort = 1;
 
@@ -41,106 +42,84 @@ class TenantProfileResource extends Resource
         return 'Mi Negocio';
     }
 
-    /**
-     * SCOPE PROTECTION LAYER
-     * Returns ONLY the currently authenticated tenant.
-     * Functions as a redundant firewall even if global scopes fail.
-     */
     public static function getEloquentQuery(): Builder
     {
-        // 1. Get Base Query
         $query = parent::getEloquentQuery();
+        $tenant = static::getTenantRecord();
 
-        // 2. Apply Strict Firewall Rule
-        // Only allow access to the tenant ID that matches the current session context
-        return $query->where('id', Filament::getTenant()->id);
+        if (! $tenant instanceof Tenant) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereKey($tenant->getKey());
     }
 
     public static function form(Schema $schema): Schema
     {
         return $schema
             ->schema([
-                // ═══════════════════════════════════════════════════════════════
-                // ZONE A: VISUAL IDENTITY (Write Enabled)
-                // ═══════════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Identidad Visual')
-                    ->description('Personaliza cómo se ve tu marca ante el mundo.')
+                Section::make('Identidad Visual')
+                    ->description('Personaliza como se ve tu marca ante el mundo.')
                     ->schema([
                         Forms\Components\SpatieMediaLibraryFileUpload::make('logo')
                             ->label('Logo del Negocio')
-                            ->collection('logo') // Defined in Model
+                            ->collection('logo')
                             ->avatar()
                             ->image()
                             ->imageEditor()
-                            ->helperText('Formato recomendado: PNG o JPG. Se recortará en círculo par el perfil.'),
-
+                            ->helperText('Formato recomendado: PNG o JPG.'),
                         Forms\Components\SpatieMediaLibraryFileUpload::make('cover')
                             ->label('Imagen de Portada')
-                            ->collection('cover') // Defined in Model
+                            ->collection('cover')
                             ->image()
                             ->imageEditor()
                             ->columnSpanFull()
-                            ->helperText('Aparece en la parte superior de su micrositio. Resolución ideal: 1200x400px.'),
-
+                            ->helperText('Resolucion ideal: 1200x400px.'),
                         Forms\Components\ColorPicker::make('primary_color')
                             ->label('Color de Marca')
-                            ->helperText('Define el color principal para botones y enlaces de su sitio.')
+                            ->helperText('Define el color principal de botones y enlaces.')
                             ->default('#000000'),
                     ])->columns(2),
-
-                // ═══════════════════════════════════════════════════════════════
-                // ZONE B: CONTACT INFORMATION (Write Enabled)
-                // ═══════════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Información Publica')
-                    ->description('Datos de contacto visibles para sus clientes.')
+                Section::make('Informacion Publica')
+                    ->description('Datos de contacto visibles para tus clientes.')
                     ->schema([
                         Forms\Components\Textarea::make('description')
-                            ->label('Descripción Comercial')
+                            ->label('Descripcion Comercial')
                             ->rows(3)
                             ->columnSpanFull()
                             ->maxLength(500),
-
                         Forms\Components\TextInput::make('whatsapp_number')
                             ->label('WhatsApp Business')
                             ->tel()
-                            ->telRegex('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.\/0-9]*$/')
-                            ->helperText('Número para recibir pedidos. Incluya código de área (ej: 504...).'),
-
+                            ->telRegex('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\\s\\.\\/0-9]*$/')
+                            ->helperText('Incluye codigo de area (ej: 504...).'),
                         Forms\Components\TextInput::make('address')
-                            ->label('Dirección Física')
+                            ->label('Direccion Fisica')
                             ->maxLength(255)
                             ->columnSpanFull(),
                     ])->columns(2),
-
-                // ═══════════════════════════════════════════════════════════════
-                // ZONE C: SUBSCRIPTION DATA (READ ONLY - HARDENED)
-                // ═══════════════════════════════════════════════════════════════
-                // CRITICAL SECURITY: Protected against HTML manipulation via dehydrated(false).
-                Forms\Components\Section::make('Estado de Suscripción')
-                    ->description('Información contractual de su plan. Contacte a soporte para cambios.')
+                Section::make('Estado de Suscripcion')
+                    ->description('Informacion contractual de tu plan.')
                     ->icon('heroicon-o-shield-check')
                     ->schema([
-                        Forms\Components\TextInput::make('id') // UUID/ID
+                        Forms\Components\TextInput::make('id')
                             ->label('ID de Cuenta')
                             ->disabled()
-                            ->dehydrated(false), // Security: Ignored on save
-
+                            ->dehydrated(false),
                         Forms\Components\TextInput::make('slug')
                             ->label('URL del Micrositio')
-                            ->prefix(env('APP_URL').'/negocio/')
+                            ->prefix(rtrim((string) config('app.url'), '/').'/negocio/')
                             ->disabled()
                             ->dehydrated(false),
-
                         Forms\Components\TextInput::make('plan_type')
                             ->label('Plan Actual')
                             ->formatStateUsing(fn (string $state): string => strtoupper($state))
                             ->disabled()
                             ->dehydrated(false),
-
                         Forms\Components\TextInput::make('subscription_status')
                             ->label('Estado')
                             ->disabled()
-                            ->dehydrated(false) // Absolute Protection
+                            ->dehydrated(false)
                             ->formatStateUsing(fn (string $state): string => match ($state) {
                                 'active' => 'ACTIVO',
                                 'trial' => 'PERIODO DE PRUEBA',
@@ -148,8 +127,7 @@ class TenantProfileResource extends Resource
                                 'canceled' => 'CANCELADO',
                                 default => strtoupper($state),
                             }),
-                    ])->columns(2)
-                    ->collapsed(),
+                    ])->columns(2)->collapsed(),
             ]);
     }
 
@@ -161,11 +139,9 @@ class TenantProfileResource extends Resource
                     ->collection('logo')
                     ->label('')
                     ->circular(),
-
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre Comercial')
                     ->weight('bold'),
-
                 Tables\Columns\TextColumn::make('plan_type')
                     ->label('Plan')
                     ->badge()
@@ -176,18 +152,16 @@ class TenantProfileResource extends Resource
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => ucfirst($state)),
-
                 Tables\Columns\TextColumn::make('subscription_status')
                     ->label('Estado')
                     ->badge()
                     ->color(fn (string $state): string => $state === 'active' ? 'success' : 'danger'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
+                EditAction::make()
                     ->label('Editar Perfil')
                     ->modalWidth('4xl'),
             ])
-            // INTEGRITY: No creation or deletion allowed from here
             ->bulkActions([]);
     }
 
@@ -204,5 +178,12 @@ class TenantProfileResource extends Resource
             'index' => Pages\ListTenants::route('/'),
             'edit' => Pages\EditTenant::route('/{record}/edit'),
         ];
+    }
+
+    protected static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

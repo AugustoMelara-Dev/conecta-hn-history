@@ -9,17 +9,23 @@ use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Shared\PasswordHasherInterface;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\TenantUserResource\Pages;
+use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\User;
+use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
-use Filament\Forms;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
@@ -68,16 +74,16 @@ class TenantUserResource extends Resource
     {
         return $schema
             ->schema([
-                Forms\Components\Section::make('Informacion del Miembro')
+                Section::make('Informacion del Miembro')
                     ->icon('heroicon-o-user')
                     ->columns(2)
                     ->schema([
-                        Forms\Components\Select::make('user_id')
+                        Select::make('user_id')
                             ->label('Usuario')
                             ->relationship(
                                 name: 'user',
                                 titleAttribute: 'name',
-                                modifyQueryUsing: fn (Builder $query) => $query->orderBy('name')
+                                modifyQueryUsing: fn (Builder $query): Builder => $query->orderBy('name'),
                             )
                             ->getOptionLabelFromRecordUsing(
                                 fn (User $record): string => "{$record->name} ({$record->email})"
@@ -85,19 +91,19 @@ class TenantUserResource extends Resource
                             ->searchable(['name', 'email'])
                             ->preload()
                             ->required()
-                            ->helperText('Selecciona un usuario existente o crea uno nuevo para este equipo.')
+                            ->helperText('Selecciona un usuario existente o crea uno nuevo.')
                             ->createOptionForm([
-                                Forms\Components\TextInput::make('name')
+                                TextInput::make('name')
                                     ->label('Nombre')
                                     ->required()
                                     ->maxLength(255),
-                                Forms\Components\TextInput::make('email')
+                                TextInput::make('email')
                                     ->label('Email')
                                     ->email()
                                     ->required()
                                     ->maxLength(255)
                                     ->unique('users', 'email'),
-                                Forms\Components\TextInput::make('password')
+                                TextInput::make('password')
                                     ->label('Contrasena temporal')
                                     ->password()
                                     ->required()
@@ -108,57 +114,62 @@ class TenantUserResource extends Resource
                                 $passwordHasher = app(PasswordHasherInterface::class);
 
                                 $user = User::query()->create([
-                                    'name' => $data['name'],
-                                    'email' => Str::lower(trim($data['email'])),
-                                    'password' => $passwordHasher->hash($data['password']),
+                                    'name' => (string) $data['name'],
+                                    'email' => Str::lower(trim((string) $data['email'])),
+                                    'password' => $passwordHasher->hash((string) $data['password']),
                                     'role' => UserRole::STAFF->value,
                                 ]);
 
                                 return (string) $user->getKey();
                             })
-                            ->createOptionAction(function (Forms\Components\Actions\Action $action) {
+                            ->createOptionAction(function (Action $action): Action {
                                 return $action
                                     ->modalHeading('Crear Nuevo Usuario')
                                     ->modalWidth('md');
                             })
-                            ->disabled(fn (?TenantMembership $record) => $record !== null)
+                            ->disabled(fn (?TenantMembership $record): bool => $record !== null)
                             ->columnSpan(1),
-
-                        Forms\Components\Select::make('role')
+                        Select::make('role')
                             ->label('Rol')
                             ->options(static::getRoleOptions())
                             ->default(Role::OPERATOR->value)
                             ->required()
                             ->native(false)
                             ->helperText(static::getRoleHelperText())
-                            ->disabled(fn (?TenantMembership $record) => $record?->isOwner() ?? false)
+                            ->disabled(fn (?TenantMembership $record): bool => $record?->isOwner() ?? false)
                             ->columnSpan(1),
                     ]),
-
-                Forms\Components\Section::make('Informacion de Acceso')
+                Section::make('Informacion de Acceso')
                     ->icon('heroicon-o-information-circle')
-                    ->visible(fn (?TenantMembership $record) => $record !== null)
+                    ->visible(fn (?TenantMembership $record): bool => $record !== null)
                     ->columns(2)
                     ->schema([
-                        Forms\Components\Placeholder::make('user_email_display')
+                        Placeholder::make('user_email_display')
                             ->label('Email')
-                            ->content(fn (?TenantMembership $record): string => $record?->user?->email ?? 'N/A'),
+                            ->content(function (?TenantMembership $record): string {
+                                $user = $record?->user;
 
-                        Forms\Components\Placeholder::make('assigned_at_display')
+                                return $user instanceof User ? $user->email : 'N/A';
+                            }),
+                        Placeholder::make('assigned_at_display')
                             ->label('Asignado')
-                            ->content(
-                                fn (?TenantMembership $record): string => $record?->created_at?->format('d/m/Y H:i') ?? 'N/A'
-                            ),
+                            ->content(function (?TenantMembership $record): string {
+                                $createdAt = $record?->created_at;
 
-                        Forms\Components\Placeholder::make('accepted_at_display')
+                                return $createdAt instanceof Carbon ? $createdAt->format('d/m/Y H:i') : 'N/A';
+                            }),
+                        Placeholder::make('accepted_at_display')
                             ->label('Estado')
-                            ->content(
-                                fn (?TenantMembership $record): string => $record?->accepted_at
-                                    ? 'Activo desde '.$record->accepted_at->format('d/m/Y H:i')
-                                    : 'Pendiente'
-                            ),
+                            ->content(function (?TenantMembership $record): string {
+                                $acceptedAt = $record?->getAttribute('accepted_at');
 
-                        Forms\Components\Placeholder::make('preset_guidance')
+                                if (is_string($acceptedAt) && $acceptedAt !== '') {
+                                    return 'Activo desde '.Carbon::parse($acceptedAt)->format('d/m/Y H:i');
+                                }
+
+                                return 'Pendiente';
+                            }),
+                        Placeholder::make('preset_guidance')
                             ->label('Presets disponibles')
                             ->content(static::getActivePresetSummary()),
                     ]),
@@ -169,14 +180,14 @@ class TenantUserResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function (Builder $query): Builder {
-                $tenant = Filament::getTenant();
+                $tenant = static::getTenantRecord();
 
-                if (! $tenant) {
+                if (! $tenant instanceof Tenant) {
                     return $query->whereRaw('1 = 0');
                 }
 
                 return $query
-                    ->where('tenant_id', $tenant->id)
+                    ->where('tenant_id', (string) $tenant->getKey())
                     ->with('user');
             })
             ->columns([
@@ -185,25 +196,21 @@ class TenantUserResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
-
                 Tables\Columns\TextColumn::make('user.email')
                     ->label('Email')
                     ->searchable()
                     ->copyable()
                     ->icon('heroicon-o-envelope'),
-
                 Tables\Columns\TextColumn::make('role')
                     ->label('Rol')
                     ->badge()
                     ->state(fn (TenantMembership $record): string => static::getRoleLabel($record->role))
                     ->color(fn (TenantMembership $record): string => static::getRoleColor($record->role)),
-
                 Tables\Columns\TextColumn::make('accepted_at')
                     ->label('Estado')
                     ->badge()
-                    ->state(fn (TenantMembership $record): string => $record->accepted_at ? 'Activo' : 'Pendiente')
-                    ->color(fn (TenantMembership $record): string => $record->accepted_at ? 'success' : 'warning'),
-
+                    ->state(fn (TenantMembership $record): string => filled($record->getAttribute('accepted_at')) ? 'Activo' : 'Pendiente')
+                    ->color(fn (TenantMembership $record): string => filled($record->getAttribute('accepted_at')) ? 'success' : 'warning'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Asignado')
                     ->since(),
@@ -214,8 +221,7 @@ class TenantUserResource extends Resource
                     ->options(static::getRoleOptions()),
             ])
             ->actions([
-                EditAction::make()
-                    ->iconButton(),
+                EditAction::make()->iconButton(),
                 DeleteAction::make()
                     ->iconButton()
                     ->visible(fn (TenantMembership $record): bool => ! $record->isOwner()),
@@ -239,7 +245,7 @@ class TenantUserResource extends Resource
         ];
     }
 
-    private static function getRoleOptions(): array
+    public static function getRoleOptions(): array
     {
         return collect(array_keys(config('rbac.roles', [])))
             ->filter(static fn (mixed $value): bool => is_string($value) && Role::tryFrom($value) !== null)
@@ -247,7 +253,7 @@ class TenantUserResource extends Resource
             ->all();
     }
 
-    private static function getRoleLabel(Role|string|null $role): string
+    public static function getRoleLabel(Role|string|null $role): string
     {
         $value = $role instanceof Role ? $role->value : (string) $role;
 
@@ -261,21 +267,20 @@ class TenantUserResource extends Resource
         };
     }
 
-    private static function getRoleColor(Role|string|null $role): string
+    public static function getRoleColor(Role|string|null $role): string
     {
         $value = $role instanceof Role ? $role->value : (string) $role;
 
         return match ($value) {
             Role::OWNER->value => 'warning',
-            Role::ADMIN->value => 'info',
-            Role::MANAGER->value => 'info',
+            Role::ADMIN->value, Role::MANAGER->value => 'info',
             Role::OPERATOR->value => 'success',
             Role::VIEWER->value => 'gray',
             default => 'gray',
         };
     }
 
-    private static function getRoleHelperText(): string
+    public static function getRoleHelperText(): string
     {
         $summary = static::getActivePresetSummary();
 
@@ -286,11 +291,11 @@ class TenantUserResource extends Resource
         return $summary;
     }
 
-    private static function getActivePresetSummary(): string
+    public static function getActivePresetSummary(): string
     {
-        $tenant = Filament::getTenant();
+        $tenant = static::getTenantRecord();
 
-        if (! $tenant) {
+        if (! $tenant instanceof Tenant) {
             return 'Sin contexto de tenant.';
         }
 
@@ -320,5 +325,12 @@ class TenantUserResource extends Resource
         }
 
         return 'Sugerencias para este negocio: '.implode(', ', $presets).'.';
+    }
+
+    protected static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

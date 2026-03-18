@@ -6,7 +6,11 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\ReviewResource\Pages;
 use App\Models\Review;
-use Filament\Forms;
+use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
@@ -18,24 +22,24 @@ class ReviewResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-star';
 
-    protected static ?string $navigationLabel = 'Reseñas';
+    protected static ?string $navigationLabel = 'Resenas';
 
-    protected static ?string $modelLabel = 'Reseña';
+    protected static ?string $modelLabel = 'Resena';
 
-    protected static ?string $pluralModelLabel = 'Reseñas';
+    protected static ?string $pluralModelLabel = 'Resenas';
 
     protected static string|\UnitEnum|null $navigationGroup = 'Marketing';
 
     public static function form(Schema $schema): Schema
     {
         return $schema->schema([
-            Forms\Components\Toggle::make('is_approved')
-                ->label('Aprobada para publicación')
+            Toggle::make('is_approved')
+                ->label('Aprobada para publicacion')
                 ->required(),
-            Forms\Components\TextInput::make('rating')
-                ->label('Calificación')
+            TextInput::make('rating')
+                ->label('Calificacion')
                 ->disabled(),
-            Forms\Components\Textarea::make('comment')
+            Textarea::make('comment')
                 ->label('Comentario')
                 ->disabled()
                 ->columnSpanFull(),
@@ -51,7 +55,7 @@ class ReviewResource extends Resource
                     ->default('General')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('rating')
-                    ->label('Calificación')
+                    ->label('Calificacion')
                     ->sortable(),
                 Tables\Columns\IconColumn::make('is_approved')
                     ->label('Aprobada')
@@ -72,19 +76,19 @@ class ReviewResource extends Resource
                     ->placeholder('Todas'),
             ])
             ->actions([
-                Tables\Actions\Action::make('approve')
+                Action::make('approve')
                     ->label('Aprobar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn (Review $record): bool => ! $record->is_approved)
                     ->action(fn (Review $record) => $record->update(['is_approved' => true])),
-                Tables\Actions\Action::make('reject')
+                Action::make('reject')
                     ->label('Ocultar')
                     ->icon('heroicon-o-x-circle')
                     ->color('warning')
                     ->visible(fn (Review $record): bool => $record->is_approved)
                     ->action(fn (Review $record) => $record->update(['is_approved' => false])),
-                Tables\Actions\DeleteAction::make(),
+                DeleteAction::make(),
             ])
             ->defaultSort('created_at', 'desc');
     }
