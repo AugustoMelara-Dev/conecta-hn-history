@@ -52,6 +52,14 @@ final class TenantEntity
 
     private ?string $whatsapp = null;
 
+    private ?string $phone = null;
+
+    private ?string $address = null;
+
+    private ?string $latitude = null;
+
+    private ?string $longitude = null;
+
     private bool $isPro = false;
 
     private int $productLimit = 10;
@@ -126,6 +134,31 @@ final class TenantEntity
     public function subscriptionStatus(): string
     {
         return $this->subscriptionStatus;
+    }
+
+    public function whatsappNumber(): ?string
+    {
+        return $this->whatsapp;
+    }
+
+    public function phone(): ?string
+    {
+        return $this->phone;
+    }
+
+    public function address(): ?string
+    {
+        return $this->address;
+    }
+
+    public function latitude(): ?string
+    {
+        return $this->latitude;
+    }
+
+    public function longitude(): ?string
+    {
+        return $this->longitude;
     }
 
     public function isPubliclyVisible(): bool
@@ -271,6 +304,10 @@ final class TenantEntity
             'city_id' => $this->cityId,
             'logo_path' => $this->logoPath,
             'whatsapp' => $this->whatsapp,
+            'phone' => $this->phone,
+            'address' => $this->address,
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
             'is_pro' => $this->isPro,
             'product_limit' => $this->productLimit,
             'description' => $this->description,
@@ -323,6 +360,10 @@ final class TenantEntity
         $tenant->cityId = isset($state['city_id']) ? (int) $state['city_id'] : null;
         $tenant->logoPath = isset($state['logo_path']) ? (string) $state['logo_path'] : null;
         $tenant->whatsapp = isset($state['whatsapp']) ? (string) $state['whatsapp'] : null;
+        $tenant->phone = isset($state['phone']) ? (string) $state['phone'] : null;
+        $tenant->address = isset($state['address']) ? (string) $state['address'] : null;
+        $tenant->latitude = isset($state['latitude']) ? (string) $state['latitude'] : null;
+        $tenant->longitude = isset($state['longitude']) ? (string) $state['longitude'] : null;
         $tenant->isPro = isset($state['is_pro']) ? (bool) $state['is_pro'] : false;
         $tenant->productLimit = isset($state['product_limit']) ? (int) $state['product_limit'] : 10;
         $tenant->description = isset($state['description']) ? (string) $state['description'] : null;

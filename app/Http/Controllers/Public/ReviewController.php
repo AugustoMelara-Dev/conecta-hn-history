@@ -26,6 +26,8 @@ final class ReviewController extends Controller
      */
     public function store(Request $request, SubmitReviewAction $action): RedirectResponse
     {
+        $user = $request->user();
+
         $request->validate([
             'tenant_id' => ['required', 'string', 'exists:tenants,id'],
             'product_id' => ['nullable', 'integer', 'exists:products,id'],
@@ -39,7 +41,7 @@ final class ReviewController extends Controller
                 productId: $request->filled('product_id') ? (int) $request->input('product_id') : null,
                 rating: (int) $request->input('rating'),
                 comment: $request->input('comment'),
-                userId: $request->user()?->id !== null ? (string) $request->user()?->id : null,
+                userId: $user !== null ? (string) $user->id : null,
             );
             $action->execute($data);
 

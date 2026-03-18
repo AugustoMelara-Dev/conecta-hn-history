@@ -287,10 +287,12 @@ class User extends Authenticatable implements HasTenants, MustVerifyEmail, Tenan
             ->exists();
     }
 
-    public function toggleFavorite(Tenant $tenant): bool
+    public function toggleFavorite(Tenant|string $tenant): bool
     {
+        $tenantId = $tenant instanceof Tenant ? (string) $tenant->id : (string) $tenant;
+
         $existing = $this->favorites()
-            ->where('favoritable_id', $tenant->id)
+            ->where('favoritable_id', $tenantId)
             ->where('favoritable_type', Tenant::class)
             ->first();
 
@@ -301,11 +303,18 @@ class User extends Authenticatable implements HasTenants, MustVerifyEmail, Tenan
         }
 
         $this->favorites()->create([
-            'favoritable_id' => $tenant->id,
+            'favoritable_id' => $tenantId,
             'favoritable_type' => Tenant::class,
         ]);
 
         return true;
+    }
+
+    public function toggleFollowingTenant(string|int $tenantId): bool
+    {
+        $changes = $this->following()->toggle($tenantId);
+
+        return ! empty($changes['attached']);
     }
 
     public function following()

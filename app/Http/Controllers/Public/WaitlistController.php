@@ -28,7 +28,7 @@ final class WaitlistController extends Controller
         $validated = $request->validated();
         $date = Carbon::parse($validated['date'])->toDateString();
 
-        $exists = Waitlist::where('tenant_id', $tenant->id)
+        $exists = Waitlist::where('tenant_id', $tenant->id())
             ->where('service_id', $validated['service_id'])
             ->where('customer_email', $validated['customer_email'])
             ->where('requested_date', $date)
@@ -37,7 +37,7 @@ final class WaitlistController extends Controller
 
         if (! $exists) {
             Waitlist::create([
-                'tenant_id' => $tenant->id,
+                'tenant_id' => $tenant->id(),
                 'service_id' => $validated['service_id'],
                 'user_id' => auth()->id(),
                 'customer_name' => $validated['customer_name'] ?? null,
@@ -48,6 +48,7 @@ final class WaitlistController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Te hemos aÒadido a la lista de espera. Te notificaremos si se libera un espacio.');
+        return back()->with('success', 'Te hemos a√±adido a la lista de espera. Te notificaremos si se libera un espacio.');
     }
 }
+

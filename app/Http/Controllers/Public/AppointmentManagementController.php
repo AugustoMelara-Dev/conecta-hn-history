@@ -7,7 +7,12 @@ namespace App\Http\Controllers\Public;
 use App\Application\Shared\Contracts\AppointmentRepositoryInterface;
 use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Http\Controllers\Controller;
+use App\Models\Service;
+use App\Models\ServiceProvider;
+use App\Models\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -37,21 +42,28 @@ final class AppointmentManagementController extends Controller
             abort(404, 'Appointment not found.');
         }
 
+        /** @var Service $service */
+        $service = $appointment->service;
+        /** @var ServiceProvider $provider */
+        $provider = $appointment->provider;
+        /** @var Tenant $tenant */
+        $tenant = $appointment->tenant;
+
         return Inertia::render('Public/Appointment/Manage', [
             'appointment' => [
                 'id' => $appointment->id,
                 'status' => $appointment->status,
                 'customer_name' => $appointment->customer_name,
-                'service_name' => $appointment->service->name,
-                'provider_name' => $appointment->provider->name,
+                'service_name' => $service->name,
+                'provider_name' => $provider->name,
                 'scheduled_at' => $appointment->scheduled_at->format('l, d M Y'),
                 'time' => $appointment->scheduled_at->format('h:i A'),
                 'can_cancel' => in_array($appointment->status, ['pending', 'confirmed']),
             ],
             'tenant' => [
-                'name' => $appointment->tenant->name,
-                'slug' => $appointment->tenant->slug,
-                'logo_url' => $appointment->tenant->logo_url,
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'logo_url' => $tenant->logo_path ? Storage::url($tenant->logo_path) : null,
             ],
         ]);
     }
@@ -62,7 +74,7 @@ final class AppointmentManagementController extends Controller
      * Guards against invalid state transitions (completed/cancelled appointments).
      * Idempotent: safe for double-click scenarios.
      */
-    public function cancel(Request $request, string $appointmentId)
+    public function cancel(Request $request, string $appointmentId): RedirectResponse
     {
         $appointment = $this->appointmentRepository->findById($appointmentId);
 

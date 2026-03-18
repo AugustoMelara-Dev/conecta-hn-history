@@ -12,10 +12,10 @@ interface BuyerRepository
     /**
      * Get user favorite products with relations.
      */
-    public function getFavorites(int $userId): array;
+    public function getFavorites(string|int $userId): array;
 
     /**
      * Get followed tenants.
      */
-    public function getFollowedTenants(int $userId): array;
+    public function getFollowedTenants(string|int $userId): array;
 }

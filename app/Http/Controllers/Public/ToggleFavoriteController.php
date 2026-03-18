@@ -46,11 +46,11 @@ final class ToggleFavoriteController extends Controller
         }
 
         $user = $request->user();
-        $isFavorited = $user->toggleFavorite($tenant);
+        $isFavorited = $user->toggleFavorite($tenant->id());
 
         $this->log->info('Favorite toggled', [
             'user_id' => $user->id,
-            'tenant_id' => $tenant->id,
+            'tenant_id' => $tenant->id(),
             'is_favorited' => $isFavorited,
         ]);
 

@@ -35,12 +35,11 @@ final class ToggleFollowController extends Controller
         }
 
         $user = $request->user();
-        $changes = $user->following()->toggle($tenant->id);
-        $isFollowing = ! empty($changes['attached']);
+        $isFollowing = $user->toggleFollowingTenant($tenant->id());
 
         $this->log->info('Follow toggled', [
             'user_id' => $user->id,
-            'tenant_id' => $tenant->id,
+            'tenant_id' => $tenant->id(),
             'is_following' => $isFollowing,
         ]);
 

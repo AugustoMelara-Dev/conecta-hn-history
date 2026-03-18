@@ -12,7 +12,7 @@ use App\Models\User;
  */
 final class EloquentBuyerRepository implements BuyerRepository
 {
-    public function getFavorites(int $userId): array
+    public function getFavorites(string|int $userId): array
     {
         return (User::find($userId)
             ?->favorites()
@@ -20,7 +20,7 @@ final class EloquentBuyerRepository implements BuyerRepository
             ->get() ?? collect())->toArray();
     }
 
-    public function getFollowedTenants(int $userId): array
+    public function getFollowedTenants(string|int $userId): array
     {
         return (User::find($userId)
             ?->following()

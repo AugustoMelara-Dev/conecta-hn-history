@@ -16,13 +16,13 @@ use Illuminate\Http\Request;
 /**
  * InteractionController - Hexagonal Compliant (DIP Remediation)
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ARCHITECTURAL COMPLIANCE:                                               ║
- * ║  - Zero App\Models imports (DIP compliant)                               ║
- * ║  - Uses Domain Enum for interaction types                                ║
- * ║  - Uses TenantResolver instead of Route Model Binding                   ║
- * ║  - Scalars in method signatures, not Eloquent models                    ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  ARCHITECTURAL COMPLIANCE:                                               â•‘
+ * â•‘  - Zero App\Models imports (DIP compliant)                               â•‘
+ * â•‘  - Uses Domain Enum for interaction types                                â•‘
+ * â•‘  - Uses TenantResolver instead of Route Model Binding                   â•‘
+ * â•‘  - Scalars in method signatures, not Eloquent models                    â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 final class InteractionController extends Controller
 {
@@ -39,7 +39,7 @@ final class InteractionController extends Controller
             abort(404, 'Negocio no encontrado.');
         }
 
-        $phone = new PhoneNumber($tenant->whatsapp_number ?? $tenant->phone);
+        $phone = new PhoneNumber($tenant->whatsappNumber() ?? $tenant->phone());
 
         if (! $phone->isValid()) {
             return redirect()->back()->with('error', 'Este negocio no tiene WhatsApp configurado.');
@@ -48,7 +48,7 @@ final class InteractionController extends Controller
         $text = $request->input('text', '');
 
         $dto = new InteractionData(
-            tenantId: (string) $tenant->id,
+            tenantId: $tenant->id(),
             type: InteractionType::WHATSAPP_CLICK->value,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
@@ -68,14 +68,14 @@ final class InteractionController extends Controller
             abort(404, 'Negocio no encontrado.');
         }
 
-        $phone = new PhoneNumber($tenant->phone ?? $tenant->whatsapp_number);
+        $phone = new PhoneNumber($tenant->phone() ?? $tenant->whatsappNumber());
 
         if (! $phone->isValid()) {
-            return redirect()->back()->with('error', 'Este negocio no tiene teléfono configurado.');
+            return redirect()->back()->with('error', 'Este negocio no tiene telÃ©fono configurado.');
         }
 
         $dto = new InteractionData(
-            tenantId: (string) $tenant->id,
+            tenantId: $tenant->id(),
             type: InteractionType::CALL->value,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
@@ -94,16 +94,20 @@ final class InteractionController extends Controller
             abort(404, 'Negocio no encontrado.');
         }
 
-        if (! empty($tenant->latitude) && ! empty($tenant->longitude)) {
-            $url = "https://www.google.com/maps/dir/?api=1&destination={$tenant->latitude},{$tenant->longitude}";
-        } elseif (! empty($tenant->address)) {
-            $url = 'https://www.google.com/maps/search/?api=1&query='.urlencode($tenant->address);
+        if (! empty($tenant->latitude()) && ! empty($tenant->longitude())) {
+            $url = sprintf(
+                'https://www.google.com/maps/dir/?api=1&destination=%s,%s',
+                $tenant->latitude(),
+                $tenant->longitude()
+            );
+        } elseif (! empty($tenant->address())) {
+            $url = 'https://www.google.com/maps/search/?api=1&query='.urlencode($tenant->address());
         } else {
-            return redirect()->back()->with('error', 'Este negocio no tiene ubicación configurada.');
+            return redirect()->back()->with('error', 'Este negocio no tiene ubicacion configurada.');
         }
 
         $dto = new InteractionData(
-            tenantId: (string) $tenant->id,
+            tenantId: $tenant->id(),
             type: InteractionType::LOCATION_VIEW->value,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
@@ -114,3 +118,4 @@ final class InteractionController extends Controller
         return redirect()->away($url);
     }
 }
+
