@@ -5,15 +5,20 @@ declare(strict_types=1);
 namespace App\Filament\App\Pages;
 
 use App\Models\MenuSection;
+use App\Models\Tenant;
 use App\Services\QrCodeService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -30,6 +35,9 @@ use Illuminate\Database\Eloquent\Builder;
  * - Gestor de Secciones de Menú (Sortable)
  *
  * Velvet Rope: FREE users ven un paywall atractivo.
+ */
+/**
+ * @property-read Schema $form
  */
 class ManageMarketing extends Page implements HasForms, HasTable
 {
@@ -66,6 +74,8 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
     /**
      * Datos del formulario de WhatsApp
+     *
+     * @var array<string, mixed>|null
      */
     public ?array $data = [];
 
@@ -89,9 +99,9 @@ class ManageMarketing extends Page implements HasForms, HasTable
      */
     public function mount(): void
     {
-        $tenant = Filament::getTenant();
+        $tenant = $this->getTenantRecord();
 
-        if (! $tenant) {
+        if (! $tenant instanceof Tenant) {
             return;
         }
 
@@ -124,7 +134,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
     {
         return $schema
             ->schema([
-                Forms\Components\Section::make('Configuración de WhatsApp')
+                Section::make('Configuración de WhatsApp')
                     ->description('Personaliza el mensaje que reciben tus clientes al contactarte.')
                     ->schema([
                         Forms\Components\TextInput::make('whatsapp_number')
@@ -167,9 +177,11 @@ class ManageMarketing extends Page implements HasForms, HasTable
      */
     public function table(Table $table): Table
     {
+        $tenant = $this->getTenantRecord();
+
         return $table
             ->query(fn (): Builder => MenuSection::query()
-                ->where('tenant_id', Filament::getTenant()?->id)
+                ->where('tenant_id', $tenant?->getKey())
                 ->withCount('products')
                 ->orderBy('sort_order')
             )
@@ -222,7 +234,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
             // Acciones de cabecera
             ->headerActions([
-                Tables\Actions\CreateAction::make()
+                CreateAction::make()
                     ->label('Nueva Sección')
                     ->icon('heroicon-o-plus')
                     ->modalHeading('Crear Sección de Menú')
@@ -241,8 +253,11 @@ class ManageMarketing extends Page implements HasForms, HasTable
                             ->helperText('Las secciones inactivas no se muestran en el menú público.'),
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
-                        $data['tenant_id'] = Filament::getTenant()->id;
-                        $data['sort_order'] = MenuSection::where('tenant_id', Filament::getTenant()->id)->max('sort_order') + 1;
+                        $tenant = $this->getTenantRecord();
+                        $tenantId = $tenant?->getKey();
+
+                        $data['tenant_id'] = $tenantId;
+                        $data['sort_order'] = (int) MenuSection::where('tenant_id', $tenantId)->max('sort_order') + 1;
 
                         return $data;
                     })
@@ -251,7 +266,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
             // Acciones por fila
             ->actions([
-                Tables\Actions\EditAction::make()
+                EditAction::make()
                     ->iconButton()
                     ->modalHeading('Editar Sección')
                     ->form([
@@ -269,7 +284,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
                 // ═══════════════════════════════════════════════════════
                 // Modal dinámico que advierte según productos asociados
                 // ═══════════════════════════════════════════════════════
-                Tables\Actions\DeleteAction::make()
+                DeleteAction::make()
                     ->iconButton()
                     ->modalHeading('¿Eliminar esta sección?')
                     ->modalDescription(function (MenuSection $record): string {
@@ -298,7 +313,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
             ->emptyStateDescription('Crea tu primera categoría (ej. Entradas, Bebidas) para comenzar a organizar tu catálogo.')
             ->emptyStateIcon('heroicon-o-folder-open')
             ->emptyStateActions([
-                Tables\Actions\CreateAction::make()
+                CreateAction::make()
                     ->label('Crear Primera Sección')
                     ->icon('heroicon-o-plus')
                     ->form([
@@ -313,7 +328,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
                             ->default(true),
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
-                        $data['tenant_id'] = Filament::getTenant()->id;
+                        $data['tenant_id'] = $this->getTenantRecord()?->getKey();
                         $data['sort_order'] = 0;
 
                         return $data;
@@ -346,8 +361,8 @@ class ManageMarketing extends Page implements HasForms, HasTable
     protected function generateQrCode(): void
     {
         try {
-            $tenant = Filament::getTenant();
-            if (! $tenant) {
+            $tenant = $this->getTenantRecord();
+            if (! $tenant instanceof Tenant) {
                 $this->qrCodeSvg = '';
 
                 return;
@@ -380,9 +395,18 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
         $data = $this->form->getState();
 
-        $tenant = Filament::getTenant();
+        $tenant = $this->getTenantRecord();
 
         // Formatear número con código de país
+        if (! $tenant instanceof Tenant) {
+            Notification::make()
+                ->danger()
+                ->title('No se pudo guardar la configuración')
+                ->send();
+
+            return;
+        }
+
         $cleanNumber = preg_replace('/[^0-9]/', '', $data['whatsapp_number']);
 
         $tenant->update([
@@ -419,9 +443,9 @@ class ManageMarketing extends Page implements HasForms, HasTable
             return;
         }
 
-        $tenant = Filament::getTenant();
+        $tenant = $this->getTenantRecord();
 
-        if (! $tenant) {
+        if (! $tenant instanceof Tenant) {
             Notification::make()
                 ->danger()
                 ->title('Error')
@@ -485,5 +509,11 @@ class ManageMarketing extends Page implements HasForms, HasTable
     public static function shouldRegisterNavigation(): bool
     {
         return true; // Todos ven el menú, pero FREE ven paywall
+    }
+    protected function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

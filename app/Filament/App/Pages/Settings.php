@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
+use App\Models\Tenant;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
+/**
+ * @property-read Schema $form
+ */
 class Settings extends Page
 {
     public static function canAccess(): bool
@@ -35,13 +40,18 @@ class Settings extends Page
 
     protected string $view = 'filament.app.pages.settings';
 
+    /** @var array<string, mixed>|null */
     public ?array $data = [];
 
     public function mount(): void
     {
-        $this->form->fill(
-            \Filament\Facades\Filament::getTenant()->attributesToArray()
-        );
+        $tenant = $this->getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            return;
+        }
+
+        $this->form->fill($tenant->attributesToArray());
     }
 
     public function form(Schema $schema): Schema
@@ -74,8 +84,18 @@ class Settings extends Page
     public function save(): void
     {
         $data = $this->form->getState();
+        $tenant = $this->getTenantRecord();
 
-        \Filament\Facades\Filament::getTenant()->update($data);
+        if (! $tenant instanceof Tenant) {
+            Notification::make()
+                ->danger()
+                ->title('No se pudo guardar la configuración')
+                ->send();
+
+            return;
+        }
+
+        $tenant->update($data);
 
         Notification::make()
             ->success()
@@ -90,5 +110,12 @@ class Settings extends Page
                 ->label('Guardar Cambios')
                 ->submit('save'),
         ];
+    }
+
+    protected function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }
