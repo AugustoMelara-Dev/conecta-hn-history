@@ -33,7 +33,7 @@ final readonly class IdempotentGenerateOtpHandler implements GenerateOtpHandlerI
     {
         // 1. DETERMINISTIC KEY GENERATION
         // We resolve the key from the Transport Context (Headers)
-        $key = $this->idempotencyContext->getKey();
+        $key = $this->idempotencyContext->key();
 
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // 2. THE GATEKEEPER (3-State Protocol)

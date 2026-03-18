@@ -8,6 +8,7 @@ use App\Application\Auth\Commands\UpdateUserPasswordCommand;
 use App\Application\Auth\Handlers\UpdateUserPasswordHandlerInterface;
 use App\Application\Auth\Results\UpdateUserPasswordResult;
 use App\Application\Shared\Contracts\ValidatorFactoryInterface;
+use App\Application\Shared\Exceptions\CommandValidationException;
 
 /**
  * UpdateUserPasswordCommandValidator - Clean Architecture Edition
@@ -31,7 +32,7 @@ final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPas
     }
 
     /**
-     * @throws ValidationException
+     * @throws CommandValidationException
      */
     private function validate(UpdateUserPasswordCommand $command): void
     {

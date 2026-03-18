@@ -31,5 +31,5 @@ interface SocialIdentityRepositoryInterface
         ?string $avatar = null
     ): void;
 
-    // public function updateToken(string $provider, string $providerId, ?string $token): void; // Omitted as not requested in prompt
+    public function updateToken(string $provider, string $providerId, ?string $token): void;
 }

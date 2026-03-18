@@ -8,6 +8,7 @@ use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface;
 use App\Application\Auth\Results\SocialLoginResult;
 use App\Application\Shared\Contracts\ValidatorFactoryInterface;
+use App\Application\Shared\Exceptions\CommandValidationException;
 use App\Domain\Shared\Enums\ProviderName;
 
 /**
@@ -25,6 +26,16 @@ final readonly class LoginViaSocialProviderCommandValidator implements LoginViaS
     ) {}
 
     public function handle(LoginViaSocialProviderCommand $command): SocialLoginResult
+    {
+        $this->validate($command);
+
+        return $this->inner->handle($command);
+    }
+
+    /**
+     * @throws CommandValidationException
+     */
+    public function validate(LoginViaSocialProviderCommand $command): void
     {
         $allowedProviders = implode(',', array_column(ProviderName::cases(), 'value'));
 
@@ -45,7 +56,5 @@ final readonly class LoginViaSocialProviderCommandValidator implements LoginViaS
             'idempotencyKey' => ['required', 'uuid'],
             'avatarUrl' => ['nullable', 'url', 'max:1024'],
         ]);
-
-        return $this->inner->handle($command);
     }
 }

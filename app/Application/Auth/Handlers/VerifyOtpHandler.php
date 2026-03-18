@@ -97,9 +97,4 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
 
         return VerifyOtpResult::forNewUser($identifier);
     }
-
-    private function maskIdentifier(string $identifier): string
-    {
-        return substr($identifier, 0, 3).'***';
-    }
 }

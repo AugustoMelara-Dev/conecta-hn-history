@@ -6,13 +6,11 @@ namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\DeleteUserCommand;
 use App\Application\Auth\Results\DeleteUserResult;
-use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Identity\Events\UserDeleted;
 use App\Domain\Identity\Exceptions\CrossTenantAccessException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Domain\Shared\Contracts\ClockInterface;
 
 /**
  * DeleteUserHandler - Pure Core Edition (Russian Doll Pattern)
@@ -22,8 +20,6 @@ final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
     public function __construct(
         private UserRepositoryInterface $userRepository,
         private OutboxRepositoryInterface $outboxRepository,
-        private ClockInterface $clock,
-        private IdGeneratorInterface $idGenerator,
     ) {}
 
     public function handle(DeleteUserCommand $command): DeleteUserResult

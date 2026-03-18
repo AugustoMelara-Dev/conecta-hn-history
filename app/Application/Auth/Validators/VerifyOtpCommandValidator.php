@@ -8,6 +8,7 @@ use App\Application\Auth\Commands\VerifyOtpCommand;
 use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
 use App\Application\Auth\Results\VerifyOtpResult;
 use App\Application\Shared\Contracts\ValidatorFactoryInterface;
+use App\Application\Shared\Exceptions\CommandValidationException;
 
 /**
  * VerifyOtpCommandValidator - Clean Architecture Edition
@@ -31,7 +32,7 @@ final readonly class VerifyOtpCommandValidator implements VerifyOtpHandlerInterf
     }
 
     /**
-     * @throws ValidationException
+     * @throws CommandValidationException
      */
     private function validate(VerifyOtpCommand $command): void
     {

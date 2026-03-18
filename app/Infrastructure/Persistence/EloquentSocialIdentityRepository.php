@@ -6,6 +6,7 @@ namespace App\Infrastructure\Persistence;
 
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface;
+use App\Domain\Shared\Exceptions\DuplicateEntityException;
 use App\Infrastructure\Persistence\Mappers\UserMapper;
 use App\Infrastructure\Persistence\Models\SocialIdentityModel;
 
@@ -45,18 +46,34 @@ final class EloquentSocialIdentityRepository implements SocialIdentityRepository
         ?string $token = null,
         ?string $avatar = null
     ): void {
-        // ENCAPSULATION RESPECT: Use Getters ($user->id()), never properties.
-        SocialIdentityModel::updateOrCreate(
+        $identity = SocialIdentityModel::query()
+            ->where('provider_name', $provider)
+            ->where('provider_id', $providerId)
+            ->first();
+
+        if ($identity !== null && (string) $identity->user_id !== $user->id()) {
+            throw new DuplicateEntityException('Social identity already linked to another user.');
+        }
+
+        SocialIdentityModel::query()->updateOrCreate(
             [
                 'provider_name' => $provider,
                 'provider_id' => $providerId,
             ],
             [
-                'user_id' => $user->id(), // Strict UUID from Domain
-                'user_type' => 'App\Models\User', // Optional polymorphic support if needed, assuming standard FK for now
+                'user_id' => $user->id(),
+                'user_type' => 'App\Models\User',
                 'token' => $token,
                 'avatar' => $avatar,
             ]
         );
+    }
+
+    public function updateToken(string $provider, string $providerId, ?string $token): void
+    {
+        SocialIdentityModel::query()
+            ->where('provider_name', $provider)
+            ->where('provider_id', $providerId)
+            ->update(['token' => $token]);
     }
 }

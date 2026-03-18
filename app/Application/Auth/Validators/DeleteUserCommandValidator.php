@@ -8,6 +8,7 @@ use App\Application\Auth\Commands\DeleteUserCommand;
 use App\Application\Auth\Handlers\DeleteUserHandlerInterface;
 use App\Application\Auth\Results\DeleteUserResult;
 use App\Application\Shared\Contracts\ValidatorFactoryInterface;
+use App\Application\Shared\Exceptions\CommandValidationException;
 
 /**
  * DeleteUserCommandValidator - Clean Architecture Edition
@@ -31,9 +32,9 @@ final readonly class DeleteUserCommandValidator implements DeleteUserHandlerInte
     }
 
     /**
-     * @throws ValidationException
+     * @throws CommandValidationException
      */
-    private function validate(DeleteUserCommand $command): void
+    public function validate(DeleteUserCommand $command): void
     {
         $this->validatorFactory->validate([
             'userId' => $command->userId,
