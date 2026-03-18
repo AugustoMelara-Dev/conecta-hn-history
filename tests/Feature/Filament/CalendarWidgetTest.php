@@ -3,27 +3,22 @@
 declare(strict_types=1);
 
 use App\Filament\App\Widgets\AppointmentCalendarWidget;
-use App\Models\Appointment;
-use Livewire\Livewire;
+use Filament\Widgets\Widget;
 
 // ═══════════════════════════════════════════════════════════════════════
 // CALENDAR WIDGET TESTS - Filament FullCalendar Integration
 // ═══════════════════════════════════════════════════════════════════════
 
 describe('AppointmentCalendarWidget', function () {
-    beforeEach(function () {
-        $this->markTestSkipped('Skipped: saade/filament-fullcalendar package is missing.');
-    });
-
     it('widget class exists', function () {
         expect(class_exists(AppointmentCalendarWidget::class))->toBeTrue();
     });
 
-    it('extends FullCalendarWidget', function () {
+    it('extends the base Filament widget', function () {
         $reflection = new ReflectionClass(AppointmentCalendarWidget::class);
-        
+
         expect($reflection->getParentClass()->getName())
-            ->toBe('Saade\FilamentFullCalendar\Widgets\FullCalendarWidget');
+            ->toBe(Widget::class);
     });
 
     it('has fetchEvents method', function () {
@@ -52,10 +47,6 @@ describe('AppointmentCalendarWidget', function () {
 });
 
 describe('Appointment Status Colors', function () {
-    beforeEach(function () {
-        $this->markTestSkipped('Skipped: saade/filament-fullcalendar package is missing.');
-    });
-
     it('pending status returns amber color', function () {
         $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');

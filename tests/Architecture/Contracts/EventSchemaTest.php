@@ -26,9 +26,7 @@ class EventSchemaTest extends TestCase
 {
     private const SCHEMA_BASE_PATH = __DIR__.'/../../../resources/schemas';
 
-    /**
-     * @dataProvider eventSchemaProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('eventSchemaProvider')]
     public function test_event_payload_matches_json_schema(
         string $eventClass,
         array $constructorArgs,

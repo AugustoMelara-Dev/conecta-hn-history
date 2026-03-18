@@ -15,7 +15,7 @@ class RegisterUserEndpointTest extends TestCase
 
     private string $endpoint = '/api/v1/register';
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_registers_a_user_successfully_and_persists_data()
     {
         // 1. Verbose Exception Rule (Happy Path)
@@ -60,7 +60,7 @@ class RegisterUserEndpointTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_rejects_invalid_input_formats()
     {
         // Critical: Exception Handling MUST be active (Implicit) here.
@@ -88,7 +88,7 @@ class RegisterUserEndpointTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_rejects_duplicate_registration_proving_sql_projection()
     {
         // Fase 1: Siembra (Verbose Mode for Debugging)

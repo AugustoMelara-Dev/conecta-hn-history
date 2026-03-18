@@ -21,7 +21,7 @@ class TenantPersistenceAuditTest extends TestCase
         // Bind mocks or real implementations if not strictly bound
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_persists_tenant_created_event_to_store_and_outbox()
     {
         // 1. Setup

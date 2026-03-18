@@ -22,7 +22,7 @@ class OtpConcurrencyTest extends TestCase
         Artisan::call('migrate:fresh', ['--env' => 'testing', '--force' => true]);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_prevents_race_conditions_on_otp_attempts_limit()
     {
         $this->assertSame(

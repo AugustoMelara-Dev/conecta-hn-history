@@ -37,6 +37,7 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
     {
         // 1. DETERMINACIÓN INSERT/UPDATE mediante findOrNew
         $model = User::findOrNew($user->id());
+        $emailChanged = $model->exists && $model->email !== $user->email();
 
         // 2. MAPEO MANUAL EXPLÍCITO (Data Mapper Pattern)
         // Cada propiedad se extrae del agregado y se asigna al modelo Eloquent
@@ -51,6 +52,10 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
         // Campos opcionales
         if ($user->rememberToken() !== null) {
             $model->remember_token = $user->rememberToken();
+        }
+
+        if ($emailChanged) {
+            $model->email_verified_at = null;
         }
 
         // 3. PERSISTENCIA ATÓMICA

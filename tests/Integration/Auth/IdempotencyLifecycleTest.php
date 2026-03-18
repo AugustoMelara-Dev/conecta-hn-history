@@ -21,19 +21,19 @@ class IdempotencyLifecycleTest extends TestCase
         $this->service = $this->app->make(AtomicIdempotencyInterface::class);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_can_connect_to_db()
     {
         $this->assertTrue(DB::connection() instanceof \Illuminate\Database\ConnectionInterface);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_has_processed_commands_table()
     {
         $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('processed_commands'), 'Table processed_commands should exist.');
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_enforces_payload_versioning_governance()
     {
         $key = 'test-key-v1';
@@ -62,7 +62,7 @@ class IdempotencyLifecycleTest extends TestCase
         $this->assertDatabaseMissing('processed_commands', ['idempotency_key' => $key]);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_implements_fail_safe_mechanism_on_domain_exception()
     {
         $key = 'test-key-fail';
@@ -82,7 +82,7 @@ class IdempotencyLifecycleTest extends TestCase
         $this->assertDatabaseMissing('processed_commands', ['idempotency_key' => $key]);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_prunes_stale_records_with_select_delete_strategy()
     {
         // 1. Arrange: Seed 5 Old and 5 New records

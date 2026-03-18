@@ -22,7 +22,6 @@ use Tests\TestCase;
  * These tests use the database to verify service-level business rules,
  * specifically the Guest vs Authenticated user handling.
  *
- * @covers \App\Services\CouponValidatorService
  */
 class CouponServiceTest extends TestCase
 {
@@ -67,12 +66,12 @@ class CouponServiceTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies that guests can use coupons without per-user restrictions.
      *
      * SCENARIO: Anonymous user validates an unrestricted coupon
      * EXPECTED: Validation succeeds, returns Coupon model
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_allows_guests_to_use_unrestricted_coupons(): void
     {
         // Arrange: Create a coupon with no per-user limits
@@ -104,9 +103,9 @@ class CouponServiceTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies guests can validate coupons with global limits (but not per-user).
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_allows_guests_when_global_limit_not_reached(): void
     {
         $coupon = Coupon::factory()->create([
@@ -134,7 +133,6 @@ class CouponServiceTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * CRITICAL: Verifies that guests cannot use per-user-limited coupons.
      *
      * SCENARIO: Anonymous user tries to validate a coupon with max_uses_per_user
@@ -142,6 +140,7 @@ class CouponServiceTest extends TestCase
      *
      * This test ensures guests cannot bypass per-user tracking by staying anonymous.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_throws_exception_for_guests_using_restricted_coupons(): void
     {
         // Skip if coupon_user table doesn't exist
@@ -181,12 +180,12 @@ class CouponServiceTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies that validation fails when global usage limit is reached.
      *
      * SCENARIO: Coupon with usage_limit = 5, usage_count = 5
      * EXPECTED: InvalidCouponException with code DEPLETED
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_prevents_usage_when_global_limit_reached(): void
     {
         // Arrange: Create a fully depleted coupon
@@ -221,9 +220,9 @@ class CouponServiceTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies authenticated users can validate unrestricted coupons.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_allows_authenticated_users_to_use_coupons(): void
     {
         $user = User::factory()->create();
@@ -252,9 +251,9 @@ class CouponServiceTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies that coupons with minimum spend requirement are enforced.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_rejects_coupon_when_minimum_spend_not_met(): void
     {
         Coupon::factory()->create([
@@ -287,9 +286,9 @@ class CouponServiceTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies expired coupons are rejected.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_rejects_expired_coupons(): void
     {
         Coupon::factory()->create([
@@ -317,9 +316,9 @@ class CouponServiceTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies future coupons (not yet started) are rejected.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_rejects_future_coupons(): void
     {
         Coupon::factory()->create([
@@ -347,9 +346,9 @@ class CouponServiceTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies inactive coupons are rejected.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_rejects_inactive_coupons(): void
     {
         Coupon::factory()->create([
@@ -376,9 +375,9 @@ class CouponServiceTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies non-existent coupons are rejected.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_rejects_nonexistent_coupons(): void
     {
         $this->expectException(InvalidCouponException::class);

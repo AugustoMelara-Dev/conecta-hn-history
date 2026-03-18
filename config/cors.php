@@ -74,7 +74,7 @@ return [
     */
     'allowed_origins_patterns' => [
         // Allow all subdomains of the main application domain
-        '/^https?:\/\/.*\.'.preg_quote(parse_url(env('APP_URL', 'localhost'), PHP_URL_HOST), '/').'$/',
+        '/^https?:\/\/.*\.'.preg_quote((string) (parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost'), '/').'$/',
     ],
 
     /*

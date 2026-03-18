@@ -37,9 +37,9 @@ class ExceptionsArchitectureTest extends TestCase
     ];
 
     /**
-     * @test
      * All exceptions must implement HttpDomainException interface
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function all_exceptions_implement_http_domain_exception_interface(): void
     {
         foreach (self::EXCEPTION_CLASSES as $class) {
@@ -51,9 +51,9 @@ class ExceptionsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * All exceptions must have getHttpStatusCode method
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function all_exceptions_have_get_http_status_code_method(): void
     {
         foreach (self::EXCEPTION_CLASSES as $class) {
@@ -72,9 +72,9 @@ class ExceptionsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * All exceptions must have getErrorCode method
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function all_exceptions_have_get_error_code_method(): void
     {
         foreach (self::EXCEPTION_CLASSES as $class) {
@@ -93,9 +93,9 @@ class ExceptionsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * All exceptions' toArray() must return canonical structure with 'success' => false
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function all_exceptions_to_array_returns_canonical_structure(): void
     {
         $testCases = [
@@ -126,9 +126,9 @@ class ExceptionsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * Error codes must be in SCREAMING_SNAKE_CASE format
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function error_codes_are_screaming_snake_case(): void
     {
         $testCases = [
@@ -160,9 +160,9 @@ class ExceptionsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * HTTP status codes must be valid
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function http_status_codes_are_valid(): void
     {
         $testCases = [
@@ -185,9 +185,9 @@ class ExceptionsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * DomainException base class must be abstract
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function domain_exception_is_abstract(): void
     {
         $reflection = new ReflectionClass(DomainException::class);
@@ -195,9 +195,9 @@ class ExceptionsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * All concrete exceptions must extend DomainException
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function all_exceptions_extend_domain_exception(): void
     {
         foreach (self::EXCEPTION_CLASSES as $class) {
@@ -209,9 +209,9 @@ class ExceptionsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * No conflicting getStatusCode method should exist - only getHttpStatusCode is allowed
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function no_conflicting_get_status_code_method(): void
     {
         foreach (self::EXCEPTION_CLASSES as $class) {
@@ -231,9 +231,9 @@ class ExceptionsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * Security: Exceptions must throw LogicException if context contains forbidden PII keys
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_prohibits_sensitive_keys_in_context(): void
     {
         $forbiddenKeys = [
@@ -269,9 +269,9 @@ class ExceptionsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * Security: Exceptions must throw LogicException if context values contain sensitive patterns
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_prohibits_sensitive_values_in_context(): void
     {
         $sensitiveValues = [

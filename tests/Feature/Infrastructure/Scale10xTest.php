@@ -6,7 +6,9 @@ namespace Tests\Feature\Infrastructure;
 
 use App\Application\Shared\Contracts\SchemaValidatorInterface;
 use App\Domain\Shared\Exceptions\SchemaViolationException;
+use App\Http\Middleware\EnsureIdempotencyKey;
 use App\Infrastructure\Shared\Services\Upcasting\UpcasterChain;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Ramsey\Uuid\Uuid;
@@ -16,7 +18,7 @@ class Scale10xTest extends TestCase
 {
     use \Illuminate\Foundation\Testing\RefreshDatabase;
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function phase_1_schema_registry_blocks_malformed_events()
     {
         // 1. Arrange: Mock the Outbox Repository setup manually to test the service in isolation OR use the bind
@@ -36,7 +38,7 @@ class Scale10xTest extends TestCase
         $validator->validate('user.registered.v1', $invalidPayload);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function phase_2_upcasting_transforms_legacy_data_transparently()
     {
         // 1. Arrange: Insert a "V1" event manually into domain_outbox
@@ -84,9 +86,16 @@ class Scale10xTest extends TestCase
         $this->assertArrayNotHasKey('fullname', $upcasted);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function phase_3_idempotency_middleware_enforces_header()
     {
-        $this->markTestSkipped('Middleware not wired in routes');
+        $middleware = $this->app->make(EnsureIdempotencyKey::class);
+        $request = Request::create('/api/v1/auth/otp/generate', 'POST');
+
+        $response = $middleware->handle($request, fn () => response()->json(['ok' => true]));
+        $payload = json_decode((string) $response->getContent(), true, flags: JSON_THROW_ON_ERROR);
+
+        $this->assertSame(400, $response->getStatusCode());
+        $this->assertSame('Missing Idempotency-Key header', $payload['error']);
     }
 }

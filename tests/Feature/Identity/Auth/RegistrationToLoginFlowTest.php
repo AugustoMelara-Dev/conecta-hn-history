@@ -15,7 +15,7 @@ class RegistrationToLoginFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_completes_full_registration_cycle_and_allows_login()
     {
         // 0. STERILE ENVIRONMENT CONFIGURATION
@@ -95,7 +95,7 @@ class RegistrationToLoginFlowTest extends TestCase
             'Authenticated User is not linked to the correct Tenant.'
         );
     }
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_complies_with_the_v1_json_schema_contract()
     {
         $command = new RegisterUserCommand(
@@ -108,6 +108,9 @@ class RegistrationToLoginFlowTest extends TestCase
 
         $serialized = json_decode(json_encode($command));
 
+        expect($serialized)->toBeObject();
+        expect($serialized->name)->toBe('Schema Compliant User');
+        expect($serialized->tenantId)->toBeNull();
         expect($serialized)->toMatchJsonSchema('tests/Schemas/Commands/RegisterUserCommand.v1.json');
     }
 }

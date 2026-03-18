@@ -11,21 +11,11 @@ use App\Domain\Auth\Exceptions\OtpExpiredException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\GenerateOtpRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Cache\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
-/**
- * OtpController - HTTP Adapter for OTP Authentication (Clean Controller)
- *
- * ARCHITECTURAL COMPLIANCE:
- * - Zero inline validation (delegated to FormRequests)
- * - Zero business logic (delegated to Actions)
- * - Single Responsibility: HTTP translation only
- *
- * PROHIBITED: Mail::, Eloquent queries, direct model instantiation.
- */
 final class OtpController extends Controller
 {
     public function __construct(
@@ -34,66 +24,51 @@ final class OtpController extends Controller
         private RateLimiter $limiter
     ) {}
 
-    /**
-     * Generate and send OTP.
-     *
-     * POST /auth/otp/generate
-     */
     public function generate(GenerateOtpRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $tenantId = (string) ($request->input('tenant_id') ?? 'public');
 
         $this->enforceRateLimit($request, 'generate', 3);
 
         $result = $this->generateAction->execute(
+            $tenantId,
             identifier: $validated['identifier'],
             ipAddress: $request->ip() ?? '127.0.0.1',
-            userAgent: $request->userAgent() ?? 'Unknown'
+            userAgent: $request->userAgent() ?? 'Unknown',
+            idempotencyKey: $request->header('Idempotency-Key')
         );
 
         return response()->json([
-            'message' => 'Código enviado exitosamente.',
+            'message' => 'Codigo enviado exitosamente.',
             'expires_at' => $result['expires_at'],
         ]);
     }
 
-    /**
-     * Verify OTP and authenticate user.
-     *
-     * POST /auth/otp/verify
-     */
     public function verify(VerifyOtpRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $tenantId = (string) ($request->input('tenant_id') ?? 'public');
 
         $this->enforceRateLimit($request, 'verify', 5);
 
         try {
-            // MAP: uuid -> identifier, otp_code -> code for internal Action compatibility
             $result = $this->verifyAction->execute(
+                $tenantId,
                 identifier: $validated['uuid'],
                 code: $validated['otp_code'],
-                ipAddress: $request->ip() ?? '127.0.0.1'
+                ipAddress: $request->ip() ?? '127.0.0.1',
+                idempotencyKey: $request->header('Idempotency-Key')
             );
 
             $this->limiter->clear($this->rateLimitKey($request, 'verify'));
 
-            return response()->json([
-                'message' => $result['requires_registration']
-                    ? 'Verificación exitosa. Completa tu registro.'
-                    : 'Autenticación exitosa.',
-                'user' => $result['user'],
-                'requires_registration' => $result['requires_registration'],
-                'redirect' => $result['redirect'],
-            ]);
+            return response()->json($result);
         } catch (InvalidOtpException|OtpExpiredException $e) {
             throw ValidationException::withMessages(['otp_code' => [$e->getMessage()]]);
         }
     }
 
-    /**
-     * Enforce rate limiting for OTP operations.
-     */
     private function enforceRateLimit(Request $request, string $action, int $maxAttempts): void
     {
         $key = $this->rateLimitKey($request, $action);
@@ -108,9 +83,6 @@ final class OtpController extends Controller
         $this->limiter->hit($key, 3600);
     }
 
-    /**
-     * Generate rate limit key.
-     */
     private function rateLimitKey(Request $request, string $action): string
     {
         $identifier = $request->input('identifier') ?? $request->input('uuid');

@@ -10,7 +10,7 @@ class ZombieLockTest extends TestCase
 {
     use \Illuminate\Foundation\Testing\RefreshDatabase;
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_recovers_stale_processing_locks()
     {
         // 0. Freeze Time
@@ -51,7 +51,7 @@ class ZombieLockTest extends TestCase
         $this->assertNotEquals($twoHoursAgo->toIso8601String(), \Carbon\Carbon::parse($record->updated_at)->toIso8601String());
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_throttles_active_processing_locks()
     {
         // 0. Freeze Time

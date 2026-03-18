@@ -24,9 +24,7 @@ class JobIdempotencyTest extends TestCase
     // ShouldBeUnique Interface Verification
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /**
-     * @test
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function sync_analytics_job_implements_should_be_unique(): void
     {
         $job = new SyncAnalyticsJob();
@@ -36,9 +34,7 @@ class JobIdempotencyTest extends TestCase
         $this->assertStringStartsWith('sync_analytics_', $job->uniqueId());
     }
 
-    /**
-     * @test
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function generate_product_blurhash_job_implements_should_be_unique(): void
     {
         $job = new GenerateProductBlurhash(productId: 100, tenantId: '00000000-0000-0000-0000-000000000001');
@@ -47,9 +43,7 @@ class JobIdempotencyTest extends TestCase
         $this->assertEquals('blurhash_00000000-0000-0000-0000-000000000001_100', $job->uniqueId());
     }
 
-    /**
-     * @test
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function generate_pdf_report_job_implements_should_be_unique(): void
     {
         $data = new ReportRequestData(
@@ -68,9 +62,7 @@ class JobIdempotencyTest extends TestCase
     // Tenant Isolation Verification (Unique Keys Don't Collide)
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /**
-     * @test
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function blurhash_unique_keys_are_tenant_scoped(): void
     {
         $tenant1Job = new GenerateProductBlurhash(productId: 100, tenantId: '00000000-0000-0000-0000-000000000001');
@@ -80,9 +72,7 @@ class JobIdempotencyTest extends TestCase
         $this->assertNotEquals($tenant1Job->uniqueId(), $tenant2Job->uniqueId());
     }
 
-    /**
-     * @test
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function pdf_unique_keys_are_tenant_scoped(): void
     {
         $tenant1Data = new ReportRequestData(

@@ -14,7 +14,7 @@ class RegisterUserGuardTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_throws_domain_exception_when_tenant_id_is_null_on_staff_registration_path()
     {
         // ARRANGE: Command intended for STAFF role but missing tenantId
@@ -36,7 +36,7 @@ class RegisterUserGuardTest extends TestCase
         $handler->handle($command);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_succeeds_when_tenant_id_is_null_on_seller_registration_path()
     {
         // ARRANGE: Command intended for SELLER/OWNER role, missing tenantId (valid for new tenant creation)

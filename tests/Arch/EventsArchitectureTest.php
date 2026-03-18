@@ -32,10 +32,10 @@ use Tests\TestCase;
  * ║  FAILURE = BLOCK DEPLOYMENT                                             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * @group architecture
- * @group events
- * @group arch
  */
+#[\PHPUnit\Framework\Attributes\Group('architecture')]
+#[\PHPUnit\Framework\Attributes\Group('events')]
+#[\PHPUnit\Framework\Attributes\Group('arch')]
 class EventsArchitectureTest extends TestCase
 {
     /**
@@ -50,10 +50,10 @@ class EventsArchitectureTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Domain Events MUST NOT contain Eloquent model properties.
      * SerializesModels trait bypass is a critical security/performance issue.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function domain_events_have_no_eloquent_models(): void
     {
         $events = $this->findClassesImplementing(DomainEvent::class);
@@ -89,9 +89,9 @@ class EventsArchitectureTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * GOVERNANCE RULE 1: All events (except Broadcast) MUST implement DomainEvent or AuditEvent.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function governance_all_non_broadcast_events_must_implement_interface(): void
     {
         $allEvents = $this->findAllEventClasses();
@@ -119,9 +119,9 @@ class EventsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * GOVERNANCE RULE 2: All events (except Broadcast) MUST be final readonly.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function governance_all_non_broadcast_events_must_be_final_readonly(): void
     {
         $allEvents = $this->findAllEventClasses();
@@ -151,9 +151,9 @@ class EventsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * GOVERNANCE RULE 3: No constructor may accept an Eloquent Model.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function governance_no_eloquent_models_in_any_event(): void
     {
         $allEvents = $this->findAllEventClasses();
@@ -185,10 +185,10 @@ class EventsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * GOVERNANCE RULE 4: All non-Broadcast events MUST have serialization method.
      * DomainEvents use toPrimitives(), AuditEvents use toAuditLog().
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function governance_all_events_must_have_serialization_method(): void
     {
         $allEvents = $this->findAllEventClasses();
@@ -226,9 +226,9 @@ class EventsArchitectureTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Domain Events MUST be final to prevent inheritance and ensure immutability.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function domain_events_are_final(): void
     {
         $events = $this->findClassesImplementing(DomainEvent::class);
@@ -247,9 +247,9 @@ class EventsArchitectureTest extends TestCase
     }
 
     /**
-     * @test
      * Domain Events MUST be readonly to guarantee immutability.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function domain_events_are_readonly(): void
     {
         $events = $this->findClassesImplementing(DomainEvent::class);
@@ -272,9 +272,9 @@ class EventsArchitectureTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Every Domain Event MUST return a TenantId from tenantId() method.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function domain_events_have_tenant_context(): void
     {
         $events = $this->findClassesImplementing(DomainEvent::class);
@@ -310,9 +310,9 @@ class EventsArchitectureTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * NO class should implement both DomainEvent and ShouldBroadcast.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function broadcast_events_are_separate_from_domain(): void
     {
         $domains = $this->findClassesImplementing(DomainEvent::class);
@@ -333,13 +333,13 @@ class EventsArchitectureTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Event properties MUST NOT contain PII (email, phone, etc).
      *
      * NOTE: AuditEvent implementations are EXCLUDED from this check because
      * security events legitimately need to log failed login attempts with
      * email addresses for threat detection and forensics.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function events_contain_no_pii(): void
     {
         $events = $this->findAllEventClasses();
@@ -405,9 +405,9 @@ class EventsArchitectureTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Domain Events MUST implement ShouldDispatchAfterCommit for transaction safety.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function domain_events_dispatch_after_commit(): void
     {
         $events = $this->findClassesImplementing(DomainEvent::class);
@@ -431,9 +431,9 @@ class EventsArchitectureTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Audit Events MUST NOT implement ShouldBroadcast (security risk).
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function audit_events_do_not_broadcast(): void
     {
         $audits = $this->findClassesImplementing(AuditEvent::class);
@@ -454,9 +454,9 @@ class EventsArchitectureTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Domain Events MUST NOT have array properties (arrays are mutable).
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function domain_events_have_no_mutable_arrays(): void
     {
         $events = $this->findClassesImplementing(DomainEvent::class);

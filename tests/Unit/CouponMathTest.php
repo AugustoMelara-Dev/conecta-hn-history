@@ -17,10 +17,6 @@ use PHPUnit\Framework\TestCase;
  * These tests run WITHOUT database connections (pure unit tests).
  * They verify the mathematical precision of discount calculations.
  *
- * @covers \App\Models\Coupon::calculateDiscount
- * @covers \App\Models\Coupon::calculateDiscountUnsafe
- * @covers \App\Models\Coupon::calculatePercentDiscount
- * @covers \App\Models\Coupon::calculateFixedDiscount
  */
 class CouponMathTest extends TestCase
 {
@@ -29,12 +25,12 @@ class CouponMathTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies that percentage discounts are rounded to exactly 2 decimal places.
      *
      * SCENARIO: 33.333% of $100 = $33.333...
      * EXPECTED: Must return 33.33, not 33.33300001 (which breaks payment gateways)
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_rounds_percentage_discounts_to_two_decimals(): void
     {
         $coupon = $this->createCouponInstance([
@@ -57,12 +53,12 @@ class CouponMathTest extends TestCase
     }
 
     /**
-     * @test
      * Additional precision test with repeating decimal.
      *
      * SCENARIO: 10% of $333.33 = $33.333...
      * EXPECTED: Must return 33.33
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_handles_repeating_decimals_correctly(): void
     {
         $coupon = $this->createCouponInstance([
@@ -80,12 +76,12 @@ class CouponMathTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies percentage discount respects max_discount cap.
      *
      * SCENARIO: 50% of $200 = $100, but max_discount = $50
      * EXPECTED: Must return 50.00 (capped)
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_caps_percentage_discount_at_max_discount(): void
     {
         $coupon = $this->createCouponInstance([
@@ -107,7 +103,6 @@ class CouponMathTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * CRITICAL: Verifies that fixed discounts cannot exceed cart subtotal.
      *
      * SCENARIO: L.500 coupon on L.100 cart
@@ -116,6 +111,7 @@ class CouponMathTest extends TestCase
      * This test prevents the catastrophic business rule violation of
      * negative transaction totals.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_caps_fixed_discount_at_subtotal(): void
     {
         $coupon = $this->createCouponInstance([
@@ -134,9 +130,9 @@ class CouponMathTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies fixed discount works normally when under subtotal.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_full_fixed_discount_when_under_subtotal(): void
     {
         $coupon = $this->createCouponInstance([
@@ -153,9 +149,9 @@ class CouponMathTest extends TestCase
     }
 
     /**
-     * @test
      * Edge case: Fixed discount exactly equals subtotal.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_allows_fixed_discount_equal_to_subtotal(): void
     {
         $coupon = $this->createCouponInstance([
@@ -176,12 +172,12 @@ class CouponMathTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies free_shipping returns the exact shipping cost passed.
      *
      * SCENARIO: Free shipping coupon, $55.50 shipping cost
      * EXPECTED: Must return 55.50 exactly (ignore coupon's nominal value)
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_shipping_cost_for_free_shipping_type(): void
     {
         $coupon = $this->createCouponInstance([
@@ -198,9 +194,9 @@ class CouponMathTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies free_shipping with zero shipping returns zero.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_zero_for_free_shipping_with_no_shipping_cost(): void
     {
         $coupon = $this->createCouponInstance([
@@ -221,9 +217,9 @@ class CouponMathTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies that calculateDiscount returns 0 for inactive coupons.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_zero_for_inactive_coupons(): void
     {
         $coupon = $this->createCouponInstance([

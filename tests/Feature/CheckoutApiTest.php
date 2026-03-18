@@ -23,7 +23,6 @@ use Tests\TestCase;
  * 2. Does NOT leak sensitive database columns
  * 3. Handles validation errors properly
  *
- * @covers \App\Http\Controllers\CheckoutController
  */
 class CheckoutApiTest extends TestCase
 {
@@ -64,12 +63,12 @@ class CheckoutApiTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies the API returns correct JSON structure for valid coupons.
      *
      * SCENARIO: Valid coupon code submitted via POST
      * EXPECTED: HTTP 200 with structured JSON containing required keys
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_validates_coupon_via_api_and_returns_correct_json(): void
     {
         // Arrange: Create a valid coupon
@@ -114,9 +113,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies fixed amount coupon returns correct calculation.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_calculates_fixed_discount_correctly(): void
     {
         Coupon::factory()->create([
@@ -140,9 +139,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies free shipping coupon returns shipping cost as discount.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_shipping_cost_for_free_shipping_coupon(): void
     {
         Coupon::factory()->create([
@@ -171,7 +170,6 @@ class CheckoutApiTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * CRITICAL SECURITY: Verifies sensitive database columns are NOT exposed.
      *
      * SCENARIO: Successful coupon validation
@@ -183,6 +181,7 @@ class CheckoutApiTest extends TestCase
      * - Usage limits (competitive intelligence)
      * - Timestamps (system metadata)
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_does_not_leak_sensitive_model_data(): void
     {
         Coupon::factory()->create([
@@ -236,9 +235,9 @@ class CheckoutApiTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies that missing 'code' field returns 422 validation error.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_missing_code(): void
     {
         $response = $this->postJson($this->apiEndpoint, [
@@ -251,9 +250,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies that missing 'cart_total' returns 422 validation error.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_missing_cart_total(): void
     {
         $response = $this->postJson($this->apiEndpoint, [
@@ -266,9 +265,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies that empty body returns 422 with both field errors.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_empty_body(): void
     {
         $response = $this->postJson($this->apiEndpoint, []);
@@ -278,9 +277,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies that invalid cart_total (negative) returns 422.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_negative_cart_total(): void
     {
         $response = $this->postJson($this->apiEndpoint, [
@@ -297,9 +296,9 @@ class CheckoutApiTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies that invalid coupon code returns 422 with error message.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_invalid_coupon_code(): void
     {
         $response = $this->postJson($this->apiEndpoint, [
@@ -316,9 +315,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies that expired coupon returns 422 with EXPIRED code.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_expired_coupon(): void
     {
         Coupon::factory()->create([
@@ -343,9 +342,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies that depleted coupon returns 422 with DEPLETED code.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_depleted_coupon(): void
     {
         Coupon::factory()->create([
@@ -371,9 +370,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies that inactive coupon returns 422 with INACTIVE code.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_inactive_coupon(): void
     {
         Coupon::factory()->create([
@@ -401,9 +400,9 @@ class CheckoutApiTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies authenticated users can validate coupons.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_allows_authenticated_users_to_validate_coupons(): void
     {
         $user = User::factory()->create();
@@ -435,9 +434,9 @@ class CheckoutApiTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Verifies cart summary endpoint returns correct structure.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_cart_summary_with_applied_coupon(): void
     {
         $response = $this->postJson('/api/v1/checkout/cart-summary', [
@@ -466,9 +465,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
-     * @test
      * Verifies remove coupon endpoint works.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_removes_coupon_and_returns_original_total(): void
     {
         $response = $this->postJson('/api/v1/checkout/remove-coupon', [

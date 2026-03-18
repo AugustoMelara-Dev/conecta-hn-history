@@ -75,9 +75,9 @@ class SalesExportTest extends TestCase
     }
 
     /**
-     * @test
      * Tenant A export contains ONLY Tenant A data
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function export_contains_only_data_from_requesting_tenant(): void
     {
         $data = $this->createTestData();
@@ -109,9 +109,9 @@ class SalesExportTest extends TestCase
     }
 
     /**
-     * @test
      * Export dispatches audit event with correct metadata
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function export_dispatches_audit_event(): void
     {
         $data = $this->createTestData();
@@ -134,9 +134,9 @@ class SalesExportTest extends TestCase
     }
 
     /**
-     * @test
      * TenantId Value Object is required (not primitive int)
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function constructor_requires_tenant_id_value_object(): void
     {
         $reflection = new \ReflectionClass(SalesExport::class);
@@ -150,9 +150,9 @@ class SalesExportTest extends TestCase
     }
 
     /**
-     * @test
      * Date range filter works correctly within tenant
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function date_filter_works_within_tenant_context(): void
     {
         $data = $this->createTestData();
@@ -188,9 +188,9 @@ class SalesExportTest extends TestCase
     }
 
     /**
-     * @test
      * Status filter works correctly within tenant
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function status_filter_works_within_tenant_context(): void
     {
         $data = $this->createTestData();
@@ -228,9 +228,9 @@ class SalesExportTest extends TestCase
     }
 
     /**
-     * @test
      * Empty tenant returns no data (not all data)
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function empty_tenant_returns_no_orders(): void
     {
         $data = $this->createTestData();
@@ -251,9 +251,9 @@ class SalesExportTest extends TestCase
     }
 
     /**
-     * @test
      * Export generates unique export ID
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function export_generates_unique_id(): void
     {
         $data = $this->createTestData();

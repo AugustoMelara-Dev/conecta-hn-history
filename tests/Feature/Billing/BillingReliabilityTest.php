@@ -45,7 +45,7 @@ class BillingReliabilityTest extends TestCase
         // This ensures the Decorator Pipeline (RateLimiter -> Handler) is active.
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_continues_payment_processing_even_if_rate_limiter_fails_fail_open()
     {
         // ARRANGE: Force RateLimiter to throw (simulating Redis failure)
@@ -75,7 +75,7 @@ class BillingReliabilityTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_handles_duplicate_requests_idempotently()
     {
         // ARRANGE

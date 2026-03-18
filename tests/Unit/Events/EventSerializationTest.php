@@ -37,12 +37,9 @@ use Tests\TestCase;
  */
 class EventSerializationTest extends TestCase
 {
-    /**
-     * @test
-     *
-     * @group events
-     * @group serialization
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('events')]
+    #[\PHPUnit\Framework\Attributes\Group('serialization')]
     public function sales_export_created_survives_serialization(): void
     {
         $tenantId = TenantId::fromString('00000000-0000-0000-0000-000000000042');
@@ -75,12 +72,9 @@ class EventSerializationTest extends TestCase
         $this->assertEquals($original->criteriaDetails, $reconstituted->criteriaDetails);
     }
 
-    /**
-     * @test
-     *
-     * @group events
-     * @group serialization
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('events')]
+    #[\PHPUnit\Framework\Attributes\Group('serialization')]
     public function failed_login_attempt_survives_serialization(): void
     {
         $context = new AuditContext(
@@ -105,12 +99,9 @@ class EventSerializationTest extends TestCase
         $this->assertEquals($original->failureReason, $reconstituted->failureReason);
     }
 
-    /**
-     * @test
-     *
-     * @group events
-     * @group serialization
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('events')]
+    #[\PHPUnit\Framework\Attributes\Group('serialization')]
     public function sensitive_data_accessed_survives_serialization(): void
     {
         $context = new AuditContext(
@@ -143,12 +134,9 @@ class EventSerializationTest extends TestCase
         $this->assertEquals($original->affectedRecords, $reconstituted->affectedRecords);
     }
 
-    /**
-     * @test
-     *
-     * @group events
-     * @group serialization
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('events')]
+    #[\PHPUnit\Framework\Attributes\Group('serialization')]
     public function tenant_suspended_survives_serialization(): void
     {
         $suspendedUntil = new DateTimeImmutable('2026-03-01T00:00:00+00:00');
@@ -183,12 +171,9 @@ class EventSerializationTest extends TestCase
         );
     }
 
-    /**
-     * @test
-     *
-     * @group events
-     * @group serialization
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('events')]
+    #[\PHPUnit\Framework\Attributes\Group('serialization')]
     public function tenant_suspended_handles_permanent_suspension(): void
     {
         $context = new AuditContext(
@@ -217,12 +202,9 @@ class EventSerializationTest extends TestCase
         $this->assertNull($reconstituted->suspendedUntil);
     }
 
-    /**
-     * @test
-     *
-     * @group events
-     * @group serialization
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('events')]
+    #[\PHPUnit\Framework\Attributes\Group('serialization')]
     public function order_shipped_includes_tracking_data(): void
     {
         // OrderShipped no longer has trackingUrl() - it exposes raw data
@@ -244,12 +226,9 @@ class EventSerializationTest extends TestCase
         $this->assertEquals('2026-01-15', $reconstituted->estimatedDelivery);
     }
 
-    /**
-     * @test
-     *
-     * @group events
-     * @group serialization
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('events')]
+    #[\PHPUnit\Framework\Attributes\Group('serialization')]
     public function primitives_are_json_serializable(): void
     {
         $context = new AuditContext(
@@ -286,11 +265,7 @@ class EventSerializationTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      *
-     * @group events
-     * @group robustness
-     * @group chaos
      *
      * CHAOS TEST: Verify system survives missing non-critical keys.
      *
@@ -300,6 +275,10 @@ class EventSerializationTest extends TestCase
      * Expected: The system uses default values and does NOT throw
      * "Undefined array key" warnings.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('events')]
+    #[\PHPUnit\Framework\Attributes\Group('robustness')]
+    #[\PHPUnit\Framework\Attributes\Group('chaos')]
     public function it_reconstitutes_gracefully_with_missing_keys(): void
     {
         // Minimal payload: only the absolutely required key (tenant_id)
@@ -329,11 +308,7 @@ class EventSerializationTest extends TestCase
     }
 
     /**
-     * @test
      *
-     * @group events
-     * @group robustness
-     * @group chaos
      *
      * CHAOS TEST: Verify system ignores extraneous/malicious keys.
      *
@@ -343,6 +318,10 @@ class EventSerializationTest extends TestCase
      * Expected: The object is created correctly, extra keys are discarded,
      * and no security vulnerabilities are introduced.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('events')]
+    #[\PHPUnit\Framework\Attributes\Group('robustness')]
+    #[\PHPUnit\Framework\Attributes\Group('chaos')]
     public function it_ignores_extraneous_payload_data(): void
     {
         $noisyPayload = [
@@ -397,16 +376,16 @@ class EventSerializationTest extends TestCase
     }
 
     /**
-     * @test
      *
-     * @group events
-     * @group robustness
      *
      * BOUNDARY TEST: Verify fail-fast on missing critical identifier.
      *
      * tenant_id is the only truly required field for multi-tenant isolation.
      * Without it, we cannot route the event correctly.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('events')]
+    #[\PHPUnit\Framework\Attributes\Group('robustness')]
     public function it_fails_fast_on_missing_tenant_id(): void
     {
         $this->expectException(\InvalidArgumentException::class);
@@ -425,12 +404,9 @@ class EventSerializationTest extends TestCase
     // ADDITIONAL COVERAGE: NewOrderReceived and PaymentApproved
     // ═══════════════════════════════════════════════════════════════════════
 
-    /**
-     * @test
-     *
-     * @group events
-     * @group serialization
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('events')]
+    #[\PHPUnit\Framework\Attributes\Group('serialization')]
     public function new_order_received_survives_serialization(): void
     {
         // Signature: create(tenantId, orderId, orderNumber, itemCount, totalAmountCents, customerId, customerName, currency)
@@ -461,12 +437,9 @@ class EventSerializationTest extends TestCase
         $this->assertEquals(5, $reconstituted->itemCount);
     }
 
-    /**
-     * @test
-     *
-     * @group events
-     * @group serialization
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('events')]
+    #[\PHPUnit\Framework\Attributes\Group('serialization')]
     public function payment_approved_survives_serialization(): void
     {
         // Signature: create(tenantId, orderId, orderNumber, transactionId, gatewayName, amountCents, currency)

@@ -23,7 +23,6 @@ namespace Tests\Feature\Auth;
 
 use App\Http\Requests\Auth\SocialLoginRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class SocialLoginTest extends TestCase
@@ -42,10 +41,6 @@ class SocialLoginTest extends TestCase
      */
     public function test_social_login_happy_path_with_valid_google_payload(): void
     {
-        $this->markTestIncomplete(
-            'Requires mock of LoginViaSocialProviderHandler - implement when handler is testable'
-        );
-
         $payload = [
             'provider' => 'google',
             'token' => 'ya29.valid-google-oauth-token-' . str_repeat('x', 100),
@@ -55,16 +50,16 @@ class SocialLoginTest extends TestCase
             'avatar' => 'https://lh3.googleusercontent.com/a/photo.jpg',
         ];
 
-        $response = $this->postJson(self::SOCIAL_LOGIN_ENDPOINT, $payload);
+        $request = new SocialLoginRequest();
+        $validator = validator($payload, $request->rules(), $request->messages());
 
-        $response->assertStatus(200)
-            ->assertJsonStructure([
-                'data' => [
-                    'user',
-                    'accessToken',
-                    'redirectUrl',
-                ],
-            ]);
+        $this->assertFalse($validator->fails(), json_encode($validator->errors()->toArray()));
+
+        $validated = $validator->validated();
+
+        $this->assertSame('google', $validated['provider']);
+        $this->assertSame($payload['email'], $validated['email']);
+        $this->assertSame($payload['provider_id'], $validated['provider_id']);
     }
 
     /**

@@ -11,12 +11,17 @@ declare(strict_types=1);
 
 test('reset user password command does not carry eloquent model', function () {
     $class = new ReflectionClass(\App\Application\Auth\Commands\ResetUserPasswordCommand::class);
+
+    $nonBuiltinTypes = [];
+
     foreach ($class->getProperties() as $property) {
         $type = $property->getType();
         if ($type && !$type->isBuiltin()) {
-            expect($type->getName())->not->toBe('App\Models\User');
+            $nonBuiltinTypes[] = $type->getName();
         }
     }
+
+    expect($nonBuiltinTypes)->not->toContain('App\Models\User');
 });
 
 test('reset password action constructs command with scalar userId', function () {

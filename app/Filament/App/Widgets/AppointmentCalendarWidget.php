@@ -18,7 +18,7 @@ use Filament\Widgets\Widget;
  */
 class AppointmentCalendarWidget extends Widget
 {
-    protected static string $view = 'filament.app.widgets.appointment-calendar-placeholder';
+    protected string $view = 'filament.app.widgets.appointment-calendar-placeholder';
 
     /**
      * Fetch appointments for the calendar view.

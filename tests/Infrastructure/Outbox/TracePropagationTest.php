@@ -12,7 +12,7 @@ class TracePropagationTest extends TestCase
 {
     use \Illuminate\Foundation\Testing\RefreshDatabase;
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_rehydrates_trace_context_from_outbox_message()
     {
         // 1. Arrange: Create a message with a specific Trace ID

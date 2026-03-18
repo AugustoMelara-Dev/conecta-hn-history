@@ -22,7 +22,7 @@ class TenantRepositoryCycleTest extends TestCase
         $this->app->bind(TenantRepositoryInterface::class, EventSourcedTenantRepository::class);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_can_save_and_rehydrate_a_tenant()
     {
         // 1. Arrange (Write)
@@ -50,7 +50,7 @@ class TenantRepositoryCycleTest extends TestCase
         $this->assertEquals($domain, $retrievedTenant->domain());
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_null_for_non_existent_tenant()
     {
         $repo = $this->app->make(TenantRepositoryInterface::class);

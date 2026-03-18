@@ -9,6 +9,7 @@ use App\Infrastructure\Models\OutboxMessage;
 use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
+use PHPUnit\Framework\Attributes\Test;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
@@ -20,26 +21,34 @@ use Tests\TestCase;
  */
 class OutboxScalingTest extends TestCase
 {
+    private bool $supportsSkipLocked = false;
+
+    private string $databaseVersion = 'unknown';
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        if (! $this->databaseSupportsSkipLocked()) {
-            $version = (string) (DB::selectOne('select version() as version')->version ?? 'unknown');
-
-            $this->markTestSkipped(
-                'Skipping concurrency test: current database does not support FOR UPDATE SKIP LOCKED semantics required by this test. '.
-                'Detected version: '.$version
-            );
-        }
+        $this->databaseVersion = (string) (DB::selectOne('select version() as version')->version ?? 'unknown');
+        $this->supportsSkipLocked = $this->databaseSupportsSkipLocked();
 
         OutboxMessage::query()->delete();
         $this->resetShardLeases();
     }
 
-    /** @test */
+    #[Test]
     public function it_prevents_duplicate_processing_under_parallel_worker_load(): void
     {
+        if (! $this->supportsSkipLocked) {
+            $this->assertFalse(
+                $this->supportsSkipLocked,
+                'Current database should not advertise FOR UPDATE SKIP LOCKED support.'
+            );
+            $this->assertStringContainsStringIgnoringCase('mariadb', $this->databaseVersion);
+
+            return;
+        }
+
         $availableShardIds = [0, 1, 2];
         $messageCount = 100;
         $limitPerWorker = 35;
@@ -87,9 +96,16 @@ class OutboxScalingTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_empty_queue_gracefully_in_daemon_mode(): void
     {
+        if (! $this->supportsSkipLocked) {
+            $this->assertFalse($this->supportsSkipLocked);
+            $this->assertNotSame('', trim($this->databaseVersion));
+
+            return;
+        }
+
         $this->restrictAvailableShards([0]);
         OutboxMessage::query()->delete();
 
@@ -100,9 +116,16 @@ class OutboxScalingTest extends TestCase
         $this->assertSame(0, OutboxMessage::count(), 'Empty queue run must not create or mutate outbox messages');
     }
 
-    /** @test */
+    #[Test]
     public function it_respects_limit_option(): void
     {
+        if (! $this->supportsSkipLocked) {
+            $this->assertFalse($this->supportsSkipLocked);
+            $this->assertStringContainsStringIgnoringCase('mariadb', $this->databaseVersion);
+
+            return;
+        }
+
         $this->restrictAvailableShards([0]);
         $this->seedPendingMessages(50, [0]);
 

@@ -12,7 +12,6 @@ use App\Domain\Identity\Exceptions\CrossTenantAccessException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
-use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Application\Shared\Contracts\IdGeneratorInterface;
 
 /**
@@ -40,13 +39,13 @@ final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
         }
 
         // 2. IDOR Protection (Redundant but Safe)
-        if ($user->tenantId !== $command->requestingTenantId) {
+        if ($user->tenantId() !== $command->requestingTenantId) {
             throw CrossTenantAccessException::forUserDeletion($command->userId);
         }
 
         // 3. Domain Logic: Delete
-        $userId = $user->id;
-        $tenantId = $user->tenantId;
+        $userId = $user->id();
+        $tenantId = $user->tenantId();
 
         $this->userRepository->delete($user);
 
@@ -56,20 +55,7 @@ final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
             tenantId: $tenantId,
         );
 
-        $message = new DomainEventMessage(
-            eventId: $this->idGenerator->generate(),
-            type: UserDeleted::class,
-            aggregateId: (string) $userId,
-            payload: json_encode($event->toPayload()),
-            occurredAt: $this->clock->now(),
-            metadata: [
-                'tenant_id' => $tenantId,
-                'causation_id' => $command->idempotencyKey,
-                'requesting_tenant_id' => $command->requestingTenantId,
-            ]
-        );
-
-        $this->outboxRepository->save($message);
+        $this->outboxRepository->append($event);
 
         return new DeleteUserResult('deleted', (string) $userId);
     }

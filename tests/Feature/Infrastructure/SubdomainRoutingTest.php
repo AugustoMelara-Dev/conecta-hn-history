@@ -15,31 +15,20 @@ beforeEach(function () {
 
 describe('Subdomain Routing Infrastructure', function () {
     it('resolves tenant microsite from subdomain', function () {
-        $this->markTestSkipped('Subdomain routing is currently disabled. Fallback root returns 200.');
-
-        // Arrange
         $tenant = Tenant::factory()->create([
             'slug' => 'barberia',
             'name' => 'La Barbería',
             'is_active' => true,
         ]);
 
-        // Act: Simulate request to barberia.vito.test
-        $response = $this->get('http://barberia.vito.test/');
+        $response = $this->get("/t/{$tenant->slug}");
 
-        // Assert: Should load tenant microsite (or bound to container)
-        // Note: In test environment, subdomain may not resolve directly
-        // We verify the middleware logic separately
-        expect(true)->toBeTrue(); // Placeholder for route-level test
+        $response->assertOk();
     });
 
     it('returns 404 for unknown subdomain', function () {
-        $this->markTestSkipped('Subdomain routing is currently disabled. Fallback root returns 200.');
+        $response = $this->get('/t/unknown-business');
 
-        // Act
-        $response = $this->get('http://unknown-business.vito.test/');
-
-        // Assert
         $response->assertStatus(404);
     });
 

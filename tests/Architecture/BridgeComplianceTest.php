@@ -20,6 +20,7 @@ test('direct eloquent usage in actions must be explicitly documented as a bridge
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($actionsDir, FilesystemIterator::SKIP_DOTS)
     );
+    $undocumentedBridges = [];
 
     foreach ($iterator as $file) {
         if ($file->getExtension() !== 'php') {
@@ -39,9 +40,15 @@ test('direct eloquent usage in actions must be explicitly documented as a bridge
         // it must carry the ARCHITECTURAL BRIDGE marker.
         if (preg_match('/\bUser::\w|instanceof\s+User\b/', $content)) {
             $hasBridge = str_contains($content, 'ARCHITECTURAL BRIDGE');
-            expect($hasBridge)->toBeTrue("File {$basename} uses Eloquent User model without 'ARCHITECTURAL BRIDGE' documentation.");
+
+            if (! $hasBridge) {
+                $undocumentedBridges[] = $basename;
+            }
         }
     }
+
+    expect($undocumentedBridges)
+        ->toBeEmpty("Undocumented Eloquent bridges found: " . implode(', ', $undocumentedBridges));
 });
 
 test('decoupled actions do not import eloquent user model', function () {

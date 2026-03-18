@@ -70,10 +70,7 @@ class SecurityRegressionTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      *
-     * @group security
-     * @group mass_assignment
      *
      * ATTACK: Attacker tries to create a product in victim's namespace by
      * injecting victim's tenant_id in the creation payload.
@@ -81,6 +78,9 @@ class SecurityRegressionTest extends TestCase
      * EXPECTED: The created product should belong to attacker's tenant,
      * NOT the victim's tenant specified in the payload.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('security')]
+    #[\PHPUnit\Framework\Attributes\Group('mass_assignment')]
     public function it_prevents_tenant_id_injection_on_product_creation(): void
     {
         // ATTEMPT: Create product with VICTIM's tenant_id in payload
@@ -109,10 +109,7 @@ class SecurityRegressionTest extends TestCase
     }
 
     /**
-     * @test
      *
-     * @group security
-     * @group mass_assignment
      *
      * ATTACK: Attacker tries to modify their product's tenant_id to point
      * to victim's tenant, effectively "transferring" the product.
@@ -120,6 +117,9 @@ class SecurityRegressionTest extends TestCase
      * EXPECTED: tenant_id should be immutable after creation, or at least
      * not changeable to a tenant the user doesn't own.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('security')]
+    #[\PHPUnit\Framework\Attributes\Group('mass_assignment')]
     public function it_verifies_tenant_id_is_in_fillable_but_protected_by_policy(): void
     {
         // Create attacker's product
@@ -144,10 +144,7 @@ class SecurityRegressionTest extends TestCase
     }
 
     /**
-     * @test
      *
-     * @group security
-     * @group isolation
      *
      * VERIFICATION: tenant_id is GUARDED (immutable) to prevent mass assignment attacks.
      * The BelongsToTenant trait auto-assigns it during creation via the creating() hook.
@@ -157,6 +154,9 @@ class SecurityRegressionTest extends TestCase
      * - BelongsToTenant::bootBelongsToTenant() sets it from authenticated context
      * - This prevents attackers from injecting foreign tenant_id in requests
      */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('security')]
+    #[\PHPUnit\Framework\Attributes\Group('isolation')]
     public function it_documents_tenant_id_fillable_status(): void
     {
         $product = new Product;
@@ -182,13 +182,13 @@ class SecurityRegressionTest extends TestCase
     }
 
     /**
-     * @test
      *
-     * @group security
-     * @group business_rules
      *
      * VERIFICATION: The OrderPolicy correctly prevents deletion of processed orders.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('security')]
+    #[\PHPUnit\Framework\Attributes\Group('business_rules')]
     public function it_documents_order_deletion_business_rules(): void
     {
         // This is a policy behavior test - the actual logic is in OrderPolicy
@@ -206,13 +206,13 @@ class SecurityRegressionTest extends TestCase
     }
 
     /**
-     * @test
      *
-     * @group security
-     * @group policies
      *
      * VERIFICATION: All critical models have associated policies.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('security')]
+    #[\PHPUnit\Framework\Attributes\Group('policies')]
     public function it_verifies_all_critical_models_have_policies(): void
     {
         $requiredPolicies = [
@@ -233,13 +233,13 @@ class SecurityRegressionTest extends TestCase
     }
 
     /**
-     * @test
      *
-     * @group security
-     * @group policies
      *
      * VERIFICATION: All policies extend TenantAwarePolicy base class.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('security')]
+    #[\PHPUnit\Framework\Attributes\Group('policies')]
     public function it_verifies_policies_extend_tenant_aware_policy(): void
     {
         $policies = [

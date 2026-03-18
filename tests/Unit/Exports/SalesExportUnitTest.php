@@ -31,9 +31,9 @@ class SalesExportUnitTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * TenantId Value Object is required (not primitive int)
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function constructor_requires_tenant_id_value_object(): void
     {
         $reflection = new \ReflectionClass(SalesExport::class);
@@ -47,9 +47,9 @@ class SalesExportUnitTest extends TestCase
     }
 
     /**
-     * @test
      * SalesExportCriteria is required (not loose arrays)
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function constructor_requires_criteria_object(): void
     {
         $reflection = new \ReflectionClass(SalesExport::class);
@@ -63,9 +63,9 @@ class SalesExportUnitTest extends TestCase
     }
 
     /**
-     * @test
      * Constructor is private - must use factory method
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function constructor_is_private_enforcing_factory_pattern(): void
     {
         $reflection = new \ReflectionClass(SalesExport::class);
@@ -78,9 +78,9 @@ class SalesExportUnitTest extends TestCase
     }
 
     /**
-     * @test
      * SalesExport has static create() factory method
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function class_has_create_factory_method(): void
     {
         $this->assertTrue(
@@ -94,9 +94,9 @@ class SalesExportUnitTest extends TestCase
     }
 
     /**
-     * @test
      * SalesExport uses SanitizesOutput trait for CSV injection prevention
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function class_uses_sanitizes_output_trait(): void
     {
         $traits = class_uses(SalesExport::class);
@@ -113,9 +113,9 @@ class SalesExportUnitTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * SalesExportCriteria validates date range does not exceed 365 days
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function criteria_rejects_date_range_exceeding_365_days(): void
     {
         $this->expectException(InvalidBusinessRuleException::class);
@@ -128,9 +128,9 @@ class SalesExportUnitTest extends TestCase
     }
 
     /**
-     * @test
      * SalesExportCriteria accepts valid date range
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function criteria_accepts_valid_date_range(): void
     {
         $criteria = SalesExportCriteria::create(
@@ -143,9 +143,9 @@ class SalesExportUnitTest extends TestCase
     }
 
     /**
-     * @test
      * SalesExportCriteria always has dates (DoS prevention)
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function criteria_always_has_dates_when_created_without_parameters(): void
     {
         $criteria = SalesExportCriteria::create();
@@ -157,9 +157,9 @@ class SalesExportUnitTest extends TestCase
     }
 
     /**
-     * @test
      * SalesExportCriteria::forLastDays rejects invalid days
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function criteria_rejects_invalid_day_count(): void
     {
         $this->expectException(InvalidBusinessRuleException::class);
@@ -168,9 +168,9 @@ class SalesExportUnitTest extends TestCase
     }
 
     /**
-     * @test
      * SalesExportCriteria::forLastDays rejects days over 365
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function criteria_rejects_days_over_365(): void
     {
         $this->expectException(InvalidBusinessRuleException::class);
@@ -183,9 +183,9 @@ class SalesExportUnitTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * SalesExportCriteria rejects invalid status values
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function criteria_rejects_invalid_status(): void
     {
         $this->expectException(InvalidBusinessRuleException::class);
@@ -199,9 +199,9 @@ class SalesExportUnitTest extends TestCase
     }
 
     /**
-     * @test
      * SalesExportCriteria accepts all valid status values
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function criteria_accepts_valid_statuses(): void
     {
         $validStatuses = ['pending', 'confirmed', 'processing', 'ready', 'delivered', 'cancelled'];
@@ -221,9 +221,9 @@ class SalesExportUnitTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * SanitizesOutput trait escapes formula injection characters
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function sanitizes_output_escapes_formula_characters(): void
     {
         $export = new class
@@ -249,9 +249,9 @@ class SalesExportUnitTest extends TestCase
     }
 
     /**
-     * @test
      * SanitizesOutput preserves legitimate negative numbers
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function sanitizes_output_preserves_negative_numbers(): void
     {
         $export = new class
@@ -279,9 +279,9 @@ class SalesExportUnitTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * TenantId rejects invalid UUIDs
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function tenant_id_rejects_invalid_uuid(): void
     {
         $this->expectException(\InvalidArgumentException::class);
@@ -289,9 +289,9 @@ class SalesExportUnitTest extends TestCase
     }
 
     /**
-     * @test
      * TenantId accepts valid UUID
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function tenant_id_accepts_valid_uuid(): void
     {
         $uuid = '550e8400-e29b-41d4-a716-446655440000';
@@ -306,9 +306,9 @@ class SalesExportUnitTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * SalesExportCriteria rejects start date after end date
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function criteria_rejects_start_after_end(): void
     {
         $this->expectException(InvalidBusinessRuleException::class);

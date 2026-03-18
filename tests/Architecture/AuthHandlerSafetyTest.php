@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class AuthHandlerSafetyTest extends TestCase
 {
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function all_auth_tasks_must_be_protected_by_atomic_locks()
     {
         // 1. Identify all "Handler" classes in Auth Application Layer

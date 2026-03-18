@@ -39,12 +39,9 @@ final class CircuitBreakerDecoratorTest extends TestCase
         parent::tearDown();
     }
 
-    /**
-     * @test
-     *
-     * @group resilience
-     * @group unit
-     */
+    #[\PHPUnit\Framework\Attributes\Test]
+    #[\PHPUnit\Framework\Attributes\Group('resilience')]
+    #[\PHPUnit\Framework\Attributes\Group('unit')]
     public function test_it_opens_circuit_and_stops_calling_service_after_reaching_failure_threshold(): void
     {
         // 1. ARRANGE: Mocks

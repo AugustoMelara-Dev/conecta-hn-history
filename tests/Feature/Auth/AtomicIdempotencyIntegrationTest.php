@@ -27,7 +27,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         $this->service = $this->app->make(AtomicIdempotencyService::class);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_successfully_executes_locks_and_completes_operation()
     {
         $key = Uuid::uuid7()->toString();
@@ -51,7 +51,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         $this->assertEquals(1, $payload['v'], 'Payload version mismatch');
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_prevents_replay_with_different_hash()
     {
         $key = Uuid::uuid7()->toString();
@@ -67,7 +67,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         $this->service->execute($key, $tenantId, $hash2, fn () => 'hacker');
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_cached_result_on_replay_with_same_hash()
     {
         $key = Uuid::uuid7()->toString();
@@ -90,7 +90,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         $this->assertEquals(['data' => 123], $result2);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_throws_concurrent_exception_when_row_is_locked_processing()
     {
         $key = Uuid::uuid7()->toString();
@@ -115,7 +115,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         });
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_cleans_up_processing_state_on_domain_failure()
     {
         $key = Uuid::uuid7()->toString();

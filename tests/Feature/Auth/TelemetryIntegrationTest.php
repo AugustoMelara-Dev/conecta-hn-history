@@ -20,7 +20,7 @@ class TelemetryIntegrationTest extends TestCase
         parent::setUp();
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_propagates_trace_id_to_outbox(): void
     {
         // 1. Arrange: Setup Context and Command
@@ -74,7 +74,7 @@ class TelemetryIntegrationTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_rejects_invalid_commands_at_gate(): void
     {
         // 1. Arrange: Invalid Command

@@ -47,9 +47,9 @@ class TenantResolutionTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Tenant is resolved from route parameter.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function tenant_is_resolved_from_route_parameter(): void
     {
         $tenant = Tenant::factory()->create(['slug' => 'test-shop']);
@@ -61,9 +61,9 @@ class TenantResolutionTest extends TestCase
     }
 
     /**
-     * @test
      * Invalid slug returns null tenant (no error).
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function invalid_slug_returns_null_tenant(): void
     {
         $response = $this->get('/__test/tenant/nonexistent');
@@ -77,9 +77,9 @@ class TenantResolutionTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Tenant is resolved from X-Tenant-ID header.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function tenant_is_resolved_from_header(): void
     {
         $tenant = Tenant::factory()->create();
@@ -93,9 +93,9 @@ class TenantResolutionTest extends TestCase
     }
 
     /**
-     * @test
      * Invalid header ID returns null tenant.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function invalid_header_id_returns_null(): void
     {
         $response = $this->withHeaders([
@@ -111,9 +111,9 @@ class TenantResolutionTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Route parameter takes priority over header.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function route_parameter_takes_priority_over_header(): void
     {
         $routeTenant = Tenant::factory()->create(['slug' => 'route-tenant']);
@@ -133,9 +133,9 @@ class TenantResolutionTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * Guest users can access tenant context (guest checkout).
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function guest_users_can_access_tenant(): void
     {
         $tenant = Tenant::factory()->create(['slug' => 'public-shop']);
@@ -147,9 +147,9 @@ class TenantResolutionTest extends TestCase
     }
 
     /**
-     * @test
      * Authenticated users can access tenant (normal flow).
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function authenticated_users_can_access_tenant(): void
     {
         $tenant = Tenant::factory()->create(['slug' => 'my-shop']);
@@ -166,9 +166,9 @@ class TenantResolutionTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test
      * VC-AUDIT-108: Authenticated user cannot access unauthorized tenant via header.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function authenticated_user_cannot_access_unauthorized_tenant_via_header(): void
     {
         $tenant = Tenant::factory()->create();
@@ -182,9 +182,9 @@ class TenantResolutionTest extends TestCase
     }
 
     /**
-     * @test
      * VC-AUDIT-108: Guest users are not blocked by header authorization (handled by auth middleware).
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function guest_users_can_use_header_resolution(): void
     {
         $tenant = Tenant::factory()->create();

@@ -55,7 +55,7 @@ final class OpenAIServiceTest extends TestCase
         $this->tenantId = (string) $tenant->id;
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_successfully_generates_and_logs_profile_on_valid_response(): void
     {
         $expectedPayload = [
@@ -81,7 +81,7 @@ final class OpenAIServiceTest extends TestCase
         $this->assertDatabaseHas('ai_usage_logs', ['cost' => '0.000750']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_throws_unavailable_exception_after_exhausting_retries_on_500_errors(): void
     {
         Http::fake([
@@ -95,7 +95,7 @@ final class OpenAIServiceTest extends TestCase
         $this->service->generateStructuredProfile('Biz', 'Desc', $this->user->id, $this->tenantId);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_throws_malformed_exception_if_response_is_missing_keys(): void
     {
         $brokenPayload = ['description' => 'Missing stuff'];
@@ -111,7 +111,7 @@ final class OpenAIServiceTest extends TestCase
         $this->service->generateStructuredProfile('Biz', 'Desc', $this->user->id, $this->tenantId);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function scenario_4_it_enforces_strict_types_via_validator(): void
     {
         // Invalid Type: 'tags' is string "tag1", expected array
@@ -135,7 +135,7 @@ final class OpenAIServiceTest extends TestCase
         $this->service->generateStructuredProfile('Biz', 'Desc', $this->user->id, $this->tenantId);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function scenario_5_it_sanitizes_dangerous_html_xss_vectors(): void
     {
         // Malicious Payload

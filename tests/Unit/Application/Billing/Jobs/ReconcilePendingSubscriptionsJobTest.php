@@ -45,5 +45,8 @@ it('passes tenantId to findPendingOlderThan and does not return cross-tenant int
 
     $handler->handle(new \App\Application\Billing\Commands\ReconcilePendingSubscriptionsCommand($tenantA));
 
+    // Mockery verifies the cross-tenant interaction contract; count it explicitly for PHPUnit.
+    expect($handler)->toBeInstanceOf(\App\Application\Billing\Handlers\ReconcilePendingSubscriptionsHandler::class);
+
     Mockery::close();
 });

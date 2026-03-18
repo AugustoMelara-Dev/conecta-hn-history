@@ -71,9 +71,9 @@ class OrderStateServiceTest extends TestCase
     }
 
     /**
-     * @test
      * Verify that cancelling an order publishes OrderCancelled event.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_publishes_order_cancelled_event_on_cancellation(): void
     {
         // Arrange: Create a mock order
@@ -105,21 +105,27 @@ class OrderStateServiceTest extends TestCase
                     && !$event->shouldAutoRefund();
             }));
 
-        // Act: Manually dispatch to test
-        $this->eventDispatcher->dispatch(new OrderCancelled(
+        $event = new OrderCancelled(
             tenantId: TenantId::fromString($tenantId),
             orderId: 123,
             orderNumber: OrderNumber::fromString('ORD-1001'),
             reason: 'customer_request',
             cancelledById: 42,
             wasPaid: false,
-        ));
+        );
+
+        $this->assertSame('123', $event->aggregateId());
+        $this->assertSame($tenantId, $event->tenantId()->toString());
+        $this->assertFalse($event->shouldAutoRefund());
+
+        // Act: Manually dispatch to test
+        $this->eventDispatcher->dispatch($event);
     }
 
     /**
-     * @test
      * Verify that OrderCancelled with wasPaid=true triggers refund flag.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_sets_auto_refund_when_order_was_paid(): void
     {
         // Arrange
@@ -140,14 +146,17 @@ class OrderStateServiceTest extends TestCase
                     && $dispatchedEvent->isSystemCancellation() === true;
             }));
 
+        $this->assertTrue($event->shouldAutoRefund());
+        $this->assertTrue($event->isSystemCancellation());
+
         // Act
         $this->eventDispatcher->dispatch($event);
     }
 
     /**
-     * @test
      * Verify InMemoryEventBus reset functionality.
      */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_can_reset_event_bus_between_tests(): void
     {
         // Test not applicable for Mockery mocks.
