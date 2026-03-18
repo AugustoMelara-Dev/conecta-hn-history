@@ -19,7 +19,7 @@ use Illuminate\Queue\InteractsWithQueue;
  * Uses withoutGlobalScopes() for cross-tenant product access in queue context.
  * IDEMPOTENCY: Uses ShouldBeUnique with tenant-product composite key.
  */
-final class GenerateProductBlurhash implements ShouldQueue, ShouldBeUnique
+final class GenerateProductBlurhash implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
@@ -37,7 +37,7 @@ final class GenerateProductBlurhash implements ShouldQueue, ShouldBeUnique
      */
     public function uniqueId(): string
     {
-        return 'blurhash_' . $this->tenantId . '_' . $this->productId;
+        return 'blurhash_'.$this->tenantId.'_'.$this->productId;
     }
 
     public function handle(): void

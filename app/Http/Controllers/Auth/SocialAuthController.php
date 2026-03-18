@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface;
-use App\Application\DTOs\Auth\SocialProviderData;
 use App\Domain\Shared\Enums\ProviderName;
 use App\Http\Controllers\Controller;
 use App\Models\User;

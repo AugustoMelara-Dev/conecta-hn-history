@@ -10,10 +10,10 @@ use App\Domain\Shared\Contracts\ClockInterface;
 use Psr\Log\LoggerInterface;
 
 beforeEach(function () {
-    $this->gateway    = Mockery::mock(SubscriptionGatewayInterface::class);
-    $this->logger     = Mockery::mock(LoggerInterface::class)->shouldIgnoreMissing();
+    $this->gateway = Mockery::mock(SubscriptionGatewayInterface::class);
+    $this->logger = Mockery::mock(LoggerInterface::class)->shouldIgnoreMissing();
     $this->repository = Mockery::mock(SubscriptionIntentRepositoryInterface::class);
-    $this->clock      = Mockery::mock(ClockInterface::class);
+    $this->clock = Mockery::mock(ClockInterface::class);
 });
 
 afterEach(function () {
@@ -23,7 +23,7 @@ afterEach(function () {
 it('ignores recent pending subscriptions', function () {
     $tenantId = 'tenant-123';
 
-    $date      = new \DateTimeImmutable('2026-03-01 12:00:00');
+    $date = new \DateTimeImmutable('2026-03-01 12:00:00');
     $threshold = $date->modify('-1 hour')->format('Y-m-d H:i:s');
 
     $this->clock->shouldReceive('now')->once()->andReturn($date);
@@ -50,11 +50,11 @@ it('ignores recent pending subscriptions', function () {
 it('reconciles old pending subscriptions to paid', function () {
     $tenantId = 'tenant-123';
 
-    $date      = new \DateTimeImmutable('2026-03-01 12:00:00');
+    $date = new \DateTimeImmutable('2026-03-01 12:00:00');
     $threshold = $date->modify('-1 hour')->format('Y-m-d H:i:s');
 
     $intent = (object) [
-        'id'                     => 'intent-1',
+        'id' => 'intent-1',
         'client_idempotency_key' => 'key-1',
     ];
 
@@ -90,11 +90,11 @@ it('reconciles old pending subscriptions to paid', function () {
 it('reconciles old pending subscriptions to failed', function () {
     $tenantId = 'tenant-123';
 
-    $date      = new \DateTimeImmutable('2026-03-01 12:00:00');
+    $date = new \DateTimeImmutable('2026-03-01 12:00:00');
     $threshold = $date->modify('-1 hour')->format('Y-m-d H:i:s');
 
     $intent = (object) [
-        'id'                     => 'intent-2',
+        'id' => 'intent-2',
         'client_idempotency_key' => 'key-2',
     ];
 

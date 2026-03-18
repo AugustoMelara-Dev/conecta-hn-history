@@ -51,7 +51,7 @@ describe('Appointment Status Colors', function () {
         $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
-        
+
         expect($reflection->invoke($widget, 'pending'))->toBe('#f59e0b');
     });
 
@@ -59,7 +59,7 @@ describe('Appointment Status Colors', function () {
         $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
-        
+
         expect($reflection->invoke($widget, 'confirmed'))->toBe('#3b82f6');
     });
 
@@ -67,7 +67,7 @@ describe('Appointment Status Colors', function () {
         $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
-        
+
         expect($reflection->invoke($widget, 'completed'))->toBe('#22c55e');
     });
 
@@ -75,7 +75,7 @@ describe('Appointment Status Colors', function () {
         $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
-        
+
         expect($reflection->invoke($widget, 'cancelled'))->toBe('#ef4444');
     });
 });

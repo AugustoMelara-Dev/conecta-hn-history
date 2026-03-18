@@ -30,7 +30,7 @@ final class SocialLoginRequest extends FormRequest
 {
     /**
      * Supported OAuth providers (whitelist).
-     * 
+     *
      * SECURITY: Only explicitly supported providers are allowed.
      * Adding a new provider requires code change (intentional friction).
      */
@@ -44,7 +44,7 @@ final class SocialLoginRequest extends FormRequest
 
     /**
      * Maximum token length to prevent memory exhaustion attacks.
-     * 
+     *
      * OAuth tokens typically range 100-2000 characters.
      * 4096 provides buffer for future expansion while blocking DoS.
      */
@@ -85,7 +85,7 @@ final class SocialLoginRequest extends FormRequest
             'token' => [
                 'required',
                 'string',
-                'max:' . self::MAX_TOKEN_LENGTH,
+                'max:'.self::MAX_TOKEN_LENGTH,
             ],
 
             // ═══════════════════════════════════════════════════════════════════

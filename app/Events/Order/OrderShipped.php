@@ -6,8 +6,8 @@ namespace App\Events\Order;
 
 use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Traits\HasDomainMetadata;
-use App\ValueObjects\OrderNumber;
 use App\Domain\Shared\ValueObjects\TenantId;
+use App\ValueObjects\OrderNumber;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**

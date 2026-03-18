@@ -40,7 +40,7 @@ it('validates CreateOrderCommand against its JSON schema contract', function () 
     $this->assertFileExists($schemaPath, 'Schema file is missing.');
     $schema = json_decode(file_get_contents($schemaPath));
 
-    $validator = new Validator();
+    $validator = new Validator;
     $result = $validator->validate($payload, $schema);
 
     $errorDetails = $result->isValid()
@@ -75,7 +75,7 @@ it('validates RegisterTenantCommand against its JSON schema contract', function 
     $this->assertFileExists($schemaPath, 'Schema file is missing.');
     $schema = json_decode(file_get_contents($schemaPath));
 
-    $validator = new Validator();
+    $validator = new Validator;
     $result = $validator->validate($payload, $schema);
 
     $errorDetails = $result->isValid()

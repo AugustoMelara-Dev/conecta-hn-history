@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Validators\Rules;
 
+use App\Application\Shared\Contracts\ValidationRuleInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use Closure;
-use App\Application\Shared\Contracts\ValidationRuleInterface;
 
 /**
  * UniqueUserEmailRule - Optimized for Performance

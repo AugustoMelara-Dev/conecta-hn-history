@@ -8,7 +8,6 @@ declare(strict_types=1);
  * Validates that all Enterprise Roadmap foundational contracts exist
  * and satisfy their structural requirements.
  */
-
 test('enterprise roadmap interfaces are defined', function () {
     $interfaces = [
         \App\Application\Shared\Contracts\SensitiveDataInterface::class,

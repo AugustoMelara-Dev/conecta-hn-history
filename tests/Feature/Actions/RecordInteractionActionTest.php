@@ -16,7 +16,6 @@ use App\Application\Shared\Contracts\TenantRateLimiterInterface;
  * DTO -> Command mapping -> Bus dispatch.
  * No Repositories, no Models, no database.
  */
-
 test('record interaction action dispatches command via bus', function () {
     $dto = new InteractionData(
         tenantId: 'tenant-uuid-001',

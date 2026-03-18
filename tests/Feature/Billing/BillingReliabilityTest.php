@@ -6,12 +6,12 @@ use App\Application\Billing\Commands\ReportPaymentCommand;
 use App\Application\Billing\Handlers\ReportPaymentHandlerInterface;
 use App\Application\Shared\Common\Contracts\RateLimiterInterface;
 use App\Domain\Billing\Services\DocumentStorageServiceInterface;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
 use Tests\TestCase;
-use Exception;
 
 class BillingReliabilityTest extends TestCase
 {
@@ -20,7 +20,7 @@ class BillingReliabilityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         $this->app->make(\App\Domain\Shared\Services\TenantContext::class)->setAsSystemRoot(isConsoleOrTesting: true);
 
         DB::table('tenants')->insert([
@@ -30,7 +30,7 @@ class BillingReliabilityTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        
+
         // Use standard Storage Fake
         Storage::fake('s3');
 
@@ -38,7 +38,7 @@ class BillingReliabilityTest extends TestCase
         $mockStorage = Mockery::mock(DocumentStorageServiceInterface::class);
         $mockStorage->shouldReceive('verifyPresence')->andReturn(null);
         $mockStorage->shouldReceive('storeProofOfPayment')->andReturn('permanent/proof.jpg');
-        
+
         $this->app->instance(DocumentStorageServiceInterface::class, $mockStorage);
 
         // Let the ServiceProvider resolve the Handler via container.

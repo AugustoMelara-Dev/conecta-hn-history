@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Settings;
 
-use App\Settings\BaseSettings;
-
 /**
  * GeneralSettings - Torre de Control del Sistema
  *

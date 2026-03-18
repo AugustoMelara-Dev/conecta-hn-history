@@ -6,9 +6,9 @@ namespace App\Events\Payment;
 
 use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Traits\HasDomainMetadata;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
-use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**

@@ -17,7 +17,7 @@ class ConfigCapabilityManagerTest extends TestCase
         /** @var CapabilityManagerInterface $manager */
         $manager = $this->app->make(CapabilityManagerInterface::class);
 
-        $tenant = new Tenant();
+        $tenant = new Tenant;
         $tenant->business_type = BusinessType::RETAIL;
 
         $this->assertTrue($manager->has($tenant, Capability::INVENTORY_TRACKING));
@@ -29,7 +29,7 @@ class ConfigCapabilityManagerTest extends TestCase
         /** @var CapabilityManagerInterface $manager */
         $manager = $this->app->make(CapabilityManagerInterface::class);
 
-        $tenant = new Tenant();
+        $tenant = new Tenant;
         $tenant->business_type = BusinessType::HYBRID;
 
         $this->assertFalse($manager->has($tenant, Capability::KITCHEN_DISPLAY));

@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
-use App\Domain\Access\Enums\Role;
 use App\Application\Shared\Contracts\DataScrubberInterface;
-use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Application\Tenant\Results\RegisterTenantResult;
+use App\Domain\Access\Enums\Role;
 use App\Domain\Identity\Events\TenantRegistered;
 use App\Domain\Identity\Factories\UserFactory;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;

@@ -19,15 +19,15 @@ use RuntimeException;
 final readonly class EventUpcasterRegistry
 {
     /**
-     * @param UpcasterInterface[] $upcasters Injected at construction — no post-construction mutation.
+     * @param  UpcasterInterface[]  $upcasters  Injected at construction — no post-construction mutation.
      */
     public function __construct(private array $upcasters = []) {}
 
     /**
      * Apply sequential upcasting chain: V(n) → V(n+1) → ... → V(target).
      *
-     * @param  string  $eventType       Canonical event type (e.g., 'App\Domain\Identity\Events\UserRegistered')
-     * @param  int     $currentVersion  The schema version stored in the payload
+     * @param  string  $eventType  Canonical event type (e.g., 'App\Domain\Identity\Events\UserRegistered')
+     * @param  int  $currentVersion  The schema version stored in the payload
      * @param  array<string, mixed>  $payload  The raw payload from storage (JSON decoded)
      * @return array{version: int, payload: array<string, mixed>}
      *

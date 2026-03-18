@@ -14,7 +14,7 @@ use App\Application\Shared\Contracts\IdempotentCommandInterface;
  * ║  TENANT ISOLATED: Requires tenant ID for ownership verification.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class ToggleProductVisibilityCommand implements IdempotentCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
+final readonly class ToggleProductVisibilityCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface, IdempotentCommandInterface
 {
     use \App\Application\Shared\Traits\HasSchemaVersion;
 

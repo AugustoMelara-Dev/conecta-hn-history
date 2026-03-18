@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
-
 it('ensures the application layer does not depend on the HTTP layer', function () {
     expect('App\Application')
         ->not->toUse('Illuminate\Http\Request')

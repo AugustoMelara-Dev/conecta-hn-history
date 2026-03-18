@@ -38,7 +38,7 @@ class OtpControllerTest extends TestCase
             ->andReturn(new VerifyOtpResult(
                 userId: 'user-1',
                 tenantId: 'tenant-test',
-                verifiedAt: new \DateTimeImmutable(),
+                verifiedAt: new \DateTimeImmutable,
             ));
         $this->app->instance(VerifyOtpAction::class, new VerifyOtpAction($handler));
 

@@ -34,7 +34,7 @@ final class ExploreController extends Controller
      */
     public function __invoke(): Response
     {
-        $data = $this->cache->remember("v".config('app.version')."_explore_data", 3600, function () {
+        $data = $this->cache->remember('v'.config('app.version').'_explore_data', 3600, function () {
             // Note: tenantRepository->getFeatured() does not exist by default, but relying on ReferenceDataReader
             // For now, mapping best-effort abstractions to decouple from Elequent models.
             // If specific methods like 'getFeatured' are missing, they should be added to the Repository later.

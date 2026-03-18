@@ -10,7 +10,6 @@ declare(strict_types=1);
  *
  * Prevents duplicate interface definitions from being created at alternative paths.
  */
-
 test('user read projection adheres to application contracts convention', function () {
     // Canonical path: App\Application\Identity\Contracts
     expect(interface_exists(\App\Application\Identity\Contracts\UserReadProjection::class))->toBeTrue();

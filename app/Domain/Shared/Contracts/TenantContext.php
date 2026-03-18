@@ -24,6 +24,7 @@ interface TenantContext
      * Get the current Tenant ID.
      *
      * @throws \RuntimeException If context cannot be resolved.
+     *
      * @deprecated Use getTenantUuid() once Option 1 full migration is executed.
      */
     public function getTenantId(): int;

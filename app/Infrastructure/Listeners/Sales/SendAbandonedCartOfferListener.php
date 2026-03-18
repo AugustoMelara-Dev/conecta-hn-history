@@ -56,7 +56,7 @@ final class SendAbandonedCartOfferListener implements ShouldQueue
         $couponCode = 'COMEBACK-'.strtoupper(Str::random(6));
 
         try {
-            $coupon = new Coupon();
+            $coupon = new Coupon;
             $coupon->tenant_id = (string) $event->tenantId;
             $coupon->code = $couponCode;
             $coupon->name = 'Abandoned Cart Recovery';

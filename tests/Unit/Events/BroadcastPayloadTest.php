@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Events;
 
-
-
 use App\Broadcasting\ChannelRegistry;
 use App\Events\Broadcast\LowStockBroadcast;
 use App\Events\Broadcast\NewLoginDetectedBroadcast;
@@ -775,7 +773,7 @@ class BroadcastPayloadTest extends TestCase
         {
             use \App\Traits\FormatsCurrency;
 
-            public function testFormat(int $cents, string $currency): string
+            public function test_format(int $cents, string $currency): string
             {
                 return $this->formatMoney($cents, $currency);
             }
@@ -794,7 +792,7 @@ class BroadcastPayloadTest extends TestCase
         {
             use \App\Traits\FormatsCurrency;
 
-            public function testFormat(int $cents, string $currency): string
+            public function test_format(int $cents, string $currency): string
             {
                 return $this->formatMoney($cents, $currency);
             }

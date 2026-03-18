@@ -1,13 +1,10 @@
 <?php
 
+use App\Domain\Identity\Enums\UserRole;
 use App\Infrastructure\Identity\Fortify\Actions\Identity\CreateNewUser;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Domain\Identity\Enums\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -28,7 +25,7 @@ test('it creates new tenant and owner when no tenant_id provided', function () {
 
     // Assert
     expect($user)->toBeInstanceOf(User::class);
-    
+
     // Check Database State
     $this->assertDatabaseHas('users', [
         'email' => 'owner@example.com',
@@ -48,7 +45,7 @@ test('it joins existing tenant as staff when tenant_id provided', function () {
     // Arrange
     $tenant = Tenant::factory()->create();
     $action = app(CreateNewUser::class);
-    
+
     $input = [
         'name' => 'Staff User',
         'email' => 'staff@example.com',
@@ -63,7 +60,7 @@ test('it joins existing tenant as staff when tenant_id provided', function () {
 
     // Assert
     expect((string) $user->tenant_id)->toBe($tenant->id);
-    
+
     // Check Role
     expect($user->role)->toBe(UserRole::STAFF); // 'staff'
 
@@ -73,7 +70,7 @@ test('it joins existing tenant as staff when tenant_id provided', function () {
 
 test('it validates tenant existence', function () {
     $action = app(CreateNewUser::class);
-    
+
     $input = [
         'name' => 'Hacker User',
         'email' => 'hacker@example.com',
@@ -85,6 +82,6 @@ test('it validates tenant existence', function () {
 
     // Expect Validation Exception provided by Validator::make
     $this->expectException(\Illuminate\Validation\ValidationException::class);
-    
+
     $action->create($input);
 });

@@ -26,7 +26,7 @@ final class EloquentReportReader implements ReportReader
     {
         $tenantId = (int) $tenantId;
         $carbonStart = Carbon::instance($startDate);
-        $carbonEnd   = Carbon::instance($endDate);
+        $carbonEnd = Carbon::instance($endDate);
 
         return Order::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\Middleware;
 
-use Closure;
 use App\Application\Shared\Contracts\CommandValidatorRegistryInterface;
 use App\Application\Shared\Contracts\ValidatorFactoryInterface;
 use App\Application\Shared\Exceptions\CommandValidationException;
+use Closure;
 
 /**
  * ValidationMiddleware - Intercepts Commands before Handling

@@ -14,7 +14,7 @@ final class PaymentProcessingException extends DomainException
      */
     public ?array $errorInfo = null;
 
-    public function __construct(string $message = "", int $code = 0, ?Throwable $previous = null, ?array $errorInfo = null)
+    public function __construct(string $message = '', int $code = 0, ?Throwable $previous = null, ?array $errorInfo = null)
     {
         parent::__construct($message, $code, $previous);
         $this->errorInfo = $errorInfo;

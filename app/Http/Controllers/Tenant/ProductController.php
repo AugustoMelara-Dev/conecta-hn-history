@@ -8,12 +8,12 @@ use App\Application\Actions\Products\CreateProductAction;
 use App\Application\Actions\Products\DeleteProductAction;
 use App\Application\Actions\Products\ToggleProductVisibilityAction;
 use App\Application\Actions\Products\UpdateProductAction;
+use App\Application\Shared\Contracts\MetadataSanitizerInterface;
 use App\Domain\Shared\Contracts\TenantContext;
 use App\Domain\Tenant\Contracts\TenantProductRepository;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use App\Application\Shared\Contracts\MetadataSanitizerInterface;
 use Inertia\Inertia;
 use Inertia\Response;
 

@@ -12,12 +12,11 @@ declare(strict_types=1);
  * Requiring a pre-existing tenant_id would block the "Sign Up & Create
  * Organization" flow. This exception is formally documented here.
  */
-
 test('actions must validate tenant context before dispatch', function () {
     $actions = [
-        __DIR__ . '/../../app/Actions/Authentication/UpdateUserPassword.php',
-        __DIR__ . '/../../app/Actions/Identity/UpdateUserProfileInformation.php',
-        __DIR__ . '/../../app/Actions/Interactions/RecordInteractionAction.php',
+        __DIR__.'/../../app/Actions/Authentication/UpdateUserPassword.php',
+        __DIR__.'/../../app/Actions/Identity/UpdateUserProfileInformation.php',
+        __DIR__.'/../../app/Actions/Interactions/RecordInteractionAction.php',
     ];
 
     foreach ($actions as $action) {
@@ -29,13 +28,13 @@ test('actions must validate tenant context before dispatch', function () {
 });
 
 test('create new user is explicitly exempt from tenant guard', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Actions/Identity/CreateNewUser.php');
+    $content = file_get_contents(__DIR__.'/../../app/Actions/Identity/CreateNewUser.php');
 
     // Must NOT throw RuntimeException for missing tenant — it's the genesis flow
     expect($content)->not->toContain("throw new \\RuntimeException('Cannot");
 
     // Must allow nullable tenant_id
-    expect($content)->toContain("?? null");
+    expect($content)->toContain('?? null');
 
     // Must carry the formal exception marker
     expect($content)->toContain('DOMAIN INVARIANT EXCEPTION');

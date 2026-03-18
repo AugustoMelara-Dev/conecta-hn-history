@@ -25,7 +25,7 @@ describe('RevenueChart Widget', function () {
     });
 
     it('is configured as line chart', function () {
-        $widget = new RevenueChart();
+        $widget = new RevenueChart;
         $method = new ReflectionMethod($widget, 'getType');
         $method->setAccessible(true);
 
@@ -60,7 +60,7 @@ describe('OrdersChart Widget', function () {
     });
 
     it('is configured as bar chart', function () {
-        $widget = new OrdersChart();
+        $widget = new OrdersChart;
         $method = new ReflectionMethod($widget, 'getType');
         $method->setAccessible(true);
 

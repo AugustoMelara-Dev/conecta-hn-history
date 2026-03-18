@@ -94,9 +94,10 @@ final class ResolveTenantFromRequest
 
             // VC-AUDIT-106: Rehydrate from lightweight array
             if (is_array($cached)) {
-                $tenant = new Tenant();
+                $tenant = new Tenant;
                 $tenant->forceFill($cached);
                 $tenant->exists = true;
+
                 return $tenant;
             }
 

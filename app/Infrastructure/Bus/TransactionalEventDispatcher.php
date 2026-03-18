@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Bus;
 
-use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use Illuminate\Contracts\Events\Dispatcher;
 
 /**

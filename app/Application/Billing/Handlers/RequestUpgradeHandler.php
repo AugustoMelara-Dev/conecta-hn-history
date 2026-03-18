@@ -7,6 +7,7 @@ namespace App\Application\Billing\Handlers;
 use App\Application\Billing\Commands\RequestUpgradeCommand;
 use App\Application\Billing\Results\RequestUpgradeResult;
 use App\Application\Shared\Contracts\DataScrubberInterface;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Billing\Entities\SubscriptionIntent;
 use App\Domain\Billing\Events\SubscriptionUpgraded;
@@ -16,10 +17,8 @@ use App\Domain\Billing\Repositories\PlanRepositoryInterface;
 use App\Domain\Billing\Repositories\SubscriptionIntentRepositoryInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\Shared\Contracts\UuidGeneratorInterface;
-use App\Domain\Shared\Exceptions\StaleObjectException;
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Application\Shared\Contracts\TransactionManagerInterface;
 use Psr\Log\LoggerInterface;
 
 /**

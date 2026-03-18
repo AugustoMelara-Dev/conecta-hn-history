@@ -86,7 +86,7 @@ test('product policy enforces dynamic capacity limits from general settings', fu
         ->andReturn(true);
     app()->instance(TenantPermissionGuardInterface::class, $guard);
 
-    $policy = new ProductPolicy();
+    $policy = new ProductPolicy;
 
     $response = $policy->create($user);
 

@@ -12,9 +12,9 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
-use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\Shared\Traits\HasDomainEvents;
 use App\Domain\TenantGovernance\Enums\BusinessType;
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Scopes\LocationScope;
@@ -380,7 +380,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function getActivitylogOptions(): LogOptions
     {
         // FIXED: Only log attributes that are always present during model lifecycle.
-        // Removed: status (doesn't exist), plan_expires_at, subscription_ends_at, 
+        // Removed: status (doesn't exist), plan_expires_at, subscription_ends_at,
         // is_pro (computed accessor), and other nullable/conditional fields that
         // cause MissingAttributeException during factory creation.
         return LogOptions::defaults()
@@ -503,8 +503,6 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
      *
      * Converts the OpeningHour models into a format consumable by
      * spatie/opening-hours for availability calculations.
-     *
-     * @return OpeningHours
      */
     public function getOpeningHours(): OpeningHours
     {

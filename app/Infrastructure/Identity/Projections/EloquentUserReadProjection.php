@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Infrastructure\Identity\Projections;
 
 use App\Application\Identity\Contracts\UserReadProjection;
-use App\Models\User;
 use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
+use App\Models\User;
 
 /**
  * EloquentUserReadProjection - Infrastructure Implementation

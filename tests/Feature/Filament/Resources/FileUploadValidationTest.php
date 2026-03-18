@@ -7,7 +7,6 @@ declare(strict_types=1);
  *
  * Verifies that all FileUpload components have acceptedFileTypes and maxSize.
  */
-
 test('tenant resource logo_path has security validation', function () {
     $resourcePath = app_path('Filament/Resources/TenantResource.php');
     $content = file_get_contents($resourcePath);

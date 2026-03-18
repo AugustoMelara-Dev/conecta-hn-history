@@ -30,7 +30,7 @@ use NotificationChannels\WebPush\WebPushMessage;
  *
  * TRIGGER: Dispatched after Order::create() transaction commits in OrderController::store()
  */
-class NewOrderNotification extends Notification implements ShouldQueue, ShouldBroadcast
+class NewOrderNotification extends Notification implements ShouldBroadcast, ShouldQueue
 {
     use Queueable;
 
@@ -68,7 +68,7 @@ class NewOrderNotification extends Notification implements ShouldQueue, ShouldBr
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('tenant.' . $this->order->tenant_id . '.admins'),
+            new PrivateChannel('tenant.'.$this->order->tenant_id.'.admins'),
         ];
     }
 
@@ -105,7 +105,7 @@ class NewOrderNotification extends Notification implements ShouldQueue, ShouldBr
         $itemsCount = $this->order->items->count();
         $customerName = $this->order->customer_name ?? 'Cliente';
         $orderNumber = $this->order->order_number;
-        $formattedTotal = 'L. ' . number_format((float) ($this->order->total ?? 0), 2);
+        $formattedTotal = 'L. '.number_format((float) ($this->order->total ?? 0), 2);
         $tenantName = $this->order->tenant?->name ?? 'Tu Negocio';
 
         // Deep link to Filament Order Resource in the App Panel
@@ -141,7 +141,7 @@ class NewOrderNotification extends Notification implements ShouldQueue, ShouldBr
         // Defensive: Ensure relationships are loaded
         $this->order->loadMissing(['items']);
 
-        $formattedTotal = 'L. ' . number_format((float) ($this->order->total ?? 0), 2);
+        $formattedTotal = 'L. '.number_format((float) ($this->order->total ?? 0), 2);
 
         return [
             'order_id' => $this->order->id,
@@ -159,7 +159,7 @@ class NewOrderNotification extends Notification implements ShouldQueue, ShouldBr
      */
     public function toWebPush(object $notifiable, $notification): WebPushMessage
     {
-        $formattedTotal = 'L. ' . number_format((float) ($this->order->total ?? 0), 2);
+        $formattedTotal = 'L. '.number_format((float) ($this->order->total ?? 0), 2);
         $orderUrl = url("/app/orders/{$this->order->id}");
         $customerName = $this->order->customer_name ?? 'Cliente';
 

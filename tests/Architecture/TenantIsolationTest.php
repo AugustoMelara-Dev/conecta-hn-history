@@ -5,12 +5,12 @@ declare(strict_types=1);
 use Symfony\Component\Finder\Finder;
 
 test('domain commands strictly enforce tenant isolation', function () {
-    $finder = new Finder();
-    $finder->files()->in(__DIR__ . '/../../app/Application')->name('*Command.php');
+    $finder = new Finder;
+    $finder->files()->in(__DIR__.'/../../app/Application')->name('*Command.php');
 
     foreach ($finder as $file) {
         $relativePath = $file->getRelativePathname();
-        $class = 'App\\Application\\' . str_replace(['/', '.php'], ['\\', ''], $relativePath);
+        $class = 'App\\Application\\'.str_replace(['/', '.php'], ['\\', ''], $relativePath);
 
         if (class_exists($class)) {
             // Exceptions
@@ -23,7 +23,7 @@ test('domain commands strictly enforce tenant isolation', function () {
 
             // Architecture audit requires structural binding to tenant context.
             // We accept 'tenantId' or 'requestingTenantId' properties, OR a getTenantId() method.
-            
+
             $hasTenantId = property_exists($class, 'tenantId');
             $hasRequestingTenantId = property_exists($class, 'requestingTenantId');
             $hasGetter = method_exists($class, 'getTenantId');
@@ -35,16 +35,16 @@ test('domain commands strictly enforce tenant isolation', function () {
 });
 
 test('sensitive commands do not queue', function () {
-    $finder = new Finder();
-    $finder->files()->in(__DIR__ . '/../../app/Application')->name('*.php');
+    $finder = new Finder;
+    $finder->files()->in(__DIR__.'/../../app/Application')->name('*.php');
 
     foreach ($finder as $file) {
         $relativePath = $file->getRelativePathname();
-        $class = 'App\\Application\\' . str_replace(['/', '.php'], ['\\', ''], $relativePath);
+        $class = 'App\\Application\\'.str_replace(['/', '.php'], ['\\', ''], $relativePath);
 
         if (class_exists($class)) {
             $reflection = new ReflectionClass($class);
-            
+
             if ($reflection->implementsInterface(\App\Application\Shared\Contracts\SensitiveDataInterface::class)) {
                 // Exceptions
                 if (in_array($class, [

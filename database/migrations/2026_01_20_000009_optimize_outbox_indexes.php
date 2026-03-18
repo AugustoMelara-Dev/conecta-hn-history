@@ -17,7 +17,7 @@ return new class extends Migration
 
         // Check if index already exists
         $indexExists = collect(Schema::getIndexes('outbox_messages'))
-            ->contains(fn($idx) => $idx['name'] === 'idx_outbox_claim_optimization');
+            ->contains(fn ($idx) => $idx['name'] === 'idx_outbox_claim_optimization');
 
         if ($indexExists) {
             return;

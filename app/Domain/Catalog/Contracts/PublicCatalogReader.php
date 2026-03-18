@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog\Contracts;
 
-
 /**
  * PublicCatalogReader - Data Access for Public Pages
  *

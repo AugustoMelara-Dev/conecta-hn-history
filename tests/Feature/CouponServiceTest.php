@@ -21,7 +21,6 @@ use Tests\TestCase;
  *
  * These tests use the database to verify service-level business rules,
  * specifically the Guest vs Authenticated user handling.
- *
  */
 class CouponServiceTest extends TestCase
 {

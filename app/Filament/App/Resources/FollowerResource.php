@@ -9,8 +9,8 @@ use App\Models\Follow;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,7 +19,7 @@ class FollowerResource extends Resource
 {
     protected static ?string $model = Follow::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-users';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
 
     public static function getNavigationLabel(): string
     {

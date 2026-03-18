@@ -8,9 +8,9 @@ use App\Filament\Resources\UserResource\Pages;
 // MIGRATION: Updated to Domain namespace (2026-01-05)
 use App\Models\User;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -20,7 +20,7 @@ class UserResource extends Resource
 
     protected static ?string $modelPolicy = \App\Policies\UserPolicy::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-users';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
 
     public static function getNavigationLabel(): string
     {

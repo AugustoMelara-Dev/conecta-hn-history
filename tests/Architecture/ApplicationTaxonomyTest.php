@@ -25,7 +25,6 @@ declare(strict_types=1);
  * @see tests/Architecture/ArchTest.php — Contains overlapping App\Models ban
  * @see tests/Architecture/ApplicationGovernanceTest.php — ConnectionInterface rules
  */
-
 $applicationNamespace = 'App\Application';
 
 // ═══════════════════════════════════════════════════════════════════════════

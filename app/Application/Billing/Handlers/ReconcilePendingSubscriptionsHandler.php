@@ -36,14 +36,14 @@ final readonly class ReconcilePendingSubscriptionsHandler
                         'notes' => 'Auto-reconciled by ReconcilePendingSubscriptionsHandler',
                     ]);
 
-                    $this->logger->info("Reconciled PENDING intent to PAID", ['intent_id' => $intent->id]);
+                    $this->logger->info('Reconciled PENDING intent to PAID', ['intent_id' => $intent->id]);
                 } elseif ($status === 'FAILED') {
                     $this->intentRepository->updateStatus($intent->id, [
                         'status' => 'FAILED',
                         'notes' => 'Auto-reconciled by ReconcilePendingSubscriptionsHandler',
                     ]);
 
-                    $this->logger->info("Reconciled PENDING intent to FAILED", ['intent_id' => $intent->id]);
+                    $this->logger->info('Reconciled PENDING intent to FAILED', ['intent_id' => $intent->id]);
                 }
             } catch (\Throwable $e) {
                 $this->logger->error('Failed to reconcile subscription intent', [

@@ -11,9 +11,8 @@ declare(strict_types=1);
  * ║  Importing Illuminate\Http\Request in App\Application violates this.  ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-
 test('application layer dtos do not depend on http request', function () {
-    $appDir = realpath(__DIR__ . '/../../app/Application');
+    $appDir = realpath(__DIR__.'/../../app/Application');
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($appDir, RecursiveDirectoryIterator::SKIP_DOTS)
     );
@@ -35,7 +34,7 @@ test('application layer dtos do not depend on http request', function () {
 });
 
 test('application layer dtos do not contain fromRequest factory methods', function () {
-    $appDir = realpath(__DIR__ . '/../../app/Application');
+    $appDir = realpath(__DIR__.'/../../app/Application');
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($appDir, RecursiveDirectoryIterator::SKIP_DOTS)
     );

@@ -15,7 +15,7 @@ use App\Application\Shared\Contracts\HashableCommandInterface;
  * â•‘  AUDIT METADATA: Carries IP/UserAgent for security logging.             â•‘
  * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class GenerateOtpCommand implements HashableCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
+final readonly class GenerateOtpCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface, HashableCommandInterface
 {
     use \App\Application\Shared\Traits\HasSchemaVersion;
 

@@ -54,6 +54,7 @@ class SendAppointmentReminders implements ShouldQueue
 
         if ($appointments->isEmpty()) {
             Log::info('SendAppointmentReminders: No appointments in the 24h window.');
+
             return;
         }
 
@@ -71,6 +72,7 @@ class SendAppointmentReminders implements ShouldQueue
             Log::warning('SendAppointmentReminders: Skipped appointment (no email)', [
                 'appointment_id' => $appointment->id,
             ]);
+
             return;
         }
 
@@ -78,10 +80,11 @@ class SendAppointmentReminders implements ShouldQueue
         $appointment->loadMissing(['tenant', 'service', 'provider']);
 
         // Validate tenant relationship
-        if (!$appointment->tenant) {
+        if (! $appointment->tenant) {
             Log::critical('SendAppointmentReminders: Tenant relationship failed to load', [
                 'appointment_id' => $appointment->id,
             ]);
+
             return;
         }
 

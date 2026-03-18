@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Events\Broadcast\OrderCancelledBroadcast;
 use App\Events\Order\OrderCancelled;
 use App\Exceptions\TenantMismatchException;
+use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Models\Order;
 use Illuminate\Contracts\Queue\ShouldQueue;
 

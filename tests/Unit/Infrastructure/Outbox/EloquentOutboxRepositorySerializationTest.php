@@ -2,18 +2,26 @@
 
 declare(strict_types=1);
 
-use App\Infrastructure\Shared\Persistence\EloquentOutboxRepository;
 use App\Application\Shared\Contracts\TraceContextInterface;
 use App\Domain\Shared\Contracts\Events\DomainEvent;
+use App\Infrastructure\Shared\Persistence\EloquentOutboxRepository;
 
 /**
  * Stub TraceContext — avoids Mockery on final class with Request dependency.
  */
 function makeTraceStub(): TraceContextInterface
 {
-    return new class implements TraceContextInterface {
-        public function getTraceId(): string      { return 'trace-001'; }
-        public function getCausationId(): ?string { return null; }
+    return new class implements TraceContextInterface
+    {
+        public function getTraceId(): string
+        {
+            return 'trace-001';
+        }
+
+        public function getCausationId(): ?string
+        {
+            return null;
+        }
     };
 }
 
@@ -27,31 +35,62 @@ function makeOutboxRepo(): EloquentOutboxRepository
  */
 function makeOutboxTestEvent(string $tenantId = 'tenant-uuid-001'): object
 {
-    return new class ($tenantId) implements DomainEvent {
+    return new class($tenantId) implements DomainEvent
+    {
         public function __construct(public readonly string $tenantId) {}
 
-        public function eventId(): string        { return 'evt-001'; }
-        public function correlationId(): string  { return 'corr-001'; }
-        public function aggregateId(): string    { return 'agg-001'; }
-        public function tenantId(): string       { return $this->tenantId; }
-        public function occurredAt(): \DateTimeImmutable { return new \DateTimeImmutable('2026-01-01T00:00:00+00:00'); }
-        public function toPrimitives(): array    { return $this->toPayload(); }
-        public static function fromPrimitives(array $p): static { return new static($p['tenant_id']); }
+        public function eventId(): string
+        {
+            return 'evt-001';
+        }
+
+        public function correlationId(): string
+        {
+            return 'corr-001';
+        }
+
+        public function aggregateId(): string
+        {
+            return 'agg-001';
+        }
+
+        public function tenantId(): string
+        {
+            return $this->tenantId;
+        }
+
+        public function occurredAt(): \DateTimeImmutable
+        {
+            return new \DateTimeImmutable('2026-01-01T00:00:00+00:00');
+        }
+
+        public function toPrimitives(): array
+        {
+            return $this->toPayload();
+        }
+
+        public static function fromPrimitives(array $p): static
+        {
+            return new self($p['tenant_id']);
+        }
 
         public function toPayload(): array
         {
             return ['tenant_id' => $this->tenantId, 'schema_version' => 1];
         }
 
-        public static function fromPayload(array $p): static { return new static($p['tenant_id']); }
+        public static function fromPayload(array $p): static
+        {
+            return new static($p['tenant_id']);
+        }
     };
 }
 
 // ─── C-OX-01: serializeEvent delegates to toPayload() ────────────────────────
 
 it('C-OX-01: serializes event using toPayload() when method exists', function () {
-    $event  = makeOutboxTestEvent();
-    $repo   = makeOutboxRepo();
+    $event = makeOutboxTestEvent();
+    $repo = makeOutboxRepo();
     $method = new ReflectionMethod($repo, 'serializeEvent');
     $method->setAccessible(true);
 
@@ -61,11 +100,12 @@ it('C-OX-01: serializes event using toPayload() when method exists', function ()
 });
 
 it('C-OX-01: Reflection fallback used for legacy events without toPayload()', function () {
-    $legacyEvent = new class {
+    $legacyEvent = new class
+    {
         public string $foo = 'bar';
     };
 
-    $repo   = makeOutboxRepo();
+    $repo = makeOutboxRepo();
     $method = new ReflectionMethod($repo, 'serializeEvent');
     $method->setAccessible(true);
 
@@ -78,8 +118,8 @@ it('C-OX-01: Reflection fallback used for legacy events without toPayload()', fu
 // ─── C-OX-02: extractAggregateId uses contract methods first ─────────────────
 
 it('C-OX-02: extracts aggregate id via aggregateId() method (DomainEvent contract)', function () {
-    $event  = makeOutboxTestEvent();
-    $repo   = makeOutboxRepo();
+    $event = makeOutboxTestEvent();
+    $repo = makeOutboxRepo();
     $method = new ReflectionMethod($repo, 'extractAggregateId');
     $method->setAccessible(true);
 
@@ -87,12 +127,20 @@ it('C-OX-02: extracts aggregate id via aggregateId() method (DomainEvent contrac
 });
 
 it('C-OX-02: getAggregateId() takes priority over aggregateId() when both exist', function () {
-    $event = new class {
-        public function getAggregateId(): string { return 'outbox-agg-999'; }
-        public function aggregateId(): string    { return 'domain-agg-888'; }
+    $event = new class
+    {
+        public function getAggregateId(): string
+        {
+            return 'outbox-agg-999';
+        }
+
+        public function aggregateId(): string
+        {
+            return 'domain-agg-888';
+        }
     };
 
-    $repo   = makeOutboxRepo();
+    $repo = makeOutboxRepo();
     $method = new ReflectionMethod($repo, 'extractAggregateId');
     $method->setAccessible(true);
 

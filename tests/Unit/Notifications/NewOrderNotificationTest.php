@@ -1,7 +1,5 @@
 <?php
 
-
-
 declare(strict_types=1);
 
 use App\Notifications\NewOrderNotification;
@@ -10,7 +8,6 @@ use Illuminate\Support\Collection;
 
 // Bootstrap Laravel app — needed because NewOrderNotification::toMail() calls url()
 // uses(Tests\TestCase::class);
-
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER: Build a test double that satisfies the Order type hint
@@ -36,13 +33,13 @@ function makeNotificationOrder(array $overrides = []): \App\Models\Order
     ];
 
     $data = array_merge($defaults, $overrides);
-    $data['formatted_total'] = 'L. ' . number_format((float) $data['total'], 2);
+    $data['formatted_total'] = 'L. '.number_format((float) $data['total'], 2);
     $data['created_at'] = now();
-    $data['items'] = new Collection();
+    $data['items'] = new Collection;
 
     // Build tenant
     if (($overrides['_null_tenant'] ?? false) === false) {
-        $tenant = new \stdClass();
+        $tenant = new \stdClass;
         $tenant->name = $overrides['tenant_name'] ?? 'Café Tegus';
         $data['tenant'] = $tenant;
     } else {

@@ -39,11 +39,14 @@ final class OpenAIService
 
     // Pricing Configuration (USD per 1M tokens) - GPT-4o
     private const PRICE_PER_1M_INPUT_TOKENS = 2.50;
+
     private const PRICE_PER_1M_OUTPUT_TOKENS = 10.00;
 
     // Estimación conservadora para reserva previa (margen de seguridad 20%)
     private const ESTIMATED_INPUT_TOKENS = 500;
+
     private const ESTIMATED_OUTPUT_TOKENS = 800;
+
     private const SAFETY_MARGIN = 1.2; // 20% buffer
 
     public function __construct(
@@ -95,8 +98,7 @@ final class OpenAIService
         ?string $targetAudience = null,
         ?string $tone = null,
         ?array $keywords = []
-    ): array
-    {
+    ): array {
         $estimatedCost = $this->estimateCost();
 
         // ═══════════════════════════════════════════════════════════════════════

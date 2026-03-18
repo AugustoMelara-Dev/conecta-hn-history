@@ -12,9 +12,9 @@ declare(strict_types=1);
  * - /{slug} → Legacy redirect to /@{slug}
  */
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Domain\Shared\Services\TenantContext;
 
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 

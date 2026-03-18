@@ -7,8 +7,8 @@ namespace App\Application\Billing\Actions;
 use App\Application\Shared\Contracts\EventBusInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\Payment\PaymentWebhookHandlerInterface;
-use App\Domain\ValueObjects\Payment\PaymentWebhook;
 use App\Domain\Billing\Events\PaymentWebhookReceived;
+use App\Domain\ValueObjects\Payment\PaymentWebhook;
 
 /**
  * HandlePaymentWebhookAction
@@ -23,9 +23,9 @@ final readonly class HandlePaymentWebhookAction implements PaymentWebhookHandler
 
     public function handle(PaymentWebhook $webhook): array
     {
-        $this->logger->info("Processing Webhook via Handler", [
+        $this->logger->info('Processing Webhook via Handler', [
             'tenant_id' => $webhook->tenantId,
-            'event' => $webhook->eventType
+            'event' => $webhook->eventType,
         ]);
 
         // 1. Risk Mitigation: Dispatch Event to Ledger/System
@@ -37,7 +37,7 @@ final readonly class HandlePaymentWebhookAction implements PaymentWebhookHandler
             'status' => 'acknowledged',
             'tenant_id' => $webhook->tenantId,
             'processed' => true,
-            'timestamp' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
+            'timestamp' => (new \DateTimeImmutable)->format(\DateTimeInterface::ATOM),
         ];
     }
 }

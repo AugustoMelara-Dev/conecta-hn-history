@@ -10,6 +10,4 @@ namespace App\Application\Shared\Contracts;
  * Keeps legacy actions and architecture tests stable while the canonical
  * tenancy capability contract remains expressed by TenantAwareInterface.
  */
-interface TenantAware extends TenantAwareInterface
-{
-}
+interface TenantAware extends TenantAwareInterface {}

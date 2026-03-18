@@ -18,12 +18,14 @@ final class NotificationController extends Controller
     public function index(): AnonymousResourceCollection
     {
         $notifications = $this->notificationRepository->getUnreadPaginated(10);
+
         return \Illuminate\Http\Resources\Json\JsonResource::collection($notifications);
     }
 
     public function markAsRead(string $id): JsonResponse
     {
         $this->notificationRepository->markAsRead($id);
+
         return response()->json(['status' => 'success']);
     }
 }

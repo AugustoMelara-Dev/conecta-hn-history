@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Tenant\Transformers;
 
-use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
 use App\Application\Shared\Contracts\FileUrlResolverInterface;
 use App\Application\Shared\Contracts\SlugGeneratorInterface;
+use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
 use App\Models\Tenant;
 
 /**

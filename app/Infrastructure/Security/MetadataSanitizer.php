@@ -18,14 +18,15 @@ use App\Application\Shared\Contracts\MetadataSanitizerInterface;
 final class MetadataSanitizer implements MetadataSanitizerInterface
 {
     private const MAX_DEPTH = 3;
+
     private const MAX_STRING_LENGTH = 500;
 
     /**
      * Recursively sanitize a metadata array.
      *
-     * @param  array<mixed>  $data   Raw metadata payload
-     * @param  int           $depth  Current recursion depth (internal)
-     * @return array<mixed>          Sanitized payload
+     * @param  array<mixed>  $data  Raw metadata payload
+     * @param  int  $depth  Current recursion depth (internal)
+     * @return array<mixed> Sanitized payload
      */
     public function clean(array $metadata, int $depth = 0): array
     {

@@ -35,7 +35,7 @@ test('manager can view catalog when tenant capability and role permission align'
     attachMembership($user, $tenant, Role::MANAGER);
     Filament::shouldReceive('getTenant')->andReturn($tenant);
 
-    expect((new ProductPolicy())->viewAny($user))->toBeTrue();
+    expect((new ProductPolicy)->viewAny($user))->toBeTrue();
 });
 
 test('retail tenant blocks menu sections even for a manager because the capability is off', function () {
@@ -47,7 +47,7 @@ test('retail tenant blocks menu sections even for a manager because the capabili
     attachMembership($user, $tenant, Role::MANAGER);
     Filament::shouldReceive('getTenant')->andReturn($tenant);
 
-    expect((new MenuSectionPolicy())->viewAny($user))->toBeFalse();
+    expect((new MenuSectionPolicy)->viewAny($user))->toBeFalse();
 });
 
 test('operator cannot manage staff because the role lacks staff permissions', function () {
@@ -59,6 +59,6 @@ test('operator cannot manage staff because the role lacks staff permissions', fu
     attachMembership($user, $tenant, Role::OPERATOR);
     Filament::shouldReceive('getTenant')->andReturn($tenant);
 
-    expect((new TenantMembershipPolicy())->viewAny($user))->toBeFalse()
-        ->and((new OrderPolicy())->viewAny($user))->toBeTrue();
+    expect((new TenantMembershipPolicy)->viewAny($user))->toBeFalse()
+        ->and((new OrderPolicy)->viewAny($user))->toBeTrue();
 });

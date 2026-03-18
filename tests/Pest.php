@@ -67,20 +67,15 @@ expect()->extend('toMatchJsonSchema', function (string $schemaPath) {
         $data = json_decode(json_encode($data));
     }
 
-    $validator = new \JsonSchema\Validator();
+    $validator = new \JsonSchema\Validator;
     $validator->validate($data, $schemaObject, \JsonSchema\Constraints\Constraint::CHECK_MODE_COERCE_TYPES);
 
     if (! $validator->isValid()) {
-        $errors = array_map(fn($e) => "[{$e['property']}] {$e['message']}", $validator->getErrors());
+        $errors = array_map(fn ($e) => "[{$e['property']}] {$e['message']}", $validator->getErrors());
         throw new \PHPUnit\Framework\ExpectationFailedException(
-            "JSON Schema validation failed for {$schemaPath}:\n" . implode("\n", $errors)
+            "JSON Schema validation failed for {$schemaPath}:\n".implode("\n", $errors)
         );
     }
 
     return $this;
 });
-
-
-
-
-

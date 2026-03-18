@@ -146,4 +146,3 @@ test('actions must not use infrastructure facades')
 test('actions must not depend on concrete handlers')
     ->expect('App\Actions')
     ->not->toUse('App\Application\Identity\Handlers');
-

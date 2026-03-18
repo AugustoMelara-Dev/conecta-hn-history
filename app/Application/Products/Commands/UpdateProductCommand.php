@@ -15,7 +15,7 @@ use App\Application\Shared\Contracts\IdempotentCommandInterface;
  * ║  IDEMPOTENT: Network retries must not cause inconsistent updates.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class UpdateProductCommand implements IdempotentCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
+final readonly class UpdateProductCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface, IdempotentCommandInterface
 {
     use \App\Application\Shared\Traits\HasSchemaVersion;
 

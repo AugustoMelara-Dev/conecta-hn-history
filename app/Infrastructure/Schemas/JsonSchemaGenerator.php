@@ -6,7 +6,6 @@ namespace App\Infrastructure\Schemas;
 
 use ReflectionClass;
 use ReflectionNamedType;
-use ReflectionProperty;
 use ReflectionUnionType;
 
 /**
@@ -28,20 +27,20 @@ final class JsonSchemaGenerator
      * @var array<string, string>
      */
     private const TYPE_MAP = [
-        'int'    => 'integer',
-        'float'  => 'number',
-        'bool'   => 'boolean',
+        'int' => 'integer',
+        'float' => 'number',
+        'bool' => 'boolean',
         'string' => 'string',
-        'array'  => 'array',
+        'array' => 'array',
         'object' => 'object',
-        'mixed'  => 'string', // Fallback: treat mixed as string for schema safety
+        'mixed' => 'string', // Fallback: treat mixed as string for schema safety
     ];
 
     /**
      * Generate a JSON Schema array from a Command class FQCN.
      *
      * @param  class-string  $className  Fully qualified class name of the Command.
-     * @return array<string, mixed>       JSON Schema as associative array.
+     * @return array<string, mixed> JSON Schema as associative array.
      *
      * @throws \ReflectionException If the class does not exist.
      * @throws \InvalidArgumentException If the class has no public constructor properties.
@@ -97,11 +96,11 @@ final class JsonSchemaGenerator
         }
 
         return [
-            '$schema'              => 'https://json-schema.org/draft/2020-12/schema',
-            'title'                => $reflection->getShortName(),
-            'type'                 => 'object',
-            'properties'           => $properties,
-            'required'             => $required,
+            '$schema' => 'https://json-schema.org/draft/2020-12/schema',
+            'title' => $reflection->getShortName(),
+            'type' => 'object',
+            'properties' => $properties,
+            'required' => $required,
             'additionalProperties' => false,
         ];
     }
@@ -127,6 +126,7 @@ final class JsonSchemaGenerator
 
         if ($type instanceof ReflectionNamedType) {
             $name = $type->getName();
+
             return self::TYPE_MAP[$name] ?? 'string';
         }
 
@@ -156,7 +156,7 @@ final class JsonSchemaGenerator
     private function extractParamDoc(string $paramName, string $docComment): ?string
     {
         // Match @param or inline /** */ style comments
-        if (preg_match('/@param\s+\S+\s+\$' . preg_quote((string) $paramName) . '\s+(.+)/i', $docComment, $matches)) {
+        if (preg_match('/@param\s+\S+\s+\$'.preg_quote((string) $paramName).'\s+(.+)/i', $docComment, $matches)) {
             return trim($matches[1]);
         }
 

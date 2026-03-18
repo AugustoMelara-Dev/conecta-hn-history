@@ -20,9 +20,9 @@ interface UserUniquenessCheckerInterface
     /**
      * Check if an email address is unique within the given tenant scope.
      *
-     * @param  string       $email         The email to check.
+     * @param  string  $email  The email to check.
      * @param  string|null  $exceptUserId  Exclude this user ID (for updates).
-     * @param  string|null  $tenantId      Scope uniqueness to this tenant.
+     * @param  string|null  $tenantId  Scope uniqueness to this tenant.
      */
     public function isEmailUnique(string $email, ?string $exceptUserId = null, ?string $tenantId = null): bool;
 }

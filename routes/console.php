@@ -95,7 +95,6 @@ Schedule::job(new \App\Jobs\SendAppointmentReminders)
     ->hourly()
     ->withoutOverlapping();
 
-
 // -------------------------------------------------------------------------------
 // BILLING RECONCILIATION - Self-Healing for Zombie Transactions
 // -------------------------------------------------------------------------------
@@ -108,6 +107,3 @@ Schedule::call(function () {
         dispatch(new \App\Application\Billing\Commands\ReconcilePendingSubscriptionsCommand($tenantId));
     }
 })->hourly()->name('billing:reconcile-pending');
-
-
-

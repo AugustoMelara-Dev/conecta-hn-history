@@ -55,7 +55,7 @@ class ProductFactory extends Factory
             // CORE PRODUCT DATA
             // ═══════════════════════════════════════════════════════════════════
             'name' => $name,
-            'slug' => Str::slug($name) . '-' . Str::random(6),
+            'slug' => Str::slug($name).'-'.Str::random(6),
             'description' => $this->faker->sentence(),
             'price' => $this->faker->randomFloat(2, 50, 5000),
 

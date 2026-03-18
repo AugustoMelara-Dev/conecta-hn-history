@@ -13,8 +13,8 @@ use App\Models\TenantMembership;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
@@ -27,7 +27,7 @@ class TenantUserResource extends Resource
 {
     protected static ?string $model = TenantMembership::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
     public static function canViewAny(): bool
     {

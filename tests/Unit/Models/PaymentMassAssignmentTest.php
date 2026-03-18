@@ -41,14 +41,14 @@ test('payment model guards tenant_id against mass assignment', function () {
 });
 
 test('payment tenant_id is in guarded array', function () {
-    $payment = new Payment();
+    $payment = new Payment;
     $guarded = $payment->getGuarded();
 
     expect($guarded)->toContain('tenant_id');
 });
 
 test('payment tenant_id is not in fillable array', function () {
-    $payment = new Payment();
+    $payment = new Payment;
     $fillable = $payment->getFillable();
 
     expect($fillable)->not->toContain('tenant_id');

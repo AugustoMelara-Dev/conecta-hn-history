@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Events\Audit;
 
 use App\Contracts\Events\AuditEvent;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Enums\Severity;
 use App\ValueObjects\AuditContext;
 use App\ValueObjects\IpAddress;
-use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 /**

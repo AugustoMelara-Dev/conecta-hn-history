@@ -38,7 +38,7 @@ interface OrderReader
      * SECURITY: Requires explicit tenant context to prevent IDOR.
      *
      * @param  int|string  $tenantId  The tenant context (REQUIRED for multi-tenancy)
-     * @param  int  $orderId   The order identifier
+     * @param  int  $orderId  The order identifier
      * @return object|null Order entity or null
      */
     public function find(int|string $tenantId, int $orderId): ?object;

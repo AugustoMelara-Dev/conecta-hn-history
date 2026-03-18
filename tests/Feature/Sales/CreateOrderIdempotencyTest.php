@@ -79,8 +79,3 @@ it('survives a synthetic replay attack ensuring single execution of core logic',
         ->and($resultA->toArray())->toBe($resultB->toArray())
         ->and($resultB->toArray())->toBe($resultC->toArray());
 });
-
-
-
-
-

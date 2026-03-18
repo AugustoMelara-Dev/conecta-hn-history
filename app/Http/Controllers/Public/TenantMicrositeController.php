@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
-use App\Infrastructure\Tenant\Transformers\TenantMicrositeTransformer;
 use App\Domain\Public\Contracts\TenantStorefrontRepository;
 use App\Domain\Tenant\Services\TenantVisibilityService;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
-use App\Models\Tenant;
-// Assumed Event exists or will be created
 use App\Http\Controllers\Controller;
+use App\Infrastructure\Tenant\Transformers\TenantMicrositeTransformer;
+// Assumed Event exists or will be created
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -47,7 +47,7 @@ final class TenantMicrositeController extends Controller
         $tenantContext->setTenant($tenantLookup->id);
 
         $tenant = $this->repository->findBySlug($tenant);
-        if (!$tenant) {
+        if (! $tenant) {
             abort(404);
         }
 

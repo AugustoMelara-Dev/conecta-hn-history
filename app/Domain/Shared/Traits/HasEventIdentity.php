@@ -57,14 +57,14 @@ trait HasEventIdentity
      *
      * Call this at the END of the constructor for all events using this trait.
      *
-     * @param string|null $restoredEventId       Existing eventId when deserializing from payload.
-     * @param string|null $restoredCorrelationId Existing correlationId when deserializing from payload.
+     * @param  string|null  $restoredEventId  Existing eventId when deserializing from payload.
+     * @param  string|null  $restoredCorrelationId  Existing correlationId when deserializing from payload.
      */
     private function initEventIdentity(
         ?string $restoredEventId = null,
         ?string $restoredCorrelationId = null,
     ): void {
-        $this->eventId       = $restoredEventId       ?? Uuid::uuid4()->toString();
+        $this->eventId = $restoredEventId ?? Uuid::uuid4()->toString();
         $this->correlationId = $restoredCorrelationId ?? Uuid::uuid4()->toString();
     }
 

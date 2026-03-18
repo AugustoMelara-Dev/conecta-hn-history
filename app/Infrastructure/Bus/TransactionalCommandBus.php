@@ -8,7 +8,6 @@ use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\SensitiveDataInterface;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Database\ConnectionInterface;
-use Illuminate\Support\Str;
 
 /**
  * TransactionalCommandBus - Atomic Outbox Decorator
@@ -24,7 +23,7 @@ use Illuminate\Support\Str;
  */
 final class TransactionalCommandBus implements CommandBusInterface
 {
-     public function __construct(
+    public function __construct(
         private readonly Dispatcher $dispatcher,
         private readonly ConnectionInterface $connection,
         private readonly \App\Application\Shared\Contracts\IdGeneratorInterface $idGenerator,

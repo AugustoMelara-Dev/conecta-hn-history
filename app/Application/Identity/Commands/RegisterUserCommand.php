@@ -13,7 +13,7 @@ use App\Application\Shared\Contracts\SensitiveDataInterface;
  * Includes Idempotency Key for robust distributed processing.
  * P1-REDACT: SensitiveDataInterface for Outbox/log sanitization.
  */
-final readonly class RegisterUserCommand implements IdempotentCommandInterface, SensitiveDataInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
+final readonly class RegisterUserCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface, IdempotentCommandInterface, SensitiveDataInterface
 {
     use \App\Application\Shared\Traits\HasSchemaVersion;
 

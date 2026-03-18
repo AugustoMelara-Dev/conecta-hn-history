@@ -1,11 +1,8 @@
 <?php
 
-
-
 declare(strict_types=1);
 
 use App\Jobs\GenerateBusinessProfileJob;
-use App\Services\AI\OpenAIService;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -60,7 +57,7 @@ describe('GenerateBusinessProfileJob', function () {
 
     it('preserves tenant ID for isolation', function () {
         $tenantId = '00000000-0000-0000-0000-000000000002';
-        
+
         $job = new GenerateBusinessProfileJob(
             businessName: 'Tenant Business',
             description: 'Description',

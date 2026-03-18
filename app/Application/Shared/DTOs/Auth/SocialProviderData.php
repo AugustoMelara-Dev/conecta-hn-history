@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\DTOs\Auth;
 
-
-
 /**
  * SocialProviderData - Immutable Data Transfer Object
  *
@@ -28,4 +26,3 @@ final readonly class SocialProviderData
     ) {}
 
 }
-

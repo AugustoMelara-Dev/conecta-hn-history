@@ -38,7 +38,7 @@ final readonly class LoginViaSocialProviderCommandValidator implements LoginViaS
             'avatarUrl' => $command->avatarUrl,
         ], [
             'tenantId' => ['required', 'uuid'],
-            'providerName' => ['required', 'in:' . $allowedProviders],
+            'providerName' => ['required', 'in:'.$allowedProviders],
             'providerId' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'name' => ['required', 'string', 'max:255'],

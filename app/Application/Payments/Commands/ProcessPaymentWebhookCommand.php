@@ -21,11 +21,11 @@ final readonly class ProcessPaymentWebhookCommand implements \App\Application\Sh
     public static function fromRequest(string $eventType, array $payload): self
     {
         // Strategy: Look for tenant_id in standard locations (metadata, custom_fields)
-        $tenantId = $payload['data']['object']['metadata']['tenant_id'] 
-                 ?? $payload['meta']['tenant_id'] 
+        $tenantId = $payload['data']['object']['metadata']['tenant_id']
+                 ?? $payload['meta']['tenant_id']
                  ?? null;
 
-        if (empty($tenantId) || !is_string($tenantId)) {
+        if (empty($tenantId) || ! is_string($tenantId)) {
             throw InvalidWebhookPayloadException::missingTenant();
         }
 
@@ -33,7 +33,7 @@ final readonly class ProcessPaymentWebhookCommand implements \App\Application\Sh
             eventType: $eventType,
             payload: $payload,
             tenantId: $tenantId,
-            receivedAt: (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM)
+            receivedAt: (new \DateTimeImmutable)->format(\DateTimeInterface::ATOM)
         );
     }
 }

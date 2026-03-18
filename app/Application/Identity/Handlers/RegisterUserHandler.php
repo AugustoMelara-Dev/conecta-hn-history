@@ -6,19 +6,17 @@ namespace App\Application\Identity\Handlers;
 
 use App\Application\Identity\Commands\RegisterUserCommand;
 use App\Application\Identity\Results\RegisterUserResult;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
+use App\Application\Shared\Contracts\OutboxRepositoryInterface;
+use App\Application\Shared\Contracts\SlugGeneratorInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Events\UserRegistered;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Shared\PasswordHasherInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity as Tenant;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-
-use App\Application\Shared\Contracts\IdGeneratorInterface;
-use App\Application\Shared\Contracts\SlugGeneratorInterface;
-
 
 /**
  * Class RegisterUserHandler
@@ -49,7 +47,7 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
 
         // 1. Generate Deterministic IDs & Time
         $userId = $this->idGenerator->generate();
-        $now = new \DateTimeImmutable();
+        $now = new \DateTimeImmutable;
 
         // 2. Security Hardening (Hashing BEFORE Domain/Persistence)
         $passwordHash = $this->hasher->hash($command->password);
@@ -62,12 +60,12 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
                 // Verify tenant exists first
                 $tenant = $this->tenantRepository->findById($command->tenantId);
                 if (! $tenant) {
-                     // Should throw DomainException, using generic for now as per project style might vary
-                     throw new \InvalidArgumentException("Tenant not found: {$command->tenantId}");
+                    // Should throw DomainException, using generic for now as per project style might vary
+                    throw new \InvalidArgumentException("Tenant not found: {$command->tenantId}");
                 }
-                
+
                 $tenantId = $command->tenantId;
-                // Default to STAFF if not specified, but never OWNER allowed here for safety? 
+                // Default to STAFF if not specified, but never OWNER allowed here for safety?
                 // We trust the command input for role, but default to STAFF if null.
                 $userRole = $command->role ? UserRole::from($command->role) : UserRole::STAFF;
 
@@ -80,7 +78,7 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
                     role: $userRole,
                     tenantId: $tenantId
                 );
-                
+
                 // Persist User (Tenant already exists)
                 $this->userRepository->save($user);
 
@@ -113,8 +111,8 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
             // 5. Atomic Event Dispatch (Outbox)
             // Constructing strictly matching the UserRegistered signature
             // Ensure we use the BACKING VALUE of the Enum (string)
-            $finalRole = $command->tenantId 
-                ? ($command->role ?? UserRole::STAFF->value) 
+            $finalRole = $command->tenantId
+                ? ($command->role ?? UserRole::STAFF->value)
                 : UserRole::TENANT_OWNER->value;
 
             $event = new UserRegistered(

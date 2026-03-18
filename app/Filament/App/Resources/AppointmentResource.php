@@ -2,10 +2,8 @@
 
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
-use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -16,9 +14,9 @@ class AppointmentResource extends Resource
 {
     protected static ?string $model = Appointment::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-calendar-days';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Servicios';
+    protected static string|\UnitEnum|null $navigationGroup = 'Servicios';
 
     protected static ?string $navigationLabel = 'Agenda de Citas';
 

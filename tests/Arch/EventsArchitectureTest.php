@@ -31,7 +31,6 @@ use Tests\TestCase;
  * ║                                                                          ║
  * ║  FAILURE = BLOCK DEPLOYMENT                                             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
- *
  */
 #[\PHPUnit\Framework\Attributes\Group('architecture')]
 #[\PHPUnit\Framework\Attributes\Group('events')]

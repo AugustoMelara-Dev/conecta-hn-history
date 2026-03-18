@@ -6,8 +6,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ActivityLogResource\Pages;
 use Filament\Forms\Components\Section;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
@@ -23,7 +23,7 @@ class ActivityLogResource extends Resource
 {
     protected static ?string $model = Activity::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shield-exclamation';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-exclamation';
 
     public static function getNavigationLabel(): string
     {

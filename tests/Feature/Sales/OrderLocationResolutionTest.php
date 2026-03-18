@@ -10,7 +10,6 @@ use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 

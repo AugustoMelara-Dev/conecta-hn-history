@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
+use App\Application\Shared\Contracts\AiProfileGeneratorInterface;
 use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
-use App\Application\Shared\Contracts\AiProfileGeneratorInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\EnhanceTenantProfileCommand;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;

@@ -106,6 +106,7 @@ final class RunSmokeTestsCommand extends Command
 
             if ($passed) {
                 $this->line("  [OK] {$check['label']}: {$this->stringify($check['actual'])}");
+
                 continue;
             }
 

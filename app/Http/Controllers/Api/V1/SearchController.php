@@ -6,9 +6,9 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Search\Contracts\GlobalSearchReader;
 use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 
 /**
  * SearchController - Unified Search API

@@ -20,7 +20,7 @@ test('saved flushes tenant-scoped product cache tags', function () {
         ->andReturnSelf();
     Cache::shouldReceive('flush')->once();
 
-    $observer = new ProductObserver();
+    $observer = new ProductObserver;
     $observer->saved($product);
 });
 
@@ -38,7 +38,7 @@ test('deleted flushes tenant-scoped product cache tags', function () {
         ->andReturnSelf();
     Cache::shouldReceive('flush')->once();
 
-    $observer = new ProductObserver();
+    $observer = new ProductObserver;
     $observer->deleted($product);
 });
 
@@ -56,7 +56,7 @@ test('restored flushes tenant-scoped product cache tags', function () {
         ->andReturnSelf();
     Cache::shouldReceive('flush')->once();
 
-    $observer = new ProductObserver();
+    $observer = new ProductObserver;
     $observer->restored($product);
 });
 
@@ -69,6 +69,6 @@ test('cache tags include tenant-specific key format', function () {
         (new ReflectionClass(ProductObserver::class))->getFileName()
     );
 
-    expect($source)->toContain("products_tenant_{\$product->tenant_id}");
+    expect($source)->toContain('products_tenant_{$product->tenant_id}');
     expect($source)->toContain("'products'");
 });

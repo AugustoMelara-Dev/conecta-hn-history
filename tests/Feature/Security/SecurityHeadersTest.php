@@ -31,7 +31,7 @@ function extractScriptSrc(string $csp): string
 
 it('allows unsafe-eval for scripts in local environment only', function () {
     // Test environment is non-production, so unsafe-eval should be present
-    $middleware = new SecurityHeaders();
+    $middleware = new SecurityHeaders;
     $request = Request::create('/register', 'GET');
 
     $response = $middleware->handle($request, fn () => new Response('OK'));
@@ -50,7 +50,7 @@ it('forbids unsafe-eval in production environment', function () {
     app()['env'] = 'production';
 
     try {
-        $middleware = new SecurityHeaders();
+        $middleware = new SecurityHeaders;
         $request = Request::create('/register', 'GET');
 
         $response = $middleware->handle($request, fn () => new Response('OK'));
@@ -72,7 +72,7 @@ it('includes nonce in production script-src', function () {
     app()['env'] = 'production';
 
     try {
-        $middleware = new SecurityHeaders();
+        $middleware = new SecurityHeaders;
         $request = Request::create('/', 'GET');
 
         $response = $middleware->handle($request, fn () => new Response('OK'));

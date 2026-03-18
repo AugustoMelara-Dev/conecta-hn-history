@@ -53,18 +53,18 @@ class FinancialStatsOverview extends BaseWidget
         $pendingPayments = SubscriptionPayment::where('status', 'pending')->count();
 
         return [
-            Stat::make('MRR (Ingreso Mensual Recurrente)', 'L. ' . number_format($mrr, 2))
-                ->description($proTenants . ' suscripciones activas')
+            Stat::make('MRR (Ingreso Mensual Recurrente)', 'L. '.number_format($mrr, 2))
+                ->description($proTenants.' suscripciones activas')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('gray'),
 
-            Stat::make('Ingresos Brutos Totales', 'L. ' . number_format((float) $totalRevenue, 2))
+            Stat::make('Ingresos Brutos Totales', 'L. '.number_format((float) $totalRevenue, 2))
                 ->description('Flujo de caja historico')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('gray'),
 
-            Stat::make('Tasa de Conversion', $conversionRate . '%')
-                ->description($proTenants . ' de ' . $totalTenants . ' negocios son PRO')
+            Stat::make('Tasa de Conversion', $conversionRate.'%')
+                ->description($proTenants.' de '.$totalTenants.' negocios son PRO')
                 ->descriptionIcon('heroicon-m-chart-pie')
                 ->color('gray'),
 

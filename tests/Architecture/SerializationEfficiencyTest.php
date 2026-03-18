@@ -11,9 +11,8 @@ declare(strict_types=1);
  * ║  Models, Closures, or resources — they break Queue/Outbox consumers. ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-
 test('commands contain only serializable primitive types', function () {
-    $dir = realpath(__DIR__ . '/../../app/Application');
+    $dir = realpath(__DIR__.'/../../app/Application');
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
     );
@@ -34,8 +33,8 @@ test('commands contain only serializable primitive types', function () {
         }
 
         // Resolve FQCN from file path
-        $relative = str_replace($dir . DIRECTORY_SEPARATOR, '', $file->getPathname());
-        $className = 'App\\Application\\' . str_replace(
+        $relative = str_replace($dir.DIRECTORY_SEPARATOR, '', $file->getPathname());
+        $className = 'App\\Application\\'.str_replace(
             [DIRECTORY_SEPARATOR, '/', '.php'],
             ['\\', '\\', ''],
             $relative
@@ -67,6 +66,7 @@ test('commands contain only serializable primitive types', function () {
                         );
                     }
                 }
+
                 continue;
             }
 

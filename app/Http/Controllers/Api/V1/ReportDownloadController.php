@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -20,6 +20,7 @@ final class ReportDownloadController extends Controller
     public function __construct(
         private FilesystemFactory $storage
     ) {}
+
     /**
      * Download a report file via signed URL.
      */

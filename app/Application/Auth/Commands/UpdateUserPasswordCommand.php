@@ -16,7 +16,7 @@ use App\Application\Shared\Contracts\SensitiveDataInterface;
  * â•‘  P1-REDACT: SensitiveDataInterface for Outbox/log sanitization.        â•‘
  * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
-final readonly class UpdateUserPasswordCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, SensitiveDataInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
+final readonly class UpdateUserPasswordCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface, SensitiveDataInterface
 {
     use \App\Application\Shared\Traits\HasSchemaVersion;
 
@@ -59,7 +59,7 @@ final readonly class UpdateUserPasswordCommand implements \App\Application\Share
     {
         // SEC-01 FIX: No password derivatives in command hash.
         // Discriminate by user + idempotency key only.
-        return hash('xxh128', 'update_pwd_' . $this->userId . '_' . $this->idempotencyKey);
+        return hash('xxh128', 'update_pwd_'.$this->userId.'_'.$this->idempotencyKey);
     }
 
     public function getSensitiveProperties(): array

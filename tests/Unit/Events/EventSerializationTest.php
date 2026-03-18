@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Events;
 
-
-
 use App\Domain\Shared\ValueObjects\TenantId;
 use App\Events\Audit\SalesExportCreated;
 use App\Events\Order\OrderShipped;
@@ -265,8 +263,6 @@ class EventSerializationTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     *
-     *
      * CHAOS TEST: Verify system survives missing non-critical keys.
      *
      * Simulates: A message from an older version of the event, or partial
@@ -308,8 +304,6 @@ class EventSerializationTest extends TestCase
     }
 
     /**
-     *
-     *
      * CHAOS TEST: Verify system ignores extraneous/malicious keys.
      *
      * Simulates: A payload injection attack or legacy fields from an
@@ -376,8 +370,6 @@ class EventSerializationTest extends TestCase
     }
 
     /**
-     *
-     *
      * BOUNDARY TEST: Verify fail-fast on missing critical identifier.
      *
      * tenant_id is the only truly required field for multi-tenant isolation.

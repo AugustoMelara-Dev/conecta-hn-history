@@ -9,7 +9,10 @@ use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
 use App\Application\Auth\Contracts\OtpDeliveryPayloadStoreInterface;
 use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\EntropyGeneratorInterface;
+use App\Application\Shared\Contracts\IdempotencyContextInterface;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
+use App\Application\Shared\Contracts\TraceContextInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Auth\Events\OtpGenerated;
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
@@ -17,10 +20,7 @@ use App\Domain\Auth\Services\OtpHasherInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Exceptions\SecurityException;
-use App\Application\Shared\Contracts\IdempotencyContextInterface;
-use App\Application\Shared\Contracts\TraceContextInterface;
 use Psr\Log\LoggerInterface;
-use App\Application\Shared\Contracts\IdGeneratorInterface;
 
 /**
  * GenerateOtpHandler - Pure Business Logic Handler

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Infrastructure\Jobs\AI\GenerateBusinessProfile;
 use App\Http\Controllers\Controller;
+use App\Infrastructure\Jobs\AI\GenerateBusinessProfile;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Cache\RateLimiter;
 use OpenApi\Attributes as OA;
 
 /**
@@ -21,6 +21,7 @@ final class AiController extends Controller
     public function __construct(
         private RateLimiter $limiter
     ) {}
+
     /**
      * Dispatch AI generation asynchronously.
      */

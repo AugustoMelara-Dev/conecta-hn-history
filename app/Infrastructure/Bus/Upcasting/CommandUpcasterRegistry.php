@@ -44,7 +44,7 @@ final readonly class CommandUpcasterRegistry
      * @param  string  $commandClass  FQCN of the Command (e.g., RegisterUserCommand)
      * @param  array<string, mixed>  $payload  Raw JSON-decoded payload from Outbox/Queue
      * @param  int  $currentVersion  The schema version of the incoming payload
-     * @return array<string, mixed>  The transformed payload at the latest version
+     * @return array<string, mixed> The transformed payload at the latest version
      */
     public function process(string $commandClass, array $payload, int $currentVersion = 1): array
     {

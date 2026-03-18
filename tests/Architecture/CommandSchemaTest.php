@@ -17,7 +17,7 @@ use App\Infrastructure\Schemas\JsonSchemaGenerator;
 test('commands possess strict schema via typed properties', function () {
     // P3 Requirement: Prevent breaking changes by ensuring all Command properties are strictly typed.
     // This allows automatic JSON Schema generation in the future.
-    $appDir = __DIR__ . '/../../app/Application';
+    $appDir = __DIR__.'/../../app/Application';
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($appDir, FilesystemIterator::SKIP_DOTS)
     );
@@ -33,11 +33,11 @@ test('commands possess strict schema via typed properties', function () {
         }
 
         $relativePath = str_replace(
-            [realpath($appDir) . DIRECTORY_SEPARATOR, '.php'],
+            [realpath($appDir).DIRECTORY_SEPARATOR, '.php'],
             ['', ''],
             realpath($file->getPathname())
         );
-        $className = 'App\\Application\\' . str_replace(DIRECTORY_SEPARATOR, '\\', $relativePath);
+        $className = 'App\\Application\\'.str_replace(DIRECTORY_SEPARATOR, '\\', $relativePath);
 
         if (! class_exists($className)) {
             continue;
@@ -60,9 +60,9 @@ test('commands possess strict schema via typed properties', function () {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('commands adhere to committed JSON Schema contracts', function () {
-    $generator = new JsonSchemaGenerator();
-    $appDir = realpath(__DIR__ . '/../../app/Application');
-    $contractsDir = realpath(__DIR__ . '/../Contracts') ?: __DIR__ . '/../Contracts';
+    $generator = new JsonSchemaGenerator;
+    $appDir = realpath(__DIR__.'/../../app/Application');
+    $contractsDir = realpath(__DIR__.'/../Contracts') ?: __DIR__.'/../Contracts';
 
     if (! is_dir($contractsDir)) {
         mkdir($contractsDir, 0755, true);
@@ -85,11 +85,11 @@ test('commands adhere to committed JSON Schema contracts', function () {
         }
 
         $relativePath = str_replace(
-            [realpath($appDir) . DIRECTORY_SEPARATOR, '.php'],
+            [realpath($appDir).DIRECTORY_SEPARATOR, '.php'],
             ['', ''],
             realpath($file->getPathname())
         );
-        $className = 'App\\Application\\' . str_replace(DIRECTORY_SEPARATOR, '\\', $relativePath);
+        $className = 'App\\Application\\'.str_replace(DIRECTORY_SEPARATOR, '\\', $relativePath);
 
         if (! class_exists($className)) {
             continue;
@@ -106,11 +106,11 @@ test('commands adhere to committed JSON Schema contracts', function () {
         }
 
         $schema = $generator->generate($className);
-        $snapshotFile = $contractsDir . DIRECTORY_SEPARATOR . $reflection->getShortName() . '.json';
+        $snapshotFile = $contractsDir.DIRECTORY_SEPARATOR.$reflection->getShortName().'.json';
 
         if (! file_exists($snapshotFile)) {
             // Baseline generation: create the snapshot for first-time runs
-            file_put_contents($snapshotFile, json_encode($schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n");
+            file_put_contents($snapshotFile, json_encode($schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)."\n");
             expect(true)->toBeTrue(); // Baseline created, mark pass
         } else {
             // Contract Verification: compare generated schema against snapshot
@@ -119,8 +119,8 @@ test('commands adhere to committed JSON Schema contracts', function () {
             expect($schema)->toEqual(
                 $existingContract,
                 "Contract mismatch for [{$className}]. Breaking change detected! "
-                . "If intentional, delete {$snapshotFile} to regenerate baseline, "
-                . "and ensure an UpcasterInterface is created for old payloads."
+                ."If intentional, delete {$snapshotFile} to regenerate baseline, "
+                .'and ensure an UpcasterInterface is created for old payloads.'
             );
         }
 
@@ -129,4 +129,3 @@ test('commands adhere to committed JSON Schema contracts', function () {
 
     expect($verified)->toBeGreaterThan(0, 'No Command classes found for contract verification.');
 });
-

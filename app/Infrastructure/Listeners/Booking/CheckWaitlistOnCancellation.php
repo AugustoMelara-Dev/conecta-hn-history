@@ -51,6 +51,7 @@ final class CheckWaitlistOnCancellation implements ShouldQueue
 
         if (! $tenant || ! $service) {
             Log::warning('CheckWaitlistOnCancellation: Missing Tenant or Service info for email dispatch');
+
             return;
         }
 

@@ -33,7 +33,7 @@ abstract class TestCase extends BaseTestCase
 
         $this->app->instance(
             \App\Application\Shared\Contracts\CommandValidatorRegistryInterface::class,
-            new \App\Infrastructure\Shared\Middleware\CommandValidatorRegistry()
+            new \App\Infrastructure\Shared\Middleware\CommandValidatorRegistry
         );
     }
 

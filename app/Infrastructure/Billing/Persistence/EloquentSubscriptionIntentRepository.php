@@ -24,6 +24,7 @@ final readonly class EloquentSubscriptionIntentRepository implements Subscriptio
     {
         try {
             $this->connection->table('subscription_intents')->insert($attributes);
+
             return true;
         } catch (QueryException $e) {
             // Duplicate entry (MySQL code 23000 / 1062)

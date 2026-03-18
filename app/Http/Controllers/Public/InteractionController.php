@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
-use App\Infrastructure\Interactions\Actions\RecordInteractionAction;
-use App\Domain\Analytics\Enums\InteractionType;
 use App\Application\Interactions\DTOs\InteractionData;
+use App\Domain\Analytics\Enums\InteractionType;
 use App\Domain\Shared\ValueObjects\PhoneNumber;
 use App\Domain\TenantGovernance\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use App\Infrastructure\Interactions\Actions\RecordInteractionAction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -114,4 +114,3 @@ final class InteractionController extends Controller
         return redirect()->away($url);
     }
 }
-

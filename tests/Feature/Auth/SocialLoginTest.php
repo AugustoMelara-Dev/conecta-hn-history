@@ -43,14 +43,14 @@ class SocialLoginTest extends TestCase
     {
         $payload = [
             'provider' => 'google',
-            'token' => 'ya29.valid-google-oauth-token-' . str_repeat('x', 100),
+            'token' => 'ya29.valid-google-oauth-token-'.str_repeat('x', 100),
             'provider_id' => '123456789012345678901',
             'email' => 'valid.user@gmail.com',
             'name' => 'Test User',
             'avatar' => 'https://lh3.googleusercontent.com/a/photo.jpg',
         ];
 
-        $request = new SocialLoginRequest();
+        $request = new SocialLoginRequest;
         $validator = validator($payload, $request->rules(), $request->messages());
 
         $this->assertFalse($validator->fails(), json_encode($validator->errors()->toArray()));
@@ -194,7 +194,7 @@ class SocialLoginTest extends TestCase
         foreach ($supportedProviders as $provider) {
             $payload = [
                 'provider' => $provider,
-                'token' => 'valid-token-' . $provider,
+                'token' => 'valid-token-'.$provider,
                 'provider_id' => '123456789',
                 'email' => "user.{$provider}@example.com",
                 'name' => 'Test User',

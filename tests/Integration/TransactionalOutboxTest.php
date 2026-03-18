@@ -12,7 +12,6 @@ declare(strict_types=1);
  * - Transaction rolls back on handler failure (no Ghost Events)
  */
 
-use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Application\Shared\Contracts\SensitiveDataInterface;
 use App\Infrastructure\Bus\TransactionalCommandBus;
@@ -41,7 +40,8 @@ test('transactional bus persists redacted payload and marks as published', funct
     );
 
     // Create a command implementing SensitiveDataInterface
-    $command = new class('secret-password-123', 'visible-data') implements SensitiveDataInterface {
+    $command = new class('secret-password-123', 'visible-data') implements SensitiveDataInterface
+    {
         public function __construct(
             public string $secret,
             public string $publicField,
@@ -90,7 +90,8 @@ test('transactional bus rolls back outbox on handler failure', function () {
         $mockIdGenerator,
     );
 
-    $command = new class('data') {
+    $command = new class('data')
+    {
         public function __construct(public string $value) {}
     };
 
@@ -123,7 +124,8 @@ test('transactional bus persists non-sensitive command without redaction', funct
         $mockIdGenerator,
     );
 
-    $command = new class('hello', 123) {
+    $command = new class('hello', 123)
+    {
         public function __construct(
             public string $name,
             public int $count,

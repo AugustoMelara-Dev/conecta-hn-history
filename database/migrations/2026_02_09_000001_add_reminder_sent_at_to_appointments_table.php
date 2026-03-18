@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Add reminder_sent_at column to appointments table.
- * 
+ *
  * IDEMPOTENCY: This column prevents duplicate reminder emails.
  * When a reminder is sent, this is set to now().
  * The SendAppointmentReminders job filters out appointments

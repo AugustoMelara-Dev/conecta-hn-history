@@ -23,7 +23,7 @@ class AppointmentCalendarWidget extends Widget
     /**
      * Fetch appointments for the calendar view.
      *
-     * @param array $fetchInfo Contains 'start' and 'end' dates from FullCalendar
+     * @param  array  $fetchInfo  Contains 'start' and 'end' dates from FullCalendar
      * @return array Events formatted for FullCalendar
      */
     public function fetchEvents(array $fetchInfo): array

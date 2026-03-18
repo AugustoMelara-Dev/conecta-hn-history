@@ -70,8 +70,6 @@ class SecurityRegressionTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     *
-     *
      * ATTACK: Attacker tries to create a product in victim's namespace by
      * injecting victim's tenant_id in the creation payload.
      *
@@ -109,8 +107,6 @@ class SecurityRegressionTest extends TestCase
     }
 
     /**
-     *
-     *
      * ATTACK: Attacker tries to modify their product's tenant_id to point
      * to victim's tenant, effectively "transferring" the product.
      *
@@ -144,8 +140,6 @@ class SecurityRegressionTest extends TestCase
     }
 
     /**
-     *
-     *
      * VERIFICATION: tenant_id is GUARDED (immutable) to prevent mass assignment attacks.
      * The BelongsToTenant trait auto-assigns it during creation via the creating() hook.
      *
@@ -182,8 +176,6 @@ class SecurityRegressionTest extends TestCase
     }
 
     /**
-     *
-     *
      * VERIFICATION: The OrderPolicy correctly prevents deletion of processed orders.
      */
     #[\PHPUnit\Framework\Attributes\Test]
@@ -206,8 +198,6 @@ class SecurityRegressionTest extends TestCase
     }
 
     /**
-     *
-     *
      * VERIFICATION: All critical models have associated policies.
      */
     #[\PHPUnit\Framework\Attributes\Test]
@@ -233,8 +223,6 @@ class SecurityRegressionTest extends TestCase
     }
 
     /**
-     *
-     *
      * VERIFICATION: All policies extend TenantAwarePolicy base class.
      */
     #[\PHPUnit\Framework\Attributes\Test]

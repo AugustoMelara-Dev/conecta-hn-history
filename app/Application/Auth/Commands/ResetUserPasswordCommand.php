@@ -18,7 +18,7 @@ use App\Application\Shared\Contracts\SensitiveDataInterface;
  * ║  P1-REDACT: SensitiveDataInterface for Outbox/log sanitization.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class ResetUserPasswordCommand implements IdempotentCommandInterface, SensitiveDataInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
+final readonly class ResetUserPasswordCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface, IdempotentCommandInterface, SensitiveDataInterface
 {
     use \App\Application\Shared\Traits\HasSchemaVersion;
 
@@ -41,7 +41,7 @@ final readonly class ResetUserPasswordCommand implements IdempotentCommandInterf
 
     public function getIdempotencyKey(): string
     {
-        return $this->idempotencyKey ?: hash('xxh128', 'reset_pwd_' . $this->userId);
+        return $this->idempotencyKey ?: hash('xxh128', 'reset_pwd_'.$this->userId);
     }
 
     public function getSensitiveProperties(): array
@@ -49,5 +49,3 @@ final readonly class ResetUserPasswordCommand implements IdempotentCommandInterf
         return ['password'];
     }
 }
-
-

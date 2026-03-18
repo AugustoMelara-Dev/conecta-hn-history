@@ -7,9 +7,9 @@ namespace App\Domain\Identity\Events;
 use App\Domain\Shared\Contracts\Events\DomainEvent;
 // use App\Models\Tenant; // REMOVED
 // use App\Models\User; // REMOVED
+use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 use App\Domain\Shared\Traits\HasDomainMetadata;
 use App\Domain\Shared\ValueObjects\TenantId;
-use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 
 /**
  * TenantRegistered - Domain Event
@@ -22,7 +22,11 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
     use HasDomainMetadata;
 
     private const SCHEMA_VERSION = 1;
-    public function schemaVersion(): int { return self::SCHEMA_VERSION; }
+
+    public function schemaVersion(): int
+    {
+        return self::SCHEMA_VERSION;
+    }
 
     public function __construct(
         public string $tenantId,

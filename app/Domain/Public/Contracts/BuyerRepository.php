@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Public\Contracts;
 
-
 /**
  * BuyerRepository - Contract for Buyer Data
  */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Billing\Repositories;
 
 use App\Domain\Billing\Entities\PaymentEntity;
+
 interface PaymentRepositoryInterface
 {
     public function save(PaymentEntity $payment): void;

@@ -13,9 +13,7 @@ use App\Domain\Identity\Exceptions\CrossTenantAccessException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
-use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Shared\PasswordHasherInterface;
-
 
 /**
  * UpdateUserPasswordHandler - Atomic Protocol Edition

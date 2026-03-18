@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domain\Identity\Events;
 
-use DateTimeImmutable;
 use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
 use App\Domain\Shared\Traits\HasEventIdentity;
+use DateTimeImmutable;
 
 /**
  * UserDeleted - Digital Tombstone Domain Event
@@ -35,7 +35,7 @@ final readonly class UserDeleted implements DomainEvent, ShouldDispatchAfterComm
         public string $userId,
         public string $tenantId,
         public DateTimeImmutable $deletedAt,
-        ?string $restoredEventId       = null,
+        ?string $restoredEventId = null,
         ?string $restoredCorrelationId = null,
     ) {
         $this->initEventIdentity($restoredEventId, $restoredCorrelationId);
@@ -50,20 +50,38 @@ final readonly class UserDeleted implements DomainEvent, ShouldDispatchAfterComm
         string $tenantId,
     ): self {
         return new self(
-            userId:    $userId,
-            tenantId:  $tenantId,
-            deletedAt: new DateTimeImmutable(),
+            userId: $userId,
+            tenantId: $tenantId,
+            deletedAt: new DateTimeImmutable,
         );
     }
 
     // ─── DomainEvent interface ────────────────────────────────────────────────
 
-    public function tenantId(): mixed        { return $this->tenantId; }
-    public function aggregateId(): string    { return $this->userId; }
-    public function occurredAt(): DateTimeImmutable { return $this->deletedAt; }
+    public function tenantId(): mixed
+    {
+        return $this->tenantId;
+    }
 
-    public function toPrimitives(): array { return $this->toPayload(); }
-    public static function fromPrimitives(array $primitives): self { return static::fromPayload($primitives); }
+    public function aggregateId(): string
+    {
+        return $this->userId;
+    }
+
+    public function occurredAt(): DateTimeImmutable
+    {
+        return $this->deletedAt;
+    }
+
+    public function toPrimitives(): array
+    {
+        return $this->toPayload();
+    }
+
+    public static function fromPrimitives(array $primitives): self
+    {
+        return self::fromPayload($primitives);
+    }
 
     // ─── Serialization ────────────────────────────────────────────────────────
 
@@ -78,18 +96,18 @@ final readonly class UserDeleted implements DomainEvent, ShouldDispatchAfterComm
     }
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     public static function fromPayload(array $payload): static
     {
         return new self(
-            userId:                 (string) ($payload['user_id']       ?? ''),
-            tenantId:               (string) ($payload['tenant_id']     ?? ''),
+            userId: (string) ($payload['user_id'] ?? ''),
+            tenantId: (string) ($payload['tenant_id'] ?? ''),
             deletedAt: isset($payload['deleted_at'])
                 ? new DateTimeImmutable($payload['deleted_at'])
-                : new DateTimeImmutable(),
-            restoredEventId:        $payload['event_id']       ?? null,
-            restoredCorrelationId:  $payload['correlation_id'] ?? null,
+                : new DateTimeImmutable,
+            restoredEventId: $payload['event_id'] ?? null,
+            restoredCorrelationId: $payload['correlation_id'] ?? null,
         );
     }
 
@@ -99,10 +117,10 @@ final readonly class UserDeleted implements DomainEvent, ShouldDispatchAfterComm
     public function toPayload(): array
     {
         return [
-            'user_id'        => $this->userId,
-            'tenant_id'      => $this->tenantId,
-            'deleted_at'     => $this->deletedAt->format(DateTimeImmutable::ATOM),
-            'event_id'       => $this->eventId,
+            'user_id' => $this->userId,
+            'tenant_id' => $this->tenantId,
+            'deleted_at' => $this->deletedAt->format(DateTimeImmutable::ATOM),
+            'event_id' => $this->eventId,
             'correlation_id' => $this->correlationId,
         ];
     }

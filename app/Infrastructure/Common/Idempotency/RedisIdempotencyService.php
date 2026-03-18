@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Common\Idempotency;
 
-use App\Application\Shared\Contracts\IdempotencyServiceInterface;
 use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
+use App\Application\Shared\Contracts\IdempotencyServiceInterface;
 use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Redis\Connections\Connection;
 use Illuminate\Support\Facades\Cache;

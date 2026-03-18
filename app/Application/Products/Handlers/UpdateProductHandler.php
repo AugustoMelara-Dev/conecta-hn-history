@@ -9,9 +9,9 @@ use App\Application\Products\Results\UpdateProductResult;
 use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
+use App\Domain\Product\Exceptions\ProductNotFoundException;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use App\Domain\Product\Exceptions\ProductNotFoundException;
 
 /**
  * UpdateProductHandler - Command Handler for Product Update

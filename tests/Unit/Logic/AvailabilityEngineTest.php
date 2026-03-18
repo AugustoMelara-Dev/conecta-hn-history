@@ -1,7 +1,5 @@
 <?php
 
-
-
 declare(strict_types=1);
 
 use App\Models\OpeningHour;
@@ -16,7 +14,7 @@ use Spatie\OpeningHours\OpeningHours;
 describe('Tenant Opening Hours', function () {
     it('returns Spatie OpeningHours object', function () {
         $tenant = new Tenant;
-        
+
         expect(method_exists($tenant, 'getOpeningHours'))->toBeTrue();
         expect(method_exists($tenant, 'openingHours'))->toBeTrue();
     });
@@ -31,13 +29,13 @@ describe('Tenant Opening Hours', function () {
         $openingHours = $tenant->getOpeningHours();
 
         expect($openingHours)->toBeInstanceOf(OpeningHours::class);
-        
+
         // Monday should have 09:00-17:00
         $mondayRanges = $openingHours->forDay('monday');
         expect($mondayRanges)->toHaveCount(1);
         expect($mondayRanges[0]->start()->format('H:i'))->toBe('09:00');
         expect($mondayRanges[0]->end()->format('H:i'))->toBe('17:00');
-        
+
         // Sunday should be closed (no ranges)
         $sundayRanges = $openingHours->forDay('sunday');
         expect($sundayRanges)->toBeEmpty();
@@ -73,7 +71,7 @@ describe('Tenant Opening Hours', function () {
 describe('ServiceProvider Opening Hours', function () {
     it('returns Spatie OpeningHours object', function () {
         $provider = new ServiceProvider;
-        
+
         expect(method_exists($provider, 'getOpeningHours'))->toBeTrue();
     });
 
@@ -89,7 +87,7 @@ describe('ServiceProvider Opening Hours', function () {
         $openingHours = $provider->getOpeningHours();
 
         expect($openingHours)->toBeInstanceOf(OpeningHours::class);
-        
+
         $mondayRanges = $openingHours->forDay('monday');
         expect($mondayRanges)->toHaveCount(1);
         expect($mondayRanges[0]->start()->format('H:i'))->toBe('12:00');

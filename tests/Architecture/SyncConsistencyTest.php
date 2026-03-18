@@ -25,7 +25,7 @@ test('register user command is strictly synchronous', function () {
 });
 
 test('create new user action documents sync requirement', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Actions/Identity/CreateNewUser.php');
+    $content = file_get_contents(__DIR__.'/../../app/Actions/Identity/CreateNewUser.php');
 
     expect($content)->toContain('SYNC REQUIRED');
 });

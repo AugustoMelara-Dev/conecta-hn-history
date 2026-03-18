@@ -15,11 +15,11 @@ use Filament\Pages\Page;
  */
 class ArchitectureHealth extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shield-check';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-check';
 
     protected static ?string $navigationLabel = 'Architecture Health';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Configuración';
+    protected static string|\UnitEnum|null $navigationGroup = 'Configuración';
 
     protected static ?int $navigationSort = 100;
 

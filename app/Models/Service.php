@@ -11,13 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Service Model - Bookable Service Definition
- * 
+ *
  * Represents a service that can be booked (time-based inventory).
  * Examples: "Men's Haircut - 30min - L.200", "Dental Cleaning - 60min - L.500"
- * 
+ *
  * PRICING: Stored as decimal(10,2) for currency precision.
  * DURATION: Stored in minutes to avoid timezone issues.
- * 
+ *
  * SECURITY: Uses BelongsToTenant for automatic tenant isolation.
  */
 class Service extends Model
@@ -88,6 +88,6 @@ class Service extends Model
      */
     public function getFormattedPriceAttribute(): string
     {
-        return 'L. ' . number_format((float) $this->price, 2);
+        return 'L. '.number_format((float) $this->price, 2);
     }
 }

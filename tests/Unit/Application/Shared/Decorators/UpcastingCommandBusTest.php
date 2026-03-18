@@ -7,15 +7,19 @@ use App\Application\Shared\Contracts\CommandUpcasterInterface;
 use App\Application\Shared\Decorators\UpcastingCommandBus;
 
 it('upcasts commands and delegates to the next bus within tenant context', function () {
-    $tenantId = 'tnt_' . fake()->bothify('??????????');
+    $tenantId = 'tnt_'.fake()->bothify('??????????');
 
-    $originalCommand = new class($tenantId) {
+    $originalCommand = new class($tenantId)
+    {
         public int $schemaVersion = 1;
+
         public function __construct(public string $tenantId) {}
     };
 
-    $upcastedCommand = new class($tenantId) {
+    $upcastedCommand = new class($tenantId)
+    {
         public int $schemaVersion = 2;
+
         public function __construct(public string $tenantId) {}
     };
 
@@ -41,8 +45,10 @@ it('upcasts commands and delegates to the next bus within tenant context', funct
 });
 
 it('bypasses upcasting if not supported keeping tenant intact', function () {
-    $command = new class('tnt_123') {
+    $command = new class('tnt_123')
+    {
         public int $schemaVersion = 1;
+
         public function __construct(public string $tenantId) {}
     };
 
@@ -66,18 +72,24 @@ it('bypasses upcasting if not supported keeping tenant intact', function () {
 it('chains multiple upcasters in sequence', function () {
     $tenantId = 'tnt_multi';
 
-    $v1Command = new class($tenantId) {
+    $v1Command = new class($tenantId)
+    {
         public int $schemaVersion = 1;
+
         public function __construct(public string $tenantId) {}
     };
 
-    $v2Command = new class($tenantId) {
+    $v2Command = new class($tenantId)
+    {
         public int $schemaVersion = 2;
+
         public function __construct(public string $tenantId) {}
     };
 
-    $v3Command = new class($tenantId) {
+    $v3Command = new class($tenantId)
+    {
         public int $schemaVersion = 3;
+
         public function __construct(public string $tenantId) {}
     };
 
@@ -103,8 +115,10 @@ it('chains multiple upcasters in sequence', function () {
 });
 
 it('passes command through unmodified when no upcasters are registered', function () {
-    $command = new class('tnt_empty') {
+    $command = new class('tnt_empty')
+    {
         public int $schemaVersion = 1;
+
         public function __construct(public string $tenantId) {}
     };
 

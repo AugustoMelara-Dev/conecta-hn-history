@@ -7,9 +7,9 @@ namespace App\Application\Identity\Validators;
 use App\Application\Identity\Commands\RegisterUserCommand;
 use App\Application\Identity\Validators\Rules\UniqueTenantSlugRule;
 use App\Application\Identity\Validators\Rules\UniqueUserEmailRule;
+use App\Application\Shared\Contracts\ValidatorFactoryInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Application\Shared\Contracts\ValidatorFactoryInterface;
 
 /**
  * RegisterUserValidator - Executable Validation Service

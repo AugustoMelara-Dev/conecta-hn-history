@@ -23,7 +23,7 @@ class PaymentResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-banknotes';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
 
     public static function getNavigationLabel(): string
     {

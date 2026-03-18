@@ -29,7 +29,7 @@ use Illuminate\Validation\ValidationException;
  * This abstraction layer allows future swap to "Variant Inventory"
  * without breaking controller code.
  */
-class InventoryManager implements \App\Contracts\InventoryManagerInterface, \App\Application\Shared\Contracts\InventoryManagerInterface
+class InventoryManager implements \App\Application\Shared\Contracts\InventoryManagerInterface, \App\Contracts\InventoryManagerInterface
 {
     /**
      * Validate and lock product inventory for order creation.
@@ -230,10 +230,10 @@ class InventoryManager implements \App\Contracts\InventoryManagerInterface, \App
             // ═══════════════════════════════════════════════════════════════════
             // lockForUpdate() creates SELECT ... FOR UPDATE
             // Holds exclusive row locks until transaction commits
-            // 
+            //
             // CRITICAL: Use Eloquent query builder (not DB::table) to enable
             // proper enum casting. DB::table + hydrate fails with backed enums.
-            
+
             // VC-AUDIT-102: Prevent scope bypass if tenant_id is missing
             if ($order->tenant_id === null) {
                 throw new \LogicException('Cannot restock inventory: Order tenant_id is missing.');
@@ -306,7 +306,6 @@ class InventoryManager implements \App\Contracts\InventoryManagerInterface, \App
             });
         });
     }
-
 
     /**
      * Consume inventory for a restored order (Reverse of restock).

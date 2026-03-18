@@ -9,7 +9,6 @@ declare(strict_types=1);
  * served by the Hexagonal DirectoryController — never the legacy
  * /directory inline closure.
  */
-
 it('resolves the directory index route to the hexagonal controller path', function () {
     $resolvedUrl = route('directory.index', [], false); // relative path
 

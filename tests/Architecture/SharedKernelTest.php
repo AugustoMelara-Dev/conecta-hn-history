@@ -14,7 +14,6 @@ declare(strict_types=1);
  *   Contexts → Shared ✅
  *   Shared → Contexts ❌
  */
-
 test('shared kernel does not depend on bounded contexts')
     ->expect('App\Application\Shared')
     ->not->toUse([

@@ -5,8 +5,8 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\LoyaltyProgramResource\Pages;
 use App\Models\LoyaltyProgram;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -14,9 +14,9 @@ class LoyaltyProgramResource extends Resource
 {
     protected static ?string $model = LoyaltyProgram::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Fidelización';
+    protected static string|\UnitEnum|null $navigationGroup = 'Fidelización';
 
     protected static ?string $navigationLabel = 'Configuración';
 

@@ -11,9 +11,9 @@ use App\Models\Product;
 use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
@@ -38,7 +38,7 @@ class ProductResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shopping-bag';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
 
     public static function getNavigationLabel(): string
     {

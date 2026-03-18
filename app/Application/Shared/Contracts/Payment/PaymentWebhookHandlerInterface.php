@@ -10,9 +10,6 @@ interface PaymentWebhookHandlerInterface
 {
     /**
      * Handles the webhook logic and returns a standardized response.
-     *
-     * @param PaymentWebhook $webhook
-     * @return array
      */
     public function handle(PaymentWebhook $webhook): array;
 }

@@ -7,14 +7,13 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
 use App\Services\OrderStateService;
-use Filament\Schemas\Schema;
 use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
-
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontFamily;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -35,7 +34,7 @@ class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shopping-bag';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
 
     protected static ?string $navigationLabel = 'Pedidos';
 
@@ -43,7 +42,7 @@ class OrderResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Pedidos';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Ventas';
+    protected static string|\UnitEnum|null $navigationGroup = 'Ventas';
 
     protected static ?int $navigationSort = 1;
 

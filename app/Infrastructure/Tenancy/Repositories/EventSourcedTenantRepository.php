@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Infrastructure\Tenancy\Repositories;
 
 use App\Application\Shared\Common\Integration\IntegrationEventMapper;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotStrategyInterface;
 use App\Domain\Common\Exceptions\ConcurrencyException;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Infrastructure\Common\Outbox\OutboxRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -51,6 +51,7 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
     public function findBySlug(string $slug): ?TenantEntity
     {
         $id = DB::table('tenants')->where('slug', $slug)->value('id');
+
         return $id ? $this->findById($id) : null;
     }
 

@@ -2,10 +2,8 @@
 
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\ServiceResource\Pages;
 use App\Models\Service;
-use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -16,9 +14,9 @@ class ServiceResource extends Resource
 {
     protected static ?string $model = Service::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-scissors';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-scissors';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Servicios';
+    protected static string|\UnitEnum|null $navigationGroup = 'Servicios';
 
     protected static ?string $navigationLabel = 'Catalogo de Servicios';
 

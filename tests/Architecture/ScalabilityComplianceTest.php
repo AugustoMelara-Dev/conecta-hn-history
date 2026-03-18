@@ -12,7 +12,6 @@ declare(strict_types=1);
  * Prevents "Fat Event" anti-pattern that degrades Redis/SQS throughput.
  * Commands must remain lightweight DTOs for safe queue serialization.
  */
-
 test('scalability - commands rely on primitives for fast serialization', function () {
     // Mandate from Scalability Report: Commands must use primitive types or lightweight VOs.
     // This prevents "Fat Event" anti-patterns and ensures Redis/SQS throughput.
@@ -105,7 +104,7 @@ test('scalability - commands rely on primitives for fast serialization', functio
 
                 if (! $isAllowed) {
                     test()->fail(
-                        "Scalability Violation: Command [{$className}] property [\${$property->getName()}] " .
+                        "Scalability Violation: Command [{$className}] property [\${$property->getName()}] ".
                         "uses heavy/unknown type [{$typeName}]. Use primitives (string, int) or IDs only."
                     );
                 }

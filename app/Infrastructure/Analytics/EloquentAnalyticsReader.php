@@ -22,7 +22,8 @@ final class EloquentAnalyticsReader implements AnalyticsReader
     public function getAnalyticsData(int $tenantId, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
     {
         $carbonStart = Carbon::instance($startDate);
-        $carbonEnd   = Carbon::instance($endDate);
+        $carbonEnd = Carbon::instance($endDate);
+
         return TenantAnalytic::where('tenant_id', $tenantId)
             ->whereBetween('date', [$startDate, $endDate])
             ->orderBy('date', 'asc')

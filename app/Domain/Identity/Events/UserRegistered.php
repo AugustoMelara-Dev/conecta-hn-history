@@ -60,7 +60,7 @@ final readonly class UserRegistered implements DomainEventInterface, ShouldDispa
     public static function fromPayload(array $payload): static
     {
         // schema_version is routed by the Upcaster registry before reaching this factory.
-        return new static(
+        return new self(
             user_id: (string) ($payload['user_id'] ?? ''),
             name: (string) ($payload['name'] ?? 'Unknown User'),
             email: new \App\Domain\Shared\ValueObjects\EncryptedEmail((string) ($payload['email'] ?? '')),
@@ -76,12 +76,12 @@ final readonly class UserRegistered implements DomainEventInterface, ShouldDispa
     {
         return [
             'schema_version' => self::SCHEMA_VERSION,
-            'user_id'        => $this->user_id,
-            'name'           => $this->name,
-            'email'          => $this->email->value(),
-            'role'           => $this->role,
-            'tenant_id'      => $this->tenant_id,
-            'occurred_on'    => $this->occurredOn->format(\DateTimeInterface::ATOM),
+            'user_id' => $this->user_id,
+            'name' => $this->name,
+            'email' => $this->email->value(),
+            'role' => $this->role,
+            'tenant_id' => $this->tenant_id,
+            'occurred_on' => $this->occurredOn->format(\DateTimeInterface::ATOM),
         ];
     }
 

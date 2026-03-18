@@ -1,7 +1,7 @@
 <?php
 
-use App\Settings\GeneralSettings;
 use App\Settings\BaseSettings;
+use App\Settings\GeneralSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +22,7 @@ test('native general settings abstraction loads from database', function () {
     $property = new ReflectionProperty(BaseSettings::class, 'runtimeCache');
     $property->setValue([]);
 
-    $settings = new GeneralSettings();
+    $settings = new GeneralSettings;
 
     expect($settings->pro_plan_price)->toBe(1499.99);
 });

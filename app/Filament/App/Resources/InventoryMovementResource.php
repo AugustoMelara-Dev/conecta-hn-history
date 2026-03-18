@@ -18,7 +18,7 @@ class InventoryMovementResource extends Resource
 
     protected static ?string $model = InventoryMovement::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-document-text';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-text';
 
     public static function getNavigationGroup(): ?string
     {

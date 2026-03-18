@@ -6,10 +6,10 @@ namespace App\Http\Controllers\Public;
 
 use App\Domain\Shared\Contracts\CityReader;
 use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Cookie\Factory as CookieFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Contracts\Cookie\Factory as CookieFactory;
 
 /**
  * LocationController - Hexagonal Compliant (DIP Remediation)

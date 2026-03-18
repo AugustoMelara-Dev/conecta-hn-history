@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Events\Security;
 
 use App\Contracts\Events\AuditEvent;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Enums\Severity;
 use App\ValueObjects\AuditContext;
-use App\Domain\Shared\ValueObjects\TenantId;
 
 /**
  * FailedLoginAttempt - Audit Event for Brute Force Detection

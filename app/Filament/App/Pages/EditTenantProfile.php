@@ -6,8 +6,8 @@ namespace App\Filament\App\Pages;
 
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Pages\Tenancy\EditTenantProfile as BaseEditTenantProfile;
+use Filament\Schemas\Schema;
 use Illuminate\Support\HtmlString;
 
 /**

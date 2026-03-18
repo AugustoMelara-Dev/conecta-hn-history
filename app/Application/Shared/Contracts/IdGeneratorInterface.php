@@ -8,8 +8,6 @@ interface IdGeneratorInterface
 {
     /**
      * Generate a new unique identifier.
-     *
-     * @return string
      */
     public function generate(): string;
 }

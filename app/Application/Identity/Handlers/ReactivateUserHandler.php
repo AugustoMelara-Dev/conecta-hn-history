@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Handlers;
 
-use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Identity\Commands\ReactivateUserCommand;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use Psr\Log\LoggerInterface;
 

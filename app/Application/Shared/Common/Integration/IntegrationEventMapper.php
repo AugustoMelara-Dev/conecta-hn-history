@@ -6,8 +6,8 @@ namespace App\Application\Shared\Common\Integration;
 
 use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Domain\Identity\Events\UserRegistered;
-use App\Domain\TenantGovernance\Events\TenantCreated;
 use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\TenantGovernance\Events\TenantCreated;
 
 /**
  * IntegrationEventMapper - The Diplomat

@@ -25,7 +25,7 @@ test('created assigns TENANT_OWNER role to user who is not already owner', funct
     $tenant = Mockery::mock(Tenant::class)->makePartial();
     $tenant->shouldReceive('getAttribute')->with('user')->andReturn($user);
 
-    $observer = new TenantObserver();
+    $observer = new TenantObserver;
     $observer->created($tenant);
 });
 
@@ -37,7 +37,7 @@ test('created does not reassign role if user is already TENANT_OWNER', function 
     $tenant = Mockery::mock(Tenant::class)->makePartial();
     $tenant->shouldReceive('getAttribute')->with('user')->andReturn($user);
 
-    $observer = new TenantObserver();
+    $observer = new TenantObserver;
     $observer->created($tenant);
 });
 
@@ -45,7 +45,7 @@ test('created handles tenant without user gracefully', function () {
     $tenant = Mockery::mock(Tenant::class)->makePartial();
     $tenant->shouldReceive('getAttribute')->with('user')->andReturn(null);
 
-    $observer = new TenantObserver();
+    $observer = new TenantObserver;
 
     // Should not throw
     $observer->created($tenant);
@@ -66,7 +66,7 @@ test('updated rotates tenant cache version', function () {
     $tenant = Mockery::mock(Tenant::class)->makePartial();
     $tenant->id = 42;
 
-    $observer = new TenantObserver();
+    $observer = new TenantObserver;
     $observer->updated($tenant);
 });
 
@@ -83,7 +83,7 @@ test('updated logs warning when cache rotation fails', function () {
     $tenant = Mockery::mock(Tenant::class)->makePartial();
     $tenant->id = 42;
 
-    $observer = new TenantObserver();
+    $observer = new TenantObserver;
     $observer->updated($tenant);
 });
 
@@ -101,7 +101,7 @@ test('deleted forgets tenant cache version', function () {
     $tenant = Mockery::mock(Tenant::class)->makePartial();
     $tenant->id = 99;
 
-    $observer = new TenantObserver();
+    $observer = new TenantObserver;
     $observer->deleted($tenant);
 });
 
@@ -119,7 +119,7 @@ test('restored rotates tenant cache version', function () {
     $tenant = Mockery::mock(Tenant::class)->makePartial();
     $tenant->id = 7;
 
-    $observer = new TenantObserver();
+    $observer = new TenantObserver;
     $observer->restored($tenant);
 });
 
@@ -137,6 +137,6 @@ test('forceDeleted forgets tenant cache version', function () {
     $tenant = Mockery::mock(Tenant::class)->makePartial();
     $tenant->id = 7;
 
-    $observer = new TenantObserver();
+    $observer = new TenantObserver;
     $observer->forceDeleted($tenant);
 });

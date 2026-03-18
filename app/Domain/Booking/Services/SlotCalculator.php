@@ -21,12 +21,12 @@ final class SlotCalculator
      * Uses spatie/opening-hours to respect tenant business hours
      * and provider schedule overrides.
      *
-     * @param string $tenantId The tenant ID for fallback hours
-     * @param Carbon $date The date to generate slots for
-     * @param int $durationMinutes Service duration in minutes
-     * @param string|null $providerId Optional provider ID for schedule override
-     * @param int $bufferBefore Minutes required before the appointment
-     * @param int $bufferAfter Minutes required after the appointment
+     * @param  string  $tenantId  The tenant ID for fallback hours
+     * @param  Carbon  $date  The date to generate slots for
+     * @param  int  $durationMinutes  Service duration in minutes
+     * @param  string|null  $providerId  Optional provider ID for schedule override
+     * @param  int  $bufferBefore  Minutes required before the appointment
+     * @param  int  $bufferAfter  Minutes required after the appointment
      * @return array<array{time: string, display: string}>
      */
     public function calculate(

@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Analytics\Enums\InteractionType;
-use App\Infrastructure\Jobs\Analytics\RecordInteraction;
 use App\Domain\TenantGovernance\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use App\Infrastructure\Jobs\Analytics\RecordInteraction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Psr\Log\LoggerInterface;
 use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
+use Psr\Log\LoggerInterface;
 
 /**
  * AnalyticsController - IDOR-Hardened Conversion Event API

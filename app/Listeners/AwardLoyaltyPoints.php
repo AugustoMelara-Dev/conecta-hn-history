@@ -12,10 +12,10 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Award Loyalty Points Listener
- * 
+ *
  * Automatically awards loyalty points when an order is completed.
  * Triggered by Order status transition to 'delivered' with payment confirmed.
- * 
+ *
  * INVARIANTS:
  * - Only awards points for orders with user_id (authenticated users)
  * - Only awards if tenant has active loyalty program
@@ -27,8 +27,8 @@ class AwardLoyaltyPoints implements ShouldQueue
 {
     /**
      * Award loyalty points for a completed order.
-     * 
-     * @param Order $order The completed order
+     *
+     * @param  Order  $order  The completed order
      * @return bool True if points were awarded
      */
     public function handle(Order $order): bool
@@ -38,6 +38,7 @@ class AwardLoyaltyPoints implements ShouldQueue
         // ═══════════════════════════════════════════════════════════════════════
         if ($order->user_id === null) {
             Log::debug('LoyaltyPoints: Skipped - Guest order', ['order_id' => $order->id]);
+
             return false;
         }
 
@@ -50,6 +51,7 @@ class AwardLoyaltyPoints implements ShouldQueue
                 'status' => $order->status,
                 'payment_status' => $order->payment_status,
             ]);
+
             return false;
         }
 
@@ -60,11 +62,12 @@ class AwardLoyaltyPoints implements ShouldQueue
             ->where('is_active', true)
             ->first();
 
-        if (!$program) {
+        if (! $program) {
             Log::debug('LoyaltyPoints: Skipped - No active program', [
                 'order_id' => $order->id,
                 'tenant_id' => $order->tenant_id,
             ]);
+
             return false;
         }
 
@@ -77,6 +80,7 @@ class AwardLoyaltyPoints implements ShouldQueue
 
         if ($existingEntry) {
             Log::info('LoyaltyPoints: Skipped - Already awarded', ['order_id' => $order->id]);
+
             return false;
         }
 
@@ -91,14 +95,15 @@ class AwardLoyaltyPoints implements ShouldQueue
                 'total' => $order->total,
                 'earn_ratio' => $program->earn_ratio,
             ]);
+
             return false;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
         // AWARD: Create ledger entry
         // ═══════════════════════════════════════════════════════════════════════
-        $expiresAt = $program->expiry_days > 0 
-            ? now()->addDays($program->expiry_days) 
+        $expiresAt = $program->expiry_days > 0
+            ? now()->addDays($program->expiry_days)
             : null;
 
         LoyaltyLedger::create([

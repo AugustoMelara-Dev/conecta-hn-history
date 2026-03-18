@@ -7,7 +7,6 @@ namespace App\Infrastructure\Shared\Services;
 use App\Application\Shared\Contracts\ValidatorFactoryInterface;
 use App\Application\Shared\Exceptions\CommandValidationException;
 use Illuminate\Contracts\Validation\Factory as IlluminateFactory;
-use Illuminate\Validation\ValidationException;
 
 /**
  * LaravelValidatorFactory — Infrastructure adapter for ValidatorFactoryInterface.

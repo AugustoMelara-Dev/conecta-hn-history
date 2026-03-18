@@ -6,8 +6,8 @@ namespace Tests\Architecture\Security;
 
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Process\Pool;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Ramsey\Uuid\Uuid;
@@ -74,11 +74,13 @@ class OtpConcurrencyTest extends TestCase
 
                 if (str_contains($output, 'INVALID')) {
                     $invalidCounts++;
+
                     continue;
                 }
 
                 if (str_contains($output, 'BLOCKED')) {
                     $blockedCounts++;
+
                     continue;
                 }
 
@@ -113,7 +115,7 @@ class OtpConcurrencyTest extends TestCase
      *
      * @return array<string, string>
      */
-    private function testingEnvironment(): array
+    private function testing_environment(): array
     {
         $defaultConnection = (string) config('database.default');
         $connection = (array) config("database.connections.{$defaultConnection}", []);

@@ -18,7 +18,7 @@ use App\Application\Shared\Contracts\IdempotentCommandInterface;
  * - No HTTP dependencies
  * - Idempotency Aware
  */
-final readonly class CreateOrderCommand implements IdempotentCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
+final readonly class CreateOrderCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface, IdempotentCommandInterface
 {
     use \App\Application\Shared\Traits\HasSchemaVersion;
 

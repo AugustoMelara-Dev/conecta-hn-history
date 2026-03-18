@@ -117,7 +117,7 @@ final class IdentifyTenantBySubdomain
         }
 
         // Extract subdomain (everything before .baseDomain)
-        $subdomain = str_replace('.' . $baseDomain, '', $host);
+        $subdomain = str_replace('.'.$baseDomain, '', $host);
 
         // Handle nested subdomains (e.g., "www.barberia" → take first segment only)
         if (str_contains($subdomain, '.')) {

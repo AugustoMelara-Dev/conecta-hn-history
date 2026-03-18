@@ -9,7 +9,12 @@ use DateTimeImmutable;
 final readonly class OtpVerified
 {
     private const SCHEMA_VERSION = 1;
-    public function schemaVersion(): int { return self::SCHEMA_VERSION; }
+
+    public function schemaVersion(): int
+    {
+        return self::SCHEMA_VERSION;
+    }
+
     public function __construct(
         public string $eventId,
         public string $otpIdentifier,

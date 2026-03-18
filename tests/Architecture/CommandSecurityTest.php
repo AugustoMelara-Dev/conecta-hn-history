@@ -9,7 +9,6 @@ declare(strict_types=1);
  * 1. All password-bearing Commands scrub passwords from stack traces.
  * 2. All state-mutating Commands implement IdempotentCommandInterface.
  */
-
 test('password properties are marked as sensitive', function () {
     $commands = [
         \App\Application\Auth\Commands\ResetUserPasswordCommand::class,
@@ -48,7 +47,7 @@ test('mutating commands implement idempotent interface', function () {
 
 test('command hash does not leak password derivatives', function () {
     $content = file_get_contents(
-        __DIR__ . '/../../app/Application/Auth/Commands/UpdateUserPasswordCommand.php'
+        __DIR__.'/../../app/Application/Auth/Commands/UpdateUserPasswordCommand.php'
     );
 
     expect($content)->not->toContain('md5(');

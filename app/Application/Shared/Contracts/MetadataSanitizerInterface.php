@@ -10,7 +10,7 @@ interface MetadataSanitizerInterface
      * Recursively sanitize a metadata array.
      *
      * @param  array<mixed>  $metadata  Raw metadata payload
-     * @return array<mixed>             Sanitized payload
+     * @return array<mixed> Sanitized payload
      */
     public function clean(array $metadata): array;
 }

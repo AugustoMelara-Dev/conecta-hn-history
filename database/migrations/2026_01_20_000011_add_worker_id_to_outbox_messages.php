@@ -34,7 +34,7 @@ return new class extends Migration
 
         // Add index only if it doesn't exist
         $indexExists = collect(Schema::getIndexes('outbox_messages'))
-            ->contains(fn($idx) => $idx['name'] === 'idx_outbox_worker_status');
+            ->contains(fn ($idx) => $idx['name'] === 'idx_outbox_worker_status');
 
         if (! $indexExists) {
             Schema::table('outbox_messages', function (Blueprint $table) {

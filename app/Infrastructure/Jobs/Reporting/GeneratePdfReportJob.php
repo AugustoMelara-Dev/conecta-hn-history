@@ -6,18 +6,17 @@ namespace App\Infrastructure\Jobs\Reporting;
 
 use App\Contracts\LoggerInterface;
 use App\Contracts\ReportGenerationInterface;
+use App\Domain\Identity\Exceptions\TenantNotFoundException;
+use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Notifications\ReportReadyNotification;
 use App\Traits\GeneratesSignedDownloadUrls;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use App\Domain\Identity\Exceptions\TenantNotFoundException;
-use App\Domain\Identity\Exceptions\UserNotFoundException;
-use Throwable;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Str;
@@ -28,7 +27,7 @@ use Illuminate\Support\Str;
  * APPLICATION JOB: Uses Repository pattern for entity hydration.
  * IDEMPOTENCY: Uses ShouldBeUnique with tenant-type-date composite key.
  */
-final class GeneratePdfReportJob implements ShouldQueue, ShouldBeUnique
+final class GeneratePdfReportJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
     use GeneratesSignedDownloadUrls;
@@ -102,7 +101,7 @@ final class GeneratePdfReportJob implements ShouldQueue, ShouldBeUnique
                 tenantName: $tenant->name,
                 expiresAt: $expiresAt,
             ));
-        } catch (TenantNotFoundException | UserNotFoundException $e) {
+        } catch (TenantNotFoundException|UserNotFoundException $e) {
             if ($this->deleteWhenMissingModels) {
                 $this->delete();
 

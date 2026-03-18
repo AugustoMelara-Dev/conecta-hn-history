@@ -22,7 +22,6 @@ use Tests\TestCase;
  * 1. Returns correct JSON structure
  * 2. Does NOT leak sensitive database columns
  * 3. Handles validation errors properly
- *
  */
 class CheckoutApiTest extends TestCase
 {

@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\AI;
 
-use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
+use App\Domain\Identity\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Services\AiProfileGeneratorService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use App\Domain\Identity\Exceptions\TenantNotFoundException;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 

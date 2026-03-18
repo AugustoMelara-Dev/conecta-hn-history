@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Events\Security;
 
 use App\Contracts\Events\AuditEvent;
-use App\Enums\Severity;
 use App\Domain\Shared\Traits\HasDomainMetadata;
+use App\Domain\Shared\ValueObjects\TenantId;
+use App\Enums\Severity;
 use App\ValueObjects\AuditContext;
 use App\ValueObjects\IpAddress;
-use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 /**

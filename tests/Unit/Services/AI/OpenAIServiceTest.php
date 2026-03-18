@@ -38,7 +38,7 @@ function createAiActors(float $balance = 1.0): array
 
 function makeOpenAiService(): OpenAIService
 {
-    return new OpenAIService(new BudgetEnforcer());
+    return new OpenAIService(new BudgetEnforcer);
 }
 
 function assertTenantBalances(Tenant $tenant, float $balance, float $reserved): void

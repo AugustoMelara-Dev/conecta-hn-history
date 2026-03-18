@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\Contracts;
 
-
 /**
  * CityReader - Port for City Data Access
  *

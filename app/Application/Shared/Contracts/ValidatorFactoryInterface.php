@@ -11,7 +11,8 @@ interface ValidatorFactoryInterface
      *
      * @param  array<string, mixed>  $data
      * @param  array<string, mixed>  $rules
-     * @throws \App\Application\Shared\Exceptions\CommandValidationException  on failure
+     *
+     * @throws \App\Application\Shared\Exceptions\CommandValidationException on failure
      */
     public function validate(array $data, array $rules): void;
 }

@@ -8,9 +8,9 @@ use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\UpdateLandingPageCommand;
+use App\Domain\Identity\Exceptions\TenantNotFoundException;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use App\Domain\Tenant\Exceptions\FeatureRequiresProException;
-use App\Domain\Identity\Exceptions\TenantNotFoundException;
 
 /**
  * UpdateLandingPageHandler - Landing Page Configuration Handler

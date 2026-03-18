@@ -15,10 +15,6 @@ use App\Domain\Shared\Contracts\UpcasterInterface;
  */
 final class UserRegisteredV1toV2Upcaster implements UpcasterInterface
 {
-    /**
-     * @param  string  $eventType
-     * @param  int  $schemaVersion
-     */
     public function supports(string $eventType, int $schemaVersion): bool
     {
         return $eventType === 'App\Domain\Identity\Events\UserRegistered' && $schemaVersion === 1;

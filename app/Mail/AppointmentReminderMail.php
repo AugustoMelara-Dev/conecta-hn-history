@@ -17,21 +17,19 @@ use Illuminate\Support\Facades\URL;
  *
  * Sent to customer_email 24 hours before the scheduled appointment.
  * Uses tenant branding and includes rebooking/cancellation links.
- * 
+ *
  * INVARIANT: Must include tenant->name in subject for multi-tenant isolation.
  */
 class AppointmentReminderMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Appointment $appointment)
-    {
-    }
+    public function __construct(public Appointment $appointment) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Recordatorio de Cita - ' . $this->appointment->tenant->name,
+            subject: 'Recordatorio de Cita - '.$this->appointment->tenant->name,
         );
     }
 

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Infrastructure\Sales;
 
 use App\Domain\Sales\Contracts\OrderReader;
-use App\Models\Order;
 use App\Domain\Shared\Contracts\PaginatedResult;
 use App\Infrastructure\Shared\EloquentPaginatedResult;
+use App\Models\Order;
 
 /**
  * EloquentOrderReader - Eloquent Implementation of OrderReader

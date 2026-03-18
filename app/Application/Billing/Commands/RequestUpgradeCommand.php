@@ -6,7 +6,7 @@ namespace App\Application\Billing\Commands;
 
 use App\Application\Shared\Contracts\IdempotentCommandInterface;
 
-final readonly class RequestUpgradeCommand implements IdempotentCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
+final readonly class RequestUpgradeCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface, IdempotentCommandInterface
 {
     use \App\Application\Shared\Traits\HasSchemaVersion;
 

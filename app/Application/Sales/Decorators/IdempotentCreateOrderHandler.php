@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\Sales\Decorators;
 
-use App\Application\Shared\Contracts\IdempotencyServiceInterface;
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
 use App\Application\Sales\Results\CreateOrderResult;
+use App\Application\Shared\Contracts\IdempotencyServiceInterface;
 use App\Domain\Common\Exceptions\ConcurrencyException;
 
 /**

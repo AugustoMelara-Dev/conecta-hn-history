@@ -11,9 +11,8 @@ declare(strict_types=1);
  * ║  Actions MUST use explicit if/throw guard clauses instead.            ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-
 test('actions do not use assert for runtime validation', function () {
-    $dir = realpath(__DIR__ . '/../../app/Actions');
+    $dir = realpath(__DIR__.'/../../app/Actions');
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
     );
@@ -26,7 +25,7 @@ test('actions do not use assert for runtime validation', function () {
         }
 
         $content = file_get_contents($file->getPathname());
-        $relative = str_replace($dir . DIRECTORY_SEPARATOR, '', $file->getPathname());
+        $relative = str_replace($dir.DIRECTORY_SEPARATOR, '', $file->getPathname());
 
         // Detect assert() as executable code, NOT inside comments
         // Matches lines where assert( appears and is NOT preceded by // or * (comment)
@@ -44,9 +43,9 @@ test('actions do not use assert for runtime validation', function () {
 
 test('actions use explicit TenantAwareAuthenticatable contract guards', function () {
     $actionFiles = [
-        realpath(__DIR__ . '/../../app/Actions/Authentication/UpdateUserPassword.php'),
-        realpath(__DIR__ . '/../../app/Actions/Identity/UpdateUserProfileInformation.php'),
-        realpath(__DIR__ . '/../../app/Actions/Authentication/ResetPasswordAction.php'),
+        realpath(__DIR__.'/../../app/Actions/Authentication/UpdateUserPassword.php'),
+        realpath(__DIR__.'/../../app/Actions/Identity/UpdateUserProfileInformation.php'),
+        realpath(__DIR__.'/../../app/Actions/Authentication/ResetPasswordAction.php'),
     ];
 
     $checked = 0;

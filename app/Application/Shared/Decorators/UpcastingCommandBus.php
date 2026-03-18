@@ -19,7 +19,7 @@ use App\Application\Shared\Contracts\CommandUpcasterInterface;
 final readonly class UpcastingCommandBus implements CommandBusInterface
 {
     /**
-     * @param  CommandBusInterface  $next       The inner CommandBus (e.g., TransactionalCommandBus)
+     * @param  CommandBusInterface  $next  The inner CommandBus (e.g., TransactionalCommandBus)
      * @param  iterable<CommandUpcasterInterface>  $upcasters  Tagged upcasters resolved from container
      */
     public function __construct(

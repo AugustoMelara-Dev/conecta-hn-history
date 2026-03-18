@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\AI;
 
-use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
+use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;

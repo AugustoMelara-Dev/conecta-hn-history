@@ -22,14 +22,12 @@ class AppointmentConfirmationMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Appointment $appointment)
-    {
-    }
+    public function __construct(public Appointment $appointment) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Confirmación de Cita - ' . $this->appointment->tenant->name,
+            subject: 'Confirmación de Cita - '.$this->appointment->tenant->name,
         );
     }
 

@@ -22,7 +22,7 @@ class InventoryLevelResource extends Resource
 
     protected static ?string $model = InventoryLevel::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-cube';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cube';
 
     public static function getNavigationGroup(): ?string
     {

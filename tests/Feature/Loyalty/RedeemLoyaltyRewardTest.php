@@ -23,7 +23,7 @@ test('handler throws exception when reward is unavailable', function () {
     $handler = new RedeemLoyaltyRewardHandler($portMock);
     $command = new RedeemLoyaltyRewardCommand('tenant-1', 1, 999);
 
-    expect(fn() => $handler->handle($command))
+    expect(fn () => $handler->handle($command))
         ->toThrow(\DomainException::class, 'Reward is unavailable or does not exist.');
 });
 
@@ -36,7 +36,7 @@ test('handler throws exception when balance is insufficient', function () {
     $handler = new RedeemLoyaltyRewardHandler($portMock);
     $command = new RedeemLoyaltyRewardCommand('tenant-1', 1, 999);
 
-    expect(fn() => $handler->handle($command))
+    expect(fn () => $handler->handle($command))
         ->toThrow(\DomainException::class, 'Insufficient loyalty points.');
 });
 

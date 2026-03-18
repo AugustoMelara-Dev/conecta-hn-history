@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Application\Shared\Contracts\CommandBusInterface;
+use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
-use App\Application\Tenant\Commands\RegisterTenantCommand;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
@@ -48,7 +48,7 @@ final class RegisteredUserController extends Controller
      * 3. Command dispatched via Bus
      * 4. Controller handles response/redirect
      */
-    public function store(RegisterTenantRequest $request): RedirectResponse 
+    public function store(RegisterTenantRequest $request): RedirectResponse
     {
         try {
             $cityId = (int) ($request->validated('city_id') ?? \App\Models\City::value('id') ?? 1);
@@ -86,7 +86,7 @@ final class RegisteredUserController extends Controller
 
             return back()
                 ->withInput($request->except('password', 'password_confirmation'))
-                ->withErrors(['email' => 'Hubo un problema inesperado al crear tu cuenta: ' . $e->getMessage()]);
+                ->withErrors(['email' => 'Hubo un problema inesperado al crear tu cuenta: '.$e->getMessage()]);
         }
     }
 }

@@ -7,6 +7,4 @@ namespace App\Application\Shared\Contracts;
 /**
  * Deprecated alias preserved for backward compatibility.
  */
-interface UpcasterInterface extends \App\Domain\Shared\Contracts\UpcasterInterface
-{
-}
+interface UpcasterInterface extends \App\Domain\Shared\Contracts\UpcasterInterface {}

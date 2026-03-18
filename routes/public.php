@@ -81,7 +81,6 @@ Route::get('/explore', function () {
     ]);
 })->name('public.explore');
 
-
 // ═══════════════════════════════════════════════════════════════════════════
 // TENANT SUBDOMAIN ROUTES - DISABLED (Path-based fallback active in web.php)
 // ═══════════════════════════════════════════════════════════════════════════

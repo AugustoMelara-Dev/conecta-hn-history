@@ -13,7 +13,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  *
  * Allowed in Infrastructure (not Domain) — this is the Anti-Corruption Layer.
  */
-final class EloquentPaginatedResult implements PaginatedResult, \JsonSerializable
+final class EloquentPaginatedResult implements \JsonSerializable, PaginatedResult
 {
     public function __construct(private readonly LengthAwarePaginator $paginator) {}
 

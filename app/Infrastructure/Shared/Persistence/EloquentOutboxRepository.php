@@ -118,12 +118,14 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
         // ShouldBeStoredInOutbox::getAggregateId() takes priority (explicit contract).
         if (method_exists($event, 'getAggregateId')) {
             $value = $event->getAggregateId();
+
             return $value !== null ? (string) $value : null;
         }
 
         // DomainEvent::aggregateId() is the canonical fallback.
         if (method_exists($event, 'aggregateId')) {
             $value = $event->aggregateId();
+
             return $value !== null ? (string) $value : null;
         }
 

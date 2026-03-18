@@ -195,6 +195,7 @@ class OutboxScalingTest extends TestCase
             if ($result->successful()) {
                 $successCount++;
                 $this->addToAssertionCount(1);
+
                 continue;
             }
 

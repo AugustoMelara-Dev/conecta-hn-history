@@ -6,8 +6,8 @@ namespace App\Application\Sales\Listeners;
 
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
-use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Domain\Sales\Events\OrderCancelled;
+use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 
 final readonly class RestoreStockOnCancellation
 {

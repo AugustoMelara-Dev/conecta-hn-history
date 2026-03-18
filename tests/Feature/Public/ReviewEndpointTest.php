@@ -1,8 +1,8 @@
 <?php
 
+use App\Http\Middleware\CheckMaintenanceMode;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Http\Middleware\CheckMaintenanceMode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 

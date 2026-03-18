@@ -33,7 +33,8 @@ final class FilamentTenantContext implements TenantContextInterface
                 if ($tenant !== null) {
                     return $tenant->uuid; // Assuming 'uuid' is the property
                 }
-            } catch (\Throwable) {}
+            } catch (\Throwable) {
+            }
         }
 
         if (auth()->check()) {

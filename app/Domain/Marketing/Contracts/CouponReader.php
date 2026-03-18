@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Marketing\Contracts;
 
-
 /**
  * CouponReader - Domain Contract for Coupon Validation
  *

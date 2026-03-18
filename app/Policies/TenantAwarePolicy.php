@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Application\Access\Contracts\TenantPermissionGuardInterface;
-use App\Domain\Access\Enums\Role;
 use App\Domain\Access\Enums\Permission;
+use App\Domain\Access\Enums\Role;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Tenant;
 use App\Models\User;

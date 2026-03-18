@@ -6,5 +6,5 @@ namespace App\Application\Shared\Contracts;
 
 interface IdempotencyContextInterface
 {
-public function key(): string;
+    public function key(): string;
 }

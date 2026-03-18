@@ -14,9 +14,8 @@ declare(strict_types=1);
  * have been eliminated via UserReadProjection and Authenticatable contract.
  * This test now also verifies no NEW undocumented coupling appears.
  */
-
 test('direct eloquent usage in actions must be explicitly documented as a bridge', function () {
-    $actionsDir = __DIR__ . '/../../app/Infrastructure/Identity/Fortify/Actions';
+    $actionsDir = __DIR__.'/../../app/Infrastructure/Identity/Fortify/Actions';
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($actionsDir, FilesystemIterator::SKIP_DOTS)
     );
@@ -29,7 +28,7 @@ test('direct eloquent usage in actions must be explicitly documented as a bridge
 
         $pathname = $file->getPathname();
         // ONLY SCAN ADAPTER ACTIONS
-        if (! str_contains($pathname, DIRECTORY_SEPARATOR . 'Actions' . DIRECTORY_SEPARATOR)) {
+        if (! str_contains($pathname, DIRECTORY_SEPARATOR.'Actions'.DIRECTORY_SEPARATOR)) {
             continue;
         }
 
@@ -48,13 +47,13 @@ test('direct eloquent usage in actions must be explicitly documented as a bridge
     }
 
     expect($undocumentedBridges)
-        ->toBeEmpty("Undocumented Eloquent bridges found: " . implode(', ', $undocumentedBridges));
+        ->toBeEmpty('Undocumented Eloquent bridges found: '.implode(', ', $undocumentedBridges));
 });
 
 test('decoupled actions do not import eloquent user model', function () {
     $decoupledActions = [
-        __DIR__ . '/../../app/Infrastructure/Identity/Fortify/Actions/Identity/CreateNewUser.php',
-        __DIR__ . '/../../app/Infrastructure/Identity/Fortify/Actions/Authentication/ResetPasswordAction.php',
+        __DIR__.'/../../app/Infrastructure/Identity/Fortify/Actions/Identity/CreateNewUser.php',
+        __DIR__.'/../../app/Infrastructure/Identity/Fortify/Actions/Authentication/ResetPasswordAction.php',
     ];
 
     foreach ($decoupledActions as $file) {
@@ -65,8 +64,8 @@ test('decoupled actions do not import eloquent user model', function () {
 
 test('decoupled actions document their fortify bridges', function () {
     $decoupledActions = [
-        __DIR__ . '/../../app/Infrastructure/Identity/Fortify/Actions/Identity/CreateNewUser.php',
-        __DIR__ . '/../../app/Infrastructure/Identity/Fortify/Actions/Authentication/ResetPasswordAction.php',
+        __DIR__.'/../../app/Infrastructure/Identity/Fortify/Actions/Identity/CreateNewUser.php',
+        __DIR__.'/../../app/Infrastructure/Identity/Fortify/Actions/Authentication/ResetPasswordAction.php',
     ];
 
     foreach ($decoupledActions as $file) {
@@ -76,7 +75,7 @@ test('decoupled actions document their fortify bridges', function () {
 });
 
 test('create new user uses projection port instead of direct ORM', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Infrastructure/Identity/Fortify/Actions/Identity/CreateNewUser.php');
+    $content = file_get_contents(__DIR__.'/../../app/Infrastructure/Identity/Fortify/Actions/Identity/CreateNewUser.php');
     expect($content)
         ->toContain('UserReadProjection')
         // Check actual code invocation, not comment mentions
@@ -84,10 +83,8 @@ test('create new user uses projection port instead of direct ORM', function () {
 });
 
 test('reset password action uses authenticatable contract', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Infrastructure/Identity/Fortify/Actions/Authentication/ResetPasswordAction.php');
+    $content = file_get_contents(__DIR__.'/../../app/Infrastructure/Identity/Fortify/Actions/Authentication/ResetPasswordAction.php');
     expect($content)
         ->toContain('use App\Application\Shared\Contracts\TenantAwareAuthenticatable;')
         ->toContain('instanceof TenantAwareAuthenticatable');
 });
-
-

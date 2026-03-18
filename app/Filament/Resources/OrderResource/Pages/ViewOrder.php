@@ -7,10 +7,6 @@ namespace App\Filament\Resources\OrderResource\Pages;
 use App\Filament\Resources\OrderResource;
 use App\Models\Order;
 use Filament\Actions;
-use Filament\Schemas\Components\Section;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Components\RepeatableEntry;
-
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewOrder extends ViewRecord

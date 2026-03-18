@@ -9,5 +9,5 @@ it('executes the outbox processor successfully under tenant context', function (
     $tenantId = 'tenant_0000_1111_2222';
 
     $this->artisan('outbox:process')
-         ->assertExitCode(0);
+        ->assertExitCode(0);
 });

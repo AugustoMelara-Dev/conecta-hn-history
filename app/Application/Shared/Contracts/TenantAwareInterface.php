@@ -24,6 +24,3 @@ interface TenantAwareInterface
      */
     public function getTenantId(): int|string|null;
 }
-
-
-

@@ -63,21 +63,21 @@ test('denies view for cross-tenant order', function () {
     $user = makeUserWithTenants([1]);
     $order = makeOrder(tenantId: 2);
 
-    expect((new OrderPolicy())->view($user, $order))->toBeFalse();
+    expect((new OrderPolicy)->view($user, $order))->toBeFalse();
 });
 
 test('denies update for cross-tenant order', function () {
     $user = makeUserWithTenants([1]);
     $order = makeOrder(tenantId: 2);
 
-    expect((new OrderPolicy())->update($user, $order))->toBeFalse();
+    expect((new OrderPolicy)->update($user, $order))->toBeFalse();
 });
 
 test('denies updateStatus for cross-tenant order', function () {
     $user = makeUserWithTenants([1]);
     $order = makeOrder(tenantId: 2);
 
-    expect((new OrderPolicy())->updateStatus($user, $order))->toBeFalse();
+    expect((new OrderPolicy)->updateStatus($user, $order))->toBeFalse();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -88,14 +88,14 @@ test('allows view for same-tenant order', function () {
     $user = makeUserWithTenants([5]);
     $order = makeOrder(tenantId: 5);
 
-    expect((new OrderPolicy())->view($user, $order))->toBeTrue();
+    expect((new OrderPolicy)->view($user, $order))->toBeTrue();
 });
 
 test('allows update for same-tenant order', function () {
     $user = makeUserWithTenants([5]);
     $order = makeOrder(tenantId: 5);
 
-    expect((new OrderPolicy())->update($user, $order))->toBeTrue();
+    expect((new OrderPolicy)->update($user, $order))->toBeTrue();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -105,20 +105,20 @@ test('allows update for same-tenant order', function () {
 test('denies viewAny when user has no tenants', function () {
     $user = makeUserWithTenants([]);
 
-    expect((new OrderPolicy())->viewAny($user))->toBeFalse();
+    expect((new OrderPolicy)->viewAny($user))->toBeFalse();
 });
 
 test('allows viewAny when user has a tenant', function () {
     $user = makeUserWithTenants([5]);
 
-    expect((new OrderPolicy())->viewAny($user))->toBeTrue();
+    expect((new OrderPolicy)->viewAny($user))->toBeTrue();
 });
 
 test('denies view when user has no tenants', function () {
     $user = makeUserWithTenants([]);
     $order = makeOrder(tenantId: 1);
 
-    expect((new OrderPolicy())->view($user, $order))->toBeFalse();
+    expect((new OrderPolicy)->view($user, $order))->toBeFalse();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -129,7 +129,7 @@ test('allows delete for pending same-tenant order', function () {
     $user = makeUserWithTenants([10]);
     $order = makeOrder(tenantId: 10, status: Order::STATUS_PENDING);
 
-    $result = (new OrderPolicy())->delete($user, $order);
+    $result = (new OrderPolicy)->delete($user, $order);
 
     expect($result)->toBeInstanceOf(Response::class);
     expect($result->allowed())->toBeTrue();
@@ -139,7 +139,7 @@ test('denies delete for processing order', function () {
     $user = makeUserWithTenants([10]);
     $order = makeOrder(tenantId: 10, status: Order::STATUS_PROCESSING);
 
-    $result = (new OrderPolicy())->delete($user, $order);
+    $result = (new OrderPolicy)->delete($user, $order);
 
     expect($result)->toBeInstanceOf(Response::class);
     expect($result->allowed())->toBeFalse();
@@ -149,7 +149,7 @@ test('denies delete for delivered order', function () {
     $user = makeUserWithTenants([10]);
     $order = makeOrder(tenantId: 10, status: Order::STATUS_DELIVERED);
 
-    $result = (new OrderPolicy())->delete($user, $order);
+    $result = (new OrderPolicy)->delete($user, $order);
 
     expect($result->allowed())->toBeFalse();
 });
@@ -158,7 +158,7 @@ test('denies delete for cross-tenant order regardless of status', function () {
     $user = makeUserWithTenants([1]);
     $order = makeOrder(tenantId: 2, status: Order::STATUS_PENDING);
 
-    $result = (new OrderPolicy())->delete($user, $order);
+    $result = (new OrderPolicy)->delete($user, $order);
 
     expect($result->allowed())->toBeFalse();
 });
@@ -171,7 +171,7 @@ test('allows cancel for pending order', function () {
     $user = makeUserWithTenants([10]);
     $order = makeOrder(tenantId: 10, status: Order::STATUS_PENDING);
 
-    $result = (new OrderPolicy())->cancel($user, $order);
+    $result = (new OrderPolicy)->cancel($user, $order);
 
     expect($result->allowed())->toBeTrue();
 });
@@ -180,7 +180,7 @@ test('allows cancel for confirmed order', function () {
     $user = makeUserWithTenants([10]);
     $order = makeOrder(tenantId: 10, status: Order::STATUS_CONFIRMED);
 
-    $result = (new OrderPolicy())->cancel($user, $order);
+    $result = (new OrderPolicy)->cancel($user, $order);
 
     expect($result->allowed())->toBeTrue();
 });
@@ -189,7 +189,7 @@ test('denies cancel for processing order', function () {
     $user = makeUserWithTenants([10]);
     $order = makeOrder(tenantId: 10, status: Order::STATUS_PROCESSING);
 
-    $result = (new OrderPolicy())->cancel($user, $order);
+    $result = (new OrderPolicy)->cancel($user, $order);
 
     expect($result->allowed())->toBeFalse();
 });
@@ -203,7 +203,7 @@ test('denies forceDelete for super_admin without tenant ownership context', func
     $user->shouldReceive('hasRole')->with('super_admin')->andReturn(true);
     $order = makeOrder(tenantId: 10);
 
-    expect((new OrderPolicy())->forceDelete($user, $order))->toBeFalse();
+    expect((new OrderPolicy)->forceDelete($user, $order))->toBeFalse();
 });
 
 test('denies forceDelete for non-admin on same tenant', function () {
@@ -211,5 +211,5 @@ test('denies forceDelete for non-admin on same tenant', function () {
     $user->shouldReceive('hasRole')->with('super_admin')->andReturn(false);
     $order = makeOrder(tenantId: 10);
 
-    expect((new OrderPolicy())->forceDelete($user, $order))->toBeFalse();
+    expect((new OrderPolicy)->forceDelete($user, $order))->toBeFalse();
 });

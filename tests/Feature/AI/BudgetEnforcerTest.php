@@ -22,7 +22,7 @@ beforeEach(function () {
         'ai_reserved_balance' => 0.000000,
     ]);
 
-    $this->budgetEnforcer = new BudgetEnforcer();
+    $this->budgetEnforcer = new BudgetEnforcer;
 });
 
 test('reserve increments ai_reserved_balance when sufficient funds', function () {

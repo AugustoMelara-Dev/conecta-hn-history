@@ -19,6 +19,7 @@ final class AuthenticatedSessionController extends Controller
         private StatefulGuard $auth,
         private Router $router
     ) {}
+
     /**
      * Display the login view.
      */

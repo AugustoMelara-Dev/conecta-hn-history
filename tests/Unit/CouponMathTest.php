@@ -16,7 +16,6 @@ use PHPUnit\Framework\TestCase;
  *
  * These tests run WITHOUT database connections (pure unit tests).
  * They verify the mathematical precision of discount calculations.
- *
  */
 class CouponMathTest extends TestCase
 {

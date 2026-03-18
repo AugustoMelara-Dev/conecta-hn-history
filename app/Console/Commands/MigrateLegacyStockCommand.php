@@ -36,6 +36,7 @@ class MigrateLegacyStockCommand extends Command
 
                     if ($tenant === null) {
                         $skipped++;
+
                         continue;
                     }
 
@@ -46,6 +47,7 @@ class MigrateLegacyStockCommand extends Command
 
                     if ($primaryLocation === null) {
                         $skipped++;
+
                         continue;
                     }
 
@@ -64,6 +66,7 @@ class MigrateLegacyStockCommand extends Command
 
                         if ($existingLevel !== null && $existingMovement !== null) {
                             $alreadyMigrated++;
+
                             return;
                         }
 

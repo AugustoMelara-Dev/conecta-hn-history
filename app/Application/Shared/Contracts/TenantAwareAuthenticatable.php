@@ -12,6 +12,4 @@ use Illuminate\Contracts\Auth\Authenticatable;
  * This compatibility surface lets ACL actions assert a single contract for
  * both authentication identity and tenant context.
  */
-interface TenantAwareAuthenticatable extends Authenticatable, TenantAware
-{
-}
+interface TenantAwareAuthenticatable extends Authenticatable, TenantAware {}

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fb6c85ba4d2dda5777aaee31e349f30f",
+    "content-hash": "a41b29800def9d189f7c4949792a8276",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -11596,6 +11596,47 @@
             "time": "2025-04-30T06:54:44+00:00"
         },
         {
+            "name": "iamcal/sql-parser",
+            "version": "v0.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/iamcal/SQLParser.git",
+                "reference": "610392f38de49a44dab08dc1659960a29874c4b8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/iamcal/SQLParser/zipball/610392f38de49a44dab08dc1659960a29874c4b8",
+                "reference": "610392f38de49a44dab08dc1659960a29874c4b8",
+                "shasum": ""
+            },
+            "require-dev": {
+                "php-coveralls/php-coveralls": "^1.0",
+                "phpunit/phpunit": "^5|^6|^7|^8|^9"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "iamcal\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Cal Henderson",
+                    "email": "cal@iamcal.com"
+                }
+            ],
+            "description": "MySQL schema parser",
+            "support": {
+                "issues": "https://github.com/iamcal/SQLParser/issues",
+                "source": "https://github.com/iamcal/SQLParser/tree/v0.7"
+            },
+            "time": "2026-01-28T22:20:33+00:00"
+        },
+        {
             "name": "jean85/pretty-package-versions",
             "version": "2.1.1",
             "source": {
@@ -11654,6 +11695,143 @@
                 "source": "https://github.com/Jean85/pretty-package-versions/tree/2.1.1"
             },
             "time": "2025-03-19T14:43:43+00:00"
+        },
+        {
+            "name": "jetbrains/phpstorm-stubs",
+            "version": "v2024.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/JetBrains/phpstorm-stubs.git",
+                "reference": "0e82bdfe850c71857ee4ee3501ed82a9fc5d043c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/JetBrains/phpstorm-stubs/zipball/0e82bdfe850c71857ee4ee3501ed82a9fc5d043c",
+                "reference": "0e82bdfe850c71857ee4ee3501ed82a9fc5d043c",
+                "shasum": ""
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "v3.64.0",
+                "nikic/php-parser": "v5.3.1",
+                "phpdocumentor/reflection-docblock": "5.6.0",
+                "phpunit/phpunit": "11.4.3"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "PhpStormStubsMap.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "description": "PHP runtime & extensions header files for PhpStorm",
+            "homepage": "https://www.jetbrains.com/phpstorm",
+            "keywords": [
+                "autocomplete",
+                "code",
+                "inference",
+                "inspection",
+                "jetbrains",
+                "phpstorm",
+                "stubs",
+                "type"
+            ],
+            "support": {
+                "source": "https://github.com/JetBrains/phpstorm-stubs/tree/v2024.3"
+            },
+            "time": "2024-12-14T08:03:12+00:00"
+        },
+        {
+            "name": "larastan/larastan",
+            "version": "v3.9.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/larastan/larastan.git",
+                "reference": "64a52bcc5347c89fdf131cb59f96ebfbc8d1ad65"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/larastan/larastan/zipball/64a52bcc5347c89fdf131cb59f96ebfbc8d1ad65",
+                "reference": "64a52bcc5347c89fdf131cb59f96ebfbc8d1ad65",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "iamcal/sql-parser": "^0.7.0",
+                "illuminate/console": "^11.44.2 || ^12.4.1 || ^13",
+                "illuminate/container": "^11.44.2 || ^12.4.1 || ^13",
+                "illuminate/contracts": "^11.44.2 || ^12.4.1 || ^13",
+                "illuminate/database": "^11.44.2 || ^12.4.1 || ^13",
+                "illuminate/http": "^11.44.2 || ^12.4.1 || ^13",
+                "illuminate/pipeline": "^11.44.2 || ^12.4.1 || ^13",
+                "illuminate/support": "^11.44.2 || ^12.4.1 || ^13",
+                "php": "^8.2",
+                "phpstan/phpstan": "^2.1.32"
+            },
+            "require-dev": {
+                "doctrine/coding-standard": "^13",
+                "laravel/framework": "^11.44.2 || ^12.7.2 || ^13",
+                "mockery/mockery": "^1.6.12",
+                "nikic/php-parser": "^5.4",
+                "orchestra/canvas": "^v9.2.2 || ^10.0.1 || ^11",
+                "orchestra/testbench-core": "^9.12.0 || ^10.1 || ^11",
+                "phpstan/phpstan-deprecation-rules": "^2.0.1",
+                "phpunit/phpunit": "^10.5.35 || ^11.5.15 || ^12.5.8"
+            },
+            "suggest": {
+                "orchestra/testbench": "Using Larastan for analysing a package needs Testbench",
+                "phpmyadmin/sql-parser": "Install to enable Larastan's optional phpMyAdmin-based SQL parser automatically"
+            },
+            "type": "phpstan-extension",
+            "extra": {
+                "phpstan": {
+                    "includes": [
+                        "extension.neon"
+                    ]
+                },
+                "branch-alias": {
+                    "dev-master": "3.0-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Larastan\\Larastan\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Can Vural",
+                    "email": "can9119@gmail.com"
+                }
+            ],
+            "description": "Larastan - Discover bugs in your code without running it. A phpstan/phpstan extension for Laravel",
+            "keywords": [
+                "PHPStan",
+                "code analyse",
+                "code analysis",
+                "larastan",
+                "laravel",
+                "package",
+                "php",
+                "static analysis"
+            ],
+            "support": {
+                "issues": "https://github.com/larastan/larastan/issues",
+                "source": "https://github.com/larastan/larastan/tree/v3.9.3"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/canvural",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-02-20T12:07:12+00:00"
         },
         {
             "name": "laravel/breeze",
@@ -12801,6 +12979,59 @@
             "time": "2026-03-01T18:43:49+00:00"
         },
         {
+            "name": "phpstan/phpstan",
+            "version": "2.1.42",
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/1279e1ce86ba768f0780c9d889852b4e02ff40d0",
+                "reference": "1279e1ce86ba768f0780c9d889852b4e02ff40d0",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4|^8.0"
+            },
+            "conflict": {
+                "phpstan/phpstan-shim": "*"
+            },
+            "bin": [
+                "phpstan",
+                "phpstan.phar"
+            ],
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "bootstrap.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "PHPStan - PHP Static Analysis Tool",
+            "keywords": [
+                "dev",
+                "static analysis"
+            ],
+            "support": {
+                "docs": "https://phpstan.org/user-guide/getting-started",
+                "forum": "https://github.com/phpstan/phpstan/discussions",
+                "issues": "https://github.com/phpstan/phpstan/issues",
+                "security": "https://github.com/phpstan/phpstan/security/policy",
+                "source": "https://github.com/phpstan/phpstan-src"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/ondrejmirtes",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/phpstan",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-03-17T14:58:32+00:00"
+        },
+        {
             "name": "phpunit/php-code-coverage",
             "version": "11.0.12",
             "source": {
@@ -13247,6 +13478,75 @@
                 }
             ],
             "time": "2025-01-13T09:36:00+00:00"
+        },
+        {
+            "name": "roave/better-reflection",
+            "version": "6.66.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Roave/BetterReflection.git",
+                "reference": "e70a06dc5cd572e108448a431b6c2840ad16c1b2"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Roave/BetterReflection/zipball/e70a06dc5cd572e108448a431b6c2840ad16c1b2",
+                "reference": "e70a06dc5cd572e108448a431b6c2840ad16c1b2",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "jetbrains/phpstorm-stubs": "2024.3",
+                "nikic/php-parser": "^5.6.1",
+                "php": "~8.2.0 || ~8.3.2 || ~8.4.1 || ~8.5.0"
+            },
+            "conflict": {
+                "thecodingmachine/safe": "<1.1.3"
+            },
+            "require-dev": {
+                "phpbench/phpbench": "^1.4.1",
+                "phpunit/phpunit": "^11.5.42"
+            },
+            "suggest": {
+                "composer/composer": "Required to use the ComposerSourceLocator"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Roave\\BetterReflection\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "James Titcumb",
+                    "email": "james@asgrim.com",
+                    "homepage": "https://github.com/asgrim"
+                },
+                {
+                    "name": "Marco Pivetta",
+                    "email": "ocramius@gmail.com",
+                    "homepage": "https://ocramius.github.io/"
+                },
+                {
+                    "name": "Gary Hockin",
+                    "email": "gary@roave.com",
+                    "homepage": "https://github.com/geeh"
+                },
+                {
+                    "name": "Jaroslav Hanslík",
+                    "email": "kukulich@kukulich.cz",
+                    "homepage": "https://github.com/kukulich"
+                }
+            ],
+            "description": "Better Reflection - an improved code reflection API",
+            "support": {
+                "issues": "https://github.com/Roave/BetterReflection/issues",
+                "source": "https://github.com/Roave/BetterReflection/tree/6.66.0"
+            },
+            "time": "2025-11-04T20:38:27+00:00"
         },
         {
             "name": "sebastian/cli-parser",
@@ -14233,6 +14533,293 @@
                 }
             ],
             "time": "2024-10-09T05:16:32+00:00"
+        },
+        {
+            "name": "spatie/file-system-watcher",
+            "version": "1.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/file-system-watcher.git",
+                "reference": "d9511ecbd266f190c4abce88516c3f231fcb6bfe"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/file-system-watcher/zipball/d9511ecbd266f190c4abce88516c3f231fcb6bfe",
+                "reference": "d9511ecbd266f190c4abce88516c3f231fcb6bfe",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.0",
+                "symfony/process": "^5.2|^6.0|^7.0"
+            },
+            "require-dev": {
+                "pestphp/pest": "^1.22",
+                "phpunit/phpunit": "^9.5",
+                "spatie/ray": "^1.22",
+                "spatie/temporary-directory": "^2.0",
+                "vimeo/psalm": "^4.3"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\Watcher\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Freek Van der Herten",
+                    "email": "freek@spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Watch changes in the file system using PHP",
+            "homepage": "https://github.com/spatie/file-system-watcher",
+            "keywords": [
+                "file-system-watcher",
+                "spatie"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/file-system-watcher/issues",
+                "source": "https://github.com/spatie/file-system-watcher/tree/1.2.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/spatie",
+                    "type": "github"
+                }
+            ],
+            "time": "2023-12-18T14:26:25+00:00"
+        },
+        {
+            "name": "spatie/laravel-typescript-transformer",
+            "version": "3.0.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/laravel-typescript-transformer.git",
+                "reference": "402e8b9e522a9f30ce4bf2ad527573e12d1dda62"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/laravel-typescript-transformer/zipball/402e8b9e522a9f30ce4bf2ad527573e12d1dda62",
+                "reference": "402e8b9e522a9f30ce4bf2ad527573e12d1dda62",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^11.0|^12.0|^13.0",
+                "php": "^8.2",
+                "spatie/typescript-transformer": "^3.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.0",
+                "orchestra/testbench": "^9.0|^10.0|^11.0",
+                "pestphp/pest": "^3.0|^4.2",
+                "pestphp/pest-plugin-arch": "^3.0|^4.0",
+                "pestphp/pest-plugin-laravel": "^3.0|^4.0",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan": "^2.0",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "spatie/laravel-data": "^4.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Spatie\\LaravelTypeScriptTransformer\\TypeScriptTransformerServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\LaravelTypeScriptTransformer\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ruben Van Assche",
+                    "email": "ruben@spatie.be",
+                    "homepage": "https://spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Transform your PHP structures to TypeScript types",
+            "homepage": "https://github.com/spatie/typescript-transformer",
+            "keywords": [
+                "spatie",
+                "typescript-transformer"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/laravel-typescript-transformer/issues",
+                "source": "https://github.com/spatie/laravel-typescript-transformer/tree/3.0.3"
+            },
+            "funding": [
+                {
+                    "url": "https://spatie.be/open-source/support-us",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/spatie",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-03-17T08:15:03+00:00"
+        },
+        {
+            "name": "spatie/php-structure-discoverer",
+            "version": "2.3.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/php-structure-discoverer.git",
+                "reference": "6c46e069349c7f2f6ebbe00429332c9e6b70fa92"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/php-structure-discoverer/zipball/6c46e069349c7f2f6ebbe00429332c9e6b70fa92",
+                "reference": "6c46e069349c7f2f6ebbe00429332c9e6b70fa92",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/collections": "^10.0|^11.0|^12.0",
+                "php": "^8.1",
+                "spatie/laravel-package-tools": "^1.4.3",
+                "symfony/finder": "^6.0|^7.0"
+            },
+            "require-dev": {
+                "amphp/parallel": "^2.2",
+                "illuminate/console": "^10.0|^11.0|^12.0",
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^7.0|^8.0",
+                "orchestra/testbench": "^7.0|^8.0|^9.0|^10.0",
+                "pestphp/pest": "^2.0|^3.0",
+                "pestphp/pest-plugin-laravel": "^2.0|^3.0",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan-deprecation-rules": "^1.0",
+                "phpstan/phpstan-phpunit": "^1.0",
+                "phpunit/phpunit": "^9.5|^10.0|^11.5.3",
+                "spatie/laravel-ray": "^1.26"
+            },
+            "suggest": {
+                "amphp/parallel": "When you want to use the Parallel discover worker"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Spatie\\StructureDiscoverer\\StructureDiscovererServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\StructureDiscoverer\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ruben Van Assche",
+                    "email": "ruben@spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Automatically discover structures within your PHP application",
+            "homepage": "https://github.com/spatie/php-structure-discoverer",
+            "keywords": [
+                "discover",
+                "laravel",
+                "php",
+                "php-structure-discoverer"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/php-structure-discoverer/issues",
+                "source": "https://github.com/spatie/php-structure-discoverer/tree/2.3.2"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/LaravelAutoDiscoverer",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-09-22T14:58:17+00:00"
+        },
+        {
+            "name": "spatie/typescript-transformer",
+            "version": "3.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/typescript-transformer.git",
+                "reference": "3f3c9789eb04274ba2d1e42afe5552821257a695"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/typescript-transformer/zipball/3f3c9789eb04274ba2d1e42afe5552821257a695",
+                "reference": "3f3c9789eb04274ba2d1e42afe5552821257a695",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.2",
+                "phpstan/phpdoc-parser": "^2.3",
+                "roave/better-reflection": "^6.41",
+                "spatie/file-system-watcher": "^1.1",
+                "spatie/php-structure-discoverer": "^2.2",
+                "symfony/process": "^7.0|^8.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.0",
+                "pestphp/pest": "^3.0|^4.0",
+                "pestphp/pest-plugin-arch": "^3.0|^4.0",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan": "^2.0",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "spatie/ray": "^1.41",
+                "spatie/temporary-directory": "^2.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\TypeScriptTransformer\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ruben Van Assche",
+                    "email": "ruben@spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "This is my package typescript-transformer",
+            "homepage": "https://github.com/spatie/typescript-transformer",
+            "keywords": [
+                "spatie",
+                "typescript-transformer"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/typescript-transformer/issues",
+                "source": "https://github.com/spatie/typescript-transformer/tree/3.1.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/spatie",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-03-16T09:45:36+00:00"
         },
         {
             "name": "staabm/side-effects-detector",

@@ -59,4 +59,3 @@ final readonly class SchemaValidatingOutboxRepository implements OutboxRepositor
         return $dot.'.v1';
     }
 }
-

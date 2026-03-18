@@ -13,9 +13,8 @@ declare(strict_types=1);
  * Validates the system is ready for read-model separation (sharding,
  * read replicas, or API-backed read models) without Action-layer changes.
  */
-
 test('create new user action uses read projection port', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Actions/Identity/CreateNewUser.php');
+    $content = file_get_contents(__DIR__.'/../../app/Actions/Identity/CreateNewUser.php');
 
     expect($content)
         ->toContain('UserReadProjection')
@@ -24,7 +23,7 @@ test('create new user action uses read projection port', function () {
 });
 
 test('user read projection binding exists in service provider', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Providers/AppServiceProvider.php');
+    $content = file_get_contents(__DIR__.'/../../app/Providers/AppServiceProvider.php');
 
     expect($content)
         ->toContain('UserReadProjection::class')

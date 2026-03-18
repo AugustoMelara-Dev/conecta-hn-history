@@ -39,11 +39,11 @@ describe('Subdomain Routing Infrastructure', function () {
         foreach ($reservedSubdomains as $subdomain) {
             // Act: Request to reserved subdomain
             $host = "{$subdomain}.vito.test";
-            
+
             // Simulate middleware check
             $request = Request::create("http://{$host}/");
             $request->headers->set('HOST', $host);
-            
+
             // Assert: Reserved subdomains should not be found as tenants
             // (they pass through without tenant resolution)
             $tenant = Tenant::where('slug', $subdomain)->first();
@@ -104,7 +104,7 @@ describe('Middleware Subdomain Extraction', function () {
             if (! str_ends_with($host, $baseDomain) || $host === $baseDomain) {
                 $subdomain = null;
             } else {
-                $subdomain = str_replace('.' . $baseDomain, '', $host);
+                $subdomain = str_replace('.'.$baseDomain, '', $host);
             }
 
             expect($subdomain)->toBe($case['expected'], "Failed for host: {$case['host']}");

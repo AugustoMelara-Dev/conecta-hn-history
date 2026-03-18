@@ -32,7 +32,7 @@ function governancePathToNamespace(string $filePath, string $baseDir, string $ba
     $relative = ltrim($relative, '\\');
     $relative = preg_replace('/\.php$/i', '', $relative);
 
-    return $relative ? $baseNamespace . '\\' . $relative : null;
+    return $relative ? $baseNamespace.'\\'.$relative : null;
 }
 
 /**
@@ -63,8 +63,8 @@ function phpFilesIn(string $dir): Generator
 
 test('all Actions and Application PHP files declare strict_types', function () {
     $dirs = [
-        realpath(__DIR__ . '/../../app/Infrastructure'),
-        realpath(__DIR__ . '/../../app/Application'),
+        realpath(__DIR__.'/../../app/Infrastructure'),
+        realpath(__DIR__.'/../../app/Application'),
     ];
 
     $scanned = 0;
@@ -79,7 +79,7 @@ test('all Actions and Application PHP files declare strict_types', function () {
 
             $content = file_get_contents($pathname);
             $relative = str_replace(
-                realpath(__DIR__ . '/../../app') . DIRECTORY_SEPARATOR,
+                realpath(__DIR__.'/../../app').DIRECTORY_SEPARATOR,
                 '',
                 $file->getPathname()
             );
@@ -103,13 +103,13 @@ test('all Actions and Application PHP files declare strict_types', function () {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('all Actions are final readonly classes', function () {
-    $dir = realpath(__DIR__ . '/../../app/Infrastructure');
+    $dir = realpath(__DIR__.'/../../app/Infrastructure');
     $checked = 0;
 
     foreach (phpFilesIn($dir) as $file) {
         $pathname = $file->getPathname();
         // ONLY ENFORCE ON ADAPTER ACTIONS (relocated from app/Actions)
-        if (! str_contains($pathname, DIRECTORY_SEPARATOR . 'Actions' . DIRECTORY_SEPARATOR)) {
+        if (! str_contains($pathname, DIRECTORY_SEPARATOR.'Actions'.DIRECTORY_SEPARATOR)) {
             continue;
         }
 
@@ -132,7 +132,7 @@ test('all Actions are final readonly classes', function () {
 });
 
 test('all Application Commands are final readonly classes', function () {
-    $dir = realpath(__DIR__ . '/../../app/Application');
+    $dir = realpath(__DIR__.'/../../app/Application');
     $checked = 0;
 
     foreach (phpFilesIn($dir) as $file) {
@@ -161,13 +161,13 @@ test('all Application Commands are final readonly classes', function () {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('actions do not extend framework base classes', function () {
-    $dir = realpath(__DIR__ . '/../../app/Infrastructure');
+    $dir = realpath(__DIR__.'/../../app/Infrastructure');
     $checked = 0;
 
     foreach (phpFilesIn($dir) as $file) {
         $pathname = $file->getPathname();
         // ONLY ENFORCE ON ADAPTER ACTIONS
-        if (! str_contains($pathname, DIRECTORY_SEPARATOR . 'Actions' . DIRECTORY_SEPARATOR)) {
+        if (! str_contains($pathname, DIRECTORY_SEPARATOR.'Actions'.DIRECTORY_SEPARATOR)) {
             continue;
         }
 
@@ -197,7 +197,7 @@ test('actions do not extend framework base classes', function () {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('all Commands carry tenant context (tenantId or requestingTenantId)', function () {
-    $dir = realpath(__DIR__ . '/../../app/Application');
+    $dir = realpath(__DIR__.'/../../app/Application');
 
     // GENESIS COMMANDS: These create tenants or register users who may not
     // yet have a tenant context. They are excluded by design, not by oversight.
@@ -245,7 +245,7 @@ test('all Commands carry tenant context (tenantId or requestingTenantId)', funct
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('Commands handling passwords or registration implement SensitiveDataInterface', function () {
-    $dir = realpath(__DIR__ . '/../../app/Application');
+    $dir = realpath(__DIR__.'/../../app/Application');
 
     // KNOWN DEBT: These commands handle sensitive data but do not yet
     // implement SensitiveDataInterface. They are excluded to avoid false
@@ -291,4 +291,3 @@ test('Commands handling passwords or registration implement SensitiveDataInterfa
 
     expect($checked)->toBeGreaterThan(0, 'No sensitive Commands found — expected at least Password/Register Commands.');
 });
-

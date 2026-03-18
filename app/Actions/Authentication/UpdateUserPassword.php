@@ -32,8 +32,8 @@ final readonly class UpdateUserPassword implements UpdatesUserPasswords
     ) {}
 
     /**
-     * @param  mixed                 $user
-     * @param  array<string, string> $input
+     * @param  mixed  $user
+     * @param  array<string, string>  $input
      */
     public function update($user, array $input): void
     {

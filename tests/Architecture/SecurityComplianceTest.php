@@ -13,7 +13,6 @@ declare(strict_types=1);
  * - Password leakage in stack traces, logs, and debug output
  * - Ghost tenant references creating orphaned user accounts
  */
-
 test('commands handling passwords use sensitive parameter attribute', function () {
     $commands = [
         \App\Application\Identity\Commands\RegisterUserCommand::class,
@@ -38,7 +37,7 @@ test('commands handling passwords use sensitive parameter attribute', function (
 });
 
 test('create new user action validates tenant existence', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Actions/Identity/CreateNewUser.php');
+    $content = file_get_contents(__DIR__.'/../../app/Actions/Identity/CreateNewUser.php');
     expect($content)
         ->toContain("'tenant_id'")
         ->toContain('exists:tenants,id');

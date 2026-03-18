@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Infrastructure\Tenant\Transformers\TenantMicrositeTransformer;
-use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 

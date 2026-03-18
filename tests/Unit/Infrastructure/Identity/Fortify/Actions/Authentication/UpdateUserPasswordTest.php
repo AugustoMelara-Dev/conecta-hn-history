@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use App\Infrastructure\Identity\Fortify\Actions\Authentication\UpdateUserPassword;
 use App\Application\Auth\Commands\UpdateUserPasswordCommand;
-use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Application\Shared\Contracts\CommandBusInterface;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
+use App\Infrastructure\Identity\Fortify\Actions\Authentication\UpdateUserPassword;
 use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
 use Illuminate\Contracts\Validation\Validator;
 
@@ -31,7 +31,7 @@ test('update user password action uses id generator for idempotency key', functi
     $validatorFactory->shouldReceive('make')
         ->once()
         ->andReturn($validator);
-    
+
     $validator->shouldReceive('validate')
         ->once();
 

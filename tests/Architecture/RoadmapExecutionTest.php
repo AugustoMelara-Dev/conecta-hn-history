@@ -11,7 +11,6 @@ declare(strict_types=1);
  * ║  P2: API Uniformity — Custom Actions use execute(), not handle().      ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-
 test('P0: reset user password command uses scalar identity', function () {
     $class = new ReflectionClass(\App\Application\Auth\Commands\ResetUserPasswordCommand::class);
     expect($class->hasProperty('userId'))->toBeTrue();
@@ -19,7 +18,7 @@ test('P0: reset user password command uses scalar identity', function () {
 });
 
 test('P1: actions layer test has no stale ignores', function () {
-    $content = file_get_contents(__DIR__ . '/../../tests/Architecture/ActionsLayerTest.php');
+    $content = file_get_contents(__DIR__.'/../../tests/Architecture/ActionsLayerTest.php');
     expect($content)->not->toContain('ResetPasswordAction');
 });
 

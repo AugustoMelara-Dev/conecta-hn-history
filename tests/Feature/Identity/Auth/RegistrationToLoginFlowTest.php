@@ -95,6 +95,7 @@ class RegistrationToLoginFlowTest extends TestCase
             'Authenticated User is not linked to the correct Tenant.'
         );
     }
+
     #[\PHPUnit\Framework\Attributes\Test]
     public function it_complies_with_the_v1_json_schema_contract()
     {

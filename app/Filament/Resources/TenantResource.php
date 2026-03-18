@@ -8,8 +8,8 @@ use App\Filament\Resources\TenantResource\Pages;
 // MIGRATION: Updated to Domain namespace (2026-01-05)
 use App\Models\Tenant;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
@@ -20,7 +20,7 @@ class TenantResource extends Resource
 
     protected static ?string $modelPolicy = \App\Policies\TenantPolicy::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-building-storefront';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-storefront';
 
     public static function getNavigationLabel(): string
     {
@@ -447,13 +447,14 @@ class TenantResource extends Resource
                     ->modalSubmitActionLabel('Iniciar Sesion como Cliente')
                     ->action(function ($record) {
                         // VC-AUDIT-107: Rate limit impersonation (max 5/hour per admin)
-                        $rateLimitKey = 'impersonate:' . auth()->id();
+                        $rateLimitKey = 'impersonate:'.auth()->id();
                         if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
                             \Filament\Notifications\Notification::make()
                                 ->title('Límite de seguridad alcanzado')
                                 ->body('Demasiados intentos de suplantación. Espere 1 hora.')
                                 ->danger()
                                 ->send();
+
                             return;
                         }
                         \Illuminate\Support\Facades\RateLimiter::hit($rateLimitKey, 3600);

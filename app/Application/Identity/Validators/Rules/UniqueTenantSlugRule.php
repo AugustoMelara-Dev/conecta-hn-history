@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Validators\Rules;
 
+use App\Application\Shared\Contracts\ValidationRuleInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use Closure;
-use App\Application\Shared\Contracts\ValidationRuleInterface;
 
 /**
  * UniqueTenantSlugRule - Optimized for Performance

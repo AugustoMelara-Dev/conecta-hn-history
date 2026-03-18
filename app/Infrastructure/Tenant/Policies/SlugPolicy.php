@@ -103,4 +103,3 @@ final class SlugPolicy
         return $suggestions;
     }
 }
-

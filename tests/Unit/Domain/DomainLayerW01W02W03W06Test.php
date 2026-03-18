@@ -6,12 +6,12 @@ uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 use App\Domain\Identity\Events\UserRegistered;
 use App\Domain\Identity\Events\UserRegisteredViaSocial;
-use App\Domain\Sales\Events\OrderCreated;
 use App\Domain\Sales\Events\OrderCancelled;
+use App\Domain\Sales\Events\OrderCreated;
+use App\Domain\Shared\Contracts\Events\DomainEvent as DomainEventAlias;
 use App\Domain\TenantGovernance\Events\TenantCreated;
 use App\Domain\TenantGovernance\Events\TenantProfileEnhanced;
 use App\Domain\TenantGovernance\Events\TenantUpdated;
-use App\Domain\Shared\Contracts\Events\DomainEvent as DomainEventAlias;
 
 // ─── W-01 ────────────────────────────────────────────────────────────────────
 
@@ -53,12 +53,12 @@ it('UserRegisteredViaSocial SCHEMA_VERSION is 2', function () {
 
 it('UserRegistered fromPayload parses EncryptedEmail correctly', function () {
     $v2Payload = [
-        'user_id'       => 'usr-1',
-        'name'          => 'Test',
-        'email'         => base64_encode('test@example.com'), // fake encrypted payload
-        'role'          => 'customer',
-        'tenant_id'     => '00000000-0000-0000-0000-000000000001',
-        'occurred_on'   => '2026-01-01T00:00:00+00:00',
+        'user_id' => 'usr-1',
+        'name' => 'Test',
+        'email' => base64_encode('test@example.com'), // fake encrypted payload
+        'role' => 'customer',
+        'tenant_id' => '00000000-0000-0000-0000-000000000001',
+        'occurred_on' => '2026-01-01T00:00:00+00:00',
         'schema_version' => 2,
     ];
     $event = UserRegistered::fromPayload($v2Payload);

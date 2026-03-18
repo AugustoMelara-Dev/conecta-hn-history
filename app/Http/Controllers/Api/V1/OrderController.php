@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Application\Actions\Orders\CancelOrderAction;
+use App\Application\Sales\Contracts\OrderStateServiceInterface;
 use App\Domain\Sales\Contracts\OrderReader;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
-use App\Application\Sales\Contracts\OrderStateServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;

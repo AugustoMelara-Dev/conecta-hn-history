@@ -48,7 +48,7 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
             ->value('user_id');
 
         // Compare strings (UUIDs)
-        $isOwner = $ownerId && (string)$ownerId === (string)$userId;
+        $isOwner = $ownerId && (string) $ownerId === (string) $userId;
 
         if ($isOwner) {
             $user = User::where('id', $userId)->first();
@@ -86,4 +86,3 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
         ];
     }
 }
-

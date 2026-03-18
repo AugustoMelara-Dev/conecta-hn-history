@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Entities;
 
 use App\Domain\Common\Traits\EventSourcedAggregate;
-use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Domain\TenantGovernance\Events\TenantCreated;
+use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use DateTimeImmutable;
 
 /**

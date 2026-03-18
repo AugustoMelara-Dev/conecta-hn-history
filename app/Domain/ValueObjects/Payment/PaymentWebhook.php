@@ -19,12 +19,12 @@ final readonly class PaymentWebhook
     public static function fromArray(string $type, array $data): self
     {
         // 1. Solve "Anemic Domain": Encapsulate validation logic here.
-        $tenantId = $data['meta']['tenant_id'] 
-                 ?? $data['data']['object']['metadata']['tenant_id'] 
+        $tenantId = $data['meta']['tenant_id']
+                 ?? $data['data']['object']['metadata']['tenant_id']
                  ?? null;
 
-        if (empty($tenantId) || !is_string($tenantId)) {
-            throw new InvalidArgumentException("Payment Webhook rejected: Missing Tenant ID.");
+        if (empty($tenantId) || ! is_string($tenantId)) {
+            throw new InvalidArgumentException('Payment Webhook rejected: Missing Tenant ID.');
         }
 
         $providerId = $data['id'] ?? $data['data']['object']['id'] ?? 'unknown';

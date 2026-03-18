@@ -26,7 +26,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     })->middleware(['auth:sanctum', 'throttle:api'])
-      ->name('api.users.show'); // Maps to /user (profile) for now, ignoring parameter if passed, or we can add specific route
+        ->name('api.users.show'); // Maps to /user (profile) for now, ignoring parameter if passed, or we can add specific route
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/push-subscriptions', [\App\Http\Controllers\Api\V1\PushSubscriptionController::class, 'update'])
@@ -188,4 +188,3 @@ Route::post('/orders', [\App\Http\Controllers\Public\OrderController::class, 'st
 Route::post('/webhooks/payment', [\App\Http\Controllers\Webhook\PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
-

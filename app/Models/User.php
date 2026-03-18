@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
 use App\Domain\Identity\Enums\UserRole;
 use Filament\Models\Contracts\HasTenants;
 use Filament\Panel;
@@ -21,12 +22,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Collection;
-use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use NotificationChannels\WebPush\HasPushSubscriptions;
+use Illuminate\Support\Collection;
 use Laravel\Sanctum\HasApiTokens;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 /**
  * User Model - Identity & Access Authority
@@ -35,7 +35,7 @@ use Laravel\Sanctum\HasApiTokens;
  * 1. Authorization (via Enum-based Identity Helpers)
  * 2. Multi-tenancy Context Resolution (Strict Ownership)
  */
-class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthenticatable, HasTenants
+class User extends Authenticatable implements HasTenants, MustVerifyEmail, TenantAwareAuthenticatable
 {
     use HasApiTokens, HasFactory, HasPushSubscriptions, HasUuids, Notifiable;
 
@@ -185,7 +185,7 @@ class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthen
      * Accepts a PRE-HASHED password string. Hashing policy is owned
      * by the Application Layer, NOT this model.
      *
-     * @param string $hashedPassword The already-hashed password string.
+     * @param  string  $hashedPassword  The already-hashed password string.
      *
      * @see App\Application\Identity\Handlers\RegisterUserHandler
      * @see App\Domain\Shared\PasswordHasherInterface
@@ -328,14 +328,14 @@ class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthen
 
     /**
      * Get loyalty points balance for a specific tenant.
-     * 
+     *
      * O(1) complexity via Sum Aggregation.
      * Balance = SUM(amount) for this user at this tenant.
-     * 
+     *
      * INVARIANT: Points are tenant-isolated. Points from Tenant A
      * cannot be used at Tenant B.
-     * 
-     * @param string $tenantId The tenant to check balance for
+     *
+     * @param  string  $tenantId  The tenant to check balance for
      * @return int Current point balance (can be negative if over-redeemed)
      */
     public function loyaltyBalance(string $tenantId): int
@@ -347,8 +347,8 @@ class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthen
 
     /**
      * Get active (non-expired) loyalty points balance for a tenant.
-     * 
-     * @param string $tenantId The tenant to check balance for
+     *
+     * @param  string  $tenantId  The tenant to check balance for
      * @return int Active point balance
      */
     public function activeLoyaltyBalance(string $tenantId): int
@@ -357,7 +357,7 @@ class User extends Authenticatable implements MustVerifyEmail, TenantAwareAuthen
             ->where('tenant_id', $tenantId)
             ->where(function ($query) {
                 $query->whereNull('expires_at')
-                      ->orWhere('expires_at', '>', now());
+                    ->orWhere('expires_at', '>', now());
             })
             ->sum('amount');
     }

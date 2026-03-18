@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\Domain\Shared\ValueObjects\TenantId;
-use App\ValueObjects\OrderNumber;
+use App\Contracts\InventoryManagerInterface;
 use App\Domain\Sales\Events\OrderCancelled;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use App\Contracts\InventoryManagerInterface;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Models\Order;
 use App\Services\OrderStateService;
+use App\ValueObjects\OrderNumber;
 use Mockery;
 use PHPUnit\Framework\TestCase;
 
@@ -102,7 +102,7 @@ class OrderStateServiceTest extends TestCase
                     && $event->tenantId()->toString() === $tenantId
                     && $event->orderNumber->toString() === 'ORD-1001'
                     && $event->reason === 'customer_request'
-                    && !$event->shouldAutoRefund();
+                    && ! $event->shouldAutoRefund();
             }));
 
         $event = new OrderCancelled(

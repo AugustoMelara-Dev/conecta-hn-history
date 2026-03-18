@@ -81,6 +81,7 @@ final readonly class TenantFactory
         $slug = transliterator_transliterate('Any-Latin; Latin-ASCII; Lower()', $value) ?? strtolower($value);
         // Replace non-alphanumeric with hyphens
         $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
+
         // Trim leading/trailing hyphens
         return trim($slug, '-');
     }

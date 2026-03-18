@@ -30,8 +30,8 @@ interface UserRepositoryInterface
     /**
      * Reset a user's password and rotate the remember token.
      *
-     * @param  string  $userId      User UUID
-     * @param  string  $tenantId    Tenant context for ownership validation
+     * @param  string  $userId  User UUID
+     * @param  string  $tenantId  Tenant context for ownership validation
      * @param  string  $passwordHash  Already-hashed password (never plaintext)
      * @param  string  $rememberToken  New random remember token
      *

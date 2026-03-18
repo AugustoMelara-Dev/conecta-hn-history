@@ -12,9 +12,9 @@ use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -38,7 +38,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
     protected string $view = 'filament.app.pages.manage-marketing';
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-megaphone';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-megaphone';
 
     public static function getNavigationLabel(): string
     {

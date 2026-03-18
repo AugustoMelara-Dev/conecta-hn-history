@@ -46,7 +46,7 @@ class StatsOverview extends StatsOverviewWidget
             ->sum('total');
 
         return [
-            Stat::make('Ingresos Totales', 'L. ' . number_format((float) $totalRevenue, 2))
+            Stat::make('Ingresos Totales', 'L. '.number_format((float) $totalRevenue, 2))
                 ->description('Ordenes entregadas')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('gray'),
@@ -58,7 +58,7 @@ class StatsOverview extends StatsOverviewWidget
                 ->description('Vistas de tu pagina')
                 ->descriptionIcon('heroicon-m-eye')
                 ->color('gray'),
-            Stat::make('Tasa de Conversion', $conversionRate . '%')
+            Stat::make('Tasa de Conversion', $conversionRate.'%')
                 ->description('De visitas a clics')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('gray'),

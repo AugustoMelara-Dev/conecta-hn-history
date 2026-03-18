@@ -43,9 +43,9 @@ arch('Results must be named with suffix Result')
 
 test('Interfaces must be named with suffix Interface', function () {
     $bases = [
-        realpath(__DIR__ . '/../../app/Application'),
-        realpath(__DIR__ . '/../../app/Domain'),
-        realpath(__DIR__ . '/../../app/Infrastructure'),
+        realpath(__DIR__.'/../../app/Application'),
+        realpath(__DIR__.'/../../app/Domain'),
+        realpath(__DIR__.'/../../app/Infrastructure'),
     ];
 
     $ignored = [
@@ -109,8 +109,8 @@ test('Interfaces must be named with suffix Interface', function () {
                 continue;
             }
 
-            $relativePath = str_replace($baseDir . DIRECTORY_SEPARATOR, '', $file->getPathname());
-            $className = $rootNamespace . '\\' . str_replace([DIRECTORY_SEPARATOR, '.php'], ['\\', ''], $relativePath);
+            $relativePath = str_replace($baseDir.DIRECTORY_SEPARATOR, '', $file->getPathname());
+            $className = $rootNamespace.'\\'.str_replace([DIRECTORY_SEPARATOR, '.php'], ['\\', ''], $relativePath);
 
             if (! interface_exists($className) || in_array($className, $ignored, true)) {
                 continue;
@@ -192,7 +192,7 @@ arch('Application Layer must NOT contain Global Folders (Modular Strictness)')
     ]);
 
 test('Root of Application must remain pure and modular (Orphan Ban)', function () {
-    $rootFiles = array_values(array_filter(glob(__DIR__ . '/../../app/Application/*.*'), static fn (string $path): bool => basename($path) !== 'README.md'));
+    $rootFiles = array_values(array_filter(glob(__DIR__.'/../../app/Application/*.*'), static fn (string $path): bool => basename($path) !== 'README.md'));
     expect($rootFiles)->toHaveCount(0);
 });
 
@@ -246,26 +246,3 @@ arch('Domain Layer must be independent and pure')
 arch('No Facades in Domain or Commands')
     ->expect(['App\Domain', 'App\Application\*\Commands'])
     ->not->toUse('Illuminate\Support\Facades');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

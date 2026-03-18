@@ -16,6 +16,7 @@ final readonly class UpdateProductValidator
     public function __construct(
         private ProductRepositoryInterface $productRepository
     ) {}
+
     public function rules(UpdateProductCommand $command): array
     {
         return [

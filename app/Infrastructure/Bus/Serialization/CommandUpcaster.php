@@ -44,7 +44,7 @@ final class CommandUpcaster
      * until no more transformations are applicable.
      *
      * @param  array<string, mixed>  $payload  Raw payload with 'event_type' and 'schema_version' keys.
-     * @return array<string, mixed>  Fully upcasted payload.
+     * @return array<string, mixed> Fully upcasted payload.
      *
      * @throws \InvalidArgumentException If payload is missing required keys.
      */

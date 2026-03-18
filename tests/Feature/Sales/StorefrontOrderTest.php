@@ -1,9 +1,9 @@
 <?php
 
-use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
 use App\Application\Sales\Results\CreateOrderResult;
 use App\Domain\Sales\Contracts\OrderReader;
+use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\Tenant;

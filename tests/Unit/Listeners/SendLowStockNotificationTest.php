@@ -16,21 +16,21 @@ beforeEach(function () {
     // Crear dos tenants
     $this->tenantA = Tenant::factory()->create(['name' => 'Tenant A']);
     $this->tenantB = Tenant::factory()->create(['name' => 'Tenant B']);
-    
+
     // Crear productos - uno para cada tenant
     $this->productA = Product::factory()->create([
         'tenant_id' => $this->tenantA->id,
         'name' => 'Product A',
         'stock_quantity' => 5,
     ]);
-    
+
     $this->productB = Product::factory()->create([
         'tenant_id' => $this->tenantB->id,
         'name' => 'Product B',
         'stock_quantity' => 3,
     ]);
-    
-    $this->listener = new SendLowStockNotification();
+
+    $this->listener = new SendLowStockNotification;
 
     Notification::fake();
 });
@@ -64,7 +64,7 @@ test('blocks product from different tenant and logs security event', function ()
     $maliciousProduct = Mockery::mock(\App\Models\Product::class)->makePartial();
     $maliciousProduct->id = $this->productA->id;
     $maliciousProduct->tenant_id = $this->tenantB->id;
-    
+
     $maliciousEvent = new LowStockThresholdReached(
         product: $maliciousProduct,
         currentStock: 5,
@@ -75,7 +75,7 @@ test('blocks product from different tenant and logs security event', function ()
         ->with('security')
         ->once()
         ->andReturnSelf();
-    
+
     Log::shouldReceive('critical')
         ->once()
         ->withArgs(function ($message, $context) {
@@ -104,11 +104,11 @@ test('gracefully returns for non-existent product', function () {
 
     Log::shouldReceive('warning')
         ->once()
-        ->withArgs(fn($msg) => str_contains($msg, 'not found'));
+        ->withArgs(fn ($msg) => str_contains($msg, 'not found'));
 
     // No debe lanzar excepciones (Fail Silent)
     $this->listener->handle($maliciousEvent);
-    
+
     expect(true)->toBeTrue();
 });
 
@@ -139,6 +139,6 @@ test('never throws exceptions - implements Fail Silent protocol', function () {
         );
 
         // No debe lanzar ninguna excepción
-        expect(fn() => $this->listener->handle($event))->not->toThrow(Exception::class);
+        expect(fn () => $this->listener->handle($event))->not->toThrow(Exception::class);
     }
 });

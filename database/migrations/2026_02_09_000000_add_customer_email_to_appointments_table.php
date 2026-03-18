@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Add customer_email column to appointments table.
- * 
+ *
  * Enables guest notification functionality for booking confirmations
  * and reminders. Nullable to maintain backwards compatibility with
  * existing records and support walk-in appointments.

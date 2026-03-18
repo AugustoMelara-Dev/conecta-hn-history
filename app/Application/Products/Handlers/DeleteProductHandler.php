@@ -9,9 +9,9 @@ use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Product\Events\ProductDeleted;
+use App\Domain\Product\Exceptions\ProductNotFoundException;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use App\Domain\Product\Exceptions\ProductNotFoundException;
 
 /**
  * DeleteProductHandler - Command Handler for Product Soft Deletion

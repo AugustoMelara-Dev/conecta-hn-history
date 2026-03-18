@@ -1,7 +1,7 @@
 <?php
 
-use App\Application\Sales\Commands\HoldCartInventoryCommand;
 use App\Application\Inventory\Contracts\InventoryHoldPortInterface;
+use App\Application\Sales\Commands\HoldCartInventoryCommand;
 use App\Application\Sales\Handlers\HoldCartInventoryHandler;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use Mockery\MockInterface;

@@ -6,6 +6,7 @@ namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Results\SocialLoginResult;
+use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Events\SocialIdentityLinked;
@@ -16,7 +17,6 @@ use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Shared\Exceptions\DuplicateEntityException;
 use Psr\Log\LoggerInterface;
-use App\Application\Shared\Contracts\IdGeneratorInterface;
 
 /**
  * LoginViaSocialProviderHandler - Atomic Protocol Edition

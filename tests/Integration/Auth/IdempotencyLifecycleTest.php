@@ -2,8 +2,8 @@
 
 namespace Tests\Integration\Auth;
 
-use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
 use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
+use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;

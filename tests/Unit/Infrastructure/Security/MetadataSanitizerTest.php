@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Infrastructure\Security\MetadataSanitizer;
 
 beforeEach(function () {
-    $this->sanitizer = new MetadataSanitizer();
+    $this->sanitizer = new MetadataSanitizer;
 });
 
 test('metadata sanitizer strips html tags', function () {
@@ -51,7 +51,7 @@ test('metadata sanitizer sanitizes keys', function () {
 });
 
 test('metadata sanitizer drops non-scalar non-array values', function () {
-    $input = ['obj' => new stdClass(), 'safe' => 'ok'];
+    $input = ['obj' => new stdClass, 'safe' => 'ok'];
     $output = $this->sanitizer->clean($input);
 
     expect($output)->not->toHaveKey('obj');

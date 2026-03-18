@@ -8,7 +8,6 @@ declare(strict_types=1);
  * Enforces that Application Layer Commands carry only primitives,
  * DTOs, and Value Objects — never Eloquent models.
  */
-
 test('reset user password command does not carry eloquent model', function () {
     $class = new ReflectionClass(\App\Application\Auth\Commands\ResetUserPasswordCommand::class);
 
@@ -16,7 +15,7 @@ test('reset user password command does not carry eloquent model', function () {
 
     foreach ($class->getProperties() as $property) {
         $type = $property->getType();
-        if ($type && !$type->isBuiltin()) {
+        if ($type && ! $type->isBuiltin()) {
             $nonBuiltinTypes[] = $type->getName();
         }
     }
@@ -25,7 +24,7 @@ test('reset user password command does not carry eloquent model', function () {
 });
 
 test('reset password action constructs command with scalar userId', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Actions/Authentication/ResetPasswordAction.php');
+    $content = file_get_contents(__DIR__.'/../../app/Actions/Authentication/ResetPasswordAction.php');
     expect($content)
         ->toContain('$user->id')
         ->not->toContain('user: $user');

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Jobs;
 
-
-
 use App\Application\Shared\DTOs\ReportRequestData;
 use App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob;
 use App\Infrastructure\Jobs\Media\GenerateProductBlurhash;
@@ -27,7 +25,7 @@ class JobIdempotencyTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function sync_analytics_job_implements_should_be_unique(): void
     {
-        $job = new SyncAnalyticsJob();
+        $job = new SyncAnalyticsJob;
 
         $this->assertInstanceOf(ShouldBeUnique::class, $job);
         $this->assertIsString($job->uniqueId());

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Search\Contracts;
 
-
 /**
  * GlobalSearchReader - Domain Contract for Unified Search
  *

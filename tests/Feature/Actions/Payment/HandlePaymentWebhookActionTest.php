@@ -1,14 +1,11 @@
 <?php
 
 use App\Application\Billing\Actions\HandlePaymentWebhookAction;
-use App\Domain\ValueObjects\Payment\PaymentWebhook;
-use Illuminate\Support\Facades\Log;
-use App\Application\Shared\Contracts\Payment\PaymentWebhookHandlerInterface;
-use App\Domain\Billing\Events\PaymentWebhookReceived;
-use Illuminate\Support\Facades\Event;
 use App\Application\Shared\Contracts\EventBusInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
-
+use App\Application\Shared\Contracts\Payment\PaymentWebhookHandlerInterface;
+use App\Domain\Billing\Events\PaymentWebhookReceived;
+use App\Domain\ValueObjects\Payment\PaymentWebhook;
 
 test('action implements handler interface', function () {
     $bus = Mockery::mock(EventBusInterface::class);
@@ -20,7 +17,7 @@ test('action implements handler interface', function () {
 test('handle method dispatches event to ledger', function () {
     $webhook = PaymentWebhook::fromArray('payment.success', [
         'meta' => ['tenant_id' => 'tenant_123'],
-        'id' => 'evt_123'
+        'id' => 'evt_123',
     ]);
 
     $bus = Mockery::mock(EventBusInterface::class);

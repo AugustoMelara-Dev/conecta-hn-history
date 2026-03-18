@@ -9,7 +9,6 @@ return new class extends Migration
     public function up(): void
     {
 
-
         Schema::create('outbox_messages', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('type'); // Event Class Name

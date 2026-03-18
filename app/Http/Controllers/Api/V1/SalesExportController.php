@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Infrastructure\Jobs\Exports\GenerateSalesExport;
 use App\Http\Controllers\Controller;
+use App\Infrastructure\Jobs\Exports\GenerateSalesExport;
+use Illuminate\Contracts\Auth\StatefulGuard;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Contracts\Auth\StatefulGuard;
-use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Validation\ValidationException;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -35,6 +35,7 @@ final class SalesExportController extends Controller
         private LoggerInterface $log,
         private FilesystemFactory $storage
     ) {}
+
     /**
      * Request a new sales export (async).
      *

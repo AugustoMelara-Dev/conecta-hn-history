@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Infrastructure\Schemas\JsonSchemaGenerator;
 
-
 /**
  * ContractValidationTest - CI Gate for Command Schema Integrity
  *
@@ -14,10 +13,9 @@ use App\Infrastructure\Schemas\JsonSchemaGenerator;
  *
  * @see App\Infrastructure\Schemas\JsonSchemaGenerator
  */
-
 test('all commands generate valid json schemas', function () {
-    $generator = new JsonSchemaGenerator();
-    $applicationPath = realpath(__DIR__ . '/../../app/Application');
+    $generator = new JsonSchemaGenerator;
+    $applicationPath = realpath(__DIR__.'/../../app/Application');
 
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($applicationPath, RecursiveDirectoryIterator::SKIP_DOTS)
@@ -32,11 +30,11 @@ test('all commands generate valid json schemas', function () {
 
         // Derive FQCN from file path relative to Application/
         $relativePath = str_replace(
-            [realpath($applicationPath) . DIRECTORY_SEPARATOR, '/', '.php'],
+            [realpath($applicationPath).DIRECTORY_SEPARATOR, '/', '.php'],
             ['', '\\', ''],
             realpath($file->getPathname())
         );
-        $className = 'App\\Application\\' . $relativePath;
+        $className = 'App\\Application\\'.$relativePath;
 
         if (! class_exists($className)) {
             continue;
@@ -68,7 +66,7 @@ test('all commands generate valid json schemas', function () {
 });
 
 test('json schema generator produces valid json output', function () {
-    $generator = new JsonSchemaGenerator();
+    $generator = new JsonSchemaGenerator;
     $schema = $generator->generate(\App\Application\Interactions\Commands\RecordInteractionCommand::class);
 
     $json = $generator->toJson($schema);
@@ -83,7 +81,7 @@ test('json schema generator produces valid json output', function () {
 });
 
 test('schema correctly maps nullable properties', function () {
-    $generator = new JsonSchemaGenerator();
+    $generator = new JsonSchemaGenerator;
     $schema = $generator->generate(\App\Application\Interactions\Commands\RecordInteractionCommand::class);
 
     // productId is ?string — should be ["string", "null"]
@@ -97,7 +95,7 @@ test('schema correctly maps nullable properties', function () {
 });
 
 test('schema marks required vs optional properties correctly', function () {
-    $generator = new JsonSchemaGenerator();
+    $generator = new JsonSchemaGenerator;
     $schema = $generator->generate(\App\Application\Auth\Commands\ResetUserPasswordCommand::class);
 
     // userId, password, tenantId are required (no default values)

@@ -10,7 +10,6 @@ use App\Models\Tenant;
  * INVARIANT: /directorio and /explore must return 200 OK without
  * triggering MissingAttributeException on Tenant model.
  */
-
 it('loads the directory without missing attribute exceptions', function () {
     // Ensure at least one active tenant exists for the query
     $tenant = Tenant::factory()->create([

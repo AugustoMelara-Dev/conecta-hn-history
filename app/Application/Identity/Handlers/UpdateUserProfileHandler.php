@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Handlers;
 
+use App\Application\Identity\Commands\UpdateUserProfileCommand;
 use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\EventBusInterface;
-use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
-use App\Application\Identity\Commands\UpdateUserProfileCommand;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Exceptions\CrossTenantAccessException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;

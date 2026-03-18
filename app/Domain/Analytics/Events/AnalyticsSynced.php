@@ -19,7 +19,11 @@ final readonly class AnalyticsSynced implements DomainEvent
     use HasDomainMetadata;
 
     private const SCHEMA_VERSION = 1;
-    public function schemaVersion(): int { return self::SCHEMA_VERSION; }
+
+    public function schemaVersion(): int
+    {
+        return self::SCHEMA_VERSION;
+    }
 
     public function __construct(
         public TenantId $tenantId,

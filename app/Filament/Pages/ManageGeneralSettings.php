@@ -14,9 +14,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 
 /**
  * ManageGeneralSettings - Torre de Control del Sistema
@@ -32,7 +32,7 @@ class ManageGeneralSettings extends Page implements HasForms
 
     public ?array $data = [];
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-cog';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cog';
 
     public static function getNavigationLabel(): string
     {

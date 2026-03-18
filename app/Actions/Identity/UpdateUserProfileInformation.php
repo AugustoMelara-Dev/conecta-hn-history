@@ -31,8 +31,8 @@ final readonly class UpdateUserProfileInformation implements UpdatesUserProfileI
     ) {}
 
     /**
-     * @param  mixed                 $user
-     * @param  array<string, string> $input
+     * @param  mixed  $user
+     * @param  array<string, string>  $input
      */
     public function update($user, array $input): void
     {

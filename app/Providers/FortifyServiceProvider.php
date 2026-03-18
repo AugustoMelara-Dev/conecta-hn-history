@@ -6,8 +6,8 @@ namespace App\Providers;
 
 use App\Infrastructure\Identity\Fortify\Actions\Authentication\ResetPasswordAction;
 use App\Infrastructure\Identity\Fortify\Actions\Authentication\UpdateUserPassword;
-use App\Infrastructure\Identity\Fortify\Actions\Identity\UpdateUserProfileInformation;
 use App\Infrastructure\Identity\Fortify\Actions\Identity\CreateNewUser;
+use App\Infrastructure\Identity\Fortify\Actions\Identity\UpdateUserProfileInformation;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;

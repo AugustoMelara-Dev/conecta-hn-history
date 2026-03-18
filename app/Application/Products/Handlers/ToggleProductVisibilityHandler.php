@@ -8,8 +8,8 @@ use App\Application\Products\Commands\ToggleProductVisibilityCommand;
 use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
-use App\Domain\Product\Repositories\ProductRepositoryInterface;
 use App\Domain\Product\Exceptions\ProductNotFoundException;
+use App\Domain\Product\Repositories\ProductRepositoryInterface;
 
 /**
  * ToggleProductVisibilityHandler - Command Handler for Product Visibility Toggle

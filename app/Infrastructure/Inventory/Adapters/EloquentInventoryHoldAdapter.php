@@ -232,4 +232,3 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
         throw new DomainException("Invalid or inactive location {$locationId}.");
     }
 }
-

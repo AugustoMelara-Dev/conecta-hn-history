@@ -11,7 +11,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\V1\AuthResource;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 /**
  * AuthController - API Authentication

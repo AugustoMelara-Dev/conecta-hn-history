@@ -17,7 +17,7 @@ use App\Application\Shared\Contracts\SensitiveDataInterface;
  * ║  GDPR: ipAddress & userAgent are PII — redacted in logs & Outbox.     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class RecordInteractionCommand implements IdempotentCommandInterface, SensitiveDataInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
+final readonly class RecordInteractionCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface, IdempotentCommandInterface, SensitiveDataInterface
 {
     use \App\Application\Shared\Traits\HasSchemaVersion;
 
@@ -60,7 +60,7 @@ final readonly class RecordInteractionCommand implements IdempotentCommandInterf
 
     public function getIdempotencyKey(): string
     {
-        return $this->idempotencyKey ?: hash('xxh128', 'interaction_' . $this->tenantId . '_' . $this->visitorId . '_' . $this->type);
+        return $this->idempotencyKey ?: hash('xxh128', 'interaction_'.$this->tenantId.'_'.$this->visitorId.'_'.$this->type);
     }
 
     /**

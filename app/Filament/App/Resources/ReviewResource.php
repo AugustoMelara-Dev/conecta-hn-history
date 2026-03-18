@@ -16,7 +16,7 @@ class ReviewResource extends Resource
 {
     protected static ?string $model = Review::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-star';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-star';
 
     protected static ?string $navigationLabel = 'Reseñas';
 
@@ -24,7 +24,7 @@ class ReviewResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Reseñas';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Marketing';
+    protected static string|\UnitEnum|null $navigationGroup = 'Marketing';
 
     public static function form(Schema $schema): Schema
     {

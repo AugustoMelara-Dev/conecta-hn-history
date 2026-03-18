@@ -18,7 +18,7 @@ declare(strict_types=1);
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('actions do not depend on Eloquent models directly', function () {
-    $dir = realpath(__DIR__ . '/../../app/Actions');
+    $dir = realpath(__DIR__.'/../../app/Actions');
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
     );
@@ -31,7 +31,7 @@ test('actions do not depend on Eloquent models directly', function () {
         }
 
         $content = file_get_contents($file->getPathname());
-        $relative = str_replace($dir . DIRECTORY_SEPARATOR, '', $file->getPathname());
+        $relative = str_replace($dir.DIRECTORY_SEPARATOR, '', $file->getPathname());
 
         $importsEloquent = str_contains($content, 'use Illuminate\Database\Eloquent\Model');
         expect($importsEloquent)->toBeFalse(
@@ -55,7 +55,7 @@ test('actions do not depend on Eloquent models directly', function () {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('actions use CommandBusInterface instead of Bus facade', function () {
-    $dir = realpath(__DIR__ . '/../../app/Actions');
+    $dir = realpath(__DIR__.'/../../app/Actions');
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
     );
@@ -68,7 +68,7 @@ test('actions use CommandBusInterface instead of Bus facade', function () {
         }
 
         $content = file_get_contents($file->getPathname());
-        $relative = str_replace($dir . DIRECTORY_SEPARATOR, '', $file->getPathname());
+        $relative = str_replace($dir.DIRECTORY_SEPARATOR, '', $file->getPathname());
 
         $importsBusFacade = str_contains($content, 'use Illuminate\Support\Facades\Bus');
         expect($importsBusFacade)->toBeFalse(
@@ -91,7 +91,7 @@ test('actions use CommandBusInterface instead of Bus facade', function () {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('actions that dispatch rely on CommandBusInterface injection', function () {
-    $dir = realpath(__DIR__ . '/../../app/Actions');
+    $dir = realpath(__DIR__.'/../../app/Actions');
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
     );
@@ -104,7 +104,7 @@ test('actions that dispatch rely on CommandBusInterface injection', function () 
         }
 
         $content = file_get_contents($file->getPathname());
-        $relative = str_replace($dir . DIRECTORY_SEPARATOR, '', $file->getPathname());
+        $relative = str_replace($dir.DIRECTORY_SEPARATOR, '', $file->getPathname());
 
         // Only enforce on Actions that call ->dispatch(
         if (str_contains($content, '->dispatch(')) {

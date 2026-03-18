@@ -6,13 +6,12 @@ use App\Models\OneTimePassword;
 
 /**
  * VC-AUDIT-103 Test Suite
- * 
+ *
  * Ensures OneTimePassword model guards sensitive fields against mass assignment.
  */
-
 describe('VC-AUDIT-103: OneTimePassword Mass Assignment Protection', function () {
     it('uses explicit fillable array instead of guarded', function () {
-        $fillable = (new OneTimePassword())->getFillable();
+        $fillable = (new OneTimePassword)->getFillable();
 
         expect($fillable)
             ->not->toContain('id')
@@ -25,7 +24,7 @@ describe('VC-AUDIT-103: OneTimePassword Mass Assignment Protection', function ()
     });
 
     it('does not have empty fillable array', function () {
-        $fillable = (new OneTimePassword())->getFillable();
+        $fillable = (new OneTimePassword)->getFillable();
 
         expect($fillable)->not->toBeEmpty();
     });

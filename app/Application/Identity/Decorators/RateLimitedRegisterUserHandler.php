@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Decorators;
 
-use App\Application\Shared\Contracts\RateLimiterInterface;
-use App\Application\Shared\Contracts\ClientContextProviderInterface;
 use App\Application\Identity\Commands\RegisterUserCommand;
 use App\Application\Identity\Handlers\RegisterUserHandlerInterface;
 use App\Application\Identity\Results\RegisterUserResult;
+use App\Application\Shared\Contracts\ClientContextProviderInterface;
+use App\Application\Shared\Contracts\RateLimiterInterface;
 use App\Domain\Common\Exceptions\TooManyRequestsException;
 
 /**

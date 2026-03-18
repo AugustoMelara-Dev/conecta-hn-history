@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Events;
 
-use App\Domain\Shared\Contracts\Events\DomainEvent;
 use App\Contracts\Events\DomainEventBus;
+use App\Domain\Shared\Contracts\Events\DomainEvent;
 
 /**
  * InMemoryEventBus - Testing Implementation of DomainEventBus

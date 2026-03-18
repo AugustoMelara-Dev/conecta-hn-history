@@ -10,7 +10,6 @@ use App\Domain\Shared\Services\TenantContext;
  * INVARIANT: TenantContext must accept UUID strings natively
  * and initialize the Zero Trust context successfully.
  */
-
 it('accepts uuid strings and initializes the zero trust context successfully', function () {
     $context = new TenantContext;
 

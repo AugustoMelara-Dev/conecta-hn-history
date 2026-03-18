@@ -45,13 +45,13 @@ describe('TenantProfileResource Relations', function () {
 
 describe('ServiceProviderResource Schedule Config', function () {
     it('has schedule_config in fillable', function () {
-        $provider = new ServiceProvider();
+        $provider = new ServiceProvider;
 
         expect($provider->getFillable())->toContain('schedule_config');
     });
 
     it('casts schedule_config as array', function () {
-        $provider = new ServiceProvider();
+        $provider = new ServiceProvider;
         $casts = $provider->getCasts();
 
         expect($casts)->toHaveKey('schedule_config');
@@ -68,7 +68,7 @@ describe('OpeningHour Model', function () {
     it('exists with required fields', function () {
         expect(class_exists(OpeningHour::class))->toBeTrue();
 
-        $model = new OpeningHour();
+        $model = new OpeningHour;
         $fillable = $model->getFillable();
 
         expect($fillable)->toContain('day_of_week');
@@ -78,7 +78,7 @@ describe('OpeningHour Model', function () {
     });
 
     it('uses BelongsToTenant trait for isolation', function () {
-        $model = new OpeningHour();
+        $model = new OpeningHour;
         $traits = class_uses_recursive($model);
 
         expect($traits)->toContain(\App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant::class);

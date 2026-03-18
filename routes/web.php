@@ -1,12 +1,12 @@
 <?php
 
 use App\Http\Controllers\Auth\ProfileController;
+use App\Http\Controllers\Public\BookingController;
 use App\Http\Controllers\Public\DirectoryController;
 use App\Http\Controllers\Public\ExploreController;
 use App\Http\Controllers\Public\InteractionController;
 use App\Http\Controllers\Public\LocationController;
 use App\Http\Controllers\Public\TenantMicrositeController;
-use App\Http\Controllers\Public\BookingController;
 use App\Http\Controllers\Public\WelcomeController;
 use App\Http\Controllers\Tenant\AnalyticsController;
 use Illuminate\Support\Facades\Route;
@@ -80,10 +80,10 @@ Route::get('/api/check-slug', [\App\Http\Controllers\Web\RegistrationController:
 Route::prefix('track')
     ->middleware(['throttle:60,1']) // 60 requests per minute per IP
     ->group(function () {
-    Route::get('/wa/{tenant:slug}', [InteractionController::class, 'whatsapp'])->name('track.whatsapp');
-    Route::get('/call/{tenant:slug}', [InteractionController::class, 'call'])->name('track.call');
-    Route::get('/maps/{tenant:slug}', [InteractionController::class, 'maps'])->name('track.maps');
-});
+        Route::get('/wa/{tenant:slug}', [InteractionController::class, 'whatsapp'])->name('track.whatsapp');
+        Route::get('/call/{tenant:slug}', [InteractionController::class, 'call'])->name('track.call');
+        Route::get('/maps/{tenant:slug}', [InteractionController::class, 'maps'])->name('track.maps');
+    });
 
 // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 // PAYMENT STATUS - Consolidated

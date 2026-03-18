@@ -11,17 +11,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Appointment Model - Service Booking Record
- * 
+ *
  * Represents a scheduled appointment linking:
  * - A Customer (User or guest via customer_name/phone)
  * - A Service (what is being performed)
  * - A ServiceProvider (who performs it)
  * - A Time Slot (when it happens)
- * 
+ *
  * STATUS LIFECYCLE:
  * pending â†’ confirmed â†’ completed
  *        â†˜ cancelled
- * 
+ *
  * SECURITY: Uses BelongsToTenant for automatic tenant isolation.
  */
 class Appointment extends Model
@@ -32,8 +32,11 @@ class Appointment extends Model
     // STATUS CONSTANTS
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_CONFIRMED = 'confirmed';
+
     public const STATUS_CANCELLED = 'cancelled';
+
     public const STATUS_COMPLETED = 'completed';
 
     protected $fillable = [
@@ -109,8 +112,8 @@ class Appointment extends Model
     public function scopeUpcoming($query)
     {
         return $query->where('scheduled_at', '>=', now())
-                     ->whereIn('status', [self::STATUS_PENDING, self::STATUS_CONFIRMED])
-                     ->orderBy('scheduled_at');
+            ->whereIn('status', [self::STATUS_PENDING, self::STATUS_CONFIRMED])
+            ->orderBy('scheduled_at');
     }
 
     /**
@@ -183,6 +186,7 @@ class Appointment extends Model
         }
 
         $this->status = self::STATUS_CONFIRMED;
+
         return $this->save();
     }
 
@@ -196,6 +200,7 @@ class Appointment extends Model
         }
 
         $this->status = self::STATUS_CANCELLED;
+
         return $this->save();
     }
 
@@ -209,6 +214,7 @@ class Appointment extends Model
         }
 
         $this->status = self::STATUS_COMPLETED;
+
         return $this->save();
     }
 
@@ -222,6 +228,7 @@ class Appointment extends Model
         }
 
         $this->status = self::STATUS_NO_SHOW;
+
         return $this->save();
     }
 

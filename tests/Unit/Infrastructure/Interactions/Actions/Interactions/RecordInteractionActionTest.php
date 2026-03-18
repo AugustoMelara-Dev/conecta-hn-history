@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-use App\Infrastructure\Interactions\Actions\RecordInteractionAction;
 use App\Application\Interactions\DTOs\InteractionData;
 use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\MetadataSanitizerInterface;
 use App\Application\Shared\Contracts\TenantRateLimiterInterface;
+use App\Infrastructure\Interactions\Actions\RecordInteractionAction;
 
 it('cleans metadata and dispatches command within tenant context', function () {
     // Scaffold Tenant Context
-    $tenantId = 'tnt_' . fake()->bothify('??????????');
+    $tenantId = 'tnt_'.fake()->bothify('??????????');
 
     // Mock Dependencies
     $commandBus = Mockery::mock(CommandBusInterface::class);

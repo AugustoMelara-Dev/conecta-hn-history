@@ -58,7 +58,7 @@ test('listener dispatches mail and updates waitlist status to notified', functio
         scheduledAt: '2026-03-20T10:00:00Z'
     );
 
-    $listener = new CheckWaitlistOnCancellation();
+    $listener = new CheckWaitlistOnCancellation;
     $listener->handle($event);
 
     Mail::assertSent(WaitlistSlotFreedMail::class, function ($mail) use ($waitlist) {

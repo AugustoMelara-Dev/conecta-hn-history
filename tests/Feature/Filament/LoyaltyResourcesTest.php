@@ -28,14 +28,14 @@ it('LoyaltyRewardResource is properly configured', function () {
 // TEST 3: LoyaltyProgramResource has correct pages
 it('LoyaltyProgramResource has required pages', function () {
     $pages = LoyaltyProgramResource::getPages();
-    
+
     expect($pages)->toHaveKeys(['index', 'create', 'edit']);
 });
 
 // TEST 4: LoyaltyRewardResource has correct pages
 it('LoyaltyRewardResource has required pages', function () {
     $pages = LoyaltyRewardResource::getPages();
-    
+
     expect($pages)->toHaveKeys(['index', 'create', 'edit']);
 });
 

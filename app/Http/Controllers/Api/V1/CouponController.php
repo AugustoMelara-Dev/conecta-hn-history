@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Application\Shared\Contracts\TenantCacheManagerInterface;
 use App\Domain\Marketing\Contracts\CouponReader;
 use App\Http\Controllers\Controller;
-use App\Application\Shared\Contracts\TenantCacheManagerInterface;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Validation\Factory as ValidationFactory;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 /**

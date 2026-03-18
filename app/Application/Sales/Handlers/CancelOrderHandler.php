@@ -8,10 +8,10 @@ use App\Application\Sales\Commands\CancelOrderCommand;
 use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
-use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Domain\Sales\Events\OrderCancelled;
-use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\Sales\Exceptions\OrderNotFoundException;
+use App\Domain\Sales\Repositories\OrderRepositoryInterface;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
 
 /**
  * CancelOrderHandler - Command Handler for Order Cancellation

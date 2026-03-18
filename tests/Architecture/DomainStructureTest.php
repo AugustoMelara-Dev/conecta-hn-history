@@ -10,7 +10,6 @@ use App\Infrastructure\Identity\Fortify\Actions\Identity\UpdateUserProfileInform
  * Enforces: Actions reside in their correct Bounded Context subdirectory.
  * Profile updates are Identity lifecycle events, not Authentication events.
  */
-
 test('update user profile information resides in identity namespace', function () {
     expect(class_exists(UpdateUserProfileInformation::class))->toBeTrue();
     expect((new ReflectionClass(UpdateUserProfileInformation::class))->getNamespaceName())

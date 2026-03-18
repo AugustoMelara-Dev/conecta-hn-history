@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Validator;
  * 2. String-typed identifiers in Domain DTOs (UUID/ULID safety)
  * 3. Correct namespace resolution for Command imports
  */
-
 test('actions do not use validator facade', function () {
     expect('App\Infrastructure\Identity\Fortify\Actions')
         ->not->toUse(Validator::class);
@@ -27,7 +26,7 @@ test('interaction data uses string for tenant identifier', function () {
 });
 
 test('update user profile command namespace is correct', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Infrastructure/Identity/Fortify/Actions/Identity/UpdateUserProfileInformation.php');
+    $content = file_get_contents(__DIR__.'/../../app/Infrastructure/Identity/Fortify/Actions/Identity/UpdateUserProfileInformation.php');
     expect($content)
         ->toContain('App\Application\Identity\Commands\UpdateUserProfileCommand')
         ->not->toContain('App\Application\Auth\Commands\UpdateUserProfileCommand');

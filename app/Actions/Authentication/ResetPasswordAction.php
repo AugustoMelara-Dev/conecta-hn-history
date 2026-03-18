@@ -27,8 +27,8 @@ final readonly class ResetPasswordAction implements ResetsUserPasswords
     ) {}
 
     /**
-     * @param  mixed                 $user
-     * @param  array<string, string> $input
+     * @param  mixed  $user
+     * @param  array<string, string>  $input
      */
     public function reset($user, array $input): void
     {

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Application\Sales\Contracts\OrderStateServiceInterface;
-use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use App\Domain\Sales\Events\OrderCancelled;
 use App\Contracts\InventoryManagerInterface;
+use App\Domain\Sales\Events\OrderCancelled;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Events\Order\OrderDelivered;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;

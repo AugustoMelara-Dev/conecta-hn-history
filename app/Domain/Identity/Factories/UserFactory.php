@@ -7,7 +7,6 @@ namespace App\Domain\Identity\Factories;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Contracts\UuidGeneratorInterface;
-use App\Domain\Shared\ValueObjects\EmailAddress;
 
 final readonly class UserFactory
 {

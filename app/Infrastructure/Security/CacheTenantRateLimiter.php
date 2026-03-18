@@ -20,7 +20,7 @@ final readonly class CacheTenantRateLimiter implements TenantRateLimiterInterfac
 
         if ($this->limiter->tooManyAttempts($key, $maxAttempts)) {
             $seconds = $this->limiter->availableIn($key);
-            
+
             throw new ThrottleRequestsException(
                 'Too many requests. Please try again in '.$seconds.' seconds.',
                 null,

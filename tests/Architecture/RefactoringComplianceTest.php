@@ -14,7 +14,7 @@ declare(strict_types=1);
 use App\Application\Interactions\DTOs\InteractionData;
 
 test('UpdateUserPassword uses TenantAwareAuthenticatable contract', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Actions/Authentication/UpdateUserPassword.php');
+    $content = file_get_contents(__DIR__.'/../../app/Actions/Authentication/UpdateUserPassword.php');
 
     expect($content)->toContain('TenantAwareAuthenticatable');
     expect($content)->toContain('getTenantId()');
@@ -28,7 +28,7 @@ test('UpdateUserPassword uses TenantAwareAuthenticatable contract', function () 
 });
 
 test('UpdateUserProfileInformation uses TenantAwareAuthenticatable contract', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Actions/Identity/UpdateUserProfileInformation.php');
+    $content = file_get_contents(__DIR__.'/../../app/Actions/Identity/UpdateUserProfileInformation.php');
 
     expect($content)->toContain('TenantAwareAuthenticatable');
     expect($content)->toContain('getTenantId()');
@@ -42,7 +42,7 @@ test('UpdateUserProfileInformation uses TenantAwareAuthenticatable contract', fu
 });
 
 test('ResetPasswordAction uses TenantAwareAuthenticatable contract', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Actions/Authentication/ResetPasswordAction.php');
+    $content = file_get_contents(__DIR__.'/../../app/Actions/Authentication/ResetPasswordAction.php');
 
     expect($content)->toContain('TenantAwareAuthenticatable');
     expect($content)->toContain('getTenantId()');

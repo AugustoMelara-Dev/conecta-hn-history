@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use App\Application\Shared\Contracts\TenantAware;
 use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
-use App\Infrastructure\Bus\Serialization\CommandUpcaster;
 use App\Application\Shared\Contracts\UpcasterInterface;
+use App\Infrastructure\Bus\Serialization\CommandUpcaster;
 use App\Models\User;
 use Illuminate\Contracts\Auth\Authenticatable;
 
@@ -17,7 +17,6 @@ use Illuminate\Contracts\Auth\Authenticatable;
  * 2. User model implements the unified contract
  * 3. CommandUpcaster service exists and functions correctly
  */
-
 test('tenant aware authenticatable combines both contracts', function () {
     $reflection = new ReflectionClass(TenantAwareAuthenticatable::class);
     $interfaces = $reflection->getInterfaceNames();
@@ -28,14 +27,14 @@ test('tenant aware authenticatable combines both contracts', function () {
 });
 
 test('user model implements unified tenant aware authenticatable contract', function () {
-    $user = new User();
+    $user = new User;
     expect($user)->toBeInstanceOf(TenantAwareAuthenticatable::class);
     expect($user)->toBeInstanceOf(Authenticatable::class);
     expect($user)->toBeInstanceOf(TenantAware::class);
 });
 
 test('reset password action uses unified contract', function () {
-    $content = file_get_contents(__DIR__ . '/../../app/Actions/Authentication/ResetPasswordAction.php');
+    $content = file_get_contents(__DIR__.'/../../app/Actions/Authentication/ResetPasswordAction.php');
     expect($content)
         ->toContain('TenantAwareAuthenticatable')
         ->not->toContain('use Illuminate\Contracts\Auth\Authenticatable;');
@@ -44,7 +43,7 @@ test('reset password action uses unified contract', function () {
 test('command upcaster service exists and is instantiable', function () {
     expect(class_exists(CommandUpcaster::class))->toBeTrue();
 
-    $upcaster = new CommandUpcaster();
+    $upcaster = new CommandUpcaster;
     expect($upcaster)->toBeInstanceOf(CommandUpcaster::class);
     expect($upcaster->count())->toBe(0);
 });
@@ -61,6 +60,7 @@ test('command upcaster processes payloads through upcaster chain', function () {
         ->once()
         ->andReturnUsing(function (array $payload) {
             $payload['upgraded'] = true;
+
             return $payload;
         });
 
@@ -79,6 +79,6 @@ test('command upcaster processes payloads through upcaster chain', function () {
 });
 
 test('command upcaster rejects payloads missing required keys', function () {
-    $upcaster = new CommandUpcaster();
+    $upcaster = new CommandUpcaster;
     $upcaster->process(['data' => 'no_type_or_version']);
 })->throws(\InvalidArgumentException::class, 'event_type');

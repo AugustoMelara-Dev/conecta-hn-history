@@ -26,8 +26,11 @@ class SendAppointmentRemindersTest extends TestCase
     use RefreshDatabase;
 
     private string $tenantId;
+
     private string $userId;
+
     private int $serviceId;
+
     private int $providerId;
 
     protected function setUp(): void
@@ -48,7 +51,7 @@ class SendAppointmentRemindersTest extends TestCase
         DB::table('users')->insert([
             'id' => $this->userId,
             'name' => 'Test User',
-            'email' => 'test-' . Str::random(8) . '@example.com',
+            'email' => 'test-'.Str::random(8).'@example.com',
             'password' => bcrypt('password'),
             'role' => 'customer',
             'created_at' => now(),
@@ -61,7 +64,7 @@ class SendAppointmentRemindersTest extends TestCase
             'id' => $this->tenantId,
             'user_id' => $this->userId,
             'name' => 'Test Reminder Tenant',
-            'slug' => 'test-reminder-' . Str::random(6),
+            'slug' => 'test-reminder-'.Str::random(6),
             'plan' => 'SEED',
             'is_active' => true,
             'plan_type' => 'semilla',
@@ -88,7 +91,7 @@ class SendAppointmentRemindersTest extends TestCase
         $this->providerId = DB::table('service_providers')->insertGetId([
             'tenant_id' => $this->tenantId,
             'name' => 'Test Provider',
-            'email' => 'provider-' . Str::random(8) . '@example.com',
+            'email' => 'provider-'.Str::random(8).'@example.com',
             'phone' => '9999-9999',
             'schedule_config' => null,
             'is_active' => true,
@@ -240,6 +243,7 @@ class SendAppointmentRemindersTest extends TestCase
 
         Mail::assertQueued(AppointmentReminderMail::class, function ($mail) {
             $subject = $mail->envelope()->subject;
+
             return str_contains($subject, 'Recordatorio de Cita') &&
                    str_contains($subject, 'Test Reminder Tenant');
         });

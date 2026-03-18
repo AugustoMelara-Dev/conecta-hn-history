@@ -31,7 +31,6 @@ final readonly class EventSerializer
         private array $currentVersions = [],
     ) {}
 
-
     /**
      * Serialize a domain event to storage format.
      *

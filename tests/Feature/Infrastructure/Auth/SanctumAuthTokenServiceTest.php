@@ -40,12 +40,19 @@ beforeEach(function () {
  */
 function mockTenantContext(string|int $tenantId): TenantContextInterface
 {
-    return new class($tenantId) implements TenantContextInterface {
+    return new class($tenantId) implements TenantContextInterface
+    {
         public function __construct(private string|int $id) {}
 
-        public function getTenantUuid(): ?string { return null; }
+        public function getTenantUuid(): ?string
+        {
+            return null;
+        }
 
-        public function getTenantId(): string|int|null { return $this->id; }
+        public function getTenantId(): string|int|null
+        {
+            return $this->id;
+        }
     };
 }
 
@@ -143,10 +150,17 @@ test('throws UserNotFoundException for non-existent user', function () {
 // TESTS: NULL TENANT CONTEXT
 
 test('throws TenantMismatchException when no tenant context', function () {
-    $mock = new class implements TenantContextInterface {
-        public function getTenantUuid(): ?string { return null; }
+    $mock = new class implements TenantContextInterface
+    {
+        public function getTenantUuid(): ?string
+        {
+            return null;
+        }
 
-        public function getTenantId(): string|int|null { return null; }
+        public function getTenantId(): string|int|null
+        {
+            return null;
+        }
     };
 
     $service = new SanctumAuthTokenService($mock);

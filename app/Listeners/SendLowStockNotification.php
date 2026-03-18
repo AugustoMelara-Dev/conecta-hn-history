@@ -79,7 +79,6 @@ final class SendLowStockNotification implements ShouldQueue
             return; // Graceful termination - do not retry malicious jobs
         }
 
-
         $newStock = $event->currentStock;
         $threshold = $event->threshold;
 

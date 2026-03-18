@@ -8,9 +8,9 @@ use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\UpdateTenantScheduleCommand;
+use App\Domain\Identity\Exceptions\TenantNotFoundException;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use DomainException;
-use App\Domain\Identity\Exceptions\TenantNotFoundException;
 
 /**
  * UpdateTenantScheduleHandler - Business Hours Update Handler
