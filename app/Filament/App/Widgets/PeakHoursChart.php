@@ -5,17 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\App\Widgets;
 
 use App\Models\Interaction;
+use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Widgets\ChartWidget;
 
-/**
- * PeakHoursChart - Gráfico de Horas Pico
- *
- * Filament v4 Compatible: Extiende ChartWidget que maneja propiedades internamente.
- */
 class PeakHoursChart extends ChartWidget
 {
-    protected ?string $heading = 'Horarios de Mayor Tráfico';
+    protected ?string $heading = 'Horarios de Mayor Trafico';
 
     public function getColumnSpan(): int|string|array
     {
@@ -31,25 +27,28 @@ class PeakHoursChart extends ChartWidget
     {
         $tenant = Filament::getTenant();
 
-        if (! $tenant) {
+        if (! $tenant instanceof Tenant) {
             return [
                 'datasets' => [],
                 'labels' => [],
             ];
         }
 
-        $hourlyData = Interaction::where('tenant_id', $tenant->id)
+        /** @var array<int, int> $hourlyData */
+        $hourlyData = Interaction::query()
+            ->where('tenant_id', (string) $tenant->getKey())
             ->selectRaw('HOUR(created_at) as hour, COUNT(*) as count')
             ->groupBy('hour')
             ->orderBy('hour')
             ->pluck('count', 'hour')
-            ->toArray();
+            ->map(fn ($count): int => (int) $count)
+            ->all();
 
         $labels = [];
         $data = [];
 
         for ($i = 0; $i < 24; $i++) {
-            $labels[] = str_pad($i, 2, '0', STR_PAD_LEFT).':00';
+            $labels[] = str_pad((string) $i, 2, '0', STR_PAD_LEFT).':00';
             $data[] = $hourlyData[$i] ?? 0;
         }
 

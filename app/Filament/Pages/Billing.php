@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Models\Tenant;
+use App\Models\User;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
 
@@ -18,9 +19,9 @@ class Billing extends Page
 {
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationLabel = 'Facturación';
+    protected static ?string $navigationLabel = 'Facturacion';
 
-    protected static ?string $title = 'Mi Suscripción';
+    protected static ?string $title = 'Mi Suscripcion';
 
     protected static ?string $slug = 'billing';
 
@@ -34,15 +35,18 @@ class Billing extends Page
 
     public function mount(): void
     {
-        $this->tenant = Auth::user()?->tenant;
+        $user = Auth::user();
+        $tenant = $user instanceof User ? $user->tenant : null;
+
+        $this->tenant = $tenant instanceof Tenant ? $tenant : null;
     }
 
     /**
-     * Get current subscription status data
+     * @return array<string, bool|int|string|null>
      */
     public function getSubscriptionData(): array
     {
-        if (! $this->tenant) {
+        if (! $this->tenant instanceof Tenant) {
             return [
                 'plan' => 'Sin Negocio',
                 'status' => 'N/A',
@@ -53,6 +57,7 @@ class Billing extends Page
                 'is_trial' => false,
                 'is_past_due' => false,
                 'is_expiring_soon' => false,
+                'is_canceled' => false,
             ];
         }
 
@@ -64,9 +69,7 @@ class Billing extends Page
             'raw_status' => $rawStatus,
             'expires_at' => $this->tenant->subscription_ends_at?->format('d M Y'),
             'days_left' => $this->tenant->days_until_expiry,
-            // Use the NEW computed is_pro (not is_pro_computed)
-            'is_pro' => $this->tenant->is_pro,
-            // Semantic flags for UI badges
+            'is_pro' => $this->tenant->getIsProAttribute(),
             'is_trial' => $rawStatus === 'trial',
             'is_past_due' => $rawStatus === 'past_due',
             'is_canceled' => $rawStatus === 'canceled',
@@ -75,12 +78,12 @@ class Billing extends Page
     }
 
     /**
-     * Bank transfer information for manual payments
+     * @return array<string, string>
      */
     public function getBankInfo(): array
     {
         return [
-            'bank_name' => 'Banco Atlántida',
+            'bank_name' => 'Banco Atlantida',
             'account_type' => 'Cuenta de Ahorro',
             'account_number' => '2060-1234567-8',
             'account_holder' => 'CONECTA HN S.A. de C.V.',
@@ -89,7 +92,7 @@ class Billing extends Page
     }
 
     /**
-     * Pricing information
+     * @return array<string, array<string, array<int, string>|int|string>>
      */
     public function getPricing(): array
     {
@@ -97,24 +100,22 @@ class Billing extends Page
             'monthly' => [
                 'price' => 299,
                 'period' => 'mes',
-                'features' => ['Carrito de compras', 'Personalización de marca', 'Sin límite de productos'],
+                'features' => ['Carrito de compras', 'Personalizacion de marca', 'Sin limite de productos'],
             ],
             'annual' => [
                 'price' => 2499,
-                'period' => 'año',
+                'period' => 'ano',
                 'discount' => '30% OFF',
                 'features' => ['Todo de Pro', '2 meses gratis', 'Soporte prioritario'],
             ],
         ];
     }
 
-    /**
-     * Generate WhatsApp URL for payment proof
-     */
     public function getWhatsAppPaymentUrl(): string
     {
-        $phone = '50499999999'; // Replace with actual support number
-        $message = urlencode("¡Hola! Quiero enviar mi comprobante de pago para Plan Pro.\n\nNegocio: ".($this->tenant?->name ?? 'Mi Negocio'));
+        $phone = '50499999999';
+        $tenantName = $this->tenant instanceof Tenant ? $this->tenant->name : 'Mi Negocio';
+        $message = urlencode("Hola! Quiero enviar mi comprobante de pago para Plan Pro.\n\nNegocio: {$tenantName}");
 
         return "https://wa.me/{$phone}?text={$message}";
     }

@@ -1,11 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\LoyaltyRewardResource\Pages;
 use App\Models\LoyaltyReward;
-use Filament\Forms;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -16,7 +26,7 @@ class LoyaltyRewardResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-gift';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Fidelización';
+    protected static string|\UnitEnum|null $navigationGroup = 'Fidelizacion';
 
     protected static ?string $navigationLabel = 'Recompensas';
 
@@ -26,27 +36,27 @@ class LoyaltyRewardResource extends Resource
     {
         return $schema
             ->schema([
-                Forms\Components\Section::make('Detalles del Premio')
+                Section::make('Detalles del Premio')
                     ->schema([
-                        Forms\Components\TextInput::make('name')
+                        TextInput::make('name')
                             ->label('Nombre del Premio')
                             ->required()
                             ->maxLength(255),
 
-                        Forms\Components\Textarea::make('description')
-                            ->label('Descripción')
+                        Textarea::make('description')
+                            ->label('Descripcion')
                             ->maxLength(65535)
                             ->columnSpanFull(),
 
-                        Forms\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
-                                Forms\Components\TextInput::make('points_cost')
+                                TextInput::make('points_cost')
                                     ->label('Costo en Puntos')
                                     ->numeric()
                                     ->required()
                                     ->minValue(1),
 
-                                Forms\Components\TextInput::make('stock')
+                                TextInput::make('stock')
                                     ->label('Stock Disponible')
                                     ->helperText('Usa -1 para stock ilimitado')
                                     ->numeric()
@@ -54,7 +64,7 @@ class LoyaltyRewardResource extends Resource
                                     ->required(),
                             ]),
 
-                        Forms\Components\Toggle::make('is_active')
+                        Toggle::make('is_active')
                             ->label('Disponible para Canje')
                             ->default(true),
                     ]),
@@ -76,7 +86,7 @@ class LoyaltyRewardResource extends Resource
                     ->suffix(' Ptos'),
                 Tables\Columns\TextColumn::make('stock')
                     ->label('Stock')
-                    ->formatStateUsing(fn (string $state): string => $state === '-1' ? '∞' : $state),
+                    ->formatStateUsing(fn (string $state): string => $state === '-1' ? 'infinito' : $state),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Activo')
                     ->boolean(),
@@ -86,12 +96,12 @@ class LoyaltyRewardResource extends Resource
                     ->label('Estado'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

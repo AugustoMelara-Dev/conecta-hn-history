@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Models\User;
 use App\Settings\GeneralSettings;
 use Filament\Actions\Action;
 use Filament\Forms\Components\RichEditor;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Tabs;
-use Filament\Forms\Components\Tabs\Tab;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 
 /**
@@ -24,12 +25,16 @@ use Filament\Schemas\Schema;
  * Página centralizada para gestionar todas las configuraciones
  * del sistema sin necesidad de modificar código.
  */
+/**
+ * @property-read Schema $form
+ */
 class ManageGeneralSettings extends Page implements HasForms
 {
     use InteractsWithForms;
 
     protected string $view = 'filament.pages.manage-general-settings';
 
+    /** @var array<string, mixed>|null */
     public ?array $data = [];
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cog';
@@ -51,10 +56,14 @@ class ManageGeneralSettings extends Page implements HasForms
     {
         $user = auth()->user();
 
+        if (! $user instanceof User) {
+            return false;
+        }
+
         $superAdmins = config('auth.super_admins', []);
         $isWhitelisted = in_array($user->email ?? '', $superAdmins, true);
 
-        return $user && ($user->hasRole('super_admin') || $isWhitelisted);
+        return $user->isSuperAdmin() || $isWhitelisted;
     }
 
     public function mount(): void

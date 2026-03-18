@@ -5,19 +5,10 @@ declare(strict_types=1);
 namespace App\Filament\App\Widgets;
 
 use App\Models\Order;
+use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Widgets\ChartWidget;
-use Flowframe\Trend\Trend;
-use Flowframe\Trend\TrendValue;
 
-/**
- * OrdersChart - 7-Day Order Volume
- *
- * Bar chart showing daily order counts for quick
- * visualization of booking trends.
- *
- * SECURITY: Data is strictly scoped to current tenant.
- */
 class OrdersChart extends ChartWidget
 {
     protected ?string $heading = 'Ordenes por Dia (Ultima Semana)';
@@ -28,28 +19,44 @@ class OrdersChart extends ChartWidget
     {
         $tenant = Filament::getTenant();
 
-        $data = Trend::query(
-            Order::query()
-                ->where('tenant_id', $tenant->id)
-        )
-            ->dateColumn('created_at')
-            ->between(
-                start: now()->subDays(7),
-                end: now(),
-            )
-            ->perDay()
-            ->count();
+        if (! $tenant instanceof Tenant) {
+            return [
+                'datasets' => [],
+                'labels' => [],
+            ];
+        }
+
+        /** @var array<string, int> $aggregates */
+        $aggregates = Order::query()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->whereBetween('created_at', [now()->subDays(7)->startOfDay(), now()->endOfDay()])
+            ->selectRaw('DATE(created_at) as order_date, COUNT(*) as aggregate')
+            ->groupBy('order_date')
+            ->orderBy('order_date')
+            ->pluck('aggregate', 'order_date')
+            ->map(fn ($value): int => (int) $value)
+            ->all();
+
+        $labels = [];
+        $data = [];
+
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $key = $date->toDateString();
+            $labels[] = $date->format('d/m');
+            $data[] = $aggregates[$key] ?? 0;
+        }
 
         return [
             'datasets' => [
                 [
                     'label' => 'Ordenes',
-                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate),
+                    'data' => $data,
                     'backgroundColor' => '#000000',
                     'borderRadius' => 4,
                 ],
             ],
-            'labels' => $data->map(fn (TrendValue $value) => $value->date),
+            'labels' => $labels,
         ];
     }
 

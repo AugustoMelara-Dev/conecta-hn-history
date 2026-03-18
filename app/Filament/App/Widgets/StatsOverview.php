@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
+use App\Models\Interaction;
+use App\Models\Order;
+use App\Models\Tenant;
+use Filament\Facades\Filament;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
-/**
- * StatsOverview - Widget de Estadisticas Generales
- *
- * Filament v4 Compatible: Extiende StatsOverviewWidget.
- */
 class StatsOverview extends StatsOverviewWidget
 {
     public static function getSort(): int
@@ -21,29 +20,18 @@ class StatsOverview extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = Filament::getTenant();
 
-        if (! $tenant) {
+        if (! $tenant instanceof Tenant) {
             return [];
         }
 
-        $views = \App\Models\Interaction::where('tenant_id', $tenant->id)
-            ->where('type', 'view')
-            ->count();
-
-        $clicks = \App\Models\Interaction::where('tenant_id', $tenant->id)
-            ->where('type', 'whatsapp_click')
-            ->count();
-
+        $tenantId = (string) $tenant->getKey();
+        $views = Interaction::query()->where('tenant_id', $tenantId)->where('type', 'view')->count();
+        $clicks = Interaction::query()->where('tenant_id', $tenantId)->where('type', 'whatsapp_click')->count();
         $conversionRate = $views > 0 ? round(($clicks / $views) * 100, 1) : 0;
-
-        $pendingOrders = \App\Models\Order::where('tenant_id', $tenant->id)
-            ->where('status', 'pending')
-            ->count();
-
-        $totalRevenue = \App\Models\Order::where('tenant_id', $tenant->id)
-            ->where('status', 'delivered')
-            ->sum('total');
+        $pendingOrders = Order::query()->where('tenant_id', $tenantId)->where('status', 'pending')->count();
+        $totalRevenue = Order::query()->where('tenant_id', $tenantId)->where('status', 'delivered')->sum('total');
 
         return [
             Stat::make('Ingresos Totales', 'L. '.number_format((float) $totalRevenue, 2))

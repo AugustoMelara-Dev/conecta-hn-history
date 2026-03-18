@@ -5,28 +5,15 @@ declare(strict_types=1);
 namespace App\Filament\App\Widgets;
 
 use App\Models\Interaction;
+use App\Models\Tenant;
+use App\Settings\GeneralSettings;
+use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 
-/**
- * TenantStatsWidget - Dashboard Bento Grid con Psicología de Ventas
- *
- * Arquitectura de Datos:
- * - Visitas: $tenant->views (contador atómico, optimizado)
- * - Clics WhatsApp: Interaction::where('type', 'whatsapp_click')
- * - Productos: $tenant->products()->count()
- * - Rating: $tenant->rating (promedio de reseñas)
- *
- * Growth Hacking:
- * - Tarjeta de Plan cambia de color según FREE/PRO
- * - Límite de productos genera presión visual en FREE
- */
 class TenantStatsWidget extends Widget
 {
     protected string $view = 'filament.app.widgets.tenant-stats-widget';
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // PROPIEDADES PÚBLICAS (Accesibles en la vista Blade)
-    // ═══════════════════════════════════════════════════════════════════════
     public int $views = 0;
 
     public int $whatsappClicks = 0;
@@ -45,78 +32,47 @@ class TenantStatsWidget extends Widget
 
     public static function getSort(): int
     {
-        return 1; // Mostrar primero en el dashboard
+        return 1;
     }
 
     public function mount(): void
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = $this->getTenantRecord();
 
-        if (! $tenant) {
+        if (! $tenant instanceof Tenant) {
             return;
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // 1. VISITAS: Contador atómico del modelo Tenant (OPTIMIZADO)
-        // Incrementado en ShowTenant.php cada vez que alguien visita
-        // ═══════════════════════════════════════════════════════════════════
-        $this->views = $tenant->views ?? 0;
-
-        // ═══════════════════════════════════════════════════════════════════
-        // 2. CLICS WHATSAPP: De la tabla Interactions (granular)
-        // Esto permite tracking detallado de conversiones
-        // ═══════════════════════════════════════════════════════════════════
-        $this->whatsappClicks = Interaction::where('tenant_id', $tenant->id)
+        $tenantId = (string) $tenant->getKey();
+        $this->views = (int) ($tenant->getAttribute('views') ?? 0);
+        $this->whatsappClicks = Interaction::query()
+            ->where('tenant_id', $tenantId)
             ->where('type', 'whatsapp_click')
             ->count();
-
-        // ═══════════════════════════════════════════════════════════════════
-        // 3. PRODUCTOS: Conteo directo de productos activos
-        // ═══════════════════════════════════════════════════════════════════
         $this->productsCount = $tenant->products()->where('is_active', true)->count();
-
-        // ═══════════════════════════════════════════════════════════════════
-        // 4. RATING Y RESEÑAS
-        // ═══════════════════════════════════════════════════════════════════
-        $this->rating = (float) ($tenant->rating ?? 0);
-
-        // Verificar si existe la relación reviews
-        if (method_exists($tenant, 'reviews')) {
-            $this->reviewsCount = $tenant->reviews()->count();
-        }
-
-        // ═══════════════════════════════════════════════════════════════════
-        // 5. ESTADO DEL PLAN (Lógica de Monetización)
-        // ═══════════════════════════════════════════════════════════════════
-        $this->isPro = (bool) $tenant->is_pro;
+        $this->rating = (float) ($tenant->getAttribute('rating') ?? 0);
+        $this->reviewsCount = $tenant->reviews()->count();
+        $this->isPro = $tenant->getIsProAttribute();
         $this->planName = $this->isPro ? 'Plan PRO' : 'Plan Gratuito';
 
-        // Obtener límite de productos desde settings
         try {
-            $settings = app(\App\Settings\GeneralSettings::class);
-            $this->productLimit = $settings->free_plan_product_limit ?? 10;
-        } catch (\Exception $e) {
+            $this->productLimit = (int) (app(GeneralSettings::class)->free_plan_product_limit ?? 10);
+        } catch (\Throwable) {
             $this->productLimit = 10;
         }
     }
 
-    /**
-     * URL para la página de upgrade/billing
-     */
     public function getUpgradeUrl(): string
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = $this->getTenantRecord();
 
-        if ($tenant) {
-            return route('filament.app.pages.manage-billing', ['tenant' => $tenant->slug]);
+        if (! $tenant instanceof Tenant) {
+            return '#';
         }
 
-        return '#';
+        return route('filament.app.pages.manage-billing', ['tenant' => (string) ($tenant->getAttribute('slug') ?? '')]);
     }
 
-    /**
-     * Calcula la tasa de conversión
-     */
     public function getConversionRate(): float
     {
         if ($this->views === 0) {
@@ -124,5 +80,12 @@ class TenantStatsWidget extends Widget
         }
 
         return round(($this->whatsappClicks / $this->views) * 100, 1);
+    }
+
+    private function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

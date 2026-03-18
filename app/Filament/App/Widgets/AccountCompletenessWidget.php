@@ -8,42 +8,31 @@ use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 
-/**
- * AccountCompletenessWidget - Gamificación de Completitud del Perfil
- *
- * Filament v4 Compatible: Usa métodos en lugar de propiedades estáticas.
- */
 class AccountCompletenessWidget extends Widget
 {
-    /**
-     * Filament v4: Método para la vista
-     */
     public function getView(): string
     {
         return 'filament.app.widgets.account-completeness-widget';
     }
 
-    /**
-     * Filament v4: Método dinámico para column span
-     */
     public function getColumnSpan(): int|string|array
     {
         return 'full';
     }
 
-    /**
-     * Filament v4: Método estático para ordenamiento
-     */
     public static function getSort(): int
     {
         return -10;
     }
 
+    /**
+     * @return array{percentage: int, missingItems: list<array<string, mixed>>, completedItems: list<array<string, mixed>>, isComplete: bool, tenant: Tenant|null}
+     */
     protected function getViewData(): array
     {
-        $tenant = Filament::getTenant();
+        $tenant = $this->getTenantRecord();
 
-        if (! $tenant) {
+        if (! $tenant instanceof Tenant) {
             return [
                 'percentage' => 0,
                 'missingItems' => [],
@@ -64,59 +53,67 @@ class AccountCompletenessWidget extends Widget
         ];
     }
 
+    /**
+     * @return array{percentage: int, completed: list<array<string, mixed>>, missing: list<array<string, mixed>>}
+     */
     protected function calculateCompleteness(Tenant $tenant): array
     {
-        $tenantSlug = $tenant->slug;
+        $tenantSlug = (string) ($tenant->getAttribute('slug') ?? '');
+        $description = (string) ($tenant->getAttribute('description') ?? '');
 
         $checks = [
             [
                 'field' => 'Logo',
-                'check' => ! empty($tenant->logo_path),
-                'icon' => '📷',
+                'check' => ! empty($tenant->getAttribute('logo_path')),
+                'icon' => 'camara',
                 'action' => 'Sube tu logo',
                 'url' => "/app/{$tenantSlug}/edit-tenant-profile",
             ],
             [
                 'field' => 'Banner',
-                'check' => ! empty($tenant->banner_path),
-                'icon' => '🖼️',
+                'check' => ! empty($tenant->getAttribute('banner_path')),
+                'icon' => 'imagen',
                 'action' => 'Agrega portada',
                 'url' => "/app/{$tenantSlug}/edit-tenant-profile",
             ],
             [
-                'field' => 'Descripción',
-                'check' => ! empty($tenant->description) && strlen($tenant->description) > 30,
-                'icon' => '📝',
-                'action' => 'Escribe descripción',
+                'field' => 'Descripcion',
+                'check' => $description !== '' && strlen($description) > 30,
+                'icon' => 'nota',
+                'action' => 'Escribe descripcion',
                 'url' => "/app/{$tenantSlug}/edit-tenant-profile",
             ],
             [
                 'field' => 'WhatsApp',
-                'check' => ! empty($tenant->whatsapp_number),
-                'icon' => '📱',
+                'check' => ! empty($tenant->getAttribute('whatsapp_number')),
+                'icon' => 'telefono',
                 'action' => 'Agrega WhatsApp',
                 'url' => "/app/{$tenantSlug}/edit-tenant-profile",
             ],
             [
                 'field' => 'Productos',
                 'check' => $tenant->products()->count() > 0,
-                'icon' => '🛍️',
+                'icon' => 'bolsa',
                 'action' => 'Agrega producto',
                 'url' => "/app/{$tenantSlug}/products/create",
             ],
         ];
 
-        $completed = array_filter($checks, fn ($c) => $c['check']);
-        $missing = array_filter($checks, fn ($c) => ! $c['check']);
-
-        $percentage = count($checks) > 0
-            ? round((count($completed) / count($checks)) * 100)
-            : 0;
+        $completed = array_values(array_filter($checks, fn (array $check): bool => (bool) $check['check']));
+        $missing = array_values(array_filter($checks, fn (array $check): bool => ! $check['check']));
+        $percentage = (int) round((count($completed) / count($checks)) * 100);
 
         return [
             'percentage' => $percentage,
-            'completed' => array_values($completed),
-            'missing' => array_values($missing),
+            'completed' => $completed,
+            'missing' => $missing,
         ];
+    }
+
+    private function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

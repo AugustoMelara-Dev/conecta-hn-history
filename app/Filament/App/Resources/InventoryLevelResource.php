@@ -9,6 +9,7 @@ use App\Filament\App\Resources\InventoryLevelResource\Pages;
 use App\Filament\Traits\ScopesToTenant;
 use App\Models\InventoryLevel;
 use App\Models\InventoryMovement;
+use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -72,7 +73,7 @@ class InventoryLevelResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
-                Tables\Actions\Action::make('adjust_stock')
+                Action::make('adjust_stock')
                     ->label('Adjust Stock')
                     ->icon('heroicon-o-adjustments-horizontal')
                     ->visible(fn (InventoryLevel $record): bool => auth()->user()?->can('update', $record) ?? false)
@@ -106,7 +107,7 @@ class InventoryLevelResource extends Resource
                             ]);
                         });
                     }),
-                Tables\Actions\Action::make('report_loss')
+                Action::make('report_loss')
                     ->label('Report Loss')
                     ->icon('heroicon-o-exclamation-triangle')
                     ->color('danger')

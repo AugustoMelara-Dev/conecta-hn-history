@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
+use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 
-/**
- * QuickActionsWidget - Acciones Rápidas del Dashboard
- */
 class QuickActionsWidget extends Widget
 {
     public function getView(): string
@@ -27,11 +25,14 @@ class QuickActionsWidget extends Widget
         return 0;
     }
 
+    /**
+     * @return array{tenant: Tenant|null, isOpen: bool, productsCount: int}
+     */
     protected function getViewData(): array
     {
-        $tenant = Filament::getTenant();
+        $tenant = $this->getTenantRecord();
 
-        if (! $tenant) {
+        if (! $tenant instanceof Tenant) {
             return ['tenant' => null, 'isOpen' => false, 'productsCount' => 0];
         }
 
@@ -42,17 +43,17 @@ class QuickActionsWidget extends Widget
         ];
     }
 
-    protected function isBusinessOpen($tenant): bool
+    protected function isBusinessOpen(Tenant $tenant): bool
     {
-        if (empty($tenant->hours_data)) {
+        $hoursData = $tenant->getAttribute('hours_data');
+
+        if (empty($hoursData)) {
             return true;
         }
 
-        $hours = is_array($tenant->hours_data)
-            ? $tenant->hours_data
-            : json_decode($tenant->hours_data, true);
+        $hours = is_array($hoursData) ? $hoursData : json_decode((string) $hoursData, true);
 
-        if (! $hours) {
+        if (! is_array($hours) || $hours === []) {
             return true;
         }
 
@@ -60,18 +61,25 @@ class QuickActionsWidget extends Widget
         $today = $dayNames[now()->dayOfWeek] ?? 'lunes';
         $currentTime = now()->format('H:i');
 
-        if (! isset($hours[$today])) {
+        if (! isset($hours[$today]) || ! is_array($hours[$today])) {
             return true;
         }
 
         $todayHours = $hours[$today];
-        if (! empty($todayHours['closed'])) {
+        if (($todayHours['closed'] ?? false) === true) {
             return false;
         }
 
-        $open = $todayHours['open'] ?? $todayHours['open_time'] ?? '08:00';
-        $close = $todayHours['close'] ?? $todayHours['close_time'] ?? '18:00';
+        $open = (string) ($todayHours['open'] ?? $todayHours['open_time'] ?? '08:00');
+        $close = (string) ($todayHours['close'] ?? $todayHours['close_time'] ?? '18:00');
 
         return $currentTime >= $open && $currentTime <= $close;
+    }
+
+    private function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

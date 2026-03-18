@@ -4,14 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
+use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 
-/**
- * PendingReviewAlert - Alerta de Revisión Pendiente
- *
- * Filament v4 Compatible: Usa métodos en lugar de propiedades.
- */
 class PendingReviewAlert extends Widget
 {
     public function getView(): string
@@ -33,11 +29,13 @@ class PendingReviewAlert extends Widget
     {
         $tenant = Filament::getTenant();
 
-        if (! $tenant) {
+        if (! $tenant instanceof Tenant) {
             return false;
         }
 
-        // Show if pending, rejected, or inactive
-        return in_array($tenant->status, ['pending', 'rejected']) || ! $tenant->is_active;
+        $status = (string) ($tenant->getAttribute('status') ?? '');
+        $isActive = (bool) ($tenant->getAttribute('is_active') ?? false);
+
+        return in_array($status, ['pending', 'rejected'], true) || ! $isActive;
     }
 }
