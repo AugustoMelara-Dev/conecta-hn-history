@@ -38,7 +38,7 @@ final class DirectoryController extends Controller
         $activeCity = null;
         if ($filters->citySlug && $filters->citySlug !== 'all') {
             // Use pre-loaded cities collection instead of direct Eloquent
-            $activeCity = $cities->firstWhere('slug', $filters->citySlug);
+            $activeCity = collect($cities)->firstWhere('slug', $filters->citySlug);
         }
 
         $categories = $this->reader->getCategoriesWithTenants();

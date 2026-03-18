@@ -32,4 +32,27 @@ final class EloquentReferenceDataReader implements ReferenceDataReaderInterface
             ->get(['id', 'name'])
             ->toArray();
     }
+
+    public function getPopularCategories(int $limit = 8): array
+    {
+        return Category::query()
+            ->active()
+            ->ordered()
+            ->take($limit)
+            ->get(['id', 'name', 'slug', 'icon'])
+            ->map(fn (Category $category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'icon' => $category->icon,
+            ])
+            ->all();
+    }
+
+    public function countActiveCities(): int
+    {
+        return City::query()
+            ->where('is_available', true)
+            ->count();
+    }
 }

@@ -115,6 +115,21 @@ class InfrastructureServiceProvider extends ServiceProvider
             \App\Infrastructure\Persistence\Readers\EloquentReferenceDataReader::class
         );
 
+        $this->app->bind(
+            \App\Application\Shared\Contracts\ServiceRepositoryInterface::class,
+            \App\Infrastructure\Tenant\EloquentServiceRepository::class
+        );
+
+        $this->app->bind(
+            \App\Application\Shared\Contracts\ServiceProviderRepositoryInterface::class,
+            \App\Infrastructure\Tenant\EloquentServiceProviderRepository::class
+        );
+
+        $this->app->bind(
+            \App\Application\Shared\Contracts\AppointmentRepositoryInterface::class,
+            \App\Infrastructure\Tenant\EloquentAppointmentRepository::class
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
         // UPCASTING INFRASTRUCTURE (Resilient Read)
         // ═══════════════════════════════════════════════════════════════════════

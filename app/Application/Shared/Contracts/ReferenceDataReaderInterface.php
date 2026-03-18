@@ -28,4 +28,16 @@ interface ReferenceDataReaderInterface
      * @return array<int, array{id: int, name: string}>
      */
     public function getActiveCategories(): array;
+
+    /**
+     * Get highlighted categories for public discovery surfaces.
+     *
+     * @return array<int, array{id: int, name: string, slug: string, icon: string|null}>
+     */
+    public function getPopularCategories(int $limit = 8): array;
+
+    /**
+     * Count cities available for public discovery.
+     */
+    public function countActiveCities(): int;
 }

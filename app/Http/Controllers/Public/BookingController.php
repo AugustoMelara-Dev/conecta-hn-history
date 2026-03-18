@@ -8,10 +8,12 @@ use App\Application\Shared\Contracts\AppointmentRepositoryInterface;
 use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\ServiceProviderRepositoryInterface;
 use App\Application\Shared\Contracts\ServiceRepositoryInterface;
+use App\Application\Tenant\Commands\CreateAppointmentCommand;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -47,7 +49,7 @@ final class BookingController extends Controller
             abort(404, 'Tenant not found.');
         }
 
-        $services = $this->serviceRepository->getActiveForTenant($tenant->id)
+        $services = collect($this->serviceRepository->getActiveForTenant($tenant->id()))
             ->map(fn (array $s) => [
                 'id' => $s['id'],
                 'name' => $s['name'],
@@ -55,17 +57,19 @@ final class BookingController extends Controller
                 'price' => $s['formatted_price'],
                 'duration_minutes' => $s['duration_minutes'],
                 'duration_formatted' => $s['formatted_duration'],
-            ]);
+            ])
+            ->values()
+            ->all();
 
-        $providers = $this->providerRepository->getActiveForTenant($tenant->id);
+        $providers = $this->providerRepository->getActiveForTenant($tenant->id());
 
         return Inertia::render('Public/Book/Index', [
             'tenant' => [
-                'id' => $tenant->id,
-                'name' => $tenant->name,
-                'slug' => $tenant->slug,
-                'logo_url' => $tenant->logo_url,
-                'primary_color' => $tenant->primary_color ?? '#000000',
+                'id' => $tenant->id(),
+                'name' => $tenant->name(),
+                'slug' => $tenant->slug(),
+                'logo_url' => null,
+                'primary_color' => '#000000',
             ],
             'services' => $services,
             'providers' => $providers,
@@ -86,11 +90,11 @@ final class BookingController extends Controller
             abort(404, 'Tenant or Service not found.');
         }
 
-        if ($service->tenant_id !== $tenant->id) {
+        if ((string) $service->tenant_id !== $tenant->id()) {
             abort(404, 'Service not found');
         }
 
-        $providers = $this->providerRepository->getActiveForTenant($tenant->id);
+        $providers = $this->providerRepository->getActiveForTenant($tenant->id());
 
         return response()->json([
             'providers' => $providers,
@@ -122,12 +126,12 @@ final class BookingController extends Controller
             abort(404, 'Service not found.');
         }
 
-        if ($service->tenant_id !== $tenant->id) {
+        if ((string) $service->tenant_id !== $tenant->id()) {
             abort(404, 'Service not found');
         }
 
         $slots = $this->slotCalculator->calculate(
-            (string) $tenant->id,
+            $tenant->id(),
             $date,
             $service->duration_minutes,
             $validated['provider_id'] ?? null,
@@ -143,7 +147,7 @@ final class BookingController extends Controller
      *
      * POST /{tenant:slug}/book
      */
-    public function store(Request $request, string $tenantSlug)
+    public function store(Request $request, string $tenantSlug): RedirectResponse
     {
         $tenant = $this->tenantRepository->findBySlug($tenantSlug);
         if (! $tenant) {
@@ -168,7 +172,7 @@ final class BookingController extends Controller
             abort(404, 'Service or Provider not found.');
         }
 
-        if ($service->tenant_id !== $tenant->id || $provider->tenant_id !== $tenant->id) {
+        if ((string) $service->tenant_id !== $tenant->id() || (string) $provider->tenant_id !== $tenant->id()) {
             abort(403, 'Invalid service or provider');
         }
 
@@ -187,8 +191,8 @@ final class BookingController extends Controller
             ]);
         }
 
-        $command = new \App\Application\Tenant\Commands\CreateAppointmentCommand(
-            tenantId: $tenant->id,
+        $command = new CreateAppointmentCommand(
+            tenantId: $tenant->id(),
             serviceId: $service->id,
             serviceProviderId: $provider->id,
             scheduledAt: $scheduledAt,
@@ -202,7 +206,7 @@ final class BookingController extends Controller
         $result = $this->commandBus->dispatch($command);
 
         return redirect()->route('public.booking.success', [
-            'tenant' => $tenant->slug,
+            'tenant' => $tenant->slug(),
             'appointment' => $result['id'],
         ]);
     }
@@ -228,9 +232,9 @@ final class BookingController extends Controller
 
         return Inertia::render('Public/Book/Success', [
             'tenant' => [
-                'id' => $tenant->id,
-                'name' => $tenant->name,
-                'slug' => $tenant->slug,
+                'id' => $tenant->id(),
+                'name' => $tenant->name(),
+                'slug' => $tenant->slug(),
             ],
             'appointment' => $appointment ? [
                 'id' => $appointment->id,

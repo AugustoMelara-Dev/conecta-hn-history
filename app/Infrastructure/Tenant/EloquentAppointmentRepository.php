@@ -16,6 +16,15 @@ class EloquentAppointmentRepository implements AppointmentRepositoryInterface
 
     public function findWithRelations(string|int $id): ?Appointment
     {
-        return Appointment::with(['service', 'provider'])->find($id);
+        return Appointment::with(['service', 'provider', 'tenant'])->find($id);
+    }
+
+    public function create(array $attributes): Appointment
+    {
+        $appointment = new Appointment;
+        $appointment->forceFill($attributes);
+        $appointment->save();
+
+        return $appointment;
     }
 }

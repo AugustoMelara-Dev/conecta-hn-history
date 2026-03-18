@@ -12,8 +12,10 @@ use App\Domain\Common\Exceptions\ConcurrencyException;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Infrastructure\Common\Outbox\OutboxRepository;
+use App\Models\Tenant;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Spatie\OpeningHours\OpeningHours;
 
 /**
  * EventSourcedTenantRepository - Hybrid Persistence
@@ -64,6 +66,46 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
     {
         // Domain is mapped to slug in this architecture
         return $this->findBySlug($domain);
+    }
+
+    public function getFeatured(int $limit = 12): array
+    {
+        return Tenant::query()
+            ->published()
+            ->inPriorityOrder()
+            ->take($limit)
+            ->get([
+                'id',
+                'name',
+                'slug',
+                'description',
+                'hero_image',
+                'cover_path',
+                'brand_color',
+                'plan_type',
+                'is_pro',
+            ])
+            ->toArray();
+    }
+
+    public function countActive(): int
+    {
+        return Tenant::query()
+            ->published()
+            ->count();
+    }
+
+    public function getOpeningHours(string $tenantId): OpeningHours
+    {
+        $tenant = Tenant::find($tenantId);
+
+        return $tenant?->getOpeningHours() ?? OpeningHours::create([
+            'monday' => ['09:00-17:00'],
+            'tuesday' => ['09:00-17:00'],
+            'wednesday' => ['09:00-17:00'],
+            'thursday' => ['09:00-17:00'],
+            'friday' => ['09:00-17:00'],
+        ]);
     }
 
     public function create(array $attributes): TenantEntity

@@ -8,6 +8,7 @@ use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Models\Tenant;
+use Spatie\OpeningHours\OpeningHours;
 
 /**
  * EloquentTenantRepository - Infrastructure Adapter for Tenant Persistence
@@ -57,6 +58,58 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
         return $model ? $this->toEntity($model) : null;
     }
 
+    public function getFeatured(int $limit = 12): array
+    {
+        return Tenant::query()
+            ->select([
+                'id',
+                'name',
+                'slug',
+                'description',
+                'hero_image',
+                'cover_path',
+                'brand_color',
+                'plan_type',
+                'is_pro',
+            ])
+            ->published()
+            ->inPriorityOrder()
+            ->take($limit)
+            ->get()
+            ->map(fn (Tenant $tenant) => [
+                'id' => $tenant->id,
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'description' => $tenant->description,
+                'hero_image' => $tenant->hero_image,
+                'cover_path' => $tenant->cover_path,
+                'brand_color' => $tenant->brand_color,
+                'plan_type' => $tenant->plan_type instanceof TenantPlan ? $tenant->plan_type->value : (string) $tenant->plan_type,
+                'is_pro' => (bool) $tenant->is_pro,
+            ])
+            ->all();
+    }
+
+    public function countActive(): int
+    {
+        return Tenant::query()
+            ->published()
+            ->count();
+    }
+
+    public function getOpeningHours(string $tenantId): OpeningHours
+    {
+        $tenant = Tenant::find($tenantId);
+
+        return $tenant?->getOpeningHours() ?? OpeningHours::create([
+            'monday' => ['09:00-17:00'],
+            'tuesday' => ['09:00-17:00'],
+            'wednesday' => ['09:00-17:00'],
+            'thursday' => ['09:00-17:00'],
+            'friday' => ['09:00-17:00'],
+        ]);
+    }
+
     /**
      * @param  array<string, mixed>  $attributes
      */
@@ -91,6 +144,7 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'is_pro' => $state['is_pro'] ?? false,
             'product_limit' => $state['product_limit'] ?? 10,
             'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
+            'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
             'subscription_ends_at' => $state['subscription_ends_at'] ?? null,
         ]);
 
@@ -126,6 +180,7 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'created_at' => $model->created_at?->toIso8601String(),
             'updated_at' => $model->updated_at?->toIso8601String(),
             'plan_id' => $plan->value,
+            'subscription_status' => (string) ($model->subscription_status ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS),
             'subscription_ends_at' => $model->subscription_ends_at?->toIso8601String(),
             'subscription_reference' => null,
 

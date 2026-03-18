@@ -11,4 +11,9 @@ interface AppointmentRepositoryInterface
     public function findById(string|int $id): ?Appointment;
 
     public function findWithRelations(string|int $id): ?Appointment;
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function create(array $attributes): Appointment;
 }

@@ -35,6 +35,8 @@ final class TenantEntity
     // Subscription Properties (Billing Bounded Context)
     private ?string $planId = null;
 
+    private string $subscriptionStatus = 'inactive';
+
     private ?\DateTimeImmutable $subscriptionEndsAt = null;
 
     private ?string $subscriptionReference = null;
@@ -114,6 +116,21 @@ final class TenantEntity
     public function description(): ?string
     {
         return $this->description;
+    }
+
+    public function slug(): string
+    {
+        return $this->domain;
+    }
+
+    public function subscriptionStatus(): string
+    {
+        return $this->subscriptionStatus;
+    }
+
+    public function isPubliclyVisible(): bool
+    {
+        return $this->isActive && in_array($this->subscriptionStatus, ['active', 'trial'], true);
     }
 
     // Additional getters if needed by Repository mapping,
@@ -244,6 +261,7 @@ final class TenantEntity
 
             // Subscription State (Billing Context) - CRITICAL FOR PERSISTENCE
             'plan_id' => $this->planId,
+            'subscription_status' => $this->subscriptionStatus,
             'subscription_ends_at' => $this->subscriptionEndsAt?->format(\DateTimeInterface::ATOM),
             'subscription_reference' => $this->subscriptionReference,
 
@@ -289,6 +307,9 @@ final class TenantEntity
 
         // Subscription State (CRITICAL - prevents Premium Amnesia)
         $tenant->planId = isset($state['plan_id']) ? (string) $state['plan_id'] : null;
+        $tenant->subscriptionStatus = isset($state['subscription_status'])
+            ? (string) $state['subscription_status']
+            : 'inactive';
         $tenant->subscriptionEndsAt = isset($state['subscription_ends_at']) && $state['subscription_ends_at'] !== null
             ? new DateTimeImmutable($state['subscription_ends_at'])
             : null;

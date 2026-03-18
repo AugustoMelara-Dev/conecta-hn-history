@@ -1105,6 +1105,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Application\Sales\Commands\CreateOrderCommand::class => \App\Application\Sales\Handlers\CreateOrderHandler::class,
             \App\Application\Tenant\Commands\RegisterTenantCommand::class => \App\Application\Tenant\Handlers\RegisterTenantHandler::class,
             \App\Application\Tenant\Commands\CancelAppointmentCommand::class => \App\Application\Tenant\Handlers\CancelAppointmentHandler::class,
+            \App\Application\Tenant\Commands\CreateAppointmentCommand::class => \App\Application\Tenant\Handlers\CreateAppointmentHandler::class,
             // \App\Application\Identity\Commands\RegisterUserCommand::class => \App\Application\Identity\Handlers\RegisterUserHandler::class, (Replaced by Decorator Stack)
             \App\Application\Billing\Commands\ReportPaymentCommand::class => \App\Application\Billing\Handlers\ReportPaymentHandlerInterface::class,
             \App\Application\Reviews\Commands\SubmitReviewCommand::class => \App\Application\Reviews\Handlers\SubmitReviewHandler::class,

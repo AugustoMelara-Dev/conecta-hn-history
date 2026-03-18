@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Repositories;
 
 use App\Domain\TenantGovernance\Entities\TenantEntity;
+use Spatie\OpeningHours\OpeningHours;
 
 /**
  * TenantRepositoryInterface - Diamond Standard Port
@@ -38,6 +39,15 @@ interface TenantRepositoryInterface
     public function existsBySlug(string $slug): bool;
 
     public function findByDomain(string $domain): ?TenantEntity;
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getFeatured(int $limit = 12): array;
+
+    public function countActive(): int;
+
+    public function getOpeningHours(string $tenantId): OpeningHours;
 
     /**
      * @param  array<string, mixed>  $attributes
