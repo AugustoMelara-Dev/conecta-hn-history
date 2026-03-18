@@ -12,7 +12,7 @@ final readonly class UniqueProductSkuRule implements ValidationRuleInterface
 {
     public function __construct(
         private ProductRepositoryInterface $productRepository,
-        private string $ignoreProductId
+        private int|string $ignoreProductId
     ) {}
 
     public function validate(string $attribute, mixed $value, Closure $fail): void

@@ -43,24 +43,27 @@ final readonly class DeleteProductHandler
         $product = $this->productRepository->findById($command->productId);
 
         if ($product === null) {
-            throw new ProductNotFoundException("Product not found: {$command->productId}");
+            throw ProductNotFoundException::withId($command->productId);
         }
 
         // 2. SECURITY GUARD: Tenant Ownership Verification
-        if ($product->tenant_id !== $command->tenantId) {
+        if (! $product->belongsToTenant($command->tenantId)) {
             $this->logger->warning('SECURITY: Cross-tenant product deletion attempt', [
                 'requested_product_id' => $command->productId,
                 'requesting_tenant_id' => $command->tenantId,
             ]);
-            throw new ProductNotFoundException("Product not found: {$command->productId}");
+            throw ProductNotFoundException::withId($command->productId);
         }
+
+        $productId = $product->id
+            ?? throw new \LogicException('Cannot delete a product without a persisted ID.');
 
         // 3. Soft Delete via Repository
         $this->productRepository->delete($product);
 
         // 4. Dispatch Domain Event
         $this->eventDispatcher->dispatch(new ProductDeleted(
-            productId: $product->id,
+            productId: $productId,
             tenantId: $command->tenantId,
             name: $product->name,
         ));

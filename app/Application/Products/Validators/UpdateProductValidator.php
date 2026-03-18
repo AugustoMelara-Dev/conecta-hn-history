@@ -24,7 +24,7 @@ final readonly class UpdateProductValidator
                 'required',
                 'string',
                 'max:100',
-                new UniqueProductSkuRule($this->productRepository, $command->productId),
+                new UniqueProductSkuRule($this->productRepository, (string) $command->productId),
             ],
             // Add other fields if command has them (Assuming Command mirrors params)
             'name' => ['required', 'string', 'max:255'],

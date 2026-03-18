@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Sales\Entities;
 
+use App\Domain\Sales\Exceptions\OrderCannotBeCancelledException;
 use DateTimeImmutable;
 
 /**
@@ -33,14 +34,74 @@ final readonly class OrderEntity
         public ?string $customerNotes = null,
         public string $deliveryType = 'pickup',
         public string $paymentMethod = 'pending',
+        public string $paymentStatus = 'pending',
         public float $taxAmount = 0,
         public float $deliveryFee = 0,
         public float $discountAmount = 0,
         public ?string $couponCode = null,
+        public ?string $cancellationReason = null,
+        public ?DateTimeImmutable $cancelledAt = null,
+        public ?int $cancelledById = null,
+        public ?DateTimeImmutable $paidAt = null,
         /** @var array<int, array> $items Raw item data for now, ideally LineItemEntity[] */
         public array $items = []
     ) {}
 
-    // setId() removed to enforce strict immutability (A1).
-    // Infrastructure must hydrate $id via constructor at reconstitution time.
+    public function belongsToTenant(string $tenantId): bool
+    {
+        return $this->tenantId === $tenantId;
+    }
+
+    public function canBeCancelled(): bool
+    {
+        return ! in_array($this->status, ['delivered', 'cancelled'], true);
+    }
+
+    public function cancel(string $reason, int $cancelledByUserId): self
+    {
+        if ($this->status === 'cancelled') {
+            return $this;
+        }
+
+        if (! $this->canBeCancelled()) {
+            throw new OrderCannotBeCancelledException(
+                "Order #{$this->orderNumber} cannot be cancelled from status {$this->status}."
+            );
+        }
+
+        return new self(
+            id: $this->id,
+            tenantId: $this->tenantId,
+            locationId: $this->locationId,
+            customerId: $this->customerId,
+            orderNumber: $this->orderNumber,
+            customerName: $this->customerName,
+            customerEmail: $this->customerEmail,
+            currency: $this->currency,
+            subtotal: $this->subtotal,
+            total: $this->total,
+            status: 'cancelled',
+            createdAt: $this->createdAt,
+            customerPhone: $this->customerPhone,
+            customerAddress: $this->customerAddress,
+            customerNotes: $this->customerNotes,
+            deliveryType: $this->deliveryType,
+            paymentMethod: $this->paymentMethod,
+            paymentStatus: $this->paymentStatus,
+            taxAmount: $this->taxAmount,
+            deliveryFee: $this->deliveryFee,
+            discountAmount: $this->discountAmount,
+            couponCode: $this->couponCode,
+            cancellationReason: $reason,
+            cancelledAt: new DateTimeImmutable,
+            cancelledById: $cancelledByUserId,
+            paidAt: $this->paidAt,
+            items: $this->items
+        );
+    }
+
+    public function wasPaid(): bool
+    {
+        return $this->paymentStatus === 'paid' && $this->paidAt !== null;
+    }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domain\Identity\Entities\UserEntity;
+use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Exceptions\InvalidCouponException;
 use App\Models\Coupon;
 use App\Models\Tenant;
@@ -62,7 +64,7 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
      *
      * @throws InvalidCouponException If coupon is invalid for any reason
      */
-    public function validate(string $code, ?User $user, float $cartTotal, ?Tenant $tenant = null): Coupon
+    public function validate(string $code, UserEntity|User $user, float $cartTotal, TenantEntity|Tenant $tenant): Coupon
     {
         // Resolve tenant ID (defensive: from user or explicit tenant)
         $tenantId = $this->resolveTenantId($user, $tenant);
@@ -128,7 +130,7 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
      * @throws InvalidCouponException If coupon depleted during lock acquisition
      * @throws \Throwable On transaction failure
      */
-    public function redeem(Coupon $coupon, ?User $user = null, ?int $orderId = null): void
+    public function redeem(Coupon $coupon, UserEntity|User $user, ?int $orderId = null): void
     {
         DB::transaction(function () use ($coupon, $user, $orderId) {
             // STEP 1: Acquire exclusive lock on coupon row
@@ -145,12 +147,13 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
             }
 
             // STEP 3: Per-user tracking (ONLY if user is authenticated)
-            if ($user !== null && $this->hasCouponUserTable()) {
+            if ($this->hasCouponUserTable()) {
                 $maxUsesPerUser = $this->getMaxUsesPerUser($lockedCoupon);
+                $userId = $this->resolveUserId($user);
 
                 $userUsageCount = DB::table('coupon_user')
                     ->where('coupon_id', $lockedCoupon->id)
-                    ->where('user_id', $user->id)
+                    ->where('user_id', $userId)
                     ->count();
 
                 if ($userUsageCount >= $maxUsesPerUser) {
@@ -160,7 +163,7 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
                 // Record per-user redemption in pivot table
                 DB::table('coupon_user')->insert([
                     'coupon_id' => $lockedCoupon->id,
-                    'user_id' => $user->id,
+                    'user_id' => $userId,
                     'order_id' => $orderId,
                     'redeemed_at' => CarbonImmutable::now(self::TIMEZONE),
                 ]);
@@ -173,8 +176,8 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
                 'context' => 'coupon_redeemed',
                 'coupon_id' => $lockedCoupon->id,
                 'coupon_code' => $lockedCoupon->code,
-                'user_id' => $user?->id,
-                'is_guest' => $user === null,
+                'user_id' => $this->resolveUserId($user),
+                'is_guest' => false,
                 'order_id' => $orderId,
                 'new_usage_count' => $lockedCoupon->usage_count,
             ]);
@@ -188,20 +191,17 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
      * @param  User|null  $user  The user who redeemed it (null for guests - no-op)
      * @param  int  $orderId  The completed order ID
      */
-    public function linkToOrder(Coupon $coupon, ?User $user, int $orderId): void
+    public function linkToOrder(Coupon $coupon, UserEntity|User $user, int $orderId): void
     {
-        // Guests don't have pivot records to update
-        if ($user === null) {
-            return;
-        }
-
         if (! $this->hasCouponUserTable()) {
             return;
         }
 
+        $userId = $this->resolveUserId($user);
+
         DB::table('coupon_user')
             ->where('coupon_id', $coupon->id)
-            ->where('user_id', $user->id)
+            ->where('user_id', $userId)
             ->whereNull('order_id')
             ->orderByDesc('redeemed_at')
             ->limit(1)
@@ -219,11 +219,15 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
      *
      * @throws InvalidCouponException If no tenant context can be determined
      */
-    private function resolveTenantId(?User $user, ?Tenant $tenant = null): int
+    private function resolveTenantId(UserEntity|User $user, TenantEntity|Tenant $tenant): string|int
     {
         // Strategy 0: Explicit tenant parameter (highest priority for guests)
+        if ($tenant instanceof TenantEntity) {
+            return $tenant->id();
+        }
+
         if ($tenant !== null) {
-            return (int) $tenant->id;
+            return $tenant->id;
         }
 
         // Strategy 1: Filament context (works regardless of user)
@@ -247,28 +251,37 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
         }
 
         // Strategy 3: User-based resolution (only if user is present)
+        if ($user instanceof UserEntity) {
+            return $user->tenantId() ?? throw InvalidCouponException::noTenantContext();
+        }
+
         if ($user !== null) {
             // Direct tenant_id attribute on User
             $tenantId = $user->getAttribute('tenant_id');
             if ($tenantId !== null) {
-                return (int) $tenantId;
+                return $tenantId;
             }
 
             // User has tenants() relationship
             if (method_exists($user, 'tenants')) {
                 $tenantId = $user->tenants()->value('id');
                 if ($tenantId !== null) {
-                    return (int) $tenantId;
+                    return $tenantId;
                 }
             }
 
             // User has tenant() singular relationship
             if (method_exists($user, 'tenant') && $user->tenant !== null) {
-                return (int) $user->tenant->id;
+                return $user->tenant->id;
             }
         }
 
         throw InvalidCouponException::noTenantContext();
+    }
+
+    private function resolveUserId(UserEntity|User $user): string|int
+    {
+        return $user instanceof UserEntity ? $user->id() : $user->id;
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════

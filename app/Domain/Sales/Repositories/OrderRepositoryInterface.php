@@ -20,7 +20,7 @@ interface OrderRepositoryInterface
     /**
      * Find an order by primary identifier.
      */
-    public function findById(int $id): ?OrderEntity;
+    public function findById(int|string $id): ?OrderEntity;
 
     /**
      * Persist a new or updated order aggregate.

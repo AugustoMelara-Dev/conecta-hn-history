@@ -64,7 +64,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
     {
         $tenant = $this->tenantRepository->findById($command->tenantId);
         if ($tenant === null) {
-            throw new TenantNotFoundException("Tenant {$command->tenantId} not found");
+            throw TenantNotFoundException::withId($command->tenantId);
         }
 
         $this->assertFulfillmentCapability($command);
@@ -72,7 +72,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
 
         $user = $this->userRepository->findById($command->customerId, $command->tenantId);
         if (! $user) {
-            throw new UserNotFoundException("User {$command->customerId} not found");
+            throw UserNotFoundException::withIdAndTenant($command->customerId, $command->tenantId);
         }
 
         $lockedProducts = $this->inventoryManager->validateAndLock(
@@ -131,13 +131,15 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
         );
 
         $persistedOrder = $this->orderRepository->save($orderEntity);
+        $orderId = $persistedOrder->id
+            ?? throw new \LogicException('Order repository must return a persisted order ID.');
 
         if ($coupon && $persistedOrder->id) {
-            $this->couponValidator->linkToOrder($coupon, null, $persistedOrder->id);
+            $this->couponValidator->linkToOrder($coupon, $user, $orderId);
         }
 
         $this->eventDispatcher->dispatch(new OrderCreated(
-            orderId: $persistedOrder->id,
+            orderId: $orderId,
             tenantId: $command->tenantId,
             orderNumber: $persistedOrder->orderNumber,
             customerName: $persistedOrder->customerName,
@@ -156,7 +158,7 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
                 $this->inventoryHoldPort->commit(
                     $command->tenantId,
                     $command->sessionId,
-                    $persistedOrder->id
+                    $orderId
                 );
             }
 

@@ -48,21 +48,23 @@ final readonly class CancelOrderHandler
 
         // 2. Guard: Order Existence
         if ($order === null) {
-            throw new OrderNotFoundException("Order not found: {$command->orderId}");
+            throw OrderNotFoundException::withId($command->orderId);
         }
 
         // 3. SECURITY GUARD: Tenant Ownership Verification (IDOR Protection)
-        if ($order->tenant_id !== $command->tenantId) {
+        if (! $order->belongsToTenant($command->tenantId)) {
             $this->logger->warning('SECURITY: Cross-tenant order cancellation attempt', [
                 'requested_order_id' => $command->orderId,
                 'requesting_tenant_id' => $command->tenantId,
-                'actual_tenant_id' => $order->tenant_id,
+                'actual_tenant_id' => $order->tenantId,
             ]);
-            throw new OrderNotFoundException("Order not found: {$command->orderId}");
+            throw OrderNotFoundException::withId($command->orderId);
         }
 
         // 4. DELEGATE TO DOMAIN: Let Order protect its own invariants
-        $order->cancel($command->reason, $command->userId);
+        $order = $order->cancel($command->reason, $command->userId);
+        $orderId = $order->id
+            ?? throw new \LogicException('Cannot cancel an order without a persisted ID.');
 
         // 5. Persist via Repository
         $this->orderRepository->save($order);
@@ -70,9 +72,9 @@ final readonly class CancelOrderHandler
         // 6. Dispatch Domain Event (Transactional Outbox)
         // Includes items data for async inventory restoration
         $this->eventDispatcher->dispatch(OrderCancelled::create(
-            tenantId: $order->tenant_id,
-            orderId: $order->id,
-            orderNumber: $order->order_number,
+            tenantId: $order->tenantId,
+            orderId: $orderId,
+            orderNumber: $order->orderNumber,
             reason: $command->reason,
             cancelledById: $command->userId,
             wasPaid: $order->wasPaid(),
@@ -80,8 +82,8 @@ final readonly class CancelOrderHandler
 
         // 7. Audit Log (PII Scrubbed)
         $this->logger->info('Order cancelled successfully', $this->sanitizePayload([
-            'order_id' => $order->id,
-            'order_number' => $order->order_number,
+            'order_id' => $orderId,
+            'order_number' => $order->orderNumber,
             'tenant_id' => $command->tenantId,
             'reason' => $command->reason,
             'cancelled_by' => $command->userId,

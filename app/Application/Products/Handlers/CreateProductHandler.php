@@ -47,26 +47,6 @@ final readonly class CreateProductHandler
 
     private function processCreation(CreateProductCommand $command): CreateProductResult
     {
-        // 1. Factory Creation (Domain Logic: SKU generation, Price validation)
-        // Note: Command price is likely in cents or float?
-        // Logic in previous handler was: $command->price / 100.
-        // This suggests command->price was in ... wait.
-        // Previous handler: 'price' => $command->price / 100.
-        // If command->price is Integer Cents (e.g. 1000 = 10.00), dividing by 100 makes it 10 (float/int).
-        // If DB stores Decimal(10,2), it expects 10.00.
-        // BUT Domain Entity `ProductEntity` expects `int $price`.
-        // "Tipado Estricto de Moneda: Asegura que el precio se maneje con el tipo correcto (preferiblemente int para centavos)".
-        // So Entity should hold Cents.
-        // IF Command holds Cents, we pass it directly.
-        // Previous handler divided by 100. This implies DB might store Dollars/Lempiras as Float, OR Command holds Cents and DB holds Float.
-        // Strict Approach: Entity holds Cents (Int). Repository maps to DB.
-        // If Command->price is 1000 (10.00), Entity gets 1000.
-        // I will assume Command passes Cents or Unit.
-        // I will look at CreateProductCommand to be sure?
-        // I'll check the User Request again: "$command->price / 100" was in the "Current State" snippet.
-        // If I use int in Entity, I should pass int.
-        // I will assume Command has the raw value.
-
         $productEntity = $this->productFactory->createNew(
             tenantId: $command->tenantId,
             name: $command->name,
@@ -80,23 +60,24 @@ final readonly class CreateProductHandler
         );
 
         // 2. Persist Entity (Type Safe)
-        $this->productRepository->save($productEntity);
+        $persistedProduct = $this->productRepository->save($productEntity);
+        $productId = $persistedProduct->id
+            ?? throw new \LogicException('Product repository must return a persisted product ID.');
 
         // 3. Dispatch Domain Event
-        // Note: $productEntity->id must be hydrated by save()
         $this->eventDispatcher->dispatch(new \App\Domain\Product\Events\ProductCreated(
-            productId: $productEntity->id,
+            productId: $productId,
             tenantId: $command->tenantId,
             name: $command->name,
         ));
 
         // 4. Audit Log
         $this->logger->info('Product created successfully', $this->sanitizePayload([
-            'product_id' => $productEntity->id,
+            'product_id' => $productId,
             'tenant_id' => $command->tenantId,
-            'sku' => $productEntity->sku,
+            'sku' => $persistedProduct->sku,
         ], $this->scrubber));
 
-        return CreateProductResult::fromEntity($productEntity);
+        return CreateProductResult::fromEntity($persistedProduct);
     }
 }

@@ -48,56 +48,51 @@ final readonly class UpdateProductHandler
 
         // 2. Guard: Product Existence
         if ($product === null) {
-            throw new ProductNotFoundException("Product not found: {$command->productId}");
+            throw ProductNotFoundException::withId($command->productId);
         }
 
         // 3. SECURITY GUARD: Tenant Ownership Verification (IDOR Protection)
         // We hide the existence of the resource to prevent enumeration attacks
-        if ($product->tenant_id !== $command->tenantId) {
+        if (! $product->belongsToTenant($command->tenantId)) {
             $this->logger->warning('SECURITY: Cross-tenant product access attempt', [
                 'requested_product_id' => $command->productId,
                 'requesting_tenant_id' => $command->tenantId,
-                'actual_tenant_id' => $product->tenant_id,
+                'actual_tenant_id' => $product->tenantId,
             ]);
-            throw new ProductNotFoundException("Product not found: {$command->productId}");
+            throw ProductNotFoundException::withId($command->productId);
         }
 
-        // 4. Update Product Properties
-        $product->sku = $command->sku; // Added SKU update
-        $product->name = $command->name;
-        $product->description = $command->description;
-        $product->price = $command->price;
-        $product->stock = $command->stock;
-        $product->category_id = $command->categoryId;
-        $product->is_visible = $command->isVisible;
-
-        // Only update image if a new one was provided
-        if ($command->imagePath !== null) {
-            $product->image = $command->imagePath;
-        }
-
-        // 5. Capture dirty attributes BEFORE save
-        $changedAttributes = method_exists($product, 'getDirty')
-            ? array_keys($product->getDirty())
-            : [];
+        $updatedProduct = $product->withUpdatedDetails(
+            sku: $command->sku,
+            name: $command->name,
+            description: $command->description,
+            price: $command->price,
+            stockQuantity: $command->stock,
+            categoryId: $command->categoryId,
+            imagePath: $command->imagePath ?? $product->imagePath,
+            isVisible: $command->isVisible
+        );
+        $changedAttributes = $updatedProduct->changedAttributesComparedTo($product);
 
         // 6. Persist via Repository
-        $this->productRepository->save($product);
+        $persistedProduct = $this->productRepository->save($updatedProduct);
+        $productId = $persistedProduct->id
+            ?? throw new \LogicException('Product repository must return a persisted product ID.');
 
         // 7. Dispatch Domain Event (Transactional Outbox)
         $this->eventDispatcher->dispatch(new \App\Domain\Product\Events\ProductUpdated(
-            productId: $product->id,
+            productId: $productId,
             tenantId: $command->tenantId,
             name: $command->name,
         ));
 
         // 8. Audit Log (PII Scrubbed)
         $this->logger->info('Product updated successfully', $this->sanitizePayload([
-            'product_id' => $product->id,
+            'product_id' => $productId,
             'tenant_id' => $command->tenantId,
             'changed_fields' => $changedAttributes,
         ], $this->scrubber));
 
-        return UpdateProductResult::fromEntity($product, $changedAttributes);
+        return UpdateProductResult::fromEntity($persistedProduct, $changedAttributes);
     }
 }

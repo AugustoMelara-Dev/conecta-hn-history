@@ -23,7 +23,7 @@ final readonly class RestoreStockOnCancellation
     public function handle(OrderCancelled $event): void
     {
         // Load order to get items (we need product_id and quantity)
-        $order = $this->orderRepository->findById($event->aggregateId());
+        $order = $this->orderRepository->findById((int) $event->aggregateId());
 
         if ($order === null) {
             $this->logger->warning('RestoreStockOnCancellation: Order not found', [
@@ -35,15 +35,22 @@ final readonly class RestoreStockOnCancellation
 
         // Restore stock for each item
         foreach ($order->items as $item) {
+            $productId = $item['product_id'] ?? null;
+            $quantity = $item['quantity'] ?? null;
+
+            if (! is_int($productId) || ! is_int($quantity)) {
+                continue;
+            }
+
             $this->productRepository->incrementStock(
-                $item->product_id,
-                $item->quantity
+                $productId,
+                $quantity
             );
         }
 
         $this->logger->info('Stock restored after order cancellation', [
             'order_id' => $event->aggregateId(),
-            'items_count' => $order->items->count(),
+            'items_count' => count($order->items),
         ]);
     }
 }

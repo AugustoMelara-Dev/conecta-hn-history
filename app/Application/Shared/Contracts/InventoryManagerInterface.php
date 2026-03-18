@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\Contracts;
 
+use Illuminate\Support\Collection;
+
 interface InventoryManagerInterface
 {
-    // Implementation signature delegated to infrastructure concrete
+    /**
+     * @param  array<int, array<string, mixed>>  $cartItems
+     * @return Collection<int, \App\Models\Product>
+     */
+    public function validateAndLock(array $cartItems, int|string $tenantId): Collection;
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Sales\Results;
 
 use App\Application\Sales\DTOs\OrderItemData;
+use App\Domain\Sales\Entities\OrderEntity;
 
 /**
  * CreateOrderResult - Immutable Output Contract for Order Creation
@@ -24,7 +25,7 @@ final readonly class CreateOrderResult
         public string $status,
         public int $itemsCount,
         public string $currency,
-        /** @var array<int, OrderItemData> */
+        /** @var array<int, OrderItemData|array<string, mixed>> */
         public array $items = [],
     ) {}
 
@@ -74,24 +75,16 @@ final readonly class CreateOrderResult
     /**
      * Factory method to hydrate from Domain Entity / Eloquent Model.
      *
-     * @param  object  $order  The Order entity (Model or Domain Entity)
      */
-    public static function fromEntity(object $order): self
+    public static function fromEntity(OrderEntity $order): self
     {
-        $itemsCount = 0;
-        if (method_exists($order, 'items')) {
-            $itemsCount = $order->items()->count();
-        } elseif (isset($order->items) && is_array($order->items)) {
-            $itemsCount = count($order->items);
-        }
-
         return new self(
-            id: (int) ($order->id ?? 0),
-            orderNumber: (string) ($order->orderNumber ?? $order->order_number ?? ''),
-            totalAmount: (float) ($order->totalAmount ?? $order->total ?? 0),
-            status: (string) ($order->status ?? 'pending'),
-            itemsCount: $itemsCount,
-            currency: (string) ($order->currency ?? 'HNL'),
+            id: $order->id ?? 0,
+            orderNumber: $order->orderNumber,
+            totalAmount: $order->total,
+            status: $order->status,
+            itemsCount: count($order->items),
+            currency: $order->currency,
             items: []
         );
     }

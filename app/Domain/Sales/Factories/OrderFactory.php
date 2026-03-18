@@ -11,7 +11,7 @@ final readonly class OrderFactory
 {
     public function create(
         string $tenantId,
-        string $locationId,
+        ?string $locationId,
         string $customerId,
         string $orderNumber,
         string $customerName,
@@ -46,6 +46,7 @@ final readonly class OrderFactory
             customerNotes: $customerNotes,
             deliveryType: $deliveryType,
             paymentMethod: $paymentMethod,
+            paymentStatus: 'pending',
             taxAmount: 0.0,
             deliveryFee: 0.0,
             discountAmount: $discountAmount,

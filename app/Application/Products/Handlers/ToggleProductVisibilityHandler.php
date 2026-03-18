@@ -40,28 +40,30 @@ final readonly class ToggleProductVisibilityHandler
         $product = $this->productRepository->findById($command->productId);
 
         if ($product === null) {
-            throw new ProductNotFoundException("Product not found: {$command->productId}");
+            throw ProductNotFoundException::withId($command->productId);
         }
 
         // 2. SECURITY GUARD: Tenant Ownership Verification
-        if ($product->tenant_id !== $command->tenantId) {
+        if (! $product->belongsToTenant($command->tenantId)) {
             $this->logger->warning('SECURITY: Cross-tenant product visibility toggle attempt', [
                 'requested_product_id' => $command->productId,
                 'requesting_tenant_id' => $command->tenantId,
             ]);
-            throw new ProductNotFoundException("Product not found: {$command->productId}");
+            throw ProductNotFoundException::withId($command->productId);
         }
 
         // 3. Toggle visibility
-        $product->is_visible = ! $product->is_visible;
+        $updatedProduct = $product->toggleVisibility();
 
         // 4. Persist via Repository
-        $this->productRepository->save($product);
+        $persistedProduct = $this->productRepository->save($updatedProduct);
+        $productId = $persistedProduct->id
+            ?? throw new \LogicException('Product repository must return a persisted product ID.');
 
         $this->logger->info('Product visibility toggled', $this->sanitizePayload([
-            'product_id' => $command->productId,
+            'product_id' => $productId,
             'tenant_id' => $command->tenantId,
-            'is_visible' => $product->is_visible,
+            'is_visible' => $persistedProduct->isVisible,
         ], $this->scrubber));
     }
 }

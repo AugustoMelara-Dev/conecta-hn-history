@@ -38,6 +38,9 @@ final readonly class UpdateProductCommand implements \App\Application\Shared\Con
         /** Idempotency Key (mandatory for deduplication) */
         public string $idempotencyKey,
 
+        /** Product SKU */
+        public ?string $sku = null,
+
         /** Stock quantity */
         public int $stock = 0,
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Products\Results;
 
+use App\Domain\Product\Entities\ProductEntity;
+
 /**
  * CreateProductResult - Immutable Output Contract for Product Creation
  *
@@ -26,17 +28,16 @@ final readonly class CreateProductResult
     /**
      * Factory method to hydrate from Domain Entity / Eloquent Model.
      *
-     * @param  object  $product  The Product entity
      */
-    public static function fromEntity(object $product): self
+    public static function fromEntity(ProductEntity $product): self
     {
         return new self(
-            id: $product->id,
+            id: $product->id ?? 0,
             sku: $product->sku,
             name: $product->name,
-            price: (float) $product->price,
-            isVisible: (bool) $product->is_visible,
-            imagePath: $product->image_path ?? null,
+            price: $product->price / 100,
+            isVisible: $product->isVisible,
+            imagePath: $product->imagePath,
         );
     }
 }

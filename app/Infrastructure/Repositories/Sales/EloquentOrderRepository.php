@@ -18,7 +18,7 @@ use DateTimeImmutable;
  */
 final class EloquentOrderRepository implements OrderRepositoryInterface
 {
-    public function findById(int $id): ?OrderEntity
+    public function findById(int|string $id): ?OrderEntity
     {
         $model = Order::with(['items', 'tenant'])->find($id);
 
@@ -44,8 +44,13 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
         $model->total = $order->total;
         $model->status = $order->status;
         $model->payment_method = $order->paymentMethod;
+        $model->payment_status = $order->paymentStatus;
         $model->delivery_fee = $order->deliveryFee;
         $model->discount = $order->discountAmount;
+        $model->coupon_code = $order->couponCode;
+        $model->cancellation_reason = $order->cancellationReason;
+        $model->cancelled_at = $order->cancelledAt;
+        $model->paid_at = $order->paidAt;
 
         $model->save();
 
@@ -100,10 +105,19 @@ final class EloquentOrderRepository implements OrderRepositoryInterface
             customerNotes: $model->customer_notes,
             deliveryType: 'pickup',
             paymentMethod: $model->payment_method ?? 'pending',
+            paymentStatus: $model->payment_status ?? 'pending',
             taxAmount: 0.0,
             deliveryFee: (float) ($model->delivery_fee ?? 0),
             discountAmount: (float) ($model->discount ?? 0),
             couponCode: $model->coupon_code,
+            cancellationReason: $model->cancellation_reason,
+            cancelledAt: $model->cancelled_at instanceof \DateTime
+                ? DateTimeImmutable::createFromMutable($model->cancelled_at)
+                : null,
+            cancelledById: null,
+            paidAt: $model->paid_at instanceof \DateTime
+                ? DateTimeImmutable::createFromMutable($model->paid_at)
+                : null,
             items: $model->items?->toArray() ?? [],
         );
     }

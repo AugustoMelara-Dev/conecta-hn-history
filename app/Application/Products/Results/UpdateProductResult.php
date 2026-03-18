@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Products\Results;
 
+use App\Domain\Product\Entities\ProductEntity;
+
 /**
  * UpdateProductResult - Immutable Output Contract for Product Update
  *
@@ -27,13 +29,12 @@ final readonly class UpdateProductResult
     /**
      * Factory method to hydrate from Domain Entity / Eloquent Model.
      *
-     * @param  object  $product  The updated product
      * @param  array<string>  $changedAttributes  Fields that were modified
      */
-    public static function fromEntity(object $product, array $changedAttributes = []): self
+    public static function fromEntity(ProductEntity $product, array $changedAttributes = []): self
     {
         return new self(
-            id: $product->id,
+            id: $product->id ?? 0,
             sku: $product->sku,
             changedAttributes: $changedAttributes,
         );
