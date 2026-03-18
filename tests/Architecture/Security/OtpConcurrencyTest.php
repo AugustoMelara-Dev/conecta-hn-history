@@ -59,7 +59,9 @@ class OtpConcurrencyTest extends TestCase
         try {
             $results = Process::pool(function (Pool $pool) use ($command, $concurrency) {
                 for ($i = 0; $i < $concurrency; $i++) {
-                    $pool->command($command)->env($this->testingEnvironment());
+                    $pool->command($command)
+                        ->timeout(180)
+                        ->env($this->testingEnvironment());
                 }
             })->wait();
 

@@ -12,6 +12,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+afterEach(function () {
+    OrderEvent::reguard();
+});
+
 test('order state service transitions order and prevents isPaid method crash', function () {
     $tenant = Tenant::factory()->create([
         'name' => 'FSM Tenant',
