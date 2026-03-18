@@ -7,112 +7,81 @@ namespace App\Infrastructure\Tenant\Transformers;
 use App\Application\Shared\Contracts\FileUrlResolverInterface;
 use App\Application\Shared\Contracts\SlugGeneratorInterface;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
+use App\Models\Category;
+use App\Models\City;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
+use App\Models\OpeningHour;
+use App\Models\Product;
 use App\Models\Tenant;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
-/**
- * TenantMicrositeTransformer - Application Layer Data Transformer
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  SINGLE RESPONSIBILITY: Transform Tenant → Inertia-ready JSON           ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  DEPENDENCY INJECTION: Uses PlanFeatureFlagService for plan logic       ║
- * ║                                                                           ║
- * ║  This transformer:                                                        ║
- * ║  - Formats phone numbers with +504 prefix                                 ║
- * ║  - Resolves image URLs with placeholders                                  ║
- * ║  - Conditionally includes Pro features based on plan                      ║
- * ║  - Pre-processes ALL display logic so React receives clean JSON          ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * @see \App\Http\Controllers\Public\TenantMicrositeController - Uses this transformer
- */
 final readonly class TenantMicrositeTransformer
 {
     public function __construct(
-        private readonly PlanFeatureFlagService $planService,
-        private readonly FileUrlResolverInterface $filesystem,
-        private readonly SlugGeneratorInterface $slugGenerator,
+        private PlanFeatureFlagService $planService,
+        private FileUrlResolverInterface $filesystem,
+        private SlugGeneratorInterface $slugGenerator,
     ) {}
 
     /**
-     * Transform complete tenant for microsite rendering.
-     *
-     * @param  Tenant  $tenant  Eager-loaded tenant model
-     * @return array<string, mixed> Inertia-ready props
+     * @return array<string, mixed>
      */
     public function transform(Tenant $tenant): array
     {
         $plan = $this->planService->determinePlan($tenant);
+        /** @var City|null $city */
+        $city = $tenant->city;
 
         return [
             'id' => $tenant->id,
             'name' => $tenant->name,
             'slug' => $tenant->slug,
             'description' => $tenant->description ?? 'Bienvenido a nuestro negocio.',
-            'about' => $tenant->about, // Premium: Extended storytelling "Our Story"
-
-            // Images with Storage URLs and fallbacks
+            'about' => $tenant->about,
             'logo' => $this->resolveImageUrl($tenant->logo_path, 'logo'),
             'cover' => $this->resolveImageUrl($tenant->cover_path, 'cover'),
             'banner_path' => $tenant->banner_path ?? $tenant->cover_path,
             'blur_hash' => $tenant->blur_hash,
             'primary_color' => $tenant->brand_color ?? $tenant->primary_color ?? '#2563EB',
-
-            // Brand customization (Pro feature check)
             'brand_color' => $tenant->brand_color ?? '#2563EB',
             'hero_image' => $this->planService->canCustomizeHero($tenant) && $tenant->hero_image
                 ? $this->resolveImageUrl($tenant->hero_image, 'hero')
                 : null,
             'slogan' => $tenant->slogan,
-
-            // Contact info with formatted phone
             'whatsapp' => $this->planService->formatPhoneWithCountryCode($tenant->whatsapp_number),
             'whatsapp_number' => $this->planService->formatPhoneWithCountryCode($tenant->whatsapp_number),
             'phone' => $this->planService->formatPhoneWithCountryCode($tenant->phone),
             'email' => $tenant->email,
             'address' => 'Honduras',
-
-            // Location (flat legacy + structured for Map component)
-            'city' => $tenant->city?->name ?? 'Honduras',
+            'city' => $city !== null ? $city->name : 'Honduras',
             'city_id' => $tenant->city_id,
             'latitude' => $tenant->latitude,
             'longitude' => $tenant->longitude,
-            'location' => [ // Premium: Structured for Map components
+            'location' => [
                 'lat' => $tenant->latitude !== null ? (float) $tenant->latitude : null,
                 'lng' => $tenant->longitude !== null ? (float) $tenant->longitude : null,
                 'address' => 'Honduras',
-                'city' => $tenant->city?->name ?? 'Honduras',
+                'city' => $city !== null ? $city->name : 'Honduras',
             ],
-
-            // Category
             'category' => $this->transformCategory($tenant),
-
-            // Status flags
             'is_pro' => (bool) $tenant->is_pro,
             'is_active' => (bool) $tenant->is_active,
             'plan' => $plan,
-
-            // Social links (legacy flat + structured grouping)
             'facebook_url' => $this->planService->canShowSocialGraph($tenant) ? $tenant->facebook_url : null,
             'instagram_url' => $this->planService->canShowSocialGraph($tenant) ? $tenant->instagram_url : null,
             'tiktok_url' => $this->planService->canShowSocialGraph($tenant) ? $tenant->tiktok_url : null,
             'website_url' => $tenant->website_url,
-            'social' => $this->planService->canShowSocialGraph($tenant) ? [ // Premium: Grouped for frontend
+            'social' => $this->planService->canShowSocialGraph($tenant) ? [
                 'facebook' => $tenant->facebook_url,
                 'instagram' => $tenant->instagram_url,
                 'tiktok' => $tenant->tiktok_url,
                 'website' => $tenant->website_url,
             ] : null,
-
-            // Products embedded in tenant
             'products' => $this->transformProducts($tenant),
             'menuSections' => $tenant->menuSections,
-
-            // Reviews (Pro feature)
             'rating' => $this->planService->canShowReviews($tenant) ? 4.8 : null,
             'reviews_count' => $this->planService->canShowReviews($tenant) ? rand(10, 100) : null,
-
-            // Feature flags for frontend conditional rendering
             'features' => [
                 'can_show_modifiers' => $this->planService->canShowModifiers($tenant),
                 'can_show_reviews' => $this->planService->canShowReviews($tenant),
@@ -124,19 +93,20 @@ final readonly class TenantMicrositeTransformer
     }
 
     /**
-     * Transform products collection with SaaS tier feature flagging.
+     * @return array<int, array<string, mixed>>
      */
     public function transformProducts(Tenant $tenant): array
     {
+        /** @var EloquentCollection<int, Product> $products */
         $products = $tenant->products;
 
-        if (! $products || $products->isEmpty()) {
+        if ($products->isEmpty()) {
             return [];
         }
 
         $canShowModifiers = $this->planService->canShowModifiers($tenant);
 
-        return $products->map(function ($product) use ($tenant, $canShowModifiers) {
+        return $products->map(function (Product $product) use ($tenant, $canShowModifiers): array {
             $baseProduct = [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -144,57 +114,44 @@ final readonly class TenantMicrositeTransformer
                 'description' => $product->description ?? '',
                 'price' => (float) ($product->price ?? 0),
                 'formatted_price' => 'L. '.number_format((float) ($product->price ?? 0), 2),
-                'image' => $this->resolveImageUrl($product->image ?? null, 'product'),
+                'image' => $this->resolveImageUrl($product->image_path, 'product'),
                 'is_visible' => (bool) ($product->is_visible ?? true),
                 'is_featured' => (bool) ($product->is_featured ?? false),
                 'category_id' => $product->category_id,
                 'menu_section_id' => $product->menu_section_id,
-
-                // Tenant context for WhatsApp generation
                 'tenant_whatsapp' => $this->planService->formatPhoneWithCountryCode($tenant->whatsapp_number),
                 'tenant_name' => $tenant->name,
             ];
 
-            // FEATURE FLAG: Modifiers only for Pro/Enterprise
             if (! $canShowModifiers) {
                 $baseProduct['modifiers'] = [];
                 $baseProduct['modifier_groups'] = [];
                 $baseProduct['has_modifiers'] = false;
-            } else {
-                $modifierGroups = $product->modifierGroups ?? collect([]);
-                $baseProduct['modifier_groups'] = $modifierGroups->map(fn ($group) => [
-                    'id' => $group->id,
-                    'name' => $group->name,
-                    'type' => $group->type ?? 'single',
-                    'is_required' => (bool) ($group->is_required ?? false),
-                    'min_selections' => $group->min_selections ?? 0,
-                    'max_selections' => $group->max_selections ?? 1,
-                    'options' => ($group->options ?? collect([]))->map(fn ($opt) => [
-                        'id' => $opt->id,
-                        'name' => $opt->name,
-                        'price' => (float) ($opt->price ?? 0),
-                        'formatted_price' => $opt->price > 0 ? '+L. '.number_format((float) $opt->price, 2) : 'Gratis',
-                        'is_default' => (bool) ($opt->is_default ?? false),
-                    ])->toArray(),
-                ])->toArray();
 
-                $baseProduct['modifiers'] = $baseProduct['modifier_groups'];
-                $baseProduct['has_modifiers'] = count($baseProduct['modifier_groups']) > 0;
+                return $baseProduct;
             }
 
+            /** @var EloquentCollection<int, ModifierGroup> $modifierGroups */
+            $modifierGroups = $product->modifierGroups;
+
+            $baseProduct['modifier_groups'] = $this->transformModifierGroups($modifierGroups);
+
+            $baseProduct['modifiers'] = $baseProduct['modifier_groups'];
+            $baseProduct['has_modifiers'] = count($baseProduct['modifier_groups']) > 0;
+
             return $baseProduct;
-        })->toArray();
+        })->values()->all();
     }
 
     /**
-     * Transform opening hours collection to frontend contract.
-     *
-     * CONTRACT: Frontend ALWAYS receives exactly 7 elements in Lunes→Domingo order.
+     * @param  EloquentCollection<int, OpeningHour>|null  $hours
+     * @return array<int, array<string, mixed>>
      */
-    public function transformOpeningHours($hours): array
+    public function transformOpeningHours(?EloquentCollection $hours): array
     {
         $culturalDayOrder = [1, 2, 3, 4, 5, 6, 0];
 
+        /** @var array<int, OpeningHour> $hoursMap */
         $hoursMap = [];
         if ($hours !== null && ! $hours->isEmpty()) {
             foreach ($hours as $hour) {
@@ -203,7 +160,7 @@ final readonly class TenantMicrositeTransformer
         }
 
         $result = [];
-        $currentTime = now(\App\Models\OpeningHour::BUSINESS_TIMEZONE);
+        $currentTime = now(OpeningHour::BUSINESS_TIMEZONE);
 
         foreach ($culturalDayOrder as $day) {
             if (isset($hoursMap[$day])) {
@@ -215,28 +172,28 @@ final readonly class TenantMicrositeTransformer
                     'day_of_week' => $day,
                     'is_closed' => false,
                 ];
-            } else {
-                $result[] = [
-                    'day_name' => \App\Models\OpeningHour::DAY_LABELS[$day] ?? 'Desconocido',
-                    'formatted' => 'Cerrado',
-                    'is_open_now' => false,
-                    'day_of_week' => $day,
-                    'is_closed' => true,
-                ];
+
+                continue;
             }
+
+            $result[] = [
+                'day_name' => OpeningHour::DAY_LABELS[$day],
+                'formatted' => 'Cerrado',
+                'is_open_now' => false,
+                'day_of_week' => $day,
+                'is_closed' => true,
+            ];
         }
 
         return $result;
     }
 
-    /**
-     * Determine if the business is currently open.
-     */
     public function isCurrentlyOpen(Tenant $tenant): bool
     {
-        $now = now(\App\Models\OpeningHour::BUSINESS_TIMEZONE);
+        $now = now(OpeningHour::BUSINESS_TIMEZONE);
         $today = $now->dayOfWeek;
 
+        /** @var OpeningHour|null $todaySchedule */
         $todaySchedule = $tenant->openingHours->firstWhere('day_of_week', $today);
 
         if ($todaySchedule === null) {
@@ -247,10 +204,13 @@ final readonly class TenantMicrositeTransformer
     }
 
     /**
-     * Build SEO structured data for Google.
+     * @return array<string, mixed>
      */
     public function buildStructuredData(Tenant $tenant): array
     {
+        /** @var City|null $city */
+        $city = $tenant->city;
+
         return [
             '@context' => 'https://schema.org',
             '@type' => 'LocalBusiness',
@@ -262,39 +222,36 @@ final readonly class TenantMicrositeTransformer
             ),
             'address' => [
                 '@type' => 'PostalAddress',
-                'addressLocality' => $tenant->city?->name ?? 'Honduras',
+                'addressLocality' => $city !== null ? $city->name : 'Honduras',
                 'addressCountry' => 'HN',
             ],
         ];
     }
 
-    /**
-     * Get product limit for tenant's plan.
-     */
     public function getProductLimit(Tenant $tenant): int
     {
         return $this->planService->getMaxProductLimit($tenant);
     }
 
     /**
-     * Transform category data.
+     * @return array{id:int|string, name:string, slug:string}
      */
     private function transformCategory(Tenant $tenant): array
     {
-        if (! $tenant->category) {
+        /** @var Category|null $category */
+        $category = $tenant->category;
+
+        if ($category === null) {
             return ['id' => 0, 'name' => 'General', 'slug' => 'general'];
         }
 
         return [
-            'id' => $tenant->category->id,
-            'name' => $tenant->category->name,
-            'slug' => $tenant->category->slug,
+            'id' => $category->id,
+            'name' => $category->name,
+            'slug' => $category->slug,
         ];
     }
 
-    /**
-     * Resolve image path to full URL with placeholder fallback.
-     */
     private function resolveImageUrl(?string $path, string $type): string
     {
         if (empty($path)) {
@@ -311,5 +268,58 @@ final readonly class TenantMicrositeTransformer
         }
 
         return $this->filesystem->url($path);
+    }
+
+    /**
+     * @param  EloquentCollection<int, ModifierGroup>  $modifierGroups
+     * @return array<int, array<string, mixed>>
+     */
+    private function transformModifierGroups(EloquentCollection $modifierGroups): array
+    {
+        $result = [];
+
+        foreach ($modifierGroups as $group) {
+            /** @var EloquentCollection<int, ModifierOption> $options */
+            $options = $group->options;
+
+            $maxSelections = (int) $group->getAttribute('max_selections');
+
+            $result[] = [
+                'id' => (int) $group->getKey(),
+                'name' => (string) $group->getAttribute('name'),
+                'type' => $maxSelections === 1 ? 'single' : 'multiple',
+                'is_required' => (bool) $group->getAttribute('is_required'),
+                'min_selections' => (int) $group->getAttribute('min_selections'),
+                'max_selections' => $maxSelections,
+                'options' => $this->transformModifierOptions($options),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  EloquentCollection<int, ModifierOption>  $options
+     * @return array<int, array<string, mixed>>
+     */
+    private function transformModifierOptions(EloquentCollection $options): array
+    {
+        $result = [];
+
+        foreach ($options as $option) {
+            $priceAdjustment = (float) $option->getAttribute('price_adjustment');
+
+            $result[] = [
+                'id' => (int) $option->getKey(),
+                'name' => (string) $option->getAttribute('name'),
+                'price' => $priceAdjustment,
+                'formatted_price' => $priceAdjustment > 0
+                    ? '+L. '.number_format($priceAdjustment, 2)
+                    : 'Gratis',
+                'is_default' => (bool) $option->getAttribute('is_default'),
+            ];
+        }
+
+        return $result;
     }
 }

@@ -40,7 +40,7 @@ final readonly class SalesExportCreated implements AuditEvent
     public function __construct(
         public string $exportId,
         public TenantId $tenantId,
-        public int $userId,
+        public int|string $userId,
         public string $format,
         public string $criteriaHash,
         public array $criteriaDetails,
@@ -54,7 +54,7 @@ final readonly class SalesExportCreated implements AuditEvent
     public static function create(
         string $exportId,
         TenantId $tenantId,
-        int $userId,
+        int|string $userId,
         string $format,
         string $criteriaHash,
         array $criteriaDetails,
@@ -140,7 +140,9 @@ final readonly class SalesExportCreated implements AuditEvent
         $occurredAt = new DateTimeImmutable($data['occurred_at'] ?? 'now');
         $ipAddress = $data['ip_address'] ?? '0.0.0.0';
         $userAgent = $data['user_agent'] ?? 'Unknown';
-        $userId = $data['user_id'] ?? 0;
+        $userId = is_int($data['user_id'] ?? null) || is_string($data['user_id'] ?? null)
+            ? $data['user_id']
+            : 0;
 
         return new self(
             exportId: $data['export_id'] ?? uniqid('exp_'),

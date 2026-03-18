@@ -72,9 +72,13 @@ final class StripePaymentGateway implements PaymentGatewayInterface
                 return ChargeResult::failure("Payment status: {$intent->status}");
             }
 
+            /** @var array<string, mixed> $intentPayload */
+            $intentPayload = $intent->toArray();
+            $receiptUrl = data_get($intentPayload, 'charges.data.0.receipt_url');
+
             return ChargeResult::success(
                 transactionId: $intent->id,
-                receiptUrl: $intent->charges?->data[0]?->receipt_url,
+                receiptUrl: is_string($receiptUrl) ? $receiptUrl : null,
             );
 
         } catch (CardException $e) {

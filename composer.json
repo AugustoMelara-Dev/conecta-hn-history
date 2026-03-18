@@ -27,6 +27,7 @@
         "spatie/laravel-permission": "^6.23",
         "spatie/laravel-settings": "^3.7",
         "spatie/opening-hours": "^4.2",
+        "stripe/stripe-php": "^19.4",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

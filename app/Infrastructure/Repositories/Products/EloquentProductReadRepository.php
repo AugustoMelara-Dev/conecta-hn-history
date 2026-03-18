@@ -5,24 +5,14 @@ declare(strict_types=1);
 namespace App\Infrastructure\Repositories\Products;
 
 use App\Domain\Product\Repositories\ProductReadRepositoryInterface;
+use App\Models\MenuSection;
 use App\Models\Product;
+use App\Models\ProductOption;
+use App\Models\ProductOptionGroup;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
-/**
- * EloquentProductReadRepository - Optimized Read Model for Products
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  CQRS LITE: Returns arrays/DTOs, NOT Eloquent models                    ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  - Uses SELECT with specific columns for efficiency                     ║
- * ║  - Returns lightweight arrays ready for JSON serialization              ║
- * ║  - No active record patterns, no lazy loading                           ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- */
 final class EloquentProductReadRepository implements ProductReadRepositoryInterface
 {
-    /**
-     * {@inheritDoc}
-     */
     public function search(int $tenantId, array $filters = [], int $page = 1, int $perPage = 20): array
     {
         $query = Product::query()
@@ -31,7 +21,6 @@ final class EloquentProductReadRepository implements ProductReadRepositoryInterf
             ->orderBy('sort_order')
             ->orderBy('name');
 
-        // Apply optional filters
         if (! empty($filters['menu_section_id'])) {
             $query->where('menu_section_id', $filters['menu_section_id']);
         }
@@ -48,9 +37,8 @@ final class EloquentProductReadRepository implements ProductReadRepositoryInterf
                 'name',
                 'description',
                 'price',
-                'compare_at_price',
                 'image_path',
-                'image_blurhash',
+                'blur_hash',
                 'is_featured',
                 'menu_section_id',
             ])
@@ -58,8 +46,9 @@ final class EloquentProductReadRepository implements ProductReadRepositoryInterf
             ->skip(($page - 1) * $perPage)
             ->take($perPage)
             ->get()
-            ->map(fn ($product) => $this->transformProduct($product))
-            ->toArray();
+            ->map(fn (Product $product): array => $this->transformProduct($product))
+            ->values()
+            ->all();
 
         return [
             'products' => $products,
@@ -68,11 +57,9 @@ final class EloquentProductReadRepository implements ProductReadRepositoryInterf
         ];
     }
 
-    /**
-     * {@inheritDoc}
-     */
     public function findForDisplay(int $tenantId, int $productId): ?array
     {
+        /** @var Product|null $product */
         $product = Product::query()
             ->where('tenant_id', $tenantId)
             ->where('is_active', true)
@@ -80,58 +67,103 @@ final class EloquentProductReadRepository implements ProductReadRepositoryInterf
             ->with(['menuSection:id,name', 'optionGroups.options'])
             ->first();
 
-        if (! $product) {
+        if ($product === null) {
             return null;
         }
+
+        /** @var MenuSection|null $menuSection */
+        $menuSection = $product->menuSection;
+        /** @var EloquentCollection<int, ProductOptionGroup> $optionGroups */
+        $optionGroups = $product->optionGroups;
+
+        $price = (float) $product->price;
 
         return [
             'id' => $product->id,
             'name' => $product->name,
             'description' => $product->description,
-            'price' => $product->price,
-            'formatted_price' => 'L. '.number_format($product->price, 2),
-            'compare_at_price' => $product->compare_at_price,
-            'has_discount' => $product->compare_at_price && $product->compare_at_price > $product->price,
+            'price' => $price,
+            'formatted_price' => 'L. '.number_format($price, 2),
+            'compare_at_price' => null,
+            'has_discount' => false,
             'image_url' => $product->image_url,
-            'image_blurhash' => $product->image_blurhash,
-            'is_featured' => $product->is_featured,
-            'section' => $product->menuSection ? [
-                'id' => $product->menuSection->id,
-                'name' => $product->menuSection->name,
+            'image_blurhash' => $product->getAttribute('blur_hash'),
+            'is_featured' => (bool) $product->is_featured,
+            'section' => $menuSection ? [
+                'id' => $menuSection->id,
+                'name' => $menuSection->name,
             ] : null,
-            'option_groups' => $product->optionGroups->map(fn ($group) => [
-                'id' => $group->id,
-                'name' => $group->name,
-                'is_required' => $group->is_required,
-                'options' => $group->options->map(fn ($opt) => [
-                    'id' => $opt->id,
-                    'name' => $opt->name,
-                    'price' => $opt->price,
-                ]),
-            ]),
+            'option_groups' => $this->transformOptionGroups($optionGroups),
         ];
     }
 
     /**
-     * Transform a product model to a lightweight array.
+     * @return array<string, mixed>
      */
     private function transformProduct(Product $product): array
     {
+        /** @var MenuSection|null $menuSection */
+        $menuSection = $product->menuSection;
+
+        $price = (float) $product->price;
+
         return [
             'id' => $product->id,
             'name' => $product->name,
             'description' => $product->description,
-            'price' => $product->price,
-            'formatted_price' => 'L. '.number_format($product->price, 2),
-            'compare_at_price' => $product->compare_at_price,
-            'has_discount' => $product->compare_at_price && $product->compare_at_price > $product->price,
+            'price' => $price,
+            'formatted_price' => 'L. '.number_format($price, 2),
+            'compare_at_price' => null,
+            'has_discount' => false,
             'image_url' => $product->image_url,
-            'image_blurhash' => $product->image_blurhash,
-            'is_featured' => $product->is_featured,
-            'section' => $product->menuSection ? [
-                'id' => $product->menuSection->id,
-                'name' => $product->menuSection->name,
+            'image_blurhash' => $product->getAttribute('blur_hash'),
+            'is_featured' => (bool) $product->is_featured,
+            'section' => $menuSection ? [
+                'id' => $menuSection->id,
+                'name' => $menuSection->name,
             ] : null,
         ];
+    }
+
+    /**
+     * @param  EloquentCollection<int, ProductOptionGroup>  $optionGroups
+     * @return array<int, array<string, mixed>>
+     */
+    private function transformOptionGroups(EloquentCollection $optionGroups): array
+    {
+        $result = [];
+
+        foreach ($optionGroups as $group) {
+            /** @var EloquentCollection<int, ProductOption> $options */
+            $options = $group->options;
+
+            $result[] = [
+                'id' => (int) $group->getKey(),
+                'name' => (string) $group->getAttribute('name'),
+                'is_required' => (bool) $group->getAttribute('is_required'),
+                'options' => $this->transformOptions($options),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  EloquentCollection<int, ProductOption>  $options
+     * @return array<int, array{id:int, name:string, price:float}>
+     */
+    private function transformOptions(EloquentCollection $options): array
+    {
+        $result = [];
+
+        foreach ($options as $option) {
+            $result[] = [
+                'id' => (int) $option->getKey(),
+                'name' => (string) $option->getAttribute('name'),
+                'price' => (float) $option->getAttribute('price_modifier'),
+            ];
+        }
+
+        return $result;
     }
 }

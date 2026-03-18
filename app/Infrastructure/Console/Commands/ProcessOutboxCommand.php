@@ -117,6 +117,11 @@ final class ProcessOutboxCommand extends Command
         }
     }
 
+    private function shouldContinueHydraulicWait(): bool
+    {
+        return $this->keepRunning && $this->pendingDispatches > self::HYDRAULIC_RESUME;
+    }
+
     /**
      * Handle graceful shutdown signal.
      */
@@ -249,7 +254,7 @@ final class ProcessOutboxCommand extends Command
                     if ($this->pendingDispatches > self::HYDRAULIC_LIMIT) {
                         $this->warn("HYDRAULIC BRAKE ENGAGED: Pending ({$this->pendingDispatches})");
 
-                        while ($this->pendingDispatches > self::HYDRAULIC_RESUME && $this->keepRunning) {
+                        while ($this->shouldContinueHydraulicWait()) {
                             usleep(100000);
                             if (function_exists('pcntl_signal_dispatch')) {
                                 pcntl_signal_dispatch();
@@ -431,7 +436,7 @@ final class ProcessOutboxCommand extends Command
                 // LEVEL 66: FATAL ERROR DISCRIMINATION (SMART DEATH)
                 // If the code is broken (TypeError), valid logic demands we die.
                 // Sleeping on a syntax error creates a "Zombie Loop" of spam.
-                if ($e instanceof \Error || $e instanceof \TypeError || $e instanceof \ArgumentCountError) {
+                if ($e instanceof \Error) {
                     Log::critical('OBSIDIAN MONOLITH: Fatal Code Defect Detected. Terminating. Error: '.$e->getMessage(), [
                         'trace' => $e->getTraceAsString(),
                     ]);
@@ -488,7 +493,7 @@ final class ProcessOutboxCommand extends Command
     /**
      * Renew leases if heartbeat interval has passed.
      *
-     * @throws RuntimeException If lease renewal fails (Sovereignty Lost).
+     * @throws \RuntimeException If lease renewal fails (Sovereignty Lost).
      */
     private function renewLeasesIfNeeded(): void
     {
@@ -583,7 +588,6 @@ final class ProcessOutboxCommand extends Command
             'recovery_count' => $message->recovery_count,
             'memory_usage_bytes' => $memoryUsage,
             'memory_peak_bytes' => memory_get_peak_usage(true),
-            'worker_id' => $workerId,
         ];
 
         // Write raw JSON to stderr to bypass any framework logging buffering
@@ -719,7 +723,7 @@ final class ProcessOutboxCommand extends Command
         } finally {
             // LEVEL 49: End span in finally to prevent leaks
             if ($span !== null) {
-                $this->tracer?->endSpan($span);
+                $this->tracer->endSpan($span);
             }
         }
     }
@@ -1275,7 +1279,7 @@ final class ProcessOutboxCommand extends Command
             $type = $param->getType();
             $value = $data[$name] ?? null;
 
-            if ($value !== null && $type && ! $type->isBuiltin()) {
+            if ($value !== null && $type instanceof \ReflectionNamedType && ! $type->isBuiltin()) {
                 $typeName = $type->getName();
 
                 // Handle DateTime rehydration
@@ -1284,7 +1288,11 @@ final class ProcessOutboxCommand extends Command
                 } elseif (is_array($value) && class_exists($typeName)) {
                     // Handle nested object rehydration (Value Objects, nested DTOs)
                     $value = $this->hydrateFromArray($typeName, $value);
-                } elseif ((is_string($value) || is_int($value)) && enum_exists($typeName)) {
+                } elseif (
+                    (is_string($value) || is_int($value))
+                    && enum_exists($typeName)
+                    && is_subclass_of($typeName, \BackedEnum::class)
+                ) {
                     // Handle Enum rehydration
                     $value = $typeName::from($value);
                 }

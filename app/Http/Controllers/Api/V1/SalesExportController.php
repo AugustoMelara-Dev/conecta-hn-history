@@ -120,9 +120,9 @@ final class SalesExportController extends Controller
         // Path is base64 encoded to prevent path traversal attacks
         // ═══════════════════════════════════════════════════════════════════════
         $encodedPath = $request->query('path');
-        $requestedTenantId = (int) $request->query('tenant');
+        $requestedTenantId = (string) $request->query('tenant', '');
 
-        if (! $encodedPath || ! $requestedTenantId) {
+        if (! $encodedPath || $requestedTenantId === '') {
             return response()->json([
                 'success' => false,
                 'message' => 'Parámetros de descarga inválidos.',
@@ -145,7 +145,7 @@ final class SalesExportController extends Controller
         $user = $this->auth->user();
         $userTenantId = $user->tenant_id ?? $user->currentTenant?->id;
 
-        if ($userTenantId !== $requestedTenantId) {
+        if ((string) $userTenantId !== $requestedTenantId) {
             $this->log->warning('Unauthorized export download attempt', [
                 'user_id' => $user->id,
                 'user_tenant_id' => $userTenantId,

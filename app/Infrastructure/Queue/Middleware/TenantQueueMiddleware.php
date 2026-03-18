@@ -4,107 +4,58 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Queue\Middleware;
 
+use App\Domain\Shared\Services\TenantContext;
 use Closure;
 
 /**
- * TenantQueueMiddleware - Restores Tenant Context BEFORE Job Execution
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  CRITICAL: This middleware MUST run before any model deserialization    ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║                                                                          ║
- * ║  PROBLEM:                                                               ║
- * ║    Queue Worker connects to CENTRAL DB by default.                      ║
- * ║    SerializesModels tries to find Order::find(5) in Central DB.         ║
- * ║    Order 5 exists in Tenant A's database, not Central → CRASH.          ║
- * ║                                                                          ║
- * ║  SOLUTION:                                                              ║
- * ║    1. Event carries $tenantId as primitive property                     ║
- * ║    2. This middleware reads $tenantId from job payload                  ║
- * ║    3. Switches to tenant database BEFORE job processing                 ║
- * ║    4. Now SerializesModels can find Order 5 in correct DB               ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * REGISTRATION in Listener:
- *   public function middleware(): array
- *   {
- *       return [new TenantQueueMiddleware()];
- *   }
+ * Restores tenant context before queued job execution.
  */
-class TenantQueueMiddleware
+final class TenantQueueMiddleware
 {
     public function __construct(
-        private readonly TenantRepositoryInterface $tenantRepository
+        private readonly string|int|null $tenantId = null,
     ) {}
 
     public function handle(object $job, Closure $next): void
     {
-        // Extract tenant ID from the event/job
-        $tenantId = $this->extractTenantId($job);
+        /** @var TenantContext $context */
+        $context = app(TenantContext::class);
+        $tenantId = $this->tenantId ?? $this->extractTenantId($job);
 
-        if ($tenantId) {
-            $this->switchToTenant($tenantId);
+        try {
+            if ($tenantId !== null && $tenantId !== '') {
+                $context->setTenant($tenantId);
+            }
+
+            $next($job);
+        } finally {
+            $context->reset();
         }
-
-        $next($job);
     }
 
-    /**
-     * Extract tenant ID from job payload.
-     */
-    protected function extractTenantId(object $job): ?int
+    protected function extractTenantId(object $job): string|int|null
     {
-        // If job has tenantId property directly
         if (property_exists($job, 'tenantId')) {
-            return $job->tenantId;
+            /** @var mixed $tenantId */
+            $tenantId = $job->tenantId;
+
+            return is_string($tenantId) || is_int($tenantId) ? $tenantId : null;
         }
 
-        // If job wraps an event with tenantId
-        if (property_exists($job, 'event') && property_exists($job->event, 'tenantId')) {
-            return $job->event->tenantId;
+        if (property_exists($job, 'event') && is_object($job->event) && property_exists($job->event, 'tenantId')) {
+            /** @var mixed $tenantId */
+            $tenantId = $job->event->tenantId;
+
+            return is_string($tenantId) || is_int($tenantId) ? $tenantId : null;
         }
 
-        // If using Laravel's event property
         if (method_exists($job, 'getTenantId')) {
-            return $job->getTenantId();
+            /** @var mixed $tenantId */
+            $tenantId = $job->getTenantId();
+
+            return is_string($tenantId) || is_int($tenantId) ? $tenantId : null;
         }
 
         return null;
-    }
-
-    /**
-     * Switch application context to the specified tenant.
-     */
-    protected function switchToTenant(int|string $tenantId): void
-    {
-        // $tenant = Tenant::find($tenantId); // Replaced by Repository
-        $tenant = $this->tenantRepository->findById((string) $tenantId);
-
-        if (! $tenant) {
-            // Fail-safe: one retry after 500ms to account for DB replication lag
-            usleep(500000);
-            $tenant = $this->tenantRepository->findById((string) $tenantId);
-        }
-
-        if (! $tenant) {
-            throw new \RuntimeException("Tenant context could not be resolved for tenantId: {$tenantId}. Cannot process queued job.");
-        }
-
-        // If using Spatie Laravel-Multitenancy
-        if (method_exists($tenant, 'makeCurrent')) {
-            $tenant->makeCurrent();
-
-            return;
-        }
-
-        // If using Stancl/Tenancy
-        if (function_exists('tenancy') && method_exists(tenancy(), 'initialize')) {
-            tenancy()->initialize($tenant);
-
-            return;
-        }
-
-        // Manual tenant switching (database per tenant)
-        // $this->switchDatabase($tenant);
     }
 }

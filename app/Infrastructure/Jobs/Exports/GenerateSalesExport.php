@@ -6,11 +6,11 @@ namespace App\Infrastructure\Jobs\Exports;
 
 use App\Contracts\DataExportInterface;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
-use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\ValueObjects\TenantId;
 use App\Exports\Criteria\SalesExportCriteria;
 use App\Exports\SalesExport;
 use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
+use App\Models\User;
 use App\Notifications\ExportReadyNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,42 +20,55 @@ use Illuminate\Support\Str;
 
 /**
  * GenerateSalesExport - Sales Export Use Case
- *
- * APPLICATION JOB: Uses Repository pattern for entity hydration.
  */
 final class GenerateSalesExport implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
 
     public int $tries = 3;
 
     public int $timeout = 600;
 
+    /**
+     * @param  array{start_date?: ?string, end_date?: ?string, status?: ?string}  $criteriaData
+     */
     public function __construct(
-        public readonly int $userId,
+        public readonly int|string $userId,
         public readonly string $tenantId,
         public readonly array $criteriaData,
         public readonly string $requestIp,
-        public readonly string $userAgent
+        public readonly string $userAgent,
     ) {}
 
-    public function handle(
-        UserRepositoryInterface $userRepository,
-        DataExportInterface $exporter
-    ): void {
-        $user = $userRepository->findById($this->userId);
+    public function handle(DataExportInterface $exporter): void
+    {
+        $user = User::query()->find($this->userId);
+
         if ($user === null) {
-            throw new UserNotFoundException("User {$this->userId} not found");
+            throw UserNotFoundException::withId((string) $this->userId);
         }
 
-        $tenantId = TenantId::fromString($this->tenantId);
         $criteria = SalesExportCriteria::fromArray($this->criteriaData);
+        $filename = sprintf('exports/tenant_%s/sales_%s.xlsx', $this->tenantId, (string) Str::uuid());
+        $export = SalesExport::create(
+            tenantId: TenantId::fromString($this->tenantId),
+            criteria: $criteria,
+            userId: (string) $user->getKey(),
+            ipAddress: $this->requestIp,
+            userAgent: $this->userAgent,
+        );
 
-        $filename = sprintf('exports/tenant_%d/sales_%s.xlsx', $this->tenantId, Str::uuid());
-        $exporter->export(new SalesExport($tenantId, $criteria), $filename);
+        if (! $exporter->store($export, $filename, (string) config('filesystems.exports', 'local'))) {
+            throw new \RuntimeException('The sales export could not be stored.');
+        }
 
-        $downloadUrl = route('exports.download', ['path' => $filename]);
-        $user->notify(new ExportReadyNotification($downloadUrl, 'Sales Export', now()->addHours(24)));
+        $user->notify(new ExportReadyNotification(
+            filePath: $filename,
+            tenantId: $this->tenantId,
+            exportType: 'sales',
+        ));
     }
 
     public function middleware(): array
@@ -63,6 +76,9 @@ final class GenerateSalesExport implements ShouldQueue
         return [new TenantQueueMiddleware($this->tenantId)];
     }
 
+    /**
+     * @return array<int, string>
+     */
     public function tags(): array
     {
         return ['exports', 'sales', 'tenant:'.$this->tenantId];

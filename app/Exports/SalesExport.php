@@ -83,7 +83,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
     private function __construct(
         private readonly TenantId $tenantId,
         private readonly SalesExportCriteria $criteria,
-        private readonly int $userId,
+        private readonly int|string $userId,
         private readonly bool $showFullPii = false,
         private readonly string $ipAddress = '0.0.0.0',
         private readonly string $userAgent = 'Unknown',
@@ -99,7 +99,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
      *
      * @param  TenantId  $tenantId  The tenant context (MANDATORY)
      * @param  SalesExportCriteria  $criteria  The export filters (validated)
-     * @param  int  $userId  The user requesting the export
+     * @param  int|string  $userId  The user requesting the export
      * @param  bool  $showFullPii  If true, show full phone/email (requires explicit permission)
      * @param  string  $ipAddress  Request IP for audit trail
      * @param  string  $userAgent  Request user agent for audit trail
@@ -107,7 +107,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
     public static function create(
         TenantId $tenantId,
         SalesExportCriteria $criteria,
-        int $userId,
+        int|string $userId,
         bool $showFullPii = false,
         string $ipAddress = '0.0.0.0',
         string $userAgent = 'Unknown',
@@ -144,7 +144,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
     public static function createForTesting(
         TenantId $tenantId,
         SalesExportCriteria $criteria,
-        int $userId,
+        int|string $userId,
         bool $showFullPii = false,
         string $ipAddress = '0.0.0.0',
         string $userAgent = 'Unknown',
