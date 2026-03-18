@@ -6,11 +6,22 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Product;
+use App\Models\Tenant;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
+use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class ProductResource extends Resource
 {
@@ -20,7 +31,7 @@ class ProductResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Gestión de Catálogo';
+        return 'GestiÃ³n de CatÃ¡logo';
     }
 
     public static function getNavigationLabel(): string
@@ -35,73 +46,76 @@ class ProductResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        // Feature Gating: Check Plan
-        $tenant = \Filament\Facades\Filament::getTenant();
-        $isPro = $tenant && $tenant->plan_type === 'pro' || $tenant->plan_type === 'enterprise';
+        $tenant = self::getTenantRecord();
+        $planValue = $tenant instanceof Tenant ? (string) $tenant->getRawOriginal('plan_type') : null;
+        $isPro = in_array($planValue, ['pro', 'enterprise'], true);
 
         return $schema
             ->schema([
-                // 1. MAIN COLUMN (LEFT - 2/3)
-                Forms\Components\Group::make()
+                Group::make()
                     ->schema([
-                        Forms\Components\Section::make('Información del Producto')
+                        Section::make('InformaciÃ³n del Producto')
                             ->schema([
                                 Forms\Components\TextInput::make('name')
                                     ->label('Nombre del Producto')
                                     ->required()
                                     ->maxLength(255),
 
-                                // RichEditor with simplified toolbar to avoid messy HTML
                                 Forms\Components\RichEditor::make('description')
-                                    ->label('Descripción')
+                                    ->label('DescripciÃ³n')
                                     ->toolbarButtons([
-                                        'bold', 'italic', 'bulletList', 'orderedList', 'link', 'redo', 'undo',
+                                        'bold',
+                                        'italic',
+                                        'bulletList',
+                                        'orderedList',
+                                        'link',
+                                        'redo',
+                                        'undo',
                                     ])
                                     ->columnSpan('full'),
                             ]),
 
-                        Forms\Components\Section::make('Galería de Imágenes')
+                        Section::make('GalerÃ­a de ImÃ¡genes')
                             ->schema([
-                                Forms\Components\SpatieMediaLibraryFileUpload::make('images')
-                                    ->label('Imágenes del Producto')
+                                SpatieMediaLibraryFileUpload::make('images')
+                                    ->label('ImÃ¡genes del Producto')
                                     ->collection('product-images')
                                     ->image()
                                     ->imageEditor()
                                     ->reorderable()
-                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp']) // Security Hardening (VC-AUDIT-003)
-                                    ->maxSize(2048) // 2MB Limit
+                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                                    ->maxSize(2048)
                                     ->maxFiles(5)
                                     ->columnSpan('full'),
                             ]),
 
-                        // GATED FEATURE: Modifiers (Only for PRO/ENT)
-                        Forms\Components\Section::make('Opciones y Modificadores')
+                        Section::make('Opciones y Modificadores')
                             ->schema([
                                 $isPro
-                                ? Forms\Components\Repeater::make('modifiers')
-                                    ->label('Grupos de Opciones')
-                                    ->relationship('modifierGroups')
-                                    ->schema([
-                                        Forms\Components\TextInput::make('name')->label('Nombre (ej. Tallas)')->required(),
-                                        Forms\Components\TextInput::make('min_selections')->numeric()->default(0)->label('Mín'),
-                                        Forms\Components\TextInput::make('max_selections')->numeric()->default(1)->label('Máx'),
-                                    ])
-                                    ->collapsed()
-                                : Forms\Components\Placeholder::make('upgrade_promo')
-                                    ->label('Opciones Avanzadas')
-                                    ->content(new \Illuminate\Support\HtmlString('
-                                        <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700">
-                                            <p class="font-bold">Disponible en Plan Pro</p>
-                                            <p>Actualiza para agregar tallas, colores y extras a tus productos.</p>
-                                        </div>
-                                    ')),
+                                    ? Forms\Components\Repeater::make('modifiers')
+                                        ->label('Grupos de Opciones')
+                                        ->relationship('modifierGroups')
+                                        ->schema([
+                                            Forms\Components\TextInput::make('name')->label('Nombre (ej. Tallas)')->required(),
+                                            Forms\Components\TextInput::make('min_selections')->numeric()->default(0)->label('MÃ­n'),
+                                            Forms\Components\TextInput::make('max_selections')->numeric()->default(1)->label('MÃ¡x'),
+                                        ])
+                                        ->collapsed()
+                                    : Forms\Components\Placeholder::make('upgrade_promo')
+                                        ->label('Opciones Avanzadas')
+                                        ->content(new HtmlString('
+                                            <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700">
+                                                <p class="font-bold">Disponible en Plan Pro</p>
+                                                <p>Actualiza para agregar tallas, colores y extras a tus productos.</p>
+                                            </div>
+                                        ')),
                             ]),
-                    ])->columnSpan(2),
+                    ])
+                    ->columnSpan(2),
 
-                // 2. SIDEBAR COLUMN (RIGHT - 1/3)
-                Forms\Components\Group::make()
+                Group::make()
                     ->schema([
-                        Forms\Components\Section::make('Detalles y Precio')
+                        Section::make('Detalles y Precio')
                             ->schema([
                                 Forms\Components\TextInput::make('price')
                                     ->label('Precio (Lps)')
@@ -111,24 +125,25 @@ class ProductResource extends Resource
 
                                 Forms\Components\Select::make('category_id')
                                     ->relationship('category', 'name')
-                                    ->label('Categoría')
+                                    ->label('CategorÃ­a')
                                     ->searchable()
                                     ->preload()
                                     ->required(),
 
                                 Forms\Components\Select::make('menu_section_id')
                                     ->relationship('menuSection', 'name')
-                                    ->label('Sección del Menú')
+                                    ->label('SecciÃ³n del MenÃº')
                                     ->searchable()
                                     ->preload(),
 
                                 Forms\Components\Toggle::make('is_visible')
-                                    ->label('Visible al Público')
+                                    ->label('Visible al PÃºblico')
                                     ->default(true)
                                     ->onColor('success')
                                     ->offColor('danger'),
                             ]),
-                    ])->columnSpan(1),
+                    ])
+                    ->columnSpan(1),
             ])
             ->columns(3);
     }
@@ -137,7 +152,7 @@ class ProductResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\SpatieMediaLibraryImageColumn::make('product-images')
+                SpatieMediaLibraryImageColumn::make('product-images')
                     ->label('Imagen')
                     ->collection('product-images')
                     ->conversion('thumb')
@@ -150,7 +165,7 @@ class ProductResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('category.name')
-                    ->label('Categoría')
+                    ->label('CategorÃ­a')
                     ->badge()
                     ->color('gray')
                     ->sortable(),
@@ -170,19 +185,19 @@ class ProductResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_id')
-                    ->label('Categoría')
+                    ->label('CategorÃ­a')
                     ->relationship('category', 'name'),
 
                 Tables\Filters\TernaryFilter::make('is_visible')
                     ->label('Visibilidad'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -191,9 +206,7 @@ class ProductResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
@@ -203,5 +216,12 @@ class ProductResource extends Resource
             'create' => Pages\CreateProduct::route('/create'),
             'edit' => Pages\EditProduct::route('/{record}/edit'),
         ];
+    }
+
+    private static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

@@ -6,16 +6,19 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\LocationResource\Pages;
 use App\Models\Location;
+use App\Models\Tenant;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -68,7 +71,7 @@ class LocationResource extends Resource
     {
         return $schema
             ->schema([
-                Forms\Components\Section::make('Informacion de la sucursal')
+                Section::make('Informacion de la sucursal')
                     ->icon('heroicon-o-map')
                     ->columns(2)
                     ->schema([
@@ -89,7 +92,7 @@ class LocationResource extends Resource
                                 column: 'slug',
                                 ignoreRecord: true,
                                 modifyRuleUsing: function (Unique $rule): Unique {
-                                    $tenantId = Filament::getTenant()?->getKey();
+                                    $tenantId = self::getTenantRecord()?->getKey();
 
                                     return $tenantId
                                         ? $rule->where('tenant_id', $tenantId)
@@ -115,7 +118,7 @@ class LocationResource extends Resource
                         Toggle::make('is_active')
                             ->label('Activa')
                             ->default(true)
-                            ->disabled(fn (Forms\Get $get): bool => (bool) $get('is_primary'))
+                            ->disabled(fn (Get $get): bool => (bool) $get('is_primary'))
                             ->helperText('La sucursal primaria debe permanecer activa.'),
 
                         Toggle::make('is_primary')
@@ -129,14 +132,14 @@ class LocationResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function (Builder $query): Builder {
-                $tenant = Filament::getTenant();
+                $tenant = self::getTenantRecord();
 
-                if (! $tenant) {
+                if (! $tenant instanceof Tenant) {
                     return $query->whereRaw('1 = 0');
                 }
 
                 return $query
-                    ->where('tenant_id', $tenant->id)
+                    ->where('tenant_id', (string) $tenant->getKey())
                     ->withCount('orders')
                     ->orderByDesc('is_primary')
                     ->orderBy('name');
@@ -204,5 +207,12 @@ class LocationResource extends Resource
             'create' => Pages\CreateLocation::route('/create'),
             'edit' => Pages\EditLocation::route('/{record}/edit'),
         ];
+    }
+
+    private static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

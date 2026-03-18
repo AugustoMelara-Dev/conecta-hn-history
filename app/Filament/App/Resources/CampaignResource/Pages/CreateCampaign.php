@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\CampaignResource\Pages;
 
 use App\Filament\App\Resources\CampaignResource;
+use App\Models\Tenant;
+use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateCampaign extends CreateRecord
@@ -13,7 +15,11 @@ class CreateCampaign extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['tenant_id'] = \Filament\Facades\Filament::getTenant()->id;
+        $tenant = Filament::getTenant();
+
+        if ($tenant instanceof Tenant) {
+            $data['tenant_id'] = (string) $tenant->getKey();
+        }
 
         return $data;
     }

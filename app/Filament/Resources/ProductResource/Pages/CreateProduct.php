@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Filament\Resources\ProductResource\Pages;
 
 use App\Filament\Resources\ProductResource;
+use App\Models\Tenant;
+use Filament\Actions\Action;
+use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateProduct extends CreateRecord
@@ -13,39 +17,32 @@ class CreateProduct extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = Filament::getTenant();
 
-        // 🛑 GUILLOTINE LOGIC: Hard Stop for Plan Limits
-        if ($tenant) {
-            // Get effective limit (default 12 for semilla)
-            $limit = $tenant->product_limit ?? 12;
-
-            // Note: products() is already scoped by TenantScope if active,
-            // but relying on relationship provides cleaner syntax here.
+        if ($tenant instanceof Tenant) {
+            $limit = (int) ($tenant->getAttribute('product_limit') ?? 12);
+            $planType = (string) $tenant->getRawOriginal('plan_type');
             $currentCount = $tenant->products()->count();
 
-            if ($tenant->plan_type === 'semilla' && $currentCount >= $limit) {
-
-                \Filament\Notifications\Notification::make()
+            if ($planType === 'semilla' && $currentCount >= $limit) {
+                Notification::make()
                     ->danger()
-                    ->title('🛑 Límite de Plan Semilla Alcanzado')
-                    ->body("Has llegado al límite de {$limit} productos. ¡Actualiza a Plan PRO para inventario ilimitado!")
+                    ->title('Limite de Plan Semilla Alcanzado')
+                    ->body("Has llegado al limite de {$limit} productos. Actualiza a Plan PRO para inventario ilimitado.")
                     ->actions([
-                        \Filament\Notifications\Actions\Action::make('upgrade')
+                        Action::make('upgrade')
                             ->button()
                             ->label('Actualizar Plan')
-                            ->url('/admin/billing'), // Assuming this route exists
+                            ->url('/admin/billing'),
                     ])
                     ->persistent()
                     ->send();
 
-                // ✋ HALT EXECUTION - The "Guillotine"
                 $this->halt();
             }
-        }
 
-        // Automatic Tenant Assignment (Safety Net, although Trait handles it)
-        $data['tenant_id'] = $tenant->id;
+            $data['tenant_id'] = (string) $tenant->getKey();
+        }
 
         return $data;
     }

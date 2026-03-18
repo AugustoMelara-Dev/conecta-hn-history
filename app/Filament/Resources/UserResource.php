@@ -7,6 +7,11 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\UserResource\Pages;
 // MIGRATION: Updated to Domain namespace (2026-01-05)
 use App\Models\User;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -117,8 +122,8 @@ class UserResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('change_password')
+                EditAction::make(),
+                Action::make('change_password')
                     ->label('Cambiar Contraseña')
                     ->icon('heroicon-o-key')
                     ->color('warning')
@@ -141,7 +146,7 @@ class UserResource extends Resource
                         Notification::make()->title('Contraseña actualizada')->success()->send();
                     }),
 
-                Tables\Actions\Action::make('ban')
+                Action::make('ban')
                     ->label('Banear')
                     ->icon('heroicon-o-no-symbol')
                     ->color('danger')
@@ -152,7 +157,7 @@ class UserResource extends Resource
                         Notification::make()->title('Usuario baneado')->success()->send();
                     }),
 
-                Tables\Actions\Action::make('unban')
+                Action::make('unban')
                     ->label('Desbanear')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
@@ -163,11 +168,11 @@ class UserResource extends Resource
                         Notification::make()->title('Usuario desbaneado')->success()->send();
                     }),
 
-                Tables\Actions\DeleteAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

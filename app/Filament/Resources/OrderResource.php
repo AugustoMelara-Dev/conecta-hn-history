@@ -7,12 +7,14 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
 use App\Services\OrderStateService;
-use Filament\Infolists\Components\Grid;
+use Filament\Actions\Action;
+use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\RepeatableEntry;
-use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontFamily;
 use Filament\Tables;
@@ -132,12 +134,12 @@ class OrderResource extends Resource
                 // ═══════════════════════════════════════════════════════════════
                 // ACTION: VIEW
                 // ═══════════════════════════════════════════════════════════════
-                Tables\Actions\ViewAction::make(),
+                ViewAction::make(),
 
                 // ═══════════════════════════════════════════════════════════════
                 // ACTION: WHATSAPP CONTACT (Deep Link with Sanitization)
                 // ═══════════════════════════════════════════════════════════════
-                Tables\Actions\Action::make('whatsapp')
+                Action::make('whatsapp')
                     ->label('WhatsApp')
                     ->icon('heroicon-o-chat-bubble-left-right')
                     ->color('success')
@@ -158,7 +160,7 @@ class OrderResource extends Resource
                 // ═══════════════════════════════════════════════════════════════
                 // ACTION: COMPLETE (Workflow Transition)
                 // ═══════════════════════════════════════════════════════════════
-                Tables\Actions\Action::make('complete')
+                Action::make('complete')
                     ->label('Completar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
@@ -255,7 +257,7 @@ class OrderResource extends Resource
                     ->schema([
                         TextEntry::make('subtotal')->money('HNL'),
                         TextEntry::make('delivery_fee')->label('Envío')->money('HNL'),
-                        TextEntry::make('total')->money('HNL')->weight('bold')->size(TextEntry\TextEntrySize::Large),
+                        TextEntry::make('total')->money('HNL')->weight('bold')->size('lg'),
                     ]),
 
                 // Customer Section

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
+use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
 
@@ -30,15 +31,15 @@ class UpgradeToPro extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        $tenant = Filament::getTenant();
+        $tenant = self::getTenantRecord();
 
-        return $tenant && ! $tenant->is_pro;
+        return $tenant instanceof Tenant && ! $tenant->is_pro;
     }
 
     public function getViewData(): array
     {
         return [
-            'tenant' => Filament::getTenant(),
+            'tenant' => self::getTenantRecord(),
             'features' => [
                 [
                     'icon' => 'heroicon-o-chat-bubble-left-right',
@@ -74,5 +75,12 @@ class UpgradeToPro extends Page
             'price' => 'L. 1,500',
             'period' => 'mes',
         ];
+    }
+
+    private static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

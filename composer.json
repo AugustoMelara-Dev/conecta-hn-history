@@ -11,6 +11,7 @@
         "bepsvpt/blurhash": "*",
         "darkaonline/l5-swagger": "*",
         "filament/filament": "^4.2",
+        "filament/spatie-laravel-media-library-plugin": "^4.2",
         "inertiajs/inertia-laravel": "^2.0",
         "kornrunner/blurhash": "^1.2",
         "laravel-notification-channels/webpush": "^10.5",
