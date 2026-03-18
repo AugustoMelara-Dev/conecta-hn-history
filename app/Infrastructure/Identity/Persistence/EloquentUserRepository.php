@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Identity\Persistence;
 
-use App\Contracts\Events\DomainEventBus;
 use App\Domain\Identity\Entities\UserEntity;
+use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Models\User;
 
@@ -21,9 +21,6 @@ use App\Models\User;
  */
 final readonly class EloquentUserRepository implements UserRepositoryInterface
 {
-    public function __construct(
-        private readonly DomainEventBus $eventBus
-    ) {}
 
     /**
      * Persiste una entidad de dominio UserEntity en la base de datos.
@@ -103,11 +100,13 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
 
     public function delete(UserEntity $user): void
     {
-        if ($user->id() === null) {
+        $userId = $user->id();
+
+        if ($userId === '') {
             return;
         }
 
-        User::where('id', $user->id())->delete();
+        User::whereKey($userId)->delete();
     }
 
     public function resetPassword(string $userId, string $tenantId, string $passwordHash, string $rememberToken): void
@@ -120,24 +119,18 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
             ]);
 
         if ($affected === 0) {
-            throw new \App\Domain\Identity\Exceptions\UserNotFoundException(
-                "User {$userId} not found in tenant {$tenantId}."
-            );
+            throw UserNotFoundException::withIdAndTenant($userId, $tenantId);
         }
     }
 
     private function toEntity(User $model): UserEntity
     {
-        $tenantId = null;
-        $rawTenantId = $model->tenant_id;
-
-        if ($rawTenantId instanceof \App\Domain\Shared\ValueObjects\TenantId) {
-            $tenantId = (string) $rawTenantId->value;
-        } elseif (is_numeric($rawTenantId)) {
-            $tenantId = (string) $rawTenantId;
-        } elseif (is_string($rawTenantId)) {
-            $tenantId = $rawTenantId;
-        }
+        $rawTenantId = $model->getAttribute('tenant_id');
+        $tenantId = $rawTenantId !== null ? (string) $rawTenantId : null;
+        $rawRole = $model->getAttribute('role');
+        $role = $rawRole instanceof \BackedEnum
+            ? (string) $rawRole->value
+            : (string) ($rawRole ?? 'user');
 
         // Use fromStateArray factory method instead of private constructor
         return UserEntity::fromStateArray([
@@ -145,7 +138,7 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
             'name' => $model->name,
             'email' => $model->email,
             'password' => $model->password,
-            'role' => $model->role instanceof \UnitEnum ? $model->role->value : ($model->role ?? 'user'),
+            'role' => $role,
             'tenant_id' => $tenantId,
             'remember_token' => $model->remember_token,
             'avatar' => $model->avatar,

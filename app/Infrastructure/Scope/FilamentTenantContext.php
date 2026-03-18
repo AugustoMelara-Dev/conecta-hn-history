@@ -5,91 +5,62 @@ declare(strict_types=1);
 namespace App\Infrastructure\Scope;
 
 use App\Contracts\Scope\TenantContextInterface;
+use App\Models\Tenant;
+use App\Models\User;
+use Filament\Facades\Filament;
 
 /**
- * FilamentTenantContext - Infrastructure Adapter for Filament Panel
+ * FilamentTenantContext - Infrastructure adapter for Filament tenant panels.
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  HEXAGONAL ARCHITECTURE: INFRASTRUCTURE ADAPTER                         ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║                                                                          ║
- * ║  THIS IS THE ONLY CLASS IN THE ENTIRE CODEBASE AUTHORIZED TO:           ║
- * ║    - Import Filament\Facades\Filament                                   ║
- * ║    - Call Filament::getTenant()                                         ║
- * ║                                                                          ║
- * ║  All other classes (Models, Scopes, Traits) MUST use                    ║
- * ║  TenantContextInterface instead of direct Filament calls.               ║
- * ║                                                                          ║
- * ║  REGISTRATION: Bound in InfrastructureServiceProvider as singleton      ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * This is the only adapter allowed to touch Filament's runtime tenant facade
+ * directly. Everyone else should depend on TenantContextInterface.
  */
 final class FilamentTenantContext implements TenantContextInterface
 {
     public function getTenantUuid(): ?string
     {
-        if (class_exists(\Filament\Facades\Filament::class)) {
-            try {
-                $tenant = \Filament\Facades\Filament::getTenant();
-                if ($tenant !== null) {
-                    return $tenant->uuid; // Assuming 'uuid' is the property
-                }
-            } catch (\Throwable) {
-            }
-        }
+        $tenant = $this->resolveTenant();
 
-        if (auth()->check()) {
-            /** @var \App\Models\User $user */
-            $user = auth()->user();
-            $primaryTenant = $user->tenants()->first();
-            if ($primaryTenant !== null) {
-                return $primaryTenant->uuid; // Assuming 'uuid' is the property
-            }
-        }
-
-        return null;
+        return $tenant !== null ? (string) $tenant->getKey() : null;
     }
 
-    /**
-     * Resolve tenant ID from Filament's active panel context.
-     *
-     * RESOLUTION PRIORITY:
-     * 1. Filament Panel Tenant (if Filament is initialized)
-     * 2. Authenticated User's Primary Tenant (fallback)
-     * 3. null (no context available)
-     */
-    public function getTenantId(): ?int
+    public function getTenantId(): ?string
     {
-        // ═══════════════════════════════════════════════════════════════════
-        // METHOD 1: Filament Panel Context (Primary)
-        // ═══════════════════════════════════════════════════════════════════
-        if (class_exists(\Filament\Facades\Filament::class)) {
-            try {
-                $tenant = \Filament\Facades\Filament::getTenant();
-                if ($tenant !== null) {
-                    return $tenant->id;
-                }
-            } catch (\Throwable) {
-                // Filament not initialized (CLI, Queue, etc.)
-            }
+        $tenant = $this->resolveTenant();
+
+        return $tenant !== null ? (string) $tenant->getKey() : null;
+    }
+
+    private function resolveTenant(): ?Tenant
+    {
+        return $this->resolveFilamentTenant() ?? $this->resolveAuthenticatedTenant();
+    }
+
+    private function resolveFilamentTenant(): ?Tenant
+    {
+        if (! class_exists(Filament::class)) {
+            return null;
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // METHOD 2: Authenticated User's Primary Tenant (Fallback)
-        // ═══════════════════════════════════════════════════════════════════
-        if (auth()->check()) {
-            /** @var \App\Models\User $user */
-            $user = auth()->user();
-
-            // User->tenants() returns HasMany (user owns tenants)
-            $primaryTenant = $user->tenants()->first();
-            if ($primaryTenant !== null) {
-                return $primaryTenant->id;
-            }
+        try {
+            $tenant = Filament::getTenant();
+        } catch (\Throwable) {
+            return null;
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // METHOD 3: No Context Available
-        // ═══════════════════════════════════════════════════════════════════
-        return null;
+        return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    private function resolveAuthenticatedTenant(): ?Tenant
+    {
+        $user = auth()->user();
+
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        $primaryTenant = $user->tenants()->first();
+
+        return $primaryTenant instanceof Tenant ? $primaryTenant : null;
     }
 }

@@ -76,17 +76,23 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             ->inPriorityOrder()
             ->take($limit)
             ->get()
-            ->map(fn (Tenant $tenant) => [
-                'id' => $tenant->id,
-                'name' => $tenant->name,
-                'slug' => $tenant->slug,
-                'description' => $tenant->description,
-                'hero_image' => $tenant->hero_image,
-                'cover_path' => $tenant->cover_path,
-                'brand_color' => $tenant->brand_color,
-                'plan_type' => $tenant->plan_type instanceof TenantPlan ? $tenant->plan_type->value : (string) $tenant->plan_type,
-                'is_pro' => (bool) $tenant->is_pro,
-            ])
+            ->map(function (Tenant $tenant): array {
+                $planType = $tenant->getAttribute('plan_type');
+
+                return [
+                    'id' => (string) $tenant->getKey(),
+                    'name' => (string) $tenant->name,
+                    'slug' => (string) $tenant->slug,
+                    'description' => $this->nullableString($tenant->getAttribute('description')),
+                    'hero_image' => $this->nullableString($tenant->getAttribute('hero_image')),
+                    'cover_path' => $this->nullableString($tenant->getAttribute('cover_path')),
+                    'brand_color' => $this->nullableString($tenant->getAttribute('brand_color')),
+                    'plan_type' => $planType instanceof TenantPlan
+                        ? $planType->value
+                        : (string) ($planType ?? TenantPlan::SEMILLA->value),
+                    'is_pro' => (bool) $tenant->is_pro,
+                ];
+            })
             ->all();
     }
 
@@ -159,8 +165,10 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
 
     public function delete(TenantEntity $tenant): void
     {
-        if ($tenant->id) {
-            Tenant::destroy($tenant->id);
+        $tenantId = $tenant->id();
+
+        if ($tenantId !== '') {
+            Tenant::destroy($tenantId);
         }
     }
 
@@ -170,39 +178,48 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
         // We rely on Eloquent Casting ($casts) for 'plan_type'.
         // However, for defense in depth, we verify or fallback safely.
 
-        $plan = $model->plan_type;
-        if (! $plan instanceof TenantPlan) {
-            // Should not happen if Model casts are correct, but handling legacy strings:
-            $plan = TenantPlan::from((string) ($plan ?? 'semilla'));
-        }
+        $planType = $model->getAttribute('plan_type');
+        $plan = $planType instanceof TenantPlan
+            ? $planType
+            : TenantPlan::from((string) ($planType ?? TenantPlan::SEMILLA->value));
 
         return TenantEntity::fromStateArray([
-            'id' => $model->id,
-            'name' => $model->name,
-            'domain' => $model->slug, // Mapping slug -> domain
+            'id' => (string) $model->getKey(),
+            'name' => (string) $model->name,
+            'domain' => (string) $model->slug, // Mapping slug -> domain
             'is_active' => (bool) $model->is_active,
             'created_at' => $model->created_at?->toIso8601String(),
             'updated_at' => $model->updated_at?->toIso8601String(),
             'plan_id' => $plan->value,
-            'subscription_status' => (string) ($model->subscription_status ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS),
+            'subscription_status' => (string) ($model->getAttribute('subscription_status') ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS),
             'subscription_ends_at' => $model->subscription_ends_at?->toIso8601String(),
             'subscription_reference' => null,
 
             // Profile & Settings
-            'owner_id' => $model->user_id,
-            'category_id' => $model->category_id,
-            'city_id' => $model->city_id,
-            'logo_path' => $model->logo_path,
-            'description' => $model->description,
-            'slogan' => $model->slogan,
-            'whatsapp' => $model->whatsapp_number,
-            'phone' => $model->phone,
-            'address' => $model->address,
-            'latitude' => $model->latitude !== null ? (string) $model->latitude : null,
-            'longitude' => $model->longitude !== null ? (string) $model->longitude : null,
-            'is_ai_enhanced' => (bool) $model->is_ai_enhanced,
+            'owner_id' => $this->nullableString($model->getAttribute('user_id')),
+            'category_id' => $this->nullableInt($model->getAttribute('category_id')),
+            'city_id' => $this->nullableInt($model->getAttribute('city_id')),
+            'logo_path' => $this->nullableString($model->getAttribute('logo_path')),
+            'description' => $this->nullableString($model->getAttribute('description')),
+            'slogan' => $this->nullableString($model->getAttribute('slogan')),
+            'whatsapp' => $this->nullableString($model->getAttribute('whatsapp_number')),
+            'phone' => $this->nullableString($model->getAttribute('phone')),
+            'address' => $this->nullableString($model->getAttribute('address')),
+            'latitude' => $this->nullableString($model->getAttribute('latitude')),
+            'longitude' => $this->nullableString($model->getAttribute('longitude')),
+            'is_ai_enhanced' => (bool) $model->getAttribute('is_ai_enhanced'),
             'is_pro' => (bool) $model->is_pro,
-            'product_limit' => (int) $model->product_limit,
+            'product_limit' => (int) ($model->getAttribute('product_limit') ?? 10),
         ]);
+    }
+
+    private function nullableInt(mixed $value): ?int
+    {
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    private function nullableString(mixed $value): ?string
+    {
+        return $value !== null ? (string) $value : null;
     }
 }

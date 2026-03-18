@@ -6,6 +6,7 @@ namespace App\Infrastructure\Repositories\Sales;
 
 use App\Domain\Sales\Entities\LeadEntity;
 use App\Domain\Sales\Repositories\LeadRepositoryInterface;
+use App\Infrastructure\Sales\Mappers\LeadMapper;
 use App\Models\Lead;
 
 /**
@@ -21,7 +22,7 @@ final class EloquentLeadRepository implements LeadRepositoryInterface
      * {@inheritDoc}
      */
     public function createFromInteraction(
-        int $tenantId,
+        string $tenantId,
         ?int $productId,
         string $source,
         ?string $message = null
@@ -34,7 +35,7 @@ final class EloquentLeadRepository implements LeadRepositoryInterface
             'status' => 'new',
         ]);
 
-        return LeadEntity::fromModel($model);
+        return LeadMapper::toDomain($model);
     }
 
     /**
@@ -44,6 +45,6 @@ final class EloquentLeadRepository implements LeadRepositoryInterface
     {
         $model = Lead::find($id);
 
-        return $model ? LeadEntity::fromModel($model) : null;
+        return $model ? LeadMapper::toDomain($model) : null;
     }
 }

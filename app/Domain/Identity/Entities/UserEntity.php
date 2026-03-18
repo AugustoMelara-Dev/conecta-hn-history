@@ -198,7 +198,9 @@ final class UserEntity
         $user->email = $state['email'] ?? '';
         $user->password = $state['password'] ?? '';
         $user->role = UserRole::from($state['role']);
-        $user->tenantId = (string) ($state['tenant_id'] ?? '');
+        $user->tenantId = isset($state['tenant_id']) && $state['tenant_id'] !== null
+            ? (string) $state['tenant_id']
+            : null;
         $user->rememberToken = $state['remember_token'] ?? null;
         $user->avatar = $state['avatar'] ?? null;
         $user->createdAt = isset($state['created_at']) ? new DateTimeImmutable($state['created_at']) : null;
