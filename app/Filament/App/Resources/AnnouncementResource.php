@@ -6,14 +6,18 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\AnnouncementResource\Pages;
 use App\Models\Announcement;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\RichEditor;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Get;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -153,7 +157,7 @@ class AnnouncementResource extends Resource
                     ->label('Estado')
                     ->getStateUsing(fn (Announcement $record): string => $record->status)
                     ->badge()
-                    ->formatStateUsing(fn (Announcement $record): string => $record->status_label)
+                    ->formatStateUsing(fn (Announcement $record): string => $record->status)
                     ->color(fn (Announcement $record): string => $record->status_color),
 
                 // Schedule Period
@@ -186,12 +190,12 @@ class AnnouncementResource extends Resource
                     ->label('Activos'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('starts_at', 'desc');

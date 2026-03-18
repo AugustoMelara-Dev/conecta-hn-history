@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Widgets;
 
 use App\Models\Interaction;
+use App\Models\Tenant;
 use App\Models\TenantVisit;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -26,9 +27,9 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $tenant = Auth::user()?->tenant;
+        $tenant = $this->getTenantRecord();
 
-        if (! $tenant) {
+        if (! $tenant instanceof Tenant) {
             return [
                 Stat::make('Visitas', '-')
                     ->description('No hay negocio vinculado')
@@ -36,28 +37,34 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
             ];
         }
 
+        $tenantId = (string) $tenant->getKey();
+
         // ═══════════════════════════════════════════════════════════════
         // CURRENT MONTH METRICS
         // ═══════════════════════════════════════════════════════════════
-        $visitsThisMonth = TenantVisit::forTenant($tenant->id)
+        $visitsThisMonth = TenantVisit::query()
+            ->where('tenant_id', $tenantId)
             ->thisMonth()
             ->count();
 
-        $conversionsThisMonth = Interaction::forTenant($tenant->id)
-            ->ofType('whatsapp_click')
+        $conversionsThisMonth = Interaction::query()
+            ->where('tenant_id', $tenantId)
+            ->ofType(Interaction::TYPE_WHATSAPP_CLICK)
             ->thisMonth()
             ->count();
 
         // ═══════════════════════════════════════════════════════════════
         // PREVIOUS MONTH METRICS (for trend comparison)
         // ═══════════════════════════════════════════════════════════════
-        $visitsLastMonth = TenantVisit::forTenant($tenant->id)
+        $visitsLastMonth = TenantVisit::query()
+            ->where('tenant_id', $tenantId)
             ->whereMonth('created_at', now()->subMonth()->month)
             ->whereYear('created_at', now()->subMonth()->year)
             ->count();
 
-        $conversionsLastMonth = Interaction::forTenant($tenant->id)
-            ->ofType('whatsapp_click')
+        $conversionsLastMonth = Interaction::query()
+            ->where('tenant_id', $tenantId)
+            ->ofType(Interaction::TYPE_WHATSAPP_CLICK)
             ->whereMonth('created_at', now()->subMonth()->month)
             ->whereYear('created_at', now()->subMonth()->year)
             ->count();
@@ -78,13 +85,13 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
                 ->description($visitsTrend['description'])
                 ->descriptionIcon($visitsTrend['icon'])
                 ->color($visitsTrend['color'])
-                ->chart($this->getSparklineData($tenant->id, 'visits')),
+                ->chart($this->getSparklineData($tenantId, 'visits')),
 
             Stat::make('Clics en WhatsApp', number_format($conversionsThisMonth))
                 ->description($conversionsTrend['description'])
                 ->descriptionIcon($conversionsTrend['icon'])
                 ->color($conversionsTrend['color'])
-                ->chart($this->getSparklineData($tenant->id, 'conversions')),
+                ->chart($this->getSparklineData($tenantId, 'conversions')),
 
             Stat::make('Tasa de Conversión', "{$conversionRate}%")
                 ->description('Visitas → WhatsApp')
@@ -132,19 +139,21 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
     /**
      * Get sparkline data for last 7 days.
      */
-    protected function getSparklineData(int $tenantId, string $metric): array
+    protected function getSparklineData(string $tenantId, string $metric): array
     {
         $days = collect(range(6, 0))->map(fn ($i) => now()->subDays($i)->toDateString());
 
         if ($metric === 'visits') {
-            $data = TenantVisit::forTenant($tenantId)
+            $data = TenantVisit::query()
+                ->where('tenant_id', $tenantId)
                 ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
                 ->whereDate('created_at', '>=', now()->subDays(7))
                 ->groupBy('date')
                 ->pluck('count', 'date');
         } else {
-            $data = Interaction::forTenant($tenantId)
-                ->ofType('whatsapp_click')
+            $data = Interaction::query()
+                ->where('tenant_id', $tenantId)
+                ->ofType(Interaction::TYPE_WHATSAPP_CLICK)
                 ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
                 ->whereDate('created_at', '>=', now()->subDays(7))
                 ->groupBy('date')
@@ -152,5 +161,13 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
         }
 
         return $days->map(fn ($date) => $data[$date] ?? 0)->toArray();
+    }
+
+    private function getTenantRecord(): ?Tenant
+    {
+        $user = Auth::user();
+        $tenant = $user?->tenant;
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

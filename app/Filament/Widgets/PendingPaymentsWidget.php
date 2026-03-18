@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Widgets;
 
 use App\Models\Payment;
+use App\Models\Tenant;
+use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -30,21 +32,20 @@ class PendingPaymentsWidget extends BaseWidget
     public static function canView(): bool
     {
         $user = auth()->user();
-        if (! $user) {
+        if (! $user instanceof User) {
             return false;
         }
 
-        // Soporte no puede ver widgets financieros
-        if ($user->hasRole('soporte')) {
+        if (self::hasAnyLegacyRole($user, ['soporte'])) {
             return false;
         }
 
-        // super_admin or auditor with whitelist verification can view
         $superAdmins = config('auth.super_admins', []);
         $isWhitelisted = in_array($user->email ?? '', $superAdmins, true);
 
-        return $user->hasRole(['super_admin', 'auditor'])
-            || ($user->hasRole('super_admin') && $isWhitelisted);
+        return $user->isSuperAdmin()
+            || self::hasAnyLegacyRole($user, ['auditor'])
+            || ($isWhitelisted && self::hasAnyLegacyRole($user, ['super_admin']));
     }
 
     public function table(Table $table): Table
@@ -79,13 +80,11 @@ class PendingPaymentsWidget extends BaseWidget
 
                 TextColumn::make('waiting_time')
                     ->label('Espera')
-                    ->state(fn (Payment $record): string => $record->created_at->diffForHumans()
-                    )
+                    ->state(fn (Payment $record): string => $record->created_at->diffForHumans())
                     ->badge()
-                    ->color(fn (Payment $record): string => $record->created_at->diffInHours() > 24 ? 'danger' : 'warning'
-                    ),
+                    ->color(fn (Payment $record): string => $record->created_at->diffInHours() > 24 ? 'danger' : 'warning'),
 
-                ImageColumn::make('proof_image_path')
+                ImageColumn::make('proof_path')
                     ->label('Comprobante')
                     ->circular()
                     ->size(40),
@@ -97,26 +96,37 @@ class PendingPaymentsWidget extends BaseWidget
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Aprobar Pago')
-                    ->modalDescription(fn (Payment $record): string => 'Confirmar pago de L. '.number_format($record->amount, 2).
-                        ' del negocio '.$record->tenant->name.'?'
-                    )
-                    ->action(function (Payment $record) {
-                        DB::transaction(function () use ($record) {
+                    ->modalDescription(function (Payment $record): string {
+                        $tenant = $record->tenant;
+                        $tenantName = $tenant instanceof Tenant ? $tenant->name : 'negocio';
+
+                        return 'Confirmar pago de L. '.number_format((float) $record->amount, 2)
+                            .' del negocio '.$tenantName.'?';
+                    })
+                    ->action(function (Payment $record): void {
+                        DB::transaction(function () use ($record): void {
                             $record->update([
                                 'status' => 'approved',
                                 'reviewed_at' => now(),
                             ]);
 
-                            $record->tenant->update([
-                                'is_pro' => true,
-                                'plan_expires_at' => now()->addMonth(),
-                            ]);
+                            $tenant = $record->tenant;
+                            if ($tenant instanceof Tenant) {
+                                $tenant->forceFill([
+                                    'plan_type' => 'pro',
+                                    'subscription_status' => 'active',
+                                    'subscription_ends_at' => now()->addMonth(),
+                                ])->save();
+                            }
                         });
+
+                        $tenant = $record->tenant;
+                        $tenantName = $tenant instanceof Tenant ? $tenant->name : 'negocio';
 
                         Notification::make()
                             ->success()
                             ->title('Pago Aprobado')
-                            ->body('El negocio '.$record->tenant->name.' ahora es PRO.')
+                            ->body('El negocio '.$tenantName.' ahora es PRO.')
                             ->send();
                     }),
 
@@ -132,11 +142,11 @@ class PendingPaymentsWidget extends BaseWidget
                             ->required()
                             ->rows(3),
                     ])
-                    ->action(function (Payment $record, array $data) {
+                    ->action(function (Payment $record, array $data): void {
                         $record->update([
                             'status' => 'rejected',
                             'reviewed_at' => now(),
-                            'notes' => $data['notes'],
+                            'admin_notes' => (string) $data['notes'],
                         ]);
 
                         Notification::make()
@@ -149,10 +159,19 @@ class PendingPaymentsWidget extends BaseWidget
                     ->label('Ver')
                     ->icon('heroicon-o-photo')
                     ->color('info')
-                    ->url(fn (Payment $record): string => asset('storage/'.$record->proof_image_path)
-                    )
+                    ->url(fn (Payment $record): string => asset('storage/'.$record->proof_path))
                     ->openUrlInNewTab(),
             ])
             ->poll('30s');
+    }
+
+    /**
+     * @param  list<string>  $roles
+     */
+    private static function hasAnyLegacyRole(User $user, array $roles): bool
+    {
+        $roleValue = (string) $user->getRawOriginal('role');
+
+        return in_array($roleValue, $roles, true);
     }
 }

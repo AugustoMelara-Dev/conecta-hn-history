@@ -1,14 +1,27 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
+use App\Models\Service;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 
 class AppointmentResource extends Resource
 {
@@ -24,7 +37,7 @@ class AppointmentResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return \Illuminate\Support\Facades\Gate::allows('viewAny', \App\Models\Appointment::class);
+        return Gate::allows('viewAny', Appointment::class);
     }
 
     public static function shouldRegisterNavigation(): bool
@@ -36,7 +49,7 @@ class AppointmentResource extends Resource
     {
         return $schema
             ->schema([
-                Forms\Components\Section::make('Detalles de la Cita')
+                Section::make('Detalles de la Cita')
                     ->schema([
                         Forms\Components\Select::make('user_id')
                             ->label('Cliente Registrado')
@@ -45,7 +58,7 @@ class AppointmentResource extends Resource
                             ->preload()
                             ->helperText('Dejar vacio para clientes sin cuenta'),
 
-                        Forms\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('customer_name')
                                     ->label('Nombre (Walk-in)')
@@ -62,14 +75,18 @@ class AppointmentResource extends Resource
                             ->required()
                             ->preload()
                             ->reactive()
-                            ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                if ($state && $get('scheduled_at')) {
-                                    $service = \App\Models\Service::find($state);
-                                    if ($service) {
-                                        $start = \Carbon\Carbon::parse($get('scheduled_at'));
-                                        $set('end_at', $start->copy()->addMinutes($service->total_duration)->format('Y-m-d H:i:s'));
-                                    }
+                            ->afterStateUpdated(function ($state, Set $set, Get $get): void {
+                                if (! $state || ! $get('scheduled_at')) {
+                                    return;
                                 }
+
+                                $service = Service::find($state);
+                                if (! $service instanceof Service) {
+                                    return;
+                                }
+
+                                $start = Carbon::parse((string) $get('scheduled_at'));
+                                $set('end_at', $start->copy()->addMinutes($service->total_duration)->format('Y-m-d H:i:s'));
                             }),
 
                         Forms\Components\Select::make('service_provider_id')
@@ -78,21 +95,25 @@ class AppointmentResource extends Resource
                             ->required()
                             ->preload(),
 
-                        Forms\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
                                 Forms\Components\DateTimePicker::make('scheduled_at')
                                     ->label('Hora de Inicio')
                                     ->required()
                                     ->seconds(false)
                                     ->reactive()
-                                    ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                        if ($state && $get('service_id')) {
-                                            $service = \App\Models\Service::find($get('service_id'));
-                                            if ($service) {
-                                                $start = \Carbon\Carbon::parse($state);
-                                                $set('end_at', $start->copy()->addMinutes($service->total_duration)->format('Y-m-d H:i:s'));
-                                            }
+                                    ->afterStateUpdated(function ($state, Set $set, Get $get): void {
+                                        if (! $state || ! $get('service_id')) {
+                                            return;
                                         }
+
+                                        $service = Service::find($get('service_id'));
+                                        if (! $service instanceof Service) {
+                                            return;
+                                        }
+
+                                        $start = Carbon::parse((string) $state);
+                                        $set('end_at', $start->copy()->addMinutes($service->total_duration)->format('Y-m-d H:i:s'));
                                     }),
 
                                 Forms\Components\DateTimePicker::make('end_at')
@@ -104,12 +125,12 @@ class AppointmentResource extends Resource
                         Forms\Components\Select::make('status')
                             ->label('Estado')
                             ->options([
-                                'pending' => 'Pendiente',
-                                'confirmed' => 'Confirmada',
-                                'completed' => 'Completada',
-                                'cancelled' => 'Cancelada',
+                                Appointment::STATUS_PENDING => 'Pendiente',
+                                Appointment::STATUS_CONFIRMED => 'Confirmada',
+                                Appointment::STATUS_COMPLETED => 'Completada',
+                                Appointment::STATUS_CANCELLED => 'Cancelada',
                             ])
-                            ->default('confirmed')
+                            ->default(Appointment::STATUS_CONFIRMED)
                             ->required()
                             ->native(false),
 
@@ -117,7 +138,8 @@ class AppointmentResource extends Resource
                             ->label('Notas Internas')
                             ->rows(2)
                             ->columnSpanFull(),
-                    ])->columns(2),
+                    ])
+                    ->columns(2),
             ]);
     }
 
@@ -145,17 +167,17 @@ class AppointmentResource extends Resource
                 Tables\Columns\TextColumn::make('status_label')
                     ->label('Estado')
                     ->badge()
-                    ->color(fn ($record) => $record->status_color),
+                    ->color(fn (Appointment $record): string => $record->status_color),
             ])
             ->defaultSort('scheduled_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Estado')
                     ->options([
-                        'pending' => 'Pendiente',
-                        'confirmed' => 'Confirmada',
-                        'completed' => 'Completada',
-                        'cancelled' => 'Cancelada',
+                        Appointment::STATUS_PENDING => 'Pendiente',
+                        Appointment::STATUS_CONFIRMED => 'Confirmada',
+                        Appointment::STATUS_COMPLETED => 'Completada',
+                        Appointment::STATUS_CANCELLED => 'Cancelada',
                     ]),
 
                 Tables\Filters\SelectFilter::make('service_provider_id')
@@ -163,33 +185,33 @@ class AppointmentResource extends Resource
                     ->relationship('provider', 'name'),
             ])
             ->actions([
-                Tables\Actions\Action::make('confirm')
+                Action::make('confirm')
                     ->label('Confirmar')
                     ->icon('heroicon-o-check')
                     ->color('success')
-                    ->visible(fn ($record) => $record->status === 'pending')
-                    ->action(fn ($record) => $record->confirm()),
+                    ->visible(fn (Appointment $record): bool => $record->status === Appointment::STATUS_PENDING)
+                    ->action(fn (Appointment $record): bool => $record->confirm()),
 
-                Tables\Actions\Action::make('complete')
+                Action::make('complete')
                     ->label('Completar')
                     ->icon('heroicon-o-check-circle')
                     ->color('info')
-                    ->visible(fn ($record) => $record->status === 'confirmed')
-                    ->action(fn ($record) => $record->complete()),
+                    ->visible(fn (Appointment $record): bool => $record->status === Appointment::STATUS_CONFIRMED)
+                    ->action(fn (Appointment $record): bool => $record->complete()),
 
-                Tables\Actions\Action::make('no_show')
-                    ->label('No Asistió')
+                Action::make('no_show')
+                    ->label('No Asistio')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn ($record) => in_array($record->status, ['pending', 'confirmed']))
+                    ->visible(fn (Appointment $record): bool => in_array($record->status, [Appointment::STATUS_PENDING, Appointment::STATUS_CONFIRMED], true))
                     ->requiresConfirmation()
-                    ->action(fn ($record) => $record->markAsNoShow()),
+                    ->action(fn (Appointment $record): bool => $record->markAsNoShow()),
 
-                Tables\Actions\EditAction::make(),
+                EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

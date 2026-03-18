@@ -6,12 +6,21 @@ namespace App\Filament\App\Resources;
 
 use App\Domain\Marketing\Enums\AudienceType;
 use App\Models\Campaign;
+use App\Models\Tenant;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class CampaignResource extends Resource
 {
@@ -43,7 +52,7 @@ class CampaignResource extends Resource
     {
         return $schema
             ->schema([
-                Forms\Components\Section::make('Detalles de la Campana')
+                Section::make('Detalles de la Campana')
                     ->schema([
                         Forms\Components\Select::make('audience_type')
                             ->label('Destinatarios (Audiencia)')
@@ -75,7 +84,7 @@ class CampaignResource extends Resource
                             ]),
                     ]),
 
-                Forms\Components\Section::make('Estadisticas')
+                Section::make('Estadisticas')
                     ->schema([
                         Forms\Components\Placeholder::make('recipients_count')
                             ->label('Destinatarios')
@@ -129,7 +138,7 @@ class CampaignResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->actions([
-                Tables\Actions\Action::make('send')
+                Action::make('send')
                     ->label('Enviar')
                     ->icon('heroicon-o-paper-airplane')
                     ->color('success')
@@ -138,7 +147,11 @@ class CampaignResource extends Resource
                     ->modalDescription(fn (Campaign $record) => 'Se enviara esta campana al segmento seleccionado. Estas seguro?')
                     ->visible(fn (Campaign $record) => ! $record->sent_at)
                     ->action(function (Campaign $record) {
-                        $tenant = \Filament\Facades\Filament::getTenant();
+                        $tenant = self::getTenantRecord();
+                        if (! $tenant instanceof Tenant) {
+                            return;
+                        }
+
                         $audienceCount = self::calculateAudienceCount($tenant, $record->audience_type);
 
                         if ($audienceCount === 0) {
@@ -151,7 +164,7 @@ class CampaignResource extends Resource
                             return;
                         }
 
-                        \App\Application\Marketing\Jobs\DispatchCampaignSegment::dispatch($record->id, $tenant->id);
+                        \App\Application\Marketing\Jobs\DispatchCampaignSegment::dispatch($record->id, (string) $tenant->getKey());
 
                         $record->update([
                             'status' => 'queued',
@@ -164,13 +177,13 @@ class CampaignResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\EditAction::make()
+                EditAction::make()
                     ->visible(fn (Campaign $record) => ! $record->sent_at),
-                Tables\Actions\DeleteAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->emptyStateHeading('No hay campanas')
@@ -187,25 +200,32 @@ class CampaignResource extends Resource
         ];
     }
 
-    private static function calculateAudienceCount($tenant, ?AudienceType $audienceType): int
+    private static function calculateAudienceCount(Tenant $tenant, ?AudienceType $audienceType): int
     {
         return match ($audienceType) {
             AudienceType::FOLLOWERS, null => $tenant->followers()->count(),
-            AudienceType::LEADS => \Illuminate\Support\Facades\DB::table('leads')
-                ->where('tenant_id', $tenant->id)
+            AudienceType::LEADS => DB::table('leads')
+                ->where('tenant_id', (string) $tenant->getKey())
                 ->join('users', 'leads.email', '=', 'users.email')
                 ->distinct()
                 ->count('users.id'),
-            AudienceType::ALL_CUSTOMERS => \Illuminate\Support\Facades\DB::table('appointments')
-                ->where('tenant_id', $tenant->id)
+            AudienceType::ALL_CUSTOMERS => DB::table('appointments')
+                ->where('tenant_id', (string) $tenant->getKey())
                 ->whereNotNull('user_id')
                 ->distinct()
                 ->count('user_id'),
-            AudienceType::WAITLIST => \Illuminate\Support\Facades\DB::table('waitlists')
-                ->where('tenant_id', $tenant->id)
+            AudienceType::WAITLIST => DB::table('waitlists')
+                ->where('tenant_id', (string) $tenant->getKey())
                 ->whereNotNull('user_id')
                 ->distinct()
                 ->count('user_id'),
         };
+    }
+
+    private static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }
