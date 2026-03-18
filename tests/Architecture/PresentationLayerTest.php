@@ -19,3 +19,14 @@ test('presentation layer does not use request or fortify directly in domain laye
 test('presentation layer does not perform blind trust eloquent queries')
     ->expect($presentationNamespace)
     ->not->toUse('App\Models');
+
+test('controllers should be final')
+    ->expect('App\Http\Controllers')
+    ->classes()
+    ->toBeFinal()
+    ->ignoring('App\Http\Controllers\Controller');
+
+test('form requests should be final')
+    ->expect('App\Http\Requests')
+    ->classes()
+    ->toBeFinal();

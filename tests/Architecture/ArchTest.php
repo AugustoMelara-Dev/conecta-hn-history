@@ -225,6 +225,8 @@ arch('Domain Layer must be independent and pure')
         'App\Infrastructure',
         'App\Http',
         'App\Models', // Domain Entities != Eloquent Models
+        'Filament',
+        'Livewire',
         'Illuminate\Http',
         'Illuminate\Support\Facades', // Facades leak global state
     ])

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Arch;
+namespace Tests\Architecture;
 
 use App\Contracts\Events\AuditEvent;
 use App\Contracts\Events\DomainEvent;

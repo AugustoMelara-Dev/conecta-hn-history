@@ -1,6 +1,8 @@
 <?php
 
-namespace Tests\Arch;
+declare(strict_types=1);
+
+namespace Tests\Architecture\Security;
 
 use Illuminate\Support\Facades\Route;
 
