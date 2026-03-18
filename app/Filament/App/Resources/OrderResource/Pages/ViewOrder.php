@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\OrderResource\Pages;
 
 use App\Filament\App\Resources\OrderResource;
+use App\Models\Order;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 
+/**
+ * @property Order $record
+ */
 class ViewOrder extends ViewRecord
 {
     protected static string $resource = OrderResource::class;

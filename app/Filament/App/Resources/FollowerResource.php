@@ -6,6 +6,7 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\FollowerResource\Pages;
 use App\Models\Follow;
+use App\Models\Tenant;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -67,13 +68,14 @@ class FollowerResource extends Resource
 
     public static function table(Table $table): Table
     {
-        $isPro = Filament::getTenant()->is_pro;
+        $tenant = static::getTenantRecord();
+        $isPro = $tenant?->getIsProAttribute() ?? false;
 
         return $table
-            ->modifyQueryUsing(function (Builder $query) use ($isPro) {
+            ->modifyQueryUsing(function (Builder $query) use ($isPro, $tenant) {
                 // If PRO, show followers. If Free, show empty query
                 if ($isPro) {
-                    return $query->where('tenant_id', Filament::getTenant()->id);
+                    return $query->where('tenant_id', (string) $tenant->getKey());
                 }
 
                 return $query->whereRaw('1 = 0');
@@ -109,11 +111,18 @@ class FollowerResource extends Resource
                     : [
                         Action::make('upgrade')
                             ->label('Actualizar a PRO')
-                            ->url(fn () => route('filament.app.pages.upgrade-to-pro', ['tenant' => Filament::getTenant()->slug]))
+                            ->url(fn () => route('filament.app.pages.upgrade-to-pro', ['tenant' => (string) ($tenant?->getAttribute('slug') ?? '')]))
                             ->icon('heroicon-o-star')
                             ->button(),
                     ]
             );
+    }
+
+    protected static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 
     public static function getPages(): array

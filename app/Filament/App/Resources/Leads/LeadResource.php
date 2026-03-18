@@ -6,12 +6,12 @@ namespace App\Filament\App\Resources\Leads;
 
 use App\Filament\App\Resources\Leads\Schemas\LeadForm;
 use App\Models\Lead;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 
 class LeadResource extends Resource
@@ -24,7 +24,7 @@ class LeadResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return LeadForm::configure($form);
+        return LeadForm::configure($schema);
     }
 
     public static function table(Table $table): Table

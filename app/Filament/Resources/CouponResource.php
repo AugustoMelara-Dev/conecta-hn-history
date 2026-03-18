@@ -6,14 +6,23 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CouponResource\Pages;
 use App\Models\Coupon;
+use App\Models\Tenant;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -66,9 +75,10 @@ class CouponResource extends Resource
                                     column: 'code',
                                     ignoreRecord: true,
                                     modifyRuleUsing: function (\Illuminate\Validation\Rules\Unique $rule) {
-                                        $tenant = \Filament\Facades\Filament::getTenant();
-                                        if ($tenant) {
-                                            return $rule->where('tenant_id', $tenant->id);
+                                        $tenant = static::getTenantRecord();
+
+                                        if ($tenant instanceof Tenant) {
+                                            return $rule->where('tenant_id', (string) $tenant->getKey());
                                         }
 
                                         return $rule;
@@ -245,7 +255,23 @@ class CouponResource extends Resource
                         }
 
                         return match ($data['value']) {
-                            'active' => $query->valid(),
+                            'active' => $query
+                                ->where('is_active', true)
+                                ->where(function (Builder $builder): Builder {
+                                    return $builder
+                                        ->whereNull('starts_at')
+                                        ->orWhere('starts_at', '<=', now());
+                                })
+                                ->where(function (Builder $builder): Builder {
+                                    return $builder
+                                        ->whereNull('expires_at')
+                                        ->orWhere('expires_at', '>=', now());
+                                })
+                                ->where(function (Builder $builder): Builder {
+                                    return $builder
+                                        ->whereNull('usage_limit')
+                                        ->orWhereColumn('usage_count', '<', 'usage_limit');
+                                }),
                             'expired' => $query->where('expires_at', '<', now()),
                             'depleted' => $query->whereColumn('usage_count', '>=', 'usage_limit'),
                             'inactive' => $query->where('is_active', false),
@@ -254,32 +280,32 @@ class CouponResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
+                ActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
 
-                    Tables\Actions\Action::make('toggle')
-                        ->label(fn ($record) => $record->is_active ? 'Desactivar' : 'Activar')
-                        ->icon(fn ($record) => $record->is_active ? 'heroicon-o-pause' : 'heroicon-o-play')
-                        ->color(fn ($record) => $record->is_active ? 'warning' : 'success')
-                        ->action(fn ($record) => $record->update(['is_active' => ! $record->is_active])),
+                    Action::make('toggle')
+                        ->label(fn (Coupon $record) => $record->is_active ? 'Desactivar' : 'Activar')
+                        ->icon(fn (Coupon $record) => $record->is_active ? 'heroicon-o-pause' : 'heroicon-o-play')
+                        ->color(fn (Coupon $record) => $record->is_active ? 'warning' : 'success')
+                        ->action(fn (Coupon $record) => $record->update(['is_active' => ! $record->is_active])),
 
-                    Tables\Actions\Action::make('duplicate')
+                    Action::make('duplicate')
                         ->label('Duplicar')
                         ->icon('heroicon-o-document-duplicate')
-                        ->action(function ($record) {
+                        ->action(function (Coupon $record): void {
                             $new = $record->replicate();
                             $new->code = $record->code.'_COPIA';
                             $new->usage_count = 0;
                             $new->save();
                         }),
 
-                    Tables\Actions\DeleteAction::make(),
+                    DeleteAction::make(),
                 ]),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
@@ -307,13 +333,37 @@ class CouponResource extends Resource
      */
     public static function getNavigationBadge(): ?string
     {
-        $query = static::getEloquentQuery();
+        $count = static::getEloquentQuery()
+            ->where('is_active', true)
+            ->where(function (Builder $query): Builder {
+                return $query
+                    ->whereNull('starts_at')
+                    ->orWhere('starts_at', '<=', now());
+            })
+            ->where(function (Builder $query): Builder {
+                return $query
+                    ->whereNull('expires_at')
+                    ->orWhere('expires_at', '>=', now());
+            })
+            ->where(function (Builder $query): Builder {
+                return $query
+                    ->whereNull('usage_limit')
+                    ->orWhereColumn('usage_count', '<', 'usage_limit');
+            })
+            ->count();
 
-        return $query->valid()->count() ?: null;
+        return $count > 0 ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
         return 'success';
+    }
+
+    protected static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

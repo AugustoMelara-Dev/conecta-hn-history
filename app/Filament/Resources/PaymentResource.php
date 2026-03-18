@@ -6,12 +6,16 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Models\SubscriptionPayment;
+use App\Models\Tenant;
+use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -61,7 +65,7 @@ class PaymentResource extends Resource
     {
         return $schema
             ->schema([
-                Forms\Components\Section::make('Informacion del Pago')
+                Section::make('Informacion del Pago')
                     ->schema([
                         Forms\Components\Select::make('tenant_id')
                             ->relationship('tenant', 'name')
@@ -126,7 +130,15 @@ class PaymentResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold')
-                    ->description(fn (SubscriptionPayment $record): ?string => $record->tenant?->user?->email ?? 'Sin email'),
+                    ->description(function (SubscriptionPayment $record): string {
+                        $tenant = $record->tenant()->first();
+
+                        if (! $tenant instanceof Tenant) {
+                            return 'Sin email';
+                        }
+
+                        return $tenant->user()->value('email') ?? 'Sin email';
+                    }),
 
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Monto')
@@ -205,7 +217,7 @@ class PaymentResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\Action::make('approve')
+                Action::make('approve')
                     ->label('Aprobar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
@@ -232,15 +244,21 @@ class PaymentResource extends Resource
                         $record->refresh();
                         $record->loadMissing('tenant.user');
 
-                        $user = $record->tenant?->user;
-                        $endDate = $record->tenant?->subscription_ends_at?->format('d/m/Y');
+                        $tenant = $record->tenant()->first();
 
-                        if ($user && $endDate) {
-                            Notification::make()
-                                ->success()
-                                ->title('Pago Aprobado')
-                                ->body("Tu Plan PRO para {$record->tenant->name} esta activo hasta el {$endDate}.")
-                                ->sendToDatabase($user);
+                        if ($tenant instanceof Tenant) {
+                            $user = $tenant->user()->first();
+                            $subscriptionEndsAt = $tenant->getAttribute('subscription_ends_at');
+                            $endDate = $subscriptionEndsAt instanceof Carbon ? $subscriptionEndsAt->format('d/m/Y') : null;
+                            $tenantName = (string) $tenant->getAttribute('name');
+
+                            if ($user && $endDate) {
+                                Notification::make()
+                                    ->success()
+                                    ->title('Pago Aprobado')
+                                    ->body("Tu Plan PRO para {$tenantName} esta activo hasta el {$endDate}.")
+                                    ->sendToDatabase($user);
+                            }
                         }
 
                         Notification::make()
@@ -250,7 +268,7 @@ class PaymentResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('reject')
+                Action::make('reject')
                     ->label('Rechazar')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
@@ -277,7 +295,8 @@ class PaymentResource extends Resource
 
                         $record->reject($adminId, $data['rejection_reason']);
 
-                        $user = $record->tenant?->user;
+                        $tenant = $record->tenant()->first();
+                        $user = $tenant instanceof Tenant ? $tenant->user()->first() : null;
 
                         if ($user) {
                             Notification::make()

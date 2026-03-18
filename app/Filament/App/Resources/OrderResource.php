@@ -7,15 +7,21 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\OrderResource\Pages;
 use App\Models\Location;
 use App\Models\Order;
+use App\Models\Tenant;
+use App\Services\OrderStateService;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
-use Filament\Infolists;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
@@ -56,16 +62,17 @@ class OrderResource extends Resource
         return 1;
     }
 
-    // ═══ BADGE DE NAVEGACIÓN: Pedidos Pendientes ═══
     public static function getNavigationBadge(): ?string
     {
-        $tenant = Filament::getTenant();
-        if (! $tenant) {
+        $tenant = static::getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
             return null;
         }
 
-        $count = static::getModel()::where('tenant_id', $tenant->id)
-            ->where('status', 'pending')
+        $count = Order::query()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->where('status', Order::STATUS_PENDING)
             ->count();
 
         return $count > 0 ? (string) $count : null;
@@ -84,64 +91,62 @@ class OrderResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query
-                ->where('tenant_id', Filament::getTenant()->id)
-                ->with('location')
-                ->latest())
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                $tenant = static::getTenantRecord();
+
+                if (! $tenant instanceof Tenant) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query
+                    ->where('tenant_id', (string) $tenant->getKey())
+                    ->with('location')
+                    ->latest();
+            })
             ->columns([
-                // ═══ NÚMERO DE ORDEN ═══
                 Tables\Columns\TextColumn::make('order_number')
                     ->label('# Orden')
                     ->searchable()
                     ->sortable()
                     ->weight('bold')
                     ->copyable()
-                    ->copyMessage('Número copiado'),
-
-                // ═══ CLIENTE ═══
+                    ->copyMessage('Numero copiado'),
                 Tables\Columns\TextColumn::make('customer_name')
                     ->label('Cliente')
                     ->searchable()
                     ->description(fn (Order $record): string => $record->customer_phone),
-
                 Tables\Columns\TextColumn::make('location.name')
                     ->label('Sucursal')
                     ->badge()
                     ->color('info')
                     ->toggleable(),
-
-                // ═══ ESTADO CON COLORES ═══
                 Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'pending' => '⏳ Pendiente',
-                        'confirmed' => '✓ Confirmado',
-                        'preparing' => '👨‍🍳 En Cocina',
-                        'ready' => '✅ Listo',
-                        'delivered' => '📦 Entregado',
-                        'cancelled' => '❌ Cancelado',
+                        Order::STATUS_PENDING => 'Pendiente',
+                        Order::STATUS_CONFIRMED => 'Confirmado',
+                        Order::STATUS_PROCESSING => 'En cocina',
+                        Order::STATUS_READY => 'Listo',
+                        Order::STATUS_DELIVERED => 'Entregado',
+                        Order::STATUS_CANCELLED => 'Cancelado',
                         default => $state,
                     })
                     ->color(fn (string $state): string => match ($state) {
-                        'pending' => 'warning',
-                        'confirmed' => 'info',
-                        'preparing' => 'primary',
-                        'ready' => 'success',
-                        'delivered' => 'gray',
-                        'cancelled' => 'danger',
+                        Order::STATUS_PENDING => 'warning',
+                        Order::STATUS_CONFIRMED => 'info',
+                        Order::STATUS_PROCESSING => 'primary',
+                        Order::STATUS_READY => 'success',
+                        Order::STATUS_DELIVERED => 'gray',
+                        Order::STATUS_CANCELLED => 'danger',
                         default => 'gray',
                     }),
-
-                // ═══ TOTAL ═══
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total')
                     ->money('HNL')
                     ->sortable()
                     ->weight('bold')
                     ->color('success'),
-
-                // ═══ ORIGEN (WhatsApp) ═══
                 Tables\Columns\IconColumn::make('source')
                     ->label('Origen')
                     ->icon(fn (string $state): string => match ($state) {
@@ -149,24 +154,17 @@ class OrderResource extends Resource
                         'web' => 'heroicon-o-globe-alt',
                         default => 'heroicon-o-device-phone-mobile',
                     })
-                    ->color(fn (string $state): string => match ($state) {
-                        'whatsapp' => 'success',
-                        default => 'gray',
-                    })
+                    ->color(fn (string $state): string => $state === 'whatsapp' ? 'success' : 'gray')
                     ->tooltip(fn (string $state): string => match ($state) {
                         'whatsapp' => 'Pedido por WhatsApp',
-                        'web' => 'Pedido desde Web',
-                        default => 'Pedido Directo',
+                        'web' => 'Pedido desde web',
+                        default => 'Pedido directo',
                     }),
-
-                // ═══ ITEMS COUNT ═══
                 Tables\Columns\TextColumn::make('items_count')
                     ->label('Items')
                     ->counts('items')
                     ->badge()
                     ->color('gray'),
-
-                // ═══ TIEMPO ═══
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Hora')
                     ->dateTime('H:i')
@@ -177,306 +175,221 @@ class OrderResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Estado')
                     ->options([
-                        'pending' => 'Pendiente',
-                        'confirmed' => 'Confirmado',
-                        'preparing' => 'En Cocina',
-                        'ready' => 'Listo',
-                        'delivered' => 'Entregado',
-                        'cancelled' => 'Cancelado',
+                        Order::STATUS_PENDING => 'Pendiente',
+                        Order::STATUS_CONFIRMED => 'Confirmado',
+                        Order::STATUS_PROCESSING => 'En cocina',
+                        Order::STATUS_READY => 'Listo',
+                        Order::STATUS_DELIVERED => 'Entregado',
+                        Order::STATUS_CANCELLED => 'Cancelado',
                     ]),
                 Tables\Filters\SelectFilter::make('location_id')
                     ->label('Sucursal')
-                    ->options(fn (): array => Location::query()
-                        ->where('tenant_id', Filament::getTenant()?->id)
-                        ->orderBy('name')
-                        ->pluck('name', 'id')
-                        ->all())
+                    ->options(function (): array {
+                        $tenant = static::getTenantRecord();
+
+                        if (! $tenant instanceof Tenant) {
+                            return [];
+                        }
+
+                        return Location::query()
+                            ->where('tenant_id', (string) $tenant->getKey())
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->all();
+                    })
                     ->searchable()
                     ->preload()
                     ->placeholder('Todas las sucursales'),
                 Tables\Filters\Filter::make('today')
-                    ->label('Solo Hoy')
+                    ->label('Solo hoy')
                     ->query(fn (Builder $query): Builder => $query->whereDate('created_at', today()))
                     ->default(),
             ])
             ->actions([
-                // ═══ ACCIONES RÁPIDAS DE ESTADO ═══
                 Action::make('confirm')
                     ->label('Confirmar')
                     ->icon('heroicon-o-check')
                     ->color('info')
                     ->requiresConfirmation()
-                    ->visible(fn (Order $record): bool => $record->status === 'pending')
-                    ->action(function (Order $record) {
-                        try {
-                            app(\App\Services\OrderStateService::class)->transition($record, 'confirmed');
-                            \Filament\Notifications\Notification::make()
-                                ->title('Pedido Confirmado')
-                                ->success()
-                                ->send();
-                        } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
-                                ->title('Error')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
+                    ->visible(fn (Order $record): bool => $record->status === Order::STATUS_PENDING)
+                    ->action(fn (Order $record) => static::transitionOrder($record, Order::STATUS_CONFIRMED, 'Pedido confirmado')),
                 Action::make('prepare')
-                    ->label('A Cocina')
+                    ->label('A cocina')
                     ->icon('heroicon-o-fire')
                     ->color('primary')
-                    ->visible(fn (Order $record): bool => $record->status === 'confirmed')
-                    ->action(function (Order $record) {
-                        try {
-                            app(\App\Services\OrderStateService::class)->transition($record, 'processing');
-                            \Filament\Notifications\Notification::make()
-                                ->title('En Cocina')
-                                ->success()
-                                ->send();
-                        } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
-                                ->title('Error')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
+                    ->visible(fn (Order $record): bool => $record->status === Order::STATUS_CONFIRMED)
+                    ->action(fn (Order $record) => static::transitionOrder($record, Order::STATUS_PROCESSING, 'En cocina')),
                 Action::make('ready')
                     ->label('Listo')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn (Order $record): bool => $record->status === 'processing')
-                    ->action(function (Order $record) {
-                        try {
-                            app(\App\Services\OrderStateService::class)->transition($record, 'ready');
-                            \Filament\Notifications\Notification::make()
-                                ->title('Pedido Listo')
-                                ->success()
-                                ->send();
-                        } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
-                                ->title('Error')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
+                    ->visible(fn (Order $record): bool => $record->status === Order::STATUS_PROCESSING)
+                    ->action(fn (Order $record) => static::transitionOrder($record, Order::STATUS_READY, 'Pedido listo')),
                 Action::make('deliver')
                     ->label('Entregar')
                     ->icon('heroicon-o-truck')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (Order $record): bool => $record->status === 'ready')
-                    ->action(function (Order $record) {
-                        try {
-                            app(\App\Services\OrderStateService::class)->transition($record, 'delivered');
-                            \Filament\Notifications\Notification::make()
-                                ->title('Pedido Entregado')
-                                ->success()
-                                ->send();
-                        } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
-                                ->title('Error')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                ViewAction::make()
-                    ->iconButton(),
+                    ->visible(fn (Order $record): bool => $record->status === Order::STATUS_READY)
+                    ->action(fn (Order $record) => static::transitionOrder($record, Order::STATUS_DELIVERED, 'Pedido entregado')),
+                ViewAction::make()->iconButton(),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
             ])
-            // ->poll('30s') // Auto-refresh
             ->striped()
             ->defaultSort('created_at', 'desc')
             ->emptyStateHeading('Sin pedidos')
-            ->emptyStateDescription('Los pedidos de tus clientes aparecerán aquí.')
+            ->emptyStateDescription('Los pedidos de tus clientes apareceran aqui.')
             ->emptyStateIcon('heroicon-o-clipboard-document-list');
     }
 
-    // ═══ VISTA DETALLADA CON INFOLIST ═══
     public static function infolist(Schema $schema): Schema
     {
         return $schema
             ->schema([
-                Infolists\Components\Grid::make(3)
+                Grid::make(3)
                     ->schema([
-                        // ═══ COLUMNA 1: CLIENTE ═══
-                        Infolists\Components\Section::make('Cliente')
+                        Section::make('Cliente')
                             ->icon('heroicon-o-user')
                             ->columnSpan(1)
                             ->schema([
-                                Infolists\Components\TextEntry::make('customer_name')
+                                TextEntry::make('customer_name')
                                     ->label('Nombre')
                                     ->weight('bold')
                                     ->size('lg'),
-
-                                Infolists\Components\TextEntry::make('customer_phone')
-                                    ->label('Teléfono')
+                                TextEntry::make('customer_phone')
+                                    ->label('Telefono')
                                     ->icon('heroicon-o-phone')
                                     ->copyable(),
-
-                                Infolists\Components\TextEntry::make('customer_email')
+                                TextEntry::make('customer_email')
                                     ->label('Email')
                                     ->icon('heroicon-o-envelope')
-                                    ->visible(fn ($state) => ! empty($state)),
-
-                                Infolists\Components\TextEntry::make('delivery_address')
-                                    ->label('Dirección')
+                                    ->visible(fn (mixed $state): bool => filled($state)),
+                                TextEntry::make('delivery_address')
+                                    ->label('Direccion')
                                     ->icon('heroicon-o-map-pin')
-                                    ->visible(fn ($state) => ! empty($state))
+                                    ->visible(fn (mixed $state): bool => filled($state))
                                     ->columnSpanFull(),
-
-                                Infolists\Components\Actions::make([
-                                    Infolists\Components\Actions\Action::make('whatsapp')
-                                        ->label('Abrir WhatsApp')
-                                        ->icon('heroicon-o-chat-bubble-left-ellipsis')
-                                        ->color('success')
-                                        ->url(fn (Order $record): string => 'https://wa.me/'.preg_replace('/[^0-9]/', '', $record->customer_phone)
-                                        )
-                                        ->openUrlInNewTab(),
-                                ]),
                             ]),
-
-                        // ═══ COLUMNA 2: DETALLES ═══
-                        Infolists\Components\Section::make('Detalles del Pedido')
+                        Section::make('Detalles del pedido')
                             ->icon('heroicon-o-document-text')
                             ->columnSpan(1)
                             ->schema([
-                                Infolists\Components\TextEntry::make('order_number')
-                                    ->label('Número')
+                                TextEntry::make('order_number')
+                                    ->label('Numero')
                                     ->weight('bold')
                                     ->copyable(),
-
-                                Infolists\Components\TextEntry::make('status')
+                                TextEntry::make('status')
                                     ->label('Estado')
                                     ->badge()
                                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                                        'pending' => 'Pendiente',
-                                        'confirmed' => 'Confirmado',
-                                        'preparing' => 'En Cocina',
-                                        'ready' => 'Listo',
-                                        'delivered' => 'Entregado',
-                                        'cancelled' => 'Cancelado',
+                                        Order::STATUS_PENDING => 'Pendiente',
+                                        Order::STATUS_CONFIRMED => 'Confirmado',
+                                        Order::STATUS_PROCESSING => 'En cocina',
+                                        Order::STATUS_READY => 'Listo',
+                                        Order::STATUS_DELIVERED => 'Entregado',
+                                        Order::STATUS_CANCELLED => 'Cancelado',
                                         default => $state,
                                     })
                                     ->color(fn (string $state): string => match ($state) {
-                                        'pending' => 'warning',
-                                        'confirmed' => 'info',
-                                        'preparing' => 'primary',
-                                        'ready' => 'success',
-                                        'delivered' => 'gray',
-                                        'cancelled' => 'danger',
+                                        Order::STATUS_PENDING => 'warning',
+                                        Order::STATUS_CONFIRMED => 'info',
+                                        Order::STATUS_PROCESSING => 'primary',
+                                        Order::STATUS_READY => 'success',
+                                        Order::STATUS_DELIVERED => 'gray',
+                                        Order::STATUS_CANCELLED => 'danger',
                                         default => 'gray',
                                     }),
-
-                                Infolists\Components\TextEntry::make('payment_method')
-                                    ->label('Método de Pago')
+                                TextEntry::make('payment_method')
+                                    ->label('Metodo de pago')
                                     ->badge()
                                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                                        'cash' => '💵 Efectivo',
-                                        'transfer' => '🏦 Transferencia',
-                                        'card' => '💳 Tarjeta',
-                                        default => '⏳ Pendiente',
+                                        'cash' => 'Efectivo',
+                                        'transfer' => 'Transferencia',
+                                        'card' => 'Tarjeta',
+                                        default => 'Pendiente',
                                     }),
-
-                                Infolists\Components\TextEntry::make('payment_status')
-                                    ->label('Estado de Pago')
+                                TextEntry::make('payment_status')
+                                    ->label('Estado de pago')
                                     ->badge()
                                     ->color(fn (string $state): string => match ($state) {
                                         'paid' => 'success',
                                         'pending' => 'warning',
                                         default => 'danger',
                                     }),
-
-                                Infolists\Components\TextEntry::make('customer_notes')
-                                    ->label('Notas del Cliente')
-                                    ->visible(fn ($state) => ! empty($state))
+                                TextEntry::make('customer_notes')
+                                    ->label('Notas del cliente')
+                                    ->visible(fn (mixed $state): bool => filled($state))
                                     ->columnSpanFull()
                                     ->prose(),
-
-                                Infolists\Components\TextEntry::make('created_at')
+                                TextEntry::make('created_at')
                                     ->label('Fecha/Hora')
                                     ->dateTime('d/m/Y H:i'),
                             ]),
-
-                        // ═══ COLUMNA 3: TICKET ═══
-                        Infolists\Components\Section::make('Ticket de Orden')
+                        Section::make('Ticket de orden')
                             ->icon('heroicon-o-receipt-percent')
                             ->columnSpan(1)
                             ->schema([
-                                Infolists\Components\RepeatableEntry::make('items')
+                                RepeatableEntry::make('items')
                                     ->label('')
                                     ->schema([
-                                        Infolists\Components\TextEntry::make('product_name')
+                                        TextEntry::make('product_name')
                                             ->label('')
                                             ->weight('bold')
                                             ->size('lg'),
-
-                                        Infolists\Components\TextEntry::make('quantity')
+                                        TextEntry::make('quantity')
                                             ->label('')
                                             ->formatStateUsing(fn (int $state): string => "x{$state}")
                                             ->badge()
                                             ->color('primary'),
-
-                                        Infolists\Components\TextEntry::make('total_price')
+                                        TextEntry::make('total_price')
                                             ->label('')
                                             ->money('HNL')
                                             ->weight('bold'),
-
-                                        // ═══ OPCIONES SELECCIONADAS (JSON) ═══
-                                        Infolists\Components\TextEntry::make('selected_options')
+                                        TextEntry::make('selected_options')
                                             ->label('')
-                                            ->formatStateUsing(function ($state): string {
-                                                if (empty($state)) {
+                                            ->formatStateUsing(function (mixed $state): string {
+                                                if (blank($state)) {
                                                     return '';
                                                 }
 
-                                                $options = is_array($state) ? $state : json_decode($state, true);
-                                                if (empty($options)) {
+                                                $options = is_array($state) ? $state : json_decode((string) $state, true);
+
+                                                if (! is_array($options) || $options === []) {
                                                     return '';
                                                 }
 
-                                                $formatted = collect($options)
+                                                return collect($options)
                                                     ->groupBy('group')
-                                                    ->map(function ($items, $group) {
+                                                    ->map(function ($items, $group): string {
                                                         $names = $items->pluck('option')->implode(', ');
 
                                                         return "{$group}: {$names}";
                                                     })
                                                     ->implode(' | ');
-
-                                                return $formatted;
                                             })
-                                            ->visible(fn ($state) => ! empty($state))
+                                            ->visible(fn (mixed $state): bool => filled($state))
                                             ->color('gray')
                                             ->size('sm'),
                                     ])
                                     ->columns(3),
-
-                                Infolists\Components\Grid::make(2)
+                                Grid::make(2)
                                     ->schema([
-                                        Infolists\Components\TextEntry::make('subtotal')
+                                        TextEntry::make('subtotal')
                                             ->label('Subtotal')
                                             ->money('HNL'),
-                                        Infolists\Components\TextEntry::make('discount')
+                                        TextEntry::make('discount')
                                             ->label('Descuento')
                                             ->money('HNL')
-                                            ->visible(fn ($state) => $state > 0),
-                                        Infolists\Components\TextEntry::make('delivery_fee')
-                                            ->label('Envío')
+                                            ->visible(fn (float|int|string|null $state): bool => (float) $state > 0),
+                                        TextEntry::make('delivery_fee')
+                                            ->label('Envio')
                                             ->money('HNL')
-                                            ->visible(fn ($state) => $state > 0),
-                                        Infolists\Components\TextEntry::make('total')
+                                            ->visible(fn (float|int|string|null $state): bool => (float) $state > 0),
+                                        TextEntry::make('total')
                                             ->label('TOTAL')
                                             ->money('HNL')
                                             ->weight('bold')
@@ -490,7 +403,6 @@ class OrderResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        // No usamos form para edición, solo infolist para vista
         return $schema->schema([]);
     }
 
@@ -505,5 +417,30 @@ class OrderResource extends Resource
             'index' => Pages\ListOrders::route('/'),
             'view' => Pages\ViewOrder::route('/{record}'),
         ];
+    }
+
+    protected static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    protected static function transitionOrder(Order $order, string $status, string $title): void
+    {
+        try {
+            app(OrderStateService::class)->transition($order, $status);
+
+            Notification::make()
+                ->title($title)
+                ->success()
+                ->send();
+        } catch (\Exception $exception) {
+            Notification::make()
+                ->title('Error')
+                ->body($exception->getMessage())
+                ->danger()
+                ->send();
+        }
     }
 }
