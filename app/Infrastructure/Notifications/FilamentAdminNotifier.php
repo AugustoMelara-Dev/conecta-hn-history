@@ -7,120 +7,127 @@ namespace App\Infrastructure\Notifications;
 use App\Domain\Contracts\AdminNotifier;
 use App\Models\Lead;
 use App\Models\Review;
+use App\Models\Tenant;
 use App\Models\User;
-use Filament\Notifications\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 
 /**
- * FilamentAdminNotifier - Infrastructure Adapter for Notifications
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  INFRASTRUCTURE LAYER                                                    ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  This class implements the Domain contract using the Filament library.   ║
- * ║  It effectively isolates the Domain from the Filament dependency.        ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * Infrastructure adapter for Filament database notifications.
  */
 final class FilamentAdminNotifier implements AdminNotifier
 {
-    /**
-     * Notify tenant owner about a new lead.
-     */
     public function notifyNewLead(object $lead): void
     {
-        /** @var \App\Models\Lead $lead */
-        // ... (assuming logic can handle object or uses duck typing)
-        // If necessary, add instanceof check:
-        // if (!$lead instanceof Lead) return;
-        $tenantOwner = $this->getTenantOwner($lead->tenant_id);
-
-        if (! $tenantOwner) {
+        if (! $lead instanceof Lead) {
             return;
         }
 
+        $tenantOwner = $this->getTenantOwner((string) $lead->getAttribute('tenant_id'));
+
+        if (! $tenantOwner instanceof User) {
+            return;
+        }
+
+        $leadName = (string) ($lead->getAttribute('customer_name')
+            ?? $lead->getAttribute('name')
+            ?? 'Nuevo contacto');
+
         Notification::make()
-            ->title('¡Nuevo Cliente Potencial! 🎉')
-            ->body("Un cliente ha contactado contigo vía {$lead->source}.")
+            ->title('Nuevo cliente potencial')
+            ->body("{$leadName} ha enviado una nueva consulta.")
             ->success()
             ->actions([
                 Action::make('view')
-                    ->label('Ver Lead')
-                    ->url("/admin/leads/{$lead->id}")
-                    ->markAsRead(),
+                    ->label('Ver lead')
+                    ->url("/admin/leads/{$lead->getKey()}"),
             ])
             ->sendToDatabase($tenantOwner);
     }
 
-    /**
-     * Notify tenant owner about a new review.
-     */
     public function notifyNewReview(object $review): void
     {
-        /** @var \App\Models\Review $review */
-        $tenantOwner = $this->getTenantOwner($review->tenant_id);
-
-        if (! $tenantOwner) {
+        if (! $review instanceof Review) {
             return;
         }
 
-        $stars = str_repeat('⭐', $review->rating);
-        $excerpt = substr($review->comment ?? '', 0, 50).(strlen($review->comment ?? '') > 50 ? '...' : '');
+        $tenantOwner = $this->getTenantOwner((string) $review->getAttribute('tenant_id'));
+
+        if (! $tenantOwner instanceof User) {
+            return;
+        }
+
+        $rating = (int) ($review->getAttribute('rating') ?? 0);
+        $comment = (string) ($review->getAttribute('comment') ?? '');
+        $excerpt = mb_strimwidth($comment, 0, 50, '...');
 
         Notification::make()
-            ->title("Nueva Reseña {$stars}")
-            ->body("Calificación: {$review->rating}/5\n\"{$excerpt}\"")
+            ->title("Nueva reseña {$this->stars($rating)}")
+            ->body("Calificación: {$rating}/5\n\"{$excerpt}\"")
             ->success()
             ->actions([
                 Action::make('view')
-                    ->label('Ver Reseña')
-                    ->url("/admin/reviews/{$review->id}")
-                    ->markAsRead(),
+                    ->label('Ver reseña')
+                    ->url("/admin/reviews/{$review->getKey()}"),
             ])
             ->sendToDatabase($tenantOwner);
     }
 
-    /**
-     * Notify tenant owner about a new order.
-     */
     public function notifyNewOrder(int $tenantId, int $orderId, float $total): void
     {
-        $tenantOwner = $this->getTenantOwner($tenantId);
+        $tenantOwner = $this->getTenantOwner((string) $tenantId);
 
-        if (! $tenantOwner) {
+        if (! $tenantOwner instanceof User) {
             return;
         }
 
         Notification::make()
-            ->title('¡Nueva Orden Recibida! 🛍️')
+            ->title('Nueva orden recibida')
             ->body("Orden #{$orderId} por L. ".number_format($total, 2))
             ->success()
             ->actions([
                 Action::make('view')
-                    ->label('Ver Orden')
-                    ->url("/admin/orders/{$orderId}")
-                    ->markAsRead(),
+                    ->label('Ver orden')
+                    ->url("/admin/orders/{$orderId}"),
             ])
             ->sendToDatabase($tenantOwner);
     }
 
-    /**
-     * Notify tenant owner about payment status update.
-     */
     public function notifyPaymentUpdate(int $tenantId, string $status, float $amount): void
     {
-        // Implementation stub or actual logic
+        $tenantOwner = $this->getTenantOwner((string) $tenantId);
+
+        if (! $tenantOwner instanceof User) {
+            return;
+        }
+
+        Notification::make()
+            ->title('Actualización de pago')
+            ->body("Estado: {$status}. Monto: L. ".number_format($amount, 2))
+            ->warning()
+            ->sendToDatabase($tenantOwner);
     }
 
-    /**
-     * Helper to find tenant owner.
-     */
-    private function getTenantOwner(int $tenantId): ?User
+    private function getTenantOwner(string $tenantId): ?User
     {
-        // Assuming Tenant model has user_id or relationship.
-        // Or specific logic to find owner.
-        // For strictness, checking App\Domain\TenantGovernance\Models\Tenant
-        $tenant = \App\Domain\TenantGovernance\Models\Tenant::find($tenantId);
+        $tenant = Tenant::query()->find($tenantId);
 
-        return $tenant?->user;
+        if (! $tenant instanceof Tenant) {
+            return null;
+        }
+
+        /** @var User|null $owner */
+        $owner = $tenant->user()->first();
+
+        return $owner;
+    }
+
+    private function stars(int $rating): string
+    {
+        if ($rating <= 0) {
+            return '';
+        }
+
+        return str_repeat('*', $rating);
     }
 }

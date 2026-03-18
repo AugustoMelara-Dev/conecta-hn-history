@@ -27,14 +27,14 @@ interface AdminNotifier
     /**
      * Notify tenant owner about a new lead.
      *
-     * @param  Lead  $lead  The newly created lead
+     * @param  object  $lead  The newly created lead payload
      */
     public function notifyNewLead(object $lead): void;
 
     /**
      * Notify tenant owner about a new review.
      *
-     * @param  Review  $review  The newly submitted review
+     * @param  object  $review  The newly submitted review payload
      */
     public function notifyNewReview(object $review): void;
 

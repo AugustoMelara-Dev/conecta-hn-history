@@ -26,31 +26,15 @@ final class OutboxTracer
 
     private const W3C_TRACEPARENT_VERSION = '00';
 
-    private const VACCINE_IMPACT_THRESHOLD = 0.30;
-
-    private const CONFIDENCE_LEVEL_Z = 1.96;
-
     private const HORIZON_SHORT = 6;
 
     private const HORIZON_MEDIUM = 60;
 
     private const HORIZON_LONG = 600;
 
-    private const HORIZON_HUGE = 1800; // 30 mins
-
-    private const QUORUM_THRESHOLD_PERCENT = 0.75;
-
-    private const FLEET_STATE_KEY = 'outbox:fleet:active_count';
-
-    private const REDIS_TIMEOUT_MS = 200;
-
-    private string $sovereignSeed;
-
     public function __construct(
         private readonly ConsensusHealthGovernor $governor
-    ) {
-        $this->sovereignSeed = hash('sha256', gethostname().hrtime(true));
-    }
+    ) {}
 
     /**
      * Helper to trace Infrastructure Recoveries (DB Gridlock, Zombie Workers).
