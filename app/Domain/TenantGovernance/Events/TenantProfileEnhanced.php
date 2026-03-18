@@ -34,10 +34,12 @@ final readonly class TenantProfileEnhanced implements DomainEvent, ShouldDispatc
         ?string $restoredEventId = null,
         ?string $restoredCorrelationId = null,
     ) {
-        $this->initEventIdentity($restoredEventId, $restoredCorrelationId);
+        $identity = self::resolveEventIdentity($restoredEventId, $restoredCorrelationId);
+        $this->eventId = $identity['eventId'];
+        $this->correlationId = $identity['correlationId'];
     }
 
-    // ─── DomainEvent interface ────────────────────────────────────────────────
+    // â”€â”€â”€ DomainEvent interface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function tenantId(): mixed
     {
@@ -64,7 +66,7 @@ final readonly class TenantProfileEnhanced implements DomainEvent, ShouldDispatc
         return self::fromPayload($primitives);
     }
 
-    // ─── Serialization ────────────────────────────────────────────────────────
+    // â”€â”€â”€ Serialization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public static function fromPayload(array $payload): static
     {

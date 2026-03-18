@@ -35,11 +35,14 @@ final readonly class CartAbandoned implements DomainEvent, ShouldBeStoredInOutbo
         ?string $restoredOccurredAt = null,
         ?string $restoredCorrelationId = null,
     ) {
-        $this->initMetadata(
+        $metadata = self::resolveMetadata(
             correlationId: $restoredCorrelationId,
             restoredEventId: $restoredEventId,
             restoredOccurredAt: $restoredOccurredAt,
         );
+        $this->eventId = $metadata['eventId'];
+        $this->correlationId = $metadata['correlationId'];
+        $this->occurredAt = $metadata['occurredAt'];
     }
 
     public function tenantId(): TenantId
@@ -81,12 +84,12 @@ final readonly class CartAbandoned implements DomainEvent, ShouldBeStoredInOutbo
         );
     }
 
-    public function getAggregateId(): ?string
+    public function getAggregateId(): string
     {
         return (string) $this->checkoutSessionId;
     }
 
-    public function getAggregateType(): ?string
+    public function getAggregateType(): string
     {
         return 'checkout_session';
     }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Enums\PaymentMethod;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use OpenApi\Attributes as OA;
@@ -25,73 +25,59 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'payment_instructions', type: 'object', nullable: true, description: 'Dynamic limits for UI rendering'),
     ]
 )]
+/**
+ * @mixin Order
+ */
 final class OrderResource extends JsonResource
 {
     /**
-     * Transform the resource into an array.
-     *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
+        /** @var Order $order */
+        $order = $this->resource;
+
         return [
-            'id' => $this->id,
-            'code' => $this->tracking_uuid,
-            'status_label' => $this->status_label,
-            'total' => (float) $this->total,
-            'formatted_total' => $this->formatted_total,
-            'items_count' => $this->items->count(),
-
-            // Conditional Relations
+            'id' => $order->id,
+            'code' => $order->tracking_uuid,
+            'status_label' => $order->status_label,
+            'total' => (float) $order->total,
+            'formatted_total' => $order->formatted_total,
+            'items_count' => $order->items->count(),
             'items' => $this->whenLoaded('items'),
-
-            // Keep payment instructions as they are UI critical
-            'payment_instructions' => $this->getPaymentInstructions(),
+            'payment_instructions' => $this->getPaymentInstructions($order),
         ];
     }
 
     /**
-     * Generate payment instructions based on the selected payment method.
+     * @return array<string, mixed>|null
      */
-    protected function getPaymentInstructions(): ?array
+    protected function getPaymentInstructions(Order $order): ?array
     {
-        $paymentMethod = $this->payment_method;
-
-        if ($paymentMethod instanceof PaymentMethod) {
-            $method = $paymentMethod;
-        } elseif (is_string($paymentMethod)) {
-            $method = PaymentMethod::tryFrom($paymentMethod);
-        } else {
-            $method = null;
-        }
-
-        if (! $method) {
-            return null;
-        }
-
-        return match ($method) {
-            PaymentMethod::BankTransfer => [
+        return match ($order->payment_method) {
+            'transfer' => [
                 'type' => 'bank_transfer',
                 'title' => 'Datos para Transferencia',
-                'bank_name' => $this->tenant?->bank_name ?? 'BAC Credomatic',
-                'account_number' => $this->tenant?->bank_account ?? '000-000000-0',
-                'account_name' => $this->tenant?->bank_account_name ?? $this->tenant?->name ?? 'Nombre del Negocio',
+                'bank_name' => $order->tenant->bank_name ?? 'BAC Credomatic',
+                'account_number' => $order->tenant->bank_account ?? '000-000000-0',
+                'account_name' => $order->tenant->bank_account_name ?? $order->tenant->name ?? 'Nombre del Negocio',
                 'account_type' => 'Ahorro',
-                'call_to_action' => 'Envía una captura de tu comprobante por WhatsApp',
-                'whatsapp_message' => "Hola! Acabo de realizar la transferencia para el pedido #{$this->order_number}. Adjunto comprobante.",
+                'call_to_action' => 'Envia una captura de tu comprobante por WhatsApp',
+                'whatsapp_message' => "Hola! Acabo de realizar la transferencia para el pedido #{$order->order_number}. Adjunto comprobante.",
             ],
-            PaymentMethod::Cash => [
+            'cash' => [
                 'type' => 'cash',
                 'title' => 'Pago en Efectivo',
                 'instruction' => 'Por favor ten el cambio exacto listo para el repartidor.',
-                'amount_due' => $this->total,
-                'formatted_amount' => 'L. '.number_format((float) $this->total, 2),
+                'amount_due' => $order->total,
+                'formatted_amount' => 'L. '.number_format((float) $order->total, 2),
             ],
-            PaymentMethod::Card => null,
-            PaymentMethod::Pending => [
+            'card' => null,
+            'pending' => [
                 'type' => 'pending',
-                'title' => 'Método de Pago Pendiente',
-                'instruction' => 'Selecciona un método de pago para completar tu orden.',
+                'title' => 'Metodo de Pago Pendiente',
+                'instruction' => 'Selecciona un metodo de pago para completar tu orden.',
             ],
         };
     }

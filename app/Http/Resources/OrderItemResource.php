@@ -22,6 +22,9 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'notes', type: 'string', nullable: true),
     ]
 )]
+/**
+ * @mixin \App\Models\OrderItem
+ */
 final class OrderItemResource extends JsonResource
 {
     /**
@@ -31,15 +34,18 @@ final class OrderItemResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        /** @var \App\Models\OrderItem $item */
+        $item = $this->resource;
+
         return [
-            'id' => $this->id,
-            'product_name' => $this->name, // Model attribute is 'name' (cached from product)
-            'quantity' => $this->quantity,
-            'unit_price' => (float) $this->price,
-            'formatted_price' => 'L. '.number_format((float) $this->price, 2),
-            'total' => (float) $this->total,
-            'options' => $this->options,
-            'notes' => $this->notes,
+            'id' => $item->id,
+            'product_name' => $item->product_name,
+            'quantity' => $item->quantity,
+            'unit_price' => (float) $item->unit_price,
+            'formatted_price' => 'L. '.number_format((float) $item->unit_price, 2),
+            'total' => (float) $item->line_total,
+            'options' => $item->options,
+            'notes' => $item->notes,
         ];
     }
 }

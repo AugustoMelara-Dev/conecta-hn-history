@@ -19,7 +19,7 @@ interface CityReader
     /**
      * Get all cities with their geographic hierarchy.
      *
-     * @return Collection<int, object> Collection of city DTOs or stdClass objects
+     * @return array<int, object> Collection of city DTOs or stdClass objects
      */
     public function getAllCities(): array;
 }

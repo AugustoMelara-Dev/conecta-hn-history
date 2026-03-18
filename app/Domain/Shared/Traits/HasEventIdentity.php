@@ -53,19 +53,18 @@ trait HasEventIdentity
     public readonly string $correlationId;
 
     /**
-     * Initialize event identity with auto-generated or restored values.
+     * Resolve event identity for assignment inside the event constructor.
      *
-     * Call this at the END of the constructor for all events using this trait.
-     *
-     * @param  string|null  $restoredEventId  Existing eventId when deserializing from payload.
-     * @param  string|null  $restoredCorrelationId  Existing correlationId when deserializing from payload.
+     * @return array{eventId: string, correlationId: string}
      */
-    private function initEventIdentity(
+    private static function resolveEventIdentity(
         ?string $restoredEventId = null,
         ?string $restoredCorrelationId = null,
-    ): void {
-        $this->eventId = $restoredEventId ?? Uuid::uuid4()->toString();
-        $this->correlationId = $restoredCorrelationId ?? Uuid::uuid4()->toString();
+    ): array {
+        return [
+            'eventId' => $restoredEventId ?? Uuid::uuid4()->toString(),
+            'correlationId' => $restoredCorrelationId ?? Uuid::uuid4()->toString(),
+        ];
     }
 
     /**

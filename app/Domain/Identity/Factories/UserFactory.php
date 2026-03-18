@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Identity\Factories;
 
 use App\Domain\Identity\Entities\UserEntity;
-use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Contracts\UuidGeneratorInterface;
 
 final readonly class UserFactory
 {
     public function __construct(
-        private ClockInterface $clock,
         private UuidGeneratorInterface $uuidGenerator,
     ) {}
 

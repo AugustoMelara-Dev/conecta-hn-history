@@ -4,16 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Factories;
 
-use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 
-final readonly class TenantFactory
+final class TenantFactory
 {
-    public function __construct(
-        private ClockInterface $clock
-    ) {}
-
     public function createTrialTenant(
         string $source,
         string $ownerName, // Replaced UserEntity $owner to avoid tight coupling
@@ -78,7 +73,9 @@ final readonly class TenantFactory
     private static function slugify(string $value): string
     {
         // Transliterate to ASCII
-        $slug = transliterator_transliterate('Any-Latin; Latin-ASCII; Lower()', $value) ?? strtolower($value);
+        $slug = function_exists('transliterator_transliterate')
+            ? transliterator_transliterate('Any-Latin; Latin-ASCII; Lower()', $value)
+            : strtolower($value);
         // Replace non-alphanumeric with hyphens
         $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
 

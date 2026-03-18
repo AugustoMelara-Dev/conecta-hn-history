@@ -20,7 +20,7 @@ interface ReceiptGeneratorInterface
     /**
      * Generate receipt PDF for an order.
      *
-     * @param  Order  $order  Order with items relation loaded
+     * @param  object  $order  Order with items relation loaded
      * @return string Raw binary PDF content
      *
      * @throws \App\Domain\Orders\Exceptions\PdfGenerationException On render failure

@@ -13,12 +13,16 @@ use Illuminate\Support\Facades\URL;
  *
  * RESPONSIBILITY:
  * Serialize notification data and hydrate signed URLs (JIT).
+ *
+ * @mixin \Illuminate\Notifications\DatabaseNotification
  */
 final class NotificationResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $data = $this->data ?? [];
+        /** @var \Illuminate\Notifications\DatabaseNotification $notification */
+        $notification = $this->resource;
+        $data = $notification->data;
 
         // Hydration Logic moved from Controller to Resource
         $actionUrl = $data['action_url'] ?? null;
@@ -43,14 +47,14 @@ final class NotificationResource extends JsonResource
         }
 
         return [
-            'id' => $this->id,
+            'id' => $notification->id,
             'type' => $data['type'] ?? 'general',
             'title' => $data['title'] ?? 'Notificación',
             'body' => $data['body'] ?? '',
             'action_url' => $actionUrl,
-            'read_at' => $this->read_at?->toIso8601String(),
-            'created_at' => $this->created_at->toIso8601String(),
-            'time_ago' => $this->created_at->diffForHumans(),
+            'read_at' => $notification->read_at?->toIso8601String(),
+            'created_at' => $notification->created_at->toIso8601String(),
+            'time_ago' => $notification->created_at->diffForHumans(),
         ];
     }
 }

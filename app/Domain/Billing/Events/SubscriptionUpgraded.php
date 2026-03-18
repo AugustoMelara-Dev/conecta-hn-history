@@ -13,11 +13,11 @@ use DateTimeInterface;
 /**
  * SubscriptionUpgraded - Domain Event for Plan Upgrade
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  TYPE SAFE: Uses string IDs (UUID/ULID compatible).                      ║
- * ║  TRANSACTIONAL: Implements ShouldDispatchAfterCommit for Outbox safety.  ║
- * ║  TEMPORAL ACCURACY: occurredAt is immutable, set at creation time.       ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  TYPE SAFE: Uses string IDs (UUID/ULID compatible).                      â•‘
+ * â•‘  TRANSACTIONAL: Implements ShouldDispatchAfterCommit for Outbox safety.  â•‘
+ * â•‘  TEMPORAL ACCURACY: occurredAt is immutable, set at creation time.       â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  * Implements DomainEvent (canonical) via Bridge (W-01).
  * Uses HasEventIdentity (W-03).
  */
@@ -38,7 +38,9 @@ final readonly class SubscriptionUpgraded implements DomainEvent, ShouldDispatch
         ?string $restoredEventId = null,
         ?string $restoredCorrelationId = null,
     ) {
-        $this->initEventIdentity($restoredEventId, $restoredCorrelationId);
+        $identity = self::resolveEventIdentity($restoredEventId, $restoredCorrelationId);
+        $this->eventId = $identity['eventId'];
+        $this->correlationId = $identity['correlationId'];
     }
 
     /**
@@ -61,7 +63,7 @@ final readonly class SubscriptionUpgraded implements DomainEvent, ShouldDispatch
         );
     }
 
-    // ─── DomainEvent interface ────────────────────────────────────────────────
+    // â”€â”€â”€ DomainEvent interface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function tenantId(): mixed
     {
@@ -88,7 +90,7 @@ final readonly class SubscriptionUpgraded implements DomainEvent, ShouldDispatch
         return self::fromPayload($primitives);
     }
 
-    // ─── Serialization ────────────────────────────────────────────────────────
+    // â”€â”€â”€ Serialization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public static function fromPayload(array $payload): static
     {

@@ -120,8 +120,7 @@ final class CouponController extends Controller
 
         // Caching is fine in controller or Decorator. Keeping here for now to match logic.
         $coupons = $this->cache->remember($cacheKey, now()->addMinutes(self::CACHE_TTL_MINUTES), function () use ($tenantId) {
-            // Delegated to Reader
-            return $this->reader->getValidCoupons($tenantId)->toArray();
+            return $this->reader->getValidCoupons($tenantId);
         });
 
         return response()->json([

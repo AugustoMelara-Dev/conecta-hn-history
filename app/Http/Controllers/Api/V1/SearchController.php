@@ -10,14 +10,6 @@ use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/**
- * SearchController - Unified Search API
- *
- * ARCHITECTURE:
- * - Decoupled from Eloquent (uses GlobalSearchReader)
- * - Pure HTTP responsibility (Validation, Transformation, Response)
- * - Final, Strict
- */
 final class SearchController extends Controller
 {
     public function __construct(
@@ -29,12 +21,10 @@ final class SearchController extends Controller
     {
         $query = $request->input('query');
 
-        // Validation
-        if (! $query || ! is_string($query) || strlen($query) < 3) {
-            return response()->json(['tenants' => []], 200); // Return empty successfully
+        if (! is_string($query) || strlen($query) < 3) {
+            return response()->json(['tenants' => []], 200);
         }
 
-        // Execution
         $results = $this->reader->searchTenants(
             query: $query,
             citySlug: $request->input('city'),
@@ -42,16 +32,25 @@ final class SearchController extends Controller
             limit: 20
         );
 
-        // Transformation
-        // Ideally this should be a Resource, but for simplicity/speed in this sweep keeping map.
-        $tenants = $results->map(fn ($tenant) => [
-            'id' => $tenant->id,
-            'name' => $tenant->name,
-            'slug' => $tenant->slug,
-            'logo_url' => $tenant->logo_path ? $this->storage->disk('public')->url($tenant->logo_path) : null,
-            'category_name' => $tenant->category?->name,
-            'city_name' => $tenant->city?->name,
-        ]);
+        $tenants = collect($results)
+            ->map(function (mixed $tenant): array {
+                $logoPath = data_get($tenant, 'logo_path');
+                $categoryName = data_get($tenant, 'category.name');
+                $cityName = data_get($tenant, 'city.name');
+
+                return [
+                    'id' => data_get($tenant, 'id'),
+                    'name' => data_get($tenant, 'name'),
+                    'slug' => data_get($tenant, 'slug'),
+                    'logo_url' => is_string($logoPath) && $logoPath !== ''
+                        ? $this->storage->disk('public')->url($logoPath)
+                        : null,
+                    'category_name' => is_string($categoryName) ? $categoryName : null,
+                    'city_name' => is_string($cityName) ? $cityName : null,
+                ];
+            })
+            ->values()
+            ->all();
 
         return response()->json([
             'tenants' => $tenants,

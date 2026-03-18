@@ -29,6 +29,8 @@ namespace App\Domain\Shared\Traits;
  * ║                                                                          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
+// Used by models outside the Domain scan path.
+// @phpstan-ignore trait.unused
 trait HasDomainEvents
 {
     /**

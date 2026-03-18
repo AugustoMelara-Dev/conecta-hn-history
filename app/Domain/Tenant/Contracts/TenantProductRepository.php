@@ -24,7 +24,7 @@ interface TenantProductRepository
      * @param  int  $tenantId  The tenant identifier
      * @param  string  $search  Optional search term for name/sku filtering
      * @param  int  $perPage  Number of items per page
-     * @return LengthAwarePaginator Paginated product collection
+     * @return PaginatedResult Paginated product collection
      */
     public function getDashboardList(int $tenantId, string $search = '', int $perPage = 12): PaginatedResult;
 

@@ -13,7 +13,7 @@ interface SearchRepository
      * @param  string|null  $citySlug  Optional city slug filter.
      * @param  string|null  $categorySlug  Optional category slug filter.
      * @param  int  $limit  Max results to return.
-     * @return Collection<int, \App\Domain\TenantGovernance\Models\Tenant>
+     * @return array<int, array<string, mixed>>
      */
     public function searchTenants(string $query, ?string $citySlug = null, ?string $categorySlug = null, int $limit = 20): array;
 }

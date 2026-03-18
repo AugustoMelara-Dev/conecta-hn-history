@@ -348,7 +348,7 @@ final class TenantEntity
         $tenant->subscriptionStatus = isset($state['subscription_status'])
             ? (string) $state['subscription_status']
             : 'inactive';
-        $tenant->subscriptionEndsAt = isset($state['subscription_ends_at']) && $state['subscription_ends_at'] !== null
+        $tenant->subscriptionEndsAt = array_key_exists('subscription_ends_at', $state) && $state['subscription_ends_at'] !== null
             ? new DateTimeImmutable($state['subscription_ends_at'])
             : null;
         $tenant->subscriptionReference = isset($state['subscription_reference'])

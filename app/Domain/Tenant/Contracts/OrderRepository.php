@@ -21,7 +21,7 @@ interface OrderRepository
      *
      * @param  int  $tenantId  The tenant identifier
      * @param  array<string, mixed>  $filters  Optional filters (date, status, etc.)
-     * @return Collection<string, Collection> Orders grouped by status
+     * @return array<string, array<int, array<string, mixed>>> Orders grouped by status
      */
     public function getDashboardKanban(int $tenantId, array $filters = []): array;
 

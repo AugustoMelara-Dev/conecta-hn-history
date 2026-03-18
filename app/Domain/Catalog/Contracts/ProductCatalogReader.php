@@ -11,7 +11,7 @@ interface ProductCatalogReader
     /**
      * Get featured products for a tenant.
      *
-     * @return Collection<int, object>
+     * @return array<int, array<string, mixed>>
      */
     public function getFeaturedProducts(int $tenantId, int $limit = 10): array;
 

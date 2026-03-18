@@ -12,14 +12,14 @@ use DateTimeImmutable;
 /**
  * UserDeleted - Digital Tombstone Domain Event
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  GDPR COMPLIANCE (A6): PII ($email, $name) removed from event payload.  ║
- * ║  Events are stored indefinitely — PII must never persist in the log.    ║
- * ║  Consumers needing email/name must query the audit log before deletion. ║
- * ║  PRIMITIVES ONLY: No Eloquent models - prevents ModelNotFoundException. ║
- * ║  UUID ALIGNED: Uses string IDs consistent with UserEntity.              ║
- * ║  REACTIVE: Allows Billing, Notifications, Audit modules to react.       ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  GDPR COMPLIANCE (A6): PII ($email, $name) removed from event payload.  â•‘
+ * â•‘  Events are stored indefinitely â€” PII must never persist in the log.    â•‘
+ * â•‘  Consumers needing email/name must query the audit log before deletion. â•‘
+ * â•‘  PRIMITIVES ONLY: No Eloquent models - prevents ModelNotFoundException. â•‘
+ * â•‘  UUID ALIGNED: Uses string IDs consistent with UserEntity.              â•‘
+ * â•‘  REACTIVE: Allows Billing, Notifications, Audit modules to react.       â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  * Implements DomainEvent (canonical) via Bridge (W-01).
  * Uses HasEventIdentity (W-03).
  */
@@ -38,12 +38,14 @@ final readonly class UserDeleted implements DomainEvent, ShouldDispatchAfterComm
         ?string $restoredEventId = null,
         ?string $restoredCorrelationId = null,
     ) {
-        $this->initEventIdentity($restoredEventId, $restoredCorrelationId);
+        $identity = self::resolveEventIdentity($restoredEventId, $restoredCorrelationId);
+        $this->eventId = $identity['eventId'];
+        $this->correlationId = $identity['correlationId'];
     }
 
     /**
      * Create from user data snapshot.
-     * NOTE: email/name intentionally excluded (A6 — GDPR compliance).
+     * NOTE: email/name intentionally excluded (A6 â€” GDPR compliance).
      */
     public static function fromSnapshot(
         string $userId,
@@ -56,7 +58,7 @@ final readonly class UserDeleted implements DomainEvent, ShouldDispatchAfterComm
         );
     }
 
-    // ─── DomainEvent interface ────────────────────────────────────────────────
+    // â”€â”€â”€ DomainEvent interface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function tenantId(): mixed
     {
@@ -83,7 +85,7 @@ final readonly class UserDeleted implements DomainEvent, ShouldDispatchAfterComm
         return self::fromPayload($primitives);
     }
 
-    // ─── Serialization ────────────────────────────────────────────────────────
+    // â”€â”€â”€ Serialization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function eventName(): string
     {

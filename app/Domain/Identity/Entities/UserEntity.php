@@ -198,7 +198,7 @@ final class UserEntity
         $user->email = $state['email'] ?? '';
         $user->password = $state['password'] ?? '';
         $user->role = UserRole::from($state['role']);
-        $user->tenantId = isset($state['tenant_id']) && $state['tenant_id'] !== null
+        $user->tenantId = array_key_exists('tenant_id', $state) && $state['tenant_id'] !== null
             ? (string) $state['tenant_id']
             : null;
         $user->rememberToken = $state['remember_token'] ?? null;

@@ -12,37 +12,37 @@ use App\ValueObjects\OrderNumber;
 /**
  * OrderCancelled - Pure Domain Event for Order Voiding
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  PURE DOMAIN EVENT: Business Fact Only                                  ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║                                                                          ║
- * ║  INVARIANTS GUARANTEED:                                                 ║
- * ║    - The order was in a cancellable state (not delivered)              ║
- * ║    - Inventory restoration is triggered                                 ║
- * ║    - Refund is initiated if payment was received                       ║
- * ║    - This event is only dispatched AFTER the transaction commits       ║
- * ║                                                                          ║
- * ║  PURITY RULES:                                                          ║
- * ║    - ❌ NO Eloquent models                                              ║
- * ║    - ❌ NO ShouldBroadcast (moved to OrderCancelledBroadcast)          ║
- * ║    - ❌ NO Dispatchable trait (use DomainEventBus)                     ║
- * ║    - ✅ Only primitives and Value Objects                               ║
- * ║    - ✅ toPrimitives() for safe queue serialization                     ║
- * ║    - ✅ eventId() for idempotency                                       ║
- * ║                                                                          ║
- * ║  CANCELLATION SOURCES:                                                  ║
- * ║    - Customer request                                                   ║
- * ║    - Merchant decision (out of stock)                                  ║
- * ║    - System (payment timeout via ReleaseStaleOrders job)               ║
- * ║    - Fraud detection                                                    ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  PURE DOMAIN EVENT: Business Fact Only                                  â•‘
+ * â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•£
+ * â•‘                                                                          â•‘
+ * â•‘  INVARIANTS GUARANTEED:                                                 â•‘
+ * â•‘    - The order was in a cancellable state (not delivered)              â•‘
+ * â•‘    - Inventory restoration is triggered                                 â•‘
+ * â•‘    - Refund is initiated if payment was received                       â•‘
+ * â•‘    - This event is only dispatched AFTER the transaction commits       â•‘
+ * â•‘                                                                          â•‘
+ * â•‘  PURITY RULES:                                                          â•‘
+ * â•‘    - âŒ NO Eloquent models                                              â•‘
+ * â•‘    - âŒ NO ShouldBroadcast (moved to OrderCancelledBroadcast)          â•‘
+ * â•‘    - âŒ NO Dispatchable trait (use DomainEventBus)                     â•‘
+ * â•‘    - âœ… Only primitives and Value Objects                               â•‘
+ * â•‘    - âœ… toPrimitives() for safe queue serialization                     â•‘
+ * â•‘    - âœ… eventId() for idempotency                                       â•‘
+ * â•‘                                                                          â•‘
+ * â•‘  CANCELLATION SOURCES:                                                  â•‘
+ * â•‘    - Customer request                                                   â•‘
+ * â•‘    - Merchant decision (out of stock)                                  â•‘
+ * â•‘    - System (payment timeout via ReleaseStaleOrders job)               â•‘
+ * â•‘    - Fraud detection                                                    â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  *
  * LISTENERS:
  *   - SendCancellationEmailListener
  *   - RestoreInventoryListener
  *   - InitiateRefundListener
  *   - UpdateAnalyticsListener
- *   - → OrderCancelledBroadcastListener (fires UI event)
+ *   - â†’ OrderCancelledBroadcastListener (fires UI event)
  *
  * DISPATCH POINT: OrderStateService::onCancelled() via DomainEventBus
  */
@@ -77,11 +77,14 @@ final readonly class OrderCancelled implements DomainEvent
         ?string $restoredOccurredAt = null,
         ?string $restoredCorrelationId = null,
     ) {
-        $this->initMetadata(
+        $metadata = self::resolveMetadata(
             correlationId: $restoredCorrelationId,
             restoredEventId: $restoredEventId,
             restoredOccurredAt: $restoredOccurredAt,
         );
+        $this->eventId = $metadata['eventId'];
+        $this->correlationId = $metadata['correlationId'];
+        $this->occurredAt = $metadata['occurredAt'];
     }
 
     /**
@@ -121,9 +124,9 @@ final readonly class OrderCancelled implements DomainEvent
         return $this->wasPaid;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // DomainEvent Interface Implementation
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     public function tenantId(): TenantId
     {
@@ -135,9 +138,9 @@ final readonly class OrderCancelled implements DomainEvent
         return (string) $this->orderId;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // Safe Serialization (Queue-Safe, Refactor-Proof)
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     public function toPrimitives(): array
     {
@@ -156,13 +159,13 @@ final readonly class OrderCancelled implements DomainEvent
 
     public static function fromPrimitives(array $primitives): self
     {
-        // ═══════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // FAIL-FAST VALIDATION: Critical Fields Must Exist
-        // ═══════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // RATIONALE: The 'was_paid' field determines whether a refund should
         // be initiated. Defaulting to 'false' when missing causes paid orders
         // to NOT receive refunds - a critical business logic failure.
-        // ═══════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         $requiredKeys = [
             'tenant_id',

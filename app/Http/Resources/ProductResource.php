@@ -25,6 +25,9 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'stock_status', type: 'string', enum: ['in_stock', 'out_of_stock'], example: 'in_stock'),
     ]
 )]
+/**
+ * @mixin \App\Models\Product
+ */
 final class ProductResource extends JsonResource
 {
     /**
@@ -34,16 +37,19 @@ final class ProductResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        /** @var \App\Models\Product $product */
+        $product = $this->resource;
+
         return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'slug' => $this->slug,
-            'price' => (float) $this->price,
-            'formatted_price' => 'L. '.number_format((float) $this->price, 2),
-            'description' => \Illuminate\Support\Str::limit($this->description ?? '', 100),
-            'image_url' => $this->image_url,
-            'category' => $this->category?->name,
-            'stock_status' => $this->stock_status->value ?? 'out_of_stock',
+            'id' => $product->id,
+            'name' => $product->name,
+            'slug' => $product->slug,
+            'price' => (float) $product->price,
+            'formatted_price' => 'L. '.number_format((float) $product->price, 2),
+            'description' => \Illuminate\Support\Str::limit($product->description ?? '', 100),
+            'image_url' => $product->image_url,
+            'category' => data_get($product, 'category.name'),
+            'stock_status' => $product->stock_status->value ?? 'out_of_stock',
         ];
     }
 }

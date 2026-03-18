@@ -61,8 +61,8 @@ final class ReportController extends Controller
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
         ]);
 
-        $startDate = Carbon::parse($validated['start_date'])->startOfDay();
-        $endDate = Carbon::parse($validated['end_date'])->endOfDay();
+        $startDate = Carbon::parse($validated['start_date'])->startOfDay()->toDateTimeImmutable();
+        $endDate = Carbon::parse($validated['end_date'])->endOfDay()->toDateTimeImmutable();
 
         // OPTIMIZED: Single query - pass orders to summary calculation
         $orders = $this->reportReader->getSalesData($tenantId, $startDate, $endDate);
@@ -94,7 +94,7 @@ final class ReportController extends Controller
         $tenant = (object) $this->tenantContext->getTenantData();
 
         // DELEGATED: Query logic in ProductReader, not controller
-        $products = $this->productReader->getInventory($tenantId);
+        $products = collect($this->productReader->getInventory($tenantId));
 
         $totalProducts = $products->count();
         $inStock = $products->where('stock_status', 'in_stock')->count();

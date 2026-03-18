@@ -170,7 +170,7 @@ final class HandleInertiaRequests extends Middleware
             'name' => (string) $tenant->name,
             'slug' => (string) $tenant->slug,
             'logo_url' => $this->sanitizeLogoPath($tenant->logo_path),
-            'whatsapp' => $tenant->whatsapp ? (string) $tenant->whatsapp : null,
+            'whatsapp' => $tenant->whatsapp_number ? (string) $tenant->whatsapp_number : null,
             'whatsapp_number' => $tenant->whatsapp_number ? (string) $tenant->whatsapp_number : null,
             'phone' => $tenant->phone ? (string) $tenant->phone : null,
             'is_pro' => (bool) ($tenant->is_pro ?? false),

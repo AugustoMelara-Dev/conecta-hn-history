@@ -29,11 +29,14 @@ final readonly class AppointmentCancelled implements DomainEvent, ShouldBeStored
         ?string $restoredOccurredAt = null,
         ?string $restoredCorrelationId = null,
     ) {
-        $this->initMetadata(
+        $metadata = self::resolveMetadata(
             correlationId: $restoredCorrelationId,
             restoredEventId: $restoredEventId,
             restoredOccurredAt: $restoredOccurredAt,
         );
+        $this->eventId = $metadata['eventId'];
+        $this->correlationId = $metadata['correlationId'];
+        $this->occurredAt = $metadata['occurredAt'];
     }
 
     public function tenantId(): TenantId
@@ -73,12 +76,12 @@ final readonly class AppointmentCancelled implements DomainEvent, ShouldBeStored
         );
     }
 
-    public function getAggregateId(): ?string
+    public function getAggregateId(): string
     {
         return (string) $this->appointmentId;
     }
 
-    public function getAggregateType(): ?string
+    public function getAggregateType(): string
     {
         return 'appointment';
     }

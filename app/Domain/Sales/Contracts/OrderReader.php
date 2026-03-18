@@ -24,7 +24,7 @@ interface OrderReader
      * @param  int  $tenantId  The tenant context (REQUIRED for multi-tenancy)
      * @param  string|null  $status  Optional status filter
      * @param  int  $perPage  Pagination limit
-     * @return LengthAwarePaginator Paginated order results with eager-loaded relations
+     * @return PaginatedResult Paginated order results with eager-loaded relations
      */
     public function search(
         int|string $tenantId,

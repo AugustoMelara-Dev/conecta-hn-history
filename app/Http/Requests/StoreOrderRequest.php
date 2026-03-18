@@ -8,6 +8,7 @@ use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Enums\PaymentMethod;
 use App\Models\Location;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -100,6 +101,8 @@ final class StoreOrderRequest extends FormRequest
     {
         $validated = $this->validated();
         $tenant = $this->route('tenant');
+        /** @var User|null $user */
+        $user = $this->user();
 
         $tenantId = (string) ($tenant instanceof Tenant ? $tenant->id : $tenant);
         $locationId = (string) ($validated['location_id'] ?? Location::query()
@@ -107,11 +110,17 @@ final class StoreOrderRequest extends FormRequest
             ->where('is_primary', true)
             ->where('is_active', true)
             ->value('id'));
+        $requestorId = $user instanceof User ? (string) $user->id : null;
+        $customerId = (string) ($validated['customer_id'] ?? $requestorId ?? '');
+        $paymentMethod = $validated['payment_method'] ?? PaymentMethod::Pending;
+        $paymentMethodValue = $paymentMethod instanceof PaymentMethod
+            ? $paymentMethod->value
+            : (string) $paymentMethod;
 
         return new CreateOrderCommand(
             tenantId: $tenantId,
             locationId: $locationId !== '' ? $locationId : null,
-            customerId: (string) ($validated['customer_id'] ?? $this->user()?->id ?? ''),
+            customerId: $customerId,
             customerName: $validated['customer_name'] ?? null,
             customerEmail: $validated['customer_email'] ?? null,
             customerPhone: $validated['customer_phone'] ?? null,
@@ -126,9 +135,9 @@ final class StoreOrderRequest extends FormRequest
                 'notes' => $item['notes'] ?? null,
             ], $validated['items']),
             deliveryType: $validated['delivery_type'],
-            paymentMethod: $validated['payment_method']?->value ?? $validated['payment_method'] ?? 'pending',
+            paymentMethod: $paymentMethodValue,
             couponCode: $validated['coupon_code'] ?? null,
-            requestorId: $this->user()?->id,
+            requestorId: $requestorId,
             schemaVersion: 1,
         );
     }

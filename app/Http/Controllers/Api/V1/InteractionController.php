@@ -7,23 +7,21 @@ namespace App\Http\Controllers\Api\V1;
 use App\Application\Interactions\DTOs\InteractionData;
 use App\Domain\Shared\Contracts\TenantReadRepository;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreInteractionRequest;
 use App\Infrastructure\Interactions\Actions\RecordInteractionAction;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
-/**
- * InteractionController - Strict Hexagonal
- */
 final class InteractionController extends Controller
 {
     public function __construct(
         private readonly TenantReadRepository $tenantReader
     ) {}
 
-    public function store(\App\Http\Requests\StoreInteractionRequest $request, RecordInteractionAction $action): JsonResponse
+    public function store(StoreInteractionRequest $request, RecordInteractionAction $action): JsonResponse
     {
         try {
-            // ARCHITECTURAL FIX: Request→DTO mapping belongs in the Controller (Infrastructure),
-            // not in the Application Layer DTO. This restores the Dependency Rule.
+            $metadata = $request->input('metadata');
             $dto = new InteractionData(
                 tenantId: (string) $request->input('tenant_id'),
                 type: (string) $request->input('type'),
@@ -31,24 +29,18 @@ final class InteractionController extends Controller
                 userAgent: $request->userAgent(),
                 sessionId: $request->session()->getId(),
                 productId: $request->filled('product_id') ? (string) $request->input('product_id') : null,
-                metadata: $request->input('metadata'),
+                metadata: is_array($metadata) ? $metadata : [],
             );
 
-            // 1. Check Existence via Repository (No Model used here)
-            if (! $this->tenantReader->exists($dto->tenantId)) {
+            if (! $this->tenantReader->exists((int) $dto->tenantId)) {
                 return response()->json(['status' => 'accepted'], 202);
             }
 
-            $result = $action->execute($dto);
-
-            if ($result === null) {
-                return response()->json(['status' => 'duplicate', 'message' => 'Interaction already recorded'], 200);
-            }
+            $action->execute($dto);
 
             return response()->json(['status' => 'success'], 201);
-
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Interaction Error', [
+            Log::error('Interaction Error', [
                 'error' => $e->getMessage(),
                 'payload' => $request->all(),
             ]);
