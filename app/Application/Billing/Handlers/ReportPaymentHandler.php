@@ -91,10 +91,10 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
                 );
 
                 if ($existingPayment) {
-                    $this->logger->warning('Idempotency hit during transaction. Skipping creation.', [
+                    $this->logger->warning('Idempotency hit during transaction. Skipping creation.', $this->sanitizePayload([
                         'tenant_id' => $command->tenantId,
                         'key' => $command->idempotencyKey,
-                    ]);
+                    ], $this->scrubber));
 
                     return $existingPayment;
                 }
@@ -145,11 +145,11 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
             throw new \RuntimeException('Concurrency anomaly: Unique constraint violated but record not found.');
         }
 
-        $this->logger->info('Recovered existing payment (Eloquent constraint)', [
+        $this->logger->info('Recovered existing payment (Eloquent constraint)', $this->sanitizePayload([
             'tenant_id' => $command->tenantId,
             'key' => $command->idempotencyKey,
             'existing_id' => $existingPayment->id,
-        ]);
+        ], $this->scrubber));
 
         return ReportPaymentResult::fromEntity($existingPayment);
     }
@@ -165,11 +165,11 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
             throw new \RuntimeException('Concurrency anomaly: Duplicate detected but record missing.', 0, $e);
         }
 
-        $this->logger->info('Recovered existing payment for duplicate report', [
+        $this->logger->info('Recovered existing payment for duplicate report', $this->sanitizePayload([
             'tenant_id' => $command->tenantId,
             'key' => $command->idempotencyKey,
             'existing_id' => $existingPayment->id,
-        ]);
+        ], $this->scrubber));
 
         // LIVENESS FIX: Kick the machine if it's stuck.
         // LEVEL 34: TIME-GATED LIVENESS (Thundering Herd Protection)

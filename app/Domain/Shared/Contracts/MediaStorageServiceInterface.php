@@ -19,14 +19,14 @@ interface MediaStorageServiceInterface
      *
      * @return string The stored file path
      */
-    public function storeLogo(int $tenantId, FileTransferObject $file): string;
+    public function storeLogo(string $tenantId, FileTransferObject $file): string;
 
     /**
      * Store a banner/cover file for a tenant.
      *
      * @return string The stored file path
      */
-    public function storeBanner(int $tenantId, FileTransferObject $file): string;
+    public function storeBanner(string $tenantId, FileTransferObject $file): string;
 
     /**
      * Delete a file by path.

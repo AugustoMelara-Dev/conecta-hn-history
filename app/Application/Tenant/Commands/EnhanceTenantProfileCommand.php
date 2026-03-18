@@ -15,7 +15,7 @@ namespace App\Application\Tenant\Commands;
 final readonly class EnhanceTenantProfileCommand
 {
     /**
-     * @param  int  $tenantId  Target tenant identifier
+     * @param  string  $tenantId  Target tenant identifier
      * @param  string|null  $description  Updated description for AI processing
      * @param  array<int, string>  $tags  Category tags to guide AI enhancement
      * @param  bool  $isAiGenerated  Allow re-enhancement of previously AI-generated content

@@ -80,7 +80,7 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
             'id' => $generatedIntentId,
             'tenant_id' => $tenant->id(),
             'client_idempotency_key' => $command->clientIdempotencyKey,
-            'plan_identifier' => $plan->identifier,
+            'plan_identifier' => $plan->id,
             'gateway_provider' => 'stripe',
             'status' => SubscriptionIntent::STATUS_PENDING,
             'created_at' => \Carbon\CarbonImmutable::now(),
@@ -102,10 +102,10 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
 
             $capturedIntentId = $existing->id;
 
-            $this->logger->info('Recovered existing intent for double-submit protection', [
+            $this->logger->info('Recovered existing intent for double-submit protection', $this->sanitizePayload([
                 'client_key' => $command->clientIdempotencyKey,
                 'intent_id' => $capturedIntentId,
-            ]);
+            ], $this->scrubber));
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -114,8 +114,7 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
         try {
             $gatewayResult = $this->subscriptionGateway->swapPlan(
                 subscriptionReference: $subscriptionRef,
-                newPlanId: $plan->externalGatewayId,
-                idempotencyKey: $capturedIntentId
+                newPlanExternalId: $plan->externalGatewayId,
             );
 
             if (! $gatewayResult->success) {
@@ -160,10 +159,10 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
             });
 
         } catch (\Throwable $e) {
-            $this->logger->error('RequestUpgradeHandler failed', [
+            $this->logger->error('RequestUpgradeHandler failed', $this->sanitizePayload([
                 'intent_id' => $capturedIntentId,
                 'error' => $e->getMessage(),
-            ]);
+            ], $this->scrubber));
             throw $e;
         }
     }

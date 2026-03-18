@@ -34,4 +34,9 @@ final class CrossTenantAccessException extends DomainException
     {
         return new self('user', $userId);
     }
+
+    public static function forUserProfile(string $userId): self
+    {
+        return new self('user profile', $userId);
+    }
 }

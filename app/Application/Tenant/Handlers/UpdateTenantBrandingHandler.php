@@ -8,9 +8,10 @@ use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\UpdateTenantBrandingCommand;
-use App\Domain\Identity\Exceptions\TenantNotFoundException;
-use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use App\Domain\Shared\Contracts\MediaStorageServiceInterface;
+use App\Domain\TenantGovernance\Entities\TenantEntity;
+use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 
 /**
  * UpdateTenantBrandingHandler - Branding Assets Update Handler
@@ -43,25 +44,25 @@ final readonly class UpdateTenantBrandingHandler
         $tenant = $this->tenantRepository->findById($command->tenantId);
 
         if ($tenant === null) {
-            throw new TenantNotFoundException("Tenant not found: {$command->tenantId}");
+            throw TenantNotFoundException::withId($command->tenantId);
         }
 
         // 2. Handle Logo Upload (delegated to MediaStorageService)
         if ($command->logo !== null) {
-            // Delete old logo if exists
-            if ($tenant->logo_path) {
-                $this->mediaStorage->delete($tenant->logo_path);
+            if ($tenant->logoPath() !== null) {
+                $this->mediaStorage->delete($tenant->logoPath());
             }
-            $tenant->logo_path = $this->mediaStorage->storeLogo($command->tenantId, $command->logo);
+
+            $tenant->replaceLogoPath($this->mediaStorage->storeLogo($command->tenantId, $command->logo));
         }
 
         // 3. Handle Banner Upload (delegated to MediaStorageService)
         if ($command->banner !== null) {
-            // Delete old banner if exists
-            if ($tenant->cover_path) {
-                $this->mediaStorage->delete($tenant->cover_path);
+            if ($tenant->coverPath() !== null) {
+                $this->mediaStorage->delete($tenant->coverPath());
             }
-            $tenant->cover_path = $this->mediaStorage->storeBanner($command->tenantId, $command->banner);
+
+            $tenant->replaceCoverPath($this->mediaStorage->storeBanner($command->tenantId, $command->banner));
         }
 
         // 4. Update text fields (only non-null values)
@@ -80,40 +81,22 @@ final readonly class UpdateTenantBrandingHandler
     /**
      * Update text fields on tenant from command.
      */
-    private function updateTextFields(object $tenant, UpdateTenantBrandingCommand $command): void
+    private function updateTextFields(TenantEntity $tenant, UpdateTenantBrandingCommand $command): void
     {
-        if ($command->name !== null) {
-            $tenant->name = $command->name;
-        }
-        if ($command->description !== null) {
-            $tenant->description = $command->description;
-        }
-        if ($command->about !== null) {
-            $tenant->about = $command->about;
-        }
-        if ($command->phone !== null) {
-            $tenant->phone = $command->phone;
-        }
-        if ($command->whatsapp !== null) {
-            $tenant->whatsapp_number = $command->whatsapp;
-        }
-        if ($command->address !== null) {
-            $tenant->address = $command->address;
-        }
-        if ($command->website !== null) {
-            $tenant->website_url = $command->website;
-        }
-        if ($command->instagram !== null) {
-            $tenant->instagram_url = $command->instagram;
-        }
-        if ($command->facebook !== null) {
-            $tenant->facebook_url = $command->facebook;
-        }
-        if ($command->tiktok !== null) {
-            $tenant->tiktok_url = $command->tiktok;
-        }
-        if ($command->primaryColor !== null) {
-            $tenant->primary_color = $command->primaryColor;
-        }
+        $attributes = array_filter([
+            'name' => $command->name,
+            'description' => $command->description,
+            'about' => $command->about,
+            'phone' => $command->phone,
+            'whatsapp' => $command->whatsapp,
+            'address' => $command->address,
+            'website_url' => $command->website,
+            'instagram_url' => $command->instagram,
+            'facebook_url' => $command->facebook,
+            'tiktok_url' => $command->tiktok,
+            'primary_color' => $command->primaryColor,
+        ], static fn (?string $value): bool => $value !== null);
+
+        $tenant->updateBranding($attributes);
     }
 }

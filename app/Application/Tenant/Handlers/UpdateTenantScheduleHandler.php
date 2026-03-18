@@ -8,8 +8,8 @@ use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\UpdateTenantScheduleCommand;
-use App\Domain\Identity\Exceptions\TenantNotFoundException;
-use App\Domain\Identity\Repositories\TenantRepositoryInterface;
+use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use DomainException;
 
 /**
@@ -42,14 +42,14 @@ final readonly class UpdateTenantScheduleHandler
         $tenant = $this->tenantRepository->findById($command->tenantId);
 
         if ($tenant === null) {
-            throw new TenantNotFoundException("Tenant not found: {$command->tenantId}");
+            throw TenantNotFoundException::withId($command->tenantId);
         }
 
         // 2. DOMAIN RULE: At least one day must be open
         $this->validateAtLeastOneDayOpen($command->scheduleData);
 
         // 3. Update schedule field
-        $tenant->schedule = $command->scheduleData;
+        $tenant->updateSchedule($command->scheduleData);
 
         // 4. Persist via Repository
         $this->tenantRepository->save($tenant);

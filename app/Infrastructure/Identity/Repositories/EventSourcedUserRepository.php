@@ -136,11 +136,12 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
                 'name' => $user->name(),
                 'email' => $user->email(),
                 'password' => $user->password(),
+                'banned_at' => $user->bannedAt(),
                 'created_at' => $user->createdAt(), // Assumes DateTime casting works or format
                 'updated_at' => now(),
             ],
             ['id'], // Unique Key
-            ['email', 'password', 'updated_at'] // Update Columns
+            ['email', 'password', 'banned_at', 'updated_at'] // Update Columns
         );
     }
 

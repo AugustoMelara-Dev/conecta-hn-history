@@ -10,7 +10,6 @@ use App\Application\Shared\Contracts\EventBusInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
-use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Exceptions\CrossTenantAccessException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
@@ -64,10 +63,6 @@ final readonly class UpdateUserProfileHandler
         }
 
         // Integrity Check
-        if (! $user instanceof UserEntity) {
-            throw new \RuntimeException('Repository returned invalid object type.');
-        }
-
         // ═══════════════════════════════════════════════════════════════════
         // PHASE 2: IDOR PROTECTION - Tenant Ownership Validation
         // ═══════════════════════════════════════════════════════════════════

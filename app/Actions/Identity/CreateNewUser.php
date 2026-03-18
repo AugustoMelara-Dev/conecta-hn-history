@@ -12,7 +12,9 @@ use App\Application\Shared\Contracts\TenantRateLimiterInterface;
 use App\Rules\UniqueUser;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use Illuminate\Foundation\Auth\User as FoundationUser;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
+use RuntimeException;
 
 /**
  * CreateNewUser - Fortify ACL Adapter
@@ -72,6 +74,16 @@ final readonly class CreateNewUser implements CreatesNewUsers
             )
         );
 
-        return $this->userReadProjection->getById((string) ($result?->id ?? ''));
+        if (! is_object($result) || ! isset($result->id) || ! is_string($result->id)) {
+            throw new RuntimeException('RegisterUserCommand must return an object with a string id.');
+        }
+
+        $user = $this->userReadProjection->getById($result->id);
+
+        if (! $user instanceof FoundationUser) {
+            throw new RuntimeException('Fortify bridge must resolve a concrete Eloquent user.');
+        }
+
+        return $user;
     }
 }

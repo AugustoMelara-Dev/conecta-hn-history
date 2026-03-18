@@ -145,13 +145,22 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'category_id' => $state['category_id'] ?? null,
             'city_id' => $state['city_id'] ?? null,
             'logo_path' => $state['logo_path'] ?? null,
+            'cover_path' => $state['cover_path'] ?? null,
             'phone' => $state['phone'] ?? null,
             'address' => $state['address'] ?? null,
             'latitude' => $state['latitude'] ?? null,
             'longitude' => $state['longitude'] ?? null,
             'description' => $state['description'] ?? null,
+            'about' => $state['about'] ?? null,
             'slogan' => $state['slogan'] ?? null,
             'whatsapp_number' => $state['whatsapp'] ?? null,
+            'primary_color' => $state['primary_color'] ?? null,
+            'website_url' => $state['website_url'] ?? null,
+            'facebook_url' => $state['facebook_url'] ?? null,
+            'instagram_url' => $state['instagram_url'] ?? null,
+            'tiktok_url' => $state['tiktok_url'] ?? null,
+            'landing_page_data' => $state['landing_page_data'] ?? null,
+            'simple_schedule' => $state['simple_schedule'] ?? null,
             'is_ai_enhanced' => $state['is_ai_enhanced'] ?? false,
             'is_pro' => $state['is_pro'] ?? false,
             'product_limit' => $state['product_limit'] ?? 10,
@@ -181,13 +190,22 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
                 'category_id' => $state['category_id'] ?? null,
                 'city_id' => $state['city_id'] ?? null,
                 'logo_path' => $state['logo_path'] ?? null,
+                'cover_path' => $state['cover_path'] ?? null,
                 'phone' => $state['phone'] ?? null,
                 'address' => $state['address'] ?? null,
                 'latitude' => $state['latitude'] ?? null,
                 'longitude' => $state['longitude'] ?? null,
                 'description' => $state['description'] ?? null,
+                'about' => $state['about'] ?? null,
                 'slogan' => $state['slogan'] ?? null,
                 'whatsapp_number' => $state['whatsapp'] ?? null,
+                'primary_color' => $state['primary_color'] ?? null,
+                'website_url' => $state['website_url'] ?? null,
+                'facebook_url' => $state['facebook_url'] ?? null,
+                'instagram_url' => $state['instagram_url'] ?? null,
+                'tiktok_url' => $state['tiktok_url'] ?? null,
+                'landing_page_data' => $state['landing_page_data'] ?? null,
+                'simple_schedule' => $state['simple_schedule'] ?? null,
                 'is_ai_enhanced' => $state['is_ai_enhanced'] ?? false,
                 'is_pro' => $state['is_pro'] ?? false,
                 'product_limit' => $state['product_limit'] ?? 10,
@@ -241,13 +259,22 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'category_id' => $this->nullableInt($model->getAttribute('category_id')),
             'city_id' => $this->nullableInt($model->getAttribute('city_id')),
             'logo_path' => $this->nullableString($model->getAttribute('logo_path')),
+            'cover_path' => $this->nullableString($model->getAttribute('cover_path')),
             'description' => $this->nullableString($model->getAttribute('description')),
+            'about' => $this->nullableString($model->getAttribute('about')),
             'slogan' => $this->nullableString($model->getAttribute('slogan')),
             'whatsapp' => $this->nullableString($model->getAttribute('whatsapp_number')),
             'phone' => $this->nullableString($model->getAttribute('phone')),
             'address' => $this->nullableString($model->getAttribute('address')),
             'latitude' => $this->nullableString($model->getAttribute('latitude')),
             'longitude' => $this->nullableString($model->getAttribute('longitude')),
+            'primary_color' => $this->nullableString($model->getAttribute('primary_color')),
+            'website_url' => $this->nullableString($model->getAttribute('website_url')),
+            'instagram_url' => $this->nullableString($model->getAttribute('instagram_url')),
+            'facebook_url' => $this->nullableString($model->getAttribute('facebook_url')),
+            'tiktok_url' => $this->nullableString($model->getAttribute('tiktok_url')),
+            'landing_page_data' => $this->nullableArray($model->getAttribute('landing_page_data')),
+            'simple_schedule' => $this->nullableArray($model->getAttribute('simple_schedule')),
             'is_ai_enhanced' => (bool) $model->getAttribute('is_ai_enhanced'),
             'is_pro' => (bool) $model->is_pro,
             'product_limit' => (int) ($model->getAttribute('product_limit') ?? 10),
@@ -263,5 +290,13 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
     private function nullableString(mixed $value): ?string
     {
         return $value !== null ? (string) $value : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function nullableArray(mixed $value): ?array
+    {
+        return is_array($value) ? $value : null;
     }
 }

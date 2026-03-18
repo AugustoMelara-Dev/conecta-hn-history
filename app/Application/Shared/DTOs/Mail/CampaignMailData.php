@@ -23,11 +23,23 @@ final readonly class CampaignMailData
      */
     public static function fromCampaign(object $campaign): self
     {
+        $tenantName = 'Conecta HN';
+
+        if (
+            isset($campaign->tenant)
+            && is_object($campaign->tenant)
+            && isset($campaign->tenant->name)
+            && is_string($campaign->tenant->name)
+            && $campaign->tenant->name !== ''
+        ) {
+            $tenantName = $campaign->tenant->name;
+        }
+
         return new self(
             id: $campaign->id,
             subject: $campaign->subject ?? '',
             body: $campaign->content ?? '',
-            tenantName: $campaign->tenant?->name ?? 'Conecta HN',
+            tenantName: $tenantName,
         );
     }
 }

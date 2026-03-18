@@ -36,6 +36,8 @@ final class UserEntity
 
     private ?string $avatar = null;
 
+    private ?DateTimeImmutable $bannedAt = null;
+
     private ?DateTimeImmutable $createdAt = null;
 
     private ?DateTimeImmutable $updatedAt = null;
@@ -172,6 +174,11 @@ final class UserEntity
         return $this->createdAt;
     }
 
+    public function bannedAt(): ?DateTimeImmutable
+    {
+        return $this->bannedAt;
+    }
+
     // -- SNAPSHOT COMPATIBILITY --
 
     public function toStateArray(): array
@@ -185,6 +192,7 @@ final class UserEntity
             'tenant_id' => $this->tenantId,
             'remember_token' => $this->rememberToken,
             'avatar' => $this->avatar,
+            'banned_at' => $this->bannedAt?->format(DateTimeImmutable::ATOM),
             'created_at' => $this->createdAt?->format(DateTimeImmutable::ATOM),
             'updated_at' => $this->updatedAt?->format(DateTimeImmutable::ATOM),
         ];
@@ -203,6 +211,9 @@ final class UserEntity
             : null;
         $user->rememberToken = $state['remember_token'] ?? null;
         $user->avatar = $state['avatar'] ?? null;
+        $user->bannedAt = isset($state['banned_at']) && $state['banned_at'] !== null
+            ? new DateTimeImmutable($state['banned_at'])
+            : null;
         $user->createdAt = isset($state['created_at']) ? new DateTimeImmutable($state['created_at']) : null;
         $user->updatedAt = isset($state['updated_at']) ? new DateTimeImmutable($state['updated_at']) : null;
         $user->version = 0;
@@ -222,6 +233,16 @@ final class UserEntity
     public function assignToTenant(string $tenantId): void
     {
         $this->tenantId = $tenantId;
+        $this->updatedAt = new DateTimeImmutable;
+    }
+
+    public function reactivate(): void
+    {
+        if ($this->bannedAt === null) {
+            throw new \DomainException('User is already active.');
+        }
+
+        $this->bannedAt = null;
         $this->updatedAt = new DateTimeImmutable;
     }
 

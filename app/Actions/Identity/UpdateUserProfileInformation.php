@@ -11,6 +11,7 @@ use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
 use App\Application\Shared\Contracts\TenantRateLimiterInterface;
 use App\Rules\UniqueUser;
 use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use Illuminate\Validation\Validator;
 use InvalidArgumentException;
 use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
 use RuntimeException;
@@ -53,7 +54,8 @@ final readonly class UpdateUserProfileInformation implements UpdatesUserProfileI
             decayMinutes: 1,
         );
 
-        $this->validatorFactory->make($input, [
+        /** @var Validator $validator */
+        $validator = $this->validatorFactory->make($input, [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',
@@ -66,7 +68,9 @@ final readonly class UpdateUserProfileInformation implements UpdatesUserProfileI
                 ),
             ],
             'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:1024'],
-        ])->validateWithBag('updateProfileInformation');
+        ]);
+
+        $validator->validateWithBag('updateProfileInformation');
 
         $this->commandBus->dispatch(
             new UpdateUserProfileCommand(

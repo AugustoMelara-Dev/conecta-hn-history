@@ -50,6 +50,8 @@ final class TenantEntity
 
     private ?string $logoPath = null;
 
+    private ?string $coverPath = null;
+
     private ?string $whatsapp = null;
 
     private ?string $phone = null;
@@ -66,7 +68,25 @@ final class TenantEntity
 
     private ?string $description = null;
 
+    private ?string $about = null;
+
     private ?string $slogan = null;
+
+    private ?string $primaryColor = null;
+
+    private ?string $websiteUrl = null;
+
+    private ?string $instagramUrl = null;
+
+    private ?string $facebookUrl = null;
+
+    private ?string $tiktokUrl = null;
+
+    /** @var array<string, mixed>|null */
+    private ?array $landingPageData = null;
+
+    /** @var array<string, mixed>|null */
+    private ?array $simpleSchedule = null;
 
     private bool $isAiEnhanced = false;
 
@@ -126,6 +146,11 @@ final class TenantEntity
         return $this->description;
     }
 
+    public function about(): ?string
+    {
+        return $this->about;
+    }
+
     public function slug(): string
     {
         return $this->domain;
@@ -139,6 +164,16 @@ final class TenantEntity
     public function whatsappNumber(): ?string
     {
         return $this->whatsapp;
+    }
+
+    public function logoPath(): ?string
+    {
+        return $this->logoPath;
+    }
+
+    public function coverPath(): ?string
+    {
+        return $this->coverPath;
     }
 
     public function phone(): ?string
@@ -159,6 +194,52 @@ final class TenantEntity
     public function longitude(): ?string
     {
         return $this->longitude;
+    }
+
+    public function primaryColor(): ?string
+    {
+        return $this->primaryColor;
+    }
+
+    public function websiteUrl(): ?string
+    {
+        return $this->websiteUrl;
+    }
+
+    public function instagramUrl(): ?string
+    {
+        return $this->instagramUrl;
+    }
+
+    public function facebookUrl(): ?string
+    {
+        return $this->facebookUrl;
+    }
+
+    public function tiktokUrl(): ?string
+    {
+        return $this->tiktokUrl;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function landingPageData(): ?array
+    {
+        return $this->landingPageData;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function simpleSchedule(): ?array
+    {
+        return $this->simpleSchedule;
+    }
+
+    public function isPro(): bool
+    {
+        return $this->isPro;
     }
 
     public function isPubliclyVisible(): bool
@@ -269,6 +350,88 @@ final class TenantEntity
         $this->updatedAt = new DateTimeImmutable;
     }
 
+    public function replaceLogoPath(string $logoPath): void
+    {
+        $this->logoPath = $logoPath;
+        $this->updatedAt = new DateTimeImmutable;
+    }
+
+    public function replaceCoverPath(string $coverPath): void
+    {
+        $this->coverPath = $coverPath;
+        $this->updatedAt = new DateTimeImmutable;
+    }
+
+    /**
+     * @param  array<string, string>  $attributes
+     */
+    public function updateBranding(array $attributes): void
+    {
+        if (array_key_exists('name', $attributes)) {
+            $this->name = $attributes['name'];
+        }
+
+        if (array_key_exists('description', $attributes)) {
+            $this->description = $attributes['description'];
+        }
+
+        if (array_key_exists('about', $attributes)) {
+            $this->about = $attributes['about'];
+        }
+
+        if (array_key_exists('phone', $attributes)) {
+            $this->phone = $attributes['phone'];
+        }
+
+        if (array_key_exists('whatsapp', $attributes)) {
+            $this->whatsapp = $attributes['whatsapp'];
+        }
+
+        if (array_key_exists('address', $attributes)) {
+            $this->address = $attributes['address'];
+        }
+
+        if (array_key_exists('website_url', $attributes)) {
+            $this->websiteUrl = $attributes['website_url'];
+        }
+
+        if (array_key_exists('instagram_url', $attributes)) {
+            $this->instagramUrl = $attributes['instagram_url'];
+        }
+
+        if (array_key_exists('facebook_url', $attributes)) {
+            $this->facebookUrl = $attributes['facebook_url'];
+        }
+
+        if (array_key_exists('tiktok_url', $attributes)) {
+            $this->tiktokUrl = $attributes['tiktok_url'];
+        }
+
+        if (array_key_exists('primary_color', $attributes)) {
+            $this->primaryColor = $attributes['primary_color'];
+        }
+
+        $this->updatedAt = new DateTimeImmutable;
+    }
+
+    /**
+     * @param  array<string, mixed>  $landingPageData
+     */
+    public function updateLandingPage(array $landingPageData): void
+    {
+        $this->landingPageData = $landingPageData;
+        $this->updatedAt = new DateTimeImmutable;
+    }
+
+    /**
+     * @param  array<string, mixed>  $schedule
+     */
+    public function updateSchedule(array $schedule): void
+    {
+        $this->simpleSchedule = $schedule;
+        $this->updatedAt = new DateTimeImmutable;
+    }
+
     // -- SNAPSHOT COMPATIBILITY (Memento Pattern) --
 
     /**
@@ -303,6 +466,7 @@ final class TenantEntity
             'category_id' => $this->categoryId,
             'city_id' => $this->cityId,
             'logo_path' => $this->logoPath,
+            'cover_path' => $this->coverPath,
             'whatsapp' => $this->whatsapp,
             'phone' => $this->phone,
             'address' => $this->address,
@@ -311,7 +475,15 @@ final class TenantEntity
             'is_pro' => $this->isPro,
             'product_limit' => $this->productLimit,
             'description' => $this->description,
+            'about' => $this->about,
             'slogan' => $this->slogan,
+            'primary_color' => $this->primaryColor,
+            'website_url' => $this->websiteUrl,
+            'instagram_url' => $this->instagramUrl,
+            'facebook_url' => $this->facebookUrl,
+            'tiktok_url' => $this->tiktokUrl,
+            'landing_page_data' => $this->landingPageData,
+            'simple_schedule' => $this->simpleSchedule,
             'is_ai_enhanced' => $this->isAiEnhanced,
             'version' => $this->version,
         ];
@@ -360,6 +532,7 @@ final class TenantEntity
         $tenant->categoryId = isset($state['category_id']) ? (int) $state['category_id'] : null;
         $tenant->cityId = isset($state['city_id']) ? (int) $state['city_id'] : null;
         $tenant->logoPath = isset($state['logo_path']) ? (string) $state['logo_path'] : null;
+        $tenant->coverPath = isset($state['cover_path']) ? (string) $state['cover_path'] : null;
         $tenant->whatsapp = isset($state['whatsapp']) ? (string) $state['whatsapp'] : null;
         $tenant->phone = isset($state['phone']) ? (string) $state['phone'] : null;
         $tenant->address = isset($state['address']) ? (string) $state['address'] : null;
@@ -368,7 +541,19 @@ final class TenantEntity
         $tenant->isPro = isset($state['is_pro']) ? (bool) $state['is_pro'] : false;
         $tenant->productLimit = isset($state['product_limit']) ? (int) $state['product_limit'] : 10;
         $tenant->description = isset($state['description']) ? (string) $state['description'] : null;
+        $tenant->about = isset($state['about']) ? (string) $state['about'] : null;
         $tenant->slogan = isset($state['slogan']) ? (string) $state['slogan'] : null;
+        $tenant->primaryColor = isset($state['primary_color']) ? (string) $state['primary_color'] : null;
+        $tenant->websiteUrl = isset($state['website_url']) ? (string) $state['website_url'] : null;
+        $tenant->instagramUrl = isset($state['instagram_url']) ? (string) $state['instagram_url'] : null;
+        $tenant->facebookUrl = isset($state['facebook_url']) ? (string) $state['facebook_url'] : null;
+        $tenant->tiktokUrl = isset($state['tiktok_url']) ? (string) $state['tiktok_url'] : null;
+        $tenant->landingPageData = isset($state['landing_page_data']) && is_array($state['landing_page_data'])
+            ? $state['landing_page_data']
+            : null;
+        $tenant->simpleSchedule = isset($state['simple_schedule']) && is_array($state['simple_schedule'])
+            ? $state['simple_schedule']
+            : null;
         $tenant->isAiEnhanced = isset($state['is_ai_enhanced']) ? (bool) $state['is_ai_enhanced'] : false;
 
         // Event Sourcing compatibility

@@ -25,7 +25,6 @@ interface UserReadProjection
      *
      * @param  string  $userId  The user's UUID
      * @param  string|null  $tenantId  Tenant scope for isolation
-     * @return Authenticatable The user as an Authenticatable contract
      */
     public function getById(string $userId, ?string $tenantId = null): TenantAwareAuthenticatable;
 }

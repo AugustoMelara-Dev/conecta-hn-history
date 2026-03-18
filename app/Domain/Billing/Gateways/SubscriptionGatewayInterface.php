@@ -23,6 +23,11 @@ interface SubscriptionGatewayInterface
     public function swapPlan(string $subscriptionReference, string $newPlanExternalId): SubscriptionSwapResult;
 
     /**
+     * Verify the status of a previously initiated subscription operation.
+     */
+    public function verifyStatus(string $reference): string;
+
+    /**
      * Cancel a subscription.
      *
      * @param  string  $subscriptionReference  Provider's subscription ID

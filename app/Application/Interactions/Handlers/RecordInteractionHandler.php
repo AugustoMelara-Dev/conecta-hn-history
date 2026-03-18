@@ -45,6 +45,7 @@ final readonly class RecordInteractionHandler
     public function handle(RecordInteractionCommand $command): void
     {
         $this->transactionManager->transaction(function () use ($command): void {
+            $leadProductId = is_numeric($command->productId) ? (int) $command->productId : null;
             // ═══════════════════════════════════════════════════════════════
             // PHASE 1: Deduplication Check (5-minute window, PER-VISITOR)
             // ═══════════════════════════════════════════════════════════════
@@ -92,7 +93,7 @@ final readonly class RecordInteractionHandler
             if ($this->isWhatsAppClick($command->type)) {
                 $lead = $this->leadRepository->createFromInteraction(
                     tenantId: $command->tenantId,
-                    productId: $command->productId,
+                    productId: $leadProductId,
                     source: $command->type,
                 );
 

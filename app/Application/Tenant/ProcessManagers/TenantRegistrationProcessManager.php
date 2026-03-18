@@ -5,16 +5,12 @@ declare(strict_types=1);
 namespace App\Application\Tenant\ProcessManagers;
 
 use App\Application\Shared\Contracts\LoggerInterface;
-use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Domain\Identity\Events\TenantRegistered;
-use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use Exception;
 
 final readonly class TenantRegistrationProcessManager
 {
     public function __construct(
-        private PaymentRepositoryInterface $paymentRepository,
-        private SubscriptionPricingService $pricingService,
         private LoggerInterface $logger,
     ) {}
 

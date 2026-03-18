@@ -74,7 +74,10 @@ final readonly class EnhanceTenantProfileHandler
 
             $this->logger->info('Tenant Profile Enhanced via AI', $this->sanitizePayload([
                 'tenant_id' => $tenant->id(),
-                'ai_tags' => $enhancedData['seo_keywords'] ?? ($enhancedData['tags'] ?? []),
+                'ai_tags' => array_values(array_unique(array_merge(
+                    $enhancedData['seo_keywords'],
+                    $enhancedData['tags']
+                ))),
             ], $this->scrubber));
         });
     }

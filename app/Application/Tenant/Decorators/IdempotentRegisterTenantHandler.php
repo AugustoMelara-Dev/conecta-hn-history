@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Decorators;
 
+use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
 use App\Application\Shared\Contracts\IdempotencyServiceInterface;
 use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Application\Tenant\Handlers\RegisterTenantHandlerInterface;
@@ -32,30 +33,26 @@ final readonly class IdempotentRegisterTenantHandler implements RegisterTenantHa
             return $cachedResult;
         }
 
-        // 2. Lock
-        $lock = $this->service->lock($key);
-
-        if (! $lock->get()) {
-            throw new ConcurrencyException('Tenant registration in progress.');
-        }
-
         try {
-            // 3. Double Check
+            $this->service->registerProcessing($key);
+        } catch (ConcurrentRequestException) {
             $cachedResult = $this->service->get($key);
             if ($cachedResult instanceof RegisterTenantResult) {
                 return $cachedResult;
             }
 
-            // 4. Execute
-            $result = $this->inner->handle($command);
-
-            // 5. Store
-            $this->service->store($key, $result);
-
-            return $result;
-
-        } finally {
-            $lock->release();
+            throw new ConcurrencyException('Tenant registration in progress.');
         }
+
+        $cachedResult = $this->service->get($key);
+        if ($cachedResult instanceof RegisterTenantResult) {
+            return $cachedResult;
+        }
+
+        $result = $this->inner->handle($command);
+
+        $this->service->store($key, $result);
+
+        return $result;
     }
 }

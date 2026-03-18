@@ -8,6 +8,7 @@ use App\Application\Identity\Commands\RegisterUserCommand;
 use App\Application\Identity\Validators\Rules\UniqueTenantSlugRule;
 use App\Application\Identity\Validators\Rules\UniqueUserEmailRule;
 use App\Application\Shared\Contracts\ValidatorFactoryInterface;
+use App\Application\Shared\Exceptions\CommandValidationException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 
@@ -34,7 +35,7 @@ final readonly class RegisterUserValidator
     /**
      * Validate the RegisterUserCommand and throw on failure.
      *
-     * @throws ValidationException If validation fails
+     * @throws CommandValidationException If validation fails
      */
     public function validate(RegisterUserCommand $command): void
     {

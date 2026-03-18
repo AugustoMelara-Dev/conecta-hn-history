@@ -18,7 +18,7 @@ interface TransactionManagerInterface
      *
      * @template T
      *
-     * @param  \Closure(): T  $operation
+     * @param  callable(): T  $callback
      * @return T
      *
      * @throws \Throwable If the operation fails, the transaction is rolled back.

@@ -20,6 +20,8 @@ interface UserRepositoryInterface
 
     public function findByEmail(string $email, string $tenantId): ?UserEntity;
 
+    public function existsByEmail(string $email): bool;
+
     /**
      * Updates avatar if missing.
      *

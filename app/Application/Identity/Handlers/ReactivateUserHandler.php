@@ -45,7 +45,7 @@ final readonly class ReactivateUserHandler
             );
         }
 
-        $this->transactionManager->transaction(function () use ($user, $command) {
+        $this->transactionManager->transaction(function () use ($user, $command): void {
             $user->reactivate();
 
             $this->userRepository->save($user);

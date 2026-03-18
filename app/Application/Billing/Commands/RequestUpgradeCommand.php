@@ -23,4 +23,19 @@ final readonly class RequestUpgradeCommand implements \App\Application\Shared\Co
     {
         return $this->idempotencyKey;
     }
+
+    /**
+     * @return array<string, int|string>
+     */
+    public function toArray(): array
+    {
+        return [
+            'tenantId' => $this->tenantId,
+            'newPlanIdentifier' => $this->newPlanIdentifier,
+            'currency' => $this->currency,
+            'idempotencyKey' => $this->idempotencyKey,
+            'clientIdempotencyKey' => $this->clientIdempotencyKey,
+            'schemaVersion' => $this->schemaVersion,
+        ];
+    }
 }

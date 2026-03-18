@@ -20,7 +20,7 @@ final class LaravelMediaStorageService implements MediaStorageServiceInterface
     /**
      * {@inheritDoc}
      */
-    public function storeLogo(int $tenantId, FileTransferObject $file): string
+    public function storeLogo(string $tenantId, FileTransferObject $file): string
     {
         return $this->storeFile($tenantId, 'logos', $file);
     }
@@ -28,7 +28,7 @@ final class LaravelMediaStorageService implements MediaStorageServiceInterface
     /**
      * {@inheritDoc}
      */
-    public function storeBanner(int $tenantId, FileTransferObject $file): string
+    public function storeBanner(string $tenantId, FileTransferObject $file): string
     {
         return $this->storeFile($tenantId, 'banners', $file);
     }
@@ -48,7 +48,7 @@ final class LaravelMediaStorageService implements MediaStorageServiceInterface
     /**
      * Store file with consistent naming.
      */
-    private function storeFile(int $tenantId, string $subfolder, FileTransferObject $file): string
+    private function storeFile(string $tenantId, string $subfolder, FileTransferObject $file): string
     {
         $directory = "tenants/{$tenantId}/{$subfolder}";
         $filename = time().'_'.$file->originalName;

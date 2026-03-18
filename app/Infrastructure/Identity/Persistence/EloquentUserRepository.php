@@ -45,6 +45,7 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
         $model->tenant_id = $user->tenantId();  // UUID del tenant
         $model->role = $user->role()->value;    // Enum -> string
         $model->avatar = $user->avatar();       // Avatar social / perfil
+        $model->banned_at = $user->bannedAt();
 
         // Campos opcionales
         if ($user->rememberToken() !== null) {
@@ -98,6 +99,11 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
         return false;
     }
 
+    public function existsByEmail(string $email): bool
+    {
+        return User::where('email', $email)->exists();
+    }
+
     public function delete(UserEntity $user): void
     {
         $userId = $user->id();
@@ -142,6 +148,7 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
             'tenant_id' => $tenantId,
             'remember_token' => $model->remember_token,
             'avatar' => $model->avatar,
+            'banned_at' => $model->banned_at?->format(\DateTimeImmutable::ATOM),
             'created_at' => $model->created_at?->format(\DateTimeImmutable::ATOM),
             'updated_at' => $model->updated_at?->format(\DateTimeImmutable::ATOM),
         ]);

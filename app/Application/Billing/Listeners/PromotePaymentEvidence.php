@@ -39,12 +39,9 @@ final readonly class PromotePaymentEvidence
     {
         $this->logger->info("PromotePaymentEvidence: Processing Payment {$event->paymentId}");
 
-        $attempts = 0;
         $cachedPermanentPath = null;
 
-        do {
-            $attempts++;
-
+        for ($attempts = 1; $attempts <= self::MAX_ATTEMPTS; $attempts++) {
             try {
                 // 1. RE-HYDRATION (Fresh Read from PRIMARY NODE)
                 // LEVEL 38: STRONG CONSISTENCY - Writer-Pinned Fetching
@@ -94,10 +91,11 @@ final readonly class PromotePaymentEvidence
                 $this->paymentRepository->updateOptimistically($updatedPayment);
 
                 $this->logger->info("PromotePaymentEvidence: Successfully promoted to {$permanentPath}");
-                break; // Success
+
+                return;
 
             } catch (StaleObjectException $e) {
-                if ($attempts >= self::MAX_ATTEMPTS) {
+                if ($attempts === self::MAX_ATTEMPTS) {
                     $this->logger->error("PromotePaymentEvidence: Failed to update DB after {$attempts} attempts due to contention.", [
                         'payment_id' => $event->paymentId,
                     ]);
@@ -109,8 +107,7 @@ final readonly class PromotePaymentEvidence
                 $this->logger->error("PromotePaymentEvidence: Failed attempt {$attempts}: ".$e->getMessage());
                 throw $e;
             }
-
-        } while ($attempts < self::MAX_ATTEMPTS);
+        }
     }
 
     /**

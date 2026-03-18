@@ -40,14 +40,14 @@ final readonly class UpdateProductRating
         // 3. Update Product with New Metrics
         $this->productRepository->updateRatingMetrics(
             $event->productId,
-            $metrics['average_rating'] ?? 0,
-            $metrics['total_reviews'] ?? 0
+            $metrics['average_rating'],
+            $metrics['total_reviews']
         );
 
         $this->logger->info('Product rating updated via eventual consistency', [
             'product_id' => $event->productId,
-            'new_average' => $metrics['average_rating'] ?? 0,
-            'total_reviews' => $metrics['total_reviews'] ?? 0,
+            'new_average' => $metrics['average_rating'],
+            'total_reviews' => $metrics['total_reviews'],
         ]);
     }
 }
