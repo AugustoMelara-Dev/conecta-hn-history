@@ -25,18 +25,15 @@ final readonly class SchemaValidatingOutboxRepository implements OutboxRepositor
     {
         // 1. Resolve Subject Name from event class
         $subject = $this->resolveSubject(get_class($event));
-
-        if ($subject) {
-            // 2. Extract public properties for validation
-            $reflection = new \ReflectionClass($event);
-            $payload = [];
-            foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-                $payload[$property->getName()] = $property->getValue($event);
-            }
-
-            // 3. Validate
-            $this->validator->validate($subject, $payload);
+        // 2. Extract public properties for validation
+        $reflection = new \ReflectionClass($event);
+        $payload = [];
+        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+            $payload[$property->getName()] = $property->getValue($event);
         }
+
+        // 3. Validate
+        $this->validator->validate($subject, $payload);
 
         // 4. Delegate to Inner Repository
         $this->inner->append($event);
@@ -48,7 +45,7 @@ final readonly class SchemaValidatingOutboxRepository implements OutboxRepositor
         return $this->inner->retrieveNextStaleBatch($batchSize, $staleThresholdSeconds, $ownedPartitionKeys);
     }
 
-    private function resolveSubject(string $eventType): ?string
+    private function resolveSubject(string $eventType): string
     {
         // Heuristic: ClassName to dot.notation
         // App\Domain\Auth\Events\UserRegistered -> user.registered.v1

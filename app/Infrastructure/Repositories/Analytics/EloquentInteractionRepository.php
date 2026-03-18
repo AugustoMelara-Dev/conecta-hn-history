@@ -7,7 +7,7 @@ namespace App\Infrastructure\Repositories\Analytics;
 use App\Domain\Analytics\Entities\InteractionEntity;
 use App\Domain\Analytics\Repositories\InteractionRepositoryInterface;
 use App\Models\Interaction;
-use Carbon\Carbon;
+use DateTimeImmutable;
 
 /**
  * EloquentInteractionRepository - Infrastructure Adapter for Interaction Persistence
@@ -70,17 +70,21 @@ final class EloquentInteractionRepository implements InteractionRepositoryInterf
      */
     private function toEntity(Interaction $model): InteractionEntity
     {
+        $createdAt = $model->created_at;
+
         return new InteractionEntity(
-            id: $model->id,
-            tenantId: $model->tenant_id,
-            type: $model->type,
-            productId: $model->product_id,
-            ipAddress: $model->ip_address,
-            userAgent: $model->user_agent,
-            referrer: $model->referrer,
-            url: $model->url,
-            metadata: $model->metadata ?? [],
-            createdAt: Carbon::parse($model->created_at),
+            id: (int) $model->getKey(),
+            tenantId: (string) ($model->getAttribute('tenant_id') ?? ''),
+            type: (string) $model->type,
+            productId: is_numeric($model->getAttribute('product_id')) ? (int) $model->getAttribute('product_id') : null,
+            ipAddress: ($value = $model->getAttribute('ip_address')) !== null ? (string) $value : null,
+            userAgent: ($value = $model->getAttribute('user_agent')) !== null ? (string) $value : null,
+            referrer: ($value = $model->getAttribute('referrer')) !== null ? (string) $value : null,
+            url: ($value = $model->getAttribute('url')) !== null ? (string) $value : null,
+            metadata: is_array($model->getAttribute('metadata')) ? $model->getAttribute('metadata') : [],
+            createdAt: $createdAt !== null
+                ? DateTimeImmutable::createFromInterface($createdAt)
+                : new DateTimeImmutable,
         );
     }
 }

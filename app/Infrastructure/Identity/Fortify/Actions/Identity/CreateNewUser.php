@@ -11,6 +11,7 @@ use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\TenantRateLimiterInterface;
 use App\Rules\UniqueUser;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Foundation\Auth\User as FoundationUser;
 use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
@@ -72,6 +73,12 @@ final readonly class CreateNewUser implements CreatesNewUsers
 
         $result = $this->commandBus->dispatch($command);
 
-        return $this->userProjection->getById((string) $result->id);
+        $user = $this->userProjection->getById((string) $result->id);
+
+        if (! $user instanceof FoundationUser) {
+            throw new \RuntimeException('Fortify bridge must resolve a concrete Eloquent user.');
+        }
+
+        return $user;
     }
 }

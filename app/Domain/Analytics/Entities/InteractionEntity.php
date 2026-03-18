@@ -17,7 +17,7 @@ final readonly class InteractionEntity
 {
     public function __construct(
         public int $id,
-        public int $tenantId,
+        public string $tenantId,
         public string $type,
         public ?int $productId,
         public ?string $ipAddress,

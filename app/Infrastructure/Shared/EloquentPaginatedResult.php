@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Infrastructure\Shared;
 
 use App\Domain\Shared\Contracts\PaginatedResult;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 /**
  * EloquentPaginatedResult - Infrastructure adapter that bridges
@@ -19,7 +20,13 @@ final class EloquentPaginatedResult implements \JsonSerializable, PaginatedResul
 
     public function jsonSerialize(): mixed
     {
-        return $this->paginator->toArray();
+        return [
+            'current_page' => $this->currentPage(),
+            'data' => $this->items(),
+            'last_page' => $this->lastPage(),
+            'per_page' => $this->perPage(),
+            'total' => $this->total(),
+        ];
     }
 
     /** @return array<int, mixed> */
@@ -50,7 +57,11 @@ final class EloquentPaginatedResult implements \JsonSerializable, PaginatedResul
 
     public function through(callable $callback): self
     {
-        $this->paginator->through($callback);
+        $items = $this->paginator
+            ->getCollection()
+            ->map($callback);
+
+        $this->paginator->setCollection(new Collection($items->all()));
 
         return $this;
     }

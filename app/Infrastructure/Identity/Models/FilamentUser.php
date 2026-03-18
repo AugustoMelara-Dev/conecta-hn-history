@@ -54,6 +54,6 @@ final class FilamentUser extends DomainUser implements FilamentUserContract, Has
 
     public function canAccessTenant(Model $tenant): bool
     {
-        return $this->tenant_id === $tenant->id || $this->isSuperAdmin();
+        return (string) $this->tenant_id === (string) $tenant->getKey() || $this->isSuperAdmin();
     }
 }
