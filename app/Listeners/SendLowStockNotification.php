@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Events\Inventory\LowStockThresholdReached;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -86,7 +88,7 @@ final class SendLowStockNotification implements ShouldQueue
         // ATOMIC LOCK: Prevents race condition duplicates
         // ═══════════════════════════════════════════════════════════════════════
         $cacheKey = "low_stock_alert_sent_{$productId}_".now()->format('Y-m-d');
-        $secondsUntilMidnight = now()->endOfDay()->diffInSeconds(now());
+        $secondsUntilMidnight = (int) now()->endOfDay()->diffInSeconds(now());
 
         // Try to acquire atomic lock - ABORT if already sent today
         if (! Cache::add($cacheKey, true, $secondsUntilMidnight)) {
@@ -102,13 +104,19 @@ final class SendLowStockNotification implements ShouldQueue
         // ═══════════════════════════════════════════════════════════════════════
         $tenant = $product->tenant;
 
-        if (! $tenant || ! $tenant->user) {
+        if (! $tenant instanceof Tenant) {
             Log::warning("LowStockNotification: No owner found for product #{$productId}");
 
             return;
         }
 
         $owner = $tenant->user;
+
+        if (! $owner instanceof User) {
+            Log::warning("LowStockNotification: No owner found for product #{$productId}");
+
+            return;
+        }
 
         Log::info("🚨 LOW STOCK ALERT: {$product->name}", [
             'product_id' => $product->id,

@@ -48,6 +48,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * - Catalog API responses stay lightweight (no media table JOINs)
  * - Detail views get full gallery capabilities when needed
  * - Falls back gracefully if either strategy has no data
+ *
+ * @property string|null $moderation_note
+ * @property \Illuminate\Support\Carbon|null $rejected_at
  */
 class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 {

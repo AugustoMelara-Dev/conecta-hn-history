@@ -60,7 +60,7 @@ final readonly class OrderPaidListener
         logger()->info('Payment received', [
             'order_id' => $event->aggregateId(),
             'tenant_id' => $event->tenantId()->toString(),
-            'amount_cents' => $event->amountPaid->inCents(),
+            'amount_cents' => $event->amountPaid->cents(),
             'payment_method' => $event->paymentMethod,
         ]);
 
@@ -71,7 +71,8 @@ final readonly class OrderPaidListener
             tenantId: $event->tenantId()->toString(),
             orderId: $event->aggregateId(),
             orderNumber: $event->orderNumber->toString(),
-            amountCents: $event->amountPaid->inCents(),
+            amountCents: $event->amountPaid->cents(),
+            currency: $event->amountPaid->currency(),
             paymentMethod: $event->paymentMethod,
             paidAt: $event->occurredAt(),
         ));

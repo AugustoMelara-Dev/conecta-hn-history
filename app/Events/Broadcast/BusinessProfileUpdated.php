@@ -35,13 +35,13 @@ final class BusinessProfileUpdated implements ShouldBroadcast
     // NOTE: SerializesModels REMOVED intentionally - we use primitives only
 
     /**
-     * @param  int  $tenantId  The tenant ID for channel routing
-     * @param  int  $userId  The user ID for private channel targeting
+     * @param  string|int  $tenantId  The tenant ID for channel routing
+     * @param  string|int  $userId  The user ID for private channel targeting
      * @param  array  $payload  Pre-computed data to broadcast (no lazy loading)
      */
     public function __construct(
-        public readonly int $tenantId,
-        public readonly int $userId,
+        public readonly string|int $tenantId,
+        public readonly string|int $userId,
         public readonly array $payload
     ) {}
 
@@ -90,8 +90,8 @@ final class BusinessProfileUpdated implements ShouldBroadcast
     public static function fromTenant(\App\Models\Tenant $tenant): self
     {
         return new self(
-            tenantId: $tenant->id,
-            userId: $tenant->user_id,
+            tenantId: (string) $tenant->id,
+            userId: (string) $tenant->user_id,
             payload: [
                 'id' => $tenant->id,
                 'name' => $tenant->name,

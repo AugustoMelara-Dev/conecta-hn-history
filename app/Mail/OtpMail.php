@@ -15,7 +15,7 @@ class OtpMail extends Mailable
 
     public string $code;
 
-    public string $expiresInMinutes;
+    public int $expiresInMinutes;
 
     /**
      * Create a new message instance.

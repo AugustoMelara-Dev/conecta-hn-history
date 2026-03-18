@@ -85,15 +85,17 @@ final class NewLoginDetectedBroadcast implements BroadcastableNotification
      * @return array{
      *   _version: int,
      *   _timestamp: string,
-     *   title: string,
-     *   message: string,
+     *   title: string|array,
+     *   message: string|array,
      *   status: string,
      *   icon: string,
+     *   tenant_id: string|int,
      *   user_id: string|int,
-     *   user_name: string,
+     *   user_email: string,
      *   ip_address: string,
-     *   device: string,
-     *   time: string
+     *   device: string|null,
+     *   time: string,
+     *   login_at: string
      * }
      */
     public function broadcastWith(): array

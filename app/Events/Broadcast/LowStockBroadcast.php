@@ -94,13 +94,16 @@ final class LowStockBroadcast implements BroadcastableNotification
      *   message: string,
      *   status: string,
      *   icon: string,
-     *   product_id: int,
+     *   tenant_id: string|int,
+     *   product_id: string|int,
      *   product_name: string,
-     *   sku: string,
+     *   product_sku: string|null,
      *   current_stock: float,
      *   threshold: float,
      *   severity: string,
-     *   tenant_id: string|int
+     *   severity_label: string,
+     *   severity_color: string,
+     *   occurred_at: string
      * }
      */
     public function broadcastWith(): array

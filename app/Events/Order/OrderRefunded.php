@@ -67,11 +67,14 @@ final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCo
         ?string $restoredOccurredAt = null,
         ?string $restoredCorrelationId = null,
     ) {
-        $this->initMetadata(
+        $metadata = self::resolveMetadata(
             correlationId: $restoredCorrelationId,
             restoredEventId: $restoredEventId,
             restoredOccurredAt: $restoredOccurredAt,
         );
+        $this->eventId = $metadata['eventId'];
+        $this->correlationId = $metadata['correlationId'];
+        $this->occurredAt = $metadata['occurredAt'];
     }
 
     /**

@@ -6,7 +6,9 @@ namespace App\Observers;
 
 use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Services\TenantCacheManager;
+use GdImage;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -30,7 +32,7 @@ class TenantObserver
         $user = $tenant->user;
 
         // Type-safe comparison using Enum
-        if ($user && $user->role !== UserRole::TENANT_OWNER) {
+        if ($user instanceof User && $user->role !== UserRole::TENANT_OWNER) {
             // Use Enum value for DB compatibility
             $user->update(['role' => UserRole::TENANT_OWNER]);
         }
@@ -69,7 +71,7 @@ class TenantObserver
                     $image = imagecreatefromstring(file_get_contents($fullPath));
 
                     if ($image !== false) {
-                        $hash = \kornrunner\Blurhash\Blurhash::encode($image, 4, 3);
+                        $hash = \kornrunner\Blurhash\Blurhash::encode($this->toPixelMatrix($image), 4, 3);
                         $tenant->updateQuietly(['blur_hash' => $hash]);
                         imagedestroy($image);
                     }
@@ -127,5 +129,32 @@ class TenantObserver
     private function getCacheManager(): TenantCacheManager
     {
         return app(TenantCacheManager::class);
+    }
+
+    /**
+     * @return array<int, array<int, array{0: int, 1: int, 2: int}>>
+     */
+    private function toPixelMatrix(GdImage $image): array
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $pixels = [];
+
+        for ($y = 0; $y < $height; $y++) {
+            $row = [];
+
+            for ($x = 0; $x < $width; $x++) {
+                $rgb = imagecolorat($image, $x, $y);
+                $row[] = [
+                    ($rgb >> 16) & 0xFF,
+                    ($rgb >> 8) & 0xFF,
+                    $rgb & 0xFF,
+                ];
+            }
+
+            $pixels[] = $row;
+        }
+
+        return $pixels;
     }
 }

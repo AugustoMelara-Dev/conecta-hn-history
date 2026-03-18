@@ -106,7 +106,7 @@ class NewOrderNotification extends Notification implements ShouldBroadcast, Shou
         $customerName = $this->order->customer_name ?? 'Cliente';
         $orderNumber = $this->order->order_number;
         $formattedTotal = 'L. '.number_format((float) ($this->order->total ?? 0), 2);
-        $tenantName = $this->order->tenant?->name ?? 'Tu Negocio';
+        $tenantName = $this->order->tenant->name;
 
         // Deep link to Filament Order Resource in the App Panel
         $orderUrl = url("/app/orders/{$this->order->id}");

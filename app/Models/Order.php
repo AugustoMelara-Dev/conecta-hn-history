@@ -27,6 +27,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  * COMPLIANCE: Uses LogsActivity trait for GDPR forensic audit trail
  *
+ * @property int|string|null $user_id
  * @property string $status
  * @property string|null $payment_status
  * @property \Illuminate\Support\Carbon|null $paid_at

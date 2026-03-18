@@ -15,6 +15,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * WhatsApp clicks, calls, location views, cart additions.
  *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
+ *
+ * @property string|null $session_id
+ * @property string|null $ip_address
  */
 class Interaction extends Model
 {

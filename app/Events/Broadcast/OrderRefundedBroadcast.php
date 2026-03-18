@@ -88,15 +88,17 @@ final class OrderRefundedBroadcast implements BroadcastableNotification
      * @return array{
      *   _version: int,
      *   _timestamp: string,
-     *   title: string,
-     *   message: string,
+     *   title: string|array,
+     *   message: string|array,
      *   status: string,
      *   icon: string,
-     *   order_id: int,
+     *   tenant_id: string|int,
+     *   order_id: string|int,
      *   order_number: string,
-     *   amount: string,
-     *   reason: string,
-     *   tenant_id: string|int
+     *   refund_amount_formatted: string,
+     *   is_partial: bool,
+     *   reason: string|null,
+     *   refunded_at: string
      * }
      */
     public function broadcastWith(): array

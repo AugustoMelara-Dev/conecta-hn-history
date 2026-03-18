@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Application\Shared\DTOs\Mail\UserMailData;
 use App\Domain\Identity\Events\UserRegisteredViaSocial;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Mail\WelcomeUserMail;
@@ -57,7 +58,12 @@ final readonly class SendWelcomeEmail implements ShouldQueue
         // ─────────────────────────────────────────────────────────────────────
         // STEP 4: Send Email Using Fresh Data
         // ─────────────────────────────────────────────────────────────────────
-        Mail::to($user->email())->send(new WelcomeUserMail($user));
+        Mail::to($user->email())->send(new WelcomeUserMail(new UserMailData(
+            id: $user->id(),
+            name: $user->name(),
+            email: $user->email(),
+            tenantId: $user->tenantId(),
+        )));
 
         Log::info('Welcome email dispatched', [
             'user_id' => $userId,

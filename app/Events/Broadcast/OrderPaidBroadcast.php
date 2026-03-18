@@ -84,15 +84,16 @@ final class OrderPaidBroadcast implements BroadcastableNotification
      * @return array{
      *   _version: int,
      *   _timestamp: string,
-     *   title: string,
-     *   message: string,
+     *   title: string|array,
+     *   message: string|array,
      *   status: string,
      *   icon: string,
+     *   tenant_id: string|int,
      *   order_id: string|int,
      *   order_number: string,
-     *   amount: string,
+     *   amount_formatted: string,
      *   payment_method: string,
-     *   tenant_id: string|int
+     *   paid_at: string
      * }
      */
     public function broadcastWith(): array

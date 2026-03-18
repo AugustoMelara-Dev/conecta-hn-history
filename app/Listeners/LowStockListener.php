@@ -40,8 +40,10 @@ final class LowStockListener
      */
     public function handle(LowStockThresholdReached $event): void
     {
-        $cacheKey = "low_stock_alert:{$event->aggregateId()}:".now()->format('Y-m-d');
-        $tenantIdString = $event->tenantId()->toString();
+        $product = $event->product;
+        $productSku = $product->getAttribute('sku');
+        $tenantIdString = (string) $product->tenant_id;
+        $cacheKey = "low_stock_alert:{$product->getKey()}:".now()->format('Y-m-d');
 
         // ─────────────────────────────────────────────────────────────────────
         // STEP 1: Rate-Limited Email Notification (max 1 per product per day)
@@ -50,11 +52,11 @@ final class LowStockListener
             Cache::put($cacheKey, true, now()->endOfDay());
 
             logger()->warning('Low stock alert', [
-                'product_id' => $event->aggregateId(),
-                'product_name' => $event->productName,
+                'product_id' => $product->getKey(),
+                'product_name' => (string) $product->name,
                 'current_stock' => $event->currentStock,
                 'threshold' => $event->threshold,
-                'severity' => $event->severity(),
+                'severity' => $event->currentStock <= 0 ? 'out_of_stock' : 'low',
                 'tenant_id' => $tenantIdString,
             ]);
         }
@@ -64,13 +66,13 @@ final class LowStockListener
         // ─────────────────────────────────────────────────────────────────────
         broadcast(LowStockBroadcast::fromDomainData(
             tenantId: $tenantIdString,
-            productId: $event->aggregateId(),
-            productName: $event->productName,
-            productSku: $event->productSku,
-            currentStock: $event->currentStock,
-            threshold: $event->threshold,
-            severity: $event->severity(),
-            occurredAt: $event->occurredAt(),
+            productId: (string) $product->getKey(),
+            productName: (string) $product->name,
+            productSku: is_string($productSku) && $productSku !== '' ? $productSku : null,
+            currentStock: (float) $event->currentStock,
+            threshold: (float) $event->threshold,
+            severity: $event->currentStock <= 0 ? 'out_of_stock' : 'low',
+            occurredAt: now()->toImmutable(),
         ));
     }
 }

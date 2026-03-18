@@ -32,6 +32,9 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\OpeningHours\OpeningHours;
 
+/**
+ * @property bool $is_pro
+ */
 #[ObservedBy(\App\Observers\TenantObserver::class)]
 class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 {

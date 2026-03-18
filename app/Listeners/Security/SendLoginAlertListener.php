@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Listeners\Security;
 
+use App\Application\Shared\DTOs\Mail\UserMailData;
 use App\Events\Broadcast\NewLoginDetectedBroadcast;
 use App\Events\Security\NewLoginDetected;
 use App\Mail\Security\LoginAlertMail;
@@ -38,7 +39,11 @@ final class SendLoginAlertListener implements ShouldQueue
         if ($user) {
             // Send Email Alert
             Mail::to($user->email)->send(
-                new LoginAlertMail($user, $event->ipAddress()->toString(), $event->occurredAt())
+                new LoginAlertMail(
+                    UserMailData::fromUser($user),
+                    $event->ipAddress()->toString(),
+                    $event->occurredAt()->format(DATE_ATOM)
+                )
             );
         }
 

@@ -25,6 +25,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * SECURITY: Uses BelongsToTenant for automatic tenant isolation.
  *
  * @property-read User|null $user
+ * @property-read Tenant|null $tenant
+ * @property-read Service|null $service
+ * @property-read ServiceProvider|null $provider
  */
 class Appointment extends Model
 {

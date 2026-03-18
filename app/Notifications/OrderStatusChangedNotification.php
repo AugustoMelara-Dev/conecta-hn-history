@@ -130,7 +130,7 @@ class OrderStatusChangedNotification extends Notification implements ShouldQueue
         $this->order->loadMissing(['tenant']);
 
         $orderNumber = $this->order->order_number;
-        $tenantName = $this->order->tenant?->name ?? 'Tu Negocio';
+        $tenantName = $this->order->tenant->name;
         $statusLabel = self::$statusLabels[$this->newStatus] ?? ucfirst($this->newStatus);
         $statusMessage = self::$statusMessages[$this->newStatus] ?? "Tu pedido ha sido actualizado a: {$statusLabel}";
 

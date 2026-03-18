@@ -71,7 +71,7 @@ class ReportReadyNotification extends Notification implements ShouldQueue
             'report_type' => $this->reportType,
             'download_url' => $this->downloadUrl,
             'tenant_name' => $this->tenantName,
-            'expires_at' => $this->expiresAt->toIso8601String(),
+            'expires_at' => $this->expiresAt->format(DATE_ATOM),
         ];
     }
 }

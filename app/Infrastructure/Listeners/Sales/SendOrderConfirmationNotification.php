@@ -55,7 +55,7 @@ final class SendOrderConfirmationNotification implements ShouldQueue
 
         try {
             $tenant = $order->tenant;
-            $tenantOwner = $tenant instanceof Tenant ? $tenant->user : null;
+            $tenantOwner = $tenant->user;
 
             if ($tenantOwner instanceof User) {
                 $tenantOwner->notify(new NewOrderNotification($order));
