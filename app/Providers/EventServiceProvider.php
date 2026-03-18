@@ -23,7 +23,7 @@ class EventServiceProvider extends ServiceProvider
      *
      * Mapped for Zero Downtime Migration (V1 -> V2).
      *
-     * @var array
+     * @var array<string, array<int, string>>
      */
     protected $listen = [
         // Canonical (V2)

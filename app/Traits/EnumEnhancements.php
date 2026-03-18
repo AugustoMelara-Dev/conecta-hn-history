@@ -45,6 +45,12 @@ namespace App\Traits;
  */
 trait EnumEnhancements
 {
+    abstract public function label(): string;
+
+    abstract public function color(): string;
+
+    abstract public function icon(): string;
+
     /**
      * Get all enum cases as options array for HTML selects.
      *
@@ -80,15 +86,15 @@ trait EnumEnhancements
     /**
      * Serialize to array for API responses.
      *
-     * @return array{value: string, label: string, color: string}
+     * @return array{value: string, label: string, color: string, icon: string}
      */
     public function toArray(): array
     {
         return [
             'value' => $this->value,
             'label' => $this->label(),
-            'color' => method_exists($this, 'color') ? $this->color() : 'gray',
-            'icon' => method_exists($this, 'icon') ? $this->icon() : null,
+            'color' => $this->color(),
+            'icon' => $this->icon(),
         ];
     }
 

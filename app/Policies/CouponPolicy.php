@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Models\Coupon;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
@@ -43,6 +44,10 @@ class CouponPolicy extends TenantAwarePolicy
 
         if (! $tenant) {
             return Response::deny('Debes tener un negocio para crear cupones.');
+        }
+
+        if (! $tenant instanceof Tenant) {
+            return Response::deny('No se pudo resolver el contexto del negocio.');
         }
 
         // Only PRO tenants can create coupons

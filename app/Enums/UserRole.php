@@ -13,7 +13,7 @@ enum UserRole: string implements HasLabel
     case STAFF = 'staff';
     case CUSTOMER = 'user'; // Legacy compatibility
 
-    public function getLabel(): ?string
+    public function getLabel(): string
     {
         return match ($this) {
             self::SUPER_ADMIN => 'Super Administrador',

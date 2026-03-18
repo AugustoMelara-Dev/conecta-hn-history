@@ -8,6 +8,7 @@ use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 
 /**
  * EloquentUserRepository - Infrastructure Layer User Persistence
@@ -43,9 +44,9 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
         $model->email = $user->email();         // String validado en entidad
         $model->password = $user->password();   // Hash ya cocinado
         $model->tenant_id = $user->tenantId();  // UUID del tenant
-        $model->role = $user->role()->value;    // Enum -> string
+        $model->role = $user->role();           // Domain enum casted by Eloquent
         $model->avatar = $user->avatar();       // Avatar social / perfil
-        $model->banned_at = $user->bannedAt();
+        $model->banned_at = $user->bannedAt() !== null ? Carbon::instance($user->bannedAt()) : null;
 
         // Campos opcionales
         if ($user->rememberToken() !== null) {
@@ -138,6 +139,11 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
             ? (string) $rawRole->value
             : (string) ($rawRole ?? 'user');
 
+        $rawBannedAt = $model->getAttribute('banned_at');
+        $bannedAt = $rawBannedAt instanceof \DateTimeInterface
+            ? $rawBannedAt->format(\DateTimeImmutable::ATOM)
+            : (is_string($rawBannedAt) ? $rawBannedAt : null);
+
         // Use fromStateArray factory method instead of private constructor
         return UserEntity::fromStateArray([
             'id' => (string) $model->id,
@@ -148,7 +154,7 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
             'tenant_id' => $tenantId,
             'remember_token' => $model->remember_token,
             'avatar' => $model->avatar,
-            'banned_at' => $model->banned_at?->format(\DateTimeImmutable::ATOM),
+            'banned_at' => $bannedAt,
             'created_at' => $model->created_at?->format(\DateTimeImmutable::ATOM),
             'updated_at' => $model->updated_at?->format(\DateTimeImmutable::ATOM),
         ]);

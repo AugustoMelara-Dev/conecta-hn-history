@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
+use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -190,8 +191,8 @@ class AppPanelProvider extends PanelProvider
      */
     protected function getTenantPublicUrl(): string
     {
-        $tenant = Filament::getTenant();
-        if ($tenant) {
+        $tenant = $this->getCurrentTenant();
+        if ($tenant instanceof Tenant) {
             return url('/'.$tenant->slug);
         }
 
@@ -203,8 +204,8 @@ class AppPanelProvider extends PanelProvider
      */
     protected function getShareUrl(): string
     {
-        $tenant = Filament::getTenant();
-        if ($tenant) {
+        $tenant = $this->getCurrentTenant();
+        if ($tenant instanceof Tenant) {
             $url = url('/'.$tenant->slug);
             $text = "¡Mira mi negocio {$tenant->name} en Conecta HN!";
 
@@ -212,5 +213,12 @@ class AppPanelProvider extends PanelProvider
         }
 
         return '#';
+    }
+
+    private function getCurrentTenant(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

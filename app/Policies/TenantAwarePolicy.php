@@ -67,10 +67,6 @@ abstract class TenantAwarePolicy
 
     protected function getUserTenantIds(User $user): array
     {
-        if (isset($user->_memoized_tenant_ids) && is_array($user->_memoized_tenant_ids)) {
-            return $user->_memoized_tenant_ids;
-        }
-
         $tenantIds = [];
 
         try {
@@ -92,8 +88,6 @@ abstract class TenantAwarePolicy
 
         $tenantIds = array_values(array_unique(array_filter($tenantIds)));
 
-        $user->_memoized_tenant_ids = $tenantIds;
-
         return $tenantIds;
     }
 
@@ -104,7 +98,7 @@ abstract class TenantAwarePolicy
 
     protected function isAdmin(User $user): bool
     {
-        if ((string) $user->role === 'super_admin') {
+        if ($user->role === \App\Domain\Identity\Enums\UserRole::SUPER_ADMIN) {
             return true;
         }
 
@@ -143,9 +137,10 @@ abstract class TenantAwarePolicy
         }
 
         try {
+            /** @var Tenant|null $membershipTenant */
             $membershipTenant = $user->memberTenants()->wherePivotNotNull('accepted_at')->first();
 
-            if ($membershipTenant instanceof Tenant) {
+            if ($membershipTenant !== null) {
                 return $membershipTenant;
             }
         } catch (\Throwable) {

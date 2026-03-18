@@ -211,7 +211,7 @@ final class UserEntity
             : null;
         $user->rememberToken = $state['remember_token'] ?? null;
         $user->avatar = $state['avatar'] ?? null;
-        $user->bannedAt = isset($state['banned_at']) && $state['banned_at'] !== null
+        $user->bannedAt = isset($state['banned_at'])
             ? new DateTimeImmutable($state['banned_at'])
             : null;
         $user->createdAt = isset($state['created_at']) ? new DateTimeImmutable($state['created_at']) : null;

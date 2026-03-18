@@ -69,7 +69,7 @@ class InfrastructureServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
-            \App\Application\Shared\Contracts\SocialIdentityRepositoryInterface::class,
+            \App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface::class,
             \App\Infrastructure\Persistence\EloquentSocialIdentityRepository::class
         );
 

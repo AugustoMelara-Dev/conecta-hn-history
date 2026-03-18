@@ -24,6 +24,8 @@ trait CanBeFavorited
 {
     /**
      * Get all favorites for this model
+     *
+     * @return MorphMany<Favorite, $this>
      */
     public function favorites(): MorphMany
     {
@@ -57,9 +59,12 @@ trait CanBeFavorited
      */
     public function addToFavorites(User $user): Favorite
     {
-        return $this->favorites()->firstOrCreate([
+        /** @var Favorite $favorite */
+        $favorite = $this->favorites()->firstOrCreate([
             'user_id' => $user->id,
         ]);
+
+        return $favorite;
     }
 
     /**

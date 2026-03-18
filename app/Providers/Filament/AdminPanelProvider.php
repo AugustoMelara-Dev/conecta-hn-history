@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
+use App\Domain\Identity\Enums\UserRole;
+use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -192,10 +194,15 @@ class AdminPanelProvider extends PanelProvider
             }
 
             $user = auth()->user();
+            if (! $user instanceof User) {
+                abort(403, 'Acceso denegado. Usuario inválido.');
+            }
+
             $superAdmins = config('auth.super_admins', []);
+            $isSuperAdmin = $user->role === UserRole::SUPER_ADMIN;
 
             // Check if user is whitelisted super admin
-            $isWhitelistedAdmin = $user->role === 'super_admin'
+            $isWhitelistedAdmin = $isSuperAdmin
                 && in_array($user->email, $superAdmins, true);
 
             if ($isWhitelistedAdmin) {
@@ -203,7 +210,7 @@ class AdminPanelProvider extends PanelProvider
             }
 
             // Other admins must have super_admin role
-            if ($user->role !== 'super_admin') {
+            if (! $isSuperAdmin) {
                 abort(403, 'Acceso denegado. Se requiere rol de Super Admin.');
             }
         });
