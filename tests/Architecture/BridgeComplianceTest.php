@@ -79,7 +79,7 @@ test('create new user uses projection port instead of direct ORM', function () {
     expect($content)
         ->toContain('UserReadProjection')
         // Check actual code invocation, not comment mentions
-        ->not->toContain('return User::findOrFail');
+        ->not()->toContain('return User::findOrFail');
 });
 
 test('reset password action uses authenticatable contract', function () {

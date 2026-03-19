@@ -12,40 +12,48 @@ declare(strict_types=1);
  */
 
 // 1. APPLICATION LAYER PURITY
-test('Application Layer should NOT depend on Eloquent Models')
-    ->expect('App\Application\Billing')
-    ->toUseNothingIn('App\Models');
+test('Application Layer should NOT depend on Eloquent Models', function () {
+    expect('App\Application\Billing')
+        ->not()->toUse('App\Models');
+});
 
-test('Application Layer should NOT depend on HTTP Layer')
-    ->expect('App\Application\Billing')
-    ->toUseNothingIn('Illuminate\Http');
+test('Application Layer should NOT depend on HTTP Layer', function () {
+    expect('App\Application\Billing')
+        ->not()->toUse('Illuminate\Http');
+});
 
 // 2. DOMAIN LAYER PURITY
-test('Domain Layer should NOT depend on Laravel Infrastructure')
-    ->expect('App\Domain\Billing')
-    ->toUseNothingIn('Illuminate\Database')
-    ->toUseNothingIn('Illuminate\Support\Facades')
-    ->toUseNothingIn('App\Infrastructure');
+test('Domain Layer should NOT depend on Laravel Infrastructure', function () {
+    expect('App\Domain\Billing')
+        ->not()->toUse('Illuminate\Database')
+        ->not()->toUse('Illuminate\Support\Facades')
+        ->not()->toUse('App\Infrastructure');
+});
 
-test('Domain Layer should NOT depend on Application Layer')
-    ->expect('App\Domain\Billing')
-    ->toUseNothingIn('App\Application\Billing');
+test('Domain Layer should NOT depend on Application Layer', function () {
+    expect('App\Domain\Billing')
+        ->not()->toUse('App\Application\Billing');
+});
 
 // 3. CONTRACT ENFORCEMENT
-test('Repositories must be interfaces')
-    ->expect('App\Domain\Billing\Repositories')
-    ->toBeInterfaces();
+test('Repositories must be interfaces', function () {
+    expect('App\Domain\Billing\Repositories')
+        ->toBeInterfaces();
+});
 
-test('Domain Exceptions must extend DomainException')
-    ->expect('App\Domain\Billing\Exceptions')
-    ->toExtend('DomainException');
+test('Domain Exceptions must extend DomainException', function () {
+    expect('App\Domain\Billing\Exceptions')
+        ->toExtend('DomainException');
+});
 
 // 4. VALUE OBJECTS & ENUMS
-test('Value Objects must be final and immutable')
-    ->expect('App\Domain\Shared\ValueObjects')
-    ->toBeFinal()
-    ->toBeReadonly();
+test('Value Objects must be final and immutable', function () {
+    expect('App\Domain\Shared\ValueObjects')
+        ->toBeFinal()
+        ->toBeReadonly();
+});
 
-test('Enums must be backed enums')
-    ->expect('App\Domain\Billing\Enums')
-    ->toBeEnums();
+test('Enums must be backed enums', function () {
+    expect('App\Domain\Billing\Enums')
+        ->toBeEnums();
+});

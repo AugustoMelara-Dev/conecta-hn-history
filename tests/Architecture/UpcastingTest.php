@@ -70,7 +70,7 @@ test('upcaster transforms v1 payload to v2', function () {
     expect($v2)
         ->toHaveKey('first_name', 'John')
         ->toHaveKey('last_name', 'Unknown')
-        ->not->toHaveKey('name');
+        ->not()->toHaveKey('name');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -155,7 +155,7 @@ test('command upcaster registry sequentially upgrades payload V1→V2→V3', fun
         ->toHaveKey('phoneNumber', '000-000-0000')
         ->toHaveKey('firstName', 'Jane')
         ->toHaveKey('lastName', 'Doe')
-        ->not->toHaveKey('name');
+        ->not()->toHaveKey('name');
 });
 
 test('command upcaster registry passes through when no upcasters match', function () {

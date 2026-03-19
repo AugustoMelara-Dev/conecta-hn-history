@@ -18,5 +18,5 @@ test('record interaction action depends on application layer dto', function () {
     $content = file_get_contents(__DIR__.'/../../app/Actions/Interactions/RecordInteractionAction.php');
     expect($content)
         ->toContain('use App\Application\Interactions\DTOs\InteractionData;')
-        ->not->toContain('use App\Domain\Interactions\DTOs\InteractionData;');
+        ->not()->toContain('use App\Domain\Interactions\DTOs\InteractionData;');
 });

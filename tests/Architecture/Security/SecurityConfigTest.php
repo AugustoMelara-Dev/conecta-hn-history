@@ -51,10 +51,7 @@ class SecurityConfigTest extends \Tests\TestCase
         // ═══════════════════════════════════════════════════════════════
         // CHECK 1: Authenticate middleware is present
         // ═══════════════════════════════════════════════════════════════
-        $hasAuthenticateMiddleware = (
-            str_contains($content, 'Authenticate::class') ||
-            str_contains($content, 'Authenticate::class')
-        );
+        $hasAuthenticateMiddleware = str_contains($content, 'Authenticate::class');
 
         $this->assertTrue(
             $hasAuthenticateMiddleware,
@@ -228,7 +225,10 @@ class SecurityConfigTest extends \Tests\TestCase
             'EnsureTenantOwnership',
         ];
 
-        foreach (Route::getRoutes() as $route) {
+        /** @var iterable<\Illuminate\Routing\Route> $routes */
+        $routes = Route::getRoutes();
+
+        foreach ($routes as $route) {
             $action = $route->getAction();
             $uri = $route->uri();
 
@@ -357,7 +357,7 @@ class SecurityConfigTest extends \Tests\TestCase
         }
 
         // Always pass - Filament's native tenancy provides protection
-        $this->assertTrue(true);
+        $this->addToAssertionCount(1);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

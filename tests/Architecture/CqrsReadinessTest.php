@@ -19,7 +19,7 @@ test('create new user action uses read projection port', function () {
     expect($content)
         ->toContain('UserReadProjection')
         ->toContain('getById')
-        ->not->toContain('return User::findOrFail');
+        ->not()->toContain('return User::findOrFail');
 });
 
 test('user read projection binding exists in service provider', function () {

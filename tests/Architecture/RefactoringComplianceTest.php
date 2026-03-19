@@ -56,7 +56,7 @@ test('interaction data dto does NOT have fromRequest factory (dependency rule)',
     // ARCHITECTURAL GOVERNANCE: Application Layer DTOs must not depend on HTTP Request.
     // The fromRequest() factory was removed to restore the Dependency Rule.
     // Request→DTO mapping now lives in the Controller (Infrastructure Layer).
-    expect(method_exists(InteractionData::class, 'fromRequest'))->toBeFalse(
+    expect((new \ReflectionClass(InteractionData::class))->hasMethod('fromRequest'))->toBeFalse(
         'InteractionData must not have fromRequest() — HTTP mapping belongs in the Controller'
     );
 });

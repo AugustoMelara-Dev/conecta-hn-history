@@ -19,7 +19,7 @@ test('P0: reset user password command uses scalar identity', function () {
 
 test('P1: actions layer test has no stale ignores', function () {
     $content = file_get_contents(__DIR__.'/../../tests/Architecture/ActionsLayerTest.php');
-    expect($content)->not->toContain('ResetPasswordAction');
+    expect($content)->not()->toContain('ResetPasswordAction');
 });
 
 test('P2: custom actions use execute method', function () {
@@ -28,7 +28,8 @@ test('P2: custom actions use execute method', function () {
     ];
 
     foreach ($actions as $action) {
-        expect(method_exists($action, 'execute'))->toBeTrue("{$action} should have execute method");
-        expect(method_exists($action, 'handle'))->toBeFalse("{$action} should not have handle method");
+        $reflection = new ReflectionClass($action);
+        expect($reflection->hasMethod('execute'))->toBeTrue("{$action} should have execute method");
+        expect($reflection->hasMethod('handle'))->toBeFalse("{$action} should not have handle method");
     }
 });

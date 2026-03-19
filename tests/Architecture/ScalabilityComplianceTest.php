@@ -103,7 +103,7 @@ test('scalability - commands rely on primitives for fast serialization', functio
                 }
 
                 if (! $isAllowed) {
-                    test()->fail(
+                    expect($isAllowed)->toBeTrue(
                         "Scalability Violation: Command [{$className}] property [\${$property->getName()}] ".
                         "uses heavy/unknown type [{$typeName}]. Use primitives (string, int) or IDs only."
                     );

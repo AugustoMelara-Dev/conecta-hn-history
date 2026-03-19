@@ -15,7 +15,7 @@ use App\Models\User;
 test('user model implements tenant aware contract', function () {
     $user = new User;
     expect($user)->toBeInstanceOf(TenantAware::class);
-    expect(method_exists($user, 'getTenantId'))->toBeTrue();
+    expect((new ReflectionClass($user))->hasMethod('getTenantId'))->toBeTrue();
 });
 
 test('reset password action requires tenant aware user', function () {
@@ -23,5 +23,5 @@ test('reset password action requires tenant aware user', function () {
     expect($content)
         ->toContain('TenantAware')
         ->toContain('getTenantId()')
-        ->not->toContain('$user->tenant_id');
+        ->not()->toContain('$user->tenant_id');
 });

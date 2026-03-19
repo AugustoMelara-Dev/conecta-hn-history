@@ -37,7 +37,7 @@ test('reset password action uses unified contract', function () {
     $content = file_get_contents(__DIR__.'/../../app/Actions/Authentication/ResetPasswordAction.php');
     expect($content)
         ->toContain('TenantAwareAuthenticatable')
-        ->not->toContain('use Illuminate\Contracts\Auth\Authenticatable;');
+        ->not()->toContain('use Illuminate\Contracts\Auth\Authenticatable;');
 });
 
 test('command upcaster service exists and is instantiable', function () {
@@ -50,21 +50,32 @@ test('command upcaster service exists and is instantiable', function () {
 
 test('command upcaster processes payloads through upcaster chain', function () {
     // Create a test upcaster: V1 → V2 adds 'upgraded' key
-    $mockUpcaster = Mockery::mock(UpcasterInterface::class);
-    $mockUpcaster->shouldReceive('fromVersion')->andReturn(1);
-    $mockUpcaster->shouldReceive('toVersion')->andReturn(2);
-    $mockUpcaster->shouldReceive('supports')
-        ->with('test.event', 1)
-        ->andReturn(true);
-    $mockUpcaster->shouldReceive('upcast')
-        ->once()
-        ->andReturnUsing(function (array $payload) {
-            $payload['upgraded'] = true;
+    $upcaster = new CommandUpcaster([
+        new class implements UpcasterInterface
+        {
+            public function supports(string $eventType, int $schemaVersion): bool
+            {
+                return $eventType === 'test.event' && $schemaVersion === 1;
+            }
 
-            return $payload;
-        });
+            public function fromVersion(): int
+            {
+                return 1;
+            }
 
-    $upcaster = new CommandUpcaster([$mockUpcaster]);
+            public function toVersion(): int
+            {
+                return 2;
+            }
+
+            public function upcast(array $payload): array
+            {
+                $payload['upgraded'] = true;
+
+                return $payload;
+            }
+        },
+    ]);
 
     $result = $upcaster->process([
         'event_type' => 'test.event',

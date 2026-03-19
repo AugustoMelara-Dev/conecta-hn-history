@@ -19,8 +19,8 @@ test('reset password action exists in authentication namespace', function () {
 test('app service provider does not reference phantom fortify namespace', function () {
     $content = file_get_contents(__DIR__.'/../../app/Providers/AppServiceProvider.php');
     expect($content)
-        ->not->toContain('App\Infrastructure\Identity\Fortify\Actions\ResetPasswordAction')
-        ->not->toContain('ResetsUserPasswords'); // Binding moved to FortifyServiceProvider
+        ->not()->toContain('App\Infrastructure\Identity\Fortify\Actions\ResetPasswordAction')
+        ->not()->toContain('ResetsUserPasswords'); // Binding moved to FortifyServiceProvider
 });
 
 test('reset password action enforces tenant context and delegates to bus', function () {
@@ -36,7 +36,7 @@ test('resets user passwords contract is not bound in app service provider', func
     // GOVERNANCE: FortifyServiceProvider is the Single Source of Truth for Fortify bindings.
     // AppServiceProvider must NOT shadow these with redundant binds.
     $content = file_get_contents(__DIR__.'/../../app/Providers/AppServiceProvider.php');
-    expect($content)->not->toContain('ResetsUserPasswords::class');
+    expect($content)->not()->toContain('ResetsUserPasswords::class');
 });
 
 test('resets user passwords contract is canonically registered in fortify service provider', function () {

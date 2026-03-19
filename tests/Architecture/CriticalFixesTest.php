@@ -12,7 +12,7 @@ test('interaction controller imports correct action namespace', function () {
     $content = file_get_contents(__DIR__.'/../../app/Http/Controllers/Public/InteractionController.php');
     expect($content)
         ->toContain('use App\Infrastructure\Interactions\Actions\RecordInteractionAction;')
-        ->not->toContain('App\Application\Actions');
+        ->not()->toContain('App\Application\Actions');
 });
 
 test('interaction controller uses InteractionData DTO not RecordInteractionResult', function () {
@@ -20,7 +20,7 @@ test('interaction controller uses InteractionData DTO not RecordInteractionResul
     expect($content)
         ->toContain('use App\Application\Interactions\DTOs\InteractionData;')
         ->toContain('new InteractionData(')
-        ->not->toContain('RecordInteractionResult::forRedirect');
+        ->not()->toContain('RecordInteractionResult::forRedirect');
 });
 
 test('reset password action delegates to command bus with scalar userId', function () {
@@ -29,9 +29,9 @@ test('reset password action delegates to command bus with scalar userId', functi
         ->toContain('CommandBusInterface')
         ->toContain('ResetUserPasswordCommand')
         ->toContain('userId:')
-        ->not->toContain('user: $user')
-        ->not->toContain('$user->updatePassword')
-        ->not->toContain('Hash::make');
+        ->not()->toContain('user: $user')
+        ->not()->toContain('$user->updatePassword')
+        ->not()->toContain('Hash::make');
 });
 
 test('reset user password handler exists in auth namespace', function () {

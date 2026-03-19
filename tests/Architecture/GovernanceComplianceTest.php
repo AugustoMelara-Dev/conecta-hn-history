@@ -182,8 +182,8 @@ test('actions do not extend framework base classes', function () {
         if ($parent) {
             $parentName = $parent->getName();
             expect($parentName)
-                ->not->toStartWith('Illuminate\\', "Action [{$class}] extends Illuminate class [{$parentName}]")
-                ->not->toStartWith('Symfony\\', "Action [{$class}] extends Symfony class [{$parentName}]");
+                ->not()->toStartWith('Illuminate\\', "Action [{$class}] extends Illuminate class [{$parentName}]")
+                ->not()->toStartWith('Symfony\\', "Action [{$class}] extends Symfony class [{$parentName}]");
         }
 
         $checked++;

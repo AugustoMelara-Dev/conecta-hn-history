@@ -61,7 +61,7 @@ class OtpConcurrencyTest extends TestCase
                 for ($i = 0; $i < $concurrency; $i++) {
                     $pool->command($command)
                         ->timeout(180)
-                        ->env($this->testingEnvironment());
+                        ->env($this->testing_environment());
                 }
             })->wait();
 

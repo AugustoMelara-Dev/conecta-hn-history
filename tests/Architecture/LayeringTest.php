@@ -7,11 +7,9 @@ declare(strict_types=1);
  *
  * Enforces: Input validation is an Infrastructure concern (Actions).
  * The Application Layer (Handlers) must trust its Command inputs
- * and NEVER perform its own input validation via framework tools.
+ * and never perform its own input validation via framework tools.
  */
 test('domain handlers do not perform input validation', function () {
-    // Input validation belongs in the Action (Adapter) layer.
-    // Handlers should receive valid, immutable Commands.
     $handlerDirs = [
         __DIR__.'/../../app/Application/Auth/Handlers',
         __DIR__.'/../../app/Application/Identity/Handlers',
@@ -27,10 +25,13 @@ test('domain handlers do not perform input validation', function () {
         $files = glob($dir.'/*.php');
         foreach ($files as $file) {
             $content = file_get_contents($file);
-            expect($content)
-                ->not->toContain('Validator::make', "Handler {$file} must not use Validator facade")
-                ->not->toContain('use Illuminate\Support\Facades\Validator', "Handler {$file} must not import Validator facade")
-                ->not->toContain('->validate()', "Handler {$file} must not call ->validate() — validation belongs in Actions");
+            $hasValidatorMake = str_contains($content, 'Validator::make');
+            $hasValidatorImport = str_contains($content, 'use Illuminate\Support\Facades\Validator');
+            $hasInlineValidate = str_contains($content, '->validate()');
+
+            expect($hasValidatorMake)->toBeFalse("Handler {$file} must not use Validator facade");
+            expect($hasValidatorImport)->toBeFalse("Handler {$file} must not import Validator facade");
+            expect($hasInlineValidate)->toBeFalse("Handler {$file} must not call ->validate() - validation belongs in Actions");
         }
     }
 });

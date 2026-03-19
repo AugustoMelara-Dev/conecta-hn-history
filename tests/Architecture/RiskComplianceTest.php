@@ -42,8 +42,8 @@ test('risk mitigation - commands do not carry heavy eloquent models', function (
             $type = $property->getType();
             if ($type instanceof \ReflectionNamedType && ! $type->isBuiltin()) {
                 expect($type->getName())
-                    ->not->toBe('App\Models\User', "Command {$class} carries Eloquent User model")
-                    ->not->toContain('Illuminate\Database\Eloquent', "Command {$class} carries Eloquent dependency");
+                    ->not()->toBe('App\Models\User', "Command {$class} carries Eloquent User model")
+                    ->not()->toContain('Illuminate\Database\Eloquent', "Command {$class} carries Eloquent dependency");
             }
         }
         $scanned++;
