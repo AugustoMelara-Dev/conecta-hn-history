@@ -9,9 +9,6 @@ use PHPUnit\Framework\Assert;
 
 uses(\Tests\TestCase::class);
 
-/**
- * @param  object  $payload
- */
 function assertPayloadMatchesSchema(object $payload, string $schemaPath): void
 {
     Assert::assertFileExists($schemaPath, 'Schema file is missing.');
@@ -26,7 +23,7 @@ function assertPayloadMatchesSchema(object $payload, string $schemaPath): void
     $schema = json_decode($schemaJson);
     Assert::assertIsObject($schema);
 
-    $validator = new Validator();
+    $validator = new Validator;
     $validator->validate($payload, $schema);
 
     Assert::assertTrue($validator->isValid(), 'Schema violation: '.json_encode($validator->getErrors()));

@@ -26,7 +26,7 @@ final class DetectAbandonedCartsTest extends TestCase
                 'subtotal' => 150.0,
             ],
         ]);
-        $dispatcher = new RecordingEventDispatcher();
+        $dispatcher = new RecordingEventDispatcher;
 
         $handler = new DetectAbandonedCartsHandler($port, $dispatcher);
 
@@ -57,9 +57,7 @@ final class StubCheckoutSessionPort implements CheckoutSessionPortInterface
      */
     public function __construct(private readonly array $abandonedSessions) {}
 
-    public function upsertSession(string|int $tenantId, string $sessionId, array $items, float $subtotal, string|int|null $userId): void
-    {
-    }
+    public function upsertSession(string|int $tenantId, string $sessionId, array $items, float $subtotal, string|int|null $userId): void {}
 
     public function markAsAbandoned(int $timeoutMinutes): array
     {
@@ -68,9 +66,7 @@ final class StubCheckoutSessionPort implements CheckoutSessionPortInterface
         return $this->abandonedSessions;
     }
 
-    public function markAsConverted(string|int $tenantId, string $sessionId): void
-    {
-    }
+    public function markAsConverted(string|int $tenantId, string $sessionId): void {}
 }
 
 final class RecordingEventDispatcher implements EventDispatcherInterface

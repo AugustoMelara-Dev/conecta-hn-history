@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Models;
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Payment;
 use App\Models\Tenant;
-use App\Domain\Shared\Services\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 

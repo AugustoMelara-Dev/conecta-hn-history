@@ -122,7 +122,7 @@ final class StorefrontOrderTest extends TestCase
         ));
 
         $this->app->instance(CreateOrderHandlerInterface::class, $handler);
-        $this->app->instance(OrderReader::class, new StorefrontOrderReader());
+        $this->app->instance(OrderReader::class, new StorefrontOrderReader);
 
         $payload = [
             'tenant_id' => (string) $tenant->id,
@@ -172,7 +172,7 @@ final class StorefrontOrderReader implements OrderReader
 
     public function search(int|string $tenantId, ?string $status = null, int $perPage = 20): PaginatedResult
     {
-        return new StorefrontEmptyPaginatedResult();
+        return new StorefrontEmptyPaginatedResult;
     }
 
     public function find(int|string $tenantId, int $orderId): ?object

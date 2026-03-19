@@ -6,7 +6,7 @@ use Illuminate\Cache\ArrayStore;
 
 it('enforces exclusion when a lock is actively held', function () {
     $resourceKey = 'critical_transaction_REF_500';
-    $store = new ArrayStore();
+    $store = new ArrayStore;
 
     $lockProcessA = $store->lock($resourceKey);
     $acquiredA = $lockProcessA->get();

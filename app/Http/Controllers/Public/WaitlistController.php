@@ -51,4 +51,3 @@ final class WaitlistController extends Controller
         return back()->with('success', 'Te hemos añadido a la lista de espera. Te notificaremos si se libera un espacio.');
     }
 }
-

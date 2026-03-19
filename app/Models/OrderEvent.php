@@ -67,7 +67,7 @@ final class OrderEvent extends Model
         User|int|null $actor = null
     ): static {
         /** @var static $event */
-        $event = new static([
+        $event = new self([
             'order_id' => $order->id,
             'event_type' => $eventType,
             'payload' => $payload,

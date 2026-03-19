@@ -74,7 +74,6 @@ final readonly class CreateOrderResult
 
     /**
      * Factory method to hydrate from Domain Entity / Eloquent Model.
-     *
      */
     public static function fromEntity(OrderEntity $order): self
     {

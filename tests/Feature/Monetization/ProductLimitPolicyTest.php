@@ -91,7 +91,7 @@ test('product policy enforces dynamic capacity limits from general settings', fu
         }
     });
 
-    $policy = new ProductPolicy();
+    $policy = new ProductPolicy;
     $response = $policy->create($user);
 
     expect($response->allowed())->toBeFalse()

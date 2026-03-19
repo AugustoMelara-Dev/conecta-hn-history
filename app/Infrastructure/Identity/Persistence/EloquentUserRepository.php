@@ -22,7 +22,6 @@ use Illuminate\Support\Carbon;
  */
 final readonly class EloquentUserRepository implements UserRepositoryInterface
 {
-
     /**
      * Persiste una entidad de dominio UserEntity en la base de datos.
      *

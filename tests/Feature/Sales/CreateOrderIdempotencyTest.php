@@ -29,7 +29,7 @@ final class CreateOrderIdempotencyTest extends TestCase
         );
 
         $coreHandler = new RecordingCreateOrderHandler($expectedResult);
-        $service = new InMemoryIdempotencyService();
+        $service = new InMemoryIdempotencyService;
         $decorator = new IdempotentCreateOrderHandler($coreHandler, $service);
 
         $command = new CreateOrderCommand(

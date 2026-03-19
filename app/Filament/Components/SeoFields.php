@@ -60,7 +60,7 @@ class SeoFields
         $remaining = $limit - $count;
 
         if ($remaining < 0) {
-            return "Excedido por ".abs($remaining)." caracteres. {$label}";
+            return 'Excedido por '.abs($remaining)." caracteres. {$label}";
         }
 
         return "{$label} | {$remaining} caracteres disponibles";

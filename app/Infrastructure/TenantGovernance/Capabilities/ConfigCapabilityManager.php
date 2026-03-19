@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Infrastructure\TenantGovernance\Capabilities;
 
 use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
-use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Tenant;
 

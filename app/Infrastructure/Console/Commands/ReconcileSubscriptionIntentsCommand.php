@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Console\Commands;
 
-use App\Domain\Billing\Entities\SubscriptionIntent;
-use App\Domain\Billing\Entities\PlanEntity;
 use App\Domain\Billing\DTOs\SubscriptionSwapResult;
+use App\Domain\Billing\Entities\PlanEntity;
+use App\Domain\Billing\Entities\SubscriptionIntent;
 use App\Domain\Billing\Gateways\SubscriptionGatewayInterface;
 use App\Domain\Billing\Repositories\PlanRepositoryInterface;
 use App\Domain\Shared\Exceptions\StaleObjectException;

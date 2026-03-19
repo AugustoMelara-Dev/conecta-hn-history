@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
-use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;

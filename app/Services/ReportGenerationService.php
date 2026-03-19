@@ -65,7 +65,6 @@ final class ReportGenerationService implements ReportGenerationInterface
             ->orderBy('name')
             ->get(['id', 'name', 'sku', 'stock_quantity', 'low_stock_threshold']);
         /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\Product> $products */
-
         $pdf = Pdf::loadView('reports.inventory-manifest', [
             'tenant' => $tenant,
             'products' => $products,

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Repositories\TenantGovernance;
 
+use App\Domain\Shared\Exceptions\StaleObjectException;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Domain\Shared\Exceptions\StaleObjectException;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Spatie\OpeningHours\OpeningHours;

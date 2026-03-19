@@ -20,7 +20,7 @@ describe('AppointmentCalendarWidget', function () {
     });
 
     it('config returns valid calendar options', function () {
-        $widget = new AppointmentCalendarWidget();
+        $widget = new AppointmentCalendarWidget;
         $config = $widget->config();
 
         expect($config)->toBeArray();
@@ -34,7 +34,7 @@ describe('AppointmentCalendarWidget', function () {
 
 describe('Appointment Status Colors', function () {
     it('pending status returns amber color', function () {
-        $widget = new AppointmentCalendarWidget();
+        $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
 
@@ -42,7 +42,7 @@ describe('Appointment Status Colors', function () {
     });
 
     it('confirmed status returns blue color', function () {
-        $widget = new AppointmentCalendarWidget();
+        $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
 
@@ -50,7 +50,7 @@ describe('Appointment Status Colors', function () {
     });
 
     it('completed status returns green color', function () {
-        $widget = new AppointmentCalendarWidget();
+        $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
 
@@ -58,7 +58,7 @@ describe('Appointment Status Colors', function () {
     });
 
     it('cancelled status returns red color', function () {
-        $widget = new AppointmentCalendarWidget();
+        $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
 

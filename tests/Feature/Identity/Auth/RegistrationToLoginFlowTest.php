@@ -104,7 +104,7 @@ final class RegistrationToLoginFlowTest extends TestCase
         $schemaObject = json_decode($schemaJson);
         $this->assertIsObject($schemaObject);
 
-        $validator = new Validator();
+        $validator = new Validator;
         $validator->validate($serialized, $schemaObject);
 
         $this->assertTrue($validator->isValid(), 'RegisterUserCommand JSON schema validation failed.');

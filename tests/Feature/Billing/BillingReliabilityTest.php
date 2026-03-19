@@ -33,13 +33,13 @@ final class BillingReliabilityTest extends TestCase
         ]);
 
         Storage::fake('s3');
-        $this->app->instance(DocumentStorageServiceInterface::class, new StubDocumentStorageService());
+        $this->app->instance(DocumentStorageServiceInterface::class, new StubDocumentStorageService);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
     public function it_continues_processing_payments_when_the_rate_limiter_fails_open(): void
     {
-        $this->app->instance(RateLimiterInterface::class, new ThrowingRateLimiter());
+        $this->app->instance(RateLimiterInterface::class, new ThrowingRateLimiter);
 
         $command = new ReportPaymentCommand(
             tenantId: '00000000-0000-0000-0000-000000000123',
@@ -88,9 +88,7 @@ final class BillingReliabilityTest extends TestCase
 
 final class StubDocumentStorageService implements DocumentStorageServiceInterface
 {
-    public function verifyPresence(string $path): void
-    {
-    }
+    public function verifyPresence(string $path): void {}
 
     public function storeProofOfPayment(string $sourcePath, string $paymentReference): string
     {
@@ -102,9 +100,7 @@ final class StubDocumentStorageService implements DocumentStorageServiceInterfac
         return 'permanent/proof.jpg';
     }
 
-    public function delete(string $path): void
-    {
-    }
+    public function delete(string $path): void {}
 }
 
 final class ThrowingRateLimiter implements RateLimiterInterface
@@ -124,7 +120,5 @@ final class ThrowingRateLimiter implements RateLimiterInterface
         return 0;
     }
 
-    public function clear(string $key): void
-    {
-    }
+    public function clear(string $key): void {}
 }

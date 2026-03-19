@@ -51,7 +51,7 @@ final class CreateOrderIntegrationTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->app->instance(IdempotencyServiceInterface::class, new IntegrationIdempotencyService());
+        $this->app->instance(IdempotencyServiceInterface::class, new IntegrationIdempotencyService);
 
         $command = new CreateOrderCommand(
             tenantId: (string) $tenant->id,

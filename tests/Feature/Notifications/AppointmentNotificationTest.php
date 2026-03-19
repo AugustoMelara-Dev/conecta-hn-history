@@ -33,7 +33,7 @@ describe('Event Configuration', function () {
         $property = $reflection->getProperty('dispatchesEvents');
         $property->setAccessible(true);
 
-        $events = $property->getValue(new Appointment());
+        $events = $property->getValue(new Appointment);
 
         expect($events)->toHaveKey('created');
         expect($events['created'])->toBe(AppointmentCreated::class);
@@ -42,7 +42,7 @@ describe('Event Configuration', function () {
 
 describe('Listener Configuration', function () {
     it('SendAppointmentConfirmation implements ShouldQueue (async)', function () {
-        $listener = new SendAppointmentConfirmation();
+        $listener = new SendAppointmentConfirmation;
         expect($listener)->toBeInstanceOf(ShouldQueue::class);
     });
 

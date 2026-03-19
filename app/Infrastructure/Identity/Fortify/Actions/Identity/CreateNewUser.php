@@ -11,8 +11,8 @@ use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\TenantRateLimiterInterface;
 use App\Rules\UniqueUser;
 use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Foundation\Auth\User as FoundationUser;
 use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use Illuminate\Foundation\Auth\User as FoundationUser;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 /**

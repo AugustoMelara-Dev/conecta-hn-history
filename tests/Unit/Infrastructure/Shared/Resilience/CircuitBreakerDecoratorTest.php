@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\Infrastructure\Shared\Resilience;
 
 use App\Domain\Auth\Contracts\OtpNotifierInterface;
-use App\Domain\Billing\DTOs\SubscriptionSwapResult;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Infrastructure\Shared\Resilience\CircuitBreakerDecorator;
 use Exception;

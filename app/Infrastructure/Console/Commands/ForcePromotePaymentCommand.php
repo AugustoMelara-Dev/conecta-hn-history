@@ -77,7 +77,7 @@ class ForcePromotePaymentCommand extends Command
                 if ($storage->exists($currentPath)) {
                     $this->info('✔ Status Healthy: Path is permanent and file exists. No action needed.');
 
-                        return self::SUCCESS;
+                    return self::SUCCESS;
                 } else {
                     $this->warn("⚠ Corruption: DB says permanent, but file missing from [{$diskName}]. Cannot auto-recover.");
 

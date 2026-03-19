@@ -27,8 +27,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Models\Activity as ActivityModel;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Models\Activity as ActivityModel;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\OpeningHours\OpeningHours;
 

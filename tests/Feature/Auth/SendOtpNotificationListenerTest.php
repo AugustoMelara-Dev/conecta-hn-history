@@ -40,8 +40,8 @@ final class SendOtpNotificationListenerTest extends TestCase
         $store = $this->app->make(OtpDeliveryPayloadStoreInterface::class);
         $store->put($otp->id, '123456', 'test@example.com', 10);
 
-        $notifier = new RecordingOtpNotifier();
-        $circuitBreaker = new RecordingCircuitBreaker();
+        $notifier = new RecordingOtpNotifier;
+        $circuitBreaker = new RecordingCircuitBreaker;
 
         $this->app->instance(OtpNotifierInterface::class, $notifier);
         $this->app->instance(CircuitBreakerInterface::class, $circuitBreaker);

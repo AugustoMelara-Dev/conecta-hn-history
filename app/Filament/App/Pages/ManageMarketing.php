@@ -510,6 +510,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
     {
         return true; // Todos ven el menú, pero FREE ven paywall
     }
+
     protected function getTenantRecord(): ?Tenant
     {
         $tenant = Filament::getTenant();

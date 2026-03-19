@@ -10,9 +10,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Reports\InventoryReportRequest;
 use App\Http\Requests\Api\V1\Reports\KitchenReportRequest;
 use App\Http\Requests\Api\V1\Reports\SalesReportRequest;
-use App\Models\User;
 use App\Infrastructure\Jobs\Exports\GenerateSalesExport;
 use App\Infrastructure\Jobs\Reporting\GeneratePdfReportJob;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
 final class ReportController extends Controller

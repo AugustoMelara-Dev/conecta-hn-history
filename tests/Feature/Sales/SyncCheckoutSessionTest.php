@@ -15,7 +15,7 @@ final class SyncCheckoutSessionTest extends TestCase
     #[Test]
     public function it_delegates_checkout_session_sync_to_the_port(): void
     {
-        $port = new RecordingCheckoutSessionPort();
+        $port = new RecordingCheckoutSessionPort;
         $handler = new SyncCheckoutSessionHandler($port);
 
         $command = new SyncCheckoutSessionCommand(
@@ -61,7 +61,5 @@ final class RecordingCheckoutSessionPort implements CheckoutSessionPortInterface
         return [];
     }
 
-    public function markAsConverted(string|int $tenantId, string $sessionId): void
-    {
-    }
+    public function markAsConverted(string|int $tenantId, string $sessionId): void {}
 }

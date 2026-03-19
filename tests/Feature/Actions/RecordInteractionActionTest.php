@@ -165,7 +165,6 @@ final class RecordInteractionActionTest extends TestCase
 
         /** @var array{properties: array<string, mixed>, required: list<string>} $schema */
         /** @var array<string, mixed> $serialized */
-
         self::assertEqualsCanonicalizing(array_keys($schema['properties']), array_keys($serialized));
 
         foreach ($schema['required'] as $requiredKey) {

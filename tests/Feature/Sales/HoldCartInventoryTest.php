@@ -16,8 +16,8 @@ final class HoldCartInventoryTest extends TestCase
     #[Test]
     public function it_delegates_hold_creation_to_the_inventory_port(): void
     {
-        $port = new RecordingInventoryHoldPort();
-        $transactionManager = new InlineTransactionManager();
+        $port = new RecordingInventoryHoldPort;
+        $transactionManager = new InlineTransactionManager;
         $handler = new HoldCartInventoryHandler($port, $transactionManager);
 
         $command = new HoldCartInventoryCommand(
@@ -66,9 +66,7 @@ final class RecordingInventoryHoldPort implements InventoryHoldPortInterface
         ];
     }
 
-    public function commit(string $tenantId, string $sessionId, string|int|null $referenceId = null): void
-    {
-    }
+    public function commit(string $tenantId, string $sessionId, string|int|null $referenceId = null): void {}
 
     public function releaseExpired(): int
     {

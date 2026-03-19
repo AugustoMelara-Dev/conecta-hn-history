@@ -9,7 +9,6 @@ declare(strict_types=1);
  * - String identifiers in Interaction DTOs
  * - RecordInteractionAction delegates via CommandBus (no direct orchestration)
  */
-
 test('interaction data uses string identifiers', function () {
     $class = new ReflectionClass(\App\Application\Interactions\DTOs\InteractionData::class);
     $tenantIdType = $class->getProperty('tenantId')->getType();

@@ -50,7 +50,7 @@ final class OrderLocationResolutionTest extends TestCase
         ));
 
         $this->app->instance(CreateOrderHandlerInterface::class, $handler);
-        $this->app->instance(OrderReader::class, new StubPublicOrderReader());
+        $this->app->instance(OrderReader::class, new StubPublicOrderReader);
 
         $response = $this->actingAs($user)->postJson('/api/orders', [
             'tenant_id' => (string) $tenant->id,
@@ -98,7 +98,7 @@ final class OrderLocationResolutionTest extends TestCase
         ));
 
         $this->app->instance(CreateOrderHandlerInterface::class, $handler);
-        $this->app->instance(OrderReader::class, new StubPublicOrderReader());
+        $this->app->instance(OrderReader::class, new StubPublicOrderReader);
 
         $foreignLocation = Location::query()->create([
             'tenant_id' => $foreignTenant->id,
@@ -212,7 +212,7 @@ final class StubPublicOrderReader implements OrderReader
 
     public function search(int|string $tenantId, ?string $status = null, int $perPage = 20): PaginatedResult
     {
-        return new EmptyOrderPaginatedResult();
+        return new EmptyOrderPaginatedResult;
     }
 
     public function find(int|string $tenantId, int $orderId): ?object

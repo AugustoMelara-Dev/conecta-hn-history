@@ -45,7 +45,7 @@ final class OrderStateServiceTest extends TestCase
                 'payment_status' => 'pending',
             ]);
 
-        $dispatcher = new SalesOrderStateEventDispatcher();
+        $dispatcher = new SalesOrderStateEventDispatcher;
         $service = new OrderStateService($dispatcher);
 
         $updatedOrder = $service->transition($order, Order::STATUS_CANCELLED);

@@ -8,7 +8,6 @@ use App\Application\Shared\Contracts\AiProfileGeneratorInterface;
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
-use App\Services\AiProfileGeneratorService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

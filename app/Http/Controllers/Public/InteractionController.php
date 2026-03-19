@@ -118,4 +118,3 @@ final class InteractionController extends Controller
         return redirect()->away($url);
     }
 }
-

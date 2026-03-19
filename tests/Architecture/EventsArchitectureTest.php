@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Architecture;
 
 use App\Contracts\Events\AuditEvent;
-use App\Domain\Shared\ValueObjects\TenantId;
 use App\Domain\Shared\Contracts\Events\DomainEvent;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Database\Eloquent\Model;
