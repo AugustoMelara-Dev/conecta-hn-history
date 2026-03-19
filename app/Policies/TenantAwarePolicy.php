@@ -67,7 +67,7 @@ abstract class TenantAwarePolicy
 
     protected function getUserTenantIds(User $user): array
     {
-        if (isset($user->_memoized_tenant_ids) && is_array($user->_memoized_tenant_ids)) {
+        if (isset($user->_memoized_tenant_ids)) {
             /** @var array<int, string> $memoizedTenantIds */
             $memoizedTenantIds = $user->_memoized_tenant_ids;
 

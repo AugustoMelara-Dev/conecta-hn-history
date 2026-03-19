@@ -243,6 +243,7 @@ PROMPT;
 
         // Array - sanitize each element with HTML entity decoding
         $parsed['seo_keywords'] = $this->sanitizeKeywords($parsed['seo_keywords']);
+        $parsed['tags'] = $this->sanitizeKeywords($parsed['tags'] ?? $parsed['seo_keywords']);
 
         return $parsed;
     }

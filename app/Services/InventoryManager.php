@@ -195,8 +195,11 @@ class InventoryManager implements \App\Application\Shared\Contracts\InventoryMan
         // Load order items if not already loaded
         $order->loadMissing('items');
 
+        /** @var int|string|null $orderTenantId */
+        $orderTenantId = $order->getRawOriginal('tenant_id');
+
         // VC-AUDIT-102: Prevent scope bypass if tenant_id is missing
-        if ($order->tenant_id === null) {
+        if ($orderTenantId === null || $orderTenantId === '') {
             throw new \LogicException('Cannot restock inventory: Order tenant_id is missing.');
         }
 
@@ -228,7 +231,7 @@ class InventoryManager implements \App\Application\Shared\Contracts\InventoryMan
         // ═══════════════════════════════════════════════════════════════════════
         // PHASE 2: TRANSACTIONAL BATCH PROCESSING WITH PESSIMISTIC LOCKING
         // ═══════════════════════════════════════════════════════════════════════
-        DB::transaction(function () use ($productIds, $quantityMap, $order, &$telemetryBuffer) {
+        DB::transaction(function () use ($productIds, $quantityMap, $order, $orderTenantId, &$telemetryBuffer) {
 
             // ═══════════════════════════════════════════════════════════════════
             // SINGLE BATCH QUERY with PESSIMISTIC LOCK + TENANT ISOLATION
@@ -243,7 +246,7 @@ class InventoryManager implements \App\Application\Shared\Contracts\InventoryMan
             $lockedProducts = Product::query()
                 ->withoutGlobalScopes() // Bypass visibility scopes for admin operation
                 ->whereIn('id', $productIds)
-                ->where('tenant_id', $order->tenant_id)
+                ->where('tenant_id', $orderTenantId)
                 ->whereNull('deleted_at')
                 ->orderBy('id')  // Canonical order prevents deadlocks
                 ->lockForUpdate()
@@ -334,6 +337,13 @@ class InventoryManager implements \App\Application\Shared\Contracts\InventoryMan
     {
         $order->loadMissing('items');
 
+        /** @var int|string|null $orderTenantId */
+        $orderTenantId = $order->getRawOriginal('tenant_id');
+
+        if ($orderTenantId === null || $orderTenantId === '') {
+            throw new \LogicException('Cannot consume inventory: Order tenant_id is missing.');
+        }
+
         // ═══════════════════════════════════════════════════════════════════════
         // PHASE 1: EXTRACTION - Extract unique product IDs
         // ═══════════════════════════════════════════════════════════════════════
@@ -372,7 +382,7 @@ class InventoryManager implements \App\Application\Shared\Contracts\InventoryMan
         $telemetryBuffer = [];
         $eventBuffer = [];
 
-        DB::transaction(function () use ($productIds, $quantityMap, $order, &$telemetryBuffer, &$eventBuffer) {
+        DB::transaction(function () use ($productIds, $quantityMap, $order, $orderTenantId, &$telemetryBuffer, &$eventBuffer) {
 
             // ═══════════════════════════════════════════════════════════════
             // SINGLE BATCH QUERY with PESSIMISTIC LOCK + TENANT ISOLATION
@@ -382,7 +392,7 @@ class InventoryManager implements \App\Application\Shared\Contracts\InventoryMan
             $lockedProducts = Product::query()
                 ->withoutGlobalScopes()
                 ->whereIn('id', $productIds)
-                ->where('tenant_id', $order->tenant_id)
+                ->where('tenant_id', $orderTenantId)
                 ->whereNull('deleted_at')
                 ->orderBy('id')  // Canonical order prevents deadlocks
                 ->lockForUpdate()
