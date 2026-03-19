@@ -12,6 +12,7 @@ use App\Domain\Shared\Contracts\Events\DomainEvent as DomainEventAlias;
 use App\Domain\TenantGovernance\Events\TenantCreated;
 use App\Domain\TenantGovernance\Events\TenantProfileEnhanced;
 use App\Domain\TenantGovernance\Events\TenantUpdated;
+use ReflectionNamedType;
 
 // ─── W-01 ────────────────────────────────────────────────────────────────────
 
@@ -30,7 +31,8 @@ it('legacy EloquentInteractionRepository class does not exist', function () {
 it('UserRegistered has EncryptedEmail property email', function () {
     $reflection = new ReflectionClass(UserRegistered::class);
     $prop = $reflection->getProperty('email');
-    expect($prop->getType()->getName())->toBe(\App\Domain\Shared\ValueObjects\EncryptedEmail::class);
+    $type = $prop->getType();
+    expect($type instanceof ReflectionNamedType ? $type->getName() : null)->toBe(\App\Domain\Shared\ValueObjects\EncryptedEmail::class);
 });
 
 it('UserRegistered SCHEMA_VERSION is 2', function () {
@@ -42,7 +44,8 @@ it('UserRegistered SCHEMA_VERSION is 2', function () {
 it('UserRegisteredViaSocial has EncryptedEmail property email', function () {
     $reflection = new ReflectionClass(UserRegisteredViaSocial::class);
     $prop = $reflection->getProperty('email');
-    expect($prop->getType()->getName())->toBe(\App\Domain\Shared\ValueObjects\EncryptedEmail::class);
+    $type = $prop->getType();
+    expect($type instanceof ReflectionNamedType ? $type->getName() : null)->toBe(\App\Domain\Shared\ValueObjects\EncryptedEmail::class);
 });
 
 it('UserRegisteredViaSocial SCHEMA_VERSION is 2', function () {

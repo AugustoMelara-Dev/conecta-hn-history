@@ -6,6 +6,42 @@ use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\CommandUpcasterInterface;
 use App\Application\Shared\Decorators\UpcastingCommandBus;
 
+final class RecordingCommandBus implements CommandBusInterface
+{
+    public ?object $receivedCommand = null;
+
+    public function __construct(private mixed $result) {}
+
+    public function dispatch(object $command): mixed
+    {
+        $this->receivedCommand = $command;
+
+        return $this->result;
+    }
+}
+
+final class CallbackUpcaster implements CommandUpcasterInterface
+{
+    /**
+     * @param  callable(object): bool  $supports
+     * @param  callable(object): object  $upcast
+     */
+    public function __construct(
+        private $supports,
+        private $upcast,
+    ) {}
+
+    public function supports(object $command): bool
+    {
+        return ($this->supports)($command);
+    }
+
+    public function upcast(object $command): object
+    {
+        return ($this->upcast)($command);
+    }
+}
+
 it('upcasts commands and delegates to the next bus within tenant context', function () {
     $tenantId = 'tnt_'.fake()->bothify('??????????');
 
@@ -23,25 +59,18 @@ it('upcasts commands and delegates to the next bus within tenant context', funct
         public function __construct(public string $tenantId) {}
     };
 
-    $nextBus = Mockery::mock(CommandBusInterface::class);
-    $nextBus->shouldReceive('dispatch')
-        ->once()
-        ->with($upcastedCommand)
-        ->andReturn('success');
-
-    $upcaster = Mockery::mock(CommandUpcasterInterface::class);
-    $upcaster->shouldReceive('supports')
-        ->with($originalCommand)
-        ->andReturn(true);
-    $upcaster->shouldReceive('upcast')
-        ->with($originalCommand)
-        ->andReturn($upcastedCommand);
+    $nextBus = new RecordingCommandBus('success');
+    $upcaster = new CallbackUpcaster(
+        supports: fn (object $command): bool => $command === $originalCommand,
+        upcast: fn (object $command): object => $command === $originalCommand ? $upcastedCommand : $command,
+    );
 
     $decorator = new UpcastingCommandBus($nextBus, [$upcaster]);
 
     $result = $decorator->dispatch($originalCommand);
 
     expect($result)->toBe('success');
+    expect($nextBus->receivedCommand)->toBe($upcastedCommand);
 });
 
 it('bypasses upcasting if not supported keeping tenant intact', function () {
@@ -52,21 +81,16 @@ it('bypasses upcasting if not supported keeping tenant intact', function () {
         public function __construct(public string $tenantId) {}
     };
 
-    $nextBus = Mockery::mock(CommandBusInterface::class);
-    $nextBus->shouldReceive('dispatch')
-        ->once()
-        ->with($command)
-        ->andReturn('passthrough');
-
-    $upcaster = Mockery::mock(CommandUpcasterInterface::class);
-    $upcaster->shouldReceive('supports')
-        ->with($command)
-        ->andReturn(false);
-    $upcaster->shouldNotReceive('upcast');
+    $nextBus = new RecordingCommandBus('passthrough');
+    $upcaster = new CallbackUpcaster(
+        supports: fn (object $received): bool => false,
+        upcast: fn (object $received): object => $received,
+    );
 
     $decorator = new UpcastingCommandBus($nextBus, [$upcaster]);
 
     expect($decorator->dispatch($command))->toBe('passthrough');
+    expect($nextBus->receivedCommand)->toBe($command);
 });
 
 it('chains multiple upcasters in sequence', function () {
@@ -93,25 +117,20 @@ it('chains multiple upcasters in sequence', function () {
         public function __construct(public string $tenantId) {}
     };
 
-    $nextBus = Mockery::mock(CommandBusInterface::class);
-    $nextBus->shouldReceive('dispatch')
-        ->once()
-        ->with($v3Command)
-        ->andReturn('v3_result');
-
-    // First upcaster: v1 → v2
-    $upcasterA = Mockery::mock(CommandUpcasterInterface::class);
-    $upcasterA->shouldReceive('supports')->with($v1Command)->andReturn(true);
-    $upcasterA->shouldReceive('upcast')->with($v1Command)->andReturn($v2Command);
-
-    // Second upcaster: v2 → v3
-    $upcasterB = Mockery::mock(CommandUpcasterInterface::class);
-    $upcasterB->shouldReceive('supports')->with($v2Command)->andReturn(true);
-    $upcasterB->shouldReceive('upcast')->with($v2Command)->andReturn($v3Command);
+    $nextBus = new RecordingCommandBus('v3_result');
+    $upcasterA = new CallbackUpcaster(
+        supports: fn (object $command): bool => $command === $v1Command,
+        upcast: fn (object $command): object => $command === $v1Command ? $v2Command : $command,
+    );
+    $upcasterB = new CallbackUpcaster(
+        supports: fn (object $command): bool => $command === $v2Command,
+        upcast: fn (object $command): object => $command === $v2Command ? $v3Command : $command,
+    );
 
     $decorator = new UpcastingCommandBus($nextBus, [$upcasterA, $upcasterB]);
 
     expect($decorator->dispatch($v1Command))->toBe('v3_result');
+    expect($nextBus->receivedCommand)->toBe($v3Command);
 });
 
 it('passes command through unmodified when no upcasters are registered', function () {
@@ -122,13 +141,9 @@ it('passes command through unmodified when no upcasters are registered', functio
         public function __construct(public string $tenantId) {}
     };
 
-    $nextBus = Mockery::mock(CommandBusInterface::class);
-    $nextBus->shouldReceive('dispatch')
-        ->once()
-        ->with($command)
-        ->andReturn('direct');
-
+    $nextBus = new RecordingCommandBus('direct');
     $decorator = new UpcastingCommandBus($nextBus, []);
 
     expect($decorator->dispatch($command))->toBe('direct');
+    expect($nextBus->receivedCommand)->toBe($command);
 });

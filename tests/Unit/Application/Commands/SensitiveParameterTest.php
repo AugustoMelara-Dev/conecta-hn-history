@@ -6,6 +6,7 @@ use App\Application\Auth\Commands\VerifyOtpCommand;
 use App\Application\Payments\Commands\HandlePaymentWebhookCommand;
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Tenant\Results\UpdateScheduleResult;
+use ReflectionNamedType;
 
 it('CreateOrderCommand PII properties have SensitiveParameter attribute', function () {
     $reflection = new ReflectionClass(CreateOrderCommand::class);
@@ -39,14 +40,14 @@ it('HandlePaymentWebhookCommand tenantId is string type', function () {
     $reflection = new ReflectionClass(HandlePaymentWebhookCommand::class);
     $property = $reflection->getProperty('tenantId');
     $type = $property->getType();
-    expect($type->getName())->toBe('string');
+    expect($type instanceof ReflectionNamedType ? $type->getName() : null)->toBe('string');
 });
 
 it('UpdateScheduleResult tenantId is string type', function () {
     $reflection = new ReflectionClass(UpdateScheduleResult::class);
     $property = $reflection->getProperty('tenantId');
     $type = $property->getType();
-    expect($type->getName())->toBe('string');
+    expect($type instanceof ReflectionNamedType ? $type->getName() : null)->toBe('string');
 });
 
 it('UpdateScheduleResult fromArray accepts string tenantId', function () {
@@ -54,5 +55,6 @@ it('UpdateScheduleResult fromArray accepts string tenantId', function () {
     $method = $reflection->getMethod('fromArray');
     $params = $method->getParameters();
     $tenantParam = collect($params)->firstWhere(fn ($p) => $p->getName() === 'tenantId');
-    expect($tenantParam->getType()->getName())->toBe('string');
+    $type = $tenantParam?->getType();
+    expect($type instanceof ReflectionNamedType ? $type->getName() : null)->toBe('string');
 });

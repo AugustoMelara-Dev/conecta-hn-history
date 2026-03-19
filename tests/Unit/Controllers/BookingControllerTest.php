@@ -29,35 +29,25 @@ it('BookingController has required methods', function () {
 
 // TEST 3: Tenant has services relationship
 it('Tenant model has services relationship', function () {
-    $tenant = new Tenant;
-
-    expect(method_exists($tenant, 'services'))->toBeTrue();
+    expect((new ReflectionClass(Tenant::class))->hasMethod('services'))->toBeTrue();
 });
 
 // TEST 4: Tenant has serviceProviders relationship
 it('Tenant model has serviceProviders relationship', function () {
-    $tenant = new Tenant;
-
-    expect(method_exists($tenant, 'serviceProviders'))->toBeTrue();
+    expect((new ReflectionClass(Tenant::class))->hasMethod('serviceProviders'))->toBeTrue();
 });
 
 // TEST 5: Tenant has appointments relationship
 it('Tenant model has appointments relationship', function () {
-    $tenant = new Tenant;
-
-    expect(method_exists($tenant, 'appointments'))->toBeTrue();
+    expect((new ReflectionClass(Tenant::class))->hasMethod('appointments'))->toBeTrue();
 });
 
 // TEST 6: Service model has active scope
 it('Service model has active scope', function () {
-    $service = new Service;
-
-    expect(method_exists($service, 'scopeActive'))->toBeTrue();
+    expect((new ReflectionClass(Service::class))->hasMethod('scopeActive'))->toBeTrue();
 });
 
 // TEST 7: ServiceProvider model has active scope
 it('ServiceProvider model has active scope', function () {
-    $provider = new ServiceProvider;
-
-    expect(method_exists($provider, 'scopeActive'))->toBeTrue();
+    expect((new ReflectionClass(ServiceProvider::class))->hasMethod('scopeActive'))->toBeTrue();
 });

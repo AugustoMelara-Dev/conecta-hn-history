@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Shared\Services\TenantContext;
+use ReflectionNamedType;
 
 /**
  * VC-AUDIT-008: TenantContext Security Test
@@ -39,7 +40,8 @@ test('TenantContext guard prevents HTTP privilege escalation (signature check)',
     // The method must have exactly one parameter: bool $isConsoleOrTesting = false
     expect($params)->toHaveCount(1);
     expect($params[0]->getName())->toBe('isConsoleOrTesting');
-    expect($params[0]->getType()->getName())->toBe('bool');
+    $type = $params[0]->getType();
+    expect($type instanceof ReflectionNamedType ? $type->getName() : null)->toBe('bool');
 
     // Verify the guard string is still present
     $source = file_get_contents($reflection->getFileName());
