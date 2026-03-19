@@ -6,6 +6,7 @@ namespace Tests\Architecture\Scalability;
 
 use App\Domain\Auth\Events\UserPasswordChanged;
 use App\Infrastructure\Models\OutboxMessage;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
@@ -69,7 +70,7 @@ class OutboxScalingTest extends TestCase
             for ($i = 0; $i < $workerCount; $i++) {
                 $pool->command("php artisan outbox:process --batch-size={$limitPerWorker} --max-loops=1 --max-shards=1")
                     ->timeout(60)
-                    ->env($this->testingEnvironment());
+                    ->env($this->testing_environment());
             }
         })->wait();
 
@@ -116,7 +117,7 @@ class OutboxScalingTest extends TestCase
         OutboxMessage::query()->delete();
 
         $result = Process::timeout(15)
-            ->env($this->testingEnvironment())
+            ->env($this->testing_environment())
             ->run('php artisan outbox:process --max-loops=1 --max-shards=1');
 
         $this->assertTrue($result->successful(), 'Command should complete successfully on empty queue');
@@ -136,7 +137,7 @@ class OutboxScalingTest extends TestCase
         $this->restrictAvailableShards([0]);
         $this->seedPendingMessages(50, [0]);
 
-        $result = Process::env($this->testingEnvironment())
+        $result = Process::env($this->testing_environment())
             ->run('php artisan outbox:process --batch-size=20 --max-loops=1 --max-shards=1');
 
         $this->assertTrue($result->successful(), $result->errorOutput());
@@ -282,11 +283,12 @@ class OutboxScalingTest extends TestCase
 
     private function ensureOutboxSchemaIsReady(): void
     {
-        if (self::$outboxSchemaReady) {
+        if (self::$outboxSchemaReady && Schema::hasTable('outbox_messages') && Schema::hasTable('outbox_shards')) {
             return;
         }
 
         if (! Schema::hasTable('outbox_messages') || ! Schema::hasTable('outbox_shards')) {
+            RefreshDatabaseState::$migrated = false;
             $this->artisan('migrate', ['--force' => true])->assertExitCode(0);
         }
 
@@ -296,7 +298,7 @@ class OutboxScalingTest extends TestCase
     /**
      * @return array<string, string>
      */
-    private function testingEnvironment(): array
+    private function testing_environment(): array
     {
         $defaultConnection = (string) config('database.default');
         $connection = (array) config("database.connections.{$defaultConnection}", []);
@@ -310,6 +312,14 @@ class OutboxScalingTest extends TestCase
             'DB_USERNAME' => (string) ($connection['username'] ?? ''),
             'DB_PASSWORD' => (string) ($connection['password'] ?? ''),
         ];
+
+        foreach (['LARAVEL_PARALLEL_TESTING', 'TEST_TOKEN'] as $key) {
+            $value = $_SERVER[$key] ?? $_ENV[$key] ?? null;
+
+            if (is_string($value) && $value !== '') {
+                $env[$key] = $value;
+            }
+        }
 
         return array_filter($env, static fn (string $value): bool => $value !== '');
     }

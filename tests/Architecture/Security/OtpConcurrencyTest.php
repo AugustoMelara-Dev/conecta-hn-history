@@ -6,8 +6,8 @@ namespace Tests\Architecture\Security;
 
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Process\Pool;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Ramsey\Uuid\Uuid;
@@ -15,12 +15,7 @@ use Tests\TestCase;
 
 class OtpConcurrencyTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        Artisan::call('migrate:fresh', ['--env' => 'testing', '--force' => true]);
-    }
+    use DatabaseTruncation;
 
     #[\PHPUnit\Framework\Attributes\Test]
     public function it_prevents_race_conditions_on_otp_attempts_limit()
@@ -130,6 +125,14 @@ class OtpConcurrencyTest extends TestCase
             'DB_PASSWORD' => (string) ($connection['password'] ?? ''),
             'AUTH_OTP_MAX_ATTEMPTS' => (string) config('auth.otp.max_attempts', 5),
         ];
+
+        foreach (['LARAVEL_PARALLEL_TESTING', 'TEST_TOKEN'] as $key) {
+            $value = $_SERVER[$key] ?? $_ENV[$key] ?? null;
+
+            if (is_string($value) && $value !== '') {
+                $env[$key] = $value;
+            }
+        }
 
         return array_filter($env, static fn (string $value): bool => $value !== '');
     }
