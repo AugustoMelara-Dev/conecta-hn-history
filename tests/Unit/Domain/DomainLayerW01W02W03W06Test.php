@@ -12,7 +12,6 @@ use App\Domain\Shared\Contracts\Events\DomainEvent as DomainEventAlias;
 use App\Domain\TenantGovernance\Events\TenantCreated;
 use App\Domain\TenantGovernance\Events\TenantProfileEnhanced;
 use App\Domain\TenantGovernance\Events\TenantUpdated;
-use ReflectionNamedType;
 
 // ─── W-01 ────────────────────────────────────────────────────────────────────
 

@@ -2,145 +2,186 @@
 
 declare(strict_types=1);
 
-/**
- * TransactionalOutboxTest - Integration Verification
- *
- * Validates:
- * - Outbox entries are persisted within same transaction as command execution
- * - SensitiveDataInterface properties are redacted in stored payload
- * - Status transitions PENDING → PUBLISHED on success
- * - Transaction rolls back on handler failure (no Ghost Events)
- */
+namespace Tests\Integration;
 
 use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Application\Shared\Contracts\SensitiveDataInterface;
 use App\Infrastructure\Bus\TransactionalCommandBus;
+use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+final class TransactionalOutboxTest extends TestCase
+{
+    use RefreshDatabase;
 
-beforeEach(function () {
-    DB::table('outbox_messages')->delete();
-});
-
-test('transactional bus persists redacted payload and marks as published', function () {
-    // Arrange: Mock the inner dispatcher to simulate successful handler execution
-    $mockDispatcher = Mockery::mock(\Illuminate\Contracts\Bus\Dispatcher::class);
-    $mockDispatcher->shouldReceive('dispatchSync')->once()->andReturn('handler-result');
-
-    $mockIdGenerator = Mockery::mock(IdGeneratorInterface::class);
-    $mockIdGenerator->shouldReceive('generate')->andReturn('test-uuid-001');
-
-    $bus = new TransactionalCommandBus(
-        $mockDispatcher,
-        app('db.connection'),
-        $mockIdGenerator,
-    );
-
-    // Create a command implementing SensitiveDataInterface
-    $command = new class('secret-password-123', 'visible-data') implements SensitiveDataInterface
+    protected function setUp(): void
     {
-        public function __construct(
-            public string $secret,
-            public string $publicField,
-        ) {}
+        parent::setUp();
 
-        public function getSensitiveProperties(): array
-        {
-            return ['secret'];
-        }
-    };
-
-    // Act
-    $result = $bus->dispatch($command);
-
-    // Assert: Handler result is returned correctly
-    expect($result)->toBe('handler-result');
-
-    // Assert: Outbox entry exists with PUBLISHED status
-    $entry = DB::table('outbox_messages')->first();
-    expect($entry)->not->toBeNull();
-    expect($entry->status)->toBe('PUBLISHED');
-    expect($entry->published_at)->not->toBeNull();
-
-    // Assert: Payload is redacted
-    $payload = json_decode($entry->payload, true);
-    expect($payload['secret'])->toBe('[REDACTED]');
-    expect($payload['publicField'])->toBe('visible-data');
-
-    // Assert: Type is recorded correctly
-    expect($entry->type)->toBe(get_class($command));
-});
-
-test('transactional bus rolls back outbox on handler failure', function () {
-    // Arrange: Mock dispatcher to throw an exception
-    $mockDispatcher = Mockery::mock(\Illuminate\Contracts\Bus\Dispatcher::class);
-    $mockDispatcher->shouldReceive('dispatchSync')->once()->andThrow(
-        new \RuntimeException('Handler exploded')
-    );
-
-    $mockIdGenerator = Mockery::mock(IdGeneratorInterface::class);
-    $mockIdGenerator->shouldReceive('generate')->andReturn('test-uuid-002');
-
-    $bus = new TransactionalCommandBus(
-        $mockDispatcher,
-        app('db.connection'),
-        $mockIdGenerator,
-    );
-
-    $command = new class('data')
-    {
-        public function __construct(public string $value) {}
-    };
-
-    // Act & Assert: Exception propagates
-    $thrown = false;
-    try {
-        $bus->dispatch($command);
-    } catch (\RuntimeException $e) {
-        $thrown = true;
-        expect($e->getMessage())->toBe('Handler exploded');
+        DB::table('outbox_messages')->delete();
     }
-    expect($thrown)->toBeTrue();
 
-    // Assert: No Ghost Event — outbox rolled back
-    $count = DB::table('outbox_messages')->count();
-    expect($count)->toBe(0, 'Outbox must roll back on handler failure');
-});
-
-test('transactional bus persists non-sensitive command without redaction', function () {
-    // Arrange
-    $mockDispatcher = Mockery::mock(\Illuminate\Contracts\Bus\Dispatcher::class);
-    $mockDispatcher->shouldReceive('dispatchSync')->once()->andReturn(42);
-
-    $mockIdGenerator = Mockery::mock(IdGeneratorInterface::class);
-    $mockIdGenerator->shouldReceive('generate')->andReturn('test-uuid-003');
-
-    $bus = new TransactionalCommandBus(
-        $mockDispatcher,
-        app('db.connection'),
-        $mockIdGenerator,
-    );
-
-    $command = new class('hello', 123)
+    #[Test]
+    public function transactional_bus_persists_redacted_payload_and_marks_as_published(): void
     {
-        public function __construct(
-            public string $name,
-            public int $count,
-        ) {}
-    };
+        $dispatcher = new TransactionalOutboxFakeDispatcher('handler-result');
+        $bus = new TransactionalCommandBus(
+            $dispatcher,
+            app('db.connection'),
+            new FixedOutboxIdGenerator('test-uuid-001'),
+        );
 
-    // Act
-    $result = $bus->dispatch($command);
+        $command = new class('secret-password-123', 'visible-data') implements SensitiveDataInterface
+        {
+            public function __construct(
+                public string $secret,
+                public string $publicField,
+            ) {}
 
-    // Assert
-    expect($result)->toBe(42);
+            public function getSensitiveProperties(): array
+            {
+                return ['secret'];
+            }
+        };
 
-    $entry = DB::table('outbox_messages')->first();
-    $payload = json_decode($entry->payload, true);
-    expect($payload['name'])->toBe('hello');
-    expect($payload['count'])->toBe(123);
-    expect($entry->status)->toBe('PUBLISHED');
-});
+        $result = $bus->dispatch($command);
+
+        self::assertSame('handler-result', $result);
+        self::assertSame($command, $dispatcher->receivedCommand);
+
+        $entry = DB::table('outbox_messages')->first();
+        self::assertNotNull($entry);
+        self::assertSame('PUBLISHED', $entry->status);
+        self::assertNotNull($entry->published_at);
+
+        /** @var array{secret: string, publicField: string} $payload */
+        $payload = json_decode((string) $entry->payload, true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame('[REDACTED]', $payload['secret']);
+        self::assertSame('visible-data', $payload['publicField']);
+        self::assertSame(get_class($command), $entry->type);
+    }
+
+    #[Test]
+    public function transactional_bus_rolls_back_outbox_on_handler_failure(): void
+    {
+        $dispatcher = new TransactionalOutboxFakeDispatcher(
+            result: null,
+            exception: new \RuntimeException('Handler exploded'),
+        );
+        $bus = new TransactionalCommandBus(
+            $dispatcher,
+            app('db.connection'),
+            new FixedOutboxIdGenerator('test-uuid-002'),
+        );
+
+        $command = new class('data')
+        {
+            public function __construct(public string $value) {}
+        };
+
+        try {
+            $bus->dispatch($command);
+            self::fail('Expected RuntimeException was not thrown.');
+        } catch (\RuntimeException $e) {
+            self::assertSame('Handler exploded', $e->getMessage());
+        }
+
+        self::assertSame(0, DB::table('outbox_messages')->count());
+    }
+
+    #[Test]
+    public function transactional_bus_persists_non_sensitive_command_without_redaction(): void
+    {
+        $dispatcher = new TransactionalOutboxFakeDispatcher(42);
+        $bus = new TransactionalCommandBus(
+            $dispatcher,
+            app('db.connection'),
+            new FixedOutboxIdGenerator('test-uuid-003'),
+        );
+
+        $command = new class('hello', 123)
+        {
+            public function __construct(
+                public string $name,
+                public int $count,
+            ) {}
+        };
+
+        $result = $bus->dispatch($command);
+
+        self::assertSame(42, $result);
+
+        $entry = DB::table('outbox_messages')->first();
+        self::assertNotNull($entry);
+
+        /** @var array{name: string, count: int} $payload */
+        $payload = json_decode((string) $entry->payload, true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame('hello', $payload['name']);
+        self::assertSame(123, $payload['count']);
+        self::assertSame('PUBLISHED', $entry->status);
+    }
+}
+
+final class TransactionalOutboxFakeDispatcher implements Dispatcher
+{
+    public mixed $receivedCommand = null;
+
+    public function __construct(
+        private readonly mixed $result,
+        private readonly ?\Throwable $exception = null,
+    ) {}
+
+    public function dispatch($command)
+    {
+        return $this->dispatchSync($command);
+    }
+
+    public function dispatchSync($command, $handler = null)
+    {
+        $this->receivedCommand = $command;
+
+        if ($this->exception instanceof \Throwable) {
+            throw $this->exception;
+        }
+
+        return $this->result;
+    }
+
+    public function dispatchNow($command, $handler = null)
+    {
+        return $this->dispatchSync($command, $handler);
+    }
+
+    public function hasCommandHandler($command)
+    {
+        return true;
+    }
+
+    public function getCommandHandler($command)
+    {
+        return null;
+    }
+
+    public function pipeThrough(array $pipes)
+    {
+        return $this;
+    }
+
+    public function map(array $map)
+    {
+        return $this;
+    }
+}
+
+final class FixedOutboxIdGenerator implements IdGeneratorInterface
+{
+    public function __construct(private readonly string $id) {}
+
+    public function generate(): string
+    {
+        return $this->id;
+    }
+}

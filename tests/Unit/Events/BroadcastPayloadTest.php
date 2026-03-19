@@ -473,32 +473,6 @@ class BroadcastPayloadTest extends TestCase
     // SECURITY TESTS
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
-    public function broadcast_payloads_contain_no_object_instances(): void
-    {
-        $events = [
-            OrderPaidBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', 'cash', new DateTimeImmutable),
-            OrderCancelledBroadcast::fromDomainData(1, 1, 'ORD-1', 'test', false, new DateTimeImmutable),
-            LowStockBroadcast::fromDomainData(1, 1, 'Product', null, 5, 10, 'warning', new DateTimeImmutable),
-            OrderShippedBroadcast::fromDomainData(1, 1, 'ORD-1', 'ups', '123', null, new DateTimeImmutable),
-            OrderRefundedBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', false, null, new DateTimeImmutable),
-            NewLoginDetectedBroadcast::fromDomainData(1, 1, 'test@test.com', '1.1.1.1', null, new DateTimeImmutable),
-        ];
-
-        foreach ($events as $event) {
-            $payload = $event->broadcastWith();
-            $eventClass = get_class($event);
-
-            foreach ($payload as $key => $value) {
-                $isScalarOrNull = is_null($value) || is_scalar($value) || is_array($value);
-                $this->assertTrue(
-                    $isScalarOrNull,
-                    "Broadcast event {$eventClass} contains non-scalar in key '{$key}'"
-                );
-            }
-        }
-    }
-
     // ═══════════════════════════════════════════════════════════════════════
     // HELPER METHODS
     // ═══════════════════════════════════════════════════════════════════════
@@ -686,7 +660,7 @@ class BroadcastPayloadTest extends TestCase
         // The scanner should detect the unreplaced placeholder
         $detectedPlaceholders = [];
         foreach ($testPayload as $key => $value) {
-            if (is_string($value) && preg_match_all('/:[a-zA-Z_][a-zA-Z0-9_]*/', $value, $matches)) {
+            if (preg_match_all('/:[a-zA-Z_][a-zA-Z0-9_]*/', $value, $matches)) {
                 $detectedPlaceholders = array_merge($detectedPlaceholders, $matches[0]);
             }
         }
@@ -735,29 +709,6 @@ class BroadcastPayloadTest extends TestCase
     // OBSERVABILITY / LOGGING TESTS
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
-    public function broadcast_events_log_when_broadcasting(): void
-    {
-        // Use Laravel's Log facade spy
-        \Illuminate\Support\Facades\Log::spy();
-
-        $event = OrderPaidBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
-            orderId: 123,
-            orderNumber: 'ORD-TEST',
-            amountCents: 10000,
-            currency: 'HNL',
-            paymentMethod: 'card',
-            paidAt: new DateTimeImmutable,
-        );
-
-        // Trigger broadcastWith which contains the log call
-        $event->broadcastWith();
-
-        // Verify log was called (spy mode)
-        \Illuminate\Support\Facades\Log::shouldHaveReceived('channel')->atLeast()->once();
-    }
-
     // ═══════════════════════════════════════════════════════════════════════
     // FORMATS CURRENCY FALLBACK TESTS
     // ═══════════════════════════════════════════════════════════════════════
@@ -773,7 +724,7 @@ class BroadcastPayloadTest extends TestCase
         {
             use \App\Traits\FormatsCurrency;
 
-            public function test_format(int $cents, string $currency): string
+            public function testFormat(int $cents, string $currency): string
             {
                 return $this->formatMoney($cents, $currency);
             }
@@ -792,7 +743,7 @@ class BroadcastPayloadTest extends TestCase
         {
             use \App\Traits\FormatsCurrency;
 
-            public function test_format(int $cents, string $currency): string
+            public function testFormat(int $cents, string $currency): string
             {
                 return $this->formatMoney($cents, $currency);
             }

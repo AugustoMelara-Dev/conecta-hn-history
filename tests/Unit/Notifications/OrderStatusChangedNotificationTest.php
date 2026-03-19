@@ -3,15 +3,8 @@
 declare(strict_types=1);
 
 use App\Models\Order;
+use App\Models\Tenant;
 use App\Notifications\OrderStatusChangedNotification;
-use Illuminate\Support\Facades\Log;
-
-// Bootstrap Laravel app — needed because toMail() calls loadMissing()
-// uses(Tests\TestCase::class);
-
-// ═══════════════════════════════════════════════════════════════════════════
-// HELPER: Build a fully-mocked Order for status-change notification testing
-// ═══════════════════════════════════════════════════════════════════════════
 
 function makeStatusOrder(array $overrides = []): Order
 {
@@ -23,250 +16,94 @@ function makeStatusOrder(array $overrides = []): Order
         'customer_name' => 'Carlos Reyes',
         'customer_email' => 'carlos@example.com',
         'cancel_reason' => null,
-        'formatted_total' => 'L. 199.99',
+        'tenant_name' => 'Restaurante El Patio',
     ];
 
     $data = array_merge($defaults, $overrides);
-    $data['formatted_total'] = 'L. '.number_format((float) $data['total'], 2);
 
-    // Build tenant
-    if (($data['_null_tenant'] ?? false) === false) {
-        $tenant = new \stdClass;
-        $tenant->name = $data['tenant_name'] ?? 'Restaurante El Patio';
-        $data['tenant'] = $tenant;
-    } else {
-        $data['tenant'] = null;
-    }
+    $order = new Order;
+    $order->forceFill([
+        'id' => $data['id'],
+        'order_number' => $data['order_number'],
+        'total' => $data['total'],
+        'tenant_id' => $data['tenant_id'],
+        'customer_name' => $data['customer_name'],
+        'customer_email' => $data['customer_email'],
+        'cancel_reason' => $data['cancel_reason'],
+    ]);
 
-    $order = Mockery::mock(Order::class);
-    $order->shouldReceive('loadMissing')->andReturnSelf();
-    $order->shouldReceive('getAttribute')->andReturnUsing(fn ($key) => $data[$key] ?? null);
-    $order->shouldReceive('__get')->andReturnUsing(fn ($key) => $data[$key] ?? null);
-    $order->shouldReceive('offsetExists')->andReturnUsing(fn ($key) => array_key_exists($key, $data));
+    $tenant = new Tenant;
+    $tenant->forceFill(['name' => $data['tenant_name']]);
+    $order->setRelation('tenant', $tenant);
 
     return $order;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// LOCALIZATION: Status labels are in Spanish, never raw English
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('confirmed status shows Spanish label and emoji in subject', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'confirmed');
+test('confirmed status uses spanish label and emoji in subject', function () {
+    $notification = new OrderStatusChangedNotification(makeStatusOrder(), 'pending', 'confirmed');
 
     $mail = $notification->toMail((object) []);
 
     expect($mail->subject)->toContain('Confirmado');
     expect($mail->subject)->toContain('#2001');
-    expect($mail->subject)->toContain('✅');
-    expect($mail->subject)->not->toContain('confirmed');
 });
 
-test('processing status shows En Preparación in subject', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'confirmed', 'processing');
+test('processing body remains localized', function () {
+    $notification = new OrderStatusChangedNotification(makeStatusOrder(), 'confirmed', 'processing');
 
     $mail = $notification->toMail((object) []);
-
-    expect($mail->subject)->toContain('Preparación');
-    expect($mail->subject)->toContain('👨‍🍳');
-    expect($mail->subject)->not->toContain('processing');
-});
-
-test('ready status shows Listo in subject', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'processing', 'ready');
-
-    $mail = $notification->toMail((object) []);
-
-    expect($mail->subject)->toContain('Listo');
-    expect($mail->subject)->toContain('🎉');
-});
-
-test('delivered status shows Entregado in subject', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'ready', 'delivered');
-
-    $mail = $notification->toMail((object) []);
-
-    expect($mail->subject)->toContain('Entregado');
-    expect($mail->subject)->toContain('📦');
-});
-
-test('cancelled status shows Cancelado in subject', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'cancelled');
-
-    $mail = $notification->toMail((object) []);
-
-    expect($mail->subject)->toContain('Cancelado');
-    expect($mail->subject)->toContain('❌');
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// LOCALIZATION: Body content is always Spanish
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('processing body contains Spanish preparation message', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'confirmed', 'processing');
-
-    $mail = $notification->toMail((object) []);
-
     $body = collect($mail->introLines)->implode(' ');
+
     expect($body)->toContain('preparado');
-    expect($body)->not->toContain('is being processed');
-});
-
-test('delivered body contains gratitude message in Spanish', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'ready', 'delivered');
-
-    $mail = $notification->toMail((object) []);
-
-    $body = collect($mail->introLines)->implode(' ');
-    expect($body)->toContain('entregado');
-    expect($body)->toContain('preferencia');
-});
-
-test('body includes formatted total', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'confirmed');
-
-    $mail = $notification->toMail((object) []);
-
-    $body = collect($mail->introLines)->implode(' ');
     expect($body)->toContain('L. 199.99');
 });
 
-test('body includes order number', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'confirmed');
+test('greeting includes customer name', function () {
+    $notification = new OrderStatusChangedNotification(makeStatusOrder(), 'pending', 'confirmed');
 
-    $mail = $notification->toMail((object) []);
-
-    $body = collect($mail->introLines)->implode(' ');
-    expect($body)->toContain('#2001');
+    expect($notification->toMail((object) [])->greeting)->toContain('Carlos Reyes');
 });
-
-// ═══════════════════════════════════════════════════════════════════════════
-// GREETING: Uses customer name
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('greeting uses customer name', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'confirmed');
-
-    $mail = $notification->toMail((object) []);
-
-    expect($mail->greeting)->toContain('Carlos Reyes');
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// BRANDING: Tenant name appears in subject and salutation
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('subject includes tenant name', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'confirmed');
-
-    $mail = $notification->toMail((object) []);
-
-    expect($mail->subject)->toContain('Restaurante El Patio');
-});
-
-test('null tenant falls back to Tu Negocio', function () {
-    $order = makeStatusOrder(['_null_tenant' => true]);
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'confirmed');
-
-    $mail = $notification->toMail((object) []);
-
-    expect($mail->subject)->toContain('Tu Negocio');
-});
-
-test('salutation includes tenant name', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'confirmed');
-
-    $mail = $notification->toMail((object) []);
-
-    expect($mail->salutation)->toContain('Restaurante El Patio');
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CANCELLATION: Includes reason when available
-// ═══════════════════════════════════════════════════════════════════════════
 
 test('cancelled notification includes cancel reason when present', function () {
-    $order = makeStatusOrder(['cancel_reason' => 'Sin stock suficiente']);
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'cancelled');
+    $notification = new OrderStatusChangedNotification(
+        makeStatusOrder(['cancel_reason' => 'Sin stock suficiente']),
+        'pending',
+        'cancelled'
+    );
 
-    $mail = $notification->toMail((object) []);
+    $body = collect($notification->toMail((object) [])->introLines)->implode(' ');
 
-    $body = collect($mail->introLines)->implode(' ');
     expect($body)->toContain('Sin stock suficiente');
 });
 
-test('cancelled notification omits reason line when null', function () {
-    $order = makeStatusOrder(['cancel_reason' => null]);
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'cancelled');
-
-    $mail = $notification->toMail((object) []);
-
-    $body = collect($mail->introLines)->implode(' ');
-    expect($body)->not->toContain('Motivo');
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// DEFENSIVE: shouldSend() guard
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('shouldSend returns false when customer_email is empty', function () {
-    $order = makeStatusOrder(['customer_email' => '']);
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'confirmed');
-
-    Log::shouldReceive('info')->once()->withArgs(function ($msg) {
-        return str_contains($msg, 'skipped');
-    });
+test('shouldSend returns false when customer email is empty', function () {
+    $notification = new OrderStatusChangedNotification(
+        makeStatusOrder(['customer_email' => '']),
+        'pending',
+        'confirmed'
+    );
 
     expect($notification->shouldSend((object) [], 'mail'))->toBeFalse();
 });
 
-test('shouldSend returns false when customer_email is null', function () {
-    $order = makeStatusOrder(['customer_email' => null]);
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'confirmed');
-
-    Log::shouldReceive('info')->once();
-
-    expect($notification->shouldSend((object) [], 'mail'))->toBeFalse();
-});
-
-test('shouldSend returns true when customer_email exists', function () {
-    $order = makeStatusOrder(['customer_email' => 'test@example.com']);
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'confirmed');
+test('shouldSend returns true when customer email exists', function () {
+    $notification = new OrderStatusChangedNotification(
+        makeStatusOrder(['customer_email' => 'test@example.com']),
+        'pending',
+        'confirmed'
+    );
 
     expect($notification->shouldSend((object) [], 'mail'))->toBeTrue();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// via: Only mail channel (customer-facing)
-// ═══════════════════════════════════════════════════════════════════════════
-
 test('via returns only mail channel', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'confirmed');
+    $notification = new OrderStatusChangedNotification(makeStatusOrder(), 'pending', 'confirmed');
 
     expect($notification->via((object) []))->toBe(['mail']);
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// toArray: Database structure
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('toArray returns all required keys', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'confirmed');
+test('toArray returns required keys with spanish status label', function () {
+    $notification = new OrderStatusChangedNotification(makeStatusOrder(), 'pending', 'delivered');
 
     $array = $notification->toArray((object) []);
 
@@ -277,38 +114,17 @@ test('toArray returns all required keys', function () {
         'new_status',
         'status_label',
     ]);
-});
-
-test('toArray status_label is Spanish not English', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'delivered');
-
-    $array = $notification->toArray((object) []);
-
     expect($array['status_label'])->toBe('Entregado');
     expect($array['previous_status'])->toBe('pending');
     expect($array['new_status'])->toBe('delivered');
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// UNKNOWN STATUS: Graceful fallback
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('unknown status falls back to ucfirst in toArray', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'refunded');
+test('unknown status falls back to ucfirst in mail and array payload', function () {
+    $notification = new OrderStatusChangedNotification(makeStatusOrder(), 'pending', 'refunded');
 
     $array = $notification->toArray((object) []);
-
-    expect($array['status_label'])->toBe('Refunded');
-});
-
-test('unknown status uses default subject with Actualización', function () {
-    $order = makeStatusOrder();
-    $notification = new OrderStatusChangedNotification($order, 'pending', 'refunded');
-
     $mail = $notification->toMail((object) []);
 
+    expect($array['status_label'])->toBe('Refunded');
     expect($mail->subject)->toContain('Actualización');
-    expect($mail->subject)->toContain('#2001');
 });

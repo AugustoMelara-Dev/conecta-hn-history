@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Domain\Shared\Services\TenantContext;
-use ReflectionNamedType;
 
 /**
  * VC-AUDIT-008: TenantContext Security Test

@@ -6,7 +6,6 @@ use App\Application\Auth\Commands\VerifyOtpCommand;
 use App\Application\Payments\Commands\HandlePaymentWebhookCommand;
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Tenant\Results\UpdateScheduleResult;
-use ReflectionNamedType;
 
 it('CreateOrderCommand PII properties have SensitiveParameter attribute', function () {
     $reflection = new ReflectionClass(CreateOrderCommand::class);

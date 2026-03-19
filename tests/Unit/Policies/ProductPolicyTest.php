@@ -93,11 +93,13 @@ function makePolicyTenant(
     $countExpectation = $productsRelation->shouldReceive('count');
     $countExpectation->andReturn($productCount);
 
-    $tenant = new class($productsRelation) extends Tenant
+    $tenant = new class extends Tenant
     {
-        public function __construct(private HasMany $productsRelation)
+        private HasMany $productsRelation;
+
+        public function setProductsRelation(HasMany $productsRelation): void
         {
-            parent::__construct();
+            $this->productsRelation = $productsRelation;
         }
 
         public function products(): HasMany
@@ -105,6 +107,8 @@ function makePolicyTenant(
             return $this->productsRelation;
         }
     };
+
+    $tenant->setProductsRelation($productsRelation);
 
     $tenant->forceFill([
         'id' => normalizeProductTenantId($tenantId),

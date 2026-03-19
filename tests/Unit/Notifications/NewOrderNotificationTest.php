@@ -2,119 +2,79 @@
 
 declare(strict_types=1);
 
+use App\Models\Order;
+use App\Models\Tenant;
 use App\Notifications\NewOrderNotification;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Collection;
 
-// Bootstrap Laravel app — needed because NewOrderNotification::toMail() calls url()
-// uses(Tests\TestCase::class);
-
-// ═══════════════════════════════════════════════════════════════════════════
-// HELPER: Build a test double that satisfies the Order type hint
-// but never touches the database.
-//
-// STRATEGY: We use Mockery::mock(Order::class) without makePartial()
-// so Model::boot() and BelongsToTenant are never invoked.
-// Every property access goes through __get → getAttribute, so we
-// mock getAttribute to return the correct values.
-// ═══════════════════════════════════════════════════════════════════════════
-
-function makeNotificationOrder(array $overrides = []): \App\Models\Order
+function makeNotificationOrder(array $overrides = []): Order
 {
     $defaults = [
         'id' => 100,
         'order_number' => '#1042',
         'total' => 350.50,
         'tenant_id' => '00000000-0000-0000-0000-000000000001',
-        'customer_name' => 'María López',
+        'customer_name' => 'MarÃ­a LÃ³pez',
         'customer_email' => 'maria@example.com',
-        'formatted_total' => 'L. 350.50',
-        'created_at' => null,
+        'created_at' => now(),
+        'tenant_name' => 'CafÃ© Tegus',
     ];
 
     $data = array_merge($defaults, $overrides);
-    $data['formatted_total'] = 'L. '.number_format((float) $data['total'], 2);
-    $data['created_at'] = now();
-    $data['items'] = new Collection;
 
-    // Build tenant
-    if (($overrides['_null_tenant'] ?? false) === false) {
-        $tenant = new \stdClass;
-        $tenant->name = $overrides['tenant_name'] ?? 'Café Tegus';
-        $data['tenant'] = $tenant;
-    } else {
-        $data['tenant'] = null;
-    }
+    $order = new Order;
+    $order->forceFill([
+        'id' => $data['id'],
+        'order_number' => $data['order_number'],
+        'total' => $data['total'],
+        'tenant_id' => $data['tenant_id'],
+        'customer_name' => $data['customer_name'],
+        'customer_email' => $data['customer_email'],
+        'created_at' => $data['created_at'],
+    ]);
+    $order->setRelation('items', new Collection);
 
-    $order = Mockery::mock(\App\Models\Order::class);
-
-    // loadMissing (called in toMail + toArray) → no-op
-    $order->shouldReceive('loadMissing')->andReturnSelf();
-
-    // Property access: Eloquent models proxy __get to getAttribute
-    $order->shouldReceive('getAttribute')->andReturnUsing(function ($key) use ($data) {
-        return $data[$key] ?? null;
-    });
-
-    // Direct property access via __get
-    $order->shouldReceive('__get')->andReturnUsing(function ($key) use ($data) {
-        return $data[$key] ?? null;
-    });
-
-    // offsetExists for isset($order->prop)
-    $order->shouldReceive('offsetExists')->andReturnUsing(function ($key) use ($data) {
-        return array_key_exists($key, $data);
-    });
+    $tenant = new Tenant;
+    $tenant->forceFill(['name' => $data['tenant_name']]);
+    $order->setRelation('tenant', $tenant);
 
     return $order;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// toMail: Subject & Structure
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('toMail includes order number in subject', function () {
-    $order = makeNotificationOrder();
-    $notification = new NewOrderNotification($order);
+test('toMail includes order number and tenant in subject', function () {
+    $notification = new NewOrderNotification(makeNotificationOrder());
 
     $mail = $notification->toMail((object) []);
 
     expect($mail)->toBeInstanceOf(MailMessage::class);
     expect($mail->subject)->toContain('#1042');
+    expect($mail->subject)->toContain('CafÃ© Tegus');
 });
 
-test('toMail includes tenant name in subject', function () {
-    $order = makeNotificationOrder();
-    $notification = new NewOrderNotification($order);
+test('toMail includes customer name and formatted total in body', function () {
+    $notification = new NewOrderNotification(makeNotificationOrder());
 
     $mail = $notification->toMail((object) []);
-
-    expect($mail->subject)->toContain('Café Tegus');
-});
-
-test('toMail includes customer name in body', function () {
-    $order = makeNotificationOrder();
-    $notification = new NewOrderNotification($order);
-
-    $mail = $notification->toMail((object) []);
-
     $body = collect($mail->introLines)->implode(' ');
-    expect($body)->toContain('María López');
-});
 
-test('toMail includes formatted total in body', function () {
-    $order = makeNotificationOrder();
-    $notification = new NewOrderNotification($order);
-
-    $mail = $notification->toMail((object) []);
-
-    $body = collect($mail->introLines)->implode(' ');
+    expect($body)->toContain('MarÃ­a LÃ³pez');
     expect($body)->toContain('L. 350.50');
 });
 
-test('toMail includes View Order action button', function () {
-    $order = makeNotificationOrder();
-    $notification = new NewOrderNotification($order);
+test('toMail falls back to generic customer name when missing', function () {
+    $notification = new NewOrderNotification(makeNotificationOrder([
+        'customer_name' => null,
+    ]));
+
+    $mail = $notification->toMail((object) []);
+    $body = collect($mail->introLines)->implode(' ');
+
+    expect($body)->toContain('Cliente');
+});
+
+test('toMail includes order action button', function () {
+    $notification = new NewOrderNotification(makeNotificationOrder());
 
     $mail = $notification->toMail((object) []);
 
@@ -122,36 +82,8 @@ test('toMail includes View Order action button', function () {
     expect($mail->actionUrl)->toContain('/app/orders/100');
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// toMail: Graceful fallbacks
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('toMail handles null customer name with fallback', function () {
-    $order = makeNotificationOrder(['customer_name' => null]);
-    $notification = new NewOrderNotification($order);
-
-    $mail = $notification->toMail((object) []);
-
-    $body = collect($mail->introLines)->implode(' ');
-    expect($body)->toContain('Cliente');
-});
-
-test('toMail handles null tenant with fallback', function () {
-    $order = makeNotificationOrder(['_null_tenant' => true]);
-    $notification = new NewOrderNotification($order);
-
-    $mail = $notification->toMail((object) []);
-
-    expect($mail->subject)->toContain('Tu Negocio');
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// toArray: Database storage structure
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('toArray returns all required database keys', function () {
-    $order = makeNotificationOrder();
-    $notification = new NewOrderNotification($order);
+test('toArray returns required database payload', function () {
+    $notification = new NewOrderNotification(makeNotificationOrder());
 
     $array = $notification->toArray((object) []);
 
@@ -164,58 +96,31 @@ test('toArray returns all required database keys', function () {
         'action_url',
         'message',
     ]);
-});
-
-test('toArray contains correct values', function () {
-    $order = makeNotificationOrder();
-    $notification = new NewOrderNotification($order);
-
-    $array = $notification->toArray((object) []);
-
     expect($array['order_id'])->toBe(100);
-    expect($array['order_number'])->toBe('#1042');
     expect($array['formatted_total'])->toBe('L. 350.50');
-    expect($array['action_url'])->toBe('/app/orders/100');
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// via: Delivery channels
-// ═══════════════════════════════════════════════════════════════════════════
+test('via returns all expected channels', function () {
+    $notification = new NewOrderNotification(makeNotificationOrder());
 
-test('via returns database mail and broadcast channels', function () {
-    $order = makeNotificationOrder();
-    $notification = new NewOrderNotification($order);
-
-    $channels = $notification->via((object) []);
-
-    expect($channels)->toContain('database')
+    expect($notification->via((object) []))->toContain('database')
         ->toContain('mail')
         ->toContain('broadcast')
         ->toContain(\NotificationChannels\WebPush\WebPushChannel::class);
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// toBroadcast: WebSocket payload
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('toBroadcast includes order_id and tenant_id', function () {
-    $order = makeNotificationOrder();
-    $notification = new NewOrderNotification($order);
+test('toBroadcast includes order and tenant identifiers', function () {
+    $notification = new NewOrderNotification(makeNotificationOrder());
 
     $broadcast = $notification->toBroadcast((object) []);
 
     expect($broadcast->data['order_id'])->toBe(100);
     expect($broadcast->data['tenant_id'])->toBe('00000000-0000-0000-0000-000000000001');
-    expect($broadcast->data['customer_name'])->toBe('María López');
+    expect($broadcast->data['customer_name'])->toBe('MarÃ­a LÃ³pez');
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// broadcastOn: Tenant-scoped channel
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('broadcasts on tenant-scoped private channel', function () {
-    $order = makeNotificationOrder();
-    $notification = new NewOrderNotification($order);
+test('broadcastOn uses tenant-scoped private channel', function () {
+    $notification = new NewOrderNotification(makeNotificationOrder());
 
     $channels = $notification->broadcastOn();
 

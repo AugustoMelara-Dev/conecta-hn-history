@@ -5,53 +5,34 @@ declare(strict_types=1);
 namespace Tests\Unit\Infrastructure\Security;
 
 use App\Infrastructure\Security\CacheTenantRateLimiter;
+use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\RateLimiter;
+use Illuminate\Cache\Repository;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
-use Mockery;
-
-// uses(\Tests\TestCase::class);
 
 test('ensureNotExceeded allows request within limit', function () {
-    $mockLimiter = Mockery::mock(RateLimiter::class);
-    $key = 'test-action:tenant:tenant-123';
-
-    $mockLimiter->shouldReceive('tooManyAttempts')
-        ->once()
-        ->with($key, 10)
-        ->andReturn(false);
-
-    $mockLimiter->shouldReceive('hit')
-        ->once()
-        ->with($key, 60);
-
-    $rateLimiter = new CacheTenantRateLimiter($mockLimiter);
+    [$limiter, $rateLimiter] = makeTenantRateLimiter();
 
     $rateLimiter->ensureNotExceeded('test-action', 'tenant-123', 10, 1);
+
+    expect($limiter->tooManyAttempts('test-action:tenant:tenant-123', 10))->toBeFalse();
 });
 
 test('ensureNotExceeded throws exception when limit exceeded', function () {
-    $mockLimiter = Mockery::mock(RateLimiter::class);
+    [$limiter, $rateLimiter] = makeTenantRateLimiter();
     $key = 'test-action:tenant:tenant-123';
 
-    $mockLimiter->shouldReceive('tooManyAttempts')
-        ->once()
-        ->with($key, 10)
-        ->andReturn(true);
-
-    $mockLimiter->shouldReceive('availableIn')
-        ->once()
-        ->with($key)
-        ->andReturn(30);
-
-    $rateLimiter = new CacheTenantRateLimiter($mockLimiter);
+    for ($attempt = 0; $attempt < 10; $attempt++) {
+        $limiter->hit($key, 60);
+    }
 
     expect(fn () => $rateLimiter->ensureNotExceeded('test-action', 'tenant-123', 10, 1))
         ->toThrow(ThrottleRequestsException::class);
 });
 
 test('ensureNotExceeded enforces tenant isolation', function () {
-    // This test simulates a scenario where one tenant is blocked but another is not using mocked interactions
-    $mockLimiter = Mockery::mock(RateLimiter::class);
+    [$limiter, $rateLimiter] = makeTenantRateLimiter();
+
     $tenantA = 'tenant-A';
     $tenantB = 'tenant-B';
     $action = 'test-action';
@@ -59,33 +40,25 @@ test('ensureNotExceeded enforces tenant isolation', function () {
     $keyA = "{$action}:tenant:{$tenantA}";
     $keyB = "{$action}:tenant:{$tenantB}";
 
-    // Tenant A is blocked
-    $mockLimiter->shouldReceive('tooManyAttempts')
-        ->with($keyA, 10)
-        ->andReturn(true);
-
-    $mockLimiter->shouldReceive('availableIn')
-        ->with($keyA)
-        ->andReturn(60);
-
-    // Tenant B is NOT blocked
-    $mockLimiter->shouldReceive('tooManyAttempts')
-        ->with($keyB, 10)
-        ->andReturn(false);
-
-    $mockLimiter->shouldReceive('hit')
-        ->with($keyB, 60);
-
-    $rateLimiter = new CacheTenantRateLimiter($mockLimiter);
-
-    // Check Tenant A
-    try {
-        $rateLimiter->ensureNotExceeded($action, $tenantA, 10, 1);
-        $this->fail('Tenant A should be throttled');
-    } catch (ThrottleRequestsException $e) {
-        expect(true)->toBeTrue();
+    for ($attempt = 0; $attempt < 10; $attempt++) {
+        $limiter->hit($keyA, 60);
     }
 
-    // Check Tenant B - should succeed
+    expect(fn () => $rateLimiter->ensureNotExceeded($action, $tenantA, 10, 1))
+        ->toThrow(ThrottleRequestsException::class);
+
     $rateLimiter->ensureNotExceeded($action, $tenantB, 10, 1);
+
+    expect($limiter->tooManyAttempts($keyA, 10))->toBeTrue();
+    expect($limiter->tooManyAttempts($keyB, 10))->toBeFalse();
 });
+
+/**
+ * @return array{0: RateLimiter, 1: CacheTenantRateLimiter}
+ */
+function makeTenantRateLimiter(): array
+{
+    $limiter = new RateLimiter(new Repository(new ArrayStore));
+
+    return [$limiter, new CacheTenantRateLimiter($limiter)];
+}

@@ -6,7 +6,7 @@ use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\CommandUpcasterInterface;
 use App\Application\Shared\Decorators\UpcastingCommandBus;
 
-final class RecordingCommandBus implements CommandBusInterface
+final class UpcastingTestCommandBus implements CommandBusInterface
 {
     public ?object $receivedCommand = null;
 
@@ -20,7 +20,7 @@ final class RecordingCommandBus implements CommandBusInterface
     }
 }
 
-final class CallbackUpcaster implements CommandUpcasterInterface
+final class UpcastingTestCallbackUpcaster implements CommandUpcasterInterface
 {
     /**
      * @param  callable(object): bool  $supports
@@ -59,8 +59,8 @@ it('upcasts commands and delegates to the next bus within tenant context', funct
         public function __construct(public string $tenantId) {}
     };
 
-    $nextBus = new RecordingCommandBus('success');
-    $upcaster = new CallbackUpcaster(
+    $nextBus = new UpcastingTestCommandBus('success');
+    $upcaster = new UpcastingTestCallbackUpcaster(
         supports: fn (object $command): bool => $command === $originalCommand,
         upcast: fn (object $command): object => $command === $originalCommand ? $upcastedCommand : $command,
     );
@@ -81,8 +81,8 @@ it('bypasses upcasting if not supported keeping tenant intact', function () {
         public function __construct(public string $tenantId) {}
     };
 
-    $nextBus = new RecordingCommandBus('passthrough');
-    $upcaster = new CallbackUpcaster(
+    $nextBus = new UpcastingTestCommandBus('passthrough');
+    $upcaster = new UpcastingTestCallbackUpcaster(
         supports: fn (object $received): bool => false,
         upcast: fn (object $received): object => $received,
     );
@@ -117,12 +117,12 @@ it('chains multiple upcasters in sequence', function () {
         public function __construct(public string $tenantId) {}
     };
 
-    $nextBus = new RecordingCommandBus('v3_result');
-    $upcasterA = new CallbackUpcaster(
+    $nextBus = new UpcastingTestCommandBus('v3_result');
+    $upcasterA = new UpcastingTestCallbackUpcaster(
         supports: fn (object $command): bool => $command === $v1Command,
         upcast: fn (object $command): object => $command === $v1Command ? $v2Command : $command,
     );
-    $upcasterB = new CallbackUpcaster(
+    $upcasterB = new UpcastingTestCallbackUpcaster(
         supports: fn (object $command): bool => $command === $v2Command,
         upcast: fn (object $command): object => $command === $v2Command ? $v3Command : $command,
     );
@@ -141,7 +141,7 @@ it('passes command through unmodified when no upcasters are registered', functio
         public function __construct(public string $tenantId) {}
     };
 
-    $nextBus = new RecordingCommandBus('direct');
+    $nextBus = new UpcastingTestCommandBus('direct');
     $decorator = new UpcastingCommandBus($nextBus, []);
 
     expect($decorator->dispatch($command))->toBe('direct');

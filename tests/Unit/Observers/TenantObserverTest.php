@@ -8,18 +8,19 @@ use App\Models\User;
 use App\Observers\TenantObserver;
 use App\Services\TenantCacheManager;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
 
 final class RecordingObserverUser extends User
 {
     /** @var list<array<string, mixed>> */
     public array $updatedPayloads = [];
 
-    public function __construct(UserRole $role)
+    public function __construct(?UserRole $role = null)
     {
         parent::__construct();
 
-        $this->forceFill(['role' => $role]);
+        if ($role instanceof UserRole) {
+            $this->forceFill(['role' => $role]);
+        }
     }
 
     public function update(array $attributes = [], array $options = []): bool

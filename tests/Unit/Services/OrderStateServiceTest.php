@@ -4,162 +4,62 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\Contracts\InventoryManagerInterface;
-use App\Domain\Sales\Events\OrderCancelled;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use App\Domain\Shared\ValueObjects\TenantId;
+use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
 use App\Services\OrderStateService;
-use App\ValueObjects\OrderNumber;
-use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * OrderStateServiceTest - Pure Domain Unit Test
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  PURE UNIT TEST: No Laravel, No Database, No Framework                  ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║                                                                          ║
- * ║  This test demonstrates the power of DomainEventBus abstraction:       ║
- * ║                                                                          ║
- * ║  BEFORE (Coupled to Laravel):                                           ║
- * ║    - Required full Laravel bootstrap                                    ║
- * ║    - Required database migrations                                       ║
- * ║    - Used Event::fake() which is heavy                                 ║
- * ║    - Tests took 5-10 seconds each                                      ║
- * ║                                                                          ║
- * ║  AFTER (Pure Unit Test):                                                ║
- * ║    - Uses InMemoryEventBus (simple array storage)                      ║
- * ║    - No database required                                              ║
- * ║    - Mocks Eloquent models directly                                    ║
- * ║    - Tests run in milliseconds                                         ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * NOTE: This is a UNIT test for the service layer logic.
- * For integration testing with real database, use Feature tests.
- */
-class OrderStateServiceTest extends TestCase
+final class OrderStateServiceTest extends TestCase
 {
-    private EventDispatcherInterface $eventDispatcher;
-
-    private InventoryManagerInterface $inventoryManager;
-
     private OrderStateService $service;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        // Mock EventDispatcherInterface
-        $this->eventDispatcher = Mockery::mock(EventDispatcherInterface::class);
-
-        // Mock InventoryManagerInterface (we're testing OrderStateService, not InventoryManager)
-        $this->inventoryManager = Mockery::mock(InventoryManagerInterface::class);
-
-        // Create service with mocked dependencies
-        $this->service = new OrderStateService(
-            $this->inventoryManager,
-            $this->eventDispatcher,
-        );
+        $this->service = new OrderStateService(new NullEventDispatcher);
     }
 
-    protected function tearDown(): void
+    #[Test]
+    public function it_allows_valid_transitions(): void
     {
-        Mockery::close();
-        parent::tearDown();
+        $this->assertTrue($this->service->canTransition(Order::STATUS_PENDING, Order::STATUS_CONFIRMED));
+        $this->assertTrue($this->service->canTransition(Order::STATUS_READY, Order::STATUS_DELIVERED));
+        $this->assertTrue($this->service->canTransition(Order::STATUS_PROCESSING, Order::STATUS_CANCELLED));
     }
 
-    /**
-     * Verify that cancelling an order publishes OrderCancelled event.
-     */
-    #[\PHPUnit\Framework\Attributes\Test]
-    public function it_publishes_order_cancelled_event_on_cancellation(): void
+    #[Test]
+    public function it_rejects_invalid_transitions(): void
     {
-        // Arrange: Create a mock order
-        $order = Mockery::mock(Order::class);
-        $order->shouldReceive('getAttribute')->with('status')->andReturn(Order::STATUS_PENDING);
-        $order->shouldReceive('getAttribute')->with('tenant_id')->andReturn(\Illuminate\Support\Str::uuid()->toString());
-        $order->shouldReceive('getAttribute')->with('id')->andReturn(123);
-        $order->shouldReceive('getAttribute')->with('order_number')->andReturn('ORD-1001');
-        $order->shouldReceive('isPaid')->andReturn(false);
-        $order->allows('update');
+        $this->assertFalse($this->service->canTransition(Order::STATUS_PENDING, Order::STATUS_READY));
+        $this->assertFalse($this->service->canTransition(Order::STATUS_DELIVERED, Order::STATUS_CANCELLED));
+    }
 
-        // Allow InventoryManager calls for cancellation
-        $this->inventoryManager->allows('restoreFromCancellation')
-            ->with($order);
+    #[Test]
+    public function it_throws_for_invalid_transition_attempts(): void
+    {
+        $this->expectException(InvalidOrderTransitionException::class);
+        $this->expectExceptionMessage("No se puede pasar de 'pending' a 'ready'");
 
-        // We need to mock the DB transaction
-        // NOTE: In real tests, you'd use DatabaseTransactions trait for integration tests
+        $this->service->validateTransition(Order::STATUS_PENDING, Order::STATUS_READY);
+    }
 
-        // Verify: Check that the event dispatcher received the correct event
-        $tenantId = \Illuminate\Support\Str::uuid()->toString();
-        $this->eventDispatcher->shouldReceive('dispatch')
-            ->once()
-            ->with(Mockery::on(function ($event) use ($tenantId) {
-                return $event instanceof OrderCancelled
-                    && $event->aggregateId() === '123'
-                    && $event->tenantId()->toString() === $tenantId
-                    && $event->orderNumber->toString() === 'ORD-1001'
-                    && $event->reason === 'customer_request'
-                    && ! $event->shouldAutoRefund();
-            }));
-
-        $event = new OrderCancelled(
-            tenantId: TenantId::fromString($tenantId),
-            orderId: 123,
-            orderNumber: OrderNumber::fromString('ORD-1001'),
-            reason: 'customer_request',
-            cancelledById: 42,
-            wasPaid: false,
+    #[Test]
+    public function it_returns_allowed_transitions_for_each_state(): void
+    {
+        $this->assertSame(
+            [Order::STATUS_PROCESSING, Order::STATUS_CANCELLED],
+            $this->service->getAllowedTransitions(Order::STATUS_CONFIRMED)
         );
 
-        $this->assertSame('123', $event->aggregateId());
-        $this->assertSame($tenantId, $event->tenantId()->toString());
-        $this->assertFalse($event->shouldAutoRefund());
-
-        // Act: Manually dispatch to test
-        $this->eventDispatcher->dispatch($event);
+        $this->assertSame([], $this->service->getAllowedTransitions(Order::STATUS_DELIVERED));
+        $this->assertSame([], $this->service->getAllowedTransitions('non-existent-status'));
     }
+}
 
-    /**
-     * Verify that OrderCancelled with wasPaid=true triggers refund flag.
-     */
-    #[\PHPUnit\Framework\Attributes\Test]
-    public function it_sets_auto_refund_when_order_was_paid(): void
-    {
-        // Arrange
-        $event = new OrderCancelled(
-            tenantId: TenantId::fromString(\Illuminate\Support\Str::uuid()->toString()),
-            orderId: 456,
-            orderNumber: OrderNumber::fromString('ORD-2002'),
-            reason: 'out_of_stock',
-            cancelledById: null, // System cancellation
-            wasPaid: true,
-        );
-
-        $this->eventDispatcher->shouldReceive('dispatch')
-            ->once()
-            ->with(Mockery::on(function ($dispatchedEvent) {
-                return $dispatchedEvent instanceof OrderCancelled
-                    && $dispatchedEvent->shouldAutoRefund() === true
-                    && $dispatchedEvent->isSystemCancellation() === true;
-            }));
-
-        $this->assertTrue($event->shouldAutoRefund());
-        $this->assertTrue($event->isSystemCancellation());
-
-        // Act
-        $this->eventDispatcher->dispatch($event);
-    }
-
-    /**
-     * Verify InMemoryEventBus reset functionality.
-     */
-    #[\PHPUnit\Framework\Attributes\Test]
-    public function it_can_reset_event_bus_between_tests(): void
-    {
-        // Test not applicable for Mockery mocks.
-        $this->assertTrue(true);
-    }
+final class NullEventDispatcher implements EventDispatcherInterface
+{
+    public function dispatch(object $event): void {}
 }

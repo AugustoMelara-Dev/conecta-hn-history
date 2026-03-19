@@ -24,7 +24,7 @@ class IdempotencyLifecycleTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function it_can_connect_to_db()
     {
-        $this->assertTrue(DB::connection() instanceof \Illuminate\Database\ConnectionInterface);
+        $this->assertSame(1, (int) DB::scalar('select 1'));
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
@@ -73,8 +73,9 @@ class IdempotencyLifecycleTest extends TestCase
             $this->service->execute($key, $tenantId, $hash, function () {
                 throw new \DomainException('Business Logic Failure');
             });
-        } catch (\DomainException $e) {
-            // Expected
+            $this->fail('Expected domain exception was not thrown.');
+        } catch (\Throwable $e) {
+            $this->assertInstanceOf(\DomainException::class, $e);
         }
 
         // 3. Verify Lock Release (Rollback)
