@@ -724,7 +724,7 @@ class BroadcastPayloadTest extends TestCase
         {
             use \App\Traits\FormatsCurrency;
 
-            public function testFormat(int $cents, string $currency): string
+            public function test_format(int $cents, string $currency): string
             {
                 return $this->formatMoney($cents, $currency);
             }
@@ -733,7 +733,7 @@ class BroadcastPayloadTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Currency code cannot be empty');
 
-        $formatter->testFormat(1000, '');
+        $formatter->test_format(1000, '');
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
@@ -743,18 +743,18 @@ class BroadcastPayloadTest extends TestCase
         {
             use \App\Traits\FormatsCurrency;
 
-            public function testFormat(int $cents, string $currency): string
+            public function test_format(int $cents, string $currency): string
             {
                 return $this->formatMoney($cents, $currency);
             }
         };
 
         // Test MXN (Mexican Peso)
-        $mxnResult = $formatter->testFormat(15000, 'MXN');
+        $mxnResult = $formatter->test_format(15000, 'MXN');
         $this->assertNotEmpty($mxnResult);
 
         // Test GTQ (Guatemalan Quetzal)
-        $gtqResult = $formatter->testFormat(25000, 'GTQ');
+        $gtqResult = $formatter->test_format(25000, 'GTQ');
         $this->assertNotEmpty($gtqResult);
     }
 

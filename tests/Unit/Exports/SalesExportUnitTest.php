@@ -239,22 +239,22 @@ class SalesExportUnitTest extends TestCase
         {
             use SanitizesOutput;
 
-            public function testSanitize(mixed $input): mixed
+            public function test_sanitize(mixed $input): mixed
             {
                 return $this->sanitize($input);
             }
         };
 
         // Test dangerous prefixes that always get escaped
-        $this->assertEquals("'=CMD|'/C calc'!A1", $export->testSanitize("=CMD|'/C calc'!A1"));
-        $this->assertEquals("'@{malicious}", $export->testSanitize('@{malicious}'));
+        $this->assertEquals("'=CMD|'/C calc'!A1", $export->test_sanitize("=CMD|'/C calc'!A1"));
+        $this->assertEquals("'@{malicious}", $export->test_sanitize('@{malicious}'));
 
         // Test that formulas starting with - are escaped
-        $this->assertEquals("'-SUM(A1:A10)", $export->testSanitize('-SUM(A1:A10)'));
+        $this->assertEquals("'-SUM(A1:A10)", $export->test_sanitize('-SUM(A1:A10)'));
 
         // Test safe strings pass through unchanged
-        $this->assertEquals('Normal text', $export->testSanitize('Normal text'));
-        $this->assertEquals('100.00', $export->testSanitize('100.00'));
+        $this->assertEquals('Normal text', $export->test_sanitize('Normal text'));
+        $this->assertEquals('100.00', $export->test_sanitize('100.00'));
     }
 
     /**
@@ -267,20 +267,20 @@ class SalesExportUnitTest extends TestCase
         {
             use SanitizesOutput;
 
-            public function testSanitize(mixed $input): mixed
+            public function test_sanitize(mixed $input): mixed
             {
                 return $this->sanitize($input);
             }
         };
 
         // CRITICAL: Negative numbers must NOT be escaped
-        $this->assertEquals('-150.00', $export->testSanitize('-150.00'));
-        $this->assertEquals('-1234567890', $export->testSanitize('-1234567890'));
-        $this->assertEquals('+42', $export->testSanitize('+42'));
-        $this->assertEquals('-0.50', $export->testSanitize('-0.50'));
+        $this->assertEquals('-150.00', $export->test_sanitize('-150.00'));
+        $this->assertEquals('-1234567890', $export->test_sanitize('-1234567890'));
+        $this->assertEquals('+42', $export->test_sanitize('+42'));
+        $this->assertEquals('-0.50', $export->test_sanitize('-0.50'));
 
         // Currency-like negative numbers should also be preserved
-        $this->assertEquals('-$150.00', $export->testSanitize('-$150.00'));
+        $this->assertEquals('-$150.00', $export->test_sanitize('-$150.00'));
     }
 
     // ═══════════════════════════════════════════════════════════════════════
