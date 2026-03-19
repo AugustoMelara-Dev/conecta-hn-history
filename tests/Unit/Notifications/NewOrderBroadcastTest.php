@@ -26,7 +26,7 @@ describe('NewOrderNotification Broadcasting', function () {
         // Create mock order
         $order = new Order;
         $order->id = 1;
-        $order->tenant_id = 42;
+        $order->tenant_id = '42';
         $order->order_number = 'TEST-001';
         $order->total = 100.00;
         $order->customer_name = 'Test Customer';
@@ -45,7 +45,7 @@ describe('NewOrderNotification Broadcasting', function () {
     it('broadcasts on tenant admin private channel', function () {
         $order = new Order;
         $order->id = 1;
-        $order->tenant_id = 42;
+        $order->tenant_id = '42';
         $order->order_number = 'TEST-001';
 
         $notification = new NewOrderNotification($order);
@@ -62,7 +62,7 @@ describe('NewOrderNotification Broadcasting', function () {
     it('has lightweight broadcast payload', function () {
         $order = new Order;
         $order->id = 123;
-        $order->tenant_id = 42;
+        $order->tenant_id = '42';
         $order->order_number = 'ORD-456';
         $order->total = 250.50;
         $order->customer_name = 'Juan Perez';
@@ -77,7 +77,7 @@ describe('NewOrderNotification Broadcasting', function () {
             ->toHaveKey('order_id', 123)
             ->toHaveKey('order_number', 'ORD-456')
             ->toHaveKey('amount', 250.50)
-            ->toHaveKey('tenant_id', 42)
+            ->toHaveKey('tenant_id', '42')
             ->toHaveKey('customer_name', 'Juan Perez');
     });
 });

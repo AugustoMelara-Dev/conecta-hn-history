@@ -6,6 +6,7 @@ namespace Tests\Unit\Models;
 
 use App\Models\Payment;
 use App\Models\Tenant;
+use App\Domain\Shared\Services\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 
@@ -23,7 +24,9 @@ test('payment model guards tenant_id against mass assignment', function () {
     $tenant2 = Tenant::factory()->create();
 
     // Act: Set tenant context to tenant1 and create a payment without tenant_id
-    $this->actingAsTenant((string) $tenant1->id);
+    $tenantContext = app(TenantContext::class);
+    $tenantContext->reset();
+    $tenantContext->setTenant((string) $tenant1->id);
 
     $payment = Payment::create([
         'id' => (string) Str::uuid(),
@@ -36,8 +39,8 @@ test('payment model guards tenant_id against mass assignment', function () {
     ]);
 
     // Assert: tenant_id should be injected from context (tenant1)
-    expect($payment->tenant_id)->toBe($tenant1->id)
-        ->and($payment->tenant_id)->not->toBe($tenant2->id);
+    expect($payment->tenant_id)->toBe($tenant1->id);
+    expect($payment->tenant_id === $tenant2->id)->toBeFalse();
 });
 
 test('payment tenant_id is in guarded array', function () {
@@ -51,5 +54,5 @@ test('payment tenant_id is not in fillable array', function () {
     $payment = new Payment;
     $fillable = $payment->getFillable();
 
-    expect($fillable)->not->toContain('tenant_id');
+    expect(in_array('tenant_id', $fillable, true))->toBeFalse();
 });

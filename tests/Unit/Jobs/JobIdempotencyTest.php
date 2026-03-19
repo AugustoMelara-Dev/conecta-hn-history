@@ -28,7 +28,6 @@ class JobIdempotencyTest extends TestCase
         $job = new SyncAnalyticsJob;
 
         $this->assertInstanceOf(ShouldBeUnique::class, $job);
-        $this->assertIsString($job->uniqueId());
         $this->assertStringStartsWith('sync_analytics_', $job->uniqueId());
     }
 

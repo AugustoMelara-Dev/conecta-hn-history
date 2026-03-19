@@ -13,14 +13,13 @@ describe('VC-AUDIT-103: OneTimePassword Mass Assignment Protection', function ()
     it('uses explicit fillable array instead of guarded', function () {
         $fillable = (new OneTimePassword)->getFillable();
 
-        expect($fillable)
-            ->not->toContain('id')
-            ->not->toContain('created_at')
-            ->not->toContain('updated_at')
-            ->toContain('user_id')
-            ->toContain('identifier')
-            ->toContain('code')
-            ->toContain('expires_at');
+        expect(in_array('id', $fillable, true))->toBeFalse();
+        expect(in_array('created_at', $fillable, true))->toBeFalse();
+        expect(in_array('updated_at', $fillable, true))->toBeFalse();
+        expect($fillable)->toContain('user_id');
+        expect($fillable)->toContain('identifier');
+        expect($fillable)->toContain('code');
+        expect($fillable)->toContain('expires_at');
     });
 
     it('does not have empty fillable array', function () {
@@ -31,10 +30,11 @@ describe('VC-AUDIT-103: OneTimePassword Mass Assignment Protection', function ()
 
     it('keeps sensitive framework-managed fields out of fillable', function () {
         $reflection = new ReflectionProperty(OneTimePassword::class, 'fillable');
+        /** @var array<int, string> $fillable */
+        $fillable = $reflection->getDefaultValue();
 
-        expect($reflection->getDefaultValue())
-            ->not->toContain('id')
-            ->not->toContain('created_at')
-            ->not->toContain('updated_at');
+        expect(in_array('id', $fillable, true))->toBeFalse();
+        expect(in_array('created_at', $fillable, true))->toBeFalse();
+        expect(in_array('updated_at', $fillable, true))->toBeFalse();
     });
 });

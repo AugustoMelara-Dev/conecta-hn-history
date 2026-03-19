@@ -9,6 +9,7 @@ use App\Exceptions\InvalidBusinessRuleException;
 use App\Exports\Concerns\SanitizesOutput;
 use App\Exports\Criteria\SalesExportCriteria;
 use App\Exports\SalesExport;
+use ReflectionNamedType;
 use Tests\TestCase;
 
 /**
@@ -41,9 +42,11 @@ class SalesExportUnitTest extends TestCase
         $parameters = $constructor->getParameters();
 
         $tenantIdParam = $parameters[0];
+        $tenantIdType = $tenantIdParam->getType();
 
         $this->assertEquals('tenantId', $tenantIdParam->getName());
-        $this->assertEquals(TenantId::class, $tenantIdParam->getType()->getName());
+        $this->assertInstanceOf(ReflectionNamedType::class, $tenantIdType);
+        $this->assertEquals(TenantId::class, $tenantIdType->getName());
     }
 
     /**
@@ -57,9 +60,11 @@ class SalesExportUnitTest extends TestCase
         $parameters = $constructor->getParameters();
 
         $criteriaParam = $parameters[1];
+        $criteriaType = $criteriaParam->getType();
 
         $this->assertEquals('criteria', $criteriaParam->getName());
-        $this->assertEquals(SalesExportCriteria::class, $criteriaParam->getType()->getName());
+        $this->assertInstanceOf(ReflectionNamedType::class, $criteriaType);
+        $this->assertEquals(SalesExportCriteria::class, $criteriaType->getName());
     }
 
     /**
@@ -83,8 +88,10 @@ class SalesExportUnitTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function class_has_create_factory_method(): void
     {
+        $reflectionClass = new \ReflectionClass(SalesExport::class);
+
         $this->assertTrue(
-            method_exists(SalesExport::class, 'create'),
+            $reflectionClass->hasMethod('create'),
             'SalesExport must have static create() factory method'
         );
 
@@ -149,10 +156,12 @@ class SalesExportUnitTest extends TestCase
     public function criteria_always_has_dates_when_created_without_parameters(): void
     {
         $criteria = SalesExportCriteria::create();
+        $startDate = $criteria->startDate();
+        $endDate = $criteria->endDate();
 
         // Should have default 30-day range
-        $this->assertNotNull($criteria->startDate());
-        $this->assertNotNull($criteria->endDate());
+        $this->assertInstanceOf(\DateTimeImmutable::class, $startDate);
+        $this->assertInstanceOf(\DateTimeImmutable::class, $endDate);
         $this->assertLessThanOrEqual(31, $criteria->dateRangeInDays()); // 30 days + 1 for inclusive
     }
 
@@ -230,7 +239,7 @@ class SalesExportUnitTest extends TestCase
         {
             use SanitizesOutput;
 
-            public function test_sanitize(mixed $input): mixed
+            public function testSanitize(mixed $input): mixed
             {
                 return $this->sanitize($input);
             }
@@ -258,7 +267,7 @@ class SalesExportUnitTest extends TestCase
         {
             use SanitizesOutput;
 
-            public function test_sanitize(mixed $input): mixed
+            public function testSanitize(mixed $input): mixed
             {
                 return $this->sanitize($input);
             }

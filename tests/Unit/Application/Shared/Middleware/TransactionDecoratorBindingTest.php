@@ -13,11 +13,8 @@ it('confirms the command bus execution is wrapped by the transaction decorator',
     $containsTransactionDecorator = false;
 
     while ($stack !== []) {
+        /** @var object $current */
         $current = array_pop($stack);
-
-        if (! is_object($current)) {
-            continue;
-        }
 
         $objectId = spl_object_id($current);
 

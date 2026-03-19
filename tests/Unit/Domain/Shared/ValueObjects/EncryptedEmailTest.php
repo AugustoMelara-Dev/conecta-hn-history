@@ -5,11 +5,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
-    // Scaffold Tenant context for idempotency and global isolation
-    $this->tenantId = 1;
-});
-
 test('it accepts an encrypted string and stores it immutably', function () {
     $encryptedPayload = base64_encode('user@example.com'); // Mock encrypted payload format
     $vo = new EncryptedEmail($encryptedPayload);

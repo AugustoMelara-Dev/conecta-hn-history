@@ -45,7 +45,6 @@ class CouponMathTest extends TestCase
 
         // Strict type comparison - must be exactly 33.33
         $this->assertSame(33.33, $discount);
-        $this->assertIsFloat($discount);
 
         // Verify string representation matches (no hidden precision errors)
         $this->assertSame('33.33', number_format($discount, 2, '.', ''));
