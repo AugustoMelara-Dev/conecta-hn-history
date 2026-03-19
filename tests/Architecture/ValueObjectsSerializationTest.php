@@ -42,7 +42,7 @@ class ValueObjectsSerializationTest extends TestCase
         $this->assertEquals('00000000-0000-0000-0000-000000000042', $decoded['tenant_id']);
 
         // Reconstruct
-        $restored = TenantId::fromArray($decoded);
+        $restored = TenantId::fromString((string) $decoded['tenant_id']);
         $this->assertEquals($tenantId->toString(), $restored->toString());
     }
 

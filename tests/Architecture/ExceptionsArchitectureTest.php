@@ -43,8 +43,9 @@ class ExceptionsArchitectureTest extends TestCase
     public function all_exceptions_implement_http_domain_exception_interface(): void
     {
         foreach (self::EXCEPTION_CLASSES as $class) {
+            $reflection = new ReflectionClass($class);
             $this->assertTrue(
-                is_subclass_of($class, HttpDomainException::class),
+                $reflection->implementsInterface(HttpDomainException::class),
                 "{$class} must implement HttpDomainException interface"
             );
         }
@@ -201,8 +202,9 @@ class ExceptionsArchitectureTest extends TestCase
     public function all_exceptions_extend_domain_exception(): void
     {
         foreach (self::EXCEPTION_CLASSES as $class) {
+            $reflection = new ReflectionClass($class);
             $this->assertTrue(
-                is_subclass_of($class, DomainException::class),
+                $reflection->isSubclassOf(DomainException::class),
                 "{$class} must extend DomainException"
             );
         }
@@ -242,28 +244,13 @@ class ExceptionsArchitectureTest extends TestCase
 
         foreach ($forbiddenKeys as $key) {
             try {
-                // Create a concrete implementation of abstract DomainException for testing
-                new class('Security Breach Test', [$key => 'leak']) extends DomainException
-                {
-                    public function __construct(string $message, array $context)
-                    {
-                        parent::__construct($message);
-                        $this->validateContextSafety($context);
-                    }
-
-                    public function context(): array
-                    {
-                        return [];
-                    }
-
-                    public function getErrorCode(): string
-                    {
-                        return 'TEST';
-                    }
-                };
+                $this->createContextValidatingException([$key => 'leak'], 'Security Breach Test');
                 $this->fail("Should have thrown LogicException for forbidden key: {$key}");
             } catch (\LogicException $e) {
-                $this->assertStringContainsString("Exception context cannot contain '{$key}'", $e->getMessage());
+                \PHPUnit\Framework\Assert::assertStringContainsString(
+                    "Exception context cannot contain '{$key}'",
+                    $e->getMessage()
+                );
             }
         }
     }
@@ -282,29 +269,42 @@ class ExceptionsArchitectureTest extends TestCase
 
         foreach ($sensitiveValues as $value) {
             try {
-                new class('Security Pattern Test', ['safe_key' => $value]) extends DomainException
-                {
-                    public function __construct(string $message, array $context)
-                    {
-                        parent::__construct($message);
-                        $this->validateContextSafety($context);
-                    }
-
-                    public function context(): array
-                    {
-                        return [];
-                    }
-
-                    public function getErrorCode(): string
-                    {
-                        return 'TEST';
-                    }
-                };
+                $this->createContextValidatingException(['safe_key' => $value], 'Security Pattern Test');
                 $this->fail("Should have thrown LogicException for sensitive value: {$value}");
             } catch (\LogicException $e) {
-                $this->assertStringContainsString('sensitive data pattern', $e->getMessage());
+                \PHPUnit\Framework\Assert::assertStringContainsString('sensitive data pattern', $e->getMessage());
             }
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     *
+     * @throws \LogicException
+     */
+    private function createContextValidatingException(array $context, string $message): DomainException
+    {
+        return new class($message, $context) extends DomainException
+        {
+            /**
+             * @param  array<string, mixed>  $context
+             */
+            public function __construct(string $message, array $context)
+            {
+                parent::__construct($message);
+                $this->validateContextSafety($context);
+            }
+
+            public function context(): array
+            {
+                return [];
+            }
+
+            public function getErrorCode(): string
+            {
+                return 'TEST';
+            }
+        };
     }
 
     private function createExceptionInstance(string $class): DomainException

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use ReflectionNamedType;
+
 /**
  * EnterpriseRoadmapContractsTest - P0-P3 Interface Governance
  *
@@ -23,15 +25,17 @@ test('enterprise roadmap interfaces are defined', function () {
 test('sensitive data interface requires getSensitiveProperties method', function () {
     $reflection = new ReflectionClass(\App\Application\Shared\Contracts\SensitiveDataInterface::class);
     $method = $reflection->getMethod('getSensitiveProperties');
+    $returnType = $method->getReturnType();
 
-    expect($method->getReturnType()->getName())->toBe('array');
+    expect($returnType instanceof ReflectionNamedType ? $returnType->getName() : null)->toBe('array');
 });
 
 test('user uniqueness checker requires isUnique method with correct signature', function () {
     $reflection = new ReflectionClass(\App\Application\Identity\Contracts\UserUniquenessChecker::class);
     $method = $reflection->getMethod('isUnique');
+    $returnType = $method->getReturnType();
 
-    expect($method->getReturnType()->getName())->toBe('bool');
+    expect($returnType instanceof ReflectionNamedType ? $returnType->getName() : null)->toBe('bool');
     expect($method->getNumberOfParameters())->toBe(4);
 });
 

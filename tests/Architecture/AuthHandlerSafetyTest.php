@@ -4,6 +4,7 @@ namespace Tests\Architecture;
 
 use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
 use ReflectionClass;
+use ReflectionNamedType;
 use Tests\TestCase;
 
 class AuthHandlerSafetyTest extends TestCase
@@ -37,7 +38,8 @@ class AuthHandlerSafetyTest extends TestCase
 
             $hasAtomicDependency = false;
             foreach ($parameters as $param) {
-                if ($param->getType() && $param->getType()->getName() === AtomicIdempotencyInterface::class) {
+                $type = $param->getType();
+                if ($type instanceof ReflectionNamedType && $type->getName() === AtomicIdempotencyInterface::class) {
                     $hasAtomicDependency = true;
                     break;
                 }

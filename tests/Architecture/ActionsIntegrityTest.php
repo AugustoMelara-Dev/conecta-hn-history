@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Validator;
+use ReflectionNamedType;
 
 /**
  * ActionsIntegrityTest - Governance Tests for Actions Layer Compliance
@@ -22,14 +23,16 @@ test('actions do not use validator facade', function () {
 test('interaction data uses string for tenant identifier', function () {
     $class = new ReflectionClass(\App\Application\Interactions\DTOs\InteractionData::class);
     $tenantId = $class->getProperty('tenantId');
-    expect($tenantId->getType()->getName())->toBe('string');
+    $type = $tenantId->getType();
+
+    expect($type)->toBeInstanceOf(ReflectionNamedType::class);
+    expect($type instanceof ReflectionNamedType ? $type->getName() : null)->toBe('string');
 });
 
 test('update user profile command namespace is correct', function () {
     $content = file_get_contents(__DIR__.'/../../app/Infrastructure/Identity/Fortify/Actions/Identity/UpdateUserProfileInformation.php');
-    expect($content)
-        ->toContain('App\Application\Identity\Commands\UpdateUserProfileCommand')
-        ->not->toContain('App\Application\Auth\Commands\UpdateUserProfileCommand');
+    expect($content)->toContain('App\Application\Identity\Commands\UpdateUserProfileCommand');
+    expect(str_contains((string) $content, 'App\Application\Auth\Commands\UpdateUserProfileCommand'))->toBeFalse();
 });
 
 test('interaction repository interface uses string for tenant identifier', function () {
@@ -37,7 +40,9 @@ test('interaction repository interface uses string for tenant identifier', funct
     foreach ($class->getMethods() as $method) {
         foreach ($method->getParameters() as $param) {
             if ($param->getName() === 'tenantId') {
-                expect($param->getType()->getName())->toBe('string');
+                $type = $param->getType();
+                expect($type)->toBeInstanceOf(ReflectionNamedType::class);
+                expect($type instanceof ReflectionNamedType ? $type->getName() : null)->toBe('string');
             }
         }
     }
@@ -50,7 +55,9 @@ test('user loyalty balance accepts string tenant id', function () {
             $method = $class->getMethod($methodName);
             foreach ($method->getParameters() as $param) {
                 if ($param->getName() === 'tenantId') {
-                    expect($param->getType()->getName())->toBe('string');
+                    $type = $param->getType();
+                    expect($type)->toBeInstanceOf(ReflectionNamedType::class);
+                    expect($type instanceof ReflectionNamedType ? $type->getName() : null)->toBe('string');
                 }
             }
         }

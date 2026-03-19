@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Tests\Architecture;
 
 use App\Contracts\Events\AuditEvent;
-use App\Contracts\Events\DomainEvent;
 use App\Domain\Shared\ValueObjects\TenantId;
+use App\Domain\Shared\Contracts\Events\DomainEvent;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Database\Eloquent\Model;
 use ReflectionClass;
+use ReflectionNamedType;
 use Symfony\Component\Finder\Finder;
 use Tests\TestCase;
 
@@ -40,8 +41,6 @@ class EventsArchitectureTest extends TestCase
     /**
      * Cache of discovered event classes.
      */
-    private static ?array $domainEventClasses = null;
-
     private static ?array $allEventClasses = null;
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -63,10 +62,9 @@ class EventsArchitectureTest extends TestCase
             foreach ($reflection->getProperties() as $prop) {
                 $type = $prop->getType();
 
-                if ($type === null) {
+                if (! $type instanceof ReflectionNamedType) {
                     continue;
                 }
-
                 $typeName = $type->getName();
 
                 $this->assertFalse(
@@ -167,7 +165,7 @@ class EventsArchitectureTest extends TestCase
 
             foreach ($reflection->getProperties() as $prop) {
                 $type = $prop->getType();
-                if ($type === null) {
+                if (! $type instanceof ReflectionNamedType) {
                     continue;
                 }
                 $typeName = $type->getName();
@@ -294,10 +292,12 @@ class EventsArchitectureTest extends TestCase
                 "VIOLATION: {$eventClass}::tenantId() must have a return type."
             );
 
+            $returnTypeName = $returnType instanceof ReflectionNamedType ? $returnType->getName() : null;
+
             $this->assertEquals(
                 TenantId::class,
-                $returnType->getName(),
-                "VIOLATION: {$eventClass}::tenantId() must return TenantId, got {$returnType->getName()}."
+                $returnTypeName,
+                "VIOLATION: {$eventClass}::tenantId() must return TenantId, got {$returnTypeName}."
             );
         }
 
@@ -466,7 +466,7 @@ class EventsArchitectureTest extends TestCase
             foreach ($reflection->getProperties() as $prop) {
                 $type = $prop->getType();
 
-                if ($type === null) {
+                if (! $type instanceof ReflectionNamedType) {
                     continue;
                 }
 
