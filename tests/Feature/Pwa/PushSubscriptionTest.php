@@ -5,11 +5,6 @@ declare(strict_types=1);
 use App\Models\User;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 
-/**
- * PWA Infrastructure Tests
- *
- * Verifies that Web Push notification code infrastructure is properly configured.
- */
 describe('PWA Infrastructure', function () {
     it('User model uses HasPushSubscriptions trait', function () {
         $traits = class_uses_recursive(User::class);
@@ -18,11 +13,11 @@ describe('PWA Infrastructure', function () {
     });
 
     it('User has updatePushSubscription method', function () {
-        expect(method_exists(User::class, 'updatePushSubscription'))->toBeTrue();
+        expect((new ReflectionClass(User::class))->hasMethod('updatePushSubscription'))->toBeTrue();
     });
 
     it('User has pushSubscriptions relationship', function () {
-        expect(method_exists(User::class, 'pushSubscriptions'))->toBeTrue();
+        expect((new ReflectionClass(User::class))->hasMethod('pushSubscriptions'))->toBeTrue();
     });
 
     it('VitePWA is configured in vite.config.js', function () {

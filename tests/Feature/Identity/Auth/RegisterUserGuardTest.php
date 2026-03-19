@@ -54,7 +54,7 @@ class RegisterUserGuardTest extends TestCase
         $result = $handler->handle($command);
 
         // ASSERT
-        $this->assertNotNull($result);
-        $this->assertNotNull($result->tenantId); // It generated one
+        $this->assertDatabaseHas('users', ['email' => 'seller@new.com']);
+        $this->assertDatabaseHas('tenants', ['id' => $result->tenantId]);
     }
 }

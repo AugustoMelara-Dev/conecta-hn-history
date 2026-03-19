@@ -2,8 +2,11 @@
 
 namespace Tests;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Cache;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -25,11 +28,19 @@ abstract class TestCase extends BaseTestCase
 
         // Disable Vite manifest during tests
         $this->withoutVite();
+        $this->withoutMiddleware(VerifyCsrfToken::class);
 
         // ═══════════════════════════════════════════════════════════════════════
         // KILL SWITCH: Disable Spatie Activity Logger (Defense in Depth)
         // ═══════════════════════════════════════════════════════════════════════
         config(['activitylog.enabled' => false]);
+        config(['logging.channels.security.channels' => ['security_file']]);
+        config(['app.locale' => 'es']);
+
+        Cache::flush();
+        app()->setLocale('es');
+        Carbon::setLocale('es');
+        setlocale(LC_TIME, 'es_HN.UTF-8', 'es_HN', 'es_ES.UTF-8', 'es_ES', 'es');
 
         $this->app->instance(
             \App\Application\Shared\Contracts\CommandValidatorRegistryInterface::class,

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Shared\Contracts\TenantContext;
 use App\Http\Controllers\Api\V1\AiOptimizationController;
 use App\Http\Requests\Api\OptimizeProfileRequest;
 use App\Jobs\GenerateBusinessProfileJob;
@@ -13,20 +14,17 @@ beforeEach(function () {
 });
 
 test('optimizeProfile dispatches GenerateBusinessProfileJob and returns 202', function () {
-    // Arrange: Mock TenantContext (interface — safe to mock)
-    $tenantContext = Mockery::mock(\App\Domain\Shared\Contracts\TenantContext::class);
-    $tenantContext->shouldReceive('getTenantUuid')->once()->andReturn('00000000-0000-0000-0000-000000000001');
-
+    $tenantContext = new StubAiTenantContext('00000000-0000-0000-0000-000000000001');
     $controller = new AiOptimizationController($tenantContext);
     $user = User::factory()->create();
 
-    // Build a real OptimizeProfileRequest with valid data
+    /** @var array<string, mixed> $payload */
     $payload = [
-        'business_name' => 'Café Tegus',
-        'description' => 'El mejor café de Honduras con granos seleccionados',
+        'business_name' => 'CafÃ© Tegus',
+        'description' => 'El mejor cafÃ© de Honduras con granos seleccionados',
         'target_audience' => 'Millennials',
         'tone' => 'professional',
-        'keywords' => ['café', 'honduras'],
+        'keywords' => ['cafÃ©', 'honduras'],
     ];
 
     $request = OptimizeProfileRequest::create('/api/v1/ai/optimize', 'POST', $payload);
@@ -35,40 +33,59 @@ test('optimizeProfile dispatches GenerateBusinessProfileJob and returns 202', fu
     $request->setUserResolver(fn () => $user);
     $request->validateResolved();
 
-    // Act
     $response = $controller->optimizeProfile($request);
 
-    // Assert: 202 Accepted
     expect($response->getStatusCode())->toBe(202);
 
+    /** @var array<string, mixed> $data */
     $data = $response->getData(true);
     expect($data['status'])->toBe('processing');
     expect($data['message'])->toBe('Profile optimization has been queued.');
 
-    // Assert: Job dispatched with correct parameters
     Queue::assertPushed(GenerateBusinessProfileJob::class, function ($job) use ($user) {
-        return $job->businessName === 'Café Tegus'
+        return $job->businessName === 'CafÃ© Tegus'
             && $job->tenantId === '00000000-0000-0000-0000-000000000001'
             && $job->userId === (string) $user->getAuthIdentifier()
             && $job->targetAudience === 'Millennials'
             && $job->tone === 'professional'
-            && $job->keywords === ['café', 'honduras'];
+            && $job->keywords === ['cafÃ©', 'honduras'];
     });
 });
 
 test('controller does not depend on OpenAIService', function () {
     $reflection = new ReflectionClass(AiOptimizationController::class);
-    $params = $reflection->getConstructor()->getParameters();
+    $params = $reflection->getConstructor()?->getParameters() ?? [];
 
     expect($params)->toHaveCount(1);
     expect($params[0]->getName())->toBe('tenantContext');
 });
 
 test('controller imports GenerateBusinessProfileJob not OpenAIService', function () {
-    $source = file_get_contents(
-        (new ReflectionClass(AiOptimizationController::class))->getFileName()
-    );
+    $fileName = (new ReflectionClass(AiOptimizationController::class))->getFileName();
+    expect($fileName)->not->toBeFalse();
 
-    expect($source)->not->toContain('use App\Services\AI\OpenAIService');
+    $source = file_get_contents((string) $fileName);
+
     expect($source)->toContain('use App\Jobs\GenerateBusinessProfileJob');
+    expect($source)->not->toContain('use App\Services\AI\OpenAIService');
 });
+
+final class StubAiTenantContext implements TenantContext
+{
+    public function __construct(private readonly string $tenantUuid) {}
+
+    public function getTenantUuid(): string
+    {
+        return $this->tenantUuid;
+    }
+
+    public function getTenantId(): int
+    {
+        return 0;
+    }
+
+    public function getTenantData(?array $only = null): array
+    {
+        return ['id' => $this->tenantUuid];
+    }
+}

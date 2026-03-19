@@ -8,16 +8,6 @@ use App\Mail\AppointmentConfirmationMail;
 use App\Models\Appointment;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
-/*
-|--------------------------------------------------------------------------
-| Appointment Notification Tests
-|--------------------------------------------------------------------------
-|
-| Verifies the notification infrastructure exists and is wired correctly.
-| Uses class-level assertions to avoid TenantScope complexity.
-|
-*/
-
 describe('Notification Classes Exist', function () {
     it('AppointmentCreated event class exists', function () {
         expect(class_exists(AppointmentCreated::class))->toBeTrue();
@@ -43,7 +33,7 @@ describe('Event Configuration', function () {
         $property = $reflection->getProperty('dispatchesEvents');
         $property->setAccessible(true);
 
-        $events = $property->getValue(new Appointment);
+        $events = $property->getValue(new Appointment());
 
         expect($events)->toHaveKey('created');
         expect($events['created'])->toBe(AppointmentCreated::class);
@@ -52,20 +42,26 @@ describe('Event Configuration', function () {
 
 describe('Listener Configuration', function () {
     it('SendAppointmentConfirmation implements ShouldQueue (async)', function () {
-        $listener = new SendAppointmentConfirmation;
+        $listener = new SendAppointmentConfirmation();
         expect($listener)->toBeInstanceOf(ShouldQueue::class);
     });
 
     it('SendAppointmentConfirmation has handle method', function () {
-        expect(method_exists(SendAppointmentConfirmation::class, 'handle'))->toBeTrue();
+        expect((new ReflectionClass(SendAppointmentConfirmation::class))->hasMethod('handle'))->toBeTrue();
     });
 
     it('handle method accepts AppointmentCreated event', function () {
         $method = new ReflectionMethod(SendAppointmentConfirmation::class, 'handle');
         $params = $method->getParameters();
+        $type = $params[0]->getType();
 
         expect($params)->toHaveCount(1);
-        expect($params[0]->getType()->getName())->toBe(AppointmentCreated::class);
+
+        if (! $type instanceof ReflectionNamedType) {
+            throw new RuntimeException('Listener handle parameter type must be named.');
+        }
+
+        expect($type->getName())->toBe(AppointmentCreated::class);
     });
 });
 
@@ -76,11 +72,11 @@ describe('Mailable Configuration', function () {
     });
 
     it('AppointmentConfirmationMail has envelope method', function () {
-        expect(method_exists(AppointmentConfirmationMail::class, 'envelope'))->toBeTrue();
+        expect((new ReflectionClass(AppointmentConfirmationMail::class))->hasMethod('envelope'))->toBeTrue();
     });
 
     it('AppointmentConfirmationMail has content method', function () {
-        expect(method_exists(AppointmentConfirmationMail::class, 'content'))->toBeTrue();
+        expect((new ReflectionClass(AppointmentConfirmationMail::class))->hasMethod('content'))->toBeTrue();
     });
 });
 

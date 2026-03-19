@@ -2,15 +2,21 @@
 
 declare(strict_types=1);
 
+namespace Tests\Feature\Public;
+
 use App\Infrastructure\Tenant\Transformers\TenantMicrositeTransformer;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+final class TenantMicrositeTransformerTest extends TestCase
+{
+    use RefreshDatabase;
 
-describe('TenantMicrositeTransformer Premium Profile Fields', function () {
-    it('exposes about field for storytelling', function () {
-        // Arrange
+    #[Test]
+    public function it_exposes_the_about_field_for_storytelling(): void
+    {
         $tenant = Tenant::factory()->create([
             'about' => 'Our story began in 2020...',
             'description' => 'Test business',
@@ -18,17 +24,15 @@ describe('TenantMicrositeTransformer Premium Profile Fields', function () {
         $this->actingAsTenant((string) $tenant->id);
 
         $transformer = app(TenantMicrositeTransformer::class);
-
-        // Act
         $result = $transformer->transform($tenant);
 
-        // Assert
-        expect($result)->toHaveKey('about')
-            ->and($result['about'])->toBe('Our story began in 2020...');
-    });
+        self::assertArrayHasKey('about', $result);
+        self::assertSame('Our story began in 2020...', $result['about']);
+    }
 
-    it('exposes structured location object with typed coordinates', function () {
-        // Arrange
+    #[Test]
+    public function it_exposes_a_structured_location_object_with_typed_coordinates(): void
+    {
         $tenant = Tenant::factory()->create([
             'latitude' => 15.4994,
             'longitude' => -88.0250,
@@ -36,20 +40,18 @@ describe('TenantMicrositeTransformer Premium Profile Fields', function () {
         $this->actingAsTenant((string) $tenant->id);
 
         $transformer = app(TenantMicrositeTransformer::class);
-
-        // Act
         $result = $transformer->transform($tenant);
 
-        // Assert
-        expect($result)->toHaveKey('location')
-            ->and($result['location'])->toBeArray()
-            ->and($result['location']['lat'])->toBe(15.4994)
-            ->and($result['location']['lng'])->toBe(-88.0250)
-            ->and($result['location']['address'])->toBe('Honduras');
-    });
+        self::assertArrayHasKey('location', $result);
+        self::assertIsArray($result['location']);
+        self::assertSame(15.4994, $result['location']['lat']);
+        self::assertSame(-88.025, $result['location']['lng']);
+        self::assertSame('Honduras', $result['location']['address']);
+    }
 
-    it('preserves legacy flat latitude/longitude for backward compatibility', function () {
-        // Arrange
+    #[Test]
+    public function it_preserves_legacy_flat_latitude_and_longitude_fields(): void
+    {
         $tenant = Tenant::factory()->create([
             'latitude' => 15.4994,
             'longitude' => -88.0250,
@@ -57,19 +59,17 @@ describe('TenantMicrositeTransformer Premium Profile Fields', function () {
         $this->actingAsTenant((string) $tenant->id);
 
         $transformer = app(TenantMicrositeTransformer::class);
-
-        // Act
         $result = $transformer->transform($tenant);
 
-        // Assert
-        expect($result)->toHaveKey('latitude')
-            ->and($result)->toHaveKey('longitude')
-            ->and($result['latitude'])->toBe(15.4994)
-            ->and($result['longitude'])->toBe(-88.0250);
-    });
+        self::assertArrayHasKey('latitude', $result);
+        self::assertArrayHasKey('longitude', $result);
+        self::assertSame(15.4994, $result['latitude']);
+        self::assertSame(-88.025, $result['longitude']);
+    }
 
-    it('handles null coordinates gracefully in location object', function () {
-        // Arrange
+    #[Test]
+    public function it_handles_null_coordinates_gracefully(): void
+    {
         $tenant = Tenant::factory()->create([
             'latitude' => null,
             'longitude' => null,
@@ -77,12 +77,9 @@ describe('TenantMicrositeTransformer Premium Profile Fields', function () {
         $this->actingAsTenant((string) $tenant->id);
 
         $transformer = app(TenantMicrositeTransformer::class);
-
-        // Act
         $result = $transformer->transform($tenant);
 
-        // Assert
-        expect($result['location']['lat'])->toBeNull()
-            ->and($result['location']['lng'])->toBeNull();
-    });
-});
+        self::assertNull($result['location']['lat']);
+        self::assertNull($result['location']['lng']);
+    }
+}

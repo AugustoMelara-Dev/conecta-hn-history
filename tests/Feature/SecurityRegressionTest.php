@@ -99,7 +99,6 @@ class SecurityRegressionTest extends TestCase
         // the trait's boot method auto-assigns tenant_id from authenticated context.
 
         // For now, verify the product was created
-        $this->assertNotNull($product->id);
         $this->assertDatabaseHas('products', [
             'id' => $product->id,
             'name' => 'Trojan Horse Product',
@@ -186,15 +185,10 @@ class SecurityRegressionTest extends TestCase
         // This is a policy behavior test - the actual logic is in OrderPolicy
         // We're documenting that the business rule exists
 
-        $this->assertTrue(
-            method_exists(\App\Policies\OrderPolicy::class, 'delete'),
-            'OrderPolicy must have delete method with business rules'
-        );
+        $reflection = new \ReflectionClass(\App\Policies\OrderPolicy::class);
 
-        $this->assertTrue(
-            method_exists(\App\Policies\OrderPolicy::class, 'cancel'),
-            'OrderPolicy must have cancel method for cancellation logic'
-        );
+        $this->assertTrue($reflection->hasMethod('delete'), 'OrderPolicy must have delete method with business rules');
+        $this->assertTrue($reflection->hasMethod('cancel'), 'OrderPolicy must have cancel method for cancellation logic');
     }
 
     /**
@@ -240,10 +234,8 @@ class SecurityRegressionTest extends TestCase
         ];
 
         foreach ($policies as $policy) {
-            $this->assertTrue(
-                is_subclass_of($policy, \App\Policies\TenantAwarePolicy::class),
-                "{$policy} must extend TenantAwarePolicy"
-            );
+            $reflection = new \ReflectionClass($policy);
+            $this->assertTrue($reflection->isSubclassOf(\App\Policies\TenantAwarePolicy::class), "{$policy} must extend TenantAwarePolicy");
         }
     }
 }

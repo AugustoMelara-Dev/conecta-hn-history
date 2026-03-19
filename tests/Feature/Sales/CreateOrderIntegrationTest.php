@@ -1,120 +1,142 @@
 <?php
 
+declare(strict_types=1);
+
+namespace Tests\Feature\Sales;
+
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
+use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
+use App\Application\Shared\Contracts\IdempotencyServiceInterface;
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+final class CreateOrderIntegrationTest extends TestCase
+{
+    use RefreshDatabase;
 
-test('create order handler persists order and items securely to the database', function () {
-    $user = User::factory()->create([
-        'name' => 'Integration Tester',
-        'email' => 'integration@example.test',
-    ]);
-
-    $tenant = Tenant::factory()->forUser($user)->create([
-        'name' => 'Integration Tenant',
-    ]);
-
-    $user->forceFill(['tenant_id' => $tenant->id])->save();
-
-    $product = Product::factory()
-        ->forTenant($tenant)
-        ->withStock(20)
-        ->create([
-            'name' => 'Integration Burger',
-            'price' => 150.00,
+    #[Test]
+    public function it_persists_orders_and_items_through_the_real_handler(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Integration Tester',
+            'email' => 'integration@example.test',
         ]);
 
-    $location = Location::query()->create([
-        'tenant_id' => $tenant->id,
-        'name' => 'Principal',
-        'slug' => 'principal',
-        'is_primary' => true,
-        'is_active' => true,
-    ]);
+        $tenant = Tenant::factory()->forUser($user)->create([
+            'name' => 'Integration Tenant',
+        ]);
 
-    $command = new CreateOrderCommand(
-        tenantId: (string) $tenant->id,
-        locationId: (string) $location->id,
-        customerId: (string) $user->id,
-        currency: 'HNL',
-        customerName: 'Integration Tester',
-        customerPhone: '98765432',
-        customerEmail: 'integration@example.test',
-        customerAddress: null,
-        customerNotes: 'Test order',
-        deliveryType: 'pickup',
-        paymentMethod: 'cash',
-        items: [
-            [
-                'product_id' => $product->id,
+        $user->forceFill(['tenant_id' => $tenant->id])->save();
+
+        $product = Product::factory()
+            ->forTenant($tenant)
+            ->withStock(20)
+            ->create([
                 'name' => 'Integration Burger',
                 'price' => 150.00,
-                'quantity' => 2,
+            ]);
+
+        $location = Location::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Principal',
+            'slug' => 'principal',
+            'is_primary' => true,
+            'is_active' => true,
+        ]);
+
+        $this->app->instance(IdempotencyServiceInterface::class, new IntegrationIdempotencyService());
+
+        $command = new CreateOrderCommand(
+            tenantId: (string) $tenant->id,
+            locationId: (string) $location->id,
+            customerId: (string) $user->id,
+            currency: 'HNL',
+            customerName: 'Integration Tester',
+            customerPhone: '98765432',
+            customerEmail: 'integration@example.test',
+            customerAddress: null,
+            customerNotes: 'Test order',
+            deliveryType: 'pickup',
+            paymentMethod: 'cash',
+            items: [
+                [
+                    'product_id' => $product->id,
+                    'name' => 'Integration Burger',
+                    'price' => 150.00,
+                    'quantity' => 2,
+                ],
             ],
-        ],
-        couponCode: null,
-        requestorId: (string) $user->id,
-    );
+            couponCode: null,
+            requestorId: (string) $user->id,
+        );
 
-    // Dynamic mock injection keeps the integration path real while bypassing the
-    // missing phpredis extension behind the idempotency decorator in tests.
-    $reflection = new \ReflectionClass(\App\Application\Sales\Decorators\IdempotentCreateOrderHandler::class);
-    if ($constructor = $reflection->getConstructor()) {
-        foreach ($constructor->getParameters() as $parameter) {
-            $type = $parameter->getType();
+        $tenantContext = app(TenantContext::class);
+        $tenantContext->reset();
+        $tenantContext->setTenant((string) $tenant->id);
 
-            if (! $type instanceof \ReflectionNamedType) {
-                continue;
-            }
+        /** @var CreateOrderHandlerInterface $handler */
+        $handler = app(CreateOrderHandlerInterface::class);
+        $result = $handler->handle($command);
 
-            if (! str_ends_with($type->getName(), 'IdempotencyServiceInterface')) {
-                continue;
-            }
+        self::assertNotSame(0, $result->id);
+        self::assertStringStartsWith('#', $result->orderNumber);
+        self::assertSame(300.0, $result->totalAmount);
 
-            $lock = \Mockery::mock();
-            $lock->shouldReceive('get')->andReturnTrue();
-            $lock->shouldReceive('release')->andReturnNull();
+        $this->assertDatabaseHas('orders', [
+            'id' => $result->id,
+            'tenant_id' => (string) $tenant->id,
+            'location_id' => (string) $location->id,
+            'user_id' => (string) $user->id,
+            'customer_name' => 'Integration Tester',
+            'status' => 'pending',
+        ]);
 
-            $mock = \Mockery::mock($type->getName())->shouldIgnoreMissing();
-            $mock->shouldReceive('get')->andReturnNull();
-            $mock->shouldReceive('lock')->andReturn($lock);
-            $mock->shouldReceive('store')->andReturnNull();
+        $this->assertDatabaseHas('order_items', [
+            'order_id' => $result->id,
+            'product_id' => $product->id,
+            'quantity' => 2,
+            'product_name' => 'Integration Burger',
+        ]);
+    }
+}
 
-            app()->instance($type->getName(), $mock);
-        }
+final class IntegrationIdempotencyService implements IdempotencyServiceInterface
+{
+    /** @var array<string, mixed> */
+    private array $values = [];
+
+    /** @var array<string, string> */
+    private array $states = [];
+
+    public function get(string $key): mixed
+    {
+        return $this->values[$key] ?? null;
     }
 
-    $tenantContext = app(\App\Domain\Shared\Services\TenantContext::class);
-    $tenantContext->reset();
-    $tenantContext->setTenant((string) $tenant->id);
+    public function getState(string $key): ?string
+    {
+        return $this->states[$key] ?? null;
+    }
 
-    /** @var CreateOrderHandlerInterface $handler */
-    $handler = app(CreateOrderHandlerInterface::class);
-    $result = $handler->handle($command);
+    public function registerProcessing(string $key, int $ttlSeconds = 60): void
+    {
+        if (isset($this->states[$key])) {
+            throw ConcurrentRequestException::forKey($key);
+        }
 
-    expect($result->id)->not->toBeNull()
-        ->and($result->orderNumber)->toStartWith('#')
-        ->and($result->totalAmount)->toBe(300.0);
+        $this->states[$key] = 'PROCESSING';
+    }
 
-    $this->assertDatabaseHas('orders', [
-        'id' => $result->id,
-        'tenant_id' => $tenant->id,
-        'location_id' => $location->id,
-        'user_id' => $user->id,
-        'customer_name' => 'Integration Tester',
-        'status' => 'pending',
-    ]);
-
-    $this->assertDatabaseHas('order_items', [
-        'order_id' => $result->id,
-        'product_id' => $product->id,
-        'quantity' => 2,
-        'product_name' => 'Integration Burger',
-    ]);
-});
+    public function store(string $key, mixed $value, int $ttlSeconds = 86400): void
+    {
+        $this->values[$key] = $value;
+        $this->states[$key] = 'COMPLETED';
+    }
+}

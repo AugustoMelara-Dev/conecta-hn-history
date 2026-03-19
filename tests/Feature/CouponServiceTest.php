@@ -30,6 +30,8 @@ class CouponServiceTest extends TestCase
 
     private Tenant $tenant;
 
+    private User $user;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -41,6 +43,8 @@ class CouponServiceTest extends TestCase
             'name' => 'Test Business',
             'slug' => 'test-business',
         ]);
+
+        $this->user = User::factory()->create();
 
         // Bind tenant to container (simulates TenantMiddleware)
         app()->instance('currentTenant', $this->tenant);
@@ -90,7 +94,7 @@ class CouponServiceTest extends TestCase
         // Act: Validate as guest (user = null)
         $result = $this->service->validate(
             code: 'GUESTFRIENDLY',
-            user: null, // GUEST
+            user: null,
             cartTotal: 100.00,
             tenant: $this->tenant
         );
@@ -162,7 +166,7 @@ class CouponServiceTest extends TestCase
         try {
             $this->service->validate(
                 code: 'PERUSERLIMITED',
-                user: null, // GUEST
+                user: null,
                 cartTotal: 100.00,
                 tenant: $this->tenant
             );
@@ -204,7 +208,7 @@ class CouponServiceTest extends TestCase
         try {
             $this->service->validate(
                 code: 'DEPLETED100',
-                user: null,
+                user: $this->user,
                 cartTotal: 100.00,
                 tenant: $this->tenant
             );
@@ -269,7 +273,7 @@ class CouponServiceTest extends TestCase
         try {
             $this->service->validate(
                 code: 'MINSPEND100',
-                user: null,
+                user: $this->user,
                 cartTotal: 50.00, // Below minimum
                 tenant: $this->tenant
             );
@@ -304,7 +308,7 @@ class CouponServiceTest extends TestCase
         try {
             $this->service->validate(
                 code: 'EXPIRED2024',
-                user: null,
+                user: $this->user,
                 cartTotal: 100.00,
                 tenant: $this->tenant
             );
@@ -334,7 +338,7 @@ class CouponServiceTest extends TestCase
         try {
             $this->service->validate(
                 code: 'FUTURE2025',
-                user: null,
+                user: $this->user,
                 cartTotal: 100.00,
                 tenant: $this->tenant
             );
@@ -363,7 +367,7 @@ class CouponServiceTest extends TestCase
         try {
             $this->service->validate(
                 code: 'INACTIVE123',
-                user: null,
+                user: $this->user,
                 cartTotal: 100.00,
                 tenant: $this->tenant
             );
@@ -384,7 +388,7 @@ class CouponServiceTest extends TestCase
         try {
             $this->service->validate(
                 code: 'DOESNOTEXIST',
-                user: null,
+                user: $this->user,
                 cartTotal: 100.00,
                 tenant: $this->tenant
             );

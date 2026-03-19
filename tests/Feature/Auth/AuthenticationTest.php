@@ -20,8 +20,10 @@ class AuthenticationTest extends TestCase
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
         $user = User::factory()->create();
+        $token = 'auth-login-token';
 
-        $response = $this->post('/login', [
+        $response = $this->withSession(['_token' => $token])->post('/login', [
+            '_token' => $token,
             'email' => $user->email,
             'password' => 'password',
         ]);
@@ -33,8 +35,10 @@ class AuthenticationTest extends TestCase
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();
+        $token = 'auth-login-invalid-token';
 
-        $this->post('/login', [
+        $this->withSession(['_token' => $token])->post('/login', [
+            '_token' => $token,
             'email' => $user->email,
             'password' => 'wrong-password',
         ]);
@@ -45,8 +49,11 @@ class AuthenticationTest extends TestCase
     public function test_users_can_logout(): void
     {
         $user = User::factory()->create();
+        $token = 'auth-logout-token';
 
-        $response = $this->actingAs($user)->post('/logout');
+        $response = $this->withSession(['_token' => $token])
+            ->actingAs($user)
+            ->post('/logout', ['_token' => $token]);
 
         $this->assertGuest();
         $response->assertRedirect('/');

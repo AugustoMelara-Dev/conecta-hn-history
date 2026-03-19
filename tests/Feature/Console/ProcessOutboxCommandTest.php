@@ -2,12 +2,20 @@
 
 declare(strict_types=1);
 
-uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
+namespace Tests\Feature\Console;
 
-it('executes the outbox processor successfully under tenant context', function () {
-    // Scaffold strict Tenant context
-    $tenantId = 'tenant_0000_1111_2222';
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
-    $this->artisan('outbox:process')
-        ->assertExitCode(0);
-});
+final class ProcessOutboxCommandTest extends TestCase
+{
+    use RefreshDatabase;
+
+    #[Test]
+    public function it_executes_the_outbox_processor_successfully_under_tenant_context(): void
+    {
+        $this->artisan('outbox:process')
+            ->assertExitCode(0);
+    }
+}

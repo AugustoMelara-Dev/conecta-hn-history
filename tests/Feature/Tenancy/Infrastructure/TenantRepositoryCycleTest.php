@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Tenancy\Infrastructure;
 
-use App\Application\Tenancy\Interfaces\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Infrastructure\Tenancy\Repositories\EventSourcedTenantRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -18,7 +18,6 @@ class TenantRepositoryCycleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // Bind interface to implementation if not auto-discovered
         $this->app->bind(TenantRepositoryInterface::class, EventSourcedTenantRepository::class);
     }
 

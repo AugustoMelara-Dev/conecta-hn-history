@@ -1,39 +1,53 @@
 <?php
 
+declare(strict_types=1);
+
+namespace Tests\Feature\Public;
+
 use App\Http\Middleware\CheckMaintenanceMode;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+final class ReviewEndpointTest extends TestCase
+{
+    use RefreshDatabase;
 
-test('submit review endpoint returns inertia compliant redirect', function () {
-    $this->withoutMiddleware(CheckMaintenanceMode::class);
+    #[Test]
+    public function it_returns_an_inertia_compliant_redirect_after_submitting_a_review(): void
+    {
+        $this->withoutMiddleware(CheckMaintenanceMode::class);
+        $token = 'review-submit-token';
 
-    $user = User::factory()->create();
+        $user = User::factory()->create();
 
-    $tenantId = Str::uuid()->toString();
-    $tenant = Tenant::forceCreate([
-        'id' => $tenantId,
-        'name' => 'Smoke Test Tenant',
-        'slug' => 'smoke-test-tenant',
-    ]);
-
-    $response = $this->actingAs($user)
-        ->from('/')
-        ->post(route('reviews.store'), [
-            'tenant_id' => $tenant->id,
-            'rating' => 5,
-            'comment' => 'Integration test review',
+        $tenantId = Str::uuid()->toString();
+        $tenant = Tenant::forceCreate([
+            'id' => $tenantId,
+            'name' => 'Smoke Test Tenant',
+            'slug' => 'smoke-test-tenant',
         ]);
 
-    $response->assertStatus(303);
-    $response->assertSessionHasNoErrors();
+        $response = $this->withSession(['_token' => $token])
+            ->actingAs($user)
+            ->from('/')
+            ->post(route('reviews.store'), [
+                '_token' => $token,
+                'tenant_id' => $tenant->id,
+                'rating' => 5,
+                'comment' => 'Integration test review',
+            ]);
 
-    $this->assertDatabaseHas('reviews', [
-        'tenant_id' => $tenant->id,
-        'rating' => 5,
-        'is_approved' => false,
-    ]);
-});
+        $response->assertStatus(303);
+        $response->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('reviews', [
+            'tenant_id' => $tenant->id,
+            'rating' => 5,
+            'is_approved' => false,
+        ]);
+    }
+}

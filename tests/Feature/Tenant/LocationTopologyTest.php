@@ -36,8 +36,16 @@ it('can associate an order with a location', function () {
         'location_id' => $location->id,
     ]);
 
-    expect($order->location_id)->toBe($location->id)
-        ->and($order->location->name)->toBe('Main Branch');
+    $resolvedLocation = $order->location;
+
+    expect($order->location_id)->toBe($location->id);
+    expect($resolvedLocation)->toBeInstanceOf(Location::class);
+
+    if (! $resolvedLocation instanceof Location) {
+        throw new RuntimeException('Order location relation should resolve to a Location model.');
+    }
+
+    expect($resolvedLocation->name)->toBe('Main Branch');
 });
 
 it('keeps only one primary location per tenant', function () {

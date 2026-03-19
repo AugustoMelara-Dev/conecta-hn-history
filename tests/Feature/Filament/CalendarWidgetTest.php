@@ -5,10 +5,6 @@ declare(strict_types=1);
 use App\Filament\App\Widgets\AppointmentCalendarWidget;
 use Filament\Widgets\Widget;
 
-// ═══════════════════════════════════════════════════════════════════════
-// CALENDAR WIDGET TESTS - Filament FullCalendar Integration
-// ═══════════════════════════════════════════════════════════════════════
-
 describe('AppointmentCalendarWidget', function () {
     it('widget class exists', function () {
         expect(class_exists(AppointmentCalendarWidget::class))->toBeTrue();
@@ -16,25 +12,15 @@ describe('AppointmentCalendarWidget', function () {
 
     it('extends the base Filament widget', function () {
         $reflection = new ReflectionClass(AppointmentCalendarWidget::class);
+        $parent = $reflection->getParentClass();
 
-        expect($reflection->getParentClass()->getName())
+        expect($parent)->not->toBeFalse();
+        expect($parent instanceof ReflectionClass ? $parent->getName() : null)
             ->toBe(Widget::class);
     });
 
-    it('has fetchEvents method', function () {
-        expect(method_exists(AppointmentCalendarWidget::class, 'fetchEvents'))->toBeTrue();
-    });
-
-    it('has config method', function () {
-        expect(method_exists(AppointmentCalendarWidget::class, 'config'))->toBeTrue();
-    });
-
-    it('has status color mapping', function () {
-        expect(method_exists(AppointmentCalendarWidget::class, 'getStatusColor'))->toBeTrue();
-    });
-
     it('config returns valid calendar options', function () {
-        $widget = new AppointmentCalendarWidget;
+        $widget = new AppointmentCalendarWidget();
         $config = $widget->config();
 
         expect($config)->toBeArray();
@@ -48,7 +34,7 @@ describe('AppointmentCalendarWidget', function () {
 
 describe('Appointment Status Colors', function () {
     it('pending status returns amber color', function () {
-        $widget = new AppointmentCalendarWidget;
+        $widget = new AppointmentCalendarWidget();
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
 
@@ -56,7 +42,7 @@ describe('Appointment Status Colors', function () {
     });
 
     it('confirmed status returns blue color', function () {
-        $widget = new AppointmentCalendarWidget;
+        $widget = new AppointmentCalendarWidget();
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
 
@@ -64,7 +50,7 @@ describe('Appointment Status Colors', function () {
     });
 
     it('completed status returns green color', function () {
-        $widget = new AppointmentCalendarWidget;
+        $widget = new AppointmentCalendarWidget();
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
 
@@ -72,7 +58,7 @@ describe('Appointment Status Colors', function () {
     });
 
     it('cancelled status returns red color', function () {
-        $widget = new AppointmentCalendarWidget;
+        $widget = new AppointmentCalendarWidget();
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
 

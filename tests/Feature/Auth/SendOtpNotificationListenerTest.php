@@ -8,11 +8,11 @@ use App\Application\Auth\Contracts\OtpDeliveryPayloadStoreInterface;
 use App\Application\Shared\Contracts\CircuitBreakerInterface;
 use App\Domain\Auth\Contracts\OtpNotifierInterface;
 use App\Domain\Auth\Events\OtpGenerated;
+use App\Domain\Identity\Entities\UserEntity;
 use App\Infrastructure\Auth\Listeners\SendOtpNotificationListener;
 use App\Models\OneTimePassword;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -40,24 +40,11 @@ final class SendOtpNotificationListenerTest extends TestCase
         $store = $this->app->make(OtpDeliveryPayloadStoreInterface::class);
         $store->put($otp->id, '123456', 'test@example.com', 10);
 
-        $this->mock(OtpNotifierInterface::class, function (MockInterface $mock) use ($tenantId): void {
-            $mock->shouldReceive('send')
-                ->once()
-                ->with(null, '123456', 'test@example.com', $tenantId, 10);
-        });
+        $notifier = new RecordingOtpNotifier();
+        $circuitBreaker = new RecordingCircuitBreaker();
 
-        $this->mock(CircuitBreakerInterface::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('isAvailable')
-                ->once()
-                ->with('email_provider')
-                ->andReturnTrue();
-
-            $mock->shouldReceive('reportSuccess')
-                ->once()
-                ->with('email_provider');
-
-            $mock->shouldNotReceive('reportFailure');
-        });
+        $this->app->instance(OtpNotifierInterface::class, $notifier);
+        $this->app->instance(CircuitBreakerInterface::class, $circuitBreaker);
 
         $listener = $this->app->make(SendOtpNotificationListener::class);
 
@@ -68,6 +55,70 @@ final class SendOtpNotificationListenerTest extends TestCase
             occurredAt: new \DateTimeImmutable,
         ));
 
-        $this->assertNull($store->get((string) $otp->id));
+        self::assertSame([['service' => 'email_provider']], $circuitBreaker->availabilityChecks);
+        self::assertSame([['service' => 'email_provider']], $circuitBreaker->successfulReports);
+        self::assertSame([], $circuitBreaker->failedReports);
+        self::assertSame('123456', $notifier->plainTextCode);
+        self::assertSame('test@example.com', $notifier->identifier);
+        self::assertSame($tenantId, $notifier->tenantId);
+        self::assertSame(10, $notifier->expiryMinutes);
+        self::assertNull($notifier->recipient);
+        self::assertNull($store->get((string) $otp->id));
+    }
+}
+
+final class RecordingOtpNotifier implements OtpNotifierInterface
+{
+    public ?UserEntity $recipient = null;
+
+    public ?string $plainTextCode = null;
+
+    public ?string $identifier = null;
+
+    public ?string $tenantId = null;
+
+    public ?int $expiryMinutes = null;
+
+    public function send(
+        ?UserEntity $recipient,
+        string $plainTextCode,
+        string $identifier,
+        string $tenantId,
+        int $expiryMinutes
+    ): void {
+        $this->recipient = $recipient;
+        $this->plainTextCode = $plainTextCode;
+        $this->identifier = $identifier;
+        $this->tenantId = $tenantId;
+        $this->expiryMinutes = $expiryMinutes;
+    }
+}
+
+final class RecordingCircuitBreaker implements CircuitBreakerInterface
+{
+    /** @var array<int, array{service: string}> */
+    public array $availabilityChecks = [];
+
+    /** @var array<int, array{service: string}> */
+    public array $successfulReports = [];
+
+    /** @var array<int, array{service: string}> */
+    public array $failedReports = [];
+
+    public function isAvailable(string $serviceName): bool
+    {
+        $this->availabilityChecks[] = ['service' => $serviceName];
+
+        return true;
+    }
+
+    public function reportSuccess(string $serviceName): void
+    {
+        $this->successfulReports[] = ['service' => $serviceName];
+    }
+
+    public function reportFailure(string $serviceName): void
+    {
+        $this->failedReports[] = ['service' => $serviceName];
     }
 }

@@ -13,6 +13,7 @@ class PasswordUpdateTest extends TestCase
 
     public function test_password_can_be_updated(): void
     {
+        $token = 'password-update-token';
         app()->instance(
             \App\Application\Auth\Validators\DeleteUserCommandValidator::class,
             new \App\Application\Auth\Validators\DeleteUserCommandValidator(
@@ -33,9 +34,11 @@ class PasswordUpdateTest extends TestCase
         $tenantContext->setTenant((string) $tenant->id);
 
         $response = $this
+            ->withSession(['_token' => $token])
             ->actingAs($user)
             ->from('/profile')
             ->put('/password', [
+                '_token' => $token,
                 'current_password' => 'password',
                 'password' => 'New-Password-123',
                 'password_confirmation' => 'New-Password-123',
@@ -51,6 +54,7 @@ class PasswordUpdateTest extends TestCase
 
     public function test_correct_password_must_be_provided_to_update_password(): void
     {
+        $token = 'password-update-invalid-token';
         app()->instance(
             \App\Application\Auth\Validators\DeleteUserCommandValidator::class,
             new \App\Application\Auth\Validators\DeleteUserCommandValidator(
@@ -71,9 +75,11 @@ class PasswordUpdateTest extends TestCase
         $tenantContext->setTenant((string) $tenant->id);
 
         $response = $this
+            ->withSession(['_token' => $token])
             ->actingAs($user)
             ->from('/profile')
             ->put('/password', [
+                '_token' => $token,
                 'current_password' => 'wrong-password',
                 'password' => 'New-Password-123',
                 'password_confirmation' => 'New-Password-123',

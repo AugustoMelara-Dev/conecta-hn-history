@@ -12,8 +12,8 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AiProfileGeneratorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
@@ -147,14 +147,14 @@ class AiEnrichmentIntegrationTest extends TestCase
 
     public function test_job_can_be_dispatched_to_queue(): void
     {
-        Queue::fake();
+        Bus::fake();
 
         $tenant = $this->createTenant();
 
         $data = new ResultsProfileData(tenantId: (string) $tenant->id);
-        EnhanceTenantProfileJob::dispatch($data);
+        Bus::dispatch(new EnhanceTenantProfileJob($data));
 
-        Queue::assertPushed(EnhanceTenantProfileJob::class, function ($job) use ($tenant) {
+        Bus::assertDispatched(EnhanceTenantProfileJob::class, function ($job) use ($tenant) {
             return $job->uniqueId() === 'enhance_'.$tenant->id;
         });
     }

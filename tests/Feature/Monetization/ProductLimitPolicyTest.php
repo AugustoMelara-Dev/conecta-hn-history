@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Application\Access\Contracts\TenantPermissionGuardInterface;
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Shared\Services\TenantContext;
@@ -80,14 +82,16 @@ test('product policy enforces dynamic capacity limits from general settings', fu
     Filament::shouldReceive('getTenant')->andReturn($tenant);
 
     $user = User::factory()->create();
-    $guard = Mockery::mock(TenantPermissionGuardInterface::class);
-    $guard->shouldReceive('allows')
-        ->with($user, $tenant, Capability::CATALOG_BASIC, Permission::CATALOG_CREATE)
-        ->andReturn(true);
-    app()->instance(TenantPermissionGuardInterface::class, $guard);
+    app()->instance(TenantPermissionGuardInterface::class, new class implements TenantPermissionGuardInterface
+    {
+        public function allows(User $user, Tenant $tenant, Capability $capability, Permission $permission): bool
+        {
+            return $capability === Capability::CATALOG_BASIC
+                && $permission === Permission::CATALOG_CREATE;
+        }
+    });
 
-    $policy = new ProductPolicy;
-
+    $policy = new ProductPolicy();
     $response = $policy->create($user);
 
     expect($response->allowed())->toBeFalse()

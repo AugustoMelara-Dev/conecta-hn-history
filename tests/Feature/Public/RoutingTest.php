@@ -2,40 +2,43 @@
 
 declare(strict_types=1);
 
-/**
- * Routing Architecture Tests
- *
- * Verifies the "Luxury Entrance" routing strategy:
- * - / → B2B Landing Page (Welcome.jsx)
- * - /explore → Marketplace Discovery (Public/Home.jsx)
- * - /@{slug} → Tenant Microsite (safe namespace, no collisions)
- * - /{slug} → Legacy redirect to /@{slug}
- */
+namespace Tests\Feature\Public;
 
 use App\Domain\Shared\Services\TenantContext;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+final class RoutingTest extends TestCase
+{
+    use RefreshDatabase;
 
-describe('Luxury Entrance Routing', function () {
-    it('renders landing page at root', function () {
+    #[Test]
+    public function renders_landing_page_at_root(): void
+    {
         $response = $this->get('/');
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => $page->component('Welcome'));
-    });
+        $response->assertInertia(fn (AssertableInertia $page) => $page->component('Welcome'));
+    }
 
-    it('renders marketplace at /explore', function () {
+    #[Test]
+    public function renders_marketplace_at_explore(): void
+    {
         $response = $this->get('/explore');
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => $page->component('Public/Home'));
-    });
+        $response->assertInertia(fn (AssertableInertia $page) => $page->component('Public/Home'));
+    }
 
-    it('routes tenant via /t prefix', function () {
+    #[Test]
+    public function routes_tenant_via_t_prefix(): void
+    {
         $user = User::factory()->create();
-        $tenant = Tenant::factory()->create([
+        Tenant::factory()->create([
             'user_id' => $user->id,
             'slug' => 'test-barbershop',
         ]);
@@ -45,11 +48,13 @@ describe('Luxury Entrance Routing', function () {
         $response = $this->get('/t/test-barbershop');
 
         $response->assertStatus(200);
-    });
+    }
 
-    it('does not expose legacy bare slug route', function () {
+    #[Test]
+    public function does_not_expose_legacy_bare_slug_route(): void
+    {
         $user = User::factory()->create();
-        $tenant = Tenant::factory()->create([
+        Tenant::factory()->create([
             'user_id' => $user->id,
             'slug' => 'legacy-business',
         ]);
@@ -57,61 +62,72 @@ describe('Luxury Entrance Routing', function () {
         $response = $this->get('/legacy-business');
 
         $response->assertStatus(404);
-    });
+    }
 
-    it('returns 404 for non-existent tenant', function () {
+    #[Test]
+    public function returns_404_for_non_existent_tenant(): void
+    {
         app(TenantContext::class)->reset();
 
         $response = $this->get('/t/non-existent-tenant');
 
         $response->assertStatus(404);
-    });
-});
+    }
 
-describe('System Routes Protection', function () {
-    it('does not conflict with /login', function () {
+    #[Test]
+    public function does_not_conflict_with_login(): void
+    {
         $response = $this->get('/login');
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => $page->component('Auth/Login'));
-    });
+        $response->assertInertia(fn (AssertableInertia $page) => $page->component('Auth/Login'));
+    }
 
-    it('does not conflict with /register', function () {
+    #[Test]
+    public function does_not_conflict_with_register(): void
+    {
         $response = $this->get('/register');
 
         $response->assertStatus(200);
-    });
+    }
 
-    it('does not conflict with /directorio', function () {
+    #[Test]
+    public function does_not_conflict_with_directorio(): void
+    {
         $response = $this->get('/directorio');
 
         $response->assertStatus(200);
-    });
+    }
 
-    it('does not conflict with /dashboard (requires auth)', function () {
+    #[Test]
+    public function does_not_conflict_with_dashboard(): void
+    {
         $response = $this->get('/dashboard');
 
-        // Should redirect to login since unauthenticated
         $response->assertRedirect('/login');
-    });
-});
+    }
 
-describe('Named Routes', function () {
-    it('generates correct URL for home route', function () {
-        expect(route('home', [], false))->toBe('/');
-    });
+    #[Test]
+    public function generates_correct_url_for_home_route(): void
+    {
+        self::assertSame('/', route('home', [], false));
+    }
 
-    it('generates correct URL for explore route', function () {
-        expect(route('public.explore'))->toContain('/explore');
-    });
+    #[Test]
+    public function generates_correct_url_for_explore_route(): void
+    {
+        self::assertStringContainsString('/explore', route('public.explore'));
+    }
 
-    it('generates correct URL for tenant microsite route', function () {
+    #[Test]
+    public function generates_correct_url_for_tenant_microsite_route(): void
+    {
         $user = User::factory()->create();
         $tenant = Tenant::factory()->create([
             'user_id' => $user->id,
             'slug' => 'my-business',
         ]);
 
-        expect(route('tenant.microsite.show', $tenant->slug))->toContain('/t/my-business');
-    });
-});
+        self::assertStringContainsString('/t/my-business', route('tenant.microsite.show', $tenant->slug));
+    }
+}

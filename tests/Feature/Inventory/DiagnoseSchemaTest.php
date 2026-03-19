@@ -47,6 +47,6 @@ class DiagnoseSchemaTest extends TestCase
             echo "   - {$col->Field} ({$col->Type}) ".($col->Null === 'NO' ? 'NOT NULL' : 'NULL')."\n";
         }
 
-        $this->assertTrue(true);
+        $this->assertGreaterThan(0, count($orderCols));
     }
 }

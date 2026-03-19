@@ -1,19 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Billing;
 
 use App\Application\Billing\Commands\ReportPaymentCommand;
 use App\Application\Billing\Handlers\ReportPaymentHandlerInterface;
-use App\Application\Shared\Common\Contracts\RateLimiterInterface;
+use App\Application\Shared\Contracts\RateLimiterInterface;
 use App\Domain\Billing\Services\DocumentStorageServiceInterface;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Mockery;
 use Tests\TestCase;
 
-class BillingReliabilityTest extends TestCase
+final class BillingReliabilityTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -31,26 +32,14 @@ class BillingReliabilityTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        // Use standard Storage Fake
         Storage::fake('s3');
-
-        // Mock the Document Storage Service Interface
-        $mockStorage = Mockery::mock(DocumentStorageServiceInterface::class);
-        $mockStorage->shouldReceive('verifyPresence')->andReturn(null);
-        $mockStorage->shouldReceive('storeProofOfPayment')->andReturn('permanent/proof.jpg');
-
-        $this->app->instance(DocumentStorageServiceInterface::class, $mockStorage);
-
-        // Let the ServiceProvider resolve the Handler via container.
-        // This ensures the Decorator Pipeline (RateLimiter -> Handler) is active.
+        $this->app->instance(DocumentStorageServiceInterface::class, new StubDocumentStorageService());
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function it_continues_payment_processing_even_if_rate_limiter_fails_fail_open()
+    public function it_continues_processing_payments_when_the_rate_limiter_fails_open(): void
     {
-        // ARRANGE: Force RateLimiter to throw (simulating Redis failure)
-        $mockLimiter = $this->mock(RateLimiterInterface::class);
-        $mockLimiter->shouldReceive('tooManyAttempts')->andThrow(new Exception('Redis Connection Refused'));
+        $this->app->instance(RateLimiterInterface::class, new ThrowingRateLimiter());
 
         $command = new ReportPaymentCommand(
             tenantId: '00000000-0000-0000-0000-000000000123',
@@ -62,13 +51,11 @@ class BillingReliabilityTest extends TestCase
             idempotencyKey: '00000000-0000-0000-0000-000000000001'
         );
 
-        // ACT: Resolve handler from container (tests decorator pipeline)
+        /** @var ReportPaymentHandlerInterface $handler */
         $handler = $this->app->make(ReportPaymentHandlerInterface::class);
         $result = $handler->handle($command);
 
-        // ASSERT: Payment processed despite rate limiter failure (fail-open)
-        $this->assertNotNull($result);
-        $this->assertEquals(1000, $result->amountInCents); // Flat DTO property
+        $this->assertSame(1000, $result->amountInCents);
         $this->assertDatabaseHas('subscription_payments', [
             'tenant_id' => '00000000-0000-0000-0000-000000000123',
             'amount' => 1000,
@@ -76,9 +63,9 @@ class BillingReliabilityTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function it_handles_duplicate_requests_idempotently()
+    public function it_handles_duplicate_requests_idempotently(): void
     {
-        // ARRANGE
+        /** @var ReportPaymentHandlerInterface $handler */
         $handler = $this->app->make(ReportPaymentHandlerInterface::class);
 
         $command = new ReportPaymentCommand(
@@ -91,12 +78,53 @@ class BillingReliabilityTest extends TestCase
             idempotencyKey: '00000000-0000-0000-0000-000000000002'
         );
 
-        // ACT: Submit same command twice
         $result1 = $handler->handle($command);
         $result2 = $handler->handle($command);
 
-        // ASSERT: Only one record, same ID returned
         $this->assertDatabaseCount('subscription_payments', 1);
-        $this->assertEquals($result1->id, $result2->id); // Flat DTO property
+        $this->assertSame($result1->id, $result2->id);
+    }
+}
+
+final class StubDocumentStorageService implements DocumentStorageServiceInterface
+{
+    public function verifyPresence(string $path): void
+    {
+    }
+
+    public function storeProofOfPayment(string $sourcePath, string $paymentReference): string
+    {
+        return 'permanent/proof.jpg';
+    }
+
+    public function promote(string $tempPath): string
+    {
+        return 'permanent/proof.jpg';
+    }
+
+    public function delete(string $path): void
+    {
+    }
+}
+
+final class ThrowingRateLimiter implements RateLimiterInterface
+{
+    public function tooManyAttempts(string $key, int $maxAttempts): bool
+    {
+        throw new Exception('Redis Connection Refused');
+    }
+
+    public function hit(string $key, int $decaySeconds = 60): int
+    {
+        return 1;
+    }
+
+    public function availableIn(string $key): int
+    {
+        return 0;
+    }
+
+    public function clear(string $key): void
+    {
     }
 }

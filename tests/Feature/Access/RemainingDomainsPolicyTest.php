@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Tests\Feature\Access;
+
 use App\Application\Access\Contracts\TenantPermissionGuardInterface;
 use App\Domain\Access\Enums\Permission;
 use App\Domain\TenantGovernance\Enums\Capability;
@@ -10,37 +12,69 @@ use App\Models\User;
 use App\Policies\AppointmentPolicy;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+final class RemainingDomainsPolicyTest extends TestCase
+{
+    use RefreshDatabase;
 
-it('denies appointment management if user lacks permission via guard', function () {
-    $tenant = Tenant::factory()->create();
-    $user = User::factory()->create();
+    #[Test]
+    public function it_denies_appointment_management_if_the_guard_rejects_the_permission(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $user = User::factory()->create();
+        $guard = new RecordingTenantPermissionGuard(false);
 
-    $guard = Mockery::mock(TenantPermissionGuardInterface::class);
-    $guard->shouldReceive('allows')
-        ->with($user, $tenant, Capability::APPOINTMENT_BOOKING, Permission::APPOINTMENTS_MANAGE)
-        ->andReturn(false);
+        Filament::shouldReceive('getTenant')->andReturn($tenant);
 
-    Filament::shouldReceive('getTenant')->andReturn($tenant);
+        $policy = new AppointmentPolicy($guard);
 
-    $policy = new AppointmentPolicy($guard);
+        self::assertFalse($policy->create($user));
+        self::assertSame($user, $guard->user);
+        self::assertSame($tenant, $guard->tenant);
+        self::assertSame(Capability::APPOINTMENT_BOOKING, $guard->capability);
+        self::assertSame(Permission::APPOINTMENTS_MANAGE, $guard->permission);
+    }
 
-    expect($policy->create($user))->toBeFalse();
-});
+    #[Test]
+    public function it_allows_appointment_management_if_the_guard_accepts_the_permission(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $user = User::factory()->create();
+        $guard = new RecordingTenantPermissionGuard(true);
 
-it('allows appointment management if user has permission via guard', function () {
-    $tenant = Tenant::factory()->create();
-    $user = User::factory()->create();
+        Filament::shouldReceive('getTenant')->andReturn($tenant);
 
-    $guard = Mockery::mock(TenantPermissionGuardInterface::class);
-    $guard->shouldReceive('allows')
-        ->with($user, $tenant, Capability::APPOINTMENT_BOOKING, Permission::APPOINTMENTS_MANAGE)
-        ->andReturn(true);
+        $policy = new AppointmentPolicy($guard);
 
-    Filament::shouldReceive('getTenant')->andReturn($tenant);
+        self::assertTrue($policy->create($user));
+        self::assertSame($user, $guard->user);
+        self::assertSame($tenant, $guard->tenant);
+        self::assertSame(Capability::APPOINTMENT_BOOKING, $guard->capability);
+        self::assertSame(Permission::APPOINTMENTS_MANAGE, $guard->permission);
+    }
+}
 
-    $policy = new AppointmentPolicy($guard);
+final class RecordingTenantPermissionGuard implements TenantPermissionGuardInterface
+{
+    public ?User $user = null;
 
-    expect($policy->create($user))->toBeTrue();
-});
+    public ?Tenant $tenant = null;
+
+    public ?Capability $capability = null;
+
+    public ?Permission $permission = null;
+
+    public function __construct(private readonly bool $allowed) {}
+
+    public function allows(User $user, Tenant $tenant, Capability $capability, Permission $permission): bool
+    {
+        $this->user = $user;
+        $this->tenant = $tenant;
+        $this->capability = $capability;
+        $this->permission = $permission;
+
+        return $this->allowed;
+    }
+}

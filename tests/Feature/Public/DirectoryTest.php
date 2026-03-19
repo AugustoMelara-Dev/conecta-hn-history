@@ -2,33 +2,39 @@
 
 declare(strict_types=1);
 
+namespace Tests\Feature\Public;
+
 use App\Models\Tenant;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
-/**
- * Directory Route — Attribute Safety Tests
- *
- * INVARIANT: /directorio and /explore must return 200 OK without
- * triggering MissingAttributeException on Tenant model.
- */
-it('loads the directory without missing attribute exceptions', function () {
-    // Ensure at least one active tenant exists for the query
-    $tenant = Tenant::factory()->create([
-        'is_active' => true,
-    ]);
+final class DirectoryTest extends TestCase
+{
+    use RefreshDatabase;
 
-    $response = $this->get('/directorio');
+    #[Test]
+    public function loads_the_directory_without_missing_attribute_exceptions(): void
+    {
+        Tenant::factory()->create([
+            'is_active' => true,
+        ]);
 
-    $response->assertStatus(200);
-});
+        $response = $this->get('/directorio');
 
-it('loads explore without missing attribute exceptions', function () {
-    // Ensure at least one active tenant with logo exists
-    $tenant = Tenant::factory()->create([
-        'is_active' => true,
-        'logo_path' => 'logos/test.png',
-    ]);
+        $response->assertStatus(200);
+    }
 
-    $response = $this->get('/explore');
+    #[Test]
+    public function loads_explore_without_missing_attribute_exceptions(): void
+    {
+        Tenant::factory()->create([
+            'is_active' => true,
+            'logo_path' => 'logos/test.png',
+        ]);
 
-    $response->assertStatus(200);
-});
+        $response = $this->get('/explore');
+
+        $response->assertStatus(200);
+    }
+}

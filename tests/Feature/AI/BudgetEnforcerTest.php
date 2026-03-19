@@ -2,115 +2,150 @@
 
 declare(strict_types=1);
 
-/**
- * BudgetEnforcer Feature Tests
- *
- * Estos tests verifican la logica del BudgetEnforcer con la base MySQL de testing.
- * Estan en Feature/ porque requieren RefreshDatabase y el ciclo de vida completo de Laravel.
- */
+namespace Tests\Feature\AI;
 
 use App\Exceptions\InsufficientAiCreditsException;
 use App\Infrastructure\AI\BudgetEnforcer;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+final class BudgetEnforcerTest extends TestCase
+{
+    use RefreshDatabase;
 
-beforeEach(function () {
-    $this->tenant = Tenant::factory()->create([
-        'ai_balance' => 1.000000,
-        'ai_reserved_balance' => 0.000000,
-    ]);
+    private Tenant $tenant;
 
-    $this->budgetEnforcer = new BudgetEnforcer;
-});
+    private BudgetEnforcer $budgetEnforcer;
 
-test('reserve increments ai_reserved_balance when sufficient funds', function () {
-    $reservationId = $this->budgetEnforcer->reserve(
-        tenantId: $this->tenant->id,
-        estimatedCost: 0.50,
-        operation: 'test_operation'
-    );
+    protected function setUp(): void
+    {
+        parent::setUp();
 
-    expect($reservationId)->toBeString()->toHaveLength(16);
+        $this->tenant = Tenant::factory()->create([
+            'ai_balance' => 1.000000,
+            'ai_reserved_balance' => 0.000000,
+        ]);
 
-    $this->tenant->refresh();
-    expect((float) $this->tenant->ai_reserved_balance)->toBe(0.50);
-    expect((float) $this->tenant->ai_balance)->toBe(1.00);
-});
+        $this->budgetEnforcer = new BudgetEnforcer;
+    }
 
-test('reserve throws InsufficientAiCreditsException when balance too low', function () {
-    expect(fn () => $this->budgetEnforcer->reserve(
-        tenantId: $this->tenant->id,
-        estimatedCost: 5.00,
-        operation: 'expensive_operation'
-    ))->toThrow(InsufficientAiCreditsException::class);
+    #[Test]
+    public function reserve_increments_ai_reserved_balance_when_sufficient_funds(): void
+    {
+        $reservationId = $this->budgetEnforcer->reserve(
+            tenantId: (string) $this->tenant->id,
+            estimatedCost: 0.50,
+            operation: 'test_operation',
+        );
 
-    $this->tenant->refresh();
-    expect((float) $this->tenant->ai_reserved_balance)->toBe(0.00);
-});
+        self::assertSame(16, strlen($reservationId));
 
-test('reserve considers already reserved balance', function () {
-    $this->budgetEnforcer->reserve($this->tenant->id, 0.60, 'first');
+        $this->tenant->refresh();
 
-    expect(fn () => $this->budgetEnforcer->reserve(
-        tenantId: $this->tenant->id,
-        estimatedCost: 0.50,
-        operation: 'second'
-    ))->toThrow(InsufficientAiCreditsException::class);
-});
+        self::assertEqualsWithDelta(0.50, (float) $this->tenant->ai_reserved_balance, 0.000001);
+        self::assertEqualsWithDelta(1.00, (float) $this->tenant->ai_balance, 0.000001);
+    }
 
-test('reserve throws RuntimeException for non-existent tenant', function () {
-    expect(fn () => $this->budgetEnforcer->reserve(
-        tenantId: 999999,
-        estimatedCost: 0.10,
-        operation: 'test'
-    ))->toThrow(RuntimeException::class, 'Tenant 999999 no encontrado');
-});
+    #[Test]
+    public function reserve_throws_when_balance_is_too_low(): void
+    {
+        $this->expectException(InsufficientAiCreditsException::class);
 
-test('settle decrements both balances correctly', function () {
-    $reservationId = $this->budgetEnforcer->reserve($this->tenant->id, 0.50, 'test');
+        try {
+            $this->budgetEnforcer->reserve(
+                tenantId: (string) $this->tenant->id,
+                estimatedCost: 5.00,
+                operation: 'expensive_operation',
+            );
+        } finally {
+            $this->tenant->refresh();
 
-    $this->budgetEnforcer->settle(
-        tenantId: $this->tenant->id,
-        estimatedCost: 0.50,
-        actualCost: 0.30,
-        reservationId: $reservationId,
-        usageMetadata: ['model' => 'gpt-4o']
-    );
+            self::assertEqualsWithDelta(0.00, (float) $this->tenant->ai_reserved_balance, 0.000001);
+        }
+    }
 
-    $this->tenant->refresh();
+    #[Test]
+    public function reserve_considers_already_reserved_balance(): void
+    {
+        $this->budgetEnforcer->reserve((string) $this->tenant->id, 0.60, 'first');
 
-    expect((float) $this->tenant->ai_reserved_balance)->toBe(0.00);
-    expect((float) $this->tenant->ai_balance)->toBe(0.70);
-});
+        $this->expectException(InsufficientAiCreditsException::class);
 
-test('refund only decrements ai_reserved_balance', function () {
-    $reservationId = $this->budgetEnforcer->reserve($this->tenant->id, 0.50, 'test');
+        $this->budgetEnforcer->reserve(
+            tenantId: (string) $this->tenant->id,
+            estimatedCost: 0.50,
+            operation: 'second',
+        );
+    }
 
-    $this->budgetEnforcer->refund(
-        tenantId: $this->tenant->id,
-        estimatedCost: 0.50,
-        reservationId: $reservationId,
-        failureReason: 'API timeout'
-    );
+    #[Test]
+    public function reserve_throws_for_non_existent_tenant(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Tenant 999999 no encontrado');
 
-    $this->tenant->refresh();
+        $this->budgetEnforcer->reserve(
+            tenantId: 999999,
+            estimatedCost: 0.10,
+            operation: 'test',
+        );
+    }
 
-    expect((float) $this->tenant->ai_reserved_balance)->toBe(0.00);
-    expect((float) $this->tenant->ai_balance)->toBe(1.00);
-});
+    #[Test]
+    public function settle_decrements_both_balances_correctly(): void
+    {
+        $reservationId = $this->budgetEnforcer->reserve((string) $this->tenant->id, 0.50, 'test');
 
-test('getAvailableBalance returns balance minus reserved', function () {
-    $this->budgetEnforcer->reserve($this->tenant->id, 0.30, 'test');
+        $this->budgetEnforcer->settle(
+            tenantId: (string) $this->tenant->id,
+            estimatedCost: 0.50,
+            actualCost: 0.30,
+            reservationId: $reservationId,
+            usageMetadata: ['model' => 'gpt-4o'],
+        );
 
-    $available = $this->budgetEnforcer->getAvailableBalance($this->tenant->id);
+        $this->tenant->refresh();
 
-    expect($available)->toBe(0.70);
-});
+        self::assertEqualsWithDelta(0.00, (float) $this->tenant->ai_reserved_balance, 0.000001);
+        self::assertEqualsWithDelta(0.70, (float) $this->tenant->ai_balance, 0.000001);
+    }
 
-test('getAvailableBalance returns zero for non-existent tenant', function () {
-    $available = $this->budgetEnforcer->getAvailableBalance(999999);
+    #[Test]
+    public function refund_only_decrements_ai_reserved_balance(): void
+    {
+        $reservationId = $this->budgetEnforcer->reserve((string) $this->tenant->id, 0.50, 'test');
 
-    expect($available)->toBe(0.0);
-});
+        $this->budgetEnforcer->refund(
+            tenantId: (string) $this->tenant->id,
+            estimatedCost: 0.50,
+            reservationId: $reservationId,
+            failureReason: 'API timeout',
+        );
+
+        $this->tenant->refresh();
+
+        self::assertEqualsWithDelta(0.00, (float) $this->tenant->ai_reserved_balance, 0.000001);
+        self::assertEqualsWithDelta(1.00, (float) $this->tenant->ai_balance, 0.000001);
+    }
+
+    #[Test]
+    public function get_available_balance_returns_balance_minus_reserved(): void
+    {
+        $this->budgetEnforcer->reserve((string) $this->tenant->id, 0.30, 'test');
+
+        $available = $this->budgetEnforcer->getAvailableBalance((string) $this->tenant->id);
+
+        self::assertEqualsWithDelta(0.70, $available, 0.000001);
+    }
+
+    #[Test]
+    public function get_available_balance_returns_zero_for_non_existent_tenant(): void
+    {
+        $available = $this->budgetEnforcer->getAvailableBalance(999999);
+
+        self::assertSame(0.0, $available);
+    }
+}

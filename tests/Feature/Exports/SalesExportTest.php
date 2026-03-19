@@ -11,9 +11,11 @@ use App\Exports\SalesExport;
 use App\Models\Order;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use ReflectionNamedType;
 use Tests\TestCase;
 
 /**
@@ -67,7 +69,10 @@ class SalesExportTest extends TestCase
     /**
      * Helper: Create orders without events.
      */
-    private function createOrdersWithoutEvents(int $count, array $attributes = []): \Illuminate\Database\Eloquent\Collection
+    /**
+     * @return Collection<int, Order>
+     */
+    private function createOrdersWithoutEvents(int $count, array $attributes = []): Collection
     {
         return Model::withoutEvents(function () use ($count, $attributes) {
             return Order::factory()->count($count)->create($attributes);
@@ -101,6 +106,7 @@ class SalesExportTest extends TestCase
 
         // Verificación de Integridad: Todas las órdenes deben ser del Tenant A
         foreach ($results as $order) {
+            $this->assertInstanceOf(Order::class, $order);
             $this->assertEquals($data['tenantA']->id, $order->tenant_id);
         }
 
@@ -146,7 +152,9 @@ class SalesExportTest extends TestCase
         $tenantIdParam = $parameters[0];
 
         $this->assertEquals('tenantId', $tenantIdParam->getName());
-        $this->assertEquals(TenantId::class, $tenantIdParam->getType()->getName());
+        $type = $tenantIdParam->getType();
+        $this->assertInstanceOf(ReflectionNamedType::class, $type);
+        $this->assertEquals(TenantId::class, $type->getName());
     }
 
     /**
@@ -223,6 +231,7 @@ class SalesExportTest extends TestCase
 
         $this->assertCount(2, $results);
         foreach ($results as $order) {
+            $this->assertInstanceOf(Order::class, $order);
             $this->assertEquals(Order::STATUS_DELIVERED, $order->status);
         }
     }
