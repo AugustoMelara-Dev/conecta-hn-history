@@ -8,135 +8,158 @@ use App\Models\User;
 use App\Observers\TenantObserver;
 use App\Services\TenantCacheManager;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CREATED EVENT: Role Assignment
-// ═══════════════════════════════════════════════════════════════════════════
+final class RecordingObserverUser extends User
+{
+    /** @var list<array<string, mixed>> */
+    public array $updatedPayloads = [];
+
+    public function __construct(UserRole $role)
+    {
+        parent::__construct();
+
+        $this->forceFill(['role' => $role]);
+    }
+
+    public function update(array $attributes = [], array $options = []): bool
+    {
+        $this->updatedPayloads[] = $attributes;
+        $this->forceFill($attributes);
+
+        return true;
+    }
+}
+
+final class RecordingTenantCacheManager extends TenantCacheManager
+{
+    public ?string $rotatedTenantId = null;
+
+    public ?string $forgottenTenantId = null;
+
+    public ?RuntimeException $rotateFailure = null;
+
+    public function rotateTenantVersion(int|string $tenantId): int
+    {
+        if ($this->rotateFailure instanceof RuntimeException) {
+            throw $this->rotateFailure;
+        }
+
+        $this->rotatedTenantId = (string) $tenantId;
+
+        return 1;
+    }
+
+    public function forgetVersion(int|string $tenantId): bool
+    {
+        $this->forgottenTenantId = (string) $tenantId;
+
+        return true;
+    }
+}
+
+function makeObservedTenant(int|string $tenantId, ?User $user = null): Tenant
+{
+    $tenant = new Tenant;
+    $tenant->forceFill(['id' => (string) $tenantId]);
+
+    if ($user instanceof User) {
+        $tenant->setRelation('user', $user);
+    }
+
+    return $tenant;
+}
 
 test('created assigns TENANT_OWNER role to user who is not already owner', function () {
-    $user = Mockery::mock(User::class)->makePartial();
-    $user->role = UserRole::CUSTOMER;
-    $user->shouldReceive('update')
-        ->once()
-        ->withArgs(function ($args) {
-            return isset($args['role']) && $args['role'] === UserRole::TENANT_OWNER;
-        });
-
-    $tenant = Mockery::mock(Tenant::class)->makePartial();
-    $tenant->shouldReceive('getAttribute')->with('user')->andReturn($user);
+    $user = new RecordingObserverUser(UserRole::CUSTOMER);
+    $tenant = makeObservedTenant('42', $user);
 
     $observer = new TenantObserver;
     $observer->created($tenant);
+
+    expect($user->updatedPayloads)->toHaveCount(1);
+    expect($user->updatedPayloads[0]['role'])->toBe(UserRole::TENANT_OWNER);
+    expect($user->role)->toBe(UserRole::TENANT_OWNER);
 });
 
 test('created does not reassign role if user is already TENANT_OWNER', function () {
-    $user = Mockery::mock(User::class)->makePartial();
-    $user->role = UserRole::TENANT_OWNER;
-    $user->shouldNotReceive('update');
-
-    $tenant = Mockery::mock(Tenant::class)->makePartial();
-    $tenant->shouldReceive('getAttribute')->with('user')->andReturn($user);
+    $user = new RecordingObserverUser(UserRole::TENANT_OWNER);
+    $tenant = makeObservedTenant('42', $user);
 
     $observer = new TenantObserver;
     $observer->created($tenant);
+
+    expect($user->updatedPayloads)->toBeEmpty();
 });
 
 test('created handles tenant without user gracefully', function () {
-    $tenant = Mockery::mock(Tenant::class)->makePartial();
-    $tenant->shouldReceive('getAttribute')->with('user')->andReturn(null);
+    $tenant = makeObservedTenant('42');
 
     $observer = new TenantObserver;
-
-    // Should not throw
     $observer->created($tenant);
+
     expect(true)->toBeTrue();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// UPDATED EVENT: Cache Rotation
-// ═══════════════════════════════════════════════════════════════════════════
-
 test('updated rotates tenant cache version', function () {
-    $mock = Mockery::mock(TenantCacheManager::class);
-    $mock->shouldReceive('rotateTenantVersion')
-        ->once()
-        ->with(42);
-    app()->instance(TenantCacheManager::class, $mock);
+    $cacheManager = new RecordingTenantCacheManager;
+    app()->instance(TenantCacheManager::class, $cacheManager);
 
-    $tenant = Mockery::mock(Tenant::class)->makePartial();
-    $tenant->id = 42;
+    $tenant = makeObservedTenant('42');
 
     $observer = new TenantObserver;
     $observer->updated($tenant);
+
+    expect($cacheManager->rotatedTenantId)->toBe('42');
 });
 
 test('updated logs warning when cache rotation fails', function () {
-    $mock = Mockery::mock(TenantCacheManager::class);
-    $mock->shouldReceive('rotateTenantVersion')
-        ->andThrow(new \RuntimeException('Redis down'));
-    app()->instance(TenantCacheManager::class, $mock);
+    $cacheManager = new RecordingTenantCacheManager;
+    $cacheManager->rotateFailure = new RuntimeException('Redis down');
+    app()->instance(TenantCacheManager::class, $cacheManager);
 
     Log::shouldReceive('warning')
         ->once()
-        ->withArgs(fn ($msg) => str_contains($msg, 'Cache invalidation failed for tenant 42'));
+        ->withArgs(fn (string $message): bool => str_contains($message, 'Cache invalidation failed for tenant 42'));
 
-    $tenant = Mockery::mock(Tenant::class)->makePartial();
-    $tenant->id = 42;
+    $tenant = makeObservedTenant('42');
 
     $observer = new TenantObserver;
     $observer->updated($tenant);
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// DELETED EVENT: Cache Cleanup
-// ═══════════════════════════════════════════════════════════════════════════
-
 test('deleted forgets tenant cache version', function () {
-    $mock = Mockery::mock(TenantCacheManager::class);
-    $mock->shouldReceive('forgetVersion')
-        ->once()
-        ->with(99);
-    app()->instance(TenantCacheManager::class, $mock);
+    $cacheManager = new RecordingTenantCacheManager;
+    app()->instance(TenantCacheManager::class, $cacheManager);
 
-    $tenant = Mockery::mock(Tenant::class)->makePartial();
-    $tenant->id = 99;
+    $tenant = makeObservedTenant('99');
 
     $observer = new TenantObserver;
     $observer->deleted($tenant);
+
+    expect($cacheManager->forgottenTenantId)->toBe('99');
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// RESTORED EVENT: Cache Rotation
-// ═══════════════════════════════════════════════════════════════════════════
-
 test('restored rotates tenant cache version', function () {
-    $mock = Mockery::mock(TenantCacheManager::class);
-    $mock->shouldReceive('rotateTenantVersion')
-        ->once()
-        ->with(7);
-    app()->instance(TenantCacheManager::class, $mock);
+    $cacheManager = new RecordingTenantCacheManager;
+    app()->instance(TenantCacheManager::class, $cacheManager);
 
-    $tenant = Mockery::mock(Tenant::class)->makePartial();
-    $tenant->id = 7;
+    $tenant = makeObservedTenant('7');
 
     $observer = new TenantObserver;
     $observer->restored($tenant);
+
+    expect($cacheManager->rotatedTenantId)->toBe('7');
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FORCE DELETED EVENT: Cache Cleanup
-// ═══════════════════════════════════════════════════════════════════════════
-
 test('forceDeleted forgets tenant cache version', function () {
-    $mock = Mockery::mock(TenantCacheManager::class);
-    $mock->shouldReceive('forgetVersion')
-        ->once()
-        ->with(7);
-    app()->instance(TenantCacheManager::class, $mock);
+    $cacheManager = new RecordingTenantCacheManager;
+    app()->instance(TenantCacheManager::class, $cacheManager);
 
-    $tenant = Mockery::mock(Tenant::class)->makePartial();
-    $tenant->id = 7;
+    $tenant = makeObservedTenant('7');
 
     $observer = new TenantObserver;
     $observer->forceDeleted($tenant);
+
+    expect($cacheManager->forgottenTenantId)->toBe('7');
 });

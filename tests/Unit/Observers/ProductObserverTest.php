@@ -6,13 +6,18 @@ use App\Models\Product;
 use App\Observers\ProductObserver;
 use Illuminate\Support\Facades\Cache;
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SAVED EVENT: Cache Invalidation
-// ═══════════════════════════════════════════════════════════════════════════
+function makeObservedProduct(int|string $tenantId): Product
+{
+    $product = new Product;
+    $product->forceFill([
+        'tenant_id' => (string) $tenantId,
+    ]);
+
+    return $product;
+}
 
 test('saved flushes tenant-scoped product cache tags', function () {
-    $product = Mockery::mock(Product::class)->makePartial();
-    $product->tenant_id = 5;
+    $product = makeObservedProduct('5');
 
     Cache::shouldReceive('tags')
         ->once()
@@ -24,13 +29,8 @@ test('saved flushes tenant-scoped product cache tags', function () {
     $observer->saved($product);
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// DELETED EVENT: Cache Invalidation
-// ═══════════════════════════════════════════════════════════════════════════
-
 test('deleted flushes tenant-scoped product cache tags', function () {
-    $product = Mockery::mock(Product::class)->makePartial();
-    $product->tenant_id = 12;
+    $product = makeObservedProduct('12');
 
     Cache::shouldReceive('tags')
         ->once()
@@ -42,13 +42,8 @@ test('deleted flushes tenant-scoped product cache tags', function () {
     $observer->deleted($product);
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// RESTORED EVENT: Cache Invalidation
-// ═══════════════════════════════════════════════════════════════════════════
-
 test('restored flushes tenant-scoped product cache tags', function () {
-    $product = Mockery::mock(Product::class)->makePartial();
-    $product->tenant_id = 3;
+    $product = makeObservedProduct('3');
 
     Cache::shouldReceive('tags')
         ->once()
@@ -60,14 +55,8 @@ test('restored flushes tenant-scoped product cache tags', function () {
     $observer->restored($product);
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// STRUCTURAL: Cache tag key format
-// ═══════════════════════════════════════════════════════════════════════════
-
 test('cache tags include tenant-specific key format', function () {
-    $source = file_get_contents(
-        (new ReflectionClass(ProductObserver::class))->getFileName()
-    );
+    $source = file_get_contents((string) (new ReflectionClass(ProductObserver::class))->getFileName());
 
     expect($source)->toContain('products_tenant_{$product->tenant_id}');
     expect($source)->toContain("'products'");

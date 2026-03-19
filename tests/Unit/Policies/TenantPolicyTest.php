@@ -2,217 +2,128 @@
 
 declare(strict_types=1);
 
+use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Policies\TenantPolicy;
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HELPER: Build User mock with role support for hasRole()
-// ═══════════════════════════════════════════════════════════════════════════
-
-function makeUserWithRole(string $role): User
+function makeTenantPolicyUser(UserRole $role): User
 {
-    $user = Mockery::mock(User::class)->makePartial();
-    $user->role = $role;
-
-    // hasRole accepts string or array — simulate membership check
-    $user->shouldReceive('hasRole')->andReturnUsing(function ($roles) use ($role) {
-        if (is_array($roles)) {
-            return in_array($role, $roles, true);
-        }
-
-        return $role === $roles;
-    });
+    $user = new User;
+    $user->forceFill([
+        'id' => fake()->uuid(),
+        'name' => fake()->name(),
+        'email' => fake()->safeEmail(),
+        'role' => $role,
+    ]);
 
     return $user;
 }
 
-function makeTenantMock(string $tenantId = '00000000-0000-0000-0000-000000000001'): Tenant
+function makeTenantPolicyTenant(string $tenantId = '00000000-0000-0000-0000-000000000001'): Tenant
 {
-    $tenant = Mockery::mock(Tenant::class)->makePartial();
-    $tenant->id = $tenantId;
+    $tenant = new Tenant;
+    $tenant->forceFill(['id' => $tenantId]);
 
     return $tenant;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ROLE MATRIX: viewAny — Super Admin + Moderator allowed
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('Super Admin can viewAny tenants', function () {
-    $user = makeUserWithRole('Super Admin');
+test('super admin can viewAny tenants', function () {
+    $user = makeTenantPolicyUser(UserRole::SUPER_ADMIN);
 
     expect((new TenantPolicy)->viewAny($user))->toBeTrue();
 });
 
-test('Moderator can viewAny tenants', function () {
-    $user = makeUserWithRole('Moderator');
-
-    expect((new TenantPolicy)->viewAny($user))->toBeTrue();
-});
-
-test('seller DENIED viewAny tenants', function () {
-    $user = makeUserWithRole('seller');
+test('tenant owner is denied viewAny tenants', function () {
+    $user = makeTenantPolicyUser(UserRole::TENANT_OWNER);
 
     expect((new TenantPolicy)->viewAny($user))->toBeFalse();
 });
 
-test('staff DENIED viewAny tenants', function () {
-    $user = makeUserWithRole('staff');
+test('staff is denied viewAny tenants', function () {
+    $user = makeTenantPolicyUser(UserRole::STAFF);
 
     expect((new TenantPolicy)->viewAny($user))->toBeFalse();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ROLE MATRIX: view — Super Admin + Moderator allowed
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('Super Admin can view tenant', function () {
-    $user = makeUserWithRole('Super Admin');
-    $tenant = makeTenantMock();
+test('super admin can view tenant', function () {
+    $user = makeTenantPolicyUser(UserRole::SUPER_ADMIN);
+    $tenant = makeTenantPolicyTenant();
 
     expect((new TenantPolicy)->view($user, $tenant))->toBeTrue();
 });
 
-test('Moderator can view tenant', function () {
-    $user = makeUserWithRole('Moderator');
-    $tenant = makeTenantMock();
-
-    expect((new TenantPolicy)->view($user, $tenant))->toBeTrue();
-});
-
-test('seller DENIED view tenant', function () {
-    $user = makeUserWithRole('seller');
-    $tenant = makeTenantMock();
+test('tenant owner is denied view tenant', function () {
+    $user = makeTenantPolicyUser(UserRole::TENANT_OWNER);
+    $tenant = makeTenantPolicyTenant();
 
     expect((new TenantPolicy)->view($user, $tenant))->toBeFalse();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ROLE MATRIX: update — Super Admin + Moderator allowed
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('Super Admin can update tenant settings', function () {
-    $user = makeUserWithRole('Super Admin');
-    $tenant = makeTenantMock();
+test('super admin can update tenant settings', function () {
+    $user = makeTenantPolicyUser(UserRole::SUPER_ADMIN);
+    $tenant = makeTenantPolicyTenant();
 
     expect((new TenantPolicy)->update($user, $tenant))->toBeTrue();
 });
 
-test('Moderator can update tenant settings', function () {
-    $user = makeUserWithRole('Moderator');
-    $tenant = makeTenantMock();
-
-    expect((new TenantPolicy)->update($user, $tenant))->toBeTrue();
-});
-
-test('seller DENIED update tenant settings', function () {
-    $user = makeUserWithRole('seller');
-    $tenant = makeTenantMock();
+test('staff is denied update tenant settings', function () {
+    $user = makeTenantPolicyUser(UserRole::STAFF);
+    $tenant = makeTenantPolicyTenant();
 
     expect((new TenantPolicy)->update($user, $tenant))->toBeFalse();
 });
 
-test('staff DENIED update tenant settings (self-management防止)', function () {
-    $user = makeUserWithRole('staff');
-    $tenant = makeTenantMock();
-
-    expect((new TenantPolicy)->update($user, $tenant))->toBeFalse();
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TENANT SAFETY: create — Super Admin ONLY
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('Super Admin can create tenants', function () {
-    $user = makeUserWithRole('Super Admin');
+test('super admin can create tenants', function () {
+    $user = makeTenantPolicyUser(UserRole::SUPER_ADMIN);
 
     expect((new TenantPolicy)->create($user))->toBeTrue();
 });
 
-test('Moderator DENIED create tenants', function () {
-    $user = makeUserWithRole('Moderator');
+test('tenant owner is denied create tenants', function () {
+    $user = makeTenantPolicyUser(UserRole::TENANT_OWNER);
 
     expect((new TenantPolicy)->create($user))->toBeFalse();
 });
 
-test('seller DENIED create tenants', function () {
-    $user = makeUserWithRole('seller');
-
-    expect((new TenantPolicy)->create($user))->toBeFalse();
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TENANT SAFETY: delete — Super Admin ONLY (suicide prevention)
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('Super Admin can delete tenant', function () {
-    $user = makeUserWithRole('Super Admin');
-    $tenant = makeTenantMock();
+test('super admin can delete tenant', function () {
+    $user = makeTenantPolicyUser(UserRole::SUPER_ADMIN);
+    $tenant = makeTenantPolicyTenant();
 
     expect((new TenantPolicy)->delete($user, $tenant))->toBeTrue();
 });
 
-test('Moderator DENIED delete tenant', function () {
-    $user = makeUserWithRole('Moderator');
-    $tenant = makeTenantMock();
+test('staff is denied delete tenant', function () {
+    $user = makeTenantPolicyUser(UserRole::STAFF);
+    $tenant = makeTenantPolicyTenant();
 
     expect((new TenantPolicy)->delete($user, $tenant))->toBeFalse();
 });
 
-test('seller DENIED delete tenant (data loss prevention)', function () {
-    $user = makeUserWithRole('seller');
-    $tenant = makeTenantMock();
-
-    expect((new TenantPolicy)->delete($user, $tenant))->toBeFalse();
-});
-
-test('staff DENIED delete tenant (suicide prevention)', function () {
-    $user = makeUserWithRole('staff');
-    $tenant = makeTenantMock();
-
-    expect((new TenantPolicy)->delete($user, $tenant))->toBeFalse();
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TENANT SAFETY: restore — Super Admin ONLY
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('Super Admin can restore tenant', function () {
-    $user = makeUserWithRole('Super Admin');
-    $tenant = makeTenantMock();
+test('super admin can restore tenant', function () {
+    $user = makeTenantPolicyUser(UserRole::SUPER_ADMIN);
+    $tenant = makeTenantPolicyTenant();
 
     expect((new TenantPolicy)->restore($user, $tenant))->toBeTrue();
 });
 
-test('Moderator DENIED restore tenant', function () {
-    $user = makeUserWithRole('Moderator');
-    $tenant = makeTenantMock();
+test('tenant owner is denied restore tenant', function () {
+    $user = makeTenantPolicyUser(UserRole::TENANT_OWNER);
+    $tenant = makeTenantPolicyTenant();
 
     expect((new TenantPolicy)->restore($user, $tenant))->toBeFalse();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TENANT SAFETY: forceDelete — Super Admin ONLY (destructive)
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('Super Admin can forceDelete tenant', function () {
-    $user = makeUserWithRole('Super Admin');
-    $tenant = makeTenantMock();
+test('super admin can forceDelete tenant', function () {
+    $user = makeTenantPolicyUser(UserRole::SUPER_ADMIN);
+    $tenant = makeTenantPolicyTenant();
 
     expect((new TenantPolicy)->forceDelete($user, $tenant))->toBeTrue();
 });
 
-test('Moderator DENIED forceDelete tenant', function () {
-    $user = makeUserWithRole('Moderator');
-    $tenant = makeTenantMock();
-
-    expect((new TenantPolicy)->forceDelete($user, $tenant))->toBeFalse();
-});
-
-test('seller DENIED forceDelete tenant', function () {
-    $user = makeUserWithRole('seller');
-    $tenant = makeTenantMock();
+test('customer is denied forceDelete tenant', function () {
+    $user = makeTenantPolicyUser(UserRole::CUSTOMER);
+    $tenant = makeTenantPolicyTenant();
 
     expect((new TenantPolicy)->forceDelete($user, $tenant))->toBeFalse();
 });

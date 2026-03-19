@@ -3,13 +3,21 @@
 declare(strict_types=1);
 
 use App\Application\Access\Contracts\TenantPermissionGuardInterface;
+use App\Domain\Access\Enums\Permission;
+use App\Domain\Identity\Enums\UserRole;
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Policies\ProductPolicy;
 use App\Settings\GeneralSettings;
+use Filament\Facades\Filament;
 use Illuminate\Auth\Access\Response;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Mockery\Expectation;
+use Mockery\MockInterface;
 
 function normalizeProductTenantId(int|string $tenantId): string
 {
@@ -20,160 +28,259 @@ function normalizeProductTenantId(int|string $tenantId): string
     return '00000000-0000-0000-0000-0000000000'.str_pad((string) $tenantId, 2, '0', STR_PAD_LEFT);
 }
 
-function bindProductPolicyServices(): void
+function bindProductPolicyServices(bool $allows = true): void
 {
-    $guard = Mockery::mock(TenantPermissionGuardInterface::class);
-    $guard->shouldReceive('allows')->andReturn(true);
-    app()->instance(TenantPermissionGuardInterface::class, $guard);
+    app()->instance(
+        TenantPermissionGuardInterface::class,
+        new class($allows) implements TenantPermissionGuardInterface
+        {
+            public function __construct(private bool $allows) {}
 
-    $settings = new class
+            public function allows(User $user, Tenant $tenant, Capability $capability, Permission $permission): bool
+            {
+                return $this->allows;
+            }
+        }
+    );
+
+    $settings = new class extends GeneralSettings
     {
-        public int $free_plan_product_limit = 10;
-
-        public int $pro_plan_product_limit = 1000;
+        public function __construct() {}
     };
+    $settings->free_plan_product_limit = 10;
+    $settings->pro_plan_product_limit = 1000;
 
     app()->instance(GeneralSettings::class, $settings);
 }
 
-function makeUserForProduct(array $tenantIds, string $role = 'seller'): User
+function fakeCurrentTenant(?Tenant $tenant): void
 {
-    $normalizedTenantIds = array_map(fn ($id) => normalizeProductTenantId($id), $tenantIds);
+    Filament::shouldReceive('getTenant')->andReturn($tenant);
+}
 
-    $user = Mockery::mock(User::class)->makePartial();
-    $user->role = $role;
-    $user->_memoized_tenant_ids = $normalizedTenantIds;
-
-    $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
-    $relation->shouldReceive('pluck')->with('id')->andReturn(collect($normalizedTenantIds));
-    $relation->shouldReceive('exists')->andReturn(count($normalizedTenantIds) > 0);
-    $relation->shouldReceive('first')->andReturn(
-        count($normalizedTenantIds) > 0
-            ? (object) ['id' => $normalizedTenantIds[0]]
-            : null
-    );
-    $user->shouldReceive('tenants')->andReturn($relation);
+function makePolicyUser(UserRole $role = UserRole::CUSTOMER, ?string $id = null): User
+{
+    $user = new User;
+    $user->forceFill([
+        'id' => $id ?? normalizeProductTenantId(random_int(1, 99)),
+        'role' => $role,
+        'email' => fake()->safeEmail(),
+        'name' => fake()->name(),
+    ]);
 
     return $user;
 }
 
-function makeProduct(int $tenantId): Product
+function makePolicyProduct(int|string $tenantId): Product
 {
-    $product = Mockery::mock(Product::class)->makePartial();
-    $product->tenant_id = normalizeProductTenantId($tenantId);
+    $product = new Product;
+    $product->forceFill([
+        'tenant_id' => normalizeProductTenantId($tenantId),
+    ]);
 
     return $product;
 }
 
+function makePolicyTenant(
+    int|string $tenantId,
+    bool $isPro = false,
+    int $productCount = 0,
+    ?string $ownerId = null,
+): Tenant {
+    /** @var HasMany&MockInterface $productsRelation */
+    $productsRelation = Mockery::mock(HasMany::class);
+    /** @var Expectation $countExpectation */
+    $countExpectation = $productsRelation->shouldReceive('count');
+    $countExpectation->andReturn($productCount);
+
+    $tenant = new class($productsRelation) extends Tenant
+    {
+        public function __construct(private HasMany $productsRelation)
+        {
+            parent::__construct();
+        }
+
+        public function products(): HasMany
+        {
+            return $this->productsRelation;
+        }
+    };
+
+    $tenant->forceFill([
+        'id' => normalizeProductTenantId($tenantId),
+        'user_id' => $ownerId,
+        'plan_type' => $isPro ? TenantPlan::PRO : TenantPlan::SEMILLA,
+        'subscription_status' => 'active',
+        'subscription_ends_at' => null,
+    ]);
+
+    return $tenant;
+}
+
+/**
+ * @return User&MockInterface
+ */
+function makeUserWithoutTenants(UserRole $role = UserRole::CUSTOMER, ?string $id = null): User
+{
+    /** @var User&MockInterface $user */
+    $user = Mockery::mock(User::class)->makePartial();
+    $user->forceFill([
+        'id' => $id ?? normalizeProductTenantId(random_int(100, 199)),
+        'role' => $role,
+        'email' => fake()->safeEmail(),
+        'name' => fake()->name(),
+    ]);
+
+    /** @var HasMany&MockInterface $tenantsRelation */
+    $tenantsRelation = Mockery::mock(HasMany::class);
+    /** @var Expectation $tenantsPluck */
+    $tenantsPluck = $tenantsRelation->shouldReceive('pluck');
+    $tenantsPluck->with('id')->andReturn(collect());
+    /** @var Expectation $tenantsFirst */
+    $tenantsFirst = $tenantsRelation->shouldReceive('first');
+    $tenantsFirst->andReturn(null);
+
+    /** @var BelongsToMany&MockInterface $memberTenantsRelation */
+    $memberTenantsRelation = Mockery::mock(BelongsToMany::class);
+    /** @var Expectation $pivotExpectation */
+    $pivotExpectation = $memberTenantsRelation->shouldReceive('wherePivotNotNull');
+    $pivotExpectation->with('accepted_at')->andReturnSelf();
+    /** @var Expectation $membersPluck */
+    $membersPluck = $memberTenantsRelation->shouldReceive('pluck');
+    $membersPluck->with('tenants.id')->andReturn(collect());
+    /** @var Expectation $membersFirst */
+    $membersFirst = $memberTenantsRelation->shouldReceive('first');
+    $membersFirst->andReturn(null);
+
+    $user->shouldReceive('tenants')->andReturn($tenantsRelation);
+    $user->shouldReceive('memberTenants')->andReturn($memberTenantsRelation);
+
+    return $user;
+}
+
 test('denies view for cross-tenant product', function () {
-    $user = makeUserForProduct([1]);
-    $product = makeProduct(tenantId: 2);
+    bindProductPolicyServices();
+
+    $user = makePolicyUser();
+    $product = makePolicyProduct(tenantId: 2);
+    $tenant = makePolicyTenant(tenantId: 1);
+    fakeCurrentTenant($tenant);
 
     expect((new ProductPolicy)->view($user, $product))->toBeFalse();
 });
 
 test('denies update for cross-tenant product', function () {
-    $user = makeUserForProduct([1]);
-    $product = makeProduct(tenantId: 2);
+    bindProductPolicyServices();
+
+    $user = makePolicyUser();
+    $product = makePolicyProduct(tenantId: 2);
+    $tenant = makePolicyTenant(tenantId: 1);
+    fakeCurrentTenant($tenant);
 
     expect((new ProductPolicy)->update($user, $product))->toBeFalse();
 });
 
 test('denies delete for cross-tenant product', function () {
-    $user = makeUserForProduct([1]);
-    $product = makeProduct(tenantId: 2);
+    bindProductPolicyServices();
+
+    $user = makePolicyUser();
+    $product = makePolicyProduct(tenantId: 2);
+    $tenant = makePolicyTenant(tenantId: 1);
+    fakeCurrentTenant($tenant);
 
     expect((new ProductPolicy)->delete($user, $product))->toBeFalse();
 });
 
 test('denies restore for cross-tenant product', function () {
-    $user = makeUserForProduct([1]);
-    $product = makeProduct(tenantId: 2);
+    bindProductPolicyServices();
+
+    $user = makePolicyUser();
+    $product = makePolicyProduct(tenantId: 2);
+    $tenant = makePolicyTenant(tenantId: 1);
+    fakeCurrentTenant($tenant);
 
     expect((new ProductPolicy)->restore($user, $product))->toBeFalse();
 });
 
 test('allows view for same-tenant product', function () {
-    $user = makeUserForProduct([5]);
-    $product = makeProduct(tenantId: 5);
+    bindProductPolicyServices();
+
+    $user = makePolicyUser();
+    $product = makePolicyProduct(tenantId: 5);
+    $tenant = makePolicyTenant(tenantId: 5);
+    fakeCurrentTenant($tenant);
 
     expect((new ProductPolicy)->view($user, $product))->toBeTrue();
 });
 
 test('allows update for same-tenant product', function () {
-    $user = makeUserForProduct([5]);
-    $product = makeProduct(tenantId: 5);
+    bindProductPolicyServices();
+
+    $user = makePolicyUser();
+    $product = makePolicyProduct(tenantId: 5);
+    $tenant = makePolicyTenant(tenantId: 5);
+    fakeCurrentTenant($tenant);
 
     expect((new ProductPolicy)->update($user, $product))->toBeTrue();
 });
 
 test('allows delete for same-tenant product', function () {
-    $user = makeUserForProduct([5]);
-    $product = makeProduct(tenantId: 5);
+    bindProductPolicyServices();
+
+    $user = makePolicyUser();
+    $product = makePolicyProduct(tenantId: 5);
+    $tenant = makePolicyTenant(tenantId: 5);
+    fakeCurrentTenant($tenant);
 
     expect((new ProductPolicy)->delete($user, $product))->toBeTrue();
 });
 
 test('allows restore for same-tenant product', function () {
-    $user = makeUserForProduct([5]);
-    $product = makeProduct(tenantId: 5);
+    bindProductPolicyServices();
+
+    $user = makePolicyUser();
+    $product = makePolicyProduct(tenantId: 5);
+    $tenant = makePolicyTenant(tenantId: 5);
+    fakeCurrentTenant($tenant);
 
     expect((new ProductPolicy)->restore($user, $product))->toBeTrue();
 });
 
 test('denies viewAny when user has no tenants', function () {
-    $user = makeUserForProduct([]);
+    bindProductPolicyServices();
+
+    $user = makeUserWithoutTenants();
+    fakeCurrentTenant(null);
 
     expect((new ProductPolicy)->viewAny($user))->toBeFalse();
 });
 
-test('allows viewAny when user has a tenant', function () {
-    $user = makeUserForProduct([3]);
+test('allows viewAny when there is an active tenant context', function () {
+    bindProductPolicyServices();
+
+    $user = makePolicyUser();
+    $tenant = makePolicyTenant(tenantId: 3);
+    fakeCurrentTenant($tenant);
 
     expect((new ProductPolicy)->viewAny($user))->toBeTrue();
 });
 
-test('denies view when user has no tenants', function () {
-    $user = makeUserForProduct([]);
-    $product = makeProduct(tenantId: 1);
+test('denies view when user has no tenants and no active tenant context', function () {
+    bindProductPolicyServices();
+
+    $user = makeUserWithoutTenants();
+    $product = makePolicyProduct(tenantId: 1);
+    fakeCurrentTenant(null);
 
     expect((new ProductPolicy)->view($user, $product))->toBeFalse();
 });
 
-function makeUserForCreate(bool $isPro, int $productCount, array $tenantIds = [10]): User
-{
-    $normalizedTenantIds = array_map(fn ($id) => normalizeProductTenantId($id), $tenantIds);
-
-    $user = Mockery::mock(User::class)->makePartial();
-    $user->role = 'seller';
-    $user->_memoized_tenant_ids = $normalizedTenantIds;
-
-    $productsRelation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
-    $productsRelation->shouldReceive('count')->andReturn($productCount);
-
-    $tenant = Mockery::mock(Tenant::class)->makePartial();
-    $tenant->id = $normalizedTenantIds[0] ?? null;
-    $tenant->forceFill([
-        'plan_type' => $isPro ? TenantPlan::PRO : TenantPlan::SEMILLA,
-        'subscription_status' => 'active',
-        'subscription_ends_at' => null,
-    ]);
-    $tenant->shouldReceive('products')->andReturn($productsRelation);
-
-    $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
-    $relation->shouldReceive('pluck')->with('id')->andReturn(collect($normalizedTenantIds));
-    $relation->shouldReceive('exists')->andReturn(count($normalizedTenantIds) > 0);
-    $relation->shouldReceive('first')->andReturn(
-        count($normalizedTenantIds) > 0 ? $tenant : null
-    );
-    $user->shouldReceive('tenants')->andReturn($relation);
-
-    return $user;
-}
-
 test('create allows PRO tenant with unlimited products', function () {
     bindProductPolicyServices();
-    $user = makeUserForCreate(isPro: true, productCount: 999);
+
+    $user = makePolicyUser();
+    $tenant = makePolicyTenant(tenantId: 10, isPro: true, productCount: 999);
+    fakeCurrentTenant($tenant);
 
     $result = (new ProductPolicy)->create($user);
 
@@ -183,7 +290,10 @@ test('create allows PRO tenant with unlimited products', function () {
 
 test('create allows FREE tenant under 10 products', function () {
     bindProductPolicyServices();
-    $user = makeUserForCreate(isPro: false, productCount: 5);
+
+    $user = makePolicyUser();
+    $tenant = makePolicyTenant(tenantId: 10, productCount: 5);
+    fakeCurrentTenant($tenant);
 
     $result = (new ProductPolicy)->create($user);
 
@@ -192,7 +302,10 @@ test('create allows FREE tenant under 10 products', function () {
 
 test('create denies FREE tenant at 10 products', function () {
     bindProductPolicyServices();
-    $user = makeUserForCreate(isPro: false, productCount: 10);
+
+    $user = makePolicyUser();
+    $tenant = makePolicyTenant(tenantId: 10, productCount: 10);
+    fakeCurrentTenant($tenant);
 
     $result = (new ProductPolicy)->create($user);
 
@@ -201,7 +314,10 @@ test('create denies FREE tenant at 10 products', function () {
 });
 
 test('create denies user with no tenant', function () {
-    $user = makeUserForCreate(isPro: false, productCount: 0, tenantIds: []);
+    bindProductPolicyServices();
+
+    $user = makeUserWithoutTenants();
+    fakeCurrentTenant(null);
 
     $result = (new ProductPolicy)->create($user);
 
@@ -209,43 +325,61 @@ test('create denies user with no tenant', function () {
     expect($result->message())->toContain('negocio');
 });
 
-test('allows forceDelete for super_admin owning product', function () {
+test('allows forceDelete for tenant owner in the same tenant', function () {
     bindProductPolicyServices();
 
-    $tenantId = normalizeProductTenantId(10);
-    $tenant = Mockery::mock(Tenant::class)->makePartial();
-    $tenant->id = $tenantId;
-    $tenant->user_id = '00000000-0000-0000-0000-000000000123';
-
-    $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
-    $relation->shouldReceive('pluck')->with('id')->andReturn(collect([$tenantId]));
-    $relation->shouldReceive('exists')->andReturn(true);
-    $relation->shouldReceive('first')->andReturn($tenant);
-
-    $user = Mockery::mock(User::class)->makePartial();
-    $user->id = '00000000-0000-0000-0000-000000000123';
-    $user->role = 'super_admin';
-    $user->_memoized_tenant_ids = [$tenantId];
-    $user->shouldReceive('tenants')->andReturn($relation);
-    $user->shouldReceive('hasRole')->with('super_admin')->andReturn(true);
-
-    $product = makeProduct(tenantId: 10);
+    $userId = normalizeProductTenantId(123);
+    $user = makePolicyUser(role: UserRole::SUPER_ADMIN, id: $userId);
+    $product = makePolicyProduct(tenantId: 10);
+    $tenant = makePolicyTenant(tenantId: 10, ownerId: $userId);
+    fakeCurrentTenant($tenant);
 
     expect((new ProductPolicy)->forceDelete($user, $product))->toBeTrue();
 });
 
-test('denies forceDelete for non-admin owning product', function () {
-    $user = makeUserForProduct([10], role: 'seller');
-    $user->shouldReceive('hasRole')->with('super_admin')->andReturn(false);
-    $product = makeProduct(tenantId: 10);
+test('denies forceDelete for same-tenant user that does not own the tenant', function () {
+    bindProductPolicyServices();
+
+    /** @var User&MockInterface $user */
+    $user = Mockery::mock(User::class)->makePartial();
+    $user->forceFill([
+        'id' => normalizeProductTenantId(777),
+        'role' => UserRole::SUPER_ADMIN,
+        'email' => fake()->safeEmail(),
+        'name' => fake()->name(),
+    ]);
+
+    /** @var HasMany&MockInterface $tenantMemberships */
+    $tenantMemberships = Mockery::mock(HasMany::class);
+    /** @var Expectation $membershipExists */
+    $membershipExists = $tenantMemberships->shouldReceive('where');
+    $membershipExists->with('tenant_id', normalizeProductTenantId(10))->andReturnSelf();
+    /** @var Expectation $membershipRole */
+    $membershipRole = $tenantMemberships->shouldReceive('where');
+    $membershipRole->with('role', 'owner')->andReturnSelf();
+    /** @var Expectation $acceptedAt */
+    $acceptedAt = $tenantMemberships->shouldReceive('whereNotNull');
+    $acceptedAt->with('accepted_at')->andReturnSelf();
+    /** @var Expectation $existsExpectation */
+    $existsExpectation = $tenantMemberships->shouldReceive('exists');
+    $existsExpectation->andReturn(false);
+    $user->shouldReceive('tenantMemberships')->andReturn($tenantMemberships);
+
+    $product = makePolicyProduct(tenantId: 10);
+    $tenant = makePolicyTenant(tenantId: 10, ownerId: normalizeProductTenantId(123));
+    fakeCurrentTenant($tenant);
 
     expect((new ProductPolicy)->forceDelete($user, $product))->toBeFalse();
 });
 
-test('denies forceDelete for admin on cross-tenant product', function () {
-    $user = makeUserForProduct([1], role: 'super_admin');
-    $user->shouldReceive('hasRole')->with('super_admin')->andReturn(true);
-    $product = makeProduct(tenantId: 2);
+test('denies forceDelete for cross-tenant product', function () {
+    bindProductPolicyServices();
+
+    $userId = normalizeProductTenantId(123);
+    $user = makePolicyUser(role: UserRole::SUPER_ADMIN, id: $userId);
+    $product = makePolicyProduct(tenantId: 2);
+    $tenant = makePolicyTenant(tenantId: 1, ownerId: $userId);
+    fakeCurrentTenant($tenant);
 
     expect((new ProductPolicy)->forceDelete($user, $product))->toBeFalse();
 });

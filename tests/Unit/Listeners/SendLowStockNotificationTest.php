@@ -8,67 +8,75 @@ use App\Models\Product;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
-    // Crear dos tenants
-    $this->tenantA = Tenant::factory()->create(['name' => 'Tenant A']);
-    $this->tenantB = Tenant::factory()->create(['name' => 'Tenant B']);
+/**
+ * @return array{
+ *     tenantA: Tenant,
+ *     tenantB: Tenant,
+ *     productA: Product,
+ *     productB: Product,
+ *     listener: SendLowStockNotification
+ * }
+ */
+function makeLowStockFixture(): array
+{
+    $tenantA = Tenant::factory()->create(['name' => 'Tenant A']);
+    $tenantB = Tenant::factory()->create(['name' => 'Tenant B']);
 
-    // Crear productos - uno para cada tenant
-    $this->productA = Product::factory()->create([
-        'tenant_id' => $this->tenantA->id,
+    $productA = Product::factory()->create([
+        'tenant_id' => $tenantA->id,
         'name' => 'Product A',
         'stock_quantity' => 5,
     ]);
 
-    $this->productB = Product::factory()->create([
-        'tenant_id' => $this->tenantB->id,
+    $productB = Product::factory()->create([
+        'tenant_id' => $tenantB->id,
         'name' => 'Product B',
         'stock_quantity' => 3,
     ]);
 
-    $this->listener = new SendLowStockNotification;
+    return [
+        'tenantA' => $tenantA,
+        'tenantB' => $tenantB,
+        'productA' => $productA,
+        'productB' => $productB,
+        'listener' => new SendLowStockNotification,
+    ];
+}
 
-    Notification::fake();
-});
+function makeEventProduct(string $productId, string $tenantId): Product
+{
+    $product = new Product;
+    $product->forceFill([
+        'id' => $productId,
+        'tenant_id' => $tenantId,
+    ]);
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TESTS: SUCCESSFUL PROCESSING
-// ═══════════════════════════════════════════════════════════════════════════
+    return $product;
+}
 
 test('processes product with correct tenant_id', function () {
+    $fixture = makeLowStockFixture();
     $event = new LowStockThresholdReached(
-        product: $this->productA,
+        product: $fixture['productA'],
         currentStock: 5,
-        threshold: 10
+        threshold: 10,
     );
 
-    // No debería lanzar excepciones
-    $this->listener->handle($event);
+    $fixture['listener']->handle($event);
 
-    // Test pasa si no hay excepciones
     expect(true)->toBeTrue();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TESTS: CROSS-TENANT ACCESS BLOCKED
-// ═══════════════════════════════════════════════════════════════════════════
-
 test('blocks product from different tenant and logs security event', function () {
-    // Simular evento malintencionado: producto de TenantB pero con contexto manipulado
-    // Creamos un producto "falso" que simula un ID de otro tenant
-    // pero se procesa a nivel de código
-    $maliciousProduct = Mockery::mock(\App\Models\Product::class)->makePartial();
-    $maliciousProduct->id = $this->productA->id;
-    $maliciousProduct->tenant_id = $this->tenantB->id;
+    $fixture = makeLowStockFixture();
 
     $maliciousEvent = new LowStockThresholdReached(
-        product: $maliciousProduct,
+        product: makeEventProduct((string) $fixture['productA']->id, (string) $fixture['tenantB']->id),
         currentStock: 5,
-        threshold: 10
+        threshold: 10,
     );
 
     Log::shouldReceive('channel')
@@ -78,48 +86,40 @@ test('blocks product from different tenant and logs security event', function ()
 
     Log::shouldReceive('critical')
         ->once()
-        ->withArgs(function ($message, $context) {
-            return str_contains($message, 'Cross-Tenant Access Attempt BLOCKED') &&
-                   $context['severity'] === 'CRITICAL';
+        ->withArgs(function (string $message, array $context): bool {
+            return str_contains($message, 'Cross-Tenant Access Attempt BLOCKED')
+                && ($context['severity'] ?? null) === 'CRITICAL';
         });
 
-    // El listener debe retornar silenciosamente (Fail Silent Protocol)
-    $this->listener->handle($maliciousEvent);
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TESTS: NON-EXISTENT PRODUCT
-// ═══════════════════════════════════════════════════════════════════════════
-
-test('gracefully returns for non-existent product', function () {
-    $maliciousProduct = Mockery::mock(\App\Models\Product::class)->makePartial();
-    $maliciousProduct->id = '99999999';
-    $maliciousProduct->tenant_id = $this->tenantA->id;
-
-    $maliciousEvent = new LowStockThresholdReached(
-        product: $maliciousProduct,
-        currentStock: 5,
-        threshold: 10
-    );
-
-    Log::shouldReceive('warning')
-        ->once()
-        ->withArgs(fn ($msg) => str_contains($msg, 'not found'));
-
-    // No debe lanzar excepciones (Fail Silent)
-    $this->listener->handle($maliciousEvent);
+    $fixture['listener']->handle($maliciousEvent);
 
     expect(true)->toBeTrue();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TESTS: NO EXCEPTIONS IN BACKGROUND JOBS (FAIL SILENT)
-// ═══════════════════════════════════════════════════════════════════════════
+test('gracefully returns for non-existent product', function () {
+    $fixture = makeLowStockFixture();
 
-test('never throws exceptions - implements Fail Silent protocol', function () {
+    $maliciousEvent = new LowStockThresholdReached(
+        product: makeEventProduct('99999999', (string) $fixture['tenantA']->id),
+        currentStock: 5,
+        threshold: 10,
+    );
+
+    Log::shouldReceive('warning')
+        ->once()
+        ->withArgs(fn (string $message): bool => str_contains($message, 'not found'));
+
+    $fixture['listener']->handle($maliciousEvent);
+
+    expect(true)->toBeTrue();
+});
+
+test('never throws exceptions and implements fail silent protocol', function () {
+    $fixture = makeLowStockFixture();
+
     $scenarios = [
-        ['aggregateId' => '999999', 'tenantId' => (string) $this->tenantA->id],
-        ['aggregateId' => (string) $this->productA->id, 'tenantId' => 'invalid-uuid'],
+        ['aggregateId' => '999999', 'tenantId' => (string) $fixture['tenantA']->id],
+        ['aggregateId' => (string) $fixture['productA']->id, 'tenantId' => 'invalid-uuid'],
         ['aggregateId' => '', 'tenantId' => ''],
     ];
 
@@ -128,17 +128,14 @@ test('never throws exceptions - implements Fail Silent protocol', function () {
     Log::shouldReceive('warning')->andReturnNull();
 
     foreach ($scenarios as $scenario) {
-        $fakeProduct = Mockery::mock(\App\Models\Product::class)->makePartial();
-        $fakeProduct->id = $scenario['aggregateId'];
-        $fakeProduct->tenant_id = $scenario['tenantId'];
-
         $event = new LowStockThresholdReached(
-            product: $fakeProduct,
+            product: makeEventProduct($scenario['aggregateId'], $scenario['tenantId']),
             currentStock: 5,
-            threshold: 10
+            threshold: 10,
         );
 
-        // No debe lanzar ninguna excepción
-        expect(fn () => $this->listener->handle($event))->not->toThrow(Exception::class);
+        $fixture['listener']->handle($event);
     }
+
+    expect(true)->toBeTrue();
 });
