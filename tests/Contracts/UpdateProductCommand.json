@@ -21,6 +21,13 @@
         "idempotencyKey": {
             "type": "string"
         },
+        "sku": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
         "stock": {
             "type": "integer",
             "default": 0

@@ -13,19 +13,68 @@ test('Auth Handlers must not use EventBus directly - Strict Outbox Pattern', fun
 });
 
 test('Auth Handlers must use Outbox Repository', function () {
-    expect('App\Application\Auth\Handlers')
-        ->toUse(OutboxRepositoryInterface::class);
+    $handlers = [
+        \App\Application\Auth\Handlers\DeleteUserHandler::class,
+        \App\Application\Auth\Handlers\GenerateOtpHandler::class,
+        \App\Application\Auth\Handlers\LoginViaSocialProviderHandler::class,
+        \App\Application\Auth\Handlers\ResetUserPasswordHandler::class,
+        \App\Application\Auth\Handlers\UpdateUserPasswordHandler::class,
+        \App\Application\Auth\Handlers\VerifyOtpHandler::class,
+    ];
+
+    foreach ($handlers as $handler) {
+        $reflection = new \ReflectionClass($handler);
+        $constructor = $reflection->getConstructor();
+
+        expect($constructor)->not->toBeNull();
+
+        $parameterTypes = array_map(
+            static fn (\ReflectionParameter $parameter): ?string => $parameter->getType() instanceof \ReflectionNamedType
+                ? $parameter->getType()->getName()
+                : null,
+            $constructor?->getParameters() ?? []
+        );
+
+        expect($parameterTypes)->toContain(OutboxRepositoryInterface::class);
+    }
 });
 
 test('Auth Decorators must use idempotency contracts', function () {
-    expect([
-        'App\Application\Auth\Decorators\DeleteUserAtomicDecorator',
-        'App\Application\Auth\Decorators\GenerateOtpIdempotencyDecorator',
-        'App\Application\Auth\Decorators\LoginViaSocialProviderAtomicDecorator',
-    ])->toUse(AtomicIdempotencyInterface::class);
+    $atomicDecorators = [
+        \App\Application\Auth\Decorators\DeleteUserAtomicDecorator::class,
+        \App\Application\Auth\Decorators\GenerateOtpIdempotencyDecorator::class,
+        \App\Application\Auth\Decorators\LoginViaSocialProviderAtomicDecorator::class,
+    ];
 
-    expect('App\Application\Auth\Decorators\IdempotentGenerateOtpHandler')
-        ->toUse(IdempotencyServiceInterface::class);
+    foreach ($atomicDecorators as $decorator) {
+        $reflection = new \ReflectionClass($decorator);
+        $constructor = $reflection->getConstructor();
+
+        expect($constructor)->not->toBeNull();
+
+        $parameterTypes = array_map(
+            static fn (\ReflectionParameter $parameter): ?string => $parameter->getType() instanceof \ReflectionNamedType
+                ? $parameter->getType()->getName()
+                : null,
+            $constructor?->getParameters() ?? []
+        );
+
+        expect($parameterTypes)->toContain(AtomicIdempotencyInterface::class);
+    }
+
+    $reflection = new \ReflectionClass(\App\Application\Auth\Decorators\IdempotentGenerateOtpHandler::class);
+    $constructor = $reflection->getConstructor();
+
+    expect($constructor)->not->toBeNull();
+
+    $parameterTypes = array_map(
+        static fn (\ReflectionParameter $parameter): ?string => $parameter->getType() instanceof \ReflectionNamedType
+            ? $parameter->getType()->getName()
+            : null,
+        $constructor?->getParameters() ?? []
+    );
+
+    expect($parameterTypes)->toContain(IdempotencyServiceInterface::class);
 });
 
 test('Auth Handlers must be final readonly', function () {

@@ -116,7 +116,9 @@ class SecurityConfigTest extends \Tests\TestCase
         $livewireTenantPath = app_path('Livewire/Tenant');
 
         if (! is_dir($livewireTenantPath)) {
-            $this->markTestSkipped('Livewire/Tenant directory not found');
+            $this->assertDirectoryDoesNotExist($livewireTenantPath);
+
+            return;
         }
 
         $violations = [];

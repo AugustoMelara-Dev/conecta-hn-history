@@ -216,6 +216,8 @@ class ExceptionsArchitectureTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function no_conflicting_get_status_code_method(): void
     {
+        $this->assertNotEmpty(self::EXCEPTION_CLASSES, 'Exception architecture contract list cannot be empty.');
+
         foreach (self::EXCEPTION_CLASSES as $class) {
             $reflection = new ReflectionClass($class);
 

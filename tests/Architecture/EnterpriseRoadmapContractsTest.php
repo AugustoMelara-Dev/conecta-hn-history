@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use ReflectionNamedType;
-
 /**
  * EnterpriseRoadmapContractsTest - P0-P3 Interface Governance
  *

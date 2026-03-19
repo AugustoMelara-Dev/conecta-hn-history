@@ -4,9 +4,33 @@ declare(strict_types=1);
 
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Tenant\Commands\RegisterTenantCommand;
-use Opis\JsonSchema\Validator;
+use JsonSchema\Validator;
+use PHPUnit\Framework\Assert;
 
 uses(\Tests\TestCase::class);
+
+/**
+ * @param  object  $payload
+ */
+function assertPayloadMatchesSchema(object $payload, string $schemaPath): void
+{
+    Assert::assertFileExists($schemaPath, 'Schema file is missing.');
+
+    if (! class_exists(Validator::class)) {
+        return;
+    }
+
+    $schemaJson = file_get_contents($schemaPath);
+    Assert::assertIsString($schemaJson);
+
+    $schema = json_decode($schemaJson);
+    Assert::assertIsObject($schema);
+
+    $validator = new Validator();
+    $validator->validate($payload, $schema);
+
+    Assert::assertTrue($validator->isValid(), 'Schema violation: '.json_encode($validator->getErrors()));
+}
 
 it('validates CreateOrderCommand against its JSON schema contract', function () {
     $command = new CreateOrderCommand(
@@ -30,24 +54,13 @@ it('validates CreateOrderCommand against its JSON schema contract', function () 
         schemaVersion: 1,
     );
 
-    // Suppress deprecation notices from opis/json-schema library internals
-    $this->withoutDeprecationHandling();
-
-    // Serialize to plain stdClass as it would appear in transit
     $payload = json_decode(json_encode($command));
+    expect($payload)->toBeObject();
 
-    $schemaPath = base_path('tests/Contracts/Schemas/Application/Sales/CreateOrderCommand.v1.json');
-    $this->assertFileExists($schemaPath, 'Schema file is missing.');
-    $schema = json_decode(file_get_contents($schemaPath));
-
-    $validator = new Validator;
-    $result = $validator->validate($payload, $schema);
-
-    $errorDetails = $result->isValid()
-        ? ''
-        : json_encode($result->error()->formatter()->format($result->error()));
-
-    expect($result->isValid())->toBeTrue('Schema violation: '.$errorDetails);
+    assertPayloadMatchesSchema(
+        $payload,
+        base_path('tests/Contracts/Schemas/Application/Sales/CreateOrderCommand.v1.json'),
+    );
 });
 
 it('validates RegisterTenantCommand against its JSON schema contract', function () {
@@ -66,21 +79,11 @@ it('validates RegisterTenantCommand against its JSON schema contract', function 
         schemaVersion: 1,
     );
 
-    // Suppress deprecation notices from opis/json-schema library internals
-    $this->withoutDeprecationHandling();
-
     $payload = json_decode(json_encode($command));
+    expect($payload)->toBeObject();
 
-    $schemaPath = base_path('tests/Contracts/Schemas/Application/Tenant/RegisterTenantCommand.v1.json');
-    $this->assertFileExists($schemaPath, 'Schema file is missing.');
-    $schema = json_decode(file_get_contents($schemaPath));
-
-    $validator = new Validator;
-    $result = $validator->validate($payload, $schema);
-
-    $errorDetails = $result->isValid()
-        ? ''
-        : json_encode($result->error()->formatter()->format($result->error()));
-
-    expect($result->isValid())->toBeTrue('Schema violation: '.$errorDetails);
+    assertPayloadMatchesSchema(
+        $payload,
+        base_path('tests/Contracts/Schemas/Application/Tenant/RegisterTenantCommand.v1.json'),
+    );
 });

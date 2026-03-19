@@ -1,0 +1,49 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "CreateAppointmentCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "serviceId": {
+            "type": "string"
+        },
+        "serviceProviderId": {
+            "type": "string"
+        },
+        "scheduledAt": {
+            "type": "string"
+        },
+        "endAt": {
+            "type": "string"
+        },
+        "customerName": {
+            "type": "string"
+        },
+        "customerEmail": {
+            "type": "string"
+        },
+        "customerPhone": {
+            "type": "string"
+        },
+        "customerNotes": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        }
+    },
+    "required": [
+        "tenantId",
+        "serviceId",
+        "serviceProviderId",
+        "scheduledAt",
+        "endAt",
+        "customerName",
+        "customerEmail",
+        "customerPhone"
+    ],
+    "additionalProperties": false
+}

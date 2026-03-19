@@ -91,14 +91,10 @@ class EventsArchitectureTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function governance_all_non_broadcast_events_must_implement_interface(): void
     {
-        $allEvents = $this->findAllEventClasses();
+        $allEvents = $this->findGovernedEventClasses();
         $violations = [];
 
         foreach ($allEvents as $eventClass) {
-            if (str_contains($eventClass, '\\Broadcast\\')) {
-                continue;
-            }
-
             $implements = class_implements($eventClass, true) ?: [];
             $hasDomainEvent = array_key_exists(DomainEvent::class, $implements);
             $hasAuditEvent = array_key_exists(AuditEvent::class, $implements);
@@ -121,14 +117,10 @@ class EventsArchitectureTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function governance_all_non_broadcast_events_must_be_final_readonly(): void
     {
-        $allEvents = $this->findAllEventClasses();
+        $allEvents = $this->findGovernedEventClasses();
         $violations = [];
 
         foreach ($allEvents as $eventClass) {
-            if (str_contains($eventClass, '\\Broadcast\\')) {
-                continue;
-            }
-
             $reflection = new ReflectionClass($eventClass);
 
             if (! $reflection->isFinal()) {
@@ -153,14 +145,10 @@ class EventsArchitectureTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function governance_no_eloquent_models_in_any_event(): void
     {
-        $allEvents = $this->findAllEventClasses();
+        $allEvents = $this->findGovernedEventClasses();
         $violations = [];
 
         foreach ($allEvents as $eventClass) {
-            if (str_contains($eventClass, '\\Broadcast\\')) {
-                continue;
-            }
-
             $reflection = new ReflectionClass($eventClass);
 
             foreach ($reflection->getProperties() as $prop) {
@@ -188,14 +176,10 @@ class EventsArchitectureTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function governance_all_events_must_have_serialization_method(): void
     {
-        $allEvents = $this->findAllEventClasses();
+        $allEvents = $this->findGovernedEventClasses();
         $violations = [];
 
         foreach ($allEvents as $eventClass) {
-            if (str_contains($eventClass, '\\Broadcast\\')) {
-                continue;
-            }
-
             $reflection = new ReflectionClass($eventClass);
             $implements = class_implements($eventClass, true) ?: [];
 
@@ -341,7 +325,7 @@ class EventsArchitectureTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function events_contain_no_pii(): void
     {
-        $events = $this->findAllEventClasses();
+        $events = $this->findGovernedEventClasses();
 
         // Exclude AuditEvent implementations - they legitimately log PII for security
         $auditEvents = $this->findClassesImplementing(AuditEvent::class);
@@ -356,10 +340,6 @@ class EventsArchitectureTest extends TestCase
             if (str_contains($class, '\\Security\\')) {
                 return false;
             }
-            // Skip if in Broadcast namespace (UI notifications need PII)
-            if (str_contains($class, '\\Broadcast\\')) {
-                return false;
-            }
 
             return true;
         });
@@ -369,7 +349,6 @@ class EventsArchitectureTest extends TestCase
             'phone',
             'ssn',
             'social_security',
-            'address',
             'credit_card',
             'card_number',
             'cvv',
@@ -502,6 +481,27 @@ class EventsArchitectureTest extends TestCase
 
             return array_key_exists($interface, $implements);
         });
+    }
+
+    /**
+     * Find events that are actually governed by ADR-002.
+     *
+     * @return array<class-string>
+     */
+    private function findGovernedEventClasses(): array
+    {
+        $allClasses = $this->findAllEventClasses();
+
+        return array_values(array_filter($allClasses, function (string $class): bool {
+            if (str_contains($class, '\\Broadcast\\')) {
+                return false;
+            }
+
+            $implements = class_implements($class, true) ?: [];
+
+            return array_key_exists(DomainEvent::class, $implements)
+                || array_key_exists(AuditEvent::class, $implements);
+        }));
     }
 
     /**

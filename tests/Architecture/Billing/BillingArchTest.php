@@ -43,7 +43,7 @@ test('Repositories must be interfaces', function () {
 
 test('Domain Exceptions must extend DomainException', function () {
     expect('App\Domain\Billing\Exceptions')
-        ->toExtend('DomainException');
+        ->toExtend(\App\Domain\Shared\Exceptions\DomainException::class);
 });
 
 // 4. VALUE OBJECTS & ENUMS

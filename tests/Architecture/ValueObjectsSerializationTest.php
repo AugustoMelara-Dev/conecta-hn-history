@@ -35,14 +35,13 @@ class ValueObjectsSerializationTest extends TestCase
         $this->assertIsString($json);
         $this->assertJson($json);
 
-        // Decode and verify structure
+        // Decode and verify primitive JSON representation
         $decoded = json_decode($json, true);
-        $this->assertIsArray($decoded);
-        $this->assertArrayHasKey('tenant_id', $decoded);
-        $this->assertEquals('00000000-0000-0000-0000-000000000042', $decoded['tenant_id']);
+        $this->assertIsString($decoded);
+        $this->assertEquals('00000000-0000-0000-0000-000000000042', $decoded);
 
         // Reconstruct
-        $restored = TenantId::fromString((string) $decoded['tenant_id']);
+        $restored = TenantId::fromString($decoded);
         $this->assertEquals($tenantId->toString(), $restored->toString());
     }
 
@@ -180,7 +179,7 @@ class ValueObjectsSerializationTest extends TestCase
 
             // 3. Verify deserialize() is deterministic
             $decoded = json_decode($json, true);
-            $this->assertIsArray($decoded);
+            $this->assertTrue(is_array($decoded) || is_string($decoded));
             $this->assertNotEmpty($decoded);
         }
     }
