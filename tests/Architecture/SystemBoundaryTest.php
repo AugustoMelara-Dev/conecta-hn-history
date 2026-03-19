@@ -29,10 +29,11 @@ test('boundary classes are final and keep state encapsulated', function () use (
     }
 });
 
-test('boundary depends strictly inward')
-    ->expect($boundaryNamespace)
-    ->not->toUse([
-        'Illuminate\Support\Facades',
-        'App\Models',
-        'App\Application\*\Handlers',
-    ]);
+test('boundary depends strictly inward', function () use ($boundaryNamespace) {
+    expect($boundaryNamespace)
+        ->not()->toUse([
+            'Illuminate\Support\Facades',
+            'App\Models',
+            'App\Application\*\Handlers',
+        ]);
+});

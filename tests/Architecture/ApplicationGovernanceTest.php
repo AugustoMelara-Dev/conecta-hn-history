@@ -31,9 +31,10 @@ declare(strict_types=1);
 // can be tested without a database and the ORM can be swapped.
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('transaction manager interface exists as canonical transaction port')
-    ->expect('App\Application\Shared\Contracts\TransactionManagerInterface')
-    ->toBeInterface();
+test('transaction manager interface exists as canonical transaction port', function () {
+    expect('App\Application\Shared\Contracts\TransactionManagerInterface')
+        ->toBeInterface();
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INVARIANT B: Anti-Corruption — No Direct Database Coupling
@@ -47,13 +48,14 @@ test('transaction manager interface exists as canonical transaction port')
 // - RequestUpgradeHandler → SubscriptionIntentRepositoryInterface
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('application layer does not use direct database connections')
-    ->expect('App\Application')
-    ->not->toUse([
-        'Illuminate\Database\DatabaseManager',
-        'Illuminate\Database\Connection',
-        'Illuminate\Database\ConnectionInterface',
-    ]);
+test('application layer does not use direct database connections', function () {
+    expect('App\Application')
+        ->not()->toUse([
+            'Illuminate\Database\DatabaseManager',
+            'Illuminate\Database\Connection',
+            'Illuminate\Database\ConnectionInterface',
+        ]);
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INVARIANT C: Exception Purity — No ORM-Specific Exceptions
@@ -67,10 +69,11 @@ test('application layer does not use direct database connections')
 //   DuplicatePaymentException is fully migrated.
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('application layer does not import ORM query exceptions')
-    ->expect('App\Application')
-    ->not->toUse('Illuminate\Database\QueryException')
-    ->ignoring([
-        // Idempotent duplicate detection via DB constraint
-        'App\Application\Billing\Handlers\ReportPaymentHandler',
-    ]);
+test('application layer does not import ORM query exceptions', function () {
+    expect('App\Application')
+        ->not()->toUse('Illuminate\Database\QueryException')
+        ->ignoring([
+            // Idempotent duplicate detection via DB constraint
+            'App\Application\Billing\Handlers\ReportPaymentHandler',
+        ]);
+});

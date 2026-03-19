@@ -26,20 +26,23 @@ declare(strict_types=1);
 | Enforces strict suffixes to ensure "Screaming Architecture".
 */
 
-arch('Handlers must be named with suffix Handler')
-    ->expect('App\Application\*\Handlers')
-    ->classes()
-    ->toHaveSuffix('Handler');
+test('Handlers must be named with suffix Handler', function () {
+    expect('App\Application\*\Handlers')
+        ->classes()
+        ->toHaveSuffix('Handler');
+});
 
-arch('Commands must be named with suffix Command')
-    ->expect('App\Application\*\Commands')
-    ->classes()
-    ->toHaveSuffix('Command');
+test('Commands must be named with suffix Command', function () {
+    expect('App\Application\*\Commands')
+        ->classes()
+        ->toHaveSuffix('Command');
+});
 
-arch('Results must be named with suffix Result')
-    ->expect('App\Application\*\Results')
-    ->classes()
-    ->toHaveSuffix('Result');
+test('Results must be named with suffix Result', function () {
+    expect('App\Application\*\Results')
+        ->classes()
+        ->toHaveSuffix('Result');
+});
 
 test('Interfaces must be named with suffix Interface', function () {
     $bases = [
@@ -98,7 +101,12 @@ test('Interfaces must be named with suffix Interface', function () {
             'Application' => 'App\Application',
             'Domain' => 'App\Domain',
             'Infrastructure' => 'App\Infrastructure',
+            default => null,
         };
+
+        if ($rootNamespace === null) {
+            continue;
+        }
 
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($baseDir, RecursiveDirectoryIterator::SKIP_DOTS)
@@ -134,22 +142,25 @@ test('Interfaces must be named with suffix Interface', function () {
 | Enforces the use of "final" and "readonly" to prevent inheritance abuse
 | and state mutation.
 */
-arch('Handlers must be final (Composition over Inheritance)')
-    ->expect('App\Application\*\Handlers')
-    ->classes()
-    ->toBeFinal();
+test('Handlers must be final (Composition over Inheritance)', function () {
+    expect('App\Application\*\Handlers')
+        ->classes()
+        ->toBeFinal();
+});
 
-arch('Commands must be final readonly (Immutable Data Carriers)')
-    ->expect('App\Application\*\Commands')
-    ->classes()
-    ->toBeFinal()
-    ->toBeReadonly();
+test('Commands must be final readonly (Immutable Data Carriers)', function () {
+    expect('App\Application\*\Commands')
+        ->classes()
+        ->toBeFinal()
+        ->toBeReadonly();
+});
 
-arch('Results must be final readonly (Immutable Data Carriers)')
-    ->expect('App\Application\*\Results')
-    ->classes()
-    ->toBeFinal()
-    ->toBeReadonly();
+test('Results must be final readonly (Immutable Data Carriers)', function () {
+    expect('App\Application\*\Results')
+        ->classes()
+        ->toBeFinal()
+        ->toBeReadonly();
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -159,57 +170,52 @@ arch('Results must be final readonly (Immutable Data Carriers)')
 | implementation details (HTTP, Eloquent, etc).
 */
 
-arch('Application Layer must strictly isolate from Infrastructure and HTTP')
-    ->expect('App\Application')
-    ->not->toUse([
-        // ZERO ELOQUENT TOLERANCE
-        'Illuminate\Database\Eloquent\Model',
-        'App\Models',
+test('Application Layer must strictly isolate from Infrastructure and HTTP', function () {
+    expect('App\Application')
+        ->not->toUse([
+            'Illuminate\Database\Eloquent\Model',
+            'App\Models',
+            'Illuminate\Http\Request',
+            'Illuminate\Http\Response',
+            'Illuminate\Http\JsonResponse',
+            'App\Http',
+            'dd', 'dump', 'ray', 'var_dump',
+            'Illuminate\Support\Facades\View',
+            'Illuminate\Support\Facades\Session',
+        ])
+        ->ignoring([
+            'App\Application\Sales\Contracts\OrderStateServiceInterface',
+        ]);
+});
 
-        // ZERO HTTP TOLERANCE
-        'Illuminate\Http\Request',
-        'Illuminate\Http\Response',
-        'Illuminate\Http\JsonResponse',
-        'App\Http',
-
-        // ZERO DEBUGGING IN PRODUCTION
-        'dd', 'dump', 'ray', 'var_dump',
-
-        // ZERO UI COUPLING
-        'Illuminate\Support\Facades\View',
-        'Illuminate\Support\Facades\Session',
-    ])
-    ->ignoring([
-        'App\Application\Sales\Contracts\OrderStateServiceInterface',
-    ]);
-
-arch('Application Layer must NOT contain Global Folders (Modular Strictness)')
-    ->expect('App\Application')
-    ->not->toUse([
-        'App\Application\Validators', // MUST use Module/Validators
-        'App\Application\Jobs',       // MUST use Infrastructure/Jobs
-        'App\Application\Services',   // MUST use Module/Actions or Domain Services
-    ]);
+test('Application Layer must NOT contain Global Folders (Modular Strictness)', function () {
+    expect('App\Application')
+        ->not->toUse([
+            'App\Application\Validators',
+            'App\Application\Jobs',
+            'App\Application\Services',
+        ]);
+});
 
 test('Root of Application must remain pure and modular (Orphan Ban)', function () {
     $rootFiles = array_values(array_filter(glob(__DIR__.'/../../app/Application/*.*'), static fn (string $path): bool => basename($path) !== 'README.md'));
     expect($rootFiles)->toHaveCount(0);
 });
 
-arch('App\Application root should only contain Modules (and Shared/Contracts)')
-    ->expect('App\Application')
-    ->toOnlyUse([
-        'App\Application\*\Commands',
-        'App\Application\*\Handlers',
-        'App\Application\*\Results',
-        'App\Application\*\Validators', // Module-scoped is fine
-        'App\Application\*\Actions',
-        'App\Application\Shared',
-        'App\Application\Shared\Contracts',
-        // Allow itself (submodules)
-        'App\Application',
-        'App\Domain',
-    ]);
+test('App\Application root should only contain Modules (and Shared/Contracts)', function () {
+    expect('App\Application')
+        ->toOnlyUse([
+            'App\Application\*\Commands',
+            'App\Application\*\Handlers',
+            'App\Application\*\Results',
+            'App\Application\*\Validators',
+            'App\Application\*\Actions',
+            'App\Application\Shared',
+            'App\Application\Shared\Contracts',
+            'App\Application',
+            'App\Domain',
+        ]);
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -218,26 +224,26 @@ arch('App\Application root should only contain Modules (and Shared/Contracts)')
 | The Domain is the King. It knows nothing about the outside world.
 */
 
-arch('Domain Layer must be independent and pure')
-    ->expect('App\Domain')
-    ->not->toUse([
-        'App\Application',
-        'App\Infrastructure',
-        'App\Http',
-        'App\Models', // Domain Entities != Eloquent Models
-        'Filament',
-        'Livewire',
-        'Illuminate\Http',
-        'Illuminate\Support\Facades', // Facades leak global state
-    ])
-    ->ignoring([
-        // PII Encryption: Domain Events carry encrypted email/phones and require Crypt facade
-        'App\Domain\Identity\Events\UserRegistered',
-        'App\Domain\Identity\Events\UserRegisteredViaSocial',
-        'App\Domain\Identity\Entities\UserEntity',
-        'App\Domain\Booking\Services\SlotCalculator',
-        'App\Domain\TenantGovernance\Policies\SlugPolicy',
-    ]);
+test('Domain Layer must be independent and pure', function () {
+    expect('App\Domain')
+        ->not->toUse([
+            'App\Application',
+            'App\Infrastructure',
+            'App\Http',
+            'App\Models',
+            'Filament',
+            'Livewire',
+            'Illuminate\Http',
+            'Illuminate\Support\Facades',
+        ])
+        ->ignoring([
+            'App\Domain\Identity\Events\UserRegistered',
+            'App\Domain\Identity\Events\UserRegisteredViaSocial',
+            'App\Domain\Identity\Entities\UserEntity',
+            'App\Domain\Booking\Services\SlotCalculator',
+            'App\Domain\TenantGovernance\Policies\SlugPolicy',
+        ]);
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -245,6 +251,7 @@ arch('Domain Layer must be independent and pure')
 |--------------------------------------------------------------------------
 */
 
-arch('No Facades in Domain or Commands')
-    ->expect(['App\Domain', 'App\Application\*\Commands'])
-    ->not->toUse('Illuminate\Support\Facades');
+test('No Facades in Domain or Commands', function () {
+    expect(['App\Domain', 'App\Application\*\Commands'])
+        ->not->toUse('Illuminate\Support\Facades');
+});

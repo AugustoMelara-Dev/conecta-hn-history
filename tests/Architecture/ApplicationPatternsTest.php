@@ -28,13 +28,15 @@ declare(strict_types=1);
 // block the HTTP response cycle. Synchronous jobs are a regression.
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('application jobs enforce temporal decoupling via queues')
-    ->expect('App\Application\*\Jobs')
-    ->toImplement('Illuminate\Contracts\Queue\ShouldQueue');
+test('application jobs enforce temporal decoupling via queues', function () {
+    expect('App\Application\*\Jobs')
+        ->toImplement('Illuminate\Contracts\Queue\ShouldQueue');
+});
 
-test('application listeners enforce temporal decoupling via queues')
-    ->expect('App\Application\*\Listeners')
-    ->toImplement('Illuminate\Contracts\Queue\ShouldQueue');
+test('application listeners enforce temporal decoupling via queues', function () {
+    expect('App\Application\*\Listeners')
+        ->toImplement('Illuminate\Contracts\Queue\ShouldQueue');
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INVARIANT B: Eventual Consistency — No Synchronous Event Dispatch
@@ -45,13 +47,15 @@ test('application listeners enforce temporal decoupling via queues')
 // facts that may be rolled back).
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('handlers do not use synchronous event facades')
-    ->expect('App\Application\*\Handlers')
-    ->not->toUse('Illuminate\Support\Facades\Event');
+test('handlers do not use synchronous event facades', function () {
+    expect('App\Application\*\Handlers')
+        ->not->toUse('Illuminate\Support\Facades\Event');
+});
 
-test('handlers do not inject synchronous event dispatcher')
-    ->expect('App\Application\*\Handlers')
-    ->not->toUse('Illuminate\Contracts\Events\Dispatcher');
+test('handlers do not inject synchronous event dispatcher', function () {
+    expect('App\Application\*\Handlers')
+        ->not->toUse('Illuminate\Contracts\Events\Dispatcher');
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INVARIANT C: Transactional Outbox Contract Existence
@@ -59,9 +63,10 @@ test('handlers do not inject synchronous event dispatcher')
 // atomic event persistence. Its removal would break eventual consistency.
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('outbox repository interface exists as canonical event persistence port')
-    ->expect('App\Application\Shared\Contracts\OutboxRepositoryInterface')
-    ->toBeInterface();
+test('outbox repository interface exists as canonical event persistence port', function () {
+    expect('App\Application\Shared\Contracts\OutboxRepositoryInterface')
+        ->toBeInterface();
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INVARIANT D: Distributed Idempotency Contract Existence
@@ -70,9 +75,10 @@ test('outbox repository interface exists as canonical event persistence port')
 // duplicate processing in distributed environments.
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('idempotent command interface exists as canonical deduplication port')
-    ->expect('App\Application\Shared\Contracts\IdempotentCommandInterface')
-    ->toBeInterface();
+test('idempotent command interface exists as canonical deduplication port', function () {
+    expect('App\Application\Shared\Contracts\IdempotentCommandInterface')
+        ->toBeInterface();
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INVARIANT E: Tenant-Aware Rate Limiting Contract Existence
@@ -80,6 +86,7 @@ test('idempotent command interface exists as canonical deduplication port')
 // Its removal would allow unbounded requests per tenant, enabling DoS.
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('tenant rate limiter interface exists as canonical throttle port')
-    ->expect('App\Application\Shared\Contracts\TenantRateLimiterInterface')
-    ->toBeInterface();
+test('tenant rate limiter interface exists as canonical throttle port', function () {
+    expect('App\Application\Shared\Contracts\TenantRateLimiterInterface')
+        ->toBeInterface();
+});

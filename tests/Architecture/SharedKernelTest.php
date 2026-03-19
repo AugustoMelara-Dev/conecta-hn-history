@@ -14,31 +14,33 @@ declare(strict_types=1);
  *   Contexts → Shared ✅
  *   Shared → Contexts ❌
  */
-test('shared kernel does not depend on bounded contexts')
-    ->expect('App\Application\Shared')
-    ->not->toUse([
-        'App\Application\Auth',
-        'App\Application\Billing',
-        'App\Application\Identity',
-        'App\Application\Interactions',
-        'App\Application\Payments',
-        'App\Application\Products',
-        'App\Application\Reviews',
-        'App\Application\Sales',
-        'App\Application\Tenant',
-        'App\Application\User',          // Legacy path
-        'App\Application\UserLifecycle', // Legacy path
-    ]);
+test('shared kernel does not depend on bounded contexts', function () {
+    expect('App\Application\Shared')
+        ->not()->toUse([
+            'App\Application\Auth',
+            'App\Application\Billing',
+            'App\Application\Identity',
+            'App\Application\Interactions',
+            'App\Application\Payments',
+            'App\Application\Products',
+            'App\Application\Reviews',
+            'App\Application\Sales',
+            'App\Application\Tenant',
+            'App\Application\User',          // Legacy path
+            'App\Application\UserLifecycle', // Legacy path
+        ]);
+});
 
-test('shared kernel is self contained')
-    ->expect('App\Application\Shared')
-    ->toUseNothing()
-    ->ignoring([
-        'App\Application\Shared', // Self usage allowed
-        'App\Domain',             // Domain contracts allowed
-        'App\Infrastructure',     // Adapter bridge (strictly controlled)
-        'Illuminate',
-        'Ramsey\Uuid',
-        'Carbon',
-        'Psr',
-    ]);
+test('shared kernel is self contained', function () {
+    expect('App\Application\Shared')
+        ->toUseNothing()
+        ->ignoring([
+            'App\Application\Shared', // Self usage allowed
+            'App\Domain',             // Domain contracts allowed
+            'App\Infrastructure',     // Adapter bridge (strictly controlled)
+            'Illuminate',
+            'Ramsey\Uuid',
+            'Carbon',
+            'Psr',
+        ]);
+});

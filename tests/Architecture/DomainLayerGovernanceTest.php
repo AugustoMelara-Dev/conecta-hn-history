@@ -7,25 +7,30 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Notifications\Notification;
 
-arch('Domain layer must not contain jobs')
-    ->expect('App\Domain')
-    ->not->toImplement(ShouldQueue::class)
-    ->ignoring([
-        'App\Domain\ReportingAndExports\Jobs\GenerateSalesReportJob',
-    ]);
+test('Domain layer must not contain jobs', function () {
+    expect('App\Domain')
+        ->not()->toImplement(ShouldQueue::class)
+        ->ignoring([
+            'App\Domain\ReportingAndExports\Jobs\GenerateSalesReportJob',
+        ]);
+});
 
-arch('Domain layer must not contain mailables')
-    ->expect('App\Domain')
-    ->not->toExtend(Mailable::class);
+test('Domain layer must not contain mailables', function () {
+    expect('App\Domain')
+        ->not()->toExtend(Mailable::class);
+});
 
-arch('Domain layer must not contain notifications')
-    ->expect('App\Domain')
-    ->not->toExtend(Notification::class);
+test('Domain layer must not contain notifications', function () {
+    expect('App\Domain')
+        ->not()->toExtend(Notification::class);
+});
 
-arch('Domain layer must not contain artisan commands')
-    ->expect('App\Domain')
-    ->not->toExtend(Command::class);
+test('Domain layer must not contain artisan commands', function () {
+    expect('App\Domain')
+        ->not()->toExtend(Command::class);
+});
 
-arch('Infrastructure jobs should implement should queue')
-    ->expect('App\Infrastructure\Jobs')
-    ->toImplement(ShouldQueue::class);
+test('Infrastructure jobs should implement should queue', function () {
+    expect('App\Infrastructure\Jobs')
+        ->toImplement(ShouldQueue::class);
+});

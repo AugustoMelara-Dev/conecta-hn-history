@@ -34,13 +34,15 @@ $applicationNamespace = 'App\Application';
 // Principle and creates accidental tight coupling to Eloquent.
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('application layer does not use eloquent models')
-    ->expect($applicationNamespace)
-    ->not->toUse('App\Models');
+test('application layer does not use eloquent models', function () use ($applicationNamespace) {
+    expect($applicationNamespace)
+        ->not()->toUse('App\Models');
+});
 
-test('application layer does not extend eloquent model')
-    ->expect($applicationNamespace)
-    ->not->toExtend('Illuminate\Database\Eloquent\Model');
+test('application layer does not extend eloquent model', function () use ($applicationNamespace) {
+    expect($applicationNamespace)
+        ->not()->toExtend('Illuminate\Database\Eloquent\Model');
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INVARIANT B: Zero Facade Usage
@@ -49,9 +51,10 @@ test('application layer does not extend eloquent model')
 // mockability in unit tests.
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('application layer does not use facades')
-    ->expect($applicationNamespace)
-    ->not->toUse('Illuminate\Support\Facades');
+test('application layer does not use facades', function () use ($applicationNamespace) {
+    expect($applicationNamespace)
+        ->not()->toUse('Illuminate\Support\Facades');
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INVARIANT C: Zero SerializesModels in Queue Payloads
@@ -60,6 +63,7 @@ test('application layer does not use facades')
 // carry only primitives, Value Objects, or DTOs.
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('application layer avoids serializes models trait to prevent ORM coupling in queues')
-    ->expect($applicationNamespace)
-    ->not->toUse('Illuminate\Queue\SerializesModels');
+test('application layer avoids serializes models trait to prevent ORM coupling in queues', function () use ($applicationNamespace) {
+    expect($applicationNamespace)
+        ->not()->toUse('Illuminate\Queue\SerializesModels');
+});
