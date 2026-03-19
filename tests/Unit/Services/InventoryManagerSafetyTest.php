@@ -22,7 +22,9 @@ describe('VC-AUDIT-102: Restock Tenant Safety', function () {
         expect($source)
             ->toContain('// VC-AUDIT-102: Prevent scope bypass if tenant_id is missing')
             ->and($source)
-            ->toContain('if ($order->tenant_id === null)')
+            ->toContain("\$orderTenantId = \$order->getRawOriginal('tenant_id');")
+            ->and($source)
+            ->toContain("if (\$orderTenantId === null || \$orderTenantId === '')")
             ->and($source)
             ->toContain("throw new \\LogicException('Cannot restock inventory: Order tenant_id is missing.')");
     });

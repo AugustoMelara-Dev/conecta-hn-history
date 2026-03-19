@@ -9,6 +9,7 @@ use App\Infrastructure\Models\OutboxMessage;
 use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\Test;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
@@ -21,6 +22,8 @@ use Tests\TestCase;
  */
 class OutboxScalingTest extends TestCase
 {
+    private static bool $outboxSchemaReady = false;
+
     private bool $supportsSkipLocked = false;
 
     private string $databaseVersion = 'unknown';
@@ -28,6 +31,8 @@ class OutboxScalingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->ensureOutboxSchemaIsReady();
 
         $this->databaseVersion = (string) (DB::selectOne('select version() as version')->version ?? 'unknown');
         $this->supportsSkipLocked = $this->databaseSupportsSkipLocked();
@@ -63,7 +68,8 @@ class OutboxScalingTest extends TestCase
         $results = Process::pool(function (Pool $pool) use ($workerCount, $limitPerWorker) {
             for ($i = 0; $i < $workerCount; $i++) {
                 $pool->command("php artisan outbox:process --batch-size={$limitPerWorker} --max-loops=1 --max-shards=1")
-                    ->timeout(60);
+                    ->timeout(60)
+                    ->env($this->testingEnvironment());
             }
         })->wait();
 
@@ -110,6 +116,7 @@ class OutboxScalingTest extends TestCase
         OutboxMessage::query()->delete();
 
         $result = Process::timeout(15)
+            ->env($this->testingEnvironment())
             ->run('php artisan outbox:process --max-loops=1 --max-shards=1');
 
         $this->assertTrue($result->successful(), 'Command should complete successfully on empty queue');
@@ -129,7 +136,8 @@ class OutboxScalingTest extends TestCase
         $this->restrictAvailableShards([0]);
         $this->seedPendingMessages(50, [0]);
 
-        $result = Process::run('php artisan outbox:process --batch-size=20 --max-loops=1 --max-shards=1');
+        $result = Process::env($this->testingEnvironment())
+            ->run('php artisan outbox:process --batch-size=20 --max-loops=1 --max-shards=1');
 
         $this->assertTrue($result->successful(), $result->errorOutput());
 
@@ -272,10 +280,49 @@ class OutboxScalingTest extends TestCase
         return $major > 8 || ($major === 8 && $minor >= 0);
     }
 
+    private function ensureOutboxSchemaIsReady(): void
+    {
+        if (self::$outboxSchemaReady) {
+            return;
+        }
+
+        if (! Schema::hasTable('outbox_messages') || ! Schema::hasTable('outbox_shards')) {
+            $this->artisan('migrate', ['--force' => true])->assertExitCode(0);
+        }
+
+        self::$outboxSchemaReady = true;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function testingEnvironment(): array
+    {
+        $defaultConnection = (string) config('database.default');
+        $connection = (array) config("database.connections.{$defaultConnection}", []);
+
+        $env = [
+            'APP_ENV' => 'testing',
+            'DB_CONNECTION' => $defaultConnection,
+            'DB_HOST' => (string) ($connection['host'] ?? ''),
+            'DB_PORT' => (string) ($connection['port'] ?? ''),
+            'DB_DATABASE' => (string) ($connection['database'] ?? ''),
+            'DB_USERNAME' => (string) ($connection['username'] ?? ''),
+            'DB_PASSWORD' => (string) ($connection['password'] ?? ''),
+        ];
+
+        return array_filter($env, static fn (string $value): bool => $value !== '');
+    }
+
     protected function tearDown(): void
     {
-        OutboxMessage::query()->delete();
-        $this->resetShardLeases();
+        if (Schema::hasTable('outbox_messages')) {
+            OutboxMessage::query()->delete();
+        }
+
+        if (Schema::hasTable('outbox_shards')) {
+            $this->resetShardLeases();
+        }
 
         parent::tearDown();
     }
