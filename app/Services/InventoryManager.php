@@ -195,6 +195,11 @@ class InventoryManager implements \App\Application\Shared\Contracts\InventoryMan
         // Load order items if not already loaded
         $order->loadMissing('items');
 
+        // VC-AUDIT-102: Prevent scope bypass if tenant_id is missing
+        if ($order->tenant_id === null) {
+            throw new \LogicException('Cannot restock inventory: Order tenant_id is missing.');
+        }
+
         // ═══════════════════════════════════════════════════════════════════════
         // PHASE 1: EXTRACTION - Extract unique product IDs with canonical ordering
         // ═══════════════════════════════════════════════════════════════════════

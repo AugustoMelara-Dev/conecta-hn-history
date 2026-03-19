@@ -22,7 +22,7 @@ class LoyaltyProgramResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Fidelizacion';
+    protected static string|\UnitEnum|null $navigationGroup = 'Fidelización';
 
     protected static ?string $navigationLabel = 'Configuracion';
 

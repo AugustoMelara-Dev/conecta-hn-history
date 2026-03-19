@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Infrastructure\Persistence\Eloquent\Traits\AllowsTrustedTenantAssignment;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,12 +13,11 @@ use Illuminate\Support\Facades\Hash;
 
 class OneTimePassword extends Model
 {
-    use HasFactory, HasUuids;
+    use AllowsTrustedTenantAssignment, HasFactory, HasUuids;
 
     // VC-AUDIT-103: Allow only the fields the system needs during OTP creation.
     protected $fillable = [
         'user_id',
-        'tenant_id',
         'identifier',
         'code',
         'type',

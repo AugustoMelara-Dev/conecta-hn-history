@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Shared\ValueObjects;
 
 use InvalidArgumentException;
+use JsonSerializable;
 
 /**
  * TenantId Value Object
@@ -14,7 +15,7 @@ use InvalidArgumentException;
  *
  * @property-read string $value
  */
-final readonly class TenantId
+final readonly class TenantId implements JsonSerializable
 {
     /** UUID v4 pattern (8-4-4-4-12 hex groups) */
     private const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
@@ -58,6 +59,11 @@ final readonly class TenantId
     }
 
     public function toString(): string
+    {
+        return $this->value;
+    }
+
+    public function jsonSerialize(): string
     {
         return $this->value;
     }

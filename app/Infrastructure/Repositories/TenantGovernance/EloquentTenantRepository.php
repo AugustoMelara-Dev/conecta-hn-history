@@ -147,7 +147,6 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'logo_path' => $state['logo_path'] ?? null,
             'cover_path' => $state['cover_path'] ?? null,
             'phone' => $state['phone'] ?? null,
-            'address' => $state['address'] ?? null,
             'latitude' => $state['latitude'] ?? null,
             'longitude' => $state['longitude'] ?? null,
             'description' => $state['description'] ?? null,
@@ -167,7 +166,6 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
             'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
             'subscription_ends_at' => $state['subscription_ends_at'] ?? null,
-            'subscription_reference' => $state['subscription_reference'] ?? null,
             'version' => max(1, $tenant->version()),
         ]);
 
@@ -192,7 +190,6 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
                 'logo_path' => $state['logo_path'] ?? null,
                 'cover_path' => $state['cover_path'] ?? null,
                 'phone' => $state['phone'] ?? null,
-                'address' => $state['address'] ?? null,
                 'latitude' => $state['latitude'] ?? null,
                 'longitude' => $state['longitude'] ?? null,
                 'description' => $state['description'] ?? null,
@@ -212,7 +209,6 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
                 'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
                 'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
                 'subscription_ends_at' => $state['subscription_ends_at'] ?? null,
-                'subscription_reference' => $state['subscription_reference'] ?? null,
                 'updated_at' => now(),
                 'version' => DB::raw('version + 1'),
             ]);
@@ -265,7 +261,7 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'slogan' => $this->nullableString($model->getAttribute('slogan')),
             'whatsapp' => $this->nullableString($model->getAttribute('whatsapp_number')),
             'phone' => $this->nullableString($model->getAttribute('phone')),
-            'address' => $this->nullableString($model->getAttribute('address')),
+            'address' => null,
             'latitude' => $this->nullableString($model->getAttribute('latitude')),
             'longitude' => $this->nullableString($model->getAttribute('longitude')),
             'primary_color' => $this->nullableString($model->getAttribute('primary_color')),

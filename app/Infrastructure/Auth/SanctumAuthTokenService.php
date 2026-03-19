@@ -6,20 +6,14 @@ namespace App\Infrastructure\Auth;
 
 use App\Application\Auth\Contracts\AuthTokenServiceInterface;
 use App\Contracts\Scope\TenantContextInterface;
+use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Exceptions\TenantMismatchException;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * SanctumAuthTokenService - Laravel Sanctum Token Adapter
- *
- * ARCHITECTURAL BRIDGE: Bridges Sanctum (Infra) and Eloquent User to Application.
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  SECURITY: ALL token issuance is tenant-context validated               ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  IDOR PROTECTION: User must belong to the requesting tenant context     ║
- * ║  to receive a token. Cross-tenant token requests are blocked + logged.  ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * SanctumAuthTokenService bridges token issuance to the active tenant context.
  */
 final class SanctumAuthTokenService implements AuthTokenServiceInterface
 {
@@ -38,44 +32,32 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
             );
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // SECURITY: EXPLICIT TENANT MEMBERSHIP VERIFICATION
-        // ═══════════════════════════════════════════════════════════════════════
-        // We MUST verify the user belongs to the current tenant context.
-        // OPTIMIZATION: Retrieve user_id directly from DB to avoid Model overhead/scopes.
-        $ownerId = \Illuminate\Support\Facades\DB::table('tenants')
+        $ownerId = DB::table('tenants')
             ->where('id', $currentTenantId)
             ->value('user_id');
 
-        // Compare strings (UUIDs)
-        $isOwner = $ownerId && (string) $ownerId === (string) $userId;
-
-        if ($isOwner) {
-            $user = User::where('id', $userId)->first();
-        } else {
-            $user = null;
-        }
+        $isOwner = $ownerId !== null && (string) $ownerId === (string) $userId;
+        $user = $isOwner ? User::query()->find($userId) : null;
 
         if ($user === null) {
-            // Check if user exists but doesn't belong to this tenant (security probe)
-            $existsElsewhere = User::where('id', $userId)->exists();
+            $existsElsewhere = User::query()->whereKey($userId)->exists();
 
             if ($existsElsewhere) {
-                // SECURITY ALERT: Cross-tenant token issuance attempt
-                Log::channel('security')->critical('🚨 Cross-Tenant Token Issuance Attempt BLOCKED', [
-                    'event' => 'TokenCreation',
-                    'user_id' => $userId,
-                    'requested_tenant_context' => $currentTenantId,
-                    'severity' => 'CRITICAL',
-                    'action' => 'BLOCKED',
-                ]);
+                // Logging must not turn a blocked cross-tenant probe into a runtime failure.
+                rescue(static function () use ($userId, $currentTenantId): void {
+                    Log::channel('security')->critical('Cross-Tenant Token Issuance Attempt BLOCKED', [
+                        'event' => 'TokenCreation',
+                        'user_id' => $userId,
+                        'requested_tenant_context' => $currentTenantId,
+                        'severity' => 'CRITICAL',
+                        'action' => 'BLOCKED',
+                    ]);
+                }, report: false);
 
-                // Throw specific security exception
                 throw TenantMismatchException::forResource('User', $userId, $currentTenantId);
             }
 
-            // User genuinely doesn't exist
-            throw \App\Domain\Identity\Exceptions\UserNotFoundException::withId((string) $userId);
+            throw UserNotFoundException::withId((string) $userId);
         }
 
         $token = $user->createToken($tokenName)->plainTextToken;

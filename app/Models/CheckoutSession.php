@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
+use App\Infrastructure\Persistence\Eloquent\Traits\AllowsTrustedTenantAssignment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CheckoutSession extends Model
 {
-    use BelongsToTenant;
+    use AllowsTrustedTenantAssignment, BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id',
         'session_id',
         'user_id',
         'items',

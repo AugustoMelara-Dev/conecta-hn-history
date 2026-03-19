@@ -58,7 +58,8 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
         ?string $userAgent,
         int $expiryMinutes
     ): OtpEntity {
-        $model = OneTimePassword::create([
+        $model = new OneTimePassword;
+        $model->forceFill([
             'user_id' => $userId,
             'identifier' => $identifier,
             'tenant_id' => $tenantId, // TENANT ISOLATION
@@ -69,6 +70,7 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
             'expires_at' => Carbon::now()->addMinutes($expiryMinutes),
             'attempts' => 0,
         ]);
+        $model->save();
 
         return $this->hydrate($model);
     }

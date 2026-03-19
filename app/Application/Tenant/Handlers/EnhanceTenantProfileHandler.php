@@ -72,12 +72,16 @@ final readonly class EnhanceTenantProfileHandler
             // Phase 4: Persist
             $this->repository->save($tenant);
 
+            $seoKeywords = is_array($enhancedData['seo_keywords'] ?? null)
+                ? $enhancedData['seo_keywords']
+                : [];
+            $tags = is_array($enhancedData['tags'] ?? null)
+                ? $enhancedData['tags']
+                : [];
+
             $this->logger->info('Tenant Profile Enhanced via AI', $this->sanitizePayload([
                 'tenant_id' => $tenant->id(),
-                'ai_tags' => array_values(array_unique(array_merge(
-                    $enhancedData['seo_keywords'],
-                    $enhancedData['tags']
-                ))),
+                'ai_tags' => array_values(array_unique(array_merge($seoKeywords, $tags))),
             ], $this->scrubber));
         });
     }

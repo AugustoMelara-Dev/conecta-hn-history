@@ -10,9 +10,9 @@ use App\Models\Coupon;
 
 interface CouponValidatorInterface
 {
-    public function validate(string $code, UserEntity $user, float $cartTotal, TenantEntity $tenant): Coupon;
+    public function validate(string $code, ?UserEntity $user, float $cartTotal, TenantEntity $tenant): Coupon;
 
-    public function redeem(Coupon $coupon, UserEntity $user, ?int $orderId = null): void;
+    public function redeem(Coupon $coupon, ?UserEntity $user, ?int $orderId = null): void;
 
-    public function linkToOrder(Coupon $coupon, UserEntity $user, int $orderId): void;
+    public function linkToOrder(Coupon $coupon, ?UserEntity $user, int $orderId): void;
 }

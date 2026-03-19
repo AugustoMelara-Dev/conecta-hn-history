@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\HoldInventoryRequest;
 use App\Http\Requests\Public\SyncCartRequest;
 use App\Http\Requests\Public\ValidateCouponRequest;
+use App\Models\Tenant;
 use App\Services\CouponValidatorService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -20,14 +21,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Psr\Log\LoggerInterface;
 
-/**
- * CheckoutController - Hexagonal Compliant (DIP Remediation)
- *
- * ARCHITECTURAL COMPLIANCE:
- * - Zero App\Models imports.
- * - Uses primitives for message generation.
- * - Tenant resolution via request attributes (middleware-set).
- */
 final class CheckoutController extends Controller
 {
     public function __construct(
@@ -39,9 +32,9 @@ final class CheckoutController extends Controller
     public function getCartSummary(SyncCartRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $tenantId = $request->route('tenant') ?? $request->get('tenant');
+        $tenantId = $this->resolveTenantId($request);
 
-        if (! $tenantId) {
+        if ($tenantId === null || $tenantId === '') {
             return response()->json(['message' => 'Tenant identification required.'], 400);
         }
 
@@ -65,9 +58,9 @@ final class CheckoutController extends Controller
     public function holdInventory(HoldInventoryRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $tenantId = $request->route('tenant') ?? $request->get('tenant');
+        $tenantId = $this->resolveTenantId($request);
 
-        if (! $tenantId) {
+        if ($tenantId === null || $tenantId === '') {
             return response()->json(['message' => 'Tenant identification required.'], 400);
         }
 
@@ -111,11 +104,19 @@ final class CheckoutController extends Controller
     public function validateCoupon(ValidateCouponRequest $request, CouponValidatorService $couponValidator): JsonResponse
     {
         $validated = $request->validated();
+        $tenant = $this->resolveTenant($request);
+
+        if (! $tenant instanceof Tenant) {
+            return response()->json([
+                'valid' => false,
+                'code' => 'TENANT_REQUIRED',
+                'message' => 'Tenant identification required.',
+            ], 400);
+        }
+
         $code = (string) $validated['code'];
         $cartTotal = (float) $validated['cart_total'];
         $shippingCost = (float) ($validated['shipping_cost'] ?? 0);
-
-        $tenant = $request->route('tenant') ?? $request->get('tenant');
 
         try {
             $coupon = $couponValidator->validate(
@@ -128,23 +129,18 @@ final class CheckoutController extends Controller
             $discountAmount = $coupon->calculateDiscountUnsafe($cartTotal, $shippingCost);
             $newTotal = max(0, $cartTotal - $discountAmount);
 
-            $couponType = (string) $coupon->type;
-            $couponValue = (float) $coupon->value;
-            $couponCode = (string) $coupon->code;
-
             return response()->json([
                 'valid' => true,
-                'code' => $couponCode,
-                'discount_type' => $couponType,
+                'code' => (string) $coupon->code,
+                'discount_type' => (string) $coupon->type,
                 'discount_amount' => round($discountAmount, 2),
                 'new_total' => round($newTotal, 2),
-                'message' => $this->getSuccessMessage($couponType, $couponValue),
+                'message' => $this->getSuccessMessage((string) $coupon->type, (float) $coupon->value),
             ], 200);
-
         } catch (InvalidCouponException $e) {
             $this->log->info('CheckoutController: Coupon validation failed', [
                 'code' => $code,
-                'error_code' => $e->getCode(),
+                'error_code' => $e->getErrorCode(),
                 'user_id' => $request->user()?->id,
             ]);
 
@@ -153,7 +149,9 @@ final class CheckoutController extends Controller
                 'code' => $e->getErrorCode(),
                 'message' => $e->getMessage(),
                 'data' => array_intersect_key($e->context(), array_flip([
-                    'min_spend', 'required_quantity', 'current_total',
+                    'min_spend',
+                    'required_quantity',
+                    'current_total',
                 ])),
             ], 422);
         }
@@ -179,5 +177,45 @@ final class CheckoutController extends Controller
             'free_shipping' => '¡Cupón aplicado! Envío gratis',
             default => 'Cupón aplicado correctamente',
         };
+    }
+
+    private function resolveTenant(Request $request): Tenant|string|int|null
+    {
+        $tenant = $request->route('tenant') ?? $request->get('tenant');
+
+        if ($tenant instanceof Tenant || is_string($tenant) || is_int($tenant)) {
+            return $tenant;
+        }
+
+        $tenant = $request->attributes->get('tenant');
+
+        if ($tenant instanceof Tenant || is_string($tenant) || is_int($tenant)) {
+            return $tenant;
+        }
+
+        if (app()->bound('currentTenant')) {
+            $tenant = app('currentTenant');
+
+            if ($tenant instanceof Tenant || is_string($tenant) || is_int($tenant)) {
+                return $tenant;
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveTenantId(Request $request): ?string
+    {
+        $tenant = $this->resolveTenant($request);
+
+        if ($tenant instanceof Tenant) {
+            return (string) $tenant->getKey();
+        }
+
+        if (is_string($tenant) || is_int($tenant)) {
+            return (string) $tenant;
+        }
+
+        return null;
     }
 }

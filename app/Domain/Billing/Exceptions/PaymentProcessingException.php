@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Billing\Exceptions;
 
-use DomainException;
+use App\Domain\Shared\Exceptions\DomainException;
 use Throwable;
 
 final class PaymentProcessingException extends DomainException
@@ -18,5 +18,18 @@ final class PaymentProcessingException extends DomainException
     {
         parent::__construct($message, $code, $previous);
         $this->errorInfo = $errorInfo;
+    }
+
+    /**
+     * @return array{error_info: array<int, mixed>|null}
+     */
+    public function context(): array
+    {
+        return ['error_info' => $this->errorInfo];
+    }
+
+    public function getErrorCode(): string
+    {
+        return 'PAYMENT_PROCESSING_FAILED';
     }
 }
