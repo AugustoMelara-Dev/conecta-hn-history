@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
+import { PUBLIC_LABEL_FONT } from '@/lib/publicTypography';
 
 /**
  * FollowButton - Optimistic UI Toggle for Social Graph
@@ -60,7 +61,8 @@ export default function FollowButton({
                 isFollowing
                     ? 'bg-white text-black border-black hover:bg-gray-50'
                     : 'bg-black text-white border-transparent hover:bg-gray-900'
-            } ${className}`}
+                    } ${className}`}
+            style={{ fontFamily: PUBLIC_LABEL_FONT }}
         >
             <span>{isFollowing ? 'Siguiendo' : 'Seguir'}</span>
 

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Public;
 
+use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Shared\Services\TenantContext;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Tests\TestCase;
 
 final class RoutingTest extends TestCase
@@ -31,7 +33,7 @@ final class RoutingTest extends TestCase
         $response = $this->get('/explore');
 
         $response->assertStatus(200);
-        $response->assertInertia(fn (AssertableInertia $page) => $page->component('Public/Home'));
+        $response->assertInertia(fn (AssertableInertia $page) => $page->component('Public/Explore'));
     }
 
     #[Test]
@@ -75,6 +77,49 @@ final class RoutingTest extends TestCase
     }
 
     #[Test]
+    public function returns_404_for_unpublished_tenant_instead_of_throwing_a_500(): void
+    {
+        $user = User::factory()->create();
+        Tenant::factory()->create([
+            'user_id' => $user->id,
+            'slug' => 'inactive-storefront',
+            'status' => 'approved',
+            'subscription_status' => 'inactive',
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $response = $this->get('/t/inactive-storefront');
+
+        $response->assertStatus(404);
+    }
+
+    #[Test]
+    public function allows_the_owner_to_preview_an_unpublished_tenant(): void
+    {
+        $user = User::factory()->create();
+        Tenant::factory()->create([
+            'user_id' => $user->id,
+            'slug' => 'owner-preview-storefront',
+            'status' => 'approved',
+            'subscription_status' => 'inactive',
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/t/owner-preview-storefront');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Tenant/Show')
+            ->where('previewMode', true)
+            ->where('previewReason', 'La suscripcion actual no permite visibilidad publica.')
+        );
+    }
+
+    #[Test]
     public function does_not_conflict_with_login(): void
     {
         $response = $this->get('/login');
@@ -84,11 +129,25 @@ final class RoutingTest extends TestCase
     }
 
     #[Test]
+    public function redirects_authenticated_unverified_users_to_the_public_verification_notice_instead_of_filament(): void
+    {
+        $user = User::factory()->unverified()->create([
+            'role' => UserRole::TENANT_OWNER,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/login');
+
+        $response->assertRedirect(route('verification.notice', [], false));
+    }
+
+    #[Test]
     public function does_not_conflict_with_register(): void
     {
         $response = $this->get('/register');
 
-        $response->assertStatus(200);
+        $response->assertRedirect(route('tenant.register', [], false));
     }
 
     #[Test]
@@ -105,6 +164,31 @@ final class RoutingTest extends TestCase
         $response = $this->get('/dashboard');
 
         $response->assertRedirect('/login');
+    }
+
+    #[Test]
+    public function serves_manifest_with_the_correct_content_type(): void
+    {
+        $response = $this->get('/manifest.webmanifest');
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+        self::assertInstanceOf(BinaryFileResponse::class, $response->baseResponse);
+        self::assertSame('manifest.webmanifest', $response->baseResponse->getFile()->getFilename());
+    }
+
+    #[Test]
+    public function serves_favicon_assets_without_hitting_the_landing_page(): void
+    {
+        $svgResponse = $this->get('/favicon.svg');
+        $pngResponse = $this->get('/icon-192x192.png');
+
+        $svgResponse->assertOk();
+        $svgResponse->assertHeader('Content-Type', 'image/svg+xml');
+        $svgResponse->assertDontSee('component&quot;:&quot;Welcome&quot;', false);
+
+        $pngResponse->assertOk();
+        $pngResponse->assertHeader('Content-Type', 'image/png');
     }
 
     #[Test]

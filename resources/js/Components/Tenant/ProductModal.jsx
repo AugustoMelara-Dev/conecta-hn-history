@@ -169,7 +169,7 @@ export default function ProductModal({
                                             {product.name}
                                         </Dialog.Title>
                                         <p className="text-slate-300 text-sm mt-1">{product.description}</p>
-                                        <p className="text-indigo-400 font-bold text-lg mt-2">{product.formatted_price}</p>
+                                        <p className="mt-2 text-lg font-bold text-white">{product.formatted_price}</p>
                                     </div>
                                 </div>
 
@@ -198,28 +198,28 @@ export default function ProductModal({
                                                         type="button"
                                                         onClick={() => handleModifierToggle(group, option)}
                                                         className={cn(
-                                                            "w-full flex items-center justify-between p-3 rounded-xl border transition-all",
+                                                            "w-full flex items-center justify-between rounded-xl border p-3 transition-all",
                                                             isOptionSelected(group.id, option.id)
-                                                                ? "bg-indigo-600/20 border-indigo-500 text-white"
-                                                                : "bg-slate-800/50 border-white/5 text-slate-300 hover:border-white/20"
+                                                                ? "border-white bg-white/10 text-white"
+                                                                : "border-white/5 bg-slate-800/50 text-slate-300 hover:border-white/20"
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-3">
                                                             <div className={cn(
                                                                 "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
                                                                 isOptionSelected(group.id, option.id)
-                                                                    ? "bg-indigo-600 border-indigo-500"
+                                                                    ? "border-white bg-white"
                                                                     : "border-slate-500"
                                                             )}>
                                                                 {isOptionSelected(group.id, option.id) && (
-                                                                    <Check className="w-3 h-3 text-white" />
+                                                                    <Check className="w-3 h-3 text-slate-950" />
                                                                 )}
                                                             </div>
                                                             <span className="font-medium">{option.name}</span>
                                                         </div>
                                                         <span className={cn(
                                                             "text-sm",
-                                                            option.price > 0 ? "text-emerald-400" : "text-slate-500"
+                                                            option.price > 0 ? "text-white" : "text-slate-500"
                                                         )}>
                                                             {option.formatted_price}
                                                         </span>
@@ -238,7 +238,7 @@ export default function ProductModal({
                                             value={notes}
                                             onChange={(e) => setNotes(e.target.value)}
                                             placeholder="Ej: Sin cebolla, extra salsa..."
-                                            className="w-full px-4 py-3 bg-slate-800 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+                                            className="w-full resize-none rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-white/20"
                                             rows={2}
                                         />
                                     </div>
@@ -274,8 +274,8 @@ export default function ProductModal({
                                             className={cn(
                                                 "flex-1 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all",
                                                 isValid()
-                                                    ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25"
-                                                    : "bg-slate-700 text-slate-400 cursor-not-allowed"
+                                                    ? "bg-white text-slate-950 shadow-lg hover:bg-slate-200"
+                                                    : "cursor-not-allowed bg-slate-700 text-slate-400"
                                             )}
                                         >
                                             <ShoppingCart className="w-5 h-5" />

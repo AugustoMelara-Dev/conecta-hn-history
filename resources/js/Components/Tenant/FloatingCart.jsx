@@ -287,7 +287,7 @@ export default function FloatingCart() {
                                                         {/* Clear cart link */}
                                                         <button
                                                             onClick={clearCart}
-                                                            className="w-full text-sm text-slate-400 hover:text-rose-400 transition-colors"
+                                                            className="w-full text-sm text-slate-400 transition-colors hover:text-white"
                                                         >
                                                             Vaciar carrito
                                                         </button>
@@ -308,11 +308,11 @@ export default function FloatingCart() {
                                                             {/* Discount row (if applied) */}
                                                             {discountAmount > 0 && (
                                                                 <div className="flex items-center justify-between text-sm">
-                                                                    <span className="text-emerald-400 flex items-center gap-1">
+                                                                    <span className="flex items-center gap-1 text-white">
                                                                         <Percent className="w-3 h-3" />
                                                                         Descuento ({couponCode})
                                                                     </span>
-                                                                    <span className="text-emerald-400 font-medium">
+                                                                    <span className="font-medium text-white">
                                                                         - L. {discountAmount.toFixed(2)}
                                                                     </span>
                                                                 </div>
@@ -332,7 +332,7 @@ export default function FloatingCart() {
                                                             onClick={handleProceedToCheckout}
                                                             className={cn(
                                                                 "w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2",
-                                                                "bg-[var(--primary-color,#6366f1)] hover:brightness-90 text-white",
+                                                                "bg-white text-slate-950 hover:bg-slate-200",
                                                                 "shadow-lg transition-all active:scale-98"
                                                             )}
                                                         >

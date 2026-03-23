@@ -10,40 +10,37 @@ export default function CouponSection({
     isApplyingCoupon,
     applyCoupon,
     removeCoupon,
-    couponError
+    couponError,
 }) {
     return (
         <div className="space-y-2">
             {couponCode ? (
-                // ✅ Applied coupon display
-                <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2">
+                <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
                     <div className="flex items-center gap-2">
-                        <Tag className="w-4 h-4 text-emerald-400" />
-                        <span className="text-sm font-medium text-emerald-300">{couponCode}</span>
+                        <Tag className="h-4 w-4 text-white" />
+                        <span className="text-sm font-medium text-white">{couponCode}</span>
                     </div>
                     <button
                         onClick={() => {
                             removeCoupon();
-                            // Show input again for retry
                             setShowCouponInput(true);
                         }}
-                        className="text-slate-400 hover:text-rose-400 transition-colors"
-                        title="Eliminar cupón"
+                        className="text-slate-400 transition-colors hover:text-white"
+                        title="Eliminar cupon"
                     >
-                        <X className="w-4 h-4" />
+                        <X className="h-4 w-4" />
                     </button>
                 </div>
             ) : showCouponInput ? (
-                // 📝 Coupon input form (revealed)
                 <div className="space-y-2">
                     <div className="flex gap-2">
                         <input
                             type="text"
                             value={couponInput}
-                            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                            placeholder="Ingresa tu código"
+                            onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                            placeholder="Ingresa tu codigo"
                             autoFocus
-                            className="flex-1 px-3 py-2 bg-slate-800 border border-white/10 rounded-lg text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="flex-1 rounded-lg border border-white/10 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-white/20"
                         />
                         <button
                             onClick={async () => {
@@ -54,43 +51,35 @@ export default function CouponSection({
                                 }
                             }}
                             disabled={isApplyingCoupon || !couponInput}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1"
+                            className="flex items-center gap-1 rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-950 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {isApplyingCoupon ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                                'Aplicar'
-                            )}
+                            {isApplyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aplicar'}
                         </button>
                     </div>
 
-                    {/* Cancel button to hide input */}
                     <button
                         onClick={() => {
                             setShowCouponInput(false);
                             setCouponInput('');
-                            // Clear any previous error when closing
                         }}
-                        className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
+                        className="text-xs text-slate-500 transition-colors hover:text-white"
                     >
                         Cancelar
                     </button>
                 </div>
             ) : (
-                // 🎯 Trigger link (hidden state - Progressive Disclosure)
                 <button
                     onClick={() => setShowCouponInput(true)}
-                    className="flex items-center gap-1.5 text-sm text-indigo-400 hover:text-indigo-300 hover:underline transition-colors"
+                    className="flex items-center gap-1.5 text-sm text-slate-300 transition-colors hover:text-white hover:underline"
                 >
-                    <Tag className="w-3.5 h-3.5" />
-                    ¿Tienes un código de descuento?
+                    <Tag className="h-3.5 w-3.5" />
+                    Tienes un codigo de descuento?
                 </button>
             )}
 
-            {/* Coupon error */}
-            {couponError && showCouponInput && (
-                <p className="text-xs text-rose-400">{couponError}</p>
-            )}
+            {couponError && showCouponInput ? (
+                <p className="text-xs text-rose-300">{couponError}</p>
+            ) : null}
         </div>
     );
 }

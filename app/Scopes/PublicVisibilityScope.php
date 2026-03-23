@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Scopes;
 
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
@@ -114,10 +115,18 @@ class PublicVisibilityScope implements Scope
     protected function isAdminRoute(): bool
     {
         try {
-            return request()->is('admin/*') ||
-                   request()->is('admin') ||
-                   request()->is('app/*') ||
-                   request()->is('app');
+            if (
+                request()->is('admin/*') ||
+                request()->is('admin') ||
+                request()->is('app/*') ||
+                request()->is('app')
+            ) {
+                return true;
+            }
+
+            $refererPath = parse_url((string) request()->headers->get('referer'), PHP_URL_PATH);
+
+            return $this->matchesPanelPath($refererPath);
         } catch (\Throwable $e) {
             return false;
         }
@@ -132,26 +141,59 @@ class PublicVisibilityScope implements Scope
             return false;
         }
 
-        // Get tenant from route parameter
-        $tenant = request()->route('tenant');
-        if (! $tenant) {
+        $tenant = $this->resolveTenantFromRequest();
+
+        if (! $tenant instanceof Tenant) {
             return false;
         }
 
-        // Check if current user owns this tenant
         $user = Auth::user();
 
-        // Method 1: Direct ownership check via tenant's user relationship
-        if (method_exists($tenant, 'user') && $tenant->user_id === $user->id) {
+        if ((string) $tenant->user_id === (string) $user->id) {
             return true;
         }
 
-        // Method 2: User belongs to tenant check
+        if (method_exists($user, 'canAccessTenant') && $user->canAccessTenant($tenant)) {
+            return true;
+        }
+
         if (method_exists($user, 'tenants')) {
             return $user->tenants()->where('id', $tenant->id)->exists();
         }
 
         return false;
+    }
+
+    protected function resolveTenantFromRequest(): ?Tenant
+    {
+        $routeTenant = request()->route('tenant');
+
+        if ($routeTenant instanceof Tenant) {
+            return $routeTenant;
+        }
+
+        if (is_string($routeTenant) || is_int($routeTenant)) {
+            return Tenant::query()
+                ->whereKey($routeTenant)
+                ->orWhere('slug', (string) $routeTenant)
+                ->first();
+        }
+
+        return null;
+    }
+
+    protected function matchesPanelPath(?string $path): bool
+    {
+        if (! is_string($path) || $path === '') {
+            return false;
+        }
+
+        $normalizedPath = trim($path, '/');
+
+        return $normalizedPath === 'admin' ||
+            $normalizedPath === 'app' ||
+            str_starts_with($normalizedPath, 'admin/') ||
+            str_starts_with($normalizedPath, 'app/');
     }
 
     /**

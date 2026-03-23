@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Public;
 
 use App\Domain\Public\Contracts\TenantStorefrontRepository;
 use App\Domain\Tenant\Services\TenantVisibilityService;
+use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
 use App\Http\Controllers\Controller;
 use App\Infrastructure\Tenant\Transformers\TenantMicrositeTransformer;
@@ -32,12 +33,12 @@ final class TenantMicrositeController extends Controller
         private readonly TenantVisibilityService $visibilityService
     ) {}
 
-    public function show(Request $request, string $tenant, \App\Domain\Shared\Services\TenantContext $tenantContext): Response
+    public function show(Request $request, string $tenantSlug, \App\Domain\Shared\Services\TenantContext $tenantContext): Response
     {
         $tenantLookup = Tenant::query()
             ->withoutGlobalScopes()
             ->select(['id', 'slug'])
-            ->where('slug', $tenant)
+            ->where('slug', $tenantSlug)
             ->first();
 
         if (! $tenantLookup) {
@@ -46,13 +47,29 @@ final class TenantMicrositeController extends Controller
 
         $tenantContext->setTenant($tenantLookup->id);
 
-        $tenant = $this->repository->findBySlug($tenant);
+        $tenant = $this->repository->findBySlug($tenantSlug);
         if (! $tenant) {
             abort(404);
         }
 
-        // 2. Gatekeeper Logic (Domain Service)
-        $this->visibilityService->check($tenant);
+        $previewMode = false;
+        $previewReason = null;
+
+        try {
+            // 2. Gatekeeper Logic (Domain Service)
+            $this->visibilityService->check($tenant);
+        } catch (TenantNotFoundException) {
+            $viewer = $request->user();
+            $canPreviewUnpublishedTenant = $viewer !== null
+                && ($viewer->isSuperAdmin() || (string) $viewer->id === (string) $tenant->user_id);
+
+            if (! $canPreviewUnpublishedTenant) {
+                abort(404);
+            }
+
+            $previewMode = true;
+            $previewReason = $this->resolvePreviewReason($tenant);
+        }
 
         // 3. Side-Effect Managment (Event Driven)
         // Fire and Forget. Listener handles increment logic.
@@ -125,7 +142,34 @@ final class TenantMicrositeController extends Controller
             'isOpen' => $this->transformer->isCurrentlyOpen($tenant),
             'openingHours' => $this->transformer->transformOpeningHours($tenant->openingHours),
             'seoStructuredData' => $this->transformer->buildStructuredData($tenant),
-            'canonicalUrl' => route('tenant.microsite.show', $tenant),
+            'canonicalUrl' => route('tenant.microsite.show', ['tenant' => $tenant->slug]),
+            'previewMode' => $previewMode,
+            'previewReason' => $previewReason,
         ]);
+    }
+
+    private function resolvePreviewReason(object $tenant): string
+    {
+        $status = (string) ($tenant->status ?? '');
+
+        if ($status === 'pending') {
+            return 'Este negocio sigue pendiente de aprobacion.';
+        }
+
+        if ($status === 'rejected') {
+            return 'Este negocio fue rechazado y aun no esta publicado.';
+        }
+
+        if (! (bool) ($tenant->is_active ?? false)) {
+            return 'Este negocio esta desactivado temporalmente.';
+        }
+
+        $subscriptionStatus = (string) ($tenant->subscription_status ?? '');
+
+        if (! in_array($subscriptionStatus, ['active', 'trial'], true)) {
+            return 'La suscripcion actual no permite visibilidad publica.';
+        }
+
+        return 'Este negocio todavia no esta visible para visitantes.';
     }
 }

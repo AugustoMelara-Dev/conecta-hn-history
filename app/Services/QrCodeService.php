@@ -48,7 +48,7 @@ class QrCodeService
     protected function generateQrCode(Tenant $tenant, int $size): string
     {
         try {
-            $url = url('/'.$tenant->slug);
+            $url = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
 
             $options = new QROptions([
                 'outputType' => QROutputInterface::MARKUP_SVG,
@@ -79,8 +79,8 @@ class QrCodeService
     protected function getCacheKey(Tenant $tenant): string
     {
         return sprintf(
-            'qr_tenant_%d_v%d',
-            $tenant->id,
+            'qr_tenant_%s_v%d',
+            (string) $tenant->getKey(),
             $tenant->updated_at->timestamp
         );
     }

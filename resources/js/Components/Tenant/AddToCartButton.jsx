@@ -76,8 +76,8 @@ export default function AddToCartButton({
     const baseStyles = cn(
         "inline-flex items-center justify-center gap-2 font-medium transition-all",
         showAdded
-            ? "bg-emerald-600 text-white"
-            : "bg-[var(--primary-color,#6366f1)] hover:brightness-90 text-[var(--primary-text-color,#ffffff)]",
+            ? "bg-white text-slate-950"
+            : "bg-[var(--primary-color,#020617)] hover:brightness-90 text-[var(--primary-text-color,#ffffff)]",
         "shadow-lg hover:shadow-black/25",
         "active:scale-95"
     );
@@ -86,7 +86,7 @@ export default function AddToCartButton({
         default: cn(baseStyles, "px-4 py-3 rounded-xl text-sm"),
         compact: cn(baseStyles, "px-3 py-2 rounded-lg text-xs"),
         'icon-only': cn(baseStyles, "w-10 h-10 rounded-full p-0"),
-        'buy-now': cn(baseStyles, "px-4 py-3 rounded-xl text-sm bg-emerald-600 hover:bg-emerald-500"),
+        'buy-now': cn(baseStyles, "px-4 py-3 rounded-xl text-sm bg-white text-slate-950 hover:bg-slate-200"),
     };
 
     const getButtonContent = () => {

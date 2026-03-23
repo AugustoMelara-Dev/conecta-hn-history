@@ -4,181 +4,146 @@ import { cn } from '@/lib/utils';
 import { calculateItemTotal } from '@/Stores/useCartStore';
 
 export default function CheckoutForm({
-    // Form State
-    customerName, setCustomerName,
-    customerPhone, setCustomerPhone,
-    deliveryType, setDeliveryType,
-    customerAddress, setCustomerAddress,
-    customerNotes, setCustomerNotes,
-
-    // Order Data
+    customerName,
+    setCustomerName,
+    customerPhone,
+    setCustomerPhone,
+    deliveryType,
+    setDeliveryType,
+    customerAddress,
+    setCustomerAddress,
+    customerNotes,
+    setCustomerNotes,
     items,
     grandTotal,
-
-    // Submission
     handleSubmitOrder,
     isSubmitting,
     submitError,
-    errors
+    errors,
 }) {
     return (
         <>
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {/* Error Banner */}
-                {submitError && (
-                    <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-rose-300">{submitError}</p>
+            <div className="flex-1 space-y-6 overflow-y-auto p-4">
+                {submitError ? (
+                    <div className="flex items-start gap-3 rounded-xl border border-rose-300/20 bg-rose-500/10 p-4">
+                        <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-rose-300" />
+                        <p className="text-sm text-rose-200">{submitError}</p>
                     </div>
-                )}
+                ) : null}
 
-                {/* Name Input */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                        <User className="w-4 h-4 inline mr-2" />
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                        <User className="mr-2 inline h-4 w-4" />
                         Tu nombre *
                     </label>
                     <input
                         type="text"
                         value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="Ej: María García"
+                        onChange={(event) => setCustomerName(event.target.value)}
+                        placeholder="Ej: Maria Garcia"
                         className={cn(
-                            "w-full px-4 py-3 bg-slate-800 border rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
-                            errors.customerName ? "border-rose-500" : "border-white/10"
+                            'w-full rounded-xl border bg-slate-800 px-4 py-3 text-white placeholder:text-slate-500 transition-all focus:outline-none focus:ring-2 focus:ring-white/20',
+                            errors.customerName ? 'border-rose-400' : 'border-white/10'
                         )}
                     />
-                    {errors.customerName && (
-                        <p className="mt-1 text-sm text-rose-400">{errors.customerName}</p>
-                    )}
+                    {errors.customerName ? <p className="mt-1 text-sm text-rose-300">{errors.customerName}</p> : null}
                 </div>
 
-                {/* Phone Input */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                        📱 Tu teléfono *
-                    </label>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">Tu telefono *</label>
                     <input
                         type="tel"
                         value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        onChange={(event) => setCustomerPhone(event.target.value)}
                         placeholder="Ej: 9999-1234"
                         className={cn(
-                            "w-full px-4 py-3 bg-slate-800 border rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
-                            errors.customerPhone ? "border-rose-500" : "border-white/10"
+                            'w-full rounded-xl border bg-slate-800 px-4 py-3 text-white placeholder:text-slate-500 transition-all focus:outline-none focus:ring-2 focus:ring-white/20',
+                            errors.customerPhone ? 'border-rose-400' : 'border-white/10'
                         )}
                     />
-                    {errors.customerPhone && (
-                        <p className="mt-1 text-sm text-rose-400">{errors.customerPhone}</p>
-                    )}
+                    {errors.customerPhone ? <p className="mt-1 text-sm text-rose-300">{errors.customerPhone}</p> : null}
                 </div>
 
-                {/* Delivery Type Selector */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-3">
-                        ¿Cómo recibirás tu pedido?
-                    </label>
+                    <label className="mb-3 block text-sm font-medium text-slate-300">Como recibiras tu pedido?</label>
                     <div className="grid grid-cols-2 gap-3">
                         <button
                             type="button"
                             onClick={() => setDeliveryType('pickup')}
                             className={cn(
-                                "p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all",
+                                'flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all',
                                 deliveryType === 'pickup'
-                                    ? "border-indigo-500 bg-indigo-500/10"
-                                    : "border-white/10 bg-slate-800/50 hover:border-white/20"
+                                    ? 'border-white bg-white/10'
+                                    : 'border-white/10 bg-slate-800/50 hover:border-white/20'
                             )}
                         >
-                            <Package className={cn(
-                                "w-6 h-6",
-                                deliveryType === 'pickup' ? "text-indigo-400" : "text-slate-400"
-                            )} />
-                            <span className={cn(
-                                "text-sm font-medium",
-                                deliveryType === 'pickup' ? "text-white" : "text-slate-300"
-                            )}>
+                            <Package className={cn('h-6 w-6', deliveryType === 'pickup' ? 'text-white' : 'text-slate-400')} />
+                            <span className={cn('text-sm font-medium', deliveryType === 'pickup' ? 'text-white' : 'text-slate-300')}>
                                 Recoger en tienda
                             </span>
-                            {deliveryType === 'pickup' && (
-                                <Check className="w-4 h-4 text-indigo-400" />
-                            )}
+                            {deliveryType === 'pickup' ? <Check className="h-4 w-4 text-white" /> : null}
                         </button>
 
                         <button
                             type="button"
                             onClick={() => setDeliveryType('delivery')}
                             className={cn(
-                                "p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all",
+                                'flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all',
                                 deliveryType === 'delivery'
-                                    ? "border-indigo-500 bg-indigo-500/10"
-                                    : "border-white/10 bg-slate-800/50 hover:border-white/20"
+                                    ? 'border-white bg-white/10'
+                                    : 'border-white/10 bg-slate-800/50 hover:border-white/20'
                             )}
                         >
-                            <Truck className={cn(
-                                "w-6 h-6",
-                                deliveryType === 'delivery' ? "text-indigo-400" : "text-slate-400"
-                            )} />
-                            <span className={cn(
-                                "text-sm font-medium",
-                                deliveryType === 'delivery' ? "text-white" : "text-slate-300"
-                            )}>
+                            <Truck className={cn('h-6 w-6', deliveryType === 'delivery' ? 'text-white' : 'text-slate-400')} />
+                            <span className={cn('text-sm font-medium', deliveryType === 'delivery' ? 'text-white' : 'text-slate-300')}>
                                 A domicilio
                             </span>
-                            {deliveryType === 'delivery' && (
-                                <Check className="w-4 h-4 text-indigo-400" />
-                            )}
+                            {deliveryType === 'delivery' ? <Check className="h-4 w-4 text-white" /> : null}
                         </button>
                     </div>
                 </div>
 
-                {/* Address Input (conditional) */}
-                {deliveryType === 'delivery' && (
+                {deliveryType === 'delivery' ? (
                     <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                            <MapPin className="w-4 h-4 inline mr-2" />
-                            Dirección de entrega *
+                        <label className="mb-2 block text-sm font-medium text-slate-300">
+                            <MapPin className="mr-2 inline h-4 w-4" />
+                            Direccion de entrega *
                         </label>
                         <textarea
                             value={customerAddress}
-                            onChange={(e) => setCustomerAddress(e.target.value)}
-                            placeholder="Colonia, calle, número de casa, referencias..."
+                            onChange={(event) => setCustomerAddress(event.target.value)}
+                            placeholder="Colonia, calle, numero de casa, referencias..."
                             rows={3}
                             className={cn(
-                                "w-full px-4 py-3 bg-slate-800 border rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none",
-                                errors.customerAddress ? "border-rose-500" : "border-white/10"
+                                'w-full resize-none rounded-xl border bg-slate-800 px-4 py-3 text-white placeholder:text-slate-500 transition-all focus:outline-none focus:ring-2 focus:ring-white/20',
+                                errors.customerAddress ? 'border-rose-400' : 'border-white/10'
                             )}
                         />
-                        {errors.customerAddress && (
-                            <p className="mt-1 text-sm text-rose-400">{errors.customerAddress}</p>
-                        )}
+                        {errors.customerAddress ? <p className="mt-1 text-sm text-rose-300">{errors.customerAddress}</p> : null}
                     </div>
-                )}
+                ) : null}
 
-                {/* Notes (optional) */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                        📝 Notas adicionales (opcional)
-                    </label>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">Notas adicionales (opcional)</label>
                     <textarea
                         value={customerNotes}
-                        onChange={(e) => setCustomerNotes(e.target.value)}
-                        placeholder="Instrucciones especiales, alérgenos, etc."
+                        onChange={(event) => setCustomerNotes(event.target.value)}
+                        placeholder="Instrucciones especiales, alergenos, etc."
                         rows={2}
-                        className="w-full px-4 py-3 bg-slate-800 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+                        className="w-full resize-none rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white placeholder:text-slate-500 transition-all focus:outline-none focus:ring-2 focus:ring-white/20"
                     />
                 </div>
 
-                {/* Order Summary */}
-                <div className="bg-slate-800/50 rounded-xl p-4 border border-white/5">
-                    <h4 className="text-sm font-medium text-slate-400 mb-3">Resumen del pedido</h4>
+                <div className="rounded-xl border border-white/5 bg-slate-800/50 p-4">
+                    <h4 className="mb-3 text-sm font-medium text-slate-400">Resumen del pedido</h4>
                     <div className="space-y-2 text-sm">
-                        {items.map(item => (
+                        {items.map((item) => (
                             <div key={item.id} className="flex justify-between text-slate-300">
                                 <span>{item.quantity}x {item.name}</span>
                                 <span>L. {calculateItemTotal(item.price, item.quantity, item.selectedModifiers).toFixed(2)}</span>
                             </div>
                         ))}
-                        <div className="pt-2 border-t border-white/10 flex justify-between font-bold text-white">
+                        <div className="flex justify-between border-t border-white/10 pt-2 font-bold text-white">
                             <span>Total</span>
                             <span>L. {grandTotal.toFixed(2)}</span>
                         </div>
@@ -186,34 +151,31 @@ export default function CheckoutForm({
                 </div>
             </div>
 
-            {/* Footer: Submit Button */}
-            <div className="p-4 border-t border-white/10 bg-slate-900/80 backdrop-blur-xl">
+            <div className="border-t border-white/10 bg-slate-900/80 p-4 backdrop-blur-xl">
                 <button
                     onClick={handleSubmitOrder}
                     disabled={isSubmitting}
                     className={cn(
-                        "w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2",
-                        "bg-emerald-600 hover:bg-emerald-500 text-white",
-                        "shadow-lg shadow-emerald-900/30 hover:shadow-emerald-500/30",
-                        "transition-all active:scale-98",
-                        "disabled:opacity-50 disabled:cursor-not-allowed"
+                        'flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold transition-all active:scale-95',
+                        'bg-white text-slate-950 hover:bg-slate-200',
+                        'disabled:cursor-not-allowed disabled:opacity-50'
                     )}
                 >
                     {isSubmitting ? (
                         <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <Loader2 className="h-5 w-5 animate-spin" />
                             Procesando...
                         </>
                     ) : (
                         <>
-                            <MessageCircle className="w-5 h-5" />
-                            Confirmar Pedido en WhatsApp
+                            <MessageCircle className="h-5 w-5" />
+                            Confirmar pedido en WhatsApp
                         </>
                     )}
                 </button>
 
-                <p className="text-center text-xs text-slate-500 mt-3">
-                    Tu pedido será registrado y se abrirá WhatsApp para confirmar
+                <p className="mt-3 text-center text-xs text-slate-500">
+                    Tu pedido se registrara y luego se abrira WhatsApp para confirmar.
                 </p>
             </div>
         </>
