@@ -38,6 +38,7 @@ final class ExploreController extends Controller
             return [
                 'featuredTenants' => $this->tenantRepository->getFeatured(12),
                 'categories' => $this->referenceReader->getPopularCategories(8),
+                'cities' => $this->referenceReader->getPopularCities(4),
                 'stats' => [
                     'total_tenants' => $this->tenantRepository->countActive(),
                     'total_cities' => $this->referenceReader->countActiveCities(),
@@ -45,6 +46,6 @@ final class ExploreController extends Controller
             ];
         });
 
-        return Inertia::render('Public/Home', $data);
+        return Inertia::render('Public/Explore', $data);
     }
 }

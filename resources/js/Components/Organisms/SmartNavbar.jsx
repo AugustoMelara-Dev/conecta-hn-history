@@ -146,8 +146,8 @@ export default function SmartNavbar() {
                                     <Button variant="ghost" size="sm" className="hidden sm:inline-flex">Ingresar</Button>
                                     <Button variant="ghost" size="icon" className="sm:hidden"><Icons.LogIn className="w-5 h-5" /></Button>
                                 </Link>
-                                <Link href={route('register')}>
-                                    <Button size="sm">Registrarse</Button>
+                                <Link href={route('tenant.register')}>
+                                    <Button size="sm">Registrar negocio</Button>
                                 </Link>
                             </div>
                         )}

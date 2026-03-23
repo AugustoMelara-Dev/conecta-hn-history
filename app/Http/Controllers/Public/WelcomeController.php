@@ -61,7 +61,12 @@ final class WelcomeController extends Controller
 
         return Inertia::render('Welcome', array_merge($data, [
             'canLogin' => $this->router->has('login'),
-            'canRegister' => $this->router->has('register'),
+            'canRegister' => $this->router->has('tenant.register'),
+            'settings' => [
+                'freeProductLimit' => (int) config('conecta.free_plan_product_limit', 10),
+                'proProductLimit' => (int) config('conecta.pro_plan_product_limit', 100),
+                'proPlanPrice' => (float) config('conecta.pro_plan_price', 500.00),
+            ],
         ]));
     }
 }

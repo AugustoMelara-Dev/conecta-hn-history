@@ -76,8 +76,8 @@ export default function GlobalLoginModal() {
             });
 
             if (response.data.requires_registration) {
-                // Redirect to registration
-                window.location.href = '/register?identifier=' + encodeURIComponent(otpIdentifier);
+                // Redirect to the canonical business registration flow
+                window.location.href = `${route('tenant.register')}?identifier=${encodeURIComponent(otpIdentifier)}`;
             } else {
                 // Success - reload to get authenticated state
                 window.location.href = response.data.redirect;
