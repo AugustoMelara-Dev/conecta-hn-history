@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Domain\Identity\Enums\UserRole;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -30,6 +32,28 @@ class AuthenticationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+    }
+
+    public function test_tenant_owners_are_redirected_to_the_filament_app_panel_after_login(): void
+    {
+        $tenantOwner = User::factory()->create([
+            'role' => UserRole::TENANT_OWNER,
+        ]);
+        $tenant = Tenant::factory()->create([
+            'user_id' => $tenantOwner->id,
+            'slug' => 'mi-negocio',
+        ]);
+        $tenantOwner->forceFill(['tenant_id' => $tenant->id])->save();
+        $token = 'auth-login-tenant-token';
+
+        $response = $this->withSession(['_token' => $token])->post('/login', [
+            '_token' => $token,
+            'email' => $tenantOwner->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect(route('filament.app.pages.dashboard', ['tenant' => 'mi-negocio'], false));
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void

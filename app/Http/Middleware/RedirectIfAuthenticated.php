@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Domain\Identity\Enums\UserRole;
 use App\Models\User;
+use App\Support\Auth\AuthRedirector;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,19 +30,7 @@ class RedirectIfAuthenticated
                     return redirect(route('directory.index'));
                 }
 
-                if ($user->role === UserRole::SUPER_ADMIN) {
-                    return redirect('/admin');
-                }
-
-                if ($user->role === UserRole::TENANT_OWNER) {
-                    return redirect('/app');
-                }
-
-                if ($user->role === UserRole::CUSTOMER) {
-                    return redirect('/mi-cuenta');
-                }
-
-                return redirect(route('directory.index'));
+                return redirect(AuthRedirector::destinationFor($user));
             }
         }
 

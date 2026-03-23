@@ -8,13 +8,11 @@ use App\Application\Actions\Auth\DeleteUserAction;
 use App\Application\Actions\Auth\UpdateUserProfileAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProfileUpdateRequest;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\Auth\AuthRedirector;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Redirector;
-use Inertia\Inertia;
-use Inertia\Response;
 
 final class ProfileController extends Controller
 {
@@ -25,12 +23,9 @@ final class ProfileController extends Controller
         private Redirector $redirector
     ) {}
 
-    public function edit(Request $request): Response
+    public function edit(Request $request): Response|RedirectResponse
     {
-        return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
-            'status' => session('status'),
-        ]);
+        return redirect()->to(AuthRedirector::profileDestinationFor($request->user()));
     }
 
     public function update(ProfileUpdateRequest $request): RedirectResponse

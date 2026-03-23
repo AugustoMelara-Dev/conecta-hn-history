@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Domain\Identity\Enums\UserRole;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,6 +41,32 @@ class EmailVerificationTest extends TestCase
         Event::assertDispatched(Verified::class);
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
         $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
+    }
+
+    public function test_tenant_owners_are_sent_to_the_filament_app_panel_after_email_verification(): void
+    {
+        $user = User::factory()->unverified()->create([
+            'role' => UserRole::TENANT_OWNER,
+        ]);
+        $tenant = Tenant::factory()->create([
+            'user_id' => $user->id,
+            'slug' => 'tienda-verificada',
+        ]);
+        $user->forceFill(['tenant_id' => $tenant->id])->save();
+
+        Event::fake();
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            ['id' => $user->id, 'hash' => sha1($user->email)]
+        );
+
+        $response = $this->actingAs($user)->get($verificationUrl);
+
+        Event::assertDispatched(Verified::class);
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+        $response->assertRedirect(route('filament.app.pages.dashboard', ['tenant' => 'tienda-verificada'], false).'?verified=1');
     }
 
     public function test_email_is_not_verified_with_invalid_hash(): void

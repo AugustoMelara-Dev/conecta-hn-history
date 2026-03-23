@@ -62,12 +62,21 @@ final class HandleInertiaRequests extends Middleware
      */
     protected function shareAuthData(Request $request): array
     {
+        $user = $request->user();
+        $tenant = $user?->tenant;
+
         return [
             'auth' => [
-                'user' => $request->user() ? [
-                    'id' => $request->user()->id,
-                    'name' => $request->user()->name,
-                    'email' => $request->user()->email,
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role instanceof \BackedEnum ? $user->role->value : $user->role,
+                ] : null,
+                'tenant' => $tenant ? [
+                    'id' => (string) $tenant->getKey(),
+                    'name' => (string) $tenant->name,
+                    'slug' => (string) $tenant->slug,
                 ] : null,
             ],
         ];
