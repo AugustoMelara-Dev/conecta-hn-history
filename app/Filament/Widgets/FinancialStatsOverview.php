@@ -29,8 +29,8 @@ class FinancialStatsOverview extends BaseWidget
     {
         $proTenants = Tenant::where('is_pro', true)
             ->where(function ($query) {
-                $query->whereNull('plan_expires_at')
-                    ->orWhere('plan_expires_at', '>', now());
+                $query->whereNull('subscription_ends_at')
+                    ->orWhere('subscription_ends_at', '>', now());
             })
             ->count();
 

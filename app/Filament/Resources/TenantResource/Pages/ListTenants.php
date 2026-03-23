@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\TenantResource\Pages;
 
+use App\Filament\Resources\Pages\ListAdminRecords;
 use App\Filament\Resources\TenantResource;
 use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
 
-class ListTenants extends ListRecords
+class ListTenants extends ListAdminRecords
 {
     protected static string $resource = TenantResource::class;
 

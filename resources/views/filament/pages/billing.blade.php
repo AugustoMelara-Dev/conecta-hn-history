@@ -1,218 +1,153 @@
 <x-filament-panels::page>
-    <div class="grid md:grid-cols-2 gap-6">
-        {{-- Left Panel: Current Plan Status --}}
-        <div class="space-y-6">
-            {{-- Status Card --}}
-            <x-filament::section>
-                <x-slot name="heading">
-                    <div class="flex items-center gap-2">
-                        <x-heroicon-o-star class="w-5 h-5 text-primary-500" />
-                        Tu Plan Actual
-                    </div>
-                </x-slot>
+    @include('filament.components.panel-critical-styles')
 
-                @php
-                    $data = $this->getSubscriptionData();
-                @endphp
-
+    <div class="space-y-6">
+        <x-filament::section>
+            <div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                 <div class="space-y-4">
-                    {{-- Plan Badge --}}
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-500 dark:text-gray-400">Plan:</span>
-                        <x-filament::badge 
-                            :color="$data['is_pro'] ? 'success' : 'gray'"
-                            size="lg"
-                        >
-                            {{ $data['plan'] }}
-                        </x-filament::badge>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">Superadmin</p>
+                    <div class="space-y-2">
+                        <h1 class="text-3xl font-black tracking-tight text-zinc-950 dark:text-white">Facturacion de la plataforma</h1>
+                        <p class="max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                            Desde aqui tienes una lectura rapida del flujo manual de pagos, el precio vigente de PRO y el estado general de negocios Base vs PRO.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
+                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">Plan actual</p>
+                    <p class="mt-3 text-4xl font-black text-white">{{ $proPlanPrice }}</p>
+                    <p class="mt-2 text-sm leading-6 text-emerald-100/80">
+                        Precio de referencia del plan PRO mensual visible para los negocios.
+                    </p>
+
+                    <div class="mt-5 flex flex-wrap gap-3">
+                        <a href="{{ route('filament.admin.resources.payments.index') }}" class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-100">
+                            Revisar pagos
+                        </a>
+                        <a href="{{ route('filament.admin.pages.manage-general-settings') }}" class="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10">
+                            Ajustar configuracion
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </x-filament::section>
+
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <x-filament::section>
+                <div class="text-center">
+                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">Pendientes</p>
+                    <p class="mt-3 text-4xl font-black text-amber-500">{{ $pendingPayments }}</p>
+                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Comprobantes por revisar</p>
+                </div>
+            </x-filament::section>
+
+            <x-filament::section>
+                <div class="text-center">
+                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">Aprobados</p>
+                    <p class="mt-3 text-4xl font-black text-emerald-500">{{ $approvedPayments }}</p>
+                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Pagos validados</p>
+                </div>
+            </x-filament::section>
+
+            <x-filament::section>
+                <div class="text-center">
+                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">Rechazados</p>
+                    <p class="mt-3 text-4xl font-black text-rose-500">{{ $rejectedPayments }}</p>
+                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Casos con observacion</p>
+                </div>
+            </x-filament::section>
+
+            <x-filament::section>
+                <div class="text-center">
+                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">Negocios PRO</p>
+                    <p class="mt-3 text-4xl font-black text-zinc-950 dark:text-white">{{ $proBusinesses }}</p>
+                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Cuentas premium</p>
+                </div>
+            </x-filament::section>
+
+            <x-filament::section>
+                <div class="text-center">
+                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">Negocios Base</p>
+                    <p class="mt-3 text-4xl font-black text-zinc-950 dark:text-white">{{ $baseBusinesses }}</p>
+                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Cuentas esenciales</p>
+                </div>
+            </x-filament::section>
+        </div>
+
+        <div class="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
+            <x-filament::section>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">Revision operativa</p>
+                        <h2 class="mt-2 text-2xl font-bold text-zinc-950 dark:text-white">Ultimos pagos reportados</h2>
                     </div>
 
-                    {{-- Status with Semantic Badge --}}
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-500 dark:text-gray-400">Estado:</span>
-                        @if($data['is_past_due'] ?? false)
-                            {{-- CRITICAL: Past Due - Red Alert --}}
-                            <x-filament::badge color="danger" size="lg" class="animate-pulse">
-                                <x-heroicon-o-exclamation-triangle class="w-4 h-4 mr-1" />
-                                VENCIDO - Servicio Suspendido
-                            </x-filament::badge>
-                        @elseif($data['is_trial'] ?? false)
-                            {{-- TRIAL: Amber/Warning --}}
-                            <x-filament::badge color="warning" size="lg">
-                                <x-heroicon-o-clock class="w-4 h-4 mr-1" />
-                                Periodo de Prueba
-                            </x-filament::badge>
-                        @elseif($data['is_pro'])
-                            {{-- ACTIVE PRO: Green/Success --}}
-                            <x-filament::badge color="success" size="lg">
-                                <x-heroicon-o-check-badge class="w-4 h-4 mr-1" />
-                                Suscripción Activa
-                            </x-filament::badge>
-                        @else
-                            {{-- SEMILLA: Gray/Neutral --}}
-                            <x-filament::badge color="gray" size="lg">
-                                {{ $data['status'] }}
-                            </x-filament::badge>
-                        @endif
-                    </div>
-
-                    {{-- Expiry Date --}}
-                    @if($data['expires_at'])
-                        <div class="flex items-center justify-between">
-                            <span class="text-gray-500 dark:text-gray-400">Vence:</span>
-                            <span class="font-semibold {{ $data['is_expiring_soon'] ?? false ? 'text-danger-600' : '' }}">
-                                {{ $data['expires_at'] }}
-                            </span>
+                    @if ($recentPayments !== [])
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-black/5 text-left text-zinc-500 dark:border-white/10 dark:text-zinc-400">
+                                        <th class="px-3 py-3">Negocio</th>
+                                        <th class="px-3 py-3">Referencia</th>
+                                        <th class="px-3 py-3">Monto</th>
+                                        <th class="px-3 py-3">Estado</th>
+                                        <th class="px-3 py-3">Fecha</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($recentPayments as $payment)
+                                        <tr class="border-b border-black/5 dark:border-white/5">
+                                            <td class="px-3 py-3 font-medium text-zinc-950 dark:text-white">{{ $payment['business'] }}</td>
+                                            <td class="px-3 py-3 text-zinc-500 dark:text-zinc-400">{{ $payment['reference'] }}</td>
+                                            <td class="px-3 py-3 text-zinc-950 dark:text-white">{{ $payment['amount'] }}</td>
+                                            <td class="px-3 py-3">
+                                                <x-filament::badge color="{{ $payment['status'] === 'Aprobado' ? 'success' : ($payment['status'] === 'Pendiente' ? 'warning' : 'danger') }}">
+                                                    {{ $payment['status'] }}
+                                                </x-filament::badge>
+                                            </td>
+                                            <td class="px-3 py-3 text-zinc-500 dark:text-zinc-400">{{ $payment['reported_at'] }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
-
-                        {{-- Days remaining --}}
-                        @if($data['days_left'] !== null)
-                            <div class="p-4 rounded-lg {{ $data['days_left'] <= 7 ? 'bg-danger-50 dark:bg-danger-950 border border-danger-200' : 'bg-primary-50 dark:bg-primary-950 border border-primary-200' }}">
-                                <div class="text-center">
-                                    <div class="text-3xl font-bold {{ $data['days_left'] <= 7 ? 'text-danger-600' : 'text-primary-600' }}">
-                                        {{ $data['days_left'] }}
-                                    </div>
-                                    <div class="text-sm {{ $data['days_left'] <= 7 ? 'text-danger-600' : 'text-primary-600' }}">
-                                        días restantes
-                                    </div>
-                                </div>
-                            </div>
-                        @endif
                     @else
-                        <div class="p-4 rounded-lg bg-success-50 dark:bg-success-950 border border-success-200">
-                            <div class="text-center text-success-700">
-                                <x-heroicon-o-sparkles class="w-8 h-8 mx-auto mb-1" />
-                                <span class="font-medium">Acceso Perpetuo</span>
-                            </div>
-                        </div>
+                        @include('filament.app.components.table-empty-state', [
+                            'heading' => 'Todavia no hay pagos reportados',
+                            'description' => 'Cuando un negocio suba un comprobante o el equipo registre una revision, aparecera aqui.',
+                        ])
                     @endif
                 </div>
             </x-filament::section>
 
-            {{-- Features Card (for Semilla users) --}}
-            @if(!$data['is_pro'])
-                <x-filament::section>
-                    <x-slot name="heading">
-                        <div class="flex items-center gap-2">
-                            <x-heroicon-o-sparkles class="w-5 h-5 text-warning-500" />
-                            Beneficios Pro
-                        </div>
-                    </x-slot>
-
-                    <ul class="space-y-2 text-sm">
-                        <li class="flex items-center gap-2">
-                            <x-heroicon-o-check-circle class="w-5 h-5 text-success-500" />
-                            <span>Carrito de compras completo</span>
-                        </li>
-                        <li class="flex items-center gap-2">
-                            <x-heroicon-o-check-circle class="w-5 h-5 text-success-500" />
-                            <span>Personalización de marca (colores)</span>
-                        </li>
-                        <li class="flex items-center gap-2">
-                            <x-heroicon-o-check-circle class="w-5 h-5 text-success-500" />
-                            <span>Productos ilimitados</span>
-                        </li>
-                        <li class="flex items-center gap-2">
-                            <x-heroicon-o-check-circle class="w-5 h-5 text-success-500" />
-                            <span>Imagen de portada personalizada</span>
-                        </li>
-                        <li class="flex items-center gap-2">
-                            <x-heroicon-o-check-circle class="w-5 h-5 text-success-500" />
-                            <span>Sin marca "Powered by Conecta"</span>
-                        </li>
-                    </ul>
-                </x-filament::section>
-            @endif
-        </div>
-
-        {{-- Right Panel: Upgrade & Payment --}}
-        <div class="space-y-6">
-            {{-- Pricing Card --}}
             <x-filament::section>
-                <x-slot name="heading">
-                    <div class="flex items-center gap-2">
-                        <x-heroicon-o-credit-card class="w-5 h-5 text-primary-500" />
-                        {{ $data['is_pro'] ? 'Renovar Plan' : 'Actualizar a Pro' }}
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">Canales</p>
+                        <h2 class="mt-2 text-2xl font-bold text-zinc-950 dark:text-white">Soporte y seguimiento</h2>
                     </div>
-                </x-slot>
 
-                @php
-                    $pricing = $this->getPricing();
-                @endphp
+                    <div class="space-y-3">
+                        <div class="rounded-2xl border border-black/5 bg-zinc-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
+                            <p class="text-xs uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">WhatsApp soporte</p>
+                            <p class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">{{ $supportWhatsApp }}</p>
+                        </div>
 
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    {{-- Monthly --}}
-                    <div class="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-primary-500 transition-colors cursor-pointer">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-gray-900 dark:text-white">
-                                L{{ number_format($pricing['monthly']['price']) }}
-                            </div>
-                            <div class="text-sm text-gray-500">/mes</div>
+                        <div class="rounded-2xl border border-black/5 bg-zinc-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
+                            <p class="text-xs uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">Correo soporte</p>
+                            <p class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">{{ $supportEmail }}</p>
+                        </div>
+
+                        <div class="rounded-2xl border border-black/5 bg-zinc-50 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                            <p class="text-sm font-semibold text-zinc-950 dark:text-white">Flujo recomendado</p>
+                            <ol class="mt-3 space-y-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                                <li>1. Revisar pagos pendientes desde la cola de pagos.</li>
+                                <li>2. Aprobar o rechazar con nota clara para el negocio.</li>
+                                <li>3. Ajustar precio o instrucciones globales desde configuracion general.</li>
+                            </ol>
                         </div>
                     </div>
-
-                    {{-- Annual --}}
-                    <div class="p-4 rounded-xl border-2 border-primary-500 bg-primary-50 dark:bg-primary-950 relative">
-                        <div class="absolute -top-2 left-1/2 -translate-x-1/2">
-                            <x-filament::badge color="warning" size="sm">
-                                {{ $pricing['annual']['discount'] }}
-                            </x-filament::badge>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-primary-600">
-                                L{{ number_format($pricing['annual']['price']) }}
-                            </div>
-                            <div class="text-sm text-primary-600">/año</div>
-                        </div>
-                    </div>
-                </div>
-            </x-filament::section>
-
-            {{-- Bank Transfer Instructions --}}
-            <x-filament::section>
-                <x-slot name="heading">
-                    <div class="flex items-center gap-2">
-                        <x-heroicon-o-building-library class="w-5 h-5 text-primary-500" />
-                        Instrucciones de Pago
-                    </div>
-                </x-slot>
-
-                @php
-                    $bank = $this->getBankInfo();
-                @endphp
-
-                <div class="space-y-3 text-sm">
-                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <span class="text-gray-500">Banco:</span>
-                        <span class="font-semibold">{{ $bank['bank_name'] }}</span>
-                    </div>
-                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <span class="text-gray-500">Tipo:</span>
-                        <span class="font-semibold">{{ $bank['account_type'] }}</span>
-                    </div>
-                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <span class="text-gray-500">Cuenta:</span>
-                        <span class="font-mono font-bold text-primary-600">{{ $bank['account_number'] }}</span>
-                    </div>
-                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <span class="text-gray-500">Nombre:</span>
-                        <span class="font-semibold">{{ $bank['account_holder'] }}</span>
-                    </div>
-                </div>
-
-                <div class="mt-6 space-y-3">
-                    <a 
-                        href="{{ $this->getWhatsAppPaymentUrl() }}"
-                        target="_blank"
-                        class="flex items-center justify-center gap-2 w-full px-4 py-3 bg-success-600 hover:bg-success-500 text-white font-semibold rounded-xl transition-colors"
-                    >
-                        <x-heroicon-o-chat-bubble-left-ellipsis class="w-5 h-5" />
-                        Enviar Comprobante por WhatsApp
-                    </a>
-
-                    <p class="text-xs text-center text-gray-500">
-                        Después de realizar tu transferencia, envíanos el comprobante y activaremos tu plan en menos de 24 horas.
-                    </p>
                 </div>
             </x-filament::section>
         </div>

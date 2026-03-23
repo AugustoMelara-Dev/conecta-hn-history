@@ -25,6 +25,8 @@ use Illuminate\Support\Str;
 
 class CityResource extends Resource
 {
+    protected static bool $isScopedToTenant = false;
+
     // Strict Governance: Cities can only be managed by Super Admin
     public static function canCreate(): bool
     {
@@ -52,7 +54,7 @@ class CityResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Configuracion';
+        return 'Configuración';
     }
 
     public static function getModelLabel(): string
@@ -217,7 +219,7 @@ class CityResource extends Resource
                     ->label('')
                     ->circular()
                     ->size(45)
-                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&background=random'),
+                    ->defaultImageUrl(fn ($record) => \App\Support\Ui\AvatarPlaceholder::forName((string) $record->name)),
 
                 Tables\Columns\TextColumn::make('name')
                     ->label('Ciudad')

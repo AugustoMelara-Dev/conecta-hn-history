@@ -24,6 +24,8 @@ use Illuminate\Support\Str;
 
 class CategoryResource extends Resource
 {
+    protected static bool $isScopedToTenant = false;
+
     // Strict Governance: Global Categories are managed ONLY by Super Admin
     public static function canCreate(): bool
     {
@@ -61,7 +63,7 @@ class CategoryResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Configuracion';
+        return 'Configuración';
     }
 
     public static function form(Schema $schema): Schema

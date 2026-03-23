@@ -20,10 +20,13 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class TenantResource extends Resource
 {
+    protected static bool $isScopedToTenant = false;
+
     protected static ?string $model = Tenant::class;
 
     protected static ?string $modelPolicy = \App\Policies\TenantPolicy::class;
@@ -99,7 +102,7 @@ class TenantResource extends Resource
                             ->label('Telefono')
                             ->tel(),
 
-                        Forms\Components\TextInput::make('website')
+                        Forms\Components\TextInput::make('website_url')
                             ->label('Sitio Web')
                             ->url(),
                     ])->columns(2),
@@ -238,12 +241,19 @@ class TenantResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'user:id,name,email',
+                'city:id,name',
+                'category:id,name',
+            ])->withCount([
+                'products as products_total' => fn (Builder $productQuery): Builder => $productQuery->withoutGlobalScopes(),
+            ]))
             ->columns([
                 Tables\Columns\ImageColumn::make('logo_path')
                     ->label('')
                     ->circular()
                     ->size(45)
-                    ->defaultImageUrl(fn (Tenant $record): string => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&background=random'),
+                    ->defaultImageUrl(fn (Tenant $record): string => \App\Support\Ui\AvatarPlaceholder::forName((string) $record->name)),
 
                 Tables\Columns\TextColumn::make('name')
                     ->label('Negocio')
@@ -256,13 +266,13 @@ class TenantResource extends Resource
                     ->label('Propietario')
                     ->searchable()
                     ->sortable()
-                    ->description(fn (Tenant $record): string => $record->user->email ?? ''),
+                    ->description(fn (Tenant $record): string => $record->user instanceof User ? $record->user->email : ''),
 
                 Tables\Columns\TextColumn::make('city.name')
                     ->label('Ubicacion')
                     ->searchable()
                     ->sortable()
-                    ->description(fn (Tenant $record): string => $record->category->name ?? ''),
+                    ->description(fn (Tenant $record): string => $record->category instanceof \App\Models\Category ? $record->category->name : ''),
 
                 Tables\Columns\TextColumn::make('is_pro')
                     ->label('Plan')
@@ -347,9 +357,8 @@ class TenantResource extends Resource
                     ->falseColor('danger')
                     ->tooltip(fn (Tenant $record): string => $record->is_active ? 'Negocio operando normalmente' : 'SUSPENDIDO - Kill Switch activado'),
 
-                Tables\Columns\TextColumn::make('products_count')
+                Tables\Columns\TextColumn::make('products_total')
                     ->label('Productos')
-                    ->counts('products')
                     ->sortable()
                     ->badge()
                     ->color('gray'),
@@ -551,7 +560,8 @@ class TenantResource extends Resource
 
                         $record->update([
                             'is_pro' => true,
-                            'plan_expires_at' => now()->addMonths($months),
+                            'subscription_status' => 'active',
+                            'subscription_ends_at' => now()->addMonths($months),
                         ]);
 
                         \Filament\Notifications\Notification::make()

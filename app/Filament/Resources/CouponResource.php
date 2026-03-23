@@ -307,8 +307,7 @@ class CouponResource extends Resource
                     DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc')
-            ->poll('60s');
+            ->defaultSort('created_at', 'desc');
     }
 
     use \App\Filament\Traits\ScopesToTenant;

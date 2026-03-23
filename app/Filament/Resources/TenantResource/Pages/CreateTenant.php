@@ -4,10 +4,107 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\TenantResource\Pages;
 
+use App\Domain\TenantGovernance\Enums\TenantPlan;
+use App\Filament\Resources\Pages\CreateAdminRecord;
 use App\Filament\Resources\TenantResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Settings\GeneralSettings;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
-class CreateTenant extends CreateRecord
+class CreateTenant extends CreateAdminRecord
 {
     protected static string $resource = TenantResource::class;
+
+    /** @var array<int, string>|null */
+    private static ?array $tenantColumns = null;
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function handleRecordCreation(array $data): Model
+    {
+        $tenant = new Tenant();
+        $tenant->forceFill($this->normalizeTenantData($data));
+        $tenant->save();
+
+        $this->syncOwner($tenant, $data['user_id'] ?? null);
+
+        return $tenant;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function normalizeTenantData(array $data): array
+    {
+        $settings = app(GeneralSettings::class);
+        $isPro = (bool) ($data['is_pro'] ?? false);
+        $explicitLimit = $data['product_limit'] ?? null;
+
+        return $this->filterTenantColumns([
+            'name' => $data['name'] ?? null,
+            'slug' => $data['slug'] ?? null,
+            'user_id' => $data['user_id'] ?? null,
+            'category_id' => $data['category_id'] ?? null,
+            'business_type' => $data['business_type'] ?? null,
+            'city_id' => $data['city_id'] ?? null,
+            'address' => $data['address'] ?? null,
+            'phone' => $data['phone'] ?? null,
+            'website_url' => $data['website_url'] ?? null,
+            'is_pro' => $isPro,
+            'plan_type' => $isPro ? TenantPlan::PRO->value : TenantPlan::SEMILLA->value,
+            'product_limit' => is_numeric($explicitLimit)
+                ? (int) $explicitLimit
+                : (int) ($isPro ? $settings->pro_plan_product_limit : $settings->free_plan_product_limit),
+            'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
+            'status' => 'approved',
+            'subscription_status' => 'active',
+            'primary_color' => $data['primary_color'] ?? null,
+            'whatsapp_number' => $data['whatsapp_number'] ?? null,
+            'social_links' => $data['social_links'] ?? null,
+            'logo_path' => $data['logo_path'] ?? null,
+            'banner_path' => $data['banner_path'] ?? null,
+            'brand_color' => $data['brand_color'] ?? null,
+            'hero_image' => $data['hero_image'] ?? null,
+            'slogan' => $data['slogan'] ?? null,
+            'payment_methods' => $data['payment_methods'] ?? null,
+            'delivery_enabled' => $data['delivery_enabled'] ?? null,
+            'pickup_enabled' => $data['pickup_enabled'] ?? null,
+            'minimum_order' => $data['minimum_order'] ?? null,
+        ]);
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    private function syncOwner(Tenant $tenant, mixed $userId): void
+    {
+        if (! is_string($userId) || $userId === '') {
+            return;
+        }
+
+        $user = User::query()->find($userId);
+
+        if (! $user instanceof User) {
+            return;
+        }
+
+        $user->forceFill(['tenant_id' => $tenant->getKey()])->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function filterTenantColumns(array $payload): array
+    {
+        self::$tenantColumns ??= Schema::getColumnListing((new Tenant())->getTable());
+
+        return array_intersect_key($payload, array_flip(self::$tenantColumns));
+    }
 }

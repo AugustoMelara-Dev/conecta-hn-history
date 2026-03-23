@@ -161,8 +161,7 @@ class PendingPaymentsWidget extends BaseWidget
                     ->color('info')
                     ->url(fn (Payment $record): string => asset('storage/'.$record->proof_path))
                     ->openUrlInNewTab(),
-            ])
-            ->poll('30s');
+            ]);
     }
 
     /**

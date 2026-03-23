@@ -51,7 +51,10 @@ class PaymentResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = SubscriptionPayment::where('status', SubscriptionPayment::STATUS_PENDING)->count();
+        $count = SubscriptionPayment::query()
+            ->withoutGlobalScopes()
+            ->where('status', SubscriptionPayment::STATUS_PENDING)
+            ->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -316,8 +319,7 @@ class PaymentResource extends Resource
             ->bulkActions([])
             ->emptyStateHeading('Sin pagos pendientes')
             ->emptyStateDescription('Los pagos reportados apareceran aqui.')
-            ->emptyStateIcon('heroicon-o-banknotes')
-            ->poll('30s');
+            ->emptyStateIcon('heroicon-o-banknotes');
     }
 
     public static function getRelations(): array
@@ -335,7 +337,8 @@ class PaymentResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        return SubscriptionPayment::query()
+            ->withoutGlobalScopes()
             ->with(['tenant.user'])
             ->orderByRaw("CASE status
                 WHEN 'pending' THEN 1

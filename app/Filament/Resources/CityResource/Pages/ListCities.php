@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\CityResource\Pages;
 
+use App\Filament\Resources\Pages\ListAdminRecords;
 use App\Filament\Resources\CityResource;
 use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
 
-class ListCities extends ListRecords
+class ListCities extends ListAdminRecords
 {
     protected static string $resource = CityResource::class;
 
