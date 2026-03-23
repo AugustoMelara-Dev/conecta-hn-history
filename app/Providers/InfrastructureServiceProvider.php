@@ -218,6 +218,15 @@ class InfrastructureServiceProvider extends ServiceProvider
     {
         if ($this->app->isProduction()) {
             URL::forceScheme('https');
+            return;
+        }
+
+        if ($this->app->environment('local') && $this->app->bound('request')) {
+            $request = $this->app->make('request');
+
+            if ($request instanceof Request && filled($request->getSchemeAndHttpHost())) {
+                URL::forceRootUrl($request->getSchemeAndHttpHost());
+            }
         }
     }
 
@@ -227,6 +236,9 @@ class InfrastructureServiceProvider extends ServiceProvider
     protected function configureVite(): void
     {
         Vite::prefetch(concurrency: 3);
+        Vite::createAssetPathsUsing(
+            static fn (string $path, ?bool $secure = null): string => '/'.ltrim($path, '/')
+        );
 
         // Use CSP Nonce for scripts if requested
         Vite::useCspNonce();

@@ -13,9 +13,10 @@
     <meta property="og:description" content="{{ $description ?? 'La vitrina digital de Honduras' }}">
     <meta property="og:type" content="website">
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800,900" rel="stylesheet" />
+    <!-- Shared Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@700;800&family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
     <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -23,7 +24,7 @@
 
     <style>
         body {
-            font-family: 'Inter', system-ui, sans-serif;
+            font-family: 'Manrope', 'Segoe UI', sans-serif;
         }
         /* Patrón de grid sutil */
         .grid-pattern {

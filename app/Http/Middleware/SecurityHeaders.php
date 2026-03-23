@@ -109,6 +109,14 @@ class SecurityHeaders
             );
         }
 
+        if (app()->environment('local')) {
+            // Local Filament/Livewire iteration was serving stale pages and assets
+            // from browser caches. Make every local response revalidate strictly.
+            $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+            $response->headers->set('Pragma', 'no-cache');
+            $response->headers->set('Expires', '0');
+        }
+
         // ═══════════════════════════════════════════════════════════════════════
         // MODULE 4: INFORMATION LEAKAGE PREVENTION
         // ═══════════════════════════════════════════════════════════════════════
@@ -152,7 +160,10 @@ class SecurityHeaders
         // NOTE: IPv6 literals like [::1] are rejected by some CSP parsers.
         // We force 'localhost' + '127.0.0.1' which cover most dev setups.
         $viteDevSrc = $isProduction ? '' : ' http://localhost:5173 http://127.0.0.1:5173';
-        $viteDevWs = $isProduction ? '' : ' ws://localhost:5173 ws://127.0.0.1:5173 ws://localhost:8080 wss://localhost:8080';
+        $viteDevWs = $isProduction ? '' : ' ws://localhost:5173 ws://127.0.0.1:5173';
+        $reverbEnabled = config('broadcasting.default') === 'reverb'
+            && (string) config('broadcasting.connections.reverb.key', '') !== '';
+        $reverbWs = $reverbEnabled ? ' ws://localhost:8080 wss://localhost:8080' : '';
 
         $scriptSrc = "script-src {$scriptPolicy} ".implode(' ', self::TRUSTED_SCRIPTS).$viteDevSrc;
 
@@ -172,7 +183,7 @@ class SecurityHeaders
             $styleSrc,
             "img-src 'self' data: https: blob:".$viteDevSrc,
             "font-src 'self' https://fonts.gstatic.com https://fonts.bunny.net",
-            "connect-src 'self' ".implode(' ', self::TRUSTED_CONNECT).' wss:'.$viteDevSrc.$viteDevWs.(app()->environment('local') ? ' http://localhost:* http://127.0.0.1:*' : ''),
+            "connect-src 'self' ".implode(' ', self::TRUSTED_CONNECT).' wss:'.$viteDevSrc.$viteDevWs.$reverbWs.(app()->environment('local') ? ' http://localhost:* http://127.0.0.1:*' : ''),
             "frame-src 'self' https://js.stripe.com https://www.facebook.com",
             "frame-ancestors 'none'",
             "form-action 'self'",

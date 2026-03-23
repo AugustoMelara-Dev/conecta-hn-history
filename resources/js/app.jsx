@@ -5,15 +5,36 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 
-// Ziggy for route() function
-import { Ziggy } from './ziggy';
 import { route } from 'ziggy-js';
 
 // Global Toast System
 import { ToastProvider } from '@/Components/Toast/ToastProvider';
 
-// Make route() globally available
-window.route = (name, params, absolute) => route(name, params, absolute, Ziggy);
+// Use the runtime Ziggy payload injected by Blade via @routes.
+// This avoids a second stale route catalog living in resources/js/ziggy.js.
+window.route = route;
+
+if (typeof window !== 'undefined') {
+    const isLocalBrowser = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+    if (isLocalBrowser && 'serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.getRegistrations().then((registrations) => {
+                registrations.forEach((registration) => {
+                    registration.unregister();
+                });
+            });
+
+            if ('caches' in window) {
+                window.caches.keys().then((keys) => {
+                    keys.forEach((key) => {
+                        window.caches.delete(key);
+                    });
+                });
+            }
+        });
+    }
+}
 
 const appName = import.meta.env.VITE_APP_NAME || 'Conecta HN';
 
@@ -49,4 +70,3 @@ createInertiaApp({
         showSpinner: true,
     },
 });
-

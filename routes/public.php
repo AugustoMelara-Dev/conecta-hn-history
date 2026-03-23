@@ -1,95 +1,53 @@
 <?php
 
-use App\Models\Category;
 use App\Models\City;
 use App\Models\Tenant;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
-use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
-| Public Routes - Inertia/React Pages (Guest Access)
+| Public Utility Routes
 |--------------------------------------------------------------------------
 |
-| Routes for public-facing pages. SEO optimized.
-| These routes do NOT require authentication.
+| This file only hosts supplemental public routes that are loaded after the
+| main web tree. The canonical definitions for `/`, `/explore` and
+| `/registrar-negocio` live in `routes/web.php`.
 |
-| ROUTING ARCHITECTURE (Luxury Entrance Strategy):
-| - `/` → B2B Landing Page (Welcome.jsx) - Sales focus
-| - `/explore` → Marketplace/Directory (Public/Home.jsx) - Discovery
-| - `/@{slug}` → Tenant Microsite - Safe namespace, no collisions
+| Keeping a single source of truth prevents duplicated public entry points
+| and inconsistent page/component ownership.
 |
 */
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HOME - B2B Landing Page (Sales Engine)
-// ═══════════════════════════════════════════════════════════════════════════
-Route::get('/', function () {
-    $stats = publicRouteStats();
+if (! function_exists('publicStaticAssetResponse')) {
+    function publicStaticAssetResponse(string $relativePath, string $contentType)
+    {
+        $path = public_path($relativePath);
 
-    return Inertia::render('Welcome', [
-        'auth' => [
-            'user' => Auth::user(),
-        ],
-        'stats' => $stats,
-    ]);
-})->name('home');
+        abort_unless(is_file($path), 404);
 
-// ═══════════════════════════════════════════════════════════════════════════
-// EXPLORE - Marketplace Discovery (Featured Tenants)
-// ═══════════════════════════════════════════════════════════════════════════
-Route::get('/explore', function () {
-    $featuredTenants = [];
-    $categories = [];
-
-    if (publicRouteTablesAvailable(['tenants', 'categories', 'cities'])) {
-        try {
-            $featuredTenants = Tenant::query()
-                ->with(['category', 'city'])
-                ->where('is_active', true)
-                ->whereNotNull('logo_path')
-                ->latest()
-                ->limit(12)
-                ->get()
-                ->map(function (Tenant $tenant): array {
-                    $category = $tenant->category;
-                    $city = $tenant->city;
-
-                    return [
-                        'id' => $tenant->id,
-                        'name' => $tenant->name,
-                        'slug' => $tenant->slug,
-                        'cover_url' => $tenant->cover_path ? \Illuminate\Support\Facades\Storage::url($tenant->cover_path) : null,
-                        'logo_url' => $tenant->logo_path ? \Illuminate\Support\Facades\Storage::url($tenant->logo_path) : null,
-                        'category' => $category instanceof Category ? $category->name : null,
-                        'city' => $city instanceof City ? $city->name : null,
-                        'description' => \Illuminate\Support\Str::limit($tenant->description, 80),
-                    ];
-                })
-                ->all();
-
-            $categories = Category::query()
-                ->withCount('tenants')
-                ->having('tenants_count', '>', 0)
-                ->orderByDesc('tenants_count')
-                ->limit(8)
-                ->get(['id', 'name', 'slug', 'icon'])
-                ->all();
-        } catch (QueryException) {
-            $featuredTenants = [];
-            $categories = [];
-        }
+        return response()->file($path, [
+            'Content-Type' => $contentType,
+            'Cache-Control' => 'public, max-age=3600',
+        ]);
     }
+}
 
-    return Inertia::render('Public/Home', [
-        'featuredTenants' => $featuredTenants,
-        'categories' => $categories,
-        'stats' => publicRouteStats(),
-    ]);
-})->name('public.explore');
+Route::get('/manifest.webmanifest', fn () => publicStaticAssetResponse('manifest.webmanifest', 'application/manifest+json; charset=utf-8'))
+    ->name('public.manifest');
+
+Route::get('/favicon.svg', fn () => publicStaticAssetResponse('favicon.svg', 'image/svg+xml'))
+    ->name('public.favicon.svg');
+
+Route::get('/favicon.ico', fn () => publicStaticAssetResponse('icon-192x192.png', 'image/png'))
+    ->name('public.favicon.ico');
+
+Route::get('/icon-192x192.png', fn () => publicStaticAssetResponse('icon-192x192.png', 'image/png'))
+    ->name('public.icon.192');
+
+Route::get('/icon-512x512.png', fn () => publicStaticAssetResponse('icon-512x512.png', 'image/png'))
+    ->name('public.icon.512');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TENANT SUBDOMAIN ROUTES - DISABLED (Path-based fallback active in web.php)
