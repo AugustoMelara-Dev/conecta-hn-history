@@ -46,7 +46,7 @@ final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPas
             'userId' => ['required', 'uuid'],
             'requestingTenantId' => ['required', 'uuid'],
             'currentPassword' => ['required', 'string'],
-            'newPassword' => ['required', 'string', 'min:8', 'regex:/[A-Za-z]/', 'regex:/[0-9]/'],
+            'newPassword' => ['required', 'string', 'min:8'],
             'idempotencyKey' => ['required', 'uuid'],
         ]);
     }

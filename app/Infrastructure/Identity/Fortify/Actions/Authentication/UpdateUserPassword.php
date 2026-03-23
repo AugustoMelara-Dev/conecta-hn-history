@@ -9,7 +9,9 @@ use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
 use App\Application\Shared\Contracts\TenantRateLimiterInterface;
+use App\Application\Shared\Exceptions\CommandValidationException;
 use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
 
@@ -56,15 +58,39 @@ final readonly class UpdateUserPassword implements UpdatesUserPasswords
             'current_password.current_password' => __('The provided password does not match your current password.'),
         ])->validate();
 
-        $this->commandBus->dispatch(
-            new UpdateUserPasswordCommand(
-                userId: (string) $user->getAuthIdentifier(),
-                requestingTenantId: (string) $user->getTenantId(),
-                currentPassword: $input['current_password'],
-                newPassword: $input['password'],
-                refreshRememberToken: true,
-                idempotencyKey: $this->idGenerator->generate(),
-            )
-        );
+        try {
+            $this->commandBus->dispatch(
+                new UpdateUserPasswordCommand(
+                    userId: (string) $user->getAuthIdentifier(),
+                    requestingTenantId: (string) $user->getTenantId(),
+                    currentPassword: $input['current_password'],
+                    newPassword: $input['password'],
+                    refreshRememberToken: true,
+                    idempotencyKey: $this->idGenerator->generate(),
+                )
+            );
+        } catch (CommandValidationException $exception) {
+            throw ValidationException::withMessages($this->mapCommandErrorsToInput($exception->errors));
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $errors
+     * @return array<string, mixed>
+     */
+    private function mapCommandErrorsToInput(array $errors): array
+    {
+        $fieldMap = [
+            'currentPassword' => 'current_password',
+            'newPassword' => 'password',
+        ];
+
+        $mappedErrors = [];
+
+        foreach ($errors as $field => $messages) {
+            $mappedErrors[$fieldMap[$field] ?? $field] = $messages;
+        }
+
+        return $mappedErrors;
     }
 }

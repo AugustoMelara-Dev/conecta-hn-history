@@ -94,48 +94,45 @@ class AppServiceProvider extends ServiceProvider
             function ($app) {
                 $registry = new \App\Infrastructure\Shared\Middleware\CommandValidatorRegistry;
 
-                if (class_exists(\App\Application\Identity\Commands\RegisterUserCommand::class)) {
-                    $registry->register(
-                        \App\Application\Identity\Commands\RegisterUserCommand::class,
-                        $app->make(\App\Application\Identity\Validators\RegisterUserValidator::class)
-                    );
-                }
-                if (class_exists(\App\Application\Auth\Commands\DeleteUserCommand::class)) {
-                    $registry->register(
-                        \App\Application\Auth\Commands\DeleteUserCommand::class,
-                        $app->make(\App\Application\Auth\Validators\DeleteUserCommandValidator::class)
-                    );
-                }
-                if (class_exists(\App\Application\Auth\Commands\LoginViaSocialProviderCommand::class)) {
-                    $registry->register(
-                        \App\Application\Auth\Commands\LoginViaSocialProviderCommand::class,
-                        $app->make(\App\Application\Auth\Validators\LoginViaSocialProviderCommandValidator::class)
-                    );
-                }
-                if (class_exists(\App\Application\Auth\Commands\UpdateUserPasswordCommand::class)) {
-                    $registry->register(
-                        \App\Application\Auth\Commands\UpdateUserPasswordCommand::class,
-                        $app->make(\App\Application\Auth\Validators\UpdateUserPasswordCommandValidator::class)
-                    );
-                }
-                if (class_exists(\App\Application\Auth\Commands\VerifyOtpCommand::class)) {
-                    $registry->register(
-                        \App\Application\Auth\Commands\VerifyOtpCommand::class,
-                        $app->make(\App\Application\Auth\Validators\VerifyOtpCommandValidator::class)
-                    );
-                }
-                if (class_exists(\App\Application\Billing\Commands\ReportPaymentCommand::class)) {
-                    $registry->register(
-                        \App\Application\Billing\Commands\ReportPaymentCommand::class,
-                        $app->make(\App\Application\Billing\Validators\ReportPaymentCommandValidator::class)
-                    );
-                }
-                if (class_exists(\App\Application\Billing\Commands\RequestUpgradeCommand::class)) {
-                    $registry->register(
-                        \App\Application\Billing\Commands\RequestUpgradeCommand::class,
-                        $app->make(\App\Application\Billing\Validators\RequestUpgradeCommandValidator::class)
-                    );
-                }
+                // This registry is only for rule-based validators consumed by
+                // ValidationMiddleware::rules(). Pipeline decorators that need an
+                // $inner handler must be bound through PipelineBuilder instead.
+                $this->registerRuleBasedCommandValidator(
+                    $registry,
+                    $app,
+                    \App\Application\Identity\Commands\RegisterUserCommand::class,
+                    \App\Application\Identity\Validators\RegisterUserValidator::class,
+                );
+                $this->registerRuleBasedCommandValidator(
+                    $registry,
+                    $app,
+                    \App\Application\Tenant\Commands\RegisterTenantCommand::class,
+                    \App\Application\Tenant\Validators\RegisterTenantValidator::class,
+                );
+                $this->registerRuleBasedCommandValidator(
+                    $registry,
+                    $app,
+                    \App\Application\Products\Commands\CreateProductCommand::class,
+                    \App\Application\Products\Validators\CreateProductValidator::class,
+                );
+                $this->registerRuleBasedCommandValidator(
+                    $registry,
+                    $app,
+                    \App\Application\Products\Commands\UpdateProductCommand::class,
+                    \App\Application\Products\Validators\UpdateProductValidator::class,
+                );
+                $this->registerRuleBasedCommandValidator(
+                    $registry,
+                    $app,
+                    \App\Application\Reviews\Commands\SubmitReviewCommand::class,
+                    \App\Application\Reviews\Validators\SubmitReviewValidator::class,
+                );
+                $this->registerRuleBasedCommandValidator(
+                    $registry,
+                    $app,
+                    \App\Application\Sales\Commands\CreateOrderCommand::class,
+                    \App\Application\Sales\Validators\CreateOrderValidator::class,
+                );
 
                 return $registry;
             }
@@ -1200,5 +1197,18 @@ class AppServiceProvider extends ServiceProvider
         // MIGRATION COMPLETE: User and Tenant now live in App\Models
         // No aliases needed as App\Models is now the canonical location.
         // This method is retained for documentation purposes only.
+    }
+
+    private function registerRuleBasedCommandValidator(
+        \App\Infrastructure\Shared\Middleware\CommandValidatorRegistry $registry,
+        \Illuminate\Contracts\Container\Container $app,
+        string $commandClass,
+        string $validatorClass,
+    ): void {
+        if (! class_exists($commandClass) || ! class_exists($validatorClass) || ! method_exists($validatorClass, 'rules')) {
+            return;
+        }
+
+        $registry->register($commandClass, $app->make($validatorClass));
     }
 }

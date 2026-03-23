@@ -14,11 +14,17 @@ final readonly class RegisterTenantValidator
     public function rules(RegisterTenantCommand $command): array
     {
         return [
-            'businessName' => ['required', 'string', 'min:3'],
-            'slug' => ['required', 'alpha_dash', 'min:3', 'unique:tenants,id'], // domain_prefix in spec, usually maps to slug
-            'ownerName' => ['required', 'string'],
-            'email' => ['required', 'email'],
-            'password' => ['required', 'min:8'],
+            'businessName' => ['required', 'string', 'min:3', 'max:255'],
+            'slug' => ['required', 'string', 'alpha_dash', 'min:3', 'max:100', 'unique:tenants,slug'],
+            'ownerName' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8'],
+            'cityId' => ['required', 'integer', 'exists:cities,id'],
+            'categoryId' => ['required', 'integer', 'exists:categories,id'],
+            'whatsapp' => ['nullable', 'string', 'max:20'],
+            'selectedPlan' => ['nullable', 'in:free,pro'],
+            'logoPath' => ['nullable', 'string', 'max:2048'],
+            'idempotencyKey' => ['nullable', 'uuid'],
         ];
     }
 }
