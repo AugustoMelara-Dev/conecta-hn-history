@@ -25,6 +25,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 /**
  * ManageMarketing - Pack de Herramientas de Venta PRO
@@ -53,6 +54,11 @@ class ManageMarketing extends Page implements HasForms, HasTable
         return 'Marketing';
     }
 
+    public static function getNavigationGroup(): ?string
+    {
+        return 'Marketing';
+    }
+
     public function getTitle(): string
     {
         return 'Herramientas de Venta';
@@ -60,7 +66,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
     public static function getNavigationSort(): ?int
     {
-        return 3;
+        return 1;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -90,9 +96,17 @@ class ManageMarketing extends Page implements HasForms, HasTable
     public string $qrCodeSvg = '';
 
     /**
+     * QR Code renderizado como Data URI para evitar estilos heredados en dark mode.
+     */
+    public string $qrCodeDataUri = '';
+
+    /**
      * URL del negocio
      */
     public string $businessUrl = '';
+
+    /** @var array<int, string>|null */
+    private static ?array $tenantColumns = null;
 
     /**
      * Inicialización con verificación de plan
@@ -109,7 +123,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
         $this->isPro = (bool) $tenant->is_pro;
 
         // URL del negocio
-        $this->businessUrl = url('/'.$tenant->slug);
+        $this->businessUrl = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
 
         // Solo cargar datos si es PRO
         if ($this->isPro) {
@@ -256,7 +270,6 @@ class ManageMarketing extends Page implements HasForms, HasTable
                         $tenant = $this->getTenantRecord();
                         $tenantId = $tenant?->getKey();
 
-                        $data['tenant_id'] = $tenantId;
                         $data['sort_order'] = (int) MenuSection::where('tenant_id', $tenantId)->max('sort_order') + 1;
 
                         return $data;
@@ -309,31 +322,10 @@ class ManageMarketing extends Page implements HasForms, HasTable
             ])
 
             // Estado vacío (Onboarding)
-            ->emptyStateHeading('Sin secciones de menú')
-            ->emptyStateDescription('Crea tu primera categoría (ej. Entradas, Bebidas) para comenzar a organizar tu catálogo.')
-            ->emptyStateIcon('heroicon-o-folder-open')
-            ->emptyStateActions([
-                CreateAction::make()
-                    ->label('Crear Primera Sección')
-                    ->icon('heroicon-o-plus')
-                    ->form([
-                        Forms\Components\TextInput::make('name')
-                            ->label('Nombre de la Sección')
-                            ->placeholder('Ej: Platos Fuertes')
-                            ->required()
-                            ->maxLength(50)
-                            ->minLength(2),
-                        Forms\Components\Toggle::make('is_active')
-                            ->label('Activa')
-                            ->default(true),
-                    ])
-                    ->mutateFormDataUsing(function (array $data): array {
-                        $data['tenant_id'] = $this->getTenantRecord()?->getKey();
-                        $data['sort_order'] = 0;
-
-                        return $data;
-                    }),
-            ]);
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
+                'heading' => 'Aun no has creado secciones del menu',
+                'description' => 'Usa el boton "Nueva Seccion" para ordenar tu catalogo publico en bloques como Bebidas, Entradas o Promociones.',
+            ]));
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -364,14 +356,17 @@ class ManageMarketing extends Page implements HasForms, HasTable
             $tenant = $this->getTenantRecord();
             if (! $tenant instanceof Tenant) {
                 $this->qrCodeSvg = '';
+                $this->qrCodeDataUri = '';
 
                 return;
             }
 
             $qrService = app(QrCodeService::class);
             $this->qrCodeSvg = $qrService->getQrCode($tenant, 250);
+            $this->qrCodeDataUri = $qrService->getQrCodeAsDataUri($tenant, 250);
         } catch (\Exception $e) {
             $this->qrCodeSvg = '';
+            $this->qrCodeDataUri = '';
         }
     }
 
@@ -410,8 +405,10 @@ class ManageMarketing extends Page implements HasForms, HasTable
         $cleanNumber = preg_replace('/[^0-9]/', '', $data['whatsapp_number']);
 
         $tenant->update([
-            'whatsapp_number' => $cleanNumber,
-            'whatsapp_message' => $data['whatsapp_message'],
+            ...$this->filterTenantColumns([
+                'whatsapp_number' => $cleanNumber,
+                'whatsapp_message' => $data['whatsapp_message'],
+            ]),
         ]);
 
         Notification::make()
@@ -516,5 +513,16 @@ class ManageMarketing extends Page implements HasForms, HasTable
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function filterTenantColumns(array $payload): array
+    {
+        self::$tenantColumns ??= DatabaseSchema::getColumnListing((new Tenant())->getTable());
+
+        return array_intersect_key($payload, array_flip(self::$tenantColumns));
     }
 }

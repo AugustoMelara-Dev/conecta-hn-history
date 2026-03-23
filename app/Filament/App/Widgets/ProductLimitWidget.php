@@ -12,6 +12,8 @@ use Illuminate\Support\Carbon;
 
 class ProductLimitWidget extends Widget
 {
+    protected static bool $isLazy = false;
+
     protected string $view = 'filament.app.widgets.product-limit-widget';
 
     protected static ?int $sort = -10;
@@ -54,9 +56,15 @@ class ProductLimitWidget extends Widget
             $this->billingUrl = '#';
         }
 
-        $planExpiresAt = $tenant->getAttribute('plan_expires_at');
-        if ($this->isPro && $planExpiresAt instanceof Carbon) {
-            $this->planExpiresAt = $planExpiresAt->format('d/m/Y');
+        $subscriptionEndsAt = $tenant->getAttributes()['subscription_ends_at'] ?? null;
+        if ($this->isPro && $subscriptionEndsAt instanceof Carbon) {
+            $this->planExpiresAt = $subscriptionEndsAt->format('d/m/Y');
+        } elseif ($this->isPro && is_string($subscriptionEndsAt) && $subscriptionEndsAt !== '') {
+            try {
+                $this->planExpiresAt = Carbon::parse($subscriptionEndsAt)->format('d/m/Y');
+            } catch (\Throwable) {
+                $this->planExpiresAt = null;
+            }
         }
 
         if (! $this->isPro) {

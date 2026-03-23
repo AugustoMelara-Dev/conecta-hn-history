@@ -11,6 +11,8 @@ use Filament\Widgets\ChartWidget;
 
 class RevenueChart extends ChartWidget
 {
+    protected static bool $isLazy = false;
+
     protected ?string $heading = 'Ingresos por Ordenes (Ultimos 30 dias)';
 
     protected static ?int $sort = 2;

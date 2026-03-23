@@ -19,12 +19,19 @@ use Filament\Schemas\Schema;
  */
 class Settings extends Page
 {
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
+
+    protected string $view = 'filament.app.pages.settings';
+
+    /** @var array<string, mixed>|null */
+    public ?array $data = [];
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = Filament::getTenant();
 
-        if (! $user instanceof \App\Models\User || ! $tenant instanceof \App\Models\Tenant) {
+        if (! $user instanceof \App\Models\User || ! $tenant instanceof Tenant) {
             return false;
         }
 
@@ -36,12 +43,25 @@ class Settings extends Page
         );
     }
 
-    // Navigation Icon removed to fix type error
+    public static function getNavigationLabel(): string
+    {
+        return 'Configuracion';
+    }
 
-    protected string $view = 'filament.app.pages.settings';
+    public function getTitle(): string
+    {
+        return 'Configuracion del negocio';
+    }
 
-    /** @var array<string, mixed>|null */
-    public ?array $data = [];
+    public static function getNavigationGroup(): ?string
+    {
+        return 'Configuracion';
+    }
+
+    public static function getNavigationSort(): ?int
+    {
+        return 1;
+    }
 
     public function mount(): void
     {
@@ -51,30 +71,46 @@ class Settings extends Page
             return;
         }
 
-        $this->form->fill($tenant->attributesToArray());
+        $attributes = $tenant->getAttributes();
+
+        $this->form->fill([
+            'name' => (string) ($attributes['name'] ?? ''),
+            'whatsapp_number' => (string) ($attributes['whatsapp_number'] ?? ''),
+            'description' => (string) ($attributes['description'] ?? ''),
+            'address' => (string) ($attributes['address'] ?? ''),
+            'whatsapp_message' => (string) ($attributes['whatsapp_message'] ?? ''),
+        ]);
     }
 
     public function form(Schema $schema): Schema
     {
         return $schema
             ->schema([
-                Section::make('Configuración General')
+                Section::make('Informacion base')
+                    ->description('Estos datos se usan en el panel y en la pagina publica del negocio.')
                     ->schema([
                         TextInput::make('name')
-                            ->label('Nombre del Negocio')
+                            ->label('Nombre del negocio')
                             ->required(),
                         TextInput::make('whatsapp_number')
-                            ->label('Número de WhatsApp')
+                            ->label('Numero de WhatsApp')
                             ->required(),
+                        Textarea::make('description')
+                            ->label('Descripcion corta')
+                            ->rows(4)
+                            ->columnSpanFull(),
                         Textarea::make('address')
-                            ->label('Dirección'),
-                    ]),
-                Section::make('Personalización de WhatsApp')
-                    ->description('Usa {business_name}, {product_name} y {product_price} como variables.')
-                    ->schema([
-                        Textarea::make('whatsapp_template')
-                            ->label('Plantilla de Mensaje')
+                            ->label('Direccion')
                             ->rows(3)
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2),
+                Section::make('Mensaje base de WhatsApp')
+                    ->description('Puedes usar {business_name}, {product_name} y {product_price} como variables.')
+                    ->schema([
+                        Textarea::make('whatsapp_message')
+                            ->label('Mensaje predeterminado')
+                            ->rows(4)
                             ->required(),
                     ]),
             ])
@@ -89,17 +125,23 @@ class Settings extends Page
         if (! $tenant instanceof Tenant) {
             Notification::make()
                 ->danger()
-                ->title('No se pudo guardar la configuración')
+                ->title('No se pudo guardar la configuracion')
                 ->send();
 
             return;
         }
 
-        $tenant->update($data);
+        $tenant->update([
+            'name' => (string) ($data['name'] ?? ''),
+            'whatsapp_number' => (string) ($data['whatsapp_number'] ?? ''),
+            'description' => (string) ($data['description'] ?? ''),
+            'address' => (string) ($data['address'] ?? ''),
+            'whatsapp_message' => (string) ($data['whatsapp_message'] ?? ''),
+        ]);
 
         Notification::make()
             ->success()
-            ->title('Configuración guardada')
+            ->title('Configuracion guardada')
             ->send();
     }
 
@@ -107,7 +149,7 @@ class Settings extends Page
     {
         return [
             Action::make('save')
-                ->label('Guardar Cambios')
+                ->label('Guardar cambios')
                 ->submit('save'),
         ];
     }

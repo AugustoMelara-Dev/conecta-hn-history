@@ -12,6 +12,8 @@ use Filament\Widgets\Widget;
 
 class TenantStatsWidget extends Widget
 {
+    protected static bool $isLazy = false;
+
     protected string $view = 'filament.app.widgets.tenant-stats-widget';
 
     public int $views = 0;
@@ -44,14 +46,27 @@ class TenantStatsWidget extends Widget
         }
 
         $tenantId = (string) $tenant->getKey();
-        $this->views = (int) ($tenant->getAttribute('views') ?? 0);
+        $this->views = Interaction::query()
+            ->where('tenant_id', $tenantId)
+            ->where('type', 'view')
+            ->count();
         $this->whatsappClicks = Interaction::query()
             ->where('tenant_id', $tenantId)
             ->where('type', 'whatsapp_click')
             ->count();
         $this->productsCount = $tenant->products()->where('is_active', true)->count();
-        $this->rating = (float) ($tenant->getAttribute('rating') ?? 0);
-        $this->reviewsCount = $tenant->reviews()->count();
+        $reviewsCount = $tenant->getAttribute('reviews_count');
+        $this->reviewsCount = is_numeric($reviewsCount)
+            ? (int) $reviewsCount
+            : $tenant->reviews()->count();
+
+        $ratingAverage = $tenant->getAttribute('rating_avg');
+        if (is_numeric($ratingAverage)) {
+            $this->rating = round((float) $ratingAverage, 1);
+        } elseif ($this->reviewsCount > 0) {
+            $this->rating = round((float) ($tenant->reviews()->avg('rating') ?? 0), 1);
+        }
+
         $this->isPro = $tenant->getIsProAttribute();
         $this->planName = $this->isPro ? 'Plan PRO' : 'Plan Gratuito';
 

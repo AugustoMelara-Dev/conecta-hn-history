@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
+use App\Models\OpeningHour;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 
 class QuickActionsWidget extends Widget
 {
-    public function getView(): string
-    {
-        return 'filament.app.widgets.quick-actions-widget';
-    }
+    protected static bool $isLazy = false;
+
+    protected string $view = 'filament.app.widgets.quick-actions-widget';
 
     public function getColumnSpan(): int|string|array
     {
@@ -26,54 +26,53 @@ class QuickActionsWidget extends Widget
     }
 
     /**
-     * @return array{tenant: Tenant|null, isOpen: bool, productsCount: int}
+     * @return array{tenant: Tenant|null, isOpen: bool, productsCount: int, createProductUrl: string, profileUrl: string, publicUrl: string}
      */
     protected function getViewData(): array
     {
         $tenant = $this->getTenantRecord();
 
         if (! $tenant instanceof Tenant) {
-            return ['tenant' => null, 'isOpen' => false, 'productsCount' => 0];
+            return [
+                'tenant' => null,
+                'isOpen' => false,
+                'productsCount' => 0,
+                'createProductUrl' => '#',
+                'profileUrl' => '#',
+                'publicUrl' => '#',
+            ];
         }
 
         return [
             'tenant' => $tenant,
             'isOpen' => $this->isBusinessOpen($tenant),
             'productsCount' => $tenant->products()->count(),
+            'createProductUrl' => $this->getCreateProductUrl($tenant),
+            'profileUrl' => $this->getProfileUrl($tenant),
+            'publicUrl' => $this->getPublicUrl($tenant),
         ];
     }
 
     protected function isBusinessOpen(Tenant $tenant): bool
     {
-        $hoursData = $tenant->getAttribute('hours_data');
+        try {
+            $now = now(OpeningHour::BUSINESS_TIMEZONE);
+            $todayHours = OpeningHour::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenant->getKey())
+                ->where('day_of_week', $now->dayOfWeek)
+                ->get();
 
-        if (empty($hoursData)) {
+            if ($todayHours->isEmpty()) {
+                return true;
+            }
+
+            return $todayHours->contains(
+                fn (OpeningHour $openingHour): bool => $openingHour->isOpenAt($now)
+            );
+        } catch (\Throwable) {
             return true;
         }
-
-        $hours = is_array($hoursData) ? $hoursData : json_decode((string) $hoursData, true);
-
-        if (! is_array($hours) || $hours === []) {
-            return true;
-        }
-
-        $dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-        $today = $dayNames[now()->dayOfWeek] ?? 'lunes';
-        $currentTime = now()->format('H:i');
-
-        if (! isset($hours[$today]) || ! is_array($hours[$today])) {
-            return true;
-        }
-
-        $todayHours = $hours[$today];
-        if (($todayHours['closed'] ?? false) === true) {
-            return false;
-        }
-
-        $open = (string) ($todayHours['open'] ?? $todayHours['open_time'] ?? '08:00');
-        $close = (string) ($todayHours['close'] ?? $todayHours['close_time'] ?? '18:00');
-
-        return $currentTime >= $open && $currentTime <= $close;
     }
 
     private function getTenantRecord(): ?Tenant
@@ -81,5 +80,32 @@ class QuickActionsWidget extends Widget
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    private function getCreateProductUrl(Tenant $tenant): string
+    {
+        try {
+            return route('filament.app.resources.products.create', ['tenant' => (string) ($tenant->getAttribute('slug') ?? '')]);
+        } catch (\Throwable) {
+            return '#';
+        }
+    }
+
+    private function getProfileUrl(Tenant $tenant): string
+    {
+        try {
+            return route('filament.app.tenant.profile', ['tenant' => (string) ($tenant->getAttribute('slug') ?? '')]);
+        } catch (\Throwable) {
+            return '#';
+        }
+    }
+
+    private function getPublicUrl(Tenant $tenant): string
+    {
+        try {
+            return route('tenant.microsite.show', ['tenant' => (string) ($tenant->getAttribute('slug') ?? '')]);
+        } catch (\Throwable) {
+            return '#';
+        }
     }
 }

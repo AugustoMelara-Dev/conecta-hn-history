@@ -1,4 +1,4 @@
-<x-filament::widget>
+<x-filament-widgets::widget>
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
     {{-- BENTO GRID - Dashboard de Estadísticas con Growth Hacking --}}
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
@@ -146,4 +146,4 @@
         </div>
 
     </div>
-</x-filament::widget>
+</x-filament-widgets::widget>

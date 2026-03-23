@@ -5,18 +5,22 @@ declare(strict_types=1);
 namespace App\Filament\App\Pages;
 
 use App\Models\Tenant;
+use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
 
 class UpgradeToPro extends Page
 {
-    // Navigation Icon removed to fix type error in Filament v4
-
     protected string $view = 'filament.app.pages.upgrade-to-pro';
 
     public static function getNavigationLabel(): string
     {
         return 'Mejorar a PRO';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return 'Cuenta';
     }
 
     public function getTitle(): string
@@ -38,42 +42,52 @@ class UpgradeToPro extends Page
 
     public function getViewData(): array
     {
+        $price = 'L. 99.00';
+        $period = 'mes';
+
+        try {
+            $settings = app(GeneralSettings::class);
+            $price = 'L. '.number_format((float) ($settings->pro_plan_price ?? 99), 2);
+        } catch (\Throwable) {
+            // Keep the page usable even if settings bootstrap is unstable locally.
+        }
+
         return [
             'tenant' => self::getTenantRecord(),
             'features' => [
                 [
                     'icon' => 'heroicon-o-chat-bubble-left-right',
-                    'title' => 'Integración WhatsApp',
-                    'description' => 'Botón de contacto directo para que tus clientes te escriban al instante.',
+                    'title' => 'Integracion con WhatsApp',
+                    'description' => 'Boton directo para que tus clientes te escriban sin pasos extra.',
                 ],
                 [
                     'icon' => 'heroicon-o-cube',
-                    'title' => 'Productos Ilimitados',
-                    'description' => 'Sin límite de 10 productos. Muestra todo tu catálogo completo.',
+                    'title' => 'Productos ilimitados',
+                    'description' => 'Publica todo tu catalogo sin toparte con el limite del plan base.',
                 ],
                 [
                     'icon' => 'heroicon-o-paint-brush',
-                    'title' => 'Marca Personalizada',
-                    'description' => 'Colores de tu marca, banner personalizado y logo destacado.',
+                    'title' => 'Marca personalizada',
+                    'description' => 'Destaca tu negocio con banner, logo y una presencia publica mas completa.',
                 ],
                 [
                     'icon' => 'heroicon-o-users',
-                    'title' => 'Ver Seguidores',
-                    'description' => 'Conoce quiénes siguen tu negocio y construye tu comunidad.',
+                    'title' => 'Seguidores visibles',
+                    'description' => 'Consulta quien sigue tu negocio y entiende mejor tu audiencia.',
                 ],
                 [
                     'icon' => 'heroicon-o-megaphone',
-                    'title' => 'Campañas de Marketing',
-                    'description' => 'Envía promociones y novedades a todos tus seguidores.',
+                    'title' => 'Campanas de marketing',
+                    'description' => 'Prepara promociones y novedades para tu audiencia desde el panel.',
                 ],
                 [
                     'icon' => 'heroicon-o-chart-bar',
-                    'title' => 'Estadísticas Avanzadas',
-                    'description' => 'Métricas detalladas de visitas y rendimiento de tu negocio.',
+                    'title' => 'Metricas avanzadas',
+                    'description' => 'Ten una lectura mas completa del rendimiento y la actividad del negocio.',
                 ],
             ],
-            'price' => 'L. 1,500',
-            'period' => 'mes',
+            'price' => $price,
+            'period' => $period,
         ];
     }
 

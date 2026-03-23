@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Collection;
 
 class AppointmentCalendarWidget extends Widget
 {
+    protected static bool $isLazy = false;
+
     protected string $view = 'filament.app.widgets.appointment-calendar-placeholder';
 
     /**

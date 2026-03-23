@@ -6,14 +6,14 @@ namespace App\Filament\App\Widgets;
 
 use App\Models\Tenant;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 
 class FreePlanUpsellWidget extends Widget
 {
-    public function getView(): string
-    {
-        return 'filament.widgets.free-plan-upsell';
-    }
+    protected static bool $isLazy = false;
+
+    protected string $view = 'filament.widgets.free-plan-upsell';
 
     public function getColumnSpan(): int|string|array
     {
@@ -40,11 +40,20 @@ class FreePlanUpsellWidget extends Widget
             return '#';
         }
 
-        return '/app/'.(string) ($tenant->getAttribute('slug') ?? '').'/billing';
+        try {
+            return route('filament.app.pages.manage-billing', ['tenant' => (string) ($tenant->getAttribute('slug') ?? '')]);
+        } catch (\Throwable) {
+            return '#';
+        }
     }
 
     private static function resolveTenant(): ?Tenant
     {
+        $tenant = Filament::getTenant();
+        if ($tenant instanceof Tenant) {
+            return $tenant;
+        }
+
         $user = auth()->user();
         $tenant = $user instanceof User ? $user->tenants()->first() : null;
 

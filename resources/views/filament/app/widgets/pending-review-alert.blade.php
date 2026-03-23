@@ -4,7 +4,7 @@
     $isRejected = $status === 'rejected';
 @endphp
 
-<x-filament::widget>
+<x-filament-widgets::widget>
     <x-filament::section
         class="{{ $isRejected ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200' }}"
     >
@@ -51,4 +51,4 @@
             </div>
         </div>
     </x-filament::section>
-</x-filament::widget>
+</x-filament-widgets::widget>

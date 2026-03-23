@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\App\Widgets;
 
 use App\Filament\App\Resources\ProductResource;
+use App\Models\Tenant;
+use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 
 /**
@@ -12,10 +14,9 @@ use Filament\Widgets\Widget;
  */
 class ProductLimitWarning extends Widget
 {
-    public function getView(): string
-    {
-        return 'filament.app.widgets.product-limit-warning';
-    }
+    protected static bool $isLazy = false;
+
+    protected string $view = 'filament.app.widgets.product-limit-warning';
 
     public function getColumnSpan(): int|string|array
     {
@@ -39,6 +40,24 @@ class ProductLimitWarning extends Widget
 
     protected function getViewData(): array
     {
-        return ProductResource::getProductLimitInfo();
+        return [
+            ...ProductResource::getProductLimitInfo(),
+            'upgradeUrl' => $this->getUpgradeUrl(),
+        ];
+    }
+
+    private function getUpgradeUrl(): string
+    {
+        $tenant = Filament::getTenant();
+
+        if (! $tenant instanceof Tenant) {
+            return '#';
+        }
+
+        try {
+            return route('filament.app.pages.manage-billing', ['tenant' => (string) ($tenant->getAttribute('slug') ?? '')]);
+        } catch (\Throwable) {
+            return '#';
+        }
     }
 }

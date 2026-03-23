@@ -11,6 +11,8 @@ use Filament\Widgets\ChartWidget;
 
 class OrdersChart extends ChartWidget
 {
+    protected static bool $isLazy = false;
+
     protected ?string $heading = 'Ordenes por Dia (Ultima Semana)';
 
     protected static ?int $sort = 3;

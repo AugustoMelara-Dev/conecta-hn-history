@@ -10,10 +10,9 @@ use Filament\Widgets\Widget;
 
 class PendingReviewAlert extends Widget
 {
-    public function getView(): string
-    {
-        return 'filament.app.widgets.pending-review-alert';
-    }
+    protected static bool $isLazy = false;
+
+    protected string $view = 'filament.app.widgets.pending-review-alert';
 
     public function getColumnSpan(): int|string|array
     {

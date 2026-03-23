@@ -27,7 +27,7 @@
             </div>
             
             <a 
-                href="/admin/billing"
+                href="{{ $upgradeUrl }}"
                 class="flex items-center justify-center gap-2 px-5 py-2.5 
                        bg-white text-amber-600 font-bold rounded-lg
                        hover:bg-amber-50 transition-colors

@@ -330,7 +330,9 @@ class EditTenantProfile extends BaseEditTenantProfile
                 ->label('Ver mi Sitio')
                 ->icon('heroicon-o-arrow-top-right-on-square')
                 ->color('gray')
-                ->url(fn (): string => url('/'.($tenant instanceof Tenant ? $tenant->slug : '')))
+                ->url(fn (): string => $tenant instanceof Tenant
+                    ? route('tenant.microsite.show', ['tenant' => $tenant->slug])
+                    : url('/'))
                 ->openUrlInNewTab(),
 
             Action::make('upgrade')

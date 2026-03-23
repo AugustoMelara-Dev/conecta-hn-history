@@ -3,7 +3,7 @@
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {{-- Añadir Producto --}}
             <a 
-                href="{{ route('filament.app.resources.products.create', ['tenant' => $tenant?->slug]) }}"
+                href="{{ $createProductUrl }}"
                 class="flex flex-col items-center justify-center gap-2 p-5 
                        bg-blue-50 dark:bg-blue-900/20 
                        hover:bg-blue-100 dark:hover:bg-blue-900/40
@@ -22,7 +22,7 @@
 
             {{-- Estado del Negocio --}}
             <a 
-                href="{{ route('filament.app.pages.edit-tenant-profile', ['tenant' => $tenant?->slug]) }}"
+                href="{{ $profileUrl }}"
                 class="flex flex-col items-center justify-center gap-2 p-5 
                        {{ $isOpen 
                            ? 'bg-emerald-50 dark:bg-emerald-900/20' 
@@ -55,7 +55,7 @@
 
             {{-- Ver Página Pública --}}
             <a 
-                href="{{ url('/' . $tenant?->slug) }}"
+                href="{{ $publicUrl }}"
                 target="_blank"
                 class="flex flex-col items-center justify-center gap-2 p-5 
                        bg-purple-50 dark:bg-purple-900/20 
@@ -75,7 +75,7 @@
 
             {{-- Editar Perfil --}}
             <a 
-                href="{{ route('filament.app.pages.edit-tenant-profile', ['tenant' => $tenant?->slug]) }}"
+                href="{{ $profileUrl }}"
                 class="flex flex-col items-center justify-center gap-2 p-5 
                        bg-gray-50 dark:bg-gray-700/50 
                        hover:bg-gray-100 dark:hover:bg-gray-700

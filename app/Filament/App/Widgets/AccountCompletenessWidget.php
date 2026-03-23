@@ -7,13 +7,13 @@ namespace App\Filament\App\Widgets;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
+use Illuminate\Support\Facades\Schema;
 
 class AccountCompletenessWidget extends Widget
 {
-    public function getView(): string
-    {
-        return 'filament.app.widgets.account-completeness-widget';
-    }
+    protected static bool $isLazy = false;
+
+    protected string $view = 'filament.app.widgets.account-completeness-widget';
 
     public function getColumnSpan(): int|string|array
     {
@@ -26,7 +26,7 @@ class AccountCompletenessWidget extends Widget
     }
 
     /**
-     * @return array{percentage: int, missingItems: list<array<string, mixed>>, completedItems: list<array<string, mixed>>, isComplete: bool, tenant: Tenant|null}
+     * @return array{percentage: int, missingItems: list<array<string, mixed>>, completedItems: list<array<string, mixed>>, isComplete: bool, totalChecks: int, tenant: Tenant|null}
      */
     protected function getViewData(): array
     {
@@ -38,6 +38,7 @@ class AccountCompletenessWidget extends Widget
                 'missingItems' => [],
                 'completedItems' => [],
                 'isComplete' => false,
+                'totalChecks' => 0,
                 'tenant' => null,
             ];
         }
@@ -49,53 +50,63 @@ class AccountCompletenessWidget extends Widget
             'missingItems' => $completenessData['missing'],
             'completedItems' => $completenessData['completed'],
             'isComplete' => $completenessData['percentage'] >= 100,
+            'totalChecks' => $completenessData['total'],
             'tenant' => $tenant,
         ];
     }
 
     /**
-     * @return array{percentage: int, completed: list<array<string, mixed>>, missing: list<array<string, mixed>>}
+     * @return array{percentage: int, completed: list<array<string, mixed>>, missing: list<array<string, mixed>>, total: int}
      */
     protected function calculateCompleteness(Tenant $tenant): array
     {
         $tenantSlug = (string) ($tenant->getAttribute('slug') ?? '');
         $description = (string) ($tenant->getAttribute('description') ?? '');
+        $profileUrl = $this->getTenantProfileUrl($tenantSlug);
+        $createProductUrl = $this->getCreateProductUrl($tenantSlug);
+        $hasMediaTable = $this->hasMediaTable();
+        $hasLogo = ($hasMediaTable && $tenant->getFirstMediaUrl('logo') !== '')
+            || ! empty($tenant->getAttribute('logo_path'));
+        $hasCover = ($hasMediaTable && $tenant->getFirstMediaUrl('cover') !== '')
+            || ($hasMediaTable && $tenant->getFirstMediaUrl('hero') !== '')
+            || ! empty($tenant->getAttribute('cover_path'))
+            || ! empty($tenant->getAttribute('hero_image'));
 
         $checks = [
             [
                 'field' => 'Logo',
-                'check' => ! empty($tenant->getAttribute('logo_path')),
-                'icon' => 'camara',
+                'check' => $hasLogo,
+                'icon' => 'heroicon-o-camera',
                 'action' => 'Sube tu logo',
-                'url' => "/app/{$tenantSlug}/edit-tenant-profile",
+                'url' => $profileUrl,
             ],
             [
                 'field' => 'Banner',
-                'check' => ! empty($tenant->getAttribute('banner_path')),
-                'icon' => 'imagen',
+                'check' => $hasCover,
+                'icon' => 'heroicon-o-photo',
                 'action' => 'Agrega portada',
-                'url' => "/app/{$tenantSlug}/edit-tenant-profile",
+                'url' => $profileUrl,
             ],
             [
                 'field' => 'Descripcion',
                 'check' => $description !== '' && strlen($description) > 30,
-                'icon' => 'nota',
+                'icon' => 'heroicon-o-document-text',
                 'action' => 'Escribe descripcion',
-                'url' => "/app/{$tenantSlug}/edit-tenant-profile",
+                'url' => $profileUrl,
             ],
             [
                 'field' => 'WhatsApp',
                 'check' => ! empty($tenant->getAttribute('whatsapp_number')),
-                'icon' => 'telefono',
+                'icon' => 'heroicon-o-chat-bubble-left-right',
                 'action' => 'Agrega WhatsApp',
-                'url' => "/app/{$tenantSlug}/edit-tenant-profile",
+                'url' => $profileUrl,
             ],
             [
                 'field' => 'Productos',
-                'check' => $tenant->products()->count() > 0,
-                'icon' => 'bolsa',
+                'check' => $tenant->products()->exists(),
+                'icon' => 'heroicon-o-shopping-bag',
                 'action' => 'Agrega producto',
-                'url' => "/app/{$tenantSlug}/products/create",
+                'url' => $createProductUrl,
             ],
         ];
 
@@ -107,6 +118,7 @@ class AccountCompletenessWidget extends Widget
             'percentage' => $percentage,
             'completed' => $completed,
             'missing' => $missing,
+            'total' => count($checks),
         ];
     }
 
@@ -115,5 +127,40 @@ class AccountCompletenessWidget extends Widget
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    private function getTenantProfileUrl(string $tenantSlug): string
+    {
+        try {
+            return route('filament.app.tenant.profile', ['tenant' => $tenantSlug]);
+        } catch (\Throwable) {
+            return '#';
+        }
+    }
+
+    private function getCreateProductUrl(string $tenantSlug): string
+    {
+        try {
+            return route('filament.app.resources.products.create', ['tenant' => $tenantSlug]);
+        } catch (\Throwable) {
+            return '#';
+        }
+    }
+
+    private function hasMediaTable(): bool
+    {
+        static $hasMediaTable = null;
+
+        if ($hasMediaTable !== null) {
+            return $hasMediaTable;
+        }
+
+        try {
+            $hasMediaTable = Schema::hasTable('media');
+        } catch (\Throwable) {
+            $hasMediaTable = false;
+        }
+
+        return $hasMediaTable;
     }
 }
