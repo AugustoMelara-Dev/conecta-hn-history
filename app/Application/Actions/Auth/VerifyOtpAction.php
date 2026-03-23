@@ -41,7 +41,9 @@ final readonly class VerifyOtpAction
                 ]
                 : null,
             'requires_registration' => $result->requiresRegistration,
-            'redirect' => $result->requiresRegistration ? '/register' : '/dashboard',
+            'redirect' => $result->requiresRegistration ? '/registrar-negocio' : '/dashboard',
         ];
     }
 }
+
+

@@ -36,7 +36,7 @@ final readonly class UserRegistered implements DomainEventInterface, ShouldDispa
         public string $name, // Added for Read Model Completeness
         public \App\Domain\Shared\ValueObjects\EncryptedEmail $email,
         public string $role,
-        public string $tenant_id,
+        public ?string $tenant_id,
         public DateTimeImmutable $occurredOn,
     ) {}
 
@@ -45,7 +45,7 @@ final readonly class UserRegistered implements DomainEventInterface, ShouldDispa
         string $name,
         string $email,
         string $role,
-        string $tenant_id,
+        ?string $tenant_id,
     ): self {
         return new self(
             user_id: $user_id,
@@ -65,7 +65,9 @@ final readonly class UserRegistered implements DomainEventInterface, ShouldDispa
             name: (string) ($payload['name'] ?? 'Unknown User'),
             email: new \App\Domain\Shared\ValueObjects\EncryptedEmail((string) ($payload['email'] ?? '')),
             role: (string) ($payload['role'] ?? 'customer'),
-            tenant_id: (string) ($payload['tenant_id'] ?? ''),
+            tenant_id: array_key_exists('tenant_id', $payload)
+                ? (is_scalar($payload['tenant_id']) ? (string) $payload['tenant_id'] : null)
+                : null,
             occurredOn: isset($payload['occurred_on'])
                 ? new DateTimeImmutable($payload['occurred_on'])
                 : new DateTimeImmutable,

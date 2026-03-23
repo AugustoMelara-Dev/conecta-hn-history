@@ -103,28 +103,38 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         // 5.2 Bootstrap RBAC membership (owner of the newly created tenant)
         // Pragmatic bridge: we persist the RBAC membership directly until
         // the access context gets its own repository port.
-        TenantMembership::query()->updateOrCreate(
-            [
-                'tenant_id' => $tenantEntity->id(),
-                'user_id' => $userEntity->id(),
-            ],
-            [
-                'role' => Role::OWNER->value,
-                'accepted_at' => now(),
-            ]
-        );
+        $membership = TenantMembership::query()
+            ->where('tenant_id', $tenantEntity->id())
+            ->where('user_id', $userEntity->id())
+            ->first();
 
-        Location::query()->updateOrCreate(
-            [
-                'tenant_id' => $tenantEntity->id(),
-                'slug' => 'principal',
-            ],
-            [
-                'name' => 'Principal',
-                'is_primary' => true,
-                'is_active' => true,
-            ]
-        );
+        if (! $membership instanceof TenantMembership) {
+            $membership = new TenantMembership();
+        }
+
+        $membership->forceFill([
+            'tenant_id' => $tenantEntity->id(),
+            'user_id' => $userEntity->id(),
+            'role' => Role::OWNER->value,
+            'accepted_at' => now(),
+        ])->save();
+
+        $location = Location::query()
+            ->where('tenant_id', $tenantEntity->id())
+            ->where('slug', 'principal')
+            ->first();
+
+        if (! $location instanceof Location) {
+            $location = new Location();
+        }
+
+        $location->forceFill([
+            'tenant_id' => $tenantEntity->id(),
+            'slug' => 'principal',
+            'name' => 'Principal',
+            'is_primary' => true,
+            'is_active' => true,
+        ])->save();
 
         // 6. Handle Payment (DELEGATED TO PROCESS MANAGER)
         // Billing setup is now eventually consistent to prevent cross-context DB locking.

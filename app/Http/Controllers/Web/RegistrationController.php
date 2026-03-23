@@ -10,13 +10,14 @@ use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
 use App\Infrastructure\Tenant\Policies\SlugPolicy;
+use App\Support\Auth\AuthRedirector;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * RegistrationController - React/Inertia Tenant Registration
@@ -36,11 +37,16 @@ final class RegistrationController extends Controller
     /**
      * Display the registration form.
      */
-    public function create(): Response|SymfonyResponse
+    public function create(): Response|RedirectResponse
     {
-        // Redirect if already authenticated
         if ($this->guard->check()) {
-            return Inertia::location('/app');
+            $user = $this->guard->user();
+
+            if ($user !== null && method_exists($user, 'hasVerifiedEmail') && ! $user->hasVerifiedEmail()) {
+                return redirect()->route('verification.notice');
+            }
+
+            return redirect()->to(AuthRedirector::destinationFor($user));
         }
 
         return Inertia::render('Auth/RegisterTenant', [
@@ -93,17 +99,12 @@ final class RegistrationController extends Controller
     /**
      * Process the registration.
      */
-    public function store(RegisterTenantRequest $request)
+    public function store(RegisterTenantRequest $request): RedirectResponse
     {
-        // Resolve optional reference fields: default to first available if not submitted by the form
-        $cityId = (int) ($request->validated('city_id')
-            ?? \App\Models\City::value('id')
-            ?? 1);
-        $categoryId = (int) ($request->validated('category_id')
-            ?? \App\Models\Category::value('id')
-            ?? 1);
+        $cityId = (int) $request->validated('city_id');
+        $categoryId = (int) $request->validated('category_id');
+        $logoPath = $request->file('logo')?->store('tenants/logos', 'public');
 
-        // Create command from validated request
         $command = new \App\Application\Tenant\Commands\RegisterTenantCommand(
             businessName: $request->validated('business_name'),
             slug: Str::slug($request->validated('slug')),
@@ -114,18 +115,18 @@ final class RegistrationController extends Controller
             categoryId: $categoryId,
             whatsapp: $request->validated('whatsapp'),
             selectedPlan: $request->validated('selected_plan', 'free'),
+            logoPath: $logoPath,
+            idempotencyKey: $request->header('X-Idempotency-Key'),
         );
 
-        // Dispatch via Command Bus
         /** @var \App\Application\Tenant\Results\RegisterTenantResult $result */
         $result = $this->bus->dispatch($command);
 
-        // Look up the persisted User to log them in
         $user = \App\Models\User::where('email', $result->ownerEmail)->firstOrFail();
         $this->guard->login($user);
 
         return redirect()
-            ->route('dashboard')
+            ->to(AuthRedirector::destinationFor($user))
             ->with('success', '¡Bienvenido a Conecta HN! Tu negocio está activo.');
     }
 }

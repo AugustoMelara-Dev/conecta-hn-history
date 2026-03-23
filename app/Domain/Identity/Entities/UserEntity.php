@@ -14,7 +14,7 @@ use DateTimeImmutable;
  *
  * - Identity Pre-allocation (UUIDs).
  * - Full Immutability (No setters, no Event Patching).
- * - Valid Birth State (TenantID required at register).
+ * - Valid Birth State (tenant assignment may happen after registration).
  */
 final class UserEntity
 {

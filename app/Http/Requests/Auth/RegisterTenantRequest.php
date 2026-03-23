@@ -38,6 +38,22 @@ final class RegisterTenantRequest extends FormRequest
         return true; // Public registration endpoint
     }
 
+    protected function prepareForValidation(): void
+    {
+        $businessName = $this->input('business_name', $this->input('name'));
+        $ownerName = $this->input('owner_name', $this->input('name'));
+
+        $this->merge([
+            'business_name' => $businessName,
+            'name' => $ownerName,
+            'slug' => $this->filled('slug')
+                ? $this->input('slug')
+                : \Illuminate\Support\Str::slug((string) $businessName),
+            'whatsapp' => $this->input('whatsapp', $this->input('whatsapp_number')),
+            'selected_plan' => $this->input('selected_plan', $this->input('plan', 'free')),
+        ]);
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -64,12 +80,17 @@ final class RegisterTenantRequest extends FormRequest
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
 
             // Step 3: Business Profile
-            'city_id' => ['nullable', 'integer', 'exists:cities,id'],
-            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'city_id' => ['required', 'integer', 'exists:cities,id'],
+            'category_id' => ['required', 'integer', 'exists:categories,id'],
             'whatsapp' => ['nullable', 'string', 'max:20'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'logo' => ['nullable', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=2000,max_height=2000'],
 
             // Step 4: Plan Selection
             'selected_plan' => ['nullable', 'in:free,pro'],
+            'terms_accepted' => ['required', 'accepted'],
         ];
     }
 
@@ -98,8 +119,8 @@ final class RegisterTenantRequest extends FormRequest
             'city_id.exists' => 'La ciudad seleccionada no es válida.',
             'category_id.required' => 'Selecciona una categoría.',
             'category_id.exists' => 'La categoría seleccionada no es válida.',
-            'selected_plan.required' => 'Selecciona un plan.',
             'selected_plan.in' => 'El plan seleccionado no es válido.',
+            'terms_accepted.accepted' => 'Debes aceptar los términos para continuar.',
         ];
     }
 }
