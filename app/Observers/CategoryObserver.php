@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
  * Triggered on ANY data modification (API, Seeders, Artisan commands).
  *
  * CACHE KEYS INVALIDATED:
- * - registration_categories: Used by RegisterTenantController for dropdown
+ * - registration_categories: Used by the tenant registration flow for dropdowns
  *
  * COMPLIANCE: Strong data consistency across registration flows.
  */

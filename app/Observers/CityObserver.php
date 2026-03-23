@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
  * Triggered on ANY data modification (API, Seeders, Artisan commands).
  *
  * CACHE KEYS INVALIDATED:
- * - registration_cities: Used by RegisterTenantController for dropdown
+ * - registration_cities: Used by the tenant registration flow for dropdowns
  * - cities_list: Legacy cache key for backwards compatibility
  *
  * COMPLIANCE: Strong data consistency across registration flows.

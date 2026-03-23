@@ -1,11 +1,13 @@
 <?php
 
+use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob;
 use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -67,5 +69,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('seo:generate-sitemap')->daily()->at('00:30');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (TenantNotFoundException $exception, Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Tenant not found.',
+                ], 404);
+            }
+
+            return response()->view('errors.404', [], 404);
+        });
     })->create();
