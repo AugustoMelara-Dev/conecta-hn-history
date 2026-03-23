@@ -13,6 +13,7 @@ namespace App\Models;
 
 use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
 use App\Domain\Identity\Enums\UserRole;
+use Filament\Models\Contracts\FilamentUser as FilamentUserContract;
 use Filament\Models\Contracts\HasTenants;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -41,7 +42,7 @@ use NotificationChannels\WebPush\HasPushSubscriptions;
  * @property array<int, string>|null $_memoized_tenant_ids
  * @property-read Tenant|null $tenant
  */
-class User extends Authenticatable implements HasTenants, MustVerifyEmail, TenantAwareAuthenticatable
+class User extends Authenticatable implements FilamentUserContract, HasTenants, MustVerifyEmail, TenantAwareAuthenticatable
 {
     use HasApiTokens, HasFactory, HasPushSubscriptions, HasUuids, Notifiable;
 
@@ -133,10 +134,14 @@ class User extends Authenticatable implements HasTenants, MustVerifyEmail, Tenan
 
     public function isSuperAdmin(): bool
     {
-        $adminEmail = config('auth.super_admin_email');
+        $superAdmins = config('auth.super_admins', []);
 
-        if ($adminEmail && strcasecmp($this->email, $adminEmail) === 0) {
-            return true;
+        if (is_array($superAdmins)) {
+            foreach ($superAdmins as $adminEmail) {
+                if (is_string($adminEmail) && strcasecmp($this->email, $adminEmail) === 0) {
+                    return true;
+                }
+            }
         }
 
         return $this->role->value === UserRole::SUPER_ADMIN->value;
@@ -247,6 +252,12 @@ class User extends Authenticatable implements HasTenants, MustVerifyEmail, Tenan
 
     public function getTenants(Panel $panel): Collection
     {
+        if ($this->isSuperAdmin()) {
+            return Tenant::query()
+                ->orderBy('name')
+                ->get();
+        }
+
         $tenants = $this->memberTenants()
             ->wherePivotNotNull('accepted_at')
             ->get();
@@ -258,10 +269,25 @@ class User extends Authenticatable implements HasTenants, MustVerifyEmail, Tenan
         return $tenants->unique('id')->values();
     }
 
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return match ($panel->getId()) {
+            self::PANEL_ADMIN => $this->isSuperAdmin(),
+            self::PANEL_APP => $this->tenant_id !== null
+                || $this->tenantMemberships()->whereNotNull('accepted_at')->exists()
+                || $this->isSuperAdmin(),
+            default => false,
+        };
+    }
+
     public function canAccessTenant(Model $tenant): bool
     {
         if (! $tenant instanceof Tenant) {
             return false;
+        }
+
+        if ($this->isSuperAdmin()) {
+            return true;
         }
 
         if ($this->tenant_id !== null && (string) $this->tenant_id === (string) $tenant->id) {

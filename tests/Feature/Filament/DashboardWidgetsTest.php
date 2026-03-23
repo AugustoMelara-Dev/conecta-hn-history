@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Filament\App\Pages\Dashboard;
 use App\Filament\App\Widgets\OrdersChart;
 use App\Filament\App\Widgets\RevenueChart;
 
@@ -69,17 +70,17 @@ describe('OrdersChart Widget', function () {
 });
 
 describe('Widget Registration', function () {
-    it('RevenueChart is registered in AppPanelProvider', function () {
+    it('custom dashboard page is registered in AppPanelProvider', function () {
         $providerPath = app_path('Providers/Filament/AppPanelProvider.php');
         $content = file_get_contents($providerPath);
 
-        expect($content)->toContain('RevenueChart::class');
+        expect($content)->toContain('Dashboard::class');
     });
 
-    it('OrdersChart is registered in AppPanelProvider', function () {
+    it('legacy dashboard widgets are intentionally disabled in AppPanelProvider', function () {
         $providerPath = app_path('Providers/Filament/AppPanelProvider.php');
         $content = file_get_contents($providerPath);
 
-        expect($content)->toContain('OrdersChart::class');
+        expect($content)->toContain('->widgets([])');
     });
 });

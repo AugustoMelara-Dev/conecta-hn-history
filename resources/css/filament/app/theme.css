@@ -1,0 +1,13 @@
+@import '../../../../vendor/filament/filament/dist/theme.css';
+@import '../shared/theme-overrides.css';
+@import './panel-overrides.css';
+
+@source '../../../../app/Filament/**/*.php';
+@source '../../../../app/Livewire/**/*.php';
+@source '../../../../resources/views/**/*.blade.php';
+@source '../../../../resources/js/**/*.js';
+@source '../../../../resources/js/**/*.jsx';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

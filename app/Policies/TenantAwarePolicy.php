@@ -19,6 +19,14 @@ abstract class TenantAwarePolicy
 {
     use HandlesAuthorization;
 
+    /**
+     * Cache request-local de tenants por usuario para no contaminar el modelo
+     * con atributos "fantasma" que luego Eloquent intenta persistir.
+     *
+     * @var array<string, array<int, string>>
+     */
+    protected static array $tenantIdsCache = [];
+
     protected function allows(
         User $user,
         Capability $capability,
@@ -67,11 +75,10 @@ abstract class TenantAwarePolicy
 
     protected function getUserTenantIds(User $user): array
     {
-        if (isset($user->_memoized_tenant_ids)) {
-            /** @var array<int, string> $memoizedTenantIds */
-            $memoizedTenantIds = $user->_memoized_tenant_ids;
+        $cacheKey = (string) $user->getKey();
 
-            return $memoizedTenantIds;
+        if (array_key_exists($cacheKey, static::$tenantIdsCache)) {
+            return static::$tenantIdsCache[$cacheKey];
         }
 
         $tenantIds = [];
@@ -94,7 +101,7 @@ abstract class TenantAwarePolicy
         }
 
         $tenantIds = array_values(array_unique(array_filter($tenantIds)));
-        $user->_memoized_tenant_ids = $tenantIds;
+        static::$tenantIdsCache[$cacheKey] = $tenantIds;
 
         return $tenantIds;
     }
