@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\ProductResource\Pages;
 
+use App\Filament\App\Resources\Pages\CreateTenantRecord;
 use App\Filament\App\Resources\ProductResource;
 use App\Models\Tenant;
 use App\Settings\GeneralSettings;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\CreateRecord;
-
-class CreateProduct extends CreateRecord
+class CreateProduct extends CreateTenantRecord
 {
     protected static string $resource = ProductResource::class;
 
@@ -63,7 +62,6 @@ class CreateProduct extends CreateRecord
     {
         $tenant = $this->getTenantRecord();
 
-        $data['tenant_id'] = $tenant?->getKey();
         $data['city_id'] = $tenant?->getAttribute('city_id');
 
         return $data;

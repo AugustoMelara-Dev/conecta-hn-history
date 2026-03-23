@@ -41,8 +41,6 @@ class CouponResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-ticket';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Marketing';
-
     protected static ?string $navigationLabel = 'Cupones';
 
     protected static ?string $modelLabel = 'Cupón';
@@ -50,6 +48,22 @@ class CouponResource extends Resource
     protected static ?string $pluralModelLabel = 'Cupones';
 
     protected static ?int $navigationSort = 1;
+
+    protected static string|\UnitEnum|null $navigationGroup = 'Marketing PRO';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        $tenant = self::getTenantRecord();
+
+        return $tenant instanceof Tenant && (bool) $tenant->is_pro;
+    }
+
+    public static function canAccess(): bool
+    {
+        $tenant = self::getTenantRecord();
+
+        return $tenant instanceof Tenant && (bool) $tenant->is_pro;
+    }
 
     public static function form(Schema $schema): Schema
     {

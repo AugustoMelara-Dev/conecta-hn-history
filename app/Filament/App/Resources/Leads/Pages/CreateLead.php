@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\Leads\Pages;
 
+use App\Filament\App\Resources\Pages\CreateTenantRecord;
 use App\Filament\App\Resources\Leads\LeadResource;
-use Filament\Resources\Pages\CreateRecord;
 
-class CreateLead extends CreateRecord
+class CreateLead extends CreateTenantRecord
 {
     protected static string $resource = LeadResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

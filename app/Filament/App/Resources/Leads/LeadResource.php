@@ -13,14 +13,38 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-
 class LeadResource extends Resource
 {
     protected static ?string $model = Lead::class;
 
-    protected static ?string $recordTitleAttribute = 'customer_name';
+    protected static ?string $recordTitleAttribute = 'name';
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-inbox-stack';
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Prospectos';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Prospecto';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Prospectos';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return 'Ventas';
+    }
+
+    public static function getNavigationSort(): ?int
+    {
+        return 4;
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -31,16 +55,35 @@ class LeadResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('product.image_path')
-                    ->label('Producto')
-                    ->circular(),
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Nombre')
+                    ->placeholder('Sin nombre')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('email')
+                    ->label('Correo')
+                    ->placeholder('Sin correo')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('phone')
+                    ->label('Telefono')
+                    ->placeholder('Sin telefono')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('product.name')
-                    ->label('Nombre del Producto')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('customer_name')
-                    ->label('Cliente')
-                    ->placeholder('Anónimo (Clic)')
-                    ->searchable(),
+                    ->label('Producto')
+                    ->placeholder('Consulta general')
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('source')
+                    ->label('Origen')
+                    ->badge()
+                    ->formatStateUsing(static fn (?string $state): string => match ($state) {
+                        'whatsapp_click' => 'WhatsApp',
+                        'manual' => 'Manual',
+                        'website' => 'Sitio web',
+                        'catalog' => 'Catalogo',
+                        null, '' => 'Manual',
+                        default => ucfirst(str_replace('_', ' ', $state)),
+                    })
+                    ->color('gray')
+                    ->toggleable(),
                 Tables\Columns\SelectColumn::make('status')
                     ->label('Estado')
                     ->options([
@@ -56,7 +99,22 @@ class LeadResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Estado')
+                    ->options([
+                        'new' => 'Nuevo',
+                        'contacted' => 'Contactado',
+                        'closed' => 'Cerrado',
+                        'lost' => 'Perdido',
+                    ]),
+                Tables\Filters\SelectFilter::make('source')
+                    ->label('Origen')
+                    ->options([
+                        'manual' => 'Manual',
+                        'website' => 'Sitio web',
+                        'catalog' => 'Catalogo',
+                        'whatsapp_click' => 'WhatsApp',
+                    ]),
             ])
             ->actions([
                 EditAction::make(),
@@ -65,7 +123,14 @@ class LeadResource extends Resource
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
+                'badge' => 'Prospectos',
+                'heading' => 'Todavia no tienes prospectos',
+                'description' => 'Aqui veras los contactos manuales y tambien las consultas que entren desde tus canales publicos.',
+                'buttonLabel' => 'Crear prospecto',
+                'buttonUrl' => static::getUrl('create'),
+            ]));
     }
 
     public static function getRelations(): array

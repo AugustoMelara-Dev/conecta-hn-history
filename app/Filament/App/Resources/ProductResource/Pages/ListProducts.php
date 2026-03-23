@@ -4,102 +4,93 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\ProductResource\Pages;
 
+use App\Filament\App\Resources\Pages\ListTenantRecords;
 use App\Filament\App\Resources\ProductResource;
 use App\Settings\GeneralSettings;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\ListRecords;
 
-class ListProducts extends ListRecords
+class ListProducts extends ListTenantRecords
 {
     protected static string $resource = ProductResource::class;
 
-    /**
-     * Header con indicador de límite
-     */
     public function getHeading(): string
     {
         $limitInfo = ProductResource::getProductLimitInfo();
 
         if ($limitInfo['isPro'] ?? false) {
-            return "Mis Productos ({$limitInfo['count']})";
+            return sprintf('Productos (%d)', $limitInfo['count']);
         }
 
-        return "Mis Productos ({$limitInfo['count']}/{$limitInfo['limit']})";
+        return sprintf('Productos (%d/%d)', $limitInfo['count'], $limitInfo['limit']);
     }
 
-    /**
-     * Subheading con mensaje de upsell si está cerca del límite
-     */
     public function getSubheading(): ?string
     {
         $limitInfo = ProductResource::getProductLimitInfo();
 
         if ($limitInfo['isPro'] ?? false) {
-            return null;
+            return 'Administra tu catalogo y manten visibles solo los productos que quieres ofrecer hoy.';
         }
 
-        if ($limitInfo['percentage'] >= 80) {
-            return "⚠️ Estás usando el {$limitInfo['percentage']}% de tu límite.";
+        if (($limitInfo['percentage'] ?? 0) >= 80) {
+            return sprintf(
+                'Estas usando el %d%% del limite de productos del plan Base.',
+                $limitInfo['percentage']
+            );
         }
 
-        return null;
+        return 'Agrega, edita y publica tu catalogo desde una sola vista.';
     }
 
-    /**
-     * Acciones del header con lógica de límite
-     */
     protected function getHeaderActions(): array
     {
         $limitInfo = ProductResource::getProductLimitInfo();
 
         return [
-            // Botón de upgrade si alcanzó el límite
             Actions\Action::make('upgrade')
-                ->label('🚀 Desbloquear Productos Ilimitados')
+                ->label('Pasar a PRO')
                 ->color('warning')
                 ->icon('heroicon-o-sparkles')
-                ->url('/admin/billing')
+                ->url(route('filament.app.pages.manage-billing', ['tenant' => ProductResource::currentTenantSlug()]))
                 ->visible(! $limitInfo['canCreate'] && ! ($limitInfo['isPro'] ?? false)),
 
-            // Botón de crear
             Actions\CreateAction::make()
+                ->label('Nuevo producto')
                 ->disabled(! $limitInfo['canCreate'])
-                ->before(function ($action) use ($limitInfo) {
-                    if (! $limitInfo['canCreate']) {
-                        $settings = app(GeneralSettings::class);
-                        $price = number_format($settings->pro_plan_price ?? 500, 2);
-
-                        Notification::make()
-                            ->danger()
-                            ->title('¡Tu catálogo está creciendo! 🚀')
-                            ->body("Has alcanzado el límite de {$limitInfo['limit']} productos del Plan Gratuito. Mejora a PRO para subir productos ilimitados.")
-                            ->persistent()
-                            ->actions([
-                                Action::make('upgrade')
-                                    ->button()
-                                    ->label("Mejorar a PRO - L. {$price}/mes")
-                                    ->url('/admin/billing')
-                                    ->markAsRead(),
-                            ])
-                            ->send();
-
-                        $action->halt();
+                ->before(function ($action) use ($limitInfo): void {
+                    if ($limitInfo['canCreate']) {
+                        return;
                     }
+
+                    $settings = app(GeneralSettings::class);
+                    $price = number_format((float) ($settings->pro_plan_price ?? 500), 2);
+
+                    Notification::make()
+                        ->danger()
+                        ->title('Llegaste al limite del plan Base')
+                        ->body("Ya usaste {$limitInfo['limit']} productos. Activa PRO para trabajar con catalogo ampliado.")
+                        ->persistent()
+                        ->actions([
+                            Action::make('upgrade')
+                                ->button()
+                                ->label("Activar PRO - L. {$price}/mes")
+                                ->url(route('filament.app.pages.manage-billing', ['tenant' => ProductResource::currentTenantSlug()]))
+                                ->markAsRead(),
+                        ])
+                        ->send();
+
+                    $action->halt();
                 }),
         ];
     }
 
-    /**
-     * Widgets del header (Banner de upsell)
-     */
     protected function getHeaderWidgets(): array
     {
         $limitInfo = ProductResource::getProductLimitInfo();
 
-        // Mostrar banner si está al 80% o más del límite
-        if (! ($limitInfo['isPro'] ?? false) && $limitInfo['percentage'] >= 80) {
+        if (! ($limitInfo['isPro'] ?? false) && ($limitInfo['percentage'] ?? 0) >= 80) {
             return [
                 \App\Filament\App\Widgets\ProductLimitWarning::class,
             ];

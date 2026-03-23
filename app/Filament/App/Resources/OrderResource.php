@@ -57,6 +57,11 @@ class OrderResource extends Resource
         return 'Pedidos';
     }
 
+    public static function getNavigationGroup(): ?string
+    {
+        return 'Ventas';
+    }
+
     public static function getNavigationSort(): ?int
     {
         return 1;
@@ -241,9 +246,10 @@ class OrderResource extends Resource
             ])
             ->striped()
             ->defaultSort('created_at', 'desc')
-            ->emptyStateHeading('Sin pedidos')
-            ->emptyStateDescription('Los pedidos de tus clientes apareceran aqui.')
-            ->emptyStateIcon('heroicon-o-clipboard-document-list');
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
+                'heading' => 'Todavia no tienes pedidos',
+                'description' => 'Cuando un cliente haga una compra o reservacion, el pedido aparecera aqui.',
+            ]));
     }
 
     public static function infolist(Schema $schema): Schema

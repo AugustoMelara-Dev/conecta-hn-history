@@ -18,17 +18,28 @@ class CreateTenantUser extends CreateRecord
     protected function handleRecordCreation(array $data): Model
     {
         $tenant = Filament::getTenant();
+        $tenantId = $tenant instanceof Tenant ? (string) $tenant->getKey() : null;
 
-        return TenantMembership::query()->updateOrCreate(
-            [
-                'tenant_id' => $tenant instanceof Tenant ? (string) $tenant->getKey() : null,
+        $membership = TenantMembership::query()
+            ->where('tenant_id', $tenantId)
+            ->where('user_id', $data['user_id'])
+            ->first();
+
+        if (! $membership instanceof TenantMembership) {
+            $membership = new TenantMembership([
                 'user_id' => $data['user_id'],
-            ],
-            [
                 'role' => $data['role'],
                 'accepted_at' => now(),
-            ]
-        );
+            ]);
+            $membership->tenant_id = $tenantId;
+        } else {
+            $membership->role = $data['role'];
+            $membership->accepted_at = now();
+        }
+
+        $membership->save();
+
+        return $membership;
     }
 
     protected function getRedirectUrl(): string

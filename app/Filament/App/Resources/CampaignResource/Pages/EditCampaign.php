@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\CampaignResource\Pages;
 
+use App\Filament\App\Resources\Pages\EditTenantRecord;
 use App\Filament\App\Resources\CampaignResource;
-use Filament\Resources\Pages\EditRecord;
 
-class EditCampaign extends EditRecord
+class EditCampaign extends EditTenantRecord
 {
     protected static string $resource = CampaignResource::class;
 

@@ -22,22 +22,22 @@ class InventoryMovementResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Inventory';
+        return 'Inventario';
     }
 
     public static function getNavigationLabel(): string
     {
-        return 'Inventory Movements';
+        return 'Movimientos';
     }
 
     public static function getModelLabel(): string
     {
-        return 'Inventory Movement';
+        return 'Movimiento';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Inventory Movements';
+        return 'Movimientos';
     }
 
     public static function form(Schema $schema): Schema
@@ -50,33 +50,50 @@ class InventoryMovementResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Date')
+                    ->label('Fecha')
                     ->dateTime()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('product.name')
-                    ->label('Product')
+                    ->label('Producto')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('location.name')
-                    ->label('Location')
+                    ->label('Sucursal')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('type')
-                    ->label('Type')
+                    ->label('Tipo')
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => $state instanceof \BackedEnum ? $state->value : (string) $state),
+                    ->formatStateUsing(function ($state): string {
+                        $value = $state instanceof \BackedEnum ? $state->value : (string) $state;
+
+                        return match ($value) {
+                            'initial' => 'Carga inicial',
+                            'purchase' => 'Compra',
+                            'sale' => 'Venta',
+                            'restock_return' => 'Devolucion a stock',
+                            'manual_adjustment' => 'Ajuste manual',
+                            'loss' => 'Merma',
+                            'transfer' => 'Traslado',
+                            default => $value,
+                        };
+                    }),
                 Tables\Columns\TextColumn::make('quantity_delta')
-                    ->label('Delta')
+                    ->label('Cambio')
                     ->numeric(decimalPlaces: 3),
                 Tables\Columns\TextColumn::make('user.name')
-                    ->label('User')
+                    ->label('Usuario')
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('notes')
-                    ->label('Notes')
+                    ->label('Notas')
                     ->limit(30),
             ])
             ->defaultSort('created_at', 'desc')
             ->actions([])
-            ->bulkActions([]);
+            ->bulkActions([])
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
+                'heading' => 'Todavia no hay movimientos de inventario',
+                'description' => 'Aqui quedaran registrados los ajustes, ventas, compras, mermas y traslados de stock.',
+            ]));
     }
 
     public static function canCreate(): bool

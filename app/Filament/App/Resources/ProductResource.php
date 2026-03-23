@@ -28,6 +28,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -52,9 +53,17 @@ class ProductResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
 
+    /**
+     * Small request-local cache to avoid recomputing the same plan counts
+     * several times while Filament builds headings, actions and widgets.
+     *
+     * @var array<string, array{count:int, limit:int|null, percentage:int, canCreate:bool, isPro:bool}>
+     */
+    protected static array $productLimitInfoCache = [];
+
     public static function getNavigationLabel(): string
     {
-        return 'Mis Productos';
+        return 'Productos';
     }
 
     public static function getModelLabel(): string
@@ -69,7 +78,7 @@ class ProductResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Catálogo';
+        return 'Catalogo';
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -81,32 +90,7 @@ class ProductResource extends Resource
      */
     public static function canCreate(): bool
     {
-        if (! Gate::allows('create', Product::class)) {
-            return false;
-        }
-
-        $tenant = static::getCurrentTenant();
-
-        if (! $tenant) {
-            return false;
-        }
-
-        // PRO tiene productos ilimitados
-        if ($tenant->is_pro) {
-            return true;
-        }
-
-        // Obtener límite desde configuración
-        $settings = app(GeneralSettings::class);
-        $limit = $settings->free_plan_product_limit ?? 10;
-
-        // Contar productos existentes (usando DB Facade para evitar violación de arquitectura)
-        $currentCount = DB::table('products')
-            ->where('tenant_id', $tenant->id)
-            ->whereNull('deleted_at')
-            ->count();
-
-        return $currentCount < $limit;
+        return (bool) (static::getProductLimitInfo()['canCreate'] ?? false);
     }
 
     /**
@@ -120,24 +104,37 @@ class ProductResource extends Resource
             return ['count' => 0, 'limit' => 0, 'percentage' => 0, 'canCreate' => false, 'isPro' => false];
         }
 
+        $cacheKey = (string) $tenant->getKey();
+
+        if (isset(static::$productLimitInfoCache[$cacheKey])) {
+            return static::$productLimitInfoCache[$cacheKey];
+        }
+
+        $policyAllowsCreate = Gate::allows('create', Product::class);
         $currentCount = DB::table('products')
             ->where('tenant_id', $tenant->id)
             ->whereNull('deleted_at')
             ->count();
 
         if ($tenant->is_pro) {
-            return ['count' => $currentCount, 'limit' => null, 'percentage' => 0, 'canCreate' => true, 'isPro' => true];
+            return static::$productLimitInfoCache[$cacheKey] = [
+                'count' => $currentCount,
+                'limit' => null,
+                'percentage' => 0,
+                'canCreate' => $policyAllowsCreate,
+                'isPro' => true,
+            ];
         }
 
         $settings = app(GeneralSettings::class);
         $limit = (int) ($settings->free_plan_product_limit ?? 10);
         $percentage = $limit > 0 ? min(100, (int) round(($currentCount / $limit) * 100)) : 100;
 
-        return [
+        return static::$productLimitInfoCache[$cacheKey] = [
             'count' => $currentCount,
             'limit' => $limit,
             'percentage' => $percentage,
-            'canCreate' => static::canCreate(),
+            'canCreate' => $policyAllowsCreate && $currentCount < $limit,
             'isPro' => false,
         ];
     }
@@ -414,8 +411,6 @@ class ProductResource extends Resource
                                     ->autofocus(),
 
                                 // Inyección automática del tenant_id (seguridad)
-                                Forms\Components\Hidden::make('tenant_id')
-                                    ->default(fn (): int|string|null => static::currentTenantId()),
 
                                 // Sección activa por defecto
                                 Forms\Components\Hidden::make('is_active')
@@ -776,10 +771,13 @@ class ProductResource extends Resource
                         ->modalSubmitActionLabel('Mover productos'),
                 ]),
             ])
-            ->emptyStateHeading('No tienes productos')
-            ->emptyStateDescription('Crea tu primer producto para empezar a vender.')
-            ->emptyStateIcon('heroicon-o-shopping-bag')
-            ->poll('30s'); // Actualizar cada 30s
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
+                'heading' => 'Todavia no tienes productos',
+                'description' => 'Crea tu primer producto para empezar a vender y llenar tu catalogo publico.',
+                'buttonLabel' => 'Crear producto',
+                'buttonUrl' => static::getUrl('create'),
+            ]))
+            ->poll(null);
     }
 
     public static function getRelations(): array
@@ -810,7 +808,7 @@ class ProductResource extends Resource
         return static::getCurrentTenant()?->getKey();
     }
 
-    protected static function currentTenantSlug(): string
+    public static function currentTenantSlug(): string
     {
         $tenant = static::getCurrentTenant();
 

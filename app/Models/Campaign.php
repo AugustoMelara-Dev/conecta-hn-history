@@ -18,6 +18,7 @@ class Campaign extends Model
     use BelongsToTenant, HasFactory;
 
     protected $fillable = [
+        'tenant_id',
         'subject',
         'content',
         'type',
@@ -29,10 +30,11 @@ class Campaign extends Model
     ];
 
     /**
-     * SECURITY: Immutable ownership fields.
-     * tenant_id is set automatically by BelongsToTenant trait on creation.
+     * SECURITY: Immutable lifecycle fields.
+     * tenant_id is assigned from tenant context and may also be injected by
+     * Filament creation flows, so it must remain mass-assignable.
      */
-    protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
+    protected $guarded = ['id', 'created_at', 'updated_at'];
 
     protected $casts = [
         'audience_type' => \App\Domain\Marketing\Enums\AudienceType::class,

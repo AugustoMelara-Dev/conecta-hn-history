@@ -48,6 +48,20 @@ class CampaignResource extends Resource
         return 'Marketing PRO';
     }
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        $tenant = self::getTenantRecord();
+
+        return $tenant instanceof Tenant && (bool) $tenant->is_pro;
+    }
+
+    public static function canAccess(): bool
+    {
+        $tenant = self::getTenantRecord();
+
+        return $tenant instanceof Tenant && (bool) $tenant->is_pro;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema
@@ -186,9 +200,13 @@ class CampaignResource extends Resource
                     DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('No hay campanas')
-            ->emptyStateDescription('Crea tu primera campana de marketing para conectar con tu audiencia.')
-            ->emptyStateIcon('heroicon-o-megaphone');
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
+                'badge' => 'Marketing PRO',
+                'heading' => 'Todavia no has creado campanas',
+                'description' => 'Prepara mensajes para seguidores, prospectos o clientes desde aqui. Cuando guardes la primera campana, aparecera en esta tabla.',
+                'buttonLabel' => 'Crear campana',
+                'buttonUrl' => static::getUrl('create'),
+            ]));
     }
 
     public static function getPages(): array

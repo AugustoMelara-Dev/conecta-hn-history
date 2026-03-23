@@ -90,6 +90,10 @@ class ReviewResource extends Resource
                     ->action(fn (Review $record) => $record->update(['is_approved' => false])),
                 DeleteAction::make(),
             ])
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
+                'heading' => 'Todavia no tienes resenas',
+                'description' => 'Aqui podras aprobar, ocultar o revisar las opiniones que lleguen desde tu pagina publica.',
+            ]))
             ->defaultSort('created_at', 'desc');
     }
 

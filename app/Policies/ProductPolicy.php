@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Settings\GeneralSettings;
 use Illuminate\Auth\Access\Response;
+use Illuminate\Support\Facades\DB;
 
 class ProductPolicy extends TenantAwarePolicy
 {
@@ -40,7 +41,12 @@ class ProductPolicy extends TenantAwarePolicy
             ? $settings->pro_plan_product_limit
             : $settings->free_plan_product_limit;
 
-        if ($tenant->products()->count() < $limit) {
+        $currentCount = DB::table('products')
+            ->where('tenant_id', $tenant->id)
+            ->whereNull('deleted_at')
+            ->count();
+
+        if ($currentCount < $limit) {
             return Response::allow();
         }
 

@@ -27,22 +27,22 @@ class InventoryLevelResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Inventory';
+        return 'Inventario';
     }
 
     public static function getNavigationLabel(): string
     {
-        return 'Inventory Levels';
+        return 'Existencias';
     }
 
     public static function getModelLabel(): string
     {
-        return 'Inventory Level';
+        return 'Existencia';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Inventory Levels';
+        return 'Existencias';
     }
 
     public static function form(Schema $schema): Schema
@@ -55,35 +55,37 @@ class InventoryLevelResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('product.name')
-                    ->label('Product')
+                    ->label('Producto')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('location.name')
-                    ->label('Location')
+                    ->label('Sucursal')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('on_hand')
-                    ->label('On Hand')
+                    ->label('Disponible')
                     ->numeric(decimalPlaces: 3)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('reserved')
-                    ->label('Reserved')
+                    ->label('Reservado')
                     ->numeric(decimalPlaces: 3),
                 Tables\Columns\TextColumn::make('low_stock_threshold')
-                    ->label('Low Stock Threshold')
+                    ->label('Minimo')
                     ->numeric(decimalPlaces: 3)
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
                 Action::make('adjust_stock')
-                    ->label('Adjust Stock')
+                    ->label('Ajustar stock')
                     ->icon('heroicon-o-adjustments-horizontal')
                     ->visible(fn (InventoryLevel $record): bool => auth()->user()?->can('update', $record) ?? false)
                     ->form([
                         Forms\Components\TextInput::make('quantity_delta')
-                            ->label('Adjustment Quantity')
+                            ->label('Cantidad a ajustar')
                             ->numeric()
                             ->required()
-                            ->helperText('Use positive values to add, negative to subtract.'),
-                        Forms\Components\Textarea::make('notes')->required(),
+                            ->helperText('Usa numeros positivos para sumar y negativos para restar.'),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Motivo')
+                            ->required(),
                     ])
                     ->action(function (InventoryLevel $record, array $data): void {
                         DB::transaction(function () use ($record, $data): void {
@@ -108,17 +110,19 @@ class InventoryLevelResource extends Resource
                         });
                     }),
                 Action::make('report_loss')
-                    ->label('Report Loss')
+                    ->label('Registrar merma')
                     ->icon('heroicon-o-exclamation-triangle')
                     ->color('danger')
                     ->visible(fn (InventoryLevel $record): bool => auth()->user()?->can('update', $record) ?? false)
                     ->form([
                         Forms\Components\TextInput::make('loss_quantity')
-                            ->label('Quantity Lost')
+                            ->label('Cantidad perdida')
                             ->numeric()
                             ->required()
                             ->minValue(0.001),
-                        Forms\Components\Textarea::make('notes')->required(),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Motivo')
+                            ->required(),
                     ])
                     ->action(function (InventoryLevel $record, array $data): void {
                         DB::transaction(function () use ($record, $data): void {
@@ -143,7 +147,11 @@ class InventoryLevelResource extends Resource
                         });
                     }),
             ])
-            ->bulkActions([]);
+            ->bulkActions([])
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
+                'heading' => 'Todavia no hay existencias registradas',
+                'description' => 'El inventario aparecera aqui cuando tus productos tengan entradas, ventas o ajustes.',
+            ]));
     }
 
     public static function canCreate(): bool

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\AnnouncementResource\Pages;
 
+use App\Filament\App\Resources\Pages\CreateTenantRecord;
 use App\Filament\App\Resources\AnnouncementResource;
-use Filament\Resources\Pages\CreateRecord;
 
-class CreateAnnouncement extends CreateRecord
+class CreateAnnouncement extends CreateTenantRecord
 {
     protected static string $resource = AnnouncementResource::class;
 

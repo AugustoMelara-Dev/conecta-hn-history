@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\Leads\Pages;
 
+use App\Filament\App\Resources\Pages\EditTenantRecord;
 use App\Filament\App\Resources\Leads\LeadResource;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditLead extends EditRecord
+class EditLead extends EditTenantRecord
 {
     protected static string $resource = LeadResource::class;
 

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\OrderResource\Pages;
 
+use App\Filament\App\Resources\Pages\ListTenantRecords;
 use App\Filament\App\Resources\OrderResource;
-use Filament\Resources\Pages\ListRecords;
 
-class ListOrders extends ListRecords
+class ListOrders extends ListTenantRecords
 {
     protected static string $resource = OrderResource::class;
 

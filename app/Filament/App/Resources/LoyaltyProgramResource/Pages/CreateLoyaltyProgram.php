@@ -2,10 +2,10 @@
 
 namespace App\Filament\App\Resources\LoyaltyProgramResource\Pages;
 
+use App\Filament\App\Resources\Pages\CreateTenantRecord;
 use App\Filament\App\Resources\LoyaltyProgramResource;
-use Filament\Resources\Pages\CreateRecord;
 
-class CreateLoyaltyProgram extends CreateRecord
+class CreateLoyaltyProgram extends CreateTenantRecord
 {
     protected static string $resource = LoyaltyProgramResource::class;
 }

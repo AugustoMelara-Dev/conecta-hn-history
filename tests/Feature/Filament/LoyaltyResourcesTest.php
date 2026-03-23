@@ -15,14 +15,14 @@ use App\Models\LoyaltyReward;
 it('LoyaltyProgramResource is properly configured', function () {
     expect(class_exists(LoyaltyProgramResource::class))->toBeTrue();
     expect(LoyaltyProgramResource::getModel())->toBe(LoyaltyProgram::class);
-    expect(LoyaltyProgramResource::getNavigationGroup())->toBe('Fidelización');
+    expect(LoyaltyProgramResource::getNavigationGroup())->toBe('Marketing PRO');
 });
 
 // TEST 2: LoyaltyRewardResource exists and is configured
 it('LoyaltyRewardResource is properly configured', function () {
     expect(class_exists(LoyaltyRewardResource::class))->toBeTrue();
     expect(LoyaltyRewardResource::getModel())->toBe(LoyaltyReward::class);
-    expect(LoyaltyRewardResource::getNavigationGroup())->toBe('Fidelización');
+    expect(LoyaltyRewardResource::getNavigationGroup())->toBe('Marketing PRO');
 });
 
 // TEST 3: LoyaltyProgramResource has correct pages

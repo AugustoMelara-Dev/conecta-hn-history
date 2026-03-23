@@ -6,6 +6,8 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\LoyaltyRewardResource\Pages;
 use App\Models\LoyaltyReward;
+use App\Models\Tenant;
+use Filament\Facades\Filament;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -26,11 +28,25 @@ class LoyaltyRewardResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-gift';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Fidelización';
+    protected static string|\UnitEnum|null $navigationGroup = 'Marketing PRO';
 
     protected static ?string $navigationLabel = 'Recompensas';
 
     protected static ?int $navigationSort = 2;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        $tenant = self::getTenantRecord();
+
+        return $tenant instanceof Tenant && (bool) $tenant->is_pro;
+    }
+
+    public static function canAccess(): bool
+    {
+        $tenant = self::getTenantRecord();
+
+        return $tenant instanceof Tenant && (bool) $tenant->is_pro;
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -118,5 +134,12 @@ class LoyaltyRewardResource extends Resource
             'create' => Pages\CreateLoyaltyReward::route('/create'),
             'edit' => Pages\EditLoyaltyReward::route('/{record}/edit'),
         ];
+    }
+
+    private static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

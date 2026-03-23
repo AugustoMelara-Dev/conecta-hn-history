@@ -6,6 +6,8 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\AnnouncementResource\Pages;
 use App\Models\Announcement;
+use App\Models\Tenant;
+use Filament\Facades\Filament;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -37,9 +39,11 @@ class AnnouncementResource extends Resource
 {
     protected static ?string $model = Announcement::class;
 
+    protected static ?string $tenantOwnershipRelationshipName = 'business';
+
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-megaphone';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Marketing';
+    protected static string|\UnitEnum|null $navigationGroup = 'Marketing PRO';
 
     protected static ?string $navigationLabel = 'Anuncios';
 
@@ -48,6 +52,20 @@ class AnnouncementResource extends Resource
     protected static ?string $pluralModelLabel = 'Anuncios';
 
     protected static ?int $navigationSort = 2;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        $tenant = self::getTenantRecord();
+
+        return $tenant instanceof Tenant && (bool) $tenant->is_pro;
+    }
+
+    public static function canAccess(): bool
+    {
+        $tenant = self::getTenantRecord();
+
+        return $tenant instanceof Tenant && (bool) $tenant->is_pro;
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -94,7 +112,7 @@ class AnnouncementResource extends Resource
                         Grid::make(2)
                             ->schema([
                                 // Start Date
-                                DateTimePicker::make('starts_at')
+                                DateTimePicker::make('starts_at_utc')
                                     ->label('Fecha de Inicio')
                                     ->required()
                                     ->timezone('America/Tegucigalpa')
@@ -103,12 +121,12 @@ class AnnouncementResource extends Resource
                                     ->helperText('Cuándo comenzará a mostrarse'),
 
                                 // End Date
-                                DateTimePicker::make('expires_at')
+                                DateTimePicker::make('expires_at_utc')
                                     ->label('Fecha de Expiración')
                                     ->required()
                                     ->timezone('America/Tegucigalpa')
                                     ->displayFormat('d/m/Y H:i')
-                                    ->after('starts_at')
+                                    ->after('starts_at_utc')
                                     ->helperText('Cuándo dejará de mostrarse'),
 
                                 // Active Toggle
@@ -161,13 +179,13 @@ class AnnouncementResource extends Resource
                     ->color(fn (Announcement $record): string => $record->status_color),
 
                 // Schedule Period
-                TextColumn::make('starts_at')
+                TextColumn::make('starts_at_utc')
                     ->label('Inicio')
                     ->dateTime('d/m/Y H:i')
                     ->timezone('America/Tegucigalpa')
                     ->sortable(),
 
-                TextColumn::make('expires_at')
+                TextColumn::make('expires_at_utc')
                     ->label('Expira')
                     ->dateTime('d/m/Y H:i')
                     ->timezone('America/Tegucigalpa')
@@ -198,7 +216,7 @@ class AnnouncementResource extends Resource
                     DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('starts_at', 'desc');
+            ->defaultSort('starts_at_utc', 'desc');
     }
 
     public static function getRelations(): array
@@ -215,5 +233,12 @@ class AnnouncementResource extends Resource
             'create' => Pages\CreateAnnouncement::route('/create'),
             'edit' => Pages\EditAnnouncement::route('/{record}/edit'),
         ];
+    }
+
+    private static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

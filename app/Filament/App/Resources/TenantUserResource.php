@@ -226,9 +226,12 @@ class TenantUserResource extends Resource
                     ->iconButton()
                     ->visible(fn (TenantMembership $record): bool => ! $record->isOwner()),
             ])
-            ->emptyStateHeading('Sin miembros del equipo')
-            ->emptyStateDescription('Agrega personas y asignales un rol claro dentro del negocio.')
-            ->emptyStateIcon('heroicon-o-user-group');
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
+                'heading' => 'Todavia no has agregado miembros',
+                'description' => 'Agrega personas y asignales un rol claro dentro del negocio.',
+                'buttonLabel' => 'Agregar miembro',
+                'buttonUrl' => static::getUrl('create'),
+            ]));
     }
 
     public static function getRelations(): array

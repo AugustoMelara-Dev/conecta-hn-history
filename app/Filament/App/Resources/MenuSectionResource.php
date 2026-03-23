@@ -176,14 +176,12 @@ class MenuSectionResource extends Resource
                         ->modalDescription('Los productos dentro de estas secciones no se eliminaran.'),
                 ]),
             ])
-            ->emptyStateHeading('No tienes secciones creadas')
-            ->emptyStateDescription('Crea secciones para organizar tu catalogo.')
-            ->emptyStateIcon('heroicon-o-folder-plus')
-            ->emptyStateActions([
-                CreateAction::make()
-                    ->label('Crear primera seccion')
-                    ->icon('heroicon-o-plus'),
-            ]);
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
+                'heading' => 'Todavia no tienes secciones creadas',
+                'description' => 'Crea secciones para organizar tu catalogo y hacerlo mas claro para el cliente.',
+                'buttonLabel' => 'Crear primera seccion',
+                'buttonUrl' => static::getUrl('create'),
+            ]));
     }
 
     public static function getRelations(): array

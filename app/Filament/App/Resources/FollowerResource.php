@@ -7,7 +7,6 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\FollowerResource\Pages;
 use App\Models\Follow;
 use App\Models\Tenant;
-use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
@@ -37,6 +36,16 @@ class FollowerResource extends Resource
         return 'Seguidores';
     }
 
+    public static function getNavigationGroup(): ?string
+    {
+        return 'Ventas';
+    }
+
+    public static function getNavigationSort(): ?int
+    {
+        return 3;
+    }
+
     public static function canCreate(): bool
     {
         return false;
@@ -56,7 +65,6 @@ class FollowerResource extends Resource
     {
         return $schema
             ->schema([
-                // Read-only view
                 Forms\Components\TextInput::make('user.name')
                     ->label('Nombre'),
                 Forms\Components\TextInput::make('user.email')
@@ -70,12 +78,10 @@ class FollowerResource extends Resource
     {
         $tenant = static::getTenantRecord();
         $isPro = $tenant?->getIsProAttribute() ?? false;
-
         return $table
             ->modifyQueryUsing(function (Builder $query) use ($isPro, $tenant) {
-                // If PRO, show followers. If Free, show empty query
                 if ($isPro) {
-                    return $query->where('tenant_id', (string) $tenant->getKey());
+                    return $query->where('tenant_id', (string) $tenant?->getKey());
                 }
 
                 return $query->whereRaw('1 = 0');
@@ -94,28 +100,13 @@ class FollowerResource extends Resource
                     ->dateTime('d/m/Y')
                     ->sortable(),
             ])
-            ->emptyStateHeading(
-                $isPro
-                    ? 'Aún no tienes seguidores'
-                    : 'Descubre quién te sigue con PRO'
-            )
-            ->emptyStateDescription(
-                $isPro
-                    ? 'Comparte tu perfil para conseguir seguidores.'
-                    : 'Actualiza a nuestro plan PRO para ver la lista completa de tus seguidores y contactarlos.'
-            )
-            ->emptyStateIcon($isPro ? 'heroicon-o-users' : 'heroicon-o-lock-closed')
-            ->emptyStateActions(
-                $isPro
-                    ? []
-                    : [
-                        Action::make('upgrade')
-                            ->label('Actualizar a PRO')
-                            ->url(fn () => route('filament.app.pages.upgrade-to-pro', ['tenant' => (string) ($tenant?->getAttribute('slug') ?? '')]))
-                            ->icon('heroicon-o-star')
-                            ->button(),
-                    ]
-            );
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
+                'badge' => $isPro ? 'Audiencia' : 'Solo PRO',
+                'heading' => $isPro ? 'Todavia no tienes seguidores registrados' : 'La lista de seguidores se desbloquea con PRO',
+                'description' => $isPro
+                    ? 'Cuando alguien siga tu negocio, su registro aparecera aqui para que puedas entender mejor tu audiencia.'
+                    : 'En el plan Base mantienes el contador general. La lista completa con nombres y correos se habilita al activar PRO.',
+            ]));
     }
 
     protected static function getTenantRecord(): ?Tenant

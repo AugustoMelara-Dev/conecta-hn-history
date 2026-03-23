@@ -189,9 +189,12 @@ class LocationResource extends Resource
                     ->iconButton()
                     ->visible(fn (Location $record): bool => ! $record->is_primary),
             ])
-            ->emptyStateHeading('Sin sucursales registradas')
-            ->emptyStateDescription('Crea y organiza las sedes desde donde operas pedidos, pickup y atencion.')
-            ->emptyStateIcon('heroicon-o-map-pin');
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
+                'heading' => 'Todavia no has creado sucursales',
+                'description' => 'Crea y organiza las sedes desde donde operas pedidos, pickup y atencion.',
+                'buttonLabel' => 'Crear sucursal',
+                'buttonUrl' => static::getUrl('create'),
+            ]));
     }
 
     public static function getRelations(): array

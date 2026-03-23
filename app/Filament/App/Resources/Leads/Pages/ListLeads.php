@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\Leads\Pages;
 
+use App\Filament\App\Resources\Pages\ListTenantRecords;
 use App\Filament\App\Resources\Leads\LeadResource;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListLeads extends ListRecords
+class ListLeads extends ListTenantRecords
 {
     protected static string $resource = LeadResource::class;
 

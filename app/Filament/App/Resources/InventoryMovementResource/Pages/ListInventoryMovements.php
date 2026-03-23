@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\InventoryMovementResource\Pages;
 
+use App\Filament\App\Resources\Pages\ListTenantRecords;
 use App\Filament\App\Resources\InventoryMovementResource;
-use Filament\Resources\Pages\ListRecords;
 
-class ListInventoryMovements extends ListRecords
+class ListInventoryMovements extends ListTenantRecords
 {
     protected static string $resource = InventoryMovementResource::class;
 
