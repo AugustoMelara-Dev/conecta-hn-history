@@ -23,7 +23,7 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        Fortify::ignoreRoutes();
     }
 
     /**
@@ -48,8 +48,6 @@ class FortifyServiceProvider extends ServiceProvider
 
         // Views (if needed, but actions are the priority)
         // Checks if views exist or basic registration
-        Fortify::ignoreRoutes();
-
         if (config('fortify.views', true)) {
             /** @var view-string $registerView */
             $registerView = 'auth.register';
