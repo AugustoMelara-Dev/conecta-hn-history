@@ -55,26 +55,33 @@ class GeoSeeder extends Seeder
         ];
 
         foreach ($structure as $departmentName => $cities) {
-            $department = Department::create([
-                'name' => $departmentName,
-                'slug' => Str::slug($departmentName),
-            ]);
+            $department = Department::firstOrCreate(
+                ['slug' => Str::slug($departmentName)],
+                ['name' => $departmentName],
+            );
 
             // For simplicity, each city is its own municipality
             // In reality, municipalities can have multiple cities
             foreach ($cities as $cityName => $coordinates) {
-                $municipality = Municipality::create([
-                    'department_id' => $department->id,
-                    'name' => $cityName, // Municipality name same as city for simplicity
-                    'slug' => Str::slug($cityName),
-                ]);
+                $municipality = Municipality::firstOrCreate(
+                    [
+                        'department_id' => $department->id,
+                        'slug' => Str::slug($cityName),
+                    ],
+                    [
+                        'name' => $cityName,
+                    ]
+                );
 
-                City::create([
-                    'municipality_id' => $municipality->id,
-                    'name' => $cityName,
-                    'slug' => Str::slug($cityName),
-                    'coordinates' => $coordinates,
-                ]);
+                City::updateOrCreate(
+                    ['slug' => Str::slug($cityName)],
+                    [
+                        'municipality_id' => $municipality->id,
+                        'name' => $cityName,
+                        'coordinates' => $coordinates,
+                        'is_available' => true,
+                    ]
+                );
             }
         }
 

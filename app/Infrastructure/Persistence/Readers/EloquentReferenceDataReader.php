@@ -49,6 +49,26 @@ final class EloquentReferenceDataReader implements ReferenceDataReaderInterface
             ->all();
     }
 
+    public function getPopularCities(int $limit = 4): array
+    {
+        return City::query()
+            ->where('is_available', true)
+            ->select(['id', 'name', 'slug', 'hero_image', 'department'])
+            ->withCount(['tenants' => fn ($query) => $query->where('is_active', true)])
+            ->orderByDesc('tenants_count')
+            ->take($limit)
+            ->get()
+            ->map(fn (City $city) => [
+                'id' => $city->id,
+                'name' => $city->name,
+                'slug' => $city->slug,
+                'hero_image' => $city->hero_image,
+                'department' => $city->department,
+                'tenants_count' => (int) $city->tenants_count,
+            ])
+            ->all();
+    }
+
     public function countActiveCities(): int
     {
         return City::query()

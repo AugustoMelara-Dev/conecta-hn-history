@@ -27,6 +27,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Models\Activity as ActivityModel;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -230,47 +232,67 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public function getIsProAttribute(): bool
     {
-        $value = $this->plan_type->value;
+        $rawAttributes = $this->getAttributes();
+        $rawPlanType = $rawAttributes['plan_type'] ?? null;
+        $rawSubscriptionStatus = (string) ($rawAttributes['subscription_status'] ?? self::DEFAULT_SUBSCRIPTION_STATUS);
+
+        $value = match (true) {
+            $rawPlanType instanceof TenantPlan => $rawPlanType->value,
+            is_string($rawPlanType) => $rawPlanType,
+            default => '',
+        };
+
+        if ($value === '' && array_key_exists('is_pro', $rawAttributes)) {
+            return (bool) $rawAttributes['is_pro'];
+        }
 
         if (! in_array($value, ['pro', 'enterprise'])) {
             return false;
         }
 
-        if (in_array($this->subscription_status, ['past_due', 'canceled'])) {
+        if (in_array($rawSubscriptionStatus, ['past_due', 'canceled', 'inactive'], true)) {
             return false;
         }
 
-        if (! in_array($this->subscription_status, ['active', 'trial'])) {
+        if (! in_array($rawSubscriptionStatus, ['active', 'trial'], true)) {
             return false;
         }
 
-        if ($this->subscription_ends_at === null) {
+        $subscriptionEndsAt = $this->resolveSubscriptionEndsAt();
+
+        if ($subscriptionEndsAt === null) {
             return true;
         }
 
-        return $this->subscription_ends_at->isFuture();
+        return $subscriptionEndsAt->isFuture();
     }
 
     public function isSubscriptionActive(): bool
     {
-        if ($this->subscription_status !== 'active') {
+        $rawSubscriptionStatus = (string) ($this->getAttributes()['subscription_status'] ?? self::DEFAULT_SUBSCRIPTION_STATUS);
+
+        if ($rawSubscriptionStatus !== 'active') {
             return false;
         }
 
-        if ($this->subscription_ends_at === null) {
+        $subscriptionEndsAt = $this->resolveSubscriptionEndsAt();
+
+        if ($subscriptionEndsAt === null) {
             return true;
         }
 
-        return $this->subscription_ends_at->isFuture();
+        return $subscriptionEndsAt->isFuture();
     }
 
     public function getDaysUntilExpiryAttribute(): ?int
     {
-        if ($this->subscription_ends_at === null) {
+        $subscriptionEndsAt = $this->resolveSubscriptionEndsAt();
+
+        if ($subscriptionEndsAt === null) {
             return null;
         }
 
-        return max(0, now()->diffInDays($this->subscription_ends_at, false));
+        return max(0, now()->diffInDays($subscriptionEndsAt, false));
     }
 
     public function isExpiringSoon(int $days = 7): bool
@@ -286,19 +308,28 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public function getSubscriptionStatusLabelAttribute(): string
     {
+        $status = (string) ($this->getAttributes()['subscription_status'] ?? 'inactive');
+
         $labels = [
             'active' => 'Activo',
             'trial' => 'Período de Prueba',
             'past_due' => 'Vencido',
             'canceled' => 'Cancelado',
+            'inactive' => 'Inactivo',
+            'pending' => 'Pendiente',
         ];
 
-        return $labels[$this->subscription_status];
+        return $labels[$status] ?? Str::headline(str_replace('_', ' ', $status));
     }
 
     public function getPlanTypeLabelAttribute(): string
     {
-        $value = $this->plan_type->value;
+        $rawPlanType = $this->getAttributes()['plan_type'] ?? null;
+        $value = match (true) {
+            $rawPlanType instanceof TenantPlan => $rawPlanType->value,
+            is_string($rawPlanType) => $rawPlanType,
+            default => '',
+        };
 
         $labels = [
             'semilla' => 'Plan Semilla',
@@ -306,7 +337,12 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             'enterprise' => 'Plan Enterprise',
         ];
 
-        return $labels[$value];
+        return $labels[$value] ?? 'Plan Semilla';
+    }
+
+    public function getPlanExpiresAtAttribute(mixed $value): ?Carbon
+    {
+        return $this->resolveDateAttribute($value) ?? $this->resolveSubscriptionEndsAt();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -580,6 +616,87 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         }
 
         return $theme;
+    }
+
+    /**
+     * Legacy compatibility layer for old UI/forms that still expect tenant-level
+     * `hours_data`, even though the canonical schedule now lives in `opening_hours`.
+     *
+     * @return array<int, array{day: string, open: string|null, close: string|null, is_closed: bool}>
+     */
+    public function getHoursDataAttribute(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && trim($value) !== '') {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        $dayMap = [
+            0 => 'domingo',
+            1 => 'lunes',
+            2 => 'martes',
+            3 => 'miercoles',
+            4 => 'jueves',
+            5 => 'viernes',
+            6 => 'sabado',
+        ];
+
+        try {
+            return OpeningHour::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $this->getKey())
+                ->orderBy('day_of_week')
+                ->get()
+                ->map(static function (OpeningHour $openingHour) use ($dayMap): array {
+                    return [
+                        'day' => $dayMap[$openingHour->day_of_week] ?? 'lunes',
+                        'open' => $openingHour->getRawOpeningTime() !== null
+                            ? substr($openingHour->getRawOpeningTime(), 0, 5)
+                            : null,
+                        'close' => $openingHour->getRawClosingTime() !== null
+                            ? substr($openingHour->getRawClosingTime(), 0, 5)
+                            : null,
+                        'is_closed' => false,
+                    ];
+                })
+                ->values()
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    private function resolveSubscriptionEndsAt(): ?Carbon
+    {
+        return $this->resolveDateAttribute($this->getAttributes()['subscription_ends_at'] ?? null);
+    }
+
+    private function resolveDateAttribute(mixed $value): ?Carbon
+    {
+        if ($value instanceof Carbon) {
+            return $value;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return Carbon::instance($value);
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

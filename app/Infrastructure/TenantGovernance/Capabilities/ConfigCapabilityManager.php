@@ -6,6 +6,7 @@ namespace App\Infrastructure\TenantGovernance\Capabilities;
 
 use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
 use App\Domain\TenantGovernance\Enums\Capability;
+use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Models\Tenant;
 
 final class ConfigCapabilityManager implements CapabilityManagerInterface
@@ -34,9 +35,12 @@ final class ConfigCapabilityManager implements CapabilityManagerInterface
         $always = $this->normalize(config('capabilities.always', []));
         $businessType = $tenant->business_type;
 
-        $typeSpecific = $this->normalize(
-            config("capabilities.business_types.{$businessType->value}", [])
-        );
+        $typeSpecific = [];
+        if ($businessType instanceof BusinessType) {
+            $typeSpecific = $this->normalize(
+                config("capabilities.business_types.{$businessType->value}", [])
+            );
+        }
 
         $merged = [];
         foreach (array_merge($always, $typeSpecific) as $capability) {

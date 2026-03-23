@@ -37,6 +37,13 @@ interface ReferenceDataReaderInterface
     public function getPopularCategories(int $limit = 8): array;
 
     /**
+     * Get highlighted cities for public discovery surfaces.
+     *
+     * @return array<int, array{id: int, name: string, slug: string, hero_image: string|null, department: string|null, tenants_count: int}>
+     */
+    public function getPopularCities(int $limit = 4): array;
+
+    /**
      * Count cities available for public discovery.
      */
     public function countActiveCities(): int;
