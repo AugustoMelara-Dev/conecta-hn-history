@@ -47,7 +47,7 @@
                 </p>
             </div>
             
-            <p><strong>Fecha de vencimiento:</strong> {{ $tenant->plan_expires_at->format('d/m/Y') }}</p>
+            <p><strong>Fecha de vencimiento:</strong> {{ optional($tenant->subscription_ends_at ?? $tenant->plan_expires_at)->format('d/m/Y') ?? 'N/A' }}</p>
             
             <center>
                 <a href="{{ config('app.url') }}/app" class="btn">Renovar Ahora</a>

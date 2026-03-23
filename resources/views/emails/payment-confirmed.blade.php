@@ -39,7 +39,7 @@
                 <p><strong>Negocio:</strong> {{ $tenant->name }}</p>
                 <p><strong>Monto Pagado:</strong> L. {{ number_format($payment->amount, 2) }}</p>
                 <p><strong>Fecha de Activacion:</strong> {{ now()->format('d/m/Y') }}</p>
-                <p><strong>Valido Hasta:</strong> {{ $tenant->plan_expires_at ? $tenant->plan_expires_at->format('d/m/Y') : 'N/A' }}</p>
+                <p><strong>Valido Hasta:</strong> {{ optional($tenant->subscription_ends_at ?? $tenant->plan_expires_at)->format('d/m/Y') ?? 'N/A' }}</p>
             </div>
             
             <p>Con tu Plan PRO puedes:</p>

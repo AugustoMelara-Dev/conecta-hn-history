@@ -134,8 +134,7 @@ class SubscriptionLifecycleCommand extends Command
                         ->orWhere('is_pro', true);
                 })
                 ->where(function ($q) use ($targetStart, $targetEnd) {
-                    $q->whereBetween('subscription_ends_at', [$targetStart, $targetEnd])
-                        ->orWhereBetween('plan_expires_at', [$targetStart, $targetEnd]);
+                    $q->whereBetween('subscription_ends_at', [$targetStart, $targetEnd]);
                 })
                 ->chunkById(100, function ($tenants) use ($daysBeforeExpiry) {
                     foreach ($tenants as $tenant) {
@@ -217,8 +216,7 @@ class SubscriptionLifecycleCommand extends Command
                         ->orWhere('is_pro', true);
                 })
                 ->where(function ($q) use ($cutoffDate) {
-                    $q->where('subscription_ends_at', '<', $cutoffDate)
-                        ->orWhere('plan_expires_at', '<', $cutoffDate);
+                    $q->where('subscription_ends_at', '<', $cutoffDate);
                 })
                 ->chunkById(100, function ($tenants) use ($freeProductLimit) {
                     foreach ($tenants as $tenant) {
