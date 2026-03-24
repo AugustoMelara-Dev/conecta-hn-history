@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers\Filament;
 
 use App\Filament\App\Pages\Dashboard;
+use App\Filament\App\Pages\GrowthCenter;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
@@ -108,6 +109,7 @@ class AppPanelProvider extends PanelProvider
             ])
             ->pages([
                 Dashboard::class,
+                GrowthCenter::class,
                 \App\Filament\App\Pages\Settings::class,
                 \App\Filament\App\Pages\ManageMarketing::class,
                 \App\Filament\App\Pages\ManageBilling::class,

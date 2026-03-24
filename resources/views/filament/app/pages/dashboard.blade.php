@@ -76,6 +76,7 @@
                         <div class="biz-button-row">
                             <a href="{{ $publicUrl }}" target="_blank" class="biz-button">Abrir mi página</a>
                             <a href="{{ $profileUrl }}" class="biz-button-secondary">Configurar negocio</a>
+                            <a href="{{ $growthUrl }}" class="biz-button-secondary">Centro de crecimiento</a>
                             <a href="{{ $operationsUrl }}" class="biz-button-secondary">Centro operativo</a>
                             <a href="{{ $billingUrl }}" class="biz-button-secondary">Ver plan</a>
                         </div>

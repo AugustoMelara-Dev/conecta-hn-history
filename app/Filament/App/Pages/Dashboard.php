@@ -209,6 +209,8 @@ class Dashboard extends \Filament\Pages\Page
 
     public string $operationsUrl = '#';
 
+    public string $growthUrl = '#';
+
     public int $openPlaybookTasksCount = 0;
 
     public int $myPlaybookTasksCount = 0;
@@ -305,6 +307,7 @@ class Dashboard extends \Filament\Pages\Page
         $this->marketingUrl = $this->safeRoute('filament.app.pages.manage-marketing', ['tenant' => $tenantSlug]);
         $this->billingUrl = $this->safeRoute('filament.app.pages.manage-billing', ['tenant' => $tenantSlug]);
         $this->operationsUrl = $this->safeResourceUrl(OperationalPlaybookTaskResource::class, ['tenant' => $tenantSlug]);
+        $this->growthUrl = $this->safeRoute('filament.app.pages.growth-center', ['tenant' => $tenantSlug]);
         $this->loadPlaybookExecutionState($tenant);
 
         $this->configureExperience($tenant);

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Filament;
 
 use App\Domain\Identity\Enums\UserRole;
+use App\Filament\App\Pages\GrowthCenter;
 use App\Filament\App\Pages\ManageBilling;
 use App\Filament\App\Pages\ManageMarketing;
 use App\Filament\App\Pages\Settings;
+use App\Models\Appointment;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\MenuSectionResource;
 use App\Filament\App\Resources\OperationalPlaybookTaskResource;
@@ -15,9 +17,14 @@ use App\Filament\App\Resources\ServiceResource;
 use App\Filament\App\Resources\TenantUserResource;
 use App\Models\Category;
 use App\Models\City;
+use App\Models\Follow;
+use App\Models\Lead;
+use App\Models\LoyaltyProgram;
 use App\Models\OperationalPlaybookTask;
+use App\Models\Order;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
+use App\Models\TenantAnalytic;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -259,6 +266,170 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Suscripción activa')
             ->assertSee('Pagos registrados');
+    }
+
+    public function test_growth_center_connects_crm_analytics_and_automations_for_retail(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner(
+            isPro: true,
+            slug: 'flagship-mobile-growth',
+            businessType: 'retail',
+            tenantState: [
+                'name' => 'Flagship Mobile',
+                'whatsapp_number' => '98765432',
+            ],
+            categoryState: [
+                'name' => 'Tecnologia',
+                'slug' => 'tecnologia',
+            ],
+        );
+
+        Lead::query()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Ana',
+            'email' => 'ana@example.com',
+            'phone' => '9999-1111',
+            'source' => 'whatsapp_click',
+            'status' => 'new',
+        ]);
+
+        Lead::query()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Luis',
+            'email' => 'luis@example.com',
+            'phone' => '9999-2222',
+            'source' => 'catalog',
+            'status' => 'closed',
+        ]);
+
+        Order::factory()
+            ->forTenant($tenant)
+            ->delivered()
+            ->create([
+                'user_id' => $user->getKey(),
+                'customer_name' => 'Ana',
+                'customer_email' => 'ana@example.com',
+                'customer_phone' => '9999-1111',
+                'total' => 450.00,
+                'subtotal' => 450.00,
+                'discount' => 0.00,
+                'delivery_fee' => 0.00,
+                'source' => 'whatsapp',
+                'created_at' => now()->subDays(3),
+            ]);
+
+        Order::factory()
+            ->forTenant($tenant)
+            ->delivered()
+            ->create([
+                'user_id' => $user->getKey(),
+                'customer_name' => 'Ana',
+                'customer_email' => 'ana@example.com',
+                'customer_phone' => '9999-1111',
+                'total' => 390.00,
+                'subtotal' => 390.00,
+                'discount' => 0.00,
+                'delivery_fee' => 0.00,
+                'source' => 'web',
+                'created_at' => now()->subDays(9),
+            ]);
+
+        $follower = User::factory()->create();
+
+        Follow::query()->forceCreate([
+            'tenant_id' => $tenant->getKey(),
+            'user_id' => $follower->getKey(),
+        ]);
+
+        LoyaltyProgram::query()->forceCreate([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Club Flagship',
+            'earn_ratio' => 10,
+            'redemption_ratio' => 100,
+            'expiry_days' => 365,
+            'is_active' => true,
+        ]);
+
+        TenantAnalytic::query()->forceCreate([
+            'tenant_id' => $tenant->getKey(),
+            'date' => today(),
+            'unique_visitors' => 40,
+            'views' => 68,
+        ]);
+
+        $this->actingAs($user);
+        $this->setAppPanelTenantContext($tenant);
+
+        $this->get(route('filament.app.pages.growth-center', ['tenant' => $tenant->slug], false))
+            ->assertOk()
+            ->assertSee('Centro de crecimiento')
+            ->assertSee('CRM y upsell para celulares premium')
+            ->assertSee('Pipeline y conversion')
+            ->assertSee('Automatizaciones externas')
+            ->assertSee('Seguimiento de cotizaciones')
+            ->assertSee('Fidelidad para clientes frecuentes')
+            ->assertSee('L. 840.00')
+            ->assertSee('Clientes que vuelven');
+    }
+
+    public function test_growth_center_adapts_to_dental_clinic_playbook(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner(
+            isPro: true,
+            slug: 'clinica-sonrisa-growth',
+            businessType: 'service',
+            tenantState: [
+                'name' => 'Clinica Sonrisa Dental',
+                'whatsapp_number' => '99998888',
+            ],
+            categoryState: [
+                'name' => 'Salud',
+                'slug' => 'salud',
+            ],
+        );
+
+        Lead::query()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Paola',
+            'email' => 'paola@example.com',
+            'phone' => '9888-1212',
+            'source' => 'website',
+            'status' => 'contacted',
+        ]);
+
+        Appointment::withoutEvents(function () use ($tenant): void {
+            Appointment::factory()
+                ->confirmed()
+                ->create([
+                    'tenant_id' => $tenant->getKey(),
+                    'customer_name' => 'Paola',
+                    'customer_email' => 'paola@example.com',
+                    'customer_phone' => '9888-1212',
+                    'customer_notes' => 'Valoracion inicial',
+                    'scheduled_at' => now()->addDays(3),
+                    'end_at' => now()->addDays(3)->addHour(),
+                    'created_at' => now()->subDay(),
+                    'updated_at' => now()->subDay(),
+                ]);
+        });
+
+        TenantAnalytic::query()->forceCreate([
+            'tenant_id' => $tenant->getKey(),
+            'date' => today(),
+            'unique_visitors' => 18,
+            'views' => 27,
+        ]);
+
+        $this->actingAs($user);
+        $this->setAppPanelTenantContext($tenant);
+
+        $this->get(route('filament.app.pages.growth-center', ['tenant' => $tenant->slug], false))
+            ->assertOk()
+            ->assertSee('CRM y continuidad para clinica dental')
+            ->assertSee('WhatsApp de seguimiento clinico')
+            ->assertSee('Recordatorio pre-cita')
+            ->assertSee('Pacientes para control e higiene')
+            ->assertSee('Agenda lista');
     }
 
     public function test_owner_can_save_business_settings_from_filament_page(): void
