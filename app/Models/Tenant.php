@@ -686,6 +686,11 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->hasMany(CustomerProfile::class);
     }
 
+    public function customerTouchpoints(): HasMany
+    {
+        return $this->hasMany(CustomerTouchpoint::class);
+    }
+
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);

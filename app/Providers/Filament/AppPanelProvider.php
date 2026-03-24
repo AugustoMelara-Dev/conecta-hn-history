@@ -94,6 +94,7 @@ class AppPanelProvider extends PanelProvider
                 \App\Filament\App\Resources\MenuSectionResource::class,
                 \App\Filament\App\Resources\OrderResource::class,
                 \App\Filament\App\Resources\CustomerProfileResource::class,
+                \App\Filament\App\Resources\CustomerTouchpointResource::class,
                 \App\Filament\App\Resources\ServiceResource::class,
                 \App\Filament\App\Resources\AppointmentResource::class,
                 \App\Filament\App\Resources\ServiceProviderResource::class,

@@ -103,7 +103,8 @@ final class BusinessRecordPageSmokeTest extends TestCase
             ->assertOk()
             ->assertSee('Operacion comercial')
             ->assertSee('Historial de pedidos')
-            ->assertSee('Historial de prospectos');
+            ->assertSee('Historial de prospectos')
+            ->assertSee('Historial de contactos');
 
         $this->get(route('filament.app.resources.campaigns.edit', ['tenant' => $tenant->slug, 'record' => $campaign], false))
             ->assertOk()

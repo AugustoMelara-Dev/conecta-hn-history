@@ -10,6 +10,7 @@ use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\CustomerProfileResource;
+use App\Filament\App\Resources\CustomerTouchpointResource;
 use App\Filament\App\Resources\CouponResource;
 use App\Filament\App\Resources\FollowerResource;
 use App\Filament\App\Resources\Leads\LeadResource;
@@ -19,6 +20,7 @@ use App\Filament\App\Resources\OrderResource;
 use App\Models\Appointment;
 use App\Models\Campaign;
 use App\Models\CustomerProfile;
+use App\Models\CustomerTouchpoint;
 use App\Models\Follow;
 use App\Models\Lead;
 use App\Models\LoyaltyProgram;
@@ -114,6 +116,8 @@ class GrowthCenter extends Page
 
     public int $crmProfilesCount = 0;
 
+    public int $touchpoints30d = 0;
+
     public int $campaignsSent30d = 0;
 
     public int $openPlaybooksCount = 0;
@@ -129,6 +133,8 @@ class GrowthCenter extends Page
     public string $leadsUrl = '#';
 
     public string $customersUrl = '#';
+
+    public string $contactsUrl = '#';
 
     public string $marketingUrl = '#';
 
@@ -188,6 +194,7 @@ class GrowthCenter extends Page
         $this->growthUrl = $this->safeRoute('filament.app.pages.growth-center', ['tenant' => $tenantSlug]);
         $this->leadsUrl = $this->safeResourceUrl(LeadResource::class, ['tenant' => $tenantSlug]);
         $this->customersUrl = $this->safeResourceUrl(CustomerProfileResource::class, ['tenant' => $tenantSlug]);
+        $this->contactsUrl = $this->safeResourceUrl(CustomerTouchpointResource::class, ['tenant' => $tenantSlug]);
         $this->marketingUrl = $this->safeRoute('filament.app.pages.manage-marketing', ['tenant' => $tenantSlug]);
         $this->ordersUrl = $this->safeResourceUrl(OrderResource::class, ['tenant' => $tenantSlug]);
         $this->appointmentsUrl = $this->safeResourceUrl(AppointmentResource::class, ['tenant' => $tenantSlug]);
@@ -368,6 +375,17 @@ class GrowthCenter extends Page
         }
 
         try {
+            $this->touchpoints30d = CustomerTouchpoint::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('created_at', '>=', $thirtyDaysAgo)
+                ->where('status', CustomerTouchpoint::STATUS_SENT)
+                ->count();
+        } catch (\Throwable) {
+            // Touchpoints are optional until CRM automation starts.
+        }
+
+        try {
             $this->hasLoyaltyProgram = LoyaltyProgram::query()
                 ->withoutGlobalScopes()
                 ->where('tenant_id', $tenantId)
@@ -434,6 +452,7 @@ class GrowthCenter extends Page
             $this->metric('Seguidores', (string) $this->followersCount, $this->followersCount > 0 ? 'Tu audiencia ya existe y se puede nutrir.' : 'Todavia no hay audiencia guardada en PRO.'),
             $this->metric('Waitlist activa', (string) $this->waitlistCount, $this->waitlistCount > 0 ? 'Hay demanda esperando huecos u oferta.' : 'No hay espera activa en este momento.'),
             $this->metric('Campanas 30 dias', (string) $this->campaignsSent30d, $this->campaignsSent30d > 0 ? 'Ya tienes empuje comercial reciente.' : 'Aun no has activado una campana reciente.'),
+            $this->metric('Contactos enviados', (string) $this->touchpoints30d, $this->touchpoints30d > 0 ? 'Tu CRM ya esta ejecutando seguimiento auditable.' : 'Todavia no has movido seguimientos desde el CRM.'),
             $this->metric('Reactivar', (string) $this->reactivationPoolCount, $this->reactivationPoolCount > 0 ? 'Clientes con senales para volver a tocar.' : 'La base reciente no muestra fuga grande todavia.'),
         ];
     }
@@ -442,6 +461,7 @@ class GrowthCenter extends Page
     {
         $actions = [
             $this->action('Abrir clientes', 'Trabaja fichas, notas, segmentos y reactivacion desde un CRM unificado.', $this->customersUrl),
+            $this->action('Ver contactos', 'Audita correos, seguimientos y entregas del negocio.', $this->contactsUrl),
             $this->action('Abrir prospectos', 'Ordena pipeline, fuentes y estado de cierre.', $this->leadsUrl),
             $this->action('Ir a marketing', 'Ajusta CTA, QR, WhatsApp y campanas.', $this->marketingUrl),
             $this->action('Ver centro operativo', 'Convierte automatizaciones en cola con SLA.', $this->operationsUrl),
@@ -457,7 +477,7 @@ class GrowthCenter extends Page
             $actions[] = $this->action('Audiencia y fidelidad', 'Mueve seguidores, loyalty y reactivacion con mas criterio.', $this->hasLoyaltyProgram ? $this->loyaltyUrl : $this->followersUrl);
         }
 
-        $this->growthActions = array_slice($actions, 0, 5);
+        $this->growthActions = array_slice($actions, 0, 6);
     }
 
     private function buildPriorityQueue(): void

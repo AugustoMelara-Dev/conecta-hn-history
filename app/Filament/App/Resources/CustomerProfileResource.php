@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Filament\App\Resources\CustomerProfileResource\Pages;
 use App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
 use App\Models\CustomerProfile;
+use App\Models\CustomerTouchpoint;
 use App\Models\Tenant;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Components\TagsInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -303,6 +307,84 @@ class CustomerProfileResource extends Resource
                     ->query(fn ($query) => $query->where('reactivation_score', '>=', 65)),
             ])
             ->actions([
+                Action::make('email_follow_up')
+                    ->label('Email')
+                    ->icon('heroicon-o-envelope')
+                    ->color('info')
+                    ->modalHeading('Enviar seguimiento por email')
+                    ->modalDescription('Esto crea una entrega auditada en el CRM y actualiza el ultimo contacto del cliente.')
+                    ->fillForm(fn (CustomerProfile $record): array => [
+                        'automation_key' => 'manual_follow_up',
+                        ...app(CustomerAutomationManager::class)->preview($record, 'manual_follow_up'),
+                    ])
+                    ->form([
+                        Forms\Components\Hidden::make('automation_key'),
+                        Forms\Components\TextInput::make('subject')
+                            ->label('Asunto')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\Textarea::make('body')
+                            ->label('Mensaje')
+                            ->rows(8)
+                            ->required(),
+                    ])
+                    ->visible(fn (CustomerProfile $record): bool => filled($record->email))
+                    ->action(function (CustomerProfile $record, array $data): void {
+                        $touchpoint = app(CustomerAutomationManager::class)->sendEmailTouchpoint(
+                            profile: $record,
+                            subject: (string) $data['subject'],
+                            body: (string) $data['body'],
+                            automationKey: (string) ($data['automation_key'] ?? 'manual_follow_up'),
+                            actorUserId: auth()->id(),
+                        );
+
+                        Notification::make()
+                            ->title(match ($touchpoint->status) {
+                                CustomerTouchpoint::STATUS_SENT => 'Seguimiento enviado',
+                                CustomerTouchpoint::STATUS_SKIPPED => 'Contacto omitido',
+                                CustomerTouchpoint::STATUS_FAILED => 'No se pudo enviar',
+                                default => 'Contacto registrado',
+                            })
+                            ->color(match ($touchpoint->status) {
+                                CustomerTouchpoint::STATUS_SENT => 'success',
+                                CustomerTouchpoint::STATUS_SKIPPED => 'warning',
+                                CustomerTouchpoint::STATUS_FAILED => 'danger',
+                                default => 'info',
+                            })
+                            ->body((string) ($touchpoint->last_error ?: 'El CRM ya guardo este movimiento en el historial del cliente.'))
+                            ->send();
+                    }),
+                Action::make('reactivation_email')
+                    ->label('Reactivar')
+                    ->icon('heroicon-o-bolt')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Lanzar reactivacion por email')
+                    ->modalDescription('Usa la plantilla sugerida por rubro y respeta opt-in antes de enviar.')
+                    ->visible(fn (CustomerProfile $record): bool => (int) $record->reactivation_score >= 65 && filled($record->email))
+                    ->action(function (CustomerProfile $record): void {
+                        $touchpoint = app(CustomerAutomationManager::class)->sendSuggestedAutomation(
+                            profile: $record,
+                            automationKey: 'reactivation_email',
+                            actorUserId: auth()->id(),
+                        );
+
+                        Notification::make()
+                            ->title(match ($touchpoint->status) {
+                                CustomerTouchpoint::STATUS_SENT => 'Reactivacion enviada',
+                                CustomerTouchpoint::STATUS_SKIPPED => 'Cliente no elegible',
+                                CustomerTouchpoint::STATUS_FAILED => 'Fallo la reactivacion',
+                                default => 'Reactivacion registrada',
+                            })
+                            ->color(match ($touchpoint->status) {
+                                CustomerTouchpoint::STATUS_SENT => 'success',
+                                CustomerTouchpoint::STATUS_SKIPPED => 'warning',
+                                CustomerTouchpoint::STATUS_FAILED => 'danger',
+                                default => 'info',
+                            })
+                            ->body((string) ($touchpoint->last_error ?: 'El mensaje ya quedo auditado en el CRM.'))
+                            ->send();
+                    }),
                 EditAction::make()
                     ->label('Abrir ficha')
                     ->icon('heroicon-o-arrow-right'),
@@ -321,6 +403,7 @@ class CustomerProfileResource extends Resource
             RelationManagers\OrdersRelationManager::class,
             RelationManagers\AppointmentsRelationManager::class,
             RelationManagers\LeadsRelationManager::class,
+            RelationManagers\TouchpointsRelationManager::class,
         ];
     }
 

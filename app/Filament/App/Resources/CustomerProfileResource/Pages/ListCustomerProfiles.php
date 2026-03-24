@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\CustomerProfileResource\Pages;
 
+use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Filament\App\Resources\CustomerProfileResource;
+use App\Filament\App\Resources\CustomerTouchpointResource;
 use App\Filament\App\Resources\Pages\ListTenantRecords;
 use App\Models\Appointment;
 use App\Models\CustomerProfile;
@@ -61,6 +63,43 @@ class ListCustomerProfiles extends ListTenantRecords
                         ->title('CRM actualizado')
                         ->body('Pedidos, citas y prospectos ya quedaron consolidados en fichas de cliente.')
                         ->send();
+                }),
+            Action::make('reactivationBatch')
+                ->label('Lanzar reactivacion')
+                ->icon('heroicon-o-bolt')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Lanzar lote de reactivacion')
+                ->modalDescription('Envias correos de reactivacion al pool mas caliente del CRM y cada entrega queda auditada.')
+                ->action(function (): void {
+                    $tenant = Filament::getTenant();
+
+                    if (! $tenant instanceof Tenant) {
+                        return;
+                    }
+
+                    $result = app(CustomerAutomationManager::class)->runSuggestedAutomationBatch(
+                        tenant: $tenant,
+                        automationKey: 'reactivation_email',
+                        actorUserId: auth()->id(),
+                        limit: 25,
+                    );
+
+                    Notification::make()
+                        ->success()
+                        ->title('Lote procesado')
+                        ->body("Procesados: {$result['processed']} | enviados: {$result['sent']} | omitidos: {$result['skipped']} | fallidos: {$result['failed']}.")
+                        ->send();
+                }),
+            Action::make('touchpoints')
+                ->label('Ver contactos')
+                ->icon('heroicon-o-envelope')
+                ->url(function (): string {
+                    $tenant = Filament::getTenant();
+
+                    return $tenant instanceof Tenant
+                        ? CustomerTouchpointResource::getUrl('index', ['tenant' => $tenant->slug])
+                        : '#';
                 }),
             Action::make('growthCenter')
                 ->label('Ir a crecimiento')
