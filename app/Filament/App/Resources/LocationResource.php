@@ -58,7 +58,7 @@ class LocationResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Configuracion';
+        return 'Configuración';
     }
 
     public static function getNavigationSort(): ?int
@@ -122,7 +122,7 @@ class LocationResource extends Resource
 
                         Toggle::make('is_primary')
                             ->label('Sucursal primaria')
-                            ->helperText('Al guardar, esta sucursal se convertira en la primaria y las demas se desmarcaran.'),
+                            ->helperText('Al guardar, esta sucursal se convertirá en la primaria y las demás se desmarcarán.'),
                     ]),
             ]);
     }
@@ -190,8 +190,8 @@ class LocationResource extends Resource
                     ->visible(fn (Location $record): bool => ! $record->is_primary),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Todavia no has creado sucursales',
-                'description' => 'Crea y organiza las sedes desde donde operas pedidos, pickup y atencion.',
+                'heading' => 'Todavía no has creado sucursales',
+                'description' => 'Crea y organiza las sedes desde donde operas pedidos, pickup y atención.',
                 'buttonLabel' => 'Crear sucursal',
                 'buttonUrl' => static::getUrl('create'),
             ]));

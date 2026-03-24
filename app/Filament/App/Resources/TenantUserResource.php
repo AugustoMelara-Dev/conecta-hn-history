@@ -8,6 +8,8 @@ use App\Domain\Access\Enums\Role;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Shared\PasswordHasherInterface;
 use App\Domain\TenantGovernance\Enums\Capability;
+use App\Domain\TenantGovernance\Services\BusinessOperationsBlueprint;
+use App\Domain\TenantGovernance\Services\BusinessRolePresetCatalog;
 use App\Filament\App\Resources\TenantUserResource\Pages;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
@@ -21,6 +23,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -37,10 +41,19 @@ class TenantUserResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return Gate::allows('viewAny', TenantMembership::class);
+        $tenant = static::getTenantRecord();
+
+        return $tenant instanceof Tenant
+            && $tenant->hasCapability(Capability::STAFF_BASIC)
+            && Gate::allows('viewAny', TenantMembership::class);
     }
 
     public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function canAccess(): bool
     {
         return static::canViewAny();
     }
@@ -74,7 +87,7 @@ class TenantUserResource extends Resource
     {
         return $schema
             ->schema([
-                Section::make('Informacion del Miembro')
+                Section::make('Informacion del miembro')
                     ->icon('heroicon-o-user')
                     ->columns(2)
                     ->schema([
@@ -108,7 +121,7 @@ class TenantUserResource extends Resource
                                     ->password()
                                     ->required()
                                     ->minLength(8)
-                                    ->helperText('Se almacenara de forma segura y el usuario podra cambiarla luego.'),
+                                    ->helperText('Se guarda de forma segura y la persona podra cambiarla luego.'),
                             ])
                             ->createOptionUsing(function (array $data): string {
                                 $passwordHasher = app(PasswordHasherInterface::class);
@@ -124,13 +137,14 @@ class TenantUserResource extends Resource
                             })
                             ->createOptionAction(function (Action $action): Action {
                                 return $action
-                                    ->modalHeading('Crear Nuevo Usuario')
+                                    ->modalHeading('Crear nuevo usuario')
                                     ->modalWidth('md');
                             })
                             ->disabled(fn (?TenantMembership $record): bool => $record !== null)
                             ->columnSpan(1),
+
                         Select::make('role')
-                            ->label('Rol')
+                            ->label('Rol base')
                             ->options(static::getRoleOptions())
                             ->default(Role::OPERATOR->value)
                             ->required()
@@ -138,8 +152,42 @@ class TenantUserResource extends Resource
                             ->helperText(static::getRoleHelperText())
                             ->disabled(fn (?TenantMembership $record): bool => $record?->isOwner() ?? false)
                             ->columnSpan(1),
+
+                        Select::make('preset_key')
+                            ->label('Perfil operativo')
+                            ->options(static::getPresetOptions())
+                            ->placeholder('Usar solo el rol base')
+                            ->native(false)
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->helperText(static::getPresetHelperText())
+                            ->afterStateUpdated(function (?string $state, Set $set): void {
+                                $tenant = static::getTenantRecord();
+
+                                if (! $tenant instanceof Tenant || ! is_string($state) || $state === '') {
+                                    return;
+                                }
+
+                                $preset = app(BusinessRolePresetCatalog::class)->findForTenant($tenant, $state);
+
+                                if (is_array($preset) && isset($preset['role']) && is_string($preset['role'])) {
+                                    $set('role', $preset['role']);
+                                }
+                            })
+                            ->columnSpan(1),
+
+                        Placeholder::make('preset_description')
+                            ->label('Resumen del perfil')
+                            ->content(function (Get $get): string {
+                                $presetKey = $get('preset_key');
+
+                                return static::getPresetDescription(is_string($presetKey) ? $presetKey : null);
+                            })
+                            ->columnSpan(1),
                     ]),
-                Section::make('Informacion de Acceso')
+
+                Section::make('Informacion de acceso')
                     ->icon('heroicon-o-information-circle')
                     ->visible(fn (?TenantMembership $record): bool => $record !== null)
                     ->columns(2)
@@ -170,8 +218,8 @@ class TenantUserResource extends Resource
                                 return 'Pendiente';
                             }),
                         Placeholder::make('preset_guidance')
-                            ->label('Presets disponibles')
-                            ->content(static::getActivePresetSummary()),
+                            ->label('Presets y equipo sugerido')
+                            ->content(static::getRoleHelperText()),
                     ]),
             ]);
     }
@@ -206,6 +254,11 @@ class TenantUserResource extends Resource
                     ->badge()
                     ->state(fn (TenantMembership $record): string => static::getRoleLabel($record->role))
                     ->color(fn (TenantMembership $record): string => static::getRoleColor($record->role)),
+                Tables\Columns\TextColumn::make('preset_key')
+                    ->label('Perfil')
+                    ->badge()
+                    ->color('info')
+                    ->state(fn (TenantMembership $record): string => static::getPresetLabel($record->getAttribute('preset_key'))),
                 Tables\Columns\TextColumn::make('accepted_at')
                     ->label('Estado')
                     ->badge()
@@ -219,6 +272,9 @@ class TenantUserResource extends Resource
                 Tables\Filters\SelectFilter::make('role')
                     ->label('Rol')
                     ->options(static::getRoleOptions()),
+                Tables\Filters\SelectFilter::make('preset_key')
+                    ->label('Perfil operativo')
+                    ->options(static::getPresetOptions()),
             ])
             ->actions([
                 EditAction::make()->iconButton(),
@@ -228,7 +284,7 @@ class TenantUserResource extends Resource
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'heading' => 'Todavia no has agregado miembros',
-                'description' => 'Agrega personas y asignales un rol claro dentro del negocio.',
+                'description' => static::getEmptyStateDescription(),
                 'buttonLabel' => 'Agregar miembro',
                 'buttonUrl' => static::getUrl('create'),
             ]));
@@ -286,12 +342,26 @@ class TenantUserResource extends Resource
     public static function getRoleHelperText(): string
     {
         $summary = static::getActivePresetSummary();
+        $teamSummary = static::getVerticalTeamSummary();
 
-        if ($summary === 'Sin presets adicionales para este negocio.') {
-            return 'Asigna uno de los roles base. Los presets verticales se apoyaran sobre estos mismos cimientos.';
+        if ($summary === 'Sin presets adicionales para este negocio.' && $teamSummary === 'Sin recomendacion vertical todavia.') {
+            return 'Asigna un rol base y, si aplica, un perfil operativo por rubro.';
         }
 
-        return $summary;
+        $combined = collect([$summary, $teamSummary])
+            ->filter(static fn (string $item): bool => ! in_array($item, ['Sin presets adicionales para este negocio.', 'Sin recomendacion vertical todavia.'], true))
+            ->implode(' ');
+
+        return $combined !== '' ? $combined : 'Asigna un rol base y, si aplica, un perfil operativo por rubro.';
+    }
+
+    public static function getPresetHelperText(): string
+    {
+        if (static::getPresetOptions() === []) {
+            return 'Este rubro todavia no tiene perfiles operativos extra.';
+        }
+
+        return 'Los perfiles operativos agregan permisos finos para que cada vertical trabaje con claridad.';
     }
 
     public static function getActivePresetSummary(): string
@@ -302,23 +372,12 @@ class TenantUserResource extends Resource
             return 'Sin contexto de tenant.';
         }
 
-        $presets = collect(config('rbac.presets', []))
-            ->filter(function (array $preset) use ($tenant): bool {
-                $requiredCapability = $preset['requires_capability'] ?? null;
-
-                if (! is_string($requiredCapability)) {
-                    return false;
-                }
-
-                $capability = Capability::tryFrom($requiredCapability);
-
-                return $capability !== null && $tenant->hasCapability($capability);
-            })
-            ->map(function (array $preset, string $key): string {
+        $presets = collect(static::getPresetCatalog()->forTenant($tenant))
+            ->map(function (array $preset): string {
                 $role = Role::tryFrom((string) ($preset['role'] ?? ''));
                 $roleLabel = $role ? static::getRoleLabel($role) : 'Rol base';
 
-                return Str::of($key)->replace('_', ' ')->title()->value().' -> '.$roleLabel;
+                return ((string) ($preset['label'] ?? 'Perfil')).' -> '.$roleLabel;
             })
             ->values()
             ->all();
@@ -327,7 +386,121 @@ class TenantUserResource extends Resource
             return 'Sin presets adicionales para este negocio.';
         }
 
-        return 'Sugerencias para este negocio: '.implode(', ', $presets).'.';
+        return 'Perfiles listos para este negocio: '.implode(', ', $presets).'.';
+    }
+
+    public static function getVerticalTeamSummary(): string
+    {
+        $tenant = static::getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            return 'Sin contexto de tenant.';
+        }
+
+        $blueprint = app(BusinessOperationsBlueprint::class)->forTenant($tenant);
+        $teamPlaybook = collect((array) ($blueprint['team_playbook'] ?? []))
+            ->map(function (array $item): string {
+                $title = (string) ($item['title'] ?? '');
+                $role = (string) ($item['role'] ?? '');
+
+                if ($title === '') {
+                    return '';
+                }
+
+                return $title.' -> '.static::getRoleLabel($role);
+            })
+            ->filter(static fn (string $item): bool => $item !== '')
+            ->values()
+            ->all();
+
+        if ($teamPlaybook === []) {
+            return 'Sin recomendacion vertical todavia.';
+        }
+
+        return 'Equipo sugerido por rubro: '.implode(', ', $teamPlaybook).'.';
+    }
+
+    public static function getEmptyStateDescription(): string
+    {
+        $teamSummary = static::getVerticalTeamSummary();
+
+        if (in_array($teamSummary, ['Sin contexto de tenant.', 'Sin recomendacion vertical todavia.'], true)) {
+            return 'Agrega personas y dales un rol claro dentro del negocio.';
+        }
+
+        return 'Agrega personas y dales un rol claro dentro del negocio. '.$teamSummary;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function normalizeMembershipData(Tenant $tenant, array $data): array
+    {
+        $presetKey = isset($data['preset_key']) && is_string($data['preset_key']) && $data['preset_key'] !== ''
+            ? $data['preset_key']
+            : null;
+        $preset = static::getPresetCatalog()->findForTenant($tenant, $presetKey);
+        $role = (string) ($data['role'] ?? Role::OPERATOR->value);
+
+        if (is_array($preset) && isset($preset['role']) && is_string($preset['role'])) {
+            $role = $preset['role'];
+        }
+
+        return array_merge($data, [
+            'role' => $role,
+            'preset_key' => $presetKey,
+            'granted_permissions' => static::getPresetCatalog()->permissionsForTenantPreset($tenant, $presetKey),
+        ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected static function getPresetOptions(): array
+    {
+        $tenant = static::getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
+        return collect(static::getPresetCatalog()->forTenant($tenant))
+            ->mapWithKeys(static fn (array $preset, string $key): array => [$key => (string) ($preset['label'] ?? $key)])
+            ->all();
+    }
+
+    protected static function getPresetLabel(?string $presetKey): string
+    {
+        if (! is_string($presetKey) || trim($presetKey) === '') {
+            return 'Sin preset';
+        }
+
+        $tenant = static::getTenantRecord();
+        $preset = $tenant instanceof Tenant
+            ? static::getPresetCatalog()->findForTenant($tenant, $presetKey)
+            : null;
+
+        return (string) ($preset['label'] ?? Str::of($presetKey)->replace('_', ' ')->title()->value());
+    }
+
+    protected static function getPresetDescription(?string $presetKey): string
+    {
+        if (! is_string($presetKey) || trim($presetKey) === '') {
+            return 'Usa el rol base si todavia no necesitas permisos finos por vertical.';
+        }
+
+        $tenant = static::getTenantRecord();
+        $preset = $tenant instanceof Tenant
+            ? static::getPresetCatalog()->findForTenant($tenant, $presetKey)
+            : null;
+
+        return (string) ($preset['description'] ?? 'Perfil operativo recomendado para este rubro.');
+    }
+
+    protected static function getPresetCatalog(): BusinessRolePresetCatalog
+    {
+        return app(BusinessRolePresetCatalog::class);
     }
 
     protected static function getTenantRecord(): ?Tenant

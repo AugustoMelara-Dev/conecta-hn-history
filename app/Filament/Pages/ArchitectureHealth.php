@@ -15,7 +15,7 @@ class ArchitectureHealth extends Page
 
     protected static ?string $navigationLabel = 'Salud de arquitectura';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configuracion';
+    protected static string|\UnitEnum|null $navigationGroup = 'Configuración';
 
     protected static ?int $navigationSort = 100;
 

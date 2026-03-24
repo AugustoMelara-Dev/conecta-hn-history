@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Infrastructure\Listeners\Sales;
 
 use App\Application\Shared\DTOs\Mail\UserMailData;
+use App\Domain\Contracts\AdminNotifier;
 use App\Domain\Sales\Events\CartAbandoned;
+use App\Domain\TenantGovernance\Services\OperationalPlaybookTaskManager;
 use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use App\Mail\AbandonedCartOfferMail;
 use App\Models\Coupon;
@@ -22,6 +24,11 @@ final class SendAbandonedCartOfferListener implements ShouldQueue
     use InteractsWithQueue;
 
     public int $tries = 3;
+
+    public function __construct(
+        private readonly AdminNotifier $notifier,
+        private readonly OperationalPlaybookTaskManager $playbookTaskManager,
+    ) {}
 
     public function middleware(): array
     {
@@ -97,6 +104,20 @@ final class SendAbandonedCartOfferListener implements ShouldQueue
                 'user_id' => $user->id,
                 'coupon' => $couponCode,
             ]);
+
+            $this->playbookTaskManager->syncForTrigger($tenant, 'cart_recovery', [
+                'related_type' => 'cart_session',
+                'related_id' => (string) $event->sessionId,
+                'customer_name' => (string) $user->name,
+                'coupon_code' => $couponCode,
+            ]);
+
+            $this->notifier->notifyRecoveryOfferReady(
+                tenant: $tenant,
+                customerName: (string) $user->name,
+                couponCode: $couponCode,
+                subtotal: $event->subtotal,
+            );
         } catch (\Throwable $e) {
             Log::error('SendAbandonedCartOfferListener: Mail delivery failed', [
                 'error' => $e->getMessage(),

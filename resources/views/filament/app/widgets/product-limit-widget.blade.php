@@ -1,6 +1,4 @@
 <x-filament-widgets::widget>
-    @include('filament.components.panel-critical-styles')
-
     @if ($this->isPro)
         <div class="biz-card-accent">
             <div class="biz-grid-two">
@@ -9,9 +7,9 @@
 
                     <div>
                         <p class="biz-kicker">Capacidad</p>
-                        <h3 class="biz-heading">Catalogo sin limite operativo</h3>
+                        <h3 class="biz-heading">Catálogo sin límite operativo</h3>
                         <p class="biz-copy">
-                            Tu negocio ya puede seguir creciendo sin toparse con el limite del plan Base.
+                            Tu negocio ya puede seguir creciendo sin toparse con el límite del plan Base.
                         </p>
                     </div>
                 </div>
@@ -31,7 +29,7 @@
                         </div>
 
                         <div class="biz-button-row">
-                            <a href="{{ $this->billingUrl }}" class="biz-button-secondary">Gestionar suscripcion</a>
+                            <a href="{{ $this->billingUrl }}" class="biz-button-secondary">Gestionar suscripción</a>
                         </div>
                     </div>
                 </div>
@@ -45,7 +43,7 @@
 
                     <div>
                         <p class="biz-kicker">Capacidad actual</p>
-                        <h3 class="biz-heading">Uso del catalogo</h3>
+                        <h3 class="biz-heading">Uso del catálogo</h3>
                         <p class="biz-copy">{{ $this->getStatusMessage() }}</p>
                     </div>
 

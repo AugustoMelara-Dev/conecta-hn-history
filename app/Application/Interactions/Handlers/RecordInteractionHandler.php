@@ -12,6 +12,9 @@ use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Analytics\Repositories\InteractionRepositoryInterface;
 use App\Domain\Sales\Repositories\LeadRepositoryInterface;
 use App\Domain\Shared\Contracts\AdminNotifierInterface;
+use App\Domain\TenantGovernance\Services\OperationalPlaybookTaskManager;
+use App\Models\Lead;
+use App\Models\Tenant;
 
 /**
  * RecordInteractionHandler - Pure Interaction Recording Orchestrator
@@ -34,6 +37,7 @@ final readonly class RecordInteractionHandler
         private InteractionRepositoryInterface $interactionRepository,
         private LeadRepositoryInterface $leadRepository,
         private AdminNotifierInterface $adminNotifier,
+        private OperationalPlaybookTaskManager $playbookTaskManager,
         private TransactionManagerInterface $transactionManager,
         private LoggerInterface $logger,
         private DataScrubberInterface $scrubber,
@@ -95,12 +99,24 @@ final readonly class RecordInteractionHandler
                     tenantId: $command->tenantId,
                     productId: $leadProductId,
                     source: $command->type,
+                    message: $this->resolveLeadMessage($command->metadata),
+                    sessionId: $command->visitorId !== '' ? $command->visitorId : null,
                 );
 
                 $this->logger->info('Lead created from interaction', [
                     'tenant_id' => $command->tenantId,
                     'lead_id' => $lead->id,
                 ]);
+
+                $tenant = Tenant::query()->find($command->tenantId);
+                $leadModel = Lead::query()->find($lead->id);
+
+                if ($tenant instanceof Tenant && $leadModel instanceof Lead) {
+                    $this->playbookTaskManager->syncForTrigger($tenant, 'lead_follow_up', [
+                        'related' => $leadModel,
+                        'customer_name' => (string) ($leadModel->name ?? 'este cliente'),
+                    ]);
+                }
 
                 $this->adminNotifier->notifyNewLead($lead);
             }
@@ -117,5 +133,17 @@ final readonly class RecordInteractionHandler
             'whatsapp_catalog_click',
             'whatsapp_product_click',
         ], true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     */
+    private function resolveLeadMessage(array $metadata): ?string
+    {
+        $message = $metadata['message'] ?? $metadata['notes'] ?? null;
+
+        return is_string($message) && $message !== ''
+            ? $message
+            : null;
     }
 }

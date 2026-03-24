@@ -22,13 +22,15 @@ interface LeadRepositoryInterface
      * @param  int|null  $productId  Related product ID, when available
      * @param  string  $source  Conversion source (whatsapp_click, etc.)
      * @param  string|null  $message  Initial message/context
+     * @param  string|null  $sessionId  Visitor/session identifier for attribution
      * @return LeadEntity Created lead domain entity
      */
     public function createFromInteraction(
         string $tenantId,
         ?int $productId,
         string $source,
-        ?string $message = null
+        ?string $message = null,
+        ?string $sessionId = null
     ): LeadEntity;
 
     /**

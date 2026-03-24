@@ -1,15 +1,13 @@
 <x-filament-panels::page>
-    @include('filament.components.panel-critical-styles')
-
     @if ($isPending)
         <div class="biz-card-warning">
             <div class="biz-stack">
-                <div class="biz-badge biz-badge-warning">Pago en revision</div>
+                <div class="biz-badge biz-badge-warning">Pago en revisión</div>
 
                 <div>
-                    <h1 class="biz-title">Tu pago esta en revision</h1>
+                    <h1 class="biz-title">Tu pago está en revisión</h1>
                     <p class="biz-copy">
-                        Ya recibimos tu comprobante. Cuando el equipo valide la transferencia, tu plan PRO quedara activo.
+                        Ya recibimos tu comprobante. Cuando el equipo valide la transferencia, tu plan PRO quedará activo.
                     </p>
                 </div>
 
@@ -26,7 +24,7 @@
                     </div>
                     <div class="biz-stat">
                         <p class="biz-stat-label">Siguiente paso</p>
-                        <p class="biz-stat-value" style="font-size: 1.4rem;">Revision manual</p>
+                        <p class="biz-stat-value" style="font-size: 1.4rem;">Revisión manual</p>
                     </div>
                 </div>
             </div>
@@ -38,9 +36,9 @@
                     <div class="biz-stack">
                         <div class="biz-badge biz-badge-success">Plan PRO activo</div>
                         <div>
-                            <h1 class="biz-title">Suscripcion activa</h1>
+                            <h1 class="biz-title">Suscripción activa</h1>
                             <p class="biz-copy">
-                                Tu negocio ya tiene habilitadas las funciones PRO. Desde aqui puedes revisar pagos y vigencia.
+                                Tu negocio ya tiene habilitadas las funciones PRO. Desde aquí puedes revisar pagos, vigencia y seguimiento de renovación.
                             </p>
                         </div>
                     </div>
@@ -55,7 +53,7 @@
                         <div class="biz-stat">
                             <p class="biz-stat-label">Vigencia</p>
                             <p class="biz-stat-value" style="font-size: 1.45rem;">{{ $expiresAt ?? 'Sin fecha' }}</p>
-                            <p class="biz-stat-copy">{{ $daysRemaining > 0 ? $daysRemaining . ' dias restantes' : 'Revisar renovacion' }}</p>
+                            <p class="biz-stat-copy">{{ $daysRemaining > 0 ? $daysRemaining . ' días restantes' : 'Revisar renovación' }}</p>
                         </div>
                     </div>
                 </div>
@@ -77,18 +75,24 @@
             <div class="biz-card">
                 <div class="biz-stack">
                     <div>
-                        <p class="biz-kicker">Activacion</p>
+                        <p class="biz-kicker">Activación</p>
                         <h1 class="biz-title">Activa tu plan PRO</h1>
                         <p class="biz-copy">
-                            Sigue el flujo para transferir, subir el comprobante y dejar tu negocio listo para revision.
+                            Sigue el flujo para transferir, subir el comprobante y dejar tu negocio listo para revisión.
                         </p>
                     </div>
 
                     <form wire:submit="submitPayment" class="biz-stack">
                         {{ $this->form }}
 
-                        <button type="submit" class="biz-button">
-                            Enviar pago a revision
+                        <button
+                            type="submit"
+                            class="biz-button"
+                            wire:loading.attr="disabled"
+                            wire:target="submitPayment"
+                        >
+                            <span wire:loading.remove wire:target="submitPayment">Enviar pago a revisión</span>
+                            <span wire:loading wire:target="submitPayment">Enviando comprobante...</span>
                         </button>
                     </form>
                 </div>
@@ -109,16 +113,16 @@
 
                     <div class="biz-list">
                         <div class="biz-stat">
-                            <p class="biz-action-title">Catalogo ampliado</p>
-                            <p class="biz-action-copy">Aprovecha mejor tu vitrina y organiza el contenido con mas flexibilidad.</p>
+                            <p class="biz-action-title">Catálogo ampliado</p>
+                            <p class="biz-action-copy">Aprovecha mejor tu vitrina y organiza el contenido con más flexibilidad.</p>
                         </div>
                         <div class="biz-stat">
                             <p class="biz-action-title">Herramientas de marketing</p>
-                            <p class="biz-action-copy">Genera QR, personaliza WhatsApp y prepara campanas cuando tu plan lo permita.</p>
+                            <p class="biz-action-copy">Genera QR, personaliza WhatsApp y prepara campañas cuando tu plan lo permita.</p>
                         </div>
                         <div class="biz-stat">
                             <p class="biz-action-title">Audiencia y seguimiento</p>
-                            <p class="biz-action-copy">Consulta mejor tu audiencia y centraliza la operacion del negocio.</p>
+                            <p class="biz-action-copy">Consulta mejor tu audiencia y centraliza la operación del negocio.</p>
                         </div>
                     </div>
                 </div>

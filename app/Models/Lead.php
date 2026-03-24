@@ -25,6 +25,7 @@ class Lead extends Model
         'phone',
         'product_id',
         'source',
+        'session_id',
         'message',
         'status',
     ];

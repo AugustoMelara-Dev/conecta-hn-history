@@ -28,16 +28,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 /**
- * ManageMarketing - Pack de Herramientas de Venta PRO
- *
- * Dashboard de Growth Tools exclusivo para suscriptores PRO:
- * - Configurador de WhatsApp con Live Preview
- * - Generador de Cartelería QR (PDF Engine)
- * - Gestor de Secciones de Menú (Sortable)
- *
- * Velvet Rope: FREE users ven un paywall atractivo.
- */
-/**
  * @property-read Schema $form
  */
 class ManageMarketing extends Page implements HasForms, HasTable
@@ -48,6 +38,22 @@ class ManageMarketing extends Page implements HasForms, HasTable
     protected string $view = 'filament.app.pages.manage-marketing';
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-megaphone';
+
+    public bool $isPro = false;
+
+    /** @var array<string, mixed>|null */
+    public ?array $data = [];
+
+    public string $messagePreview = '';
+
+    public string $qrCodeSvg = '';
+
+    public string $qrCodeDataUri = '';
+
+    public string $businessUrl = '';
+
+    /** @var array<int, string>|null */
+    private static ?array $tenantColumns = null;
 
     public static function getNavigationLabel(): string
     {
@@ -61,7 +67,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
     public function getTitle(): string
     {
-        return 'Herramientas de Venta';
+        return 'Herramientas de venta';
     }
 
     public static function getNavigationSort(): ?int
@@ -69,48 +75,6 @@ class ManageMarketing extends Page implements HasForms, HasTable
         return 1;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // ESTADO DEL COMPONENTE
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * ¿Es usuario PRO?
-     */
-    public bool $isPro = false;
-
-    /**
-     * Datos del formulario de WhatsApp
-     *
-     * @var array<string, mixed>|null
-     */
-    public ?array $data = [];
-
-    /**
-     * Preview del mensaje (reactivo)
-     */
-    public string $messagePreview = '';
-
-    /**
-     * QR Code SVG generado
-     */
-    public string $qrCodeSvg = '';
-
-    /**
-     * QR Code renderizado como Data URI para evitar estilos heredados en dark mode.
-     */
-    public string $qrCodeDataUri = '';
-
-    /**
-     * URL del negocio
-     */
-    public string $businessUrl = '';
-
-    /** @var array<int, string>|null */
-    private static ?array $tenantColumns = null;
-
-    /**
-     * Inicialización con verificación de plan
-     */
     public function mount(): void
     {
         $tenant = $this->getTenantRecord();
@@ -119,31 +83,22 @@ class ManageMarketing extends Page implements HasForms, HasTable
             return;
         }
 
-        // Verificar si es PRO (Velvet Rope)
         $this->isPro = (bool) $tenant->is_pro;
-
-        // URL del negocio
         $this->businessUrl = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
 
-        // Solo cargar datos si es PRO
-        if ($this->isPro) {
-            // Llenar formulario con datos actuales
-            $this->form->fill([
-                'whatsapp_number' => $tenant->whatsapp_number,
-                'whatsapp_message' => $tenant->whatsapp_message ?? 'Hola, me interesa el producto {producto} que vi en su página.',
-            ]);
-
-            // Generar QR Code
-            $this->generateQrCode();
-
-            // Generar preview inicial
-            $this->updateMessagePreview();
+        if (! $this->isPro) {
+            return;
         }
+
+        $this->form->fill([
+            'whatsapp_number' => $tenant->whatsapp_number,
+            'whatsapp_message' => $tenant->whatsapp_message ?? 'Hola, me interesa el producto {producto} que vi en su página.',
+        ]);
+
+        $this->generateQrCode();
+        $this->updateMessagePreview();
     }
 
-    /**
-     * Esquema del formulario de WhatsApp
-     */
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -163,10 +118,10 @@ class ManageMarketing extends Page implements HasForms, HasTable
                             ->required(),
 
                         Forms\Components\Textarea::make('whatsapp_message')
-                            ->label('Mensaje Predeterminado')
+                            ->label('Mensaje predeterminado')
                             ->rows(4)
                             ->placeholder('Hola, me interesa el producto {producto} que vi en su página.')
-                            ->helperText('Escribe el mensaje que recibirás cuando un cliente te contacte. Usa {producto} para incluir el nombre del producto y {precio} para el precio.')
+                            ->helperText('Usa {producto} para incluir el nombre del producto y {precio} para el precio.')
                             ->live(debounce: 500)
                             ->afterStateUpdated(fn () => $this->updateMessagePreview())
                             ->required()
@@ -177,18 +132,6 @@ class ManageMarketing extends Page implements HasForms, HasTable
             ->statePath('data');
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // TABLA DE SECCIONES DE MENÚ (SORTABLE)
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Configuración de la tabla de secciones de menú
-     *
-     * MEJORAS UX:
-     * 1. TextInputColumn: Edición en línea sin modales
-     * 2. Semáforo Visual: Verde = sana, Rojo = vacía
-     * 3. Orphan Guard: Modal dinámico según productos
-     */
     public function table(Table $table): Table
     {
         $tenant = $this->getTenantRecord();
@@ -197,26 +140,16 @@ class ManageMarketing extends Page implements HasForms, HasTable
             ->query(fn (): Builder => MenuSection::query()
                 ->where('tenant_id', $tenant?->getKey())
                 ->withCount('products')
-                ->orderBy('sort_order')
-            )
+                ->orderBy('sort_order'))
             ->columns([
-                // ═══════════════════════════════════════════════════════
-                // EDICIÓN EN LÍNEA: Nombre editable estilo Excel
-                // ═══════════════════════════════════════════════════════
                 Tables\Columns\TextInputColumn::make('name')
-                    ->label('Nombre de la Sección')
+                    ->label('Nombre de la sección')
                     ->searchable()
                     ->sortable()
                     ->rules(['required', 'max:50', 'min:2'])
                     ->placeholder('Escribe el nombre...')
                     ->extraAttributes(['class' => 'font-semibold']),
 
-                // ═══════════════════════════════════════════════════════
-                // SEMÁFORO VISUAL: Indicador de salud del inventario
-                // ═══════════════════════════════════════════════════════
-                // Verde (success) = Sección con productos
-                // Rojo (danger) = Sección vacía (requiere acción)
-                // ═══════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('products_count')
                     ->label('Productos')
                     ->badge()
@@ -226,36 +159,31 @@ class ManageMarketing extends Page implements HasForms, HasTable
                         : 'heroicon-o-exclamation-triangle')
                     ->tooltip(fn (int $state): string => $state > 0
                         ? "Esta sección tiene {$state} producto(s)"
-                        : '⚠️ Sección vacía - Agrega productos'),
+                        : 'Sección vacía: agrega productos'),
 
-                // Toggle rápido de visibilidad
                 Tables\Columns\ToggleColumn::make('is_active')
                     ->label('Activa')
                     ->onColor('success')
                     ->offColor('danger')
-                    ->tooltip('Activar/Desactivar visibilidad en menú público'),
+                    ->tooltip('Activar o desactivar visibilidad en el menú público'),
 
-                // Referencia de orden (discreta)
                 Tables\Columns\TextColumn::make('sort_order')
                     ->label('Orden')
                     ->badge()
                     ->color('gray')
                     ->alignCenter(),
             ])
-            // Motor de arrastre para reordenar
             ->reorderable('sort_order')
             ->defaultSort('sort_order')
-
-            // Acciones de cabecera
             ->headerActions([
                 CreateAction::make()
-                    ->label('Nueva Sección')
+                    ->label('Nueva sección')
                     ->icon('heroicon-o-plus')
-                    ->modalHeading('Crear Sección de Menú')
-                    ->modalDescription('Las secciones ayudan a organizar tus productos. Ejemplo: "Entradas", "Platos Fuertes", "Bebidas".')
+                    ->modalHeading('Crear sección de menú')
+                    ->modalDescription('Las secciones ayudan a organizar tus productos. Ejemplo: "Entradas", "Platos Fuertes" o "Bebidas".')
                     ->form([
                         Forms\Components\TextInput::make('name')
-                            ->label('Nombre de la Sección')
+                            ->label('Nombre de la sección')
                             ->placeholder('Ej: Platos Fuertes')
                             ->required()
                             ->maxLength(50)
@@ -274,86 +202,63 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
                         return $data;
                     })
-                    ->successNotificationTitle('✅ Sección creada exitosamente'),
+                    ->successNotificationTitle('Sección creada correctamente'),
             ])
-
-            // Acciones por fila
             ->actions([
                 EditAction::make()
                     ->iconButton()
-                    ->modalHeading('Editar Sección')
+                    ->modalHeading('Editar sección')
                     ->form([
                         Forms\Components\TextInput::make('name')
-                            ->label('Nombre de la Sección')
+                            ->label('Nombre de la sección')
                             ->required()
                             ->maxLength(50)
                             ->minLength(2),
                         Forms\Components\Toggle::make('is_active')
                             ->label('Activa'),
                     ]),
-
-                // ═══════════════════════════════════════════════════════
-                // ORPHAN GUARD: Eliminación defensiva inteligente
-                // ═══════════════════════════════════════════════════════
-                // Modal dinámico que advierte según productos asociados
-                // ═══════════════════════════════════════════════════════
                 DeleteAction::make()
                     ->iconButton()
                     ->modalHeading('¿Eliminar esta sección?')
                     ->modalDescription(function (MenuSection $record): string {
-                        // Obtener conteo actualizado
                         $count = $record->products()->count();
 
                         if ($count > 0) {
-                            // ⚠️ ADVERTENCIA: Sección con productos
-                            return "⚠️ **ADVERTENCIA:** Esta sección contiene **{$count} producto(s)** asociados.\n\n".
-                                   "Si la eliminas:\n".
-                                   "• Los productos **NO se borrarán** de la base de datos\n".
-                                   "• Quedarán **'Sin Categoría'**\n".
-                                   "• **Dejarán de ser visibles** en tu menú público hasta que los reasignes\n\n".
-                                   '¿Estás seguro de continuar?';
+                            return "**Atención:** esta sección contiene **{$count} producto(s)** asociados.\n\n"
+                                . "Si la eliminas:\n"
+                                . "- Los productos **no se borrarán** de la base de datos.\n"
+                                . "- Quedarán en **Sin categoría**.\n"
+                                . "- **Dejarán de ser visibles** en tu menú público hasta que los reasignes.\n\n"
+                                . '¿Estás seguro de continuar?';
                         }
 
-                        // ✅ Sección vacía - eliminación segura
                         return "Esta sección está vacía (0 productos). ¿Estás seguro de eliminarla?\n\nEsta acción no se puede deshacer.";
                     })
                     ->modalSubmitActionLabel('Sí, eliminar sección')
                     ->successNotificationTitle('Sección eliminada'),
             ])
-
-            // Estado vacío (Onboarding)
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Aun no has creado secciones del menu',
-                'description' => 'Usa el boton "Nueva Seccion" para ordenar tu catalogo publico en bloques como Bebidas, Entradas o Promociones.',
+                'heading' => 'Aún no has creado secciones del menú',
+                'description' => 'Usa el botón "Nueva sección" para ordenar tu catálogo público en bloques como Bebidas, Entradas o Promociones.',
             ]));
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // MÉTODOS DE WHATSAPP
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Actualiza el preview del mensaje con datos de ejemplo
-     */
     public function updateMessagePreview(): void
     {
         $template = $this->data['whatsapp_message'] ?? 'Hola, me interesa...';
 
-        // Reemplazar variables con datos de ejemplo
         $this->messagePreview = str_replace(
             ['{producto}', '{precio}'],
-            ['🍔 Baleada Especial', 'L. 45.00'],
+            ['Baleada especial', 'L. 45.00'],
             $template
         );
     }
 
-    /**
-     * Genera el código QR SVG usando el servicio
-     */
     protected function generateQrCode(): void
     {
         try {
             $tenant = $this->getTenantRecord();
+
             if (! $tenant instanceof Tenant) {
                 $this->qrCodeSvg = '';
                 $this->qrCodeDataUri = '';
@@ -364,35 +269,27 @@ class ManageMarketing extends Page implements HasForms, HasTable
             $qrService = app(QrCodeService::class);
             $this->qrCodeSvg = $qrService->getQrCode($tenant, 250);
             $this->qrCodeDataUri = $qrService->getQrCodeAsDataUri($tenant, 250);
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             $this->qrCodeSvg = '';
             $this->qrCodeDataUri = '';
         }
     }
 
-    /**
-     * Guarda la configuración de WhatsApp
-     *
-     * GUARD: Solo usuarios PRO pueden ejecutar esta acción
-     */
     public function saveWhatsAppConfig(): void
     {
-        // ═══ GUARD: Verificación de seguridad PRO ═══
         if (! $this->isPro) {
             Notification::make()
                 ->danger()
                 ->title('Acción no autorizada')
-                ->body('Debes tener un Plan PRO para usar esta funcionalidad.')
+                ->body('Debes tener un plan PRO para usar esta funcionalidad.')
                 ->send();
 
             return;
         }
 
         $data = $this->form->getState();
-
         $tenant = $this->getTenantRecord();
 
-        // Formatear número con código de país
         if (! $tenant instanceof Tenant) {
             Notification::make()
                 ->danger()
@@ -402,7 +299,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
             return;
         }
 
-        $cleanNumber = preg_replace('/[^0-9]/', '', $data['whatsapp_number']);
+        $cleanNumber = preg_replace('/[^0-9]/', '', (string) $data['whatsapp_number']);
 
         $tenant->update([
             ...$this->filterTenantColumns([
@@ -418,23 +315,13 @@ class ManageMarketing extends Page implements HasForms, HasTable
             ->send();
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // GENERADOR DE PDF
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Descarga el cartel con código QR en PDF
-     *
-     * GUARD: Solo usuarios PRO pueden ejecutar esta acción
-     */
     public function downloadPoster()
     {
-        // ═══ GUARD: Verificación de seguridad PRO ═══
         if (! $this->isPro) {
             Notification::make()
                 ->danger()
                 ->title('Acción no autorizada')
-                ->body('Debes tener un Plan PRO para descargar carteles.')
+                ->body('Debes tener un plan PRO para descargar carteles.')
                 ->send();
 
             return;
@@ -452,15 +339,13 @@ class ManageMarketing extends Page implements HasForms, HasTable
             return;
         }
 
-        // Generar QR usando el servicio
         try {
             $qrService = app(QrCodeService::class);
             $qrCode = $qrService->getQrCodeForPoster($tenant);
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             $qrCode = '';
         }
 
-        // Generar PDF
         $pdf = Pdf::loadView('pdf.qr-poster', [
             'tenant' => $tenant,
             'qrCode' => $qrCode,
@@ -471,41 +356,46 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();
-        }, $tenant->slug.'-cartel-qr.pdf', [
+        }, $tenant->slug . '-cartel-qr.pdf', [
             'Content-Type' => 'application/pdf',
         ]);
     }
 
-    /**
-     * Acciones del header
-     */
     protected function getHeaderActions(): array
     {
-        if (! $this->isPro) {
+        $tenant = $this->getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
             return [];
         }
 
-        return [
-            Action::make('save_whatsapp')
-                ->label('Guardar Configuración')
-                ->icon('heroicon-o-check')
-                ->color('primary')
-                ->action('saveWhatsAppConfig'),
+        if (! $this->isPro) {
+            return [
+                Action::make('upgrade')
+                    ->label('Activar plan PRO')
+                    ->icon('heroicon-o-arrow-up-right')
+                    ->color('success')
+                    ->url(route('filament.app.pages.manage-billing', ['tenant' => $tenant->slug], false)),
+            ];
+        }
 
-            Action::make('download_poster')
-                ->label('Descargar Cartel QR')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('success')
-                ->action('downloadPoster'),
+        return [
+            Action::make('public_page')
+                ->label('Ver página pública')
+                ->icon('heroicon-o-arrow-top-right-on-square')
+                ->color('gray')
+                ->url($this->businessUrl, shouldOpenInNewTab: true),
+            Action::make('billing')
+                ->label('Ver suscripción')
+                ->icon('heroicon-o-credit-card')
+                ->color('gray')
+                ->url(route('filament.app.pages.manage-billing', ['tenant' => $tenant->slug], false)),
         ];
     }
 
-    /**
-     * Navegación solo para usuarios activos
-     */
     public static function shouldRegisterNavigation(): bool
     {
-        return true; // Todos ven el menú, pero FREE ven paywall
+        return true;
     }
 
     protected function getTenantRecord(): ?Tenant

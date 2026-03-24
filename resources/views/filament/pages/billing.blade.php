@@ -1,112 +1,258 @@
 <x-filament-panels::page>
-    @include('filament.components.panel-critical-styles')
+    <div class="biz-shell">
+        <div class="biz-card-accent">
+            <div class="biz-grid-two">
+                <div class="biz-stack">
+                    <div class="biz-badge biz-badge-success">Finanzas</div>
 
-    <div class="space-y-6">
-        <x-filament::section>
-            <div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-                <div class="space-y-4">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">Superadmin</p>
-                    <div class="space-y-2">
-                        <h1 class="text-3xl font-black tracking-tight text-zinc-950 dark:text-white">Facturacion de la plataforma</h1>
-                        <p class="max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                            Desde aqui tienes una lectura rapida del flujo manual de pagos, el precio vigente de PRO y el estado general de negocios Base vs PRO.
+                    <div>
+                        <p class="biz-kicker">Facturación de la plataforma</p>
+                        <h1 class="biz-title">Pagos, precio PRO y soporte</h1>
+                        <p class="biz-copy">
+                            Monitorea el flujo manual de comprobantes y verifica de un vistazo cómo está funcionando el negocio Base vs. PRO.
                         </p>
                     </div>
                 </div>
 
-                <div class="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
-                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">Plan actual</p>
-                    <p class="mt-3 text-4xl font-black text-white">{{ $proPlanPrice }}</p>
-                    <p class="mt-2 text-sm leading-6 text-emerald-100/80">
-                        Precio de referencia del plan PRO mensual visible para los negocios.
-                    </p>
+                <div class="biz-card">
+                    <div class="biz-stack">
+                        <p class="biz-stat-label">Precio vigente</p>
+                        <p class="biz-stat-value">{{ $proPlanPrice }}</p>
+                        <p class="biz-stat-copy">Valor de referencia del plan PRO mensual para negocios.</p>
 
-                    <div class="mt-5 flex flex-wrap gap-3">
-                        <a href="{{ route('filament.admin.resources.payments.index') }}" class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-100">
-                            Revisar pagos
-                        </a>
-                        <a href="{{ route('filament.admin.pages.manage-general-settings') }}" class="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10">
-                            Ajustar configuracion
-                        </a>
+                        <div class="biz-button-row">
+                            <a href="{{ route('filament.admin.resources.payments.index') }}" class="biz-button">
+                                Revisar pagos
+                            </a>
+                            <a href="{{ route('filament.admin.pages.manage-general-settings') }}" class="biz-button-secondary">
+                                Ajustar configuración
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
-        </x-filament::section>
-
-        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <x-filament::section>
-                <div class="text-center">
-                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">Pendientes</p>
-                    <p class="mt-3 text-4xl font-black text-amber-500">{{ $pendingPayments }}</p>
-                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Comprobantes por revisar</p>
-                </div>
-            </x-filament::section>
-
-            <x-filament::section>
-                <div class="text-center">
-                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">Aprobados</p>
-                    <p class="mt-3 text-4xl font-black text-emerald-500">{{ $approvedPayments }}</p>
-                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Pagos validados</p>
-                </div>
-            </x-filament::section>
-
-            <x-filament::section>
-                <div class="text-center">
-                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">Rechazados</p>
-                    <p class="mt-3 text-4xl font-black text-rose-500">{{ $rejectedPayments }}</p>
-                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Casos con observacion</p>
-                </div>
-            </x-filament::section>
-
-            <x-filament::section>
-                <div class="text-center">
-                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">Negocios PRO</p>
-                    <p class="mt-3 text-4xl font-black text-zinc-950 dark:text-white">{{ $proBusinesses }}</p>
-                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Cuentas premium</p>
-                </div>
-            </x-filament::section>
-
-            <x-filament::section>
-                <div class="text-center">
-                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">Negocios Base</p>
-                    <p class="mt-3 text-4xl font-black text-zinc-950 dark:text-white">{{ $baseBusinesses }}</p>
-                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Cuentas esenciales</p>
-                </div>
-            </x-filament::section>
         </div>
 
-        <div class="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
-            <x-filament::section>
-                <div class="space-y-4">
+        <div class="biz-metrics">
+            <div class="biz-stat">
+                <p class="biz-stat-label">Pendientes</p>
+                <p class="biz-stat-value">{{ number_format($pendingPayments) }}</p>
+                <p class="biz-stat-copy">Comprobantes por revisar</p>
+            </div>
+
+            <div class="biz-stat">
+                <p class="biz-stat-label">Aprobados</p>
+                <p class="biz-stat-value">{{ number_format($approvedPayments) }}</p>
+                <p class="biz-stat-copy">Pagos validados</p>
+            </div>
+
+            <div class="biz-stat">
+                <p class="biz-stat-label">Rechazados</p>
+                <p class="biz-stat-value">{{ number_format($rejectedPayments) }}</p>
+                <p class="biz-stat-copy">Casos con observación</p>
+            </div>
+
+            <div class="biz-stat">
+                <p class="biz-stat-label">Negocios PRO</p>
+                <p class="biz-stat-value">{{ number_format($proBusinesses) }}</p>
+                <p class="biz-stat-copy">Cuentas premium activas</p>
+            </div>
+
+            <div class="biz-stat">
+                <p class="biz-stat-label">Negocios Base</p>
+                <p class="biz-stat-value">{{ number_format($baseBusinesses) }}</p>
+                <p class="biz-stat-copy">Cuentas en modo esencial</p>
+            </div>
+        </div>
+
+        <div class="biz-card">
+            <div class="biz-grid-two">
+                <div class="biz-stack">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">Revision operativa</p>
-                        <h2 class="mt-2 text-2xl font-bold text-zinc-950 dark:text-white">Ultimos pagos reportados</h2>
+                        <p class="biz-kicker">Embudo comercial</p>
+                        <h2 class="biz-heading">Señales para activar crecimiento</h2>
+                        <p class="biz-muted">
+                            Esta lectura resume qué tan cerca están los negocios de verse listos, cobrar y convertirse a PRO.
+                        </p>
+                    </div>
+
+                    <div class="biz-metrics">
+                        <div class="biz-stat">
+                            <p class="biz-stat-label">Con catálogo</p>
+                            <p class="biz-stat-value">{{ number_format($businessesWithCatalog) }}</p>
+                            <p class="biz-stat-copy">Negocios que ya tienen productos visibles.</p>
+                        </div>
+
+                        <div class="biz-stat">
+                            <p class="biz-stat-label">Con pagos</p>
+                            <p class="biz-stat-value">{{ number_format($businessesWithPayments) }}</p>
+                            <p class="biz-stat-copy">Negocios que ya dejaron evidencia de intención comercial.</p>
+                        </div>
+
+                        <div class="biz-stat">
+                            <p class="biz-stat-label">Conversión PRO</p>
+                            <p class="biz-stat-value">{{ number_format($proConversionRate, 1) }}%</p>
+                            <p class="biz-stat-copy">Porcentaje del total que ya activó un plan premium.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="biz-stat">
+                    <div class="biz-stack">
+                        <div>
+                            <p class="biz-stat-label">Playbook rápido</p>
+                            <p class="biz-stat-copy">
+                                1. Empuja catálogo primero. 2. Sigue pagos reportados o cuentas con interés comercial.
+                                3. Ofrece PRO a quienes ya muestran tracción o mejor presencia.
+                            </p>
+                        </div>
+
+                        <div class="biz-progress">
+                            <div class="biz-progress-bar" style="width: {{ max(6, $proConversionRate) }}%;"></div>
+                        </div>
+
+                        <p class="biz-stat-copy">
+                            Cada punto de conversión importa más si el negocio ya cargó catálogo y mantiene seguimiento de cobro.
+                        </p>
+
+                        <div class="biz-button-row">
+                            <a href="{{ route('filament.admin.resources.tenants.index') }}" class="biz-button-secondary">
+                                Revisar negocios
+                            </a>
+                            <a href="{{ route('filament.admin.resources.payments.index') }}" class="biz-button-secondary">
+                                Revisar pagos
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="biz-grid-two">
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div>
+                        <p class="biz-kicker">Ciudades</p>
+                        <h2 class="biz-heading">Tracción por ciudad</h2>
+                        <p class="biz-muted">
+                            Donde hay más base instalada y mejor oportunidad de conversión a PRO.
+                        </p>
+                    </div>
+
+                    @if ($cityFunnel !== [])
+                        <div class="biz-list">
+                            @foreach ($cityFunnel as $city)
+                                @php($conversion = (float) str_replace('%', '', (string) $city['conversion']))
+
+                                <div class="biz-checklist-item">
+                                    <div style="width: 100%;">
+                                        <div class="biz-split">
+                                            <p class="biz-checklist-title">{{ $city['name'] }}</p>
+                                            <x-filament::badge color="{{ $conversion >= 40 ? 'success' : ($conversion >= 20 ? 'warning' : 'gray') }}">
+                                                {{ $city['conversion'] }} PRO
+                                            </x-filament::badge>
+                                        </div>
+
+                                        <p class="biz-checklist-copy">
+                                            {{ number_format($city['total']) }} negocios · {{ number_format($city['pro']) }} PRO
+                                        </p>
+
+                                        <div class="biz-progress" style="margin-top: 0.75rem;">
+                                            <div class="biz-progress-bar {{ $conversion < 20 ? 'biz-progress-bar-warning' : '' }}" style="width: {{ max(6, $conversion) }}%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        @include('filament.app.components.table-empty-state', [
+                            'heading' => 'Aún no hay lectura por ciudad',
+                            'description' => 'Cuando existan negocios suficientes, aquí verás dónde conviene enfocar onboarding y seguimiento comercial.',
+                        ])
+                    @endif
+                </div>
+            </div>
+
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div>
+                        <p class="biz-kicker">Categorías</p>
+                        <h2 class="biz-heading">Tracción por categoría</h2>
+                        <p class="biz-muted">
+                            Lectura rápida para detectar verticales con mejor adopción y potencial premium.
+                        </p>
+                    </div>
+
+                    @if ($categoryFunnel !== [])
+                        <div class="biz-list">
+                            @foreach ($categoryFunnel as $category)
+                                @php($conversion = (float) str_replace('%', '', (string) $category['conversion']))
+
+                                <div class="biz-checklist-item">
+                                    <div style="width: 100%;">
+                                        <div class="biz-split">
+                                            <p class="biz-checklist-title">{{ $category['name'] }}</p>
+                                            <x-filament::badge color="{{ $conversion >= 40 ? 'success' : ($conversion >= 20 ? 'warning' : 'gray') }}">
+                                                {{ $category['conversion'] }} PRO
+                                            </x-filament::badge>
+                                        </div>
+
+                                        <p class="biz-checklist-copy">
+                                            {{ number_format($category['total']) }} negocios · {{ number_format($category['pro']) }} PRO
+                                        </p>
+
+                                        <div class="biz-progress" style="margin-top: 0.75rem;">
+                                            <div class="biz-progress-bar {{ $conversion < 20 ? 'biz-progress-bar-warning' : '' }}" style="width: {{ max(6, $conversion) }}%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        @include('filament.app.components.table-empty-state', [
+                            'heading' => 'Aún no hay lectura por categoría',
+                            'description' => 'Cuando la base crezca, aquí verás qué verticales responden mejor al plan PRO y al trabajo comercial.',
+                        ])
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="biz-grid-two">
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div>
+                        <p class="biz-kicker">Revisión operativa</p>
+                        <h2 class="biz-heading">Últimos pagos reportados</h2>
+                        <p class="biz-muted">
+                            Historial corto para actuar rápido sobre solicitudes recientes.
+                        </p>
                     </div>
 
                     @if ($recentPayments !== [])
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full text-sm">
+                        <div class="biz-table">
+                            <table class="biz-table-grid">
                                 <thead>
-                                    <tr class="border-b border-black/5 text-left text-zinc-500 dark:border-white/10 dark:text-zinc-400">
-                                        <th class="px-3 py-3">Negocio</th>
-                                        <th class="px-3 py-3">Referencia</th>
-                                        <th class="px-3 py-3">Monto</th>
-                                        <th class="px-3 py-3">Estado</th>
-                                        <th class="px-3 py-3">Fecha</th>
+                                    <tr class="biz-table-head-row">
+                                        <th class="biz-table-head-cell">Negocio</th>
+                                        <th class="biz-table-head-cell">Referencia</th>
+                                        <th class="biz-table-head-cell">Monto</th>
+                                        <th class="biz-table-head-cell">Estado</th>
+                                        <th class="biz-table-head-cell">Fecha</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($recentPayments as $payment)
-                                        <tr class="border-b border-black/5 dark:border-white/5">
-                                            <td class="px-3 py-3 font-medium text-zinc-950 dark:text-white">{{ $payment['business'] }}</td>
-                                            <td class="px-3 py-3 text-zinc-500 dark:text-zinc-400">{{ $payment['reference'] }}</td>
-                                            <td class="px-3 py-3 text-zinc-950 dark:text-white">{{ $payment['amount'] }}</td>
-                                            <td class="px-3 py-3">
+                                        <tr class="biz-table-row">
+                                            <td class="biz-table-cell biz-table-cell-strong">{{ $payment['business'] }}</td>
+                                            <td class="biz-table-cell biz-table-cell-mono">{{ $payment['reference'] }}</td>
+                                            <td class="biz-table-cell">{{ $payment['amount'] }}</td>
+                                            <td class="biz-table-cell">
                                                 <x-filament::badge color="{{ $payment['status'] === 'Aprobado' ? 'success' : ($payment['status'] === 'Pendiente' ? 'warning' : 'danger') }}">
                                                     {{ $payment['status'] }}
                                                 </x-filament::badge>
                                             </td>
-                                            <td class="px-3 py-3 text-zinc-500 dark:text-zinc-400">{{ $payment['reported_at'] }}</td>
+                                            <td class="biz-table-cell biz-table-cell-muted">{{ $payment['reported_at'] }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -114,42 +260,45 @@
                         </div>
                     @else
                         @include('filament.app.components.table-empty-state', [
-                            'heading' => 'Todavia no hay pagos reportados',
-                            'description' => 'Cuando un negocio suba un comprobante o el equipo registre una revision, aparecera aqui.',
+                            'heading' => 'Todavía no hay pagos reportados',
+                            'description' => 'Cuando un negocio suba un comprobante o el equipo registre una revisión, aparecerá aquí.',
                         ])
                     @endif
                 </div>
-            </x-filament::section>
+            </div>
 
-            <x-filament::section>
-                <div class="space-y-4">
+            <div class="biz-card">
+                <div class="biz-stack">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">Canales</p>
-                        <h2 class="mt-2 text-2xl font-bold text-zinc-950 dark:text-white">Soporte y seguimiento</h2>
+                        <p class="biz-kicker">Canales</p>
+                        <h2 class="biz-heading">Soporte y seguimiento</h2>
+                        <p class="biz-muted">
+                            Referencias rápidas para atender cobros, activaciones y consultas.
+                        </p>
                     </div>
 
-                    <div class="space-y-3">
-                        <div class="rounded-2xl border border-black/5 bg-zinc-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
-                            <p class="text-xs uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">WhatsApp soporte</p>
-                            <p class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">{{ $supportWhatsApp }}</p>
+                    <div class="biz-list">
+                        <div class="biz-stat">
+                            <p class="biz-stat-label">WhatsApp soporte</p>
+                            <p class="biz-stat-value" style="font-size: 1.35rem;">{{ $supportWhatsApp }}</p>
+                            <p class="biz-stat-copy">Canal principal para acompañamiento manual.</p>
                         </div>
 
-                        <div class="rounded-2xl border border-black/5 bg-zinc-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
-                            <p class="text-xs uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">Correo soporte</p>
-                            <p class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">{{ $supportEmail }}</p>
+                        <div class="biz-stat">
+                            <p class="biz-stat-label">Correo soporte</p>
+                            <p class="biz-stat-value" style="font-size: 1.35rem;">{{ $supportEmail }}</p>
+                            <p class="biz-stat-copy">Correo de referencia para pagos y seguimiento.</p>
                         </div>
 
-                        <div class="rounded-2xl border border-black/5 bg-zinc-50 p-4 dark:border-white/10 dark:bg-white/[0.03]">
-                            <p class="text-sm font-semibold text-zinc-950 dark:text-white">Flujo recomendado</p>
-                            <ol class="mt-3 space-y-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                                <li>1. Revisar pagos pendientes desde la cola de pagos.</li>
-                                <li>2. Aprobar o rechazar con nota clara para el negocio.</li>
-                                <li>3. Ajustar precio o instrucciones globales desde configuracion general.</li>
-                            </ol>
+                        <div class="biz-stat">
+                            <p class="biz-stat-label">Flujo recomendado</p>
+                            <p class="biz-stat-copy">
+                                1. Revisar pendientes. 2. Aprobar o rechazar con nota clara. 3. Ajustar precio o instrucciones desde configuración general.
+                            </p>
                         </div>
                     </div>
                 </div>
-            </x-filament::section>
+            </div>
         </div>
     </div>
 </x-filament-panels::page>

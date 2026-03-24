@@ -75,3 +75,83 @@ it('denies access when the tenant lacks the capability even if the role would al
         Permission::APPOINTMENTS_MANAGE
     ))->toBeFalse();
 });
+
+it('allows extra membership permissions granted by an operational preset', function () {
+    $user = User::factory()->create();
+    $tenant = Tenant::factory()->create([
+        'business_type' => BusinessType::SERVICE,
+    ]);
+
+    TenantMembership::query()->create([
+        'tenant_id' => $tenant->id,
+        'user_id' => $user->id,
+        'role' => Role::OPERATOR->value,
+        'preset_key' => 'dental_reception',
+        'granted_permissions' => [
+            Permission::APPOINTMENTS_MANAGE->value,
+            Permission::MARKETING_MANAGE->value,
+        ],
+        'accepted_at' => now(),
+    ]);
+
+    $guard = app(TenantPermissionGuardInterface::class);
+
+    expect($guard->allows(
+        $user,
+        $tenant,
+        Capability::APPOINTMENT_BOOKING,
+        Permission::APPOINTMENTS_MANAGE
+    ))->toBeTrue();
+});
+
+it('allows managers to assign playbooks when the tenant supports operational notifications', function () {
+    $user = User::factory()->create();
+    $tenant = Tenant::factory()->create([
+        'business_type' => BusinessType::SERVICE,
+    ]);
+
+    TenantMembership::query()->create([
+        'tenant_id' => $tenant->id,
+        'user_id' => $user->id,
+        'role' => Role::MANAGER->value,
+        'accepted_at' => now(),
+    ]);
+
+    $guard = app(TenantPermissionGuardInterface::class);
+
+    expect($guard->allows(
+        $user,
+        $tenant,
+        Capability::NOTIFICATIONS_BASIC,
+        Permission::PLAYBOOKS_ASSIGN
+    ))->toBeTrue();
+});
+
+it('keeps viewers in read-only mode for playbook execution', function () {
+    $user = User::factory()->create();
+    $tenant = Tenant::factory()->create([
+        'business_type' => BusinessType::SERVICE,
+    ]);
+
+    TenantMembership::query()->create([
+        'tenant_id' => $tenant->id,
+        'user_id' => $user->id,
+        'role' => Role::VIEWER->value,
+        'accepted_at' => now(),
+    ]);
+
+    $guard = app(TenantPermissionGuardInterface::class);
+
+    expect($guard->allows(
+        $user,
+        $tenant,
+        Capability::NOTIFICATIONS_BASIC,
+        Permission::PLAYBOOKS_VIEW
+    ))->toBeTrue()
+        ->and($guard->allows(
+            $user,
+            $tenant,
+            Capability::NOTIFICATIONS_BASIC,
+            Permission::PLAYBOOKS_MANAGE
+        ))->toBeFalse();
+});

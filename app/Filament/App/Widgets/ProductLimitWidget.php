@@ -108,10 +108,10 @@ class ProductLimitWidget extends Widget
         }
 
         if ($this->percentage < 100) {
-            return 'Atencion: estas a punto de quedarte sin espacio.';
+            return 'Atención: estás a punto de quedarte sin espacio.';
         }
 
-        return 'Has alcanzado el limite. Actualiza para seguir creciendo.';
+        return 'Has alcanzado el límite. Actualiza para seguir creciendo.';
     }
 
     private function getTenantRecord(): ?Tenant

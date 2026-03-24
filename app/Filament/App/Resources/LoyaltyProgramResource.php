@@ -26,7 +26,7 @@ class LoyaltyProgramResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Marketing PRO';
 
-    protected static ?string $navigationLabel = 'Configuracion';
+    protected static ?string $navigationLabel = 'Configuración';
 
     protected static ?int $navigationSort = 1;
 

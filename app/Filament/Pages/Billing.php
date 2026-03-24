@@ -10,14 +10,15 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Settings\GeneralSettings;
 use Filament\Pages\Page;
+use Illuminate\Database\Eloquent\Builder;
 
 final class Billing extends Page
 {
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationLabel = 'Facturacion';
+    protected static ?string $navigationLabel = 'Facturación';
 
-    protected static ?string $title = 'Facturacion de la plataforma';
+    protected static ?string $title = 'Facturación de la plataforma';
 
     protected static ?string $slug = 'billing';
 
@@ -47,6 +48,18 @@ final class Billing extends Page
      * @var array<int, array<string, string|null>>
      */
     public array $recentPayments = [];
+
+    public int $businessesWithCatalog = 0;
+
+    public int $businessesWithPayments = 0;
+
+    public float $proConversionRate = 0;
+
+    /** @var list<array{name: string, total: int, pro: int, conversion: string}> */
+    public array $cityFunnel = [];
+
+    /** @var list<array{name: string, total: int, pro: int, conversion: string}> */
+    public array $categoryFunnel = [];
 
     public static function canAccess(): bool
     {
@@ -138,8 +151,71 @@ final class Billing extends Page
                     ];
                 })
                 ->all();
+
+            $tenantSnapshot = Tenant::query()
+                ->with([
+                    'city:id,name',
+                    'category:id,name',
+                ])
+                ->withCount([
+                    'products as products_total' => fn (Builder $query): Builder => $query->withoutGlobalScopes(),
+                ])
+                ->get();
+
+            $this->businessesWithCatalog = $tenantSnapshot
+                ->where('products_total', '>', 0)
+                ->count();
+
+            $this->businessesWithPayments = SubscriptionPayment::query()
+                ->withoutGlobalScopes()
+                ->distinct('tenant_id')
+                ->count('tenant_id');
+
+            $totalBusinesses = max(1, $tenantSnapshot->count());
+            $this->proConversionRate = round(($this->proBusinesses / $totalBusinesses) * 100, 1);
+
+            $this->cityFunnel = $tenantSnapshot
+                ->groupBy(fn (Tenant $tenant): string => (string) ($tenant->city?->name ?? 'Sin ciudad'))
+                ->map(function ($group, string $name): array {
+                    $total = $group->count();
+                    $pro = $group->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+
+                    return [
+                        'name' => $name,
+                        'total' => $total,
+                        'pro' => $pro,
+                        'conversion' => number_format(($pro / max(1, $total)) * 100, 1).'%',
+                    ];
+                })
+                ->sortByDesc('total')
+                ->take(5)
+                ->values()
+                ->all();
+
+            $this->categoryFunnel = $tenantSnapshot
+                ->groupBy(fn (Tenant $tenant): string => (string) ($tenant->category?->name ?? 'Sin categoría'))
+                ->map(function ($group, string $name): array {
+                    $total = $group->count();
+                    $pro = $group->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+
+                    return [
+                        'name' => $name,
+                        'total' => $total,
+                        'pro' => $pro,
+                        'conversion' => number_format(($pro / max(1, $total)) * 100, 1).'%',
+                    ];
+                })
+                ->sortByDesc('total')
+                ->take(5)
+                ->values()
+                ->all();
         } catch (\Throwable) {
             $this->recentPayments = [];
+            $this->businessesWithCatalog = 0;
+            $this->businessesWithPayments = 0;
+            $this->proConversionRate = 0;
+            $this->cityFunnel = [];
+            $this->categoryFunnel = [];
         }
     }
 }

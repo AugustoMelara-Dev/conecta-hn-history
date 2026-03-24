@@ -25,6 +25,8 @@ class TenantMembership extends Model
     protected $fillable = [
         'user_id',
         'role',
+        'preset_key',
+        'granted_permissions',
         'accepted_at',
     ];
 
@@ -32,6 +34,7 @@ class TenantMembership extends Model
     {
         return [
             'role' => Role::class,
+            'granted_permissions' => 'array',
             'accepted_at' => 'datetime',
         ];
     }
@@ -59,5 +62,17 @@ class TenantMembership extends Model
     public function isOwner(): bool
     {
         return $this->role->value === Role::OWNER->value;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function extraPermissions(): array
+    {
+        return collect((array) ($this->getAttribute('granted_permissions') ?? []))
+            ->filter(static fn (mixed $permission): bool => is_string($permission) && $permission !== '')
+            ->unique()
+            ->values()
+            ->all();
     }
 }

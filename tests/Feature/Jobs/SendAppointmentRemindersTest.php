@@ -140,7 +140,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle();
+        (new SendAppointmentReminders)->handle(app(\App\Domain\Contracts\AdminNotifier::class));
 
         // Assert: Email was queued
         Mail::assertQueued(AppointmentReminderMail::class, function ($mail) use ($appointmentId) {
@@ -167,7 +167,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle();
+        (new SendAppointmentReminders)->handle(app(\App\Domain\Contracts\AdminNotifier::class));
 
         Mail::assertNothingSent();
     }
@@ -185,7 +185,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => now()->subHour(), // Already reminded!
         ]);
 
-        (new SendAppointmentReminders)->handle();
+        (new SendAppointmentReminders)->handle(app(\App\Domain\Contracts\AdminNotifier::class));
 
         Mail::assertNothingSent();
     }
@@ -203,7 +203,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle();
+        (new SendAppointmentReminders)->handle(app(\App\Domain\Contracts\AdminNotifier::class));
 
         Mail::assertNothingSent();
     }
@@ -221,7 +221,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle();
+        (new SendAppointmentReminders)->handle(app(\App\Domain\Contracts\AdminNotifier::class));
 
         Mail::assertNothingSent();
     }
@@ -239,7 +239,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle();
+        (new SendAppointmentReminders)->handle(app(\App\Domain\Contracts\AdminNotifier::class));
 
         Mail::assertQueued(AppointmentReminderMail::class, function ($mail) {
             $subject = $mail->envelope()->subject;

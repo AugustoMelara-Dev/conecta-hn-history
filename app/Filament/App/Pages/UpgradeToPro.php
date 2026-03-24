@@ -25,7 +25,7 @@ class UpgradeToPro extends Page
 
     public function getTitle(): string
     {
-        return 'Mejora tu Negocio a PRO';
+        return 'Mejora tu negocio a PRO';
     }
 
     public static function getNavigationSort(): ?int
@@ -57,33 +57,33 @@ class UpgradeToPro extends Page
             'features' => [
                 [
                     'icon' => 'heroicon-o-chat-bubble-left-right',
-                    'title' => 'Integracion con WhatsApp',
-                    'description' => 'Boton directo para que tus clientes te escriban sin pasos extra.',
+                    'title' => 'Integración con WhatsApp',
+                    'description' => 'Botón directo para que tus clientes te escriban sin pasos extra.',
                 ],
                 [
                     'icon' => 'heroicon-o-cube',
                     'title' => 'Productos ilimitados',
-                    'description' => 'Publica todo tu catalogo sin toparte con el limite del plan base.',
+                    'description' => 'Publica todo tu catálogo sin toparte con el límite del plan base.',
                 ],
                 [
                     'icon' => 'heroicon-o-paint-brush',
                     'title' => 'Marca personalizada',
-                    'description' => 'Destaca tu negocio con banner, logo y una presencia publica mas completa.',
+                    'description' => 'Destaca tu negocio con banner, logo y una presencia pública más completa.',
                 ],
                 [
                     'icon' => 'heroicon-o-users',
                     'title' => 'Seguidores visibles',
-                    'description' => 'Consulta quien sigue tu negocio y entiende mejor tu audiencia.',
+                    'description' => 'Consulta quién sigue tu negocio y entiende mejor tu audiencia.',
                 ],
                 [
                     'icon' => 'heroicon-o-megaphone',
-                    'title' => 'Campanas de marketing',
+                    'title' => 'Campañas de marketing',
                     'description' => 'Prepara promociones y novedades para tu audiencia desde el panel.',
                 ],
                 [
                     'icon' => 'heroicon-o-chart-bar',
-                    'title' => 'Metricas avanzadas',
-                    'description' => 'Ten una lectura mas completa del rendimiento y la actividad del negocio.',
+                    'title' => 'Métricas avanzadas',
+                    'description' => 'Ten una lectura más completa del rendimiento y la actividad del negocio.',
                 ],
             ],
             'price' => $price,

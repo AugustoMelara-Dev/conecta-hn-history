@@ -21,6 +21,12 @@ Schedule::command('subscriptions:check-expiry')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/subscription-checker.log'));
 
+Schedule::command('crm:sync-portfolio')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/crm-portfolio-sync.log'));
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // AUTOMATED INVENTORY RECOVERY - Stale Order Garbage Collector
 // ═══════════════════════════════════════════════════════════════════════════════

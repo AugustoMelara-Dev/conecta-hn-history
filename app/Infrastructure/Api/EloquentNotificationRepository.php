@@ -7,6 +7,7 @@ namespace App\Infrastructure\Api;
 use App\Domain\Api\Contracts\NotificationRepository;
 use App\Domain\Shared\Contracts\PaginatedResult;
 use App\Infrastructure\Shared\EloquentPaginatedResult;
+use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
 
 /**
@@ -20,12 +21,12 @@ final class EloquentNotificationRepository implements NotificationRepository
     /**
      * {@inheritDoc}
      */
-    public function getUserNotifications(int $userId, int $perPage = 20): PaginatedResult
+    public function getUserNotifications(int|string $userId, int $perPage = 20): PaginatedResult
     {
         return new EloquentPaginatedResult(
             DatabaseNotification::query()
-                ->where('notifiable_id', $userId)
-                ->where('notifiable_type', 'App\Models\User')
+                ->where('notifiable_id', (string) $userId)
+                ->where('notifiable_type', app(User::class)->getMorphClass())
                 ->orderByRaw('read_at IS NULL DESC')
                 ->orderByDesc('created_at')
                 ->paginate($perPage)
@@ -35,10 +36,11 @@ final class EloquentNotificationRepository implements NotificationRepository
     /**
      * {@inheritDoc}
      */
-    public function markAsRead(int $userId, string $notificationId): void
+    public function markAsRead(int|string $userId, string $notificationId): void
     {
         DatabaseNotification::query()
-            ->where('notifiable_id', $userId)
+            ->where('notifiable_id', (string) $userId)
+            ->where('notifiable_type', app(User::class)->getMorphClass())
             ->where('id', $notificationId)
             ->update(['read_at' => now()]);
     }
@@ -46,10 +48,11 @@ final class EloquentNotificationRepository implements NotificationRepository
     /**
      * {@inheritDoc}
      */
-    public function markAllAsRead(int $userId): void
+    public function markAllAsRead(int|string $userId): void
     {
         DatabaseNotification::query()
-            ->where('notifiable_id', $userId)
+            ->where('notifiable_id', (string) $userId)
+            ->where('notifiable_type', app(User::class)->getMorphClass())
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
     }

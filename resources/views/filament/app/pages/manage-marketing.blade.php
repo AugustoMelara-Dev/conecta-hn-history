@@ -1,6 +1,4 @@
 <x-filament-panels::page>
-    @include('filament.components.panel-critical-styles')
-
     @php
         $tenantSlug = filament()->getTenant()?->slug ?? '';
     @endphp
@@ -16,7 +14,7 @@
                             <p class="biz-kicker">Herramientas de venta</p>
                             <h1 class="biz-title">Impulsa tu negocio con QR y WhatsApp</h1>
                             <p class="biz-copy">
-                                Activa materiales para compartir tu pagina, mensajes listos para clientes y una organizacion mas clara del menu.
+                                Activa materiales para compartir tu página, mensajes listos para clientes y una organización más clara del menú.
                             </p>
                         </div>
 
@@ -32,8 +30,8 @@
                             </div>
 
                             <div class="biz-stat">
-                                <p class="biz-action-title">Secciones del menu</p>
-                                <p class="biz-action-copy">Ordena tu catalogo para que el cliente entienda mejor lo que ofreces.</p>
+                                <p class="biz-action-title">Secciones del menú</p>
+                                <p class="biz-action-copy">Ordena tu catálogo para que el cliente entienda mejor lo que ofreces.</p>
                             </div>
                         </div>
                     </div>
@@ -43,7 +41,7 @@
                     <div class="biz-stack">
                         <div>
                             <p class="biz-kicker">Disponible en PRO</p>
-                            <h2 class="biz-heading">Desbloquea marketing util</h2>
+                            <h2 class="biz-heading">Desbloquea marketing útil</h2>
                             <p class="biz-muted">
                                 En plan Base ves el panorama general. Al activar PRO habilitas estas herramientas dentro del panel.
                             </p>
@@ -54,7 +52,7 @@
                                 <div class="biz-checklist-index is-complete">1</div>
                                 <div>
                                     <p class="biz-checklist-title">QR descargable</p>
-                                    <p class="biz-checklist-copy">Comparte tu negocio con un codigo listo para imprimir.</p>
+                                    <p class="biz-checklist-copy">Comparte tu negocio con un código listo para imprimir.</p>
                                 </div>
                             </div>
 
@@ -62,15 +60,15 @@
                                 <div class="biz-checklist-index is-complete">2</div>
                                 <div>
                                     <p class="biz-checklist-title">Mensaje de WhatsApp personalizable</p>
-                                    <p class="biz-checklist-copy">Evita respuestas improvisadas y acelera la primera conversacion.</p>
+                                    <p class="biz-checklist-copy">Evita respuestas improvisadas y acelera la primera conversación.</p>
                                 </div>
                             </div>
 
                             <div class="biz-checklist-item">
                                 <div class="biz-checklist-index is-complete">3</div>
                                 <div>
-                                    <p class="biz-checklist-title">Secciones del menu</p>
-                                    <p class="biz-checklist-copy">Presenta tu catalogo por bloques claros y faciles de explorar.</p>
+                                    <p class="biz-checklist-title">Secciones del menú</p>
+                                    <p class="biz-checklist-copy">Presenta tu catálogo por bloques claros y fáciles de explorar.</p>
                                 </div>
                             </div>
                         </div>
@@ -91,24 +89,38 @@
                             <p class="biz-kicker">WhatsApp</p>
                             <h2 class="biz-heading">Mensaje de contacto</h2>
                             <p class="biz-muted">
-                                Configura el mensaje base que se enviara cuando el cliente pulse el boton de WhatsApp.
+                                Configura el mensaje base que se enviará cuando el cliente pulse el botón de WhatsApp.
                             </p>
                         </div>
 
-                        {{ $this->form }}
+                        <form wire:submit="saveWhatsAppConfig" class="biz-stack">
+                            {{ $this->form }}
 
-                        <div class="biz-preview">
-                            <p class="biz-action-title">Vista previa</p>
-                            <div class="biz-preview-bubble">{{ $messagePreview }}</div>
-                        </div>
+                            <div class="biz-button-row">
+                                <button
+                                    type="submit"
+                                    class="biz-button"
+                                    wire:loading.attr="disabled"
+                                    wire:target="saveWhatsAppConfig"
+                                >
+                                    <span wire:loading.remove wire:target="saveWhatsAppConfig">Guardar configuración</span>
+                                    <span wire:loading wire:target="saveWhatsAppConfig">Guardando...</span>
+                                </button>
+                            </div>
+
+                            <div class="biz-preview">
+                                <p class="biz-action-title">Vista previa</p>
+                                <div class="biz-preview-bubble">{{ $messagePreview }}</div>
+                            </div>
+                        </form>
                     </div>
                 </div>
 
                 <div class="biz-card-accent">
                     <div class="biz-stack">
                         <div>
-                            <p class="biz-kicker">Codigo QR</p>
-                            <h2 class="biz-heading">Comparte tu pagina publica</h2>
+                            <p class="biz-kicker">Código QR</p>
+                            <h2 class="biz-heading">Comparte tu página pública</h2>
                             <p class="biz-muted">
                                 Descarga un cartel limpio para imprimir o revisa tu enlace antes de compartirlo.
                             </p>
@@ -118,7 +130,7 @@
                             @if ($qrCodeDataUri)
                                 <img
                                     src="{{ $qrCodeDataUri }}"
-                                    alt="Codigo QR del negocio"
+                                    alt="Código QR del negocio"
                                     class="biz-qr-image"
                                 />
                             @else
@@ -133,11 +145,18 @@
                             </a>
 
                             <div class="biz-button-row" style="justify-content: center; margin-top: 1rem;">
-                                <button type="button" wire:click="downloadPoster" class="biz-button">
-                                    Descargar cartel PDF
+                                <button
+                                    type="button"
+                                    wire:click="downloadPoster"
+                                    wire:loading.attr="disabled"
+                                    wire:target="downloadPoster"
+                                    class="biz-button"
+                                >
+                                    <span wire:loading.remove wire:target="downloadPoster">Descargar cartel PDF</span>
+                                    <span wire:loading wire:target="downloadPoster">Generando PDF...</span>
                                 </button>
                                 <a href="{{ $businessUrl }}" target="_blank" class="biz-button-secondary">
-                                    Ver pagina publica
+                                    Ver página pública
                                 </a>
                             </div>
                         </div>
@@ -148,10 +167,10 @@
             <div class="biz-card">
                 <div class="biz-stack">
                     <div>
-                        <p class="biz-kicker">Menu</p>
-                        <h2 class="biz-heading">Secciones del catalogo</h2>
+                        <p class="biz-kicker">Menú</p>
+                        <h2 class="biz-heading">Secciones del catálogo</h2>
                         <p class="biz-muted">
-                            Crea y ordena las secciones que usa tu menu publico.
+                            Crea y ordena las secciones que usa tu menú público.
                         </p>
                     </div>
 

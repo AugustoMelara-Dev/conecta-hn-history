@@ -1,6 +1,4 @@
 <x-filament-widgets::widget>
-    @include('filament.components.panel-critical-styles')
-
     <div class="biz-card">
         <div class="biz-stack">
             <div>

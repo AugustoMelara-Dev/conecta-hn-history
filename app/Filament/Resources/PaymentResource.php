@@ -7,6 +7,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
+use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -68,7 +69,7 @@ class PaymentResource extends Resource
     {
         return $schema
             ->schema([
-                Section::make('Informacion del Pago')
+                Section::make('Información del Pago')
                     ->schema([
                         Forms\Components\Select::make('tenant_id')
                             ->relationship('tenant', 'name')
@@ -255,12 +256,26 @@ class PaymentResource extends Resource
                             $endDate = $subscriptionEndsAt instanceof Carbon ? $subscriptionEndsAt->format('d/m/Y') : null;
                             $tenantName = (string) $tenant->getAttribute('name');
 
-                            if ($user && $endDate) {
-                                Notification::make()
+                            static::logTenantPaymentEvent(
+                                $tenant,
+                                'Pago PRO aprobado desde finanzas',
+                                [
+                                    'payment_id' => (string) $record->getKey(),
+                                    'payment_reference' => (string) ($record->reference_number ?? ''),
+                                    'payment_amount' => 'L. ' . number_format((float) $record->amount, 2),
+                                    'status' => SubscriptionPayment::STATUS_APPROVED,
+                                    'subscription_ends_at' => $endDate,
+                                ],
+                            );
+
+                            if ($user instanceof User && $endDate) {
+                                static::sendNotificationToUser(
+                                    $user,
+                                    Notification::make()
                                     ->success()
                                     ->title('Pago Aprobado')
                                     ->body("Tu Plan PRO para {$tenantName} esta activo hasta el {$endDate}.")
-                                    ->sendToDatabase($user);
+                                );
                             }
                         }
 
@@ -301,12 +316,28 @@ class PaymentResource extends Resource
                         $tenant = $record->tenant()->first();
                         $user = $tenant instanceof Tenant ? $tenant->user()->first() : null;
 
-                        if ($user) {
-                            Notification::make()
+                        if ($tenant instanceof Tenant) {
+                            static::logTenantPaymentEvent(
+                                $tenant,
+                                'Pago PRO rechazado desde finanzas',
+                                [
+                                    'payment_id' => (string) $record->getKey(),
+                                    'payment_reference' => (string) ($record->reference_number ?? ''),
+                                    'payment_amount' => 'L. ' . number_format((float) $record->amount, 2),
+                                    'status' => SubscriptionPayment::STATUS_REJECTED,
+                                    'reason' => (string) ($data['rejection_reason'] ?? ''),
+                                ],
+                            );
+                        }
+
+                        if ($user instanceof User) {
+                            static::sendNotificationToUser(
+                                $user,
+                                Notification::make()
                                 ->danger()
                                 ->title('Pago Rechazado')
                                 ->body($data['rejection_reason'])
-                                ->sendToDatabase($user);
+                            );
                         }
 
                         Notification::make()
@@ -345,5 +376,28 @@ class PaymentResource extends Resource
                 WHEN 'approved' THEN 2
                 WHEN 'rejected' THEN 3
                 ELSE 4 END");
+    }
+
+    private static function sendNotificationToUser(User $user, Notification $notification): void
+    {
+        try {
+            $notification->sendToDatabase($user);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $properties
+     */
+    private static function logTenantPaymentEvent(Tenant $tenant, string $description, array $properties = []): void
+    {
+        $actor = auth()->user();
+
+        $tenant->logOperationalEvent(
+            $description,
+            $actor instanceof User ? $actor : null,
+            $properties,
+        );
     }
 }

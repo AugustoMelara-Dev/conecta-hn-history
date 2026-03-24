@@ -45,6 +45,11 @@ class EventServiceProvider extends ServiceProvider
         // APPOINTMENT NOTIFICATIONS
         \App\Events\Appointment\AppointmentCreated::class => [
             \App\Listeners\SendAppointmentConfirmation::class,
+            \App\Listeners\NotifyAppointmentBookedListener::class,
+        ],
+
+        \App\Events\Order\OrderDelivered::class => [
+            \App\Listeners\NotifyRepeatPurchaseOpportunityListener::class,
         ],
 
         // INTERACTIONS DOMAIN

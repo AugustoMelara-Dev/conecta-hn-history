@@ -1,6 +1,4 @@
 <x-filament-panels::page>
-    @include('filament.components.panel-critical-styles')
-
     @php
         $tenantSlug = filament()->getTenant()?->slug ?? '';
     @endphp
@@ -12,9 +10,9 @@
                     <div class="biz-badge biz-badge-warning">Mejora a PRO</div>
 
                     <div>
-                        <h1 class="biz-title">Desbloquea mas herramientas para tu negocio</h1>
+                        <h1 class="biz-title">Desbloquea más herramientas para tu negocio</h1>
                         <p class="biz-copy">
-                            Si ya necesitas mas alcance, mejor presencia publica y menos friccion operativa, este es el siguiente paso.
+                            Si ya necesitas más alcance, mejor presencia pública y menos fricción operativa, este es el siguiente paso.
                         </p>
                     </div>
                 </div>
@@ -28,12 +26,12 @@
                         </div>
 
                         <p class="biz-muted">
-                            La activacion y el envio del comprobante se gestionan desde la seccion de Suscripcion.
+                            La activación y el envío del comprobante se gestionan desde la sección de Suscripción.
                         </p>
 
                         <div class="biz-button-row">
                             <a href="{{ route('filament.app.pages.manage-billing', ['tenant' => $tenantSlug]) }}" class="biz-button">
-                                Ir a suscripcion
+                                Ir a suscripción
                             </a>
                         </div>
                     </div>

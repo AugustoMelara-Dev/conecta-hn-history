@@ -36,12 +36,12 @@ class ManageGeneralSettings extends Page implements HasForms
 
     public static function getNavigationLabel(): string
     {
-        return 'Configuracion general';
+        return 'Configuración general';
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Configuracion';
+        return 'Configuración';
     }
 
     public static function canAccess(): bool
@@ -89,36 +89,36 @@ class ManageGeneralSettings extends Page implements HasForms
                             ->icon('heroicon-o-currency-dollar')
                             ->schema([
                                 Section::make('Precios y suscripciones')
-                                    ->description('Controla precios, periodos de gracia y limites por plan.')
+                                    ->description('Controla precios, períodos de gracia y límites por plan.')
                                     ->schema([
                                         TextInput::make('pro_plan_price')
                                             ->label('Precio plan PRO (lempiras)')
                                             ->numeric()
                                             ->prefix('L.')
                                             ->required()
-                                            ->helperText('Precio mensual de la suscripcion PRO.'),
+                                            ->helperText('Precio mensual de la suscripción PRO.'),
                                         TextInput::make('grace_period_days')
-                                            ->label('Dias de gracia')
+                                            ->label('Días de gracia')
                                             ->numeric()
-                                            ->suffix('dias')
+                                            ->suffix('días')
                                             ->required()
-                                            ->helperText('Dias antes de suspender el servicio por falta de pago.'),
+                                            ->helperText('Días antes de suspender el servicio por falta de pago.'),
                                     ])->columns(2),
-                                Section::make('Limites de productos')
-                                    ->description('Define el limite de catalogo disponible por plan.')
+                                Section::make('Límites de productos')
+                                    ->description('Define el límite de catálogo disponible por plan.')
                                     ->schema([
                                         TextInput::make('free_plan_product_limit')
-                                            ->label('Limite plan gratuito')
+                                            ->label('Límite plan gratuito')
                                             ->numeric()
                                             ->suffix('productos')
                                             ->required()
-                                            ->helperText('Productos maximos para cuentas gratuitas.'),
+                                            ->helperText('Productos máximos para cuentas gratuitas.'),
                                         TextInput::make('pro_plan_product_limit')
-                                            ->label('Limite plan PRO')
+                                            ->label('Límite plan PRO')
                                             ->numeric()
                                             ->suffix('productos')
                                             ->required()
-                                            ->helperText('Productos maximos para cuentas PRO.'),
+                                            ->helperText('Productos máximos para cuentas PRO.'),
                                     ])->columns(2),
                             ]),
                         Tab::make('Banco y soporte')
@@ -147,7 +147,7 @@ class ManageGeneralSettings extends Page implements HasForms
                                             ->prefix('+504')
                                             ->placeholder('99999999')
                                             ->required()
-                                            ->helperText('Numero completo con codigo de pais.'),
+                                            ->helperText('Número completo con código de país.'),
                                         TextInput::make('support_email')
                                             ->label('Email de soporte')
                                             ->email()
@@ -163,12 +163,12 @@ class ManageGeneralSettings extends Page implements HasForms
                                     ->schema([
                                         Toggle::make('maintenance_mode')
                                             ->label('Modo mantenimiento')
-                                            ->helperText('Si esta activo, los negocios veran una pagina temporal de mantenimiento.')
+                                            ->helperText('Si está activo, los negocios verán una página temporal de mantenimiento.')
                                             ->onColor('danger')
                                             ->offColor('success'),
                                         Toggle::make('allow_registrations')
                                             ->label('Permitir nuevos registros')
-                                            ->helperText('Desactivalo para cerrar temporalmente el registro de nuevos negocios.')
+                                            ->helperText('Desactívalo para cerrar temporalmente el registro de nuevos negocios.')
                                             ->onColor('success')
                                             ->offColor('danger'),
                                     ])->columns(2),
@@ -198,17 +198,20 @@ class ManageGeneralSettings extends Page implements HasForms
 
         Notification::make()
             ->success()
-            ->title('Configuracion guardada')
+            ->title('Configuración guardada')
             ->body('Los cambios se aplicaron en todo el sistema.')
             ->send();
     }
 
-    protected function getFormActions(): array
+    protected function getHeaderActions(): array
     {
         return [
             Action::make('save')
-                ->label('Guardar configuracion')
-                ->submit('save'),
+                ->label('Guardar configuración')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->keyBindings(['mod+s'])
+                ->action('save'),
         ];
     }
 }

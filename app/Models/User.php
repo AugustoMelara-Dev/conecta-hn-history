@@ -85,30 +85,25 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
         'remember_token',
     ];
 
-    /**
+        /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
      *
-     * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     * âš ï¸  ARQUITECTURA DDD - NO MODIFICAR SIN AUTORIZACIÃ“N DEL ARQUITECTO  âš ï¸
-     * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     *
      * PROHIBIDO: 'password' => 'hashed'
      *
-     * El hashing de contraseÃ±as es responsabilidad EXCLUSIVA de los Handlers
-     * de la Capa de AplicaciÃ³n (RegisterUserHandler, UpdatePasswordHandler).
+     * El hashing de contrasenas es responsabilidad exclusiva de los handlers
+     * de la capa de aplicacion.
      *
      * Este modelo Eloquent debe actuar como un "Dumb Data Mapper" (Mapeador
-     * de Datos Tonto) que persiste EXACTAMENTE lo que el Dominio le entrega,
-     * sin transformaciones implÃ­citas.
+     * de datos tonto) que persiste exactamente lo que el dominio entrega,
+     * sin transformaciones implicitas.
      *
-     * Reactivar el cast 'hashed' causarÃ¡ DOBLE HASHING y corromperÃ¡ todas
+     * Reactivar el cast 'hashed' causara doble hashing y corrompera todas
      * las credenciales, haciendo imposible el login.
      *
      * @see App\Application\Identity\Handlers\RegisterUserHandler
      * @see App\Domain\Shared\PasswordHasherInterface
-     * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      */
     protected function casts(): array
     {
@@ -128,9 +123,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
         return \Database\Factories\UserFactory::new();
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // IDENTITY & GOVERNANCE HELPERS (Single Source of Truth)
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     public function isSuperAdmin(): bool
     {
@@ -149,8 +142,10 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
 
     public function isTenantOwner(): bool
     {
+        $tenantId = $this->resolveTenantId();
+
         $membership = $this->tenantMemberships()
-            ->where('tenant_id', $this->tenant_id)
+            ->where('tenant_id', $tenantId)
             ->where('role', \App\Domain\Access\Enums\Role::OWNER->value)
             ->whereNotNull('accepted_at')
             ->first();
@@ -159,7 +154,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
             return true;
         }
 
-        if ($this->tenant_id === null) {
+        if ($tenantId === null) {
             return false;
         }
 
@@ -209,9 +204,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
         ])->save();
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // TENANCY RELATIONSHIPS
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     /**
      * TenantAware Contract: Explicit tenant identity resolution.
@@ -221,7 +214,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
      */
     public function getTenantId(): int|string|null
     {
-        return $this->tenant_id;
+        return $this->resolveTenantId();
     }
 
     public function tenant(): BelongsTo
@@ -242,13 +235,11 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
     public function memberTenants(): BelongsToMany
     {
         return $this->belongsToMany(Tenant::class, 'tenant_memberships')
-            ->withPivot(['role', 'accepted_at'])
+            ->withPivot(['role', 'preset_key', 'granted_permissions', 'accepted_at'])
             ->withTimestamps();
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // FILAMENT MULTI-TENANCY CONTRACT (HasTenants)
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     public function getTenants(Panel $panel): Collection
     {
@@ -271,9 +262,11 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
 
     public function canAccessPanel(Panel $panel): bool
     {
+        $tenantId = $this->resolveTenantId();
+
         return match ($panel->getId()) {
             self::PANEL_ADMIN => $this->isSuperAdmin(),
-            self::PANEL_APP => $this->tenant_id !== null
+            self::PANEL_APP => $tenantId !== null
                 || $this->tenantMemberships()->whereNotNull('accepted_at')->exists()
                 || $this->isSuperAdmin(),
             default => false,
@@ -282,6 +275,8 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
 
     public function canAccessTenant(Model $tenant): bool
     {
+        $tenantId = $this->resolveTenantId();
+
         if (! $tenant instanceof Tenant) {
             return false;
         }
@@ -290,7 +285,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
             return true;
         }
 
-        if ($this->tenant_id !== null && (string) $this->tenant_id === (string) $tenant->id) {
+        if ($tenantId !== null && (string) $tenantId === (string) $tenant->id) {
             return true;
         }
 
@@ -300,9 +295,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
             ->exists();
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // SOCIAL & INTERACTION LOGIC
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     public function favorites(): HasMany
     {
@@ -359,9 +352,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
             ->withTimestamps();
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // LOYALTY SYSTEM
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     /**
      * Get all loyalty ledger entries for this user.
@@ -406,4 +397,18 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
             })
             ->sum('amount');
     }
+
+    private function resolveTenantId(): int|string|null
+    {
+        if (array_key_exists('tenant_id', $this->attributes)) {
+            return $this->attributes['tenant_id'];
+        }
+
+        if ($this->relationLoaded('tenant')) {
+            return $this->tenant?->getKey();
+        }
+
+        return null;
+    }
 }
+

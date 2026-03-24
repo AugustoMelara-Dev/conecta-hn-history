@@ -1,18 +1,92 @@
-import { useState, useEffect } from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import PublicLayout from '@/Layouts/PublicLayout';
+import {
+    CalendarClock,
+    CheckCircle2,
+    ChevronLeft,
+    Clock3,
+    ShieldCheck,
+    Sparkles,
+    UserRound,
+} from 'lucide-react';
 
-/**
- * Booking Wizard - Customer Appointment Booking Flow
- * 
- * 4-Step wizard:
- * 1. Select Service
- * 2. Select Provider  
- * 3. Select Date & Time
- * 4. Enter Contact Info & Confirm
- */
-export default function BookingWizard({ tenant, services, providers }) {
+const STEP_LABELS = [
+    'Selecciona servicio',
+    'Elige quien atiende',
+    'Escoge fecha y hora',
+    'Confirma tus datos',
+];
+
+function StepRail({ step }) {
+    return (
+        <div className="space-y-4" data-testid="booking-step-rail">
+            {STEP_LABELS.map((label, index) => {
+                const stepNumber = index + 1;
+                const isActive = stepNumber === step;
+                const isDone = stepNumber < step;
+
+                return (
+                    <div
+                        key={label}
+                        className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
+                            isActive
+                                ? 'border-slate-950 bg-slate-950 text-white'
+                                : isDone
+                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                                    : 'border-slate-200 bg-white text-slate-500'
+                        }`}
+                    >
+                        <div
+                            className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold ${
+                                isActive
+                                    ? 'bg-white text-slate-950'
+                                    : isDone
+                                        ? 'bg-emerald-600 text-white'
+                                        : 'bg-slate-100 text-slate-600'
+                            }`}
+                        >
+                            {isDone ? <CheckCircle2 className="h-4 w-4" /> : stepNumber}
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">Paso {stepNumber}</p>
+                            <p className="text-sm font-semibold">{label}</p>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+function SummaryCard({ tenant, selectedService, selectedProvider, selectedDate, selectedTime }) {
+    return (
+        <aside className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5" data-testid="booking-summary">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Reserva guiada</p>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-950">{tenant.name}</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+                Agenda una cita con una experiencia clara, rapida y pensada para convertir visitas en clientes reales.
+            </p>
+
+            <div className="mt-6 space-y-3 rounded-[1.5rem] bg-slate-50 p-4 text-sm">
+                <div className="flex justify-between gap-4"><span className="text-slate-500">Servicio</span><span className="text-right font-semibold text-slate-950">{selectedService?.name || 'Pendiente'}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-slate-500">Atiende</span><span className="text-right font-semibold text-slate-950">{selectedProvider?.name || 'Sin preferencia'}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-slate-500">Fecha</span><span className="text-right font-semibold text-slate-950">{selectedDate || 'Pendiente'}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-slate-500">Hora</span><span className="text-right font-semibold text-slate-950">{selectedTime || 'Pendiente'}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-slate-500">Precio</span><span className="text-right font-semibold text-slate-950">{selectedService?.price || 'Se define al elegir'}</span></div>
+            </div>
+
+            <div className="mt-6 space-y-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                <div className="flex items-center gap-3"><ShieldCheck className="h-4 w-4 text-emerald-600" />Confirmacion clara antes de atender</div>
+                <div className="flex items-center gap-3"><CalendarClock className="h-4 w-4 text-slate-900" />Agenda pensada para movil y escritorio</div>
+                <div className="flex items-center gap-3"><Sparkles className="h-4 w-4 text-slate-900" />Experiencia lista para reservas rapidas</div>
+            </div>
+        </aside>
+    );
+}
+
+export default function BookingWizard({ tenant, services, providers, preselectedServiceId = null }) {
     const [step, setStep] = useState(1);
     const [selectedService, setSelectedService] = useState(null);
     const [selectedProvider, setSelectedProvider] = useState(null);
@@ -31,47 +105,105 @@ export default function BookingWizard({ tenant, services, providers }) {
         customer_notes: '',
     });
 
-    // Fetch slots when date or provider changes
     useEffect(() => {
-        if (selectedDate && data.service_id) {
-            fetchSlots();
+        if (!preselectedServiceId || selectedService !== null) {
+            return;
         }
-    }, [selectedDate, data.service_provider_id]);
 
-    const fetchSlots = async () => {
-        setLoadingSlots(true);
-        try {
-            const response = await axios.get(`/${tenant.slug}/book/slots`, {
-                params: {
-                    date: selectedDate,
-                    service_id: data.service_id,
-                    provider_id: data.service_provider_id,
-                },
-            });
-            setAvailableSlots(response.data.slots);
-        } catch (error) {
-            console.error('Error fetching slots:', error);
-            setAvailableSlots([]);
+        const match = services.find((service) => String(service.id) === String(preselectedServiceId));
+
+        if (!match) {
+            return;
         }
-        setLoadingSlots(false);
-    };
+
+        setSelectedService(match);
+        setData('service_id', match.id);
+        setStep(2);
+    }, [preselectedServiceId, selectedService, services, setData]);
+
+    useEffect(() => {
+        if (!selectedDate || !data.service_id) {
+            setAvailableSlots([]);
+
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadSlots = async () => {
+            setLoadingSlots(true);
+
+            try {
+                const response = await axios.get(route('public.booking.slots', { tenant: tenant.slug }), {
+                    params: {
+                        date: selectedDate,
+                        service_id: data.service_id,
+                        provider_id: data.service_provider_id,
+                    },
+                });
+
+                if (!cancelled) {
+                    setAvailableSlots(response.data.slots || []);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error('Error fetching slots:', error);
+                    setAvailableSlots([]);
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoadingSlots(false);
+                }
+            }
+        };
+
+        loadSlots();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [data.service_id, data.service_provider_id, selectedDate, tenant.slug]);
+
+    const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+    const micrositeHref = route('tenant.microsite.show', { tenant: tenant.slug });
+    const bookingFlowError = errors.service_id || errors.service_provider_id;
 
     const handleServiceSelect = (service) => {
         setSelectedService(service);
-        setData('service_id', service.id);
+        setSelectedProvider(null);
+        setSelectedDate('');
+        setAvailableSlots([]);
+        setData({
+            ...data,
+            service_id: service.id,
+            service_provider_id: null,
+            date: '',
+            time: '',
+        });
         setStep(2);
     };
 
     const handleProviderSelect = (provider) => {
         setSelectedProvider(provider);
-        setData('service_provider_id', provider.id);
+        setSelectedDate('');
+        setAvailableSlots([]);
+        setData({
+            ...data,
+            service_provider_id: provider?.id ?? providers[0]?.id ?? null,
+            date: '',
+            time: '',
+        });
         setStep(3);
     };
 
-    const handleDateChange = (e) => {
-        const date = e.target.value;
-        setSelectedDate(date);
-        setData('date', date);
+    const handleDateChange = (event) => {
+        const nextDate = event.target.value;
+        setSelectedDate(nextDate);
+        setData({
+            ...data,
+            date: nextDate,
+            time: '',
+        });
     };
 
     const handleTimeSelect = (slot) => {
@@ -79,254 +211,260 @@ export default function BookingWizard({ tenant, services, providers }) {
         setStep(4);
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        post(`/${tenant.slug}/book`);
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        post(route('public.booking.store', { tenant: tenant.slug }));
     };
 
     const goBack = () => {
-        if (step > 1) setStep(step - 1);
-    };
+        if (step === 4) {
+            setStep(3);
 
-    // Get today's date for min date attribute
-    const today = new Date().toISOString().split('T')[0];
+            return;
+        }
+
+        if (step === 3) {
+            setData('time', '');
+        }
+
+        setStep((current) => Math.max(1, current - 1));
+    };
 
     return (
         <PublicLayout>
             <Head title={`Reservar en ${tenant.name}`} />
-            
-            <div className="min-h-screen bg-gray-50 py-8">
-                <div className="max-w-lg mx-auto px-4">
-                    {/* Header */}
-                    <div className="text-center mb-8">
-                        <h1 className="text-2xl font-bold text-gray-900">
-                            Reserva tu cita
-                        </h1>
-                        <p className="text-gray-600 mt-1">{tenant.name}</p>
+
+            <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(15,23,42,0.06),transparent_32%),linear-gradient(180deg,#f8fafc_0%,#ffffff_52%,#f8fafc_100%)] py-10">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Reserva publica</p>
+                            <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950">Agenda una cita con {tenant.name}</h1>
+                            <p className="mt-3 max-w-2xl text-base leading-8 text-slate-600">
+                                Esta experiencia esta pensada para que un negocio de servicios convierta visitas en reservas con claridad y menos friccion.
+                            </p>
+                        </div>
+
+                        <Link
+                            href={micrositeHref}
+                            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-900 transition hover:border-slate-300 hover:bg-slate-50"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                            Volver al micrositio
+                        </Link>
                     </div>
 
-                    {/* Progress Steps */}
-                    <div className="flex justify-between mb-8">
-                        {[1, 2, 3, 4].map((s) => (
-                            <div
-                                key={s}
-                                className={`flex-1 h-2 mx-1 rounded-full ${
-                                    s <= step ? 'bg-black' : 'bg-gray-200'
-                                }`}
+                    <div className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]" data-testid="booking-wizard">
+                        <div className="space-y-6">
+                            <StepRail step={step} />
+                            <SummaryCard
+                                tenant={tenant}
+                                selectedService={selectedService}
+                                selectedProvider={selectedProvider}
+                                selectedDate={selectedDate}
+                                selectedTime={data.time}
                             />
-                        ))}
-                    </div>
+                        </div>
 
-                    {/* Step 1: Select Service */}
-                    {step === 1 && (
-                        <div className="space-y-4">
-                            <h2 className="text-lg font-semibold">Selecciona un servicio</h2>
-                            {services.map((service) => (
-                                <button
-                                    key={service.id}
-                                    onClick={() => handleServiceSelect(service)}
-                                    className="w-full p-4 bg-white border border-gray-200 rounded-lg text-left hover:border-black transition-colors"
-                                >
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="font-medium text-gray-900">{service.name}</h3>
-                                            {service.description && (
-                                                <p className="text-sm text-gray-500 mt-1">{service.description}</p>
-                                            )}
-                                            <p className="text-sm text-gray-400 mt-1">
-                                                {service.duration_formatted}
-                                            </p>
-                                        </div>
-                                        <span className="font-semibold text-gray-900">{service.price}</span>
+                        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5 md:p-8">
+                            {services.length === 0 ? (
+                                <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center">
+                                    <CalendarClock className="mx-auto h-12 w-12 text-slate-400" />
+                                    <h2 className="mt-5 text-2xl font-black tracking-tight text-slate-950">Este negocio todavia no tiene agenda publica</h2>
+                                    <p className="mt-3 text-sm leading-7 text-slate-600">Cuando publique servicios y disponibilidad, esta pagina se convertira en su canal directo de reservas.</p>
+                                </div>
+                            ) : null}
+
+                            {services.length > 0 && step === 1 ? (
+                                <section data-testid="booking-step-services">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Paso 1</p>
+                                    <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">Elige el servicio correcto</h2>
+                                    <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">Selecciona la atencion que necesitas. El negocio ya presenta duracion, precio y contexto para que avances con seguridad.</p>
+
+                                    <div className="mt-8 grid gap-4 lg:grid-cols-2">
+                                        {services.map((service) => (
+                                            <button
+                                                key={service.id}
+                                                type="button"
+                                                onClick={() => handleServiceSelect(service)}
+                                                className="group rounded-[1.75rem] border border-slate-200 bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-slate-950 hover:shadow-lg hover:shadow-slate-950/5"
+                                                data-testid={`booking-service-${service.id}`}
+                                            >
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div>
+                                                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Servicio</p>
+                                                        <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{service.name}</h3>
+                                                        <p className="mt-3 text-sm leading-7 text-slate-600">{service.description || 'Atencion profesional lista para agendar.'}</p>
+                                                    </div>
+                                                    <div className="rounded-[1.25rem] bg-slate-950 px-4 py-3 text-right text-white">
+                                                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">Precio</p>
+                                                        <p className="mt-2 text-xl font-black">{service.price}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-5 flex flex-wrap gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                                    <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2"><Clock3 className="h-4 w-4" />{service.duration_formatted}</span>
+                                                    <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2"><Sparkles className="h-4 w-4" />Reserva en pocos pasos</span>
+                                                </div>
+                                            </button>
+                                        ))}
                                     </div>
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                                </section>
+                            ) : null}
 
-                    {/* Step 2: Select Provider */}
-                    {step === 2 && (
-                        <div className="space-y-4">
-                            <button onClick={goBack} className="text-gray-500 hover:text-black mb-4">
-                                ← Volver
-                            </button>
-                            <h2 className="text-lg font-semibold">¿Con quién prefieres?</h2>
-                            
-                            <button
-                                onClick={() => {
-                                    setSelectedProvider(null);
-                                    setData('service_provider_id', providers[0]?.id);
-                                    setStep(3);
-                                }}
-                                className="w-full p-4 bg-gray-100 border border-gray-200 rounded-lg text-left hover:border-black transition-colors"
-                            >
-                                <span className="font-medium">Sin preferencia</span>
-                            </button>
+                            {services.length > 0 && step === 2 ? (
+                                <section data-testid="booking-step-providers">
+                                    <button type="button" onClick={goBack} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-slate-950">
+                                        <ChevronLeft className="h-4 w-4" />
+                                        Cambiar servicio
+                                    </button>
 
-                            {providers.map((provider) => (
-                                <button
-                                    key={provider.id}
-                                    onClick={() => handleProviderSelect(provider)}
-                                    className="w-full p-4 bg-white border border-gray-200 rounded-lg text-left hover:border-black transition-colors"
-                                >
-                                    <span className="font-medium">{provider.name}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                                    <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Paso 2</p>
+                                    <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">Elige quien atiende la reserva</h2>
+                                    <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">Si no tienes preferencia, el sistema puede avanzar con la primera persona disponible y mantener el flujo rapido.</p>
 
-                    {/* Step 3: Select Date & Time */}
-                    {step === 3 && (
-                        <div className="space-y-4">
-                            <button onClick={goBack} className="text-gray-500 hover:text-black mb-4">
-                                ← Volver
-                            </button>
-                            <h2 className="text-lg font-semibold">Escoge fecha y hora</h2>
-                            
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Fecha
-                                </label>
-                                <input
-                                    type="date"
-                                    min={today}
-                                    value={selectedDate}
-                                    onChange={handleDateChange}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-                                />
-                            </div>
+                                    <div className="mt-8 grid gap-4 lg:grid-cols-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleProviderSelect(null)}
+                                            className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5 text-left transition hover:border-slate-950 hover:bg-white"
+                                            data-testid="booking-provider-any"
+                                        >
+                                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Opcion rapida</p>
+                                            <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Sin preferencia</h3>
+                                            <p className="mt-3 text-sm leading-7 text-slate-600">Avanza con la persona disponible para no detener la reserva.</p>
+                                        </button>
 
-                            {selectedDate && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Hora disponible
-                                    </label>
-                                    {loadingSlots ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                            Cargando horarios...
+                                        {providers.map((provider) => (
+                                            <button
+                                                key={provider.id}
+                                                type="button"
+                                                onClick={() => handleProviderSelect(provider)}
+                                                className="rounded-[1.75rem] border border-slate-200 bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-slate-950 hover:shadow-lg hover:shadow-slate-950/5"
+                                                data-testid={`booking-provider-${provider.id}`}
+                                            >
+                                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Especialista</p>
+                                                <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{provider.name}</h3>
+                                                <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600">
+                                                    <UserRound className="h-4 w-4" />
+                                                    Disponible para agendar
+                                                </p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </section>
+                            ) : null}
+
+                            {services.length > 0 && step === 3 ? (
+                                <section data-testid="booking-step-slots">
+                                    <button type="button" onClick={goBack} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-slate-950">
+                                        <ChevronLeft className="h-4 w-4" />
+                                        Cambiar atencion
+                                    </button>
+
+                                    <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Paso 3</p>
+                                    <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">Escoge fecha y horario</h2>
+                                    <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">Los horarios se calculan segun disponibilidad activa para que reserves con menos ida y vuelta.</p>
+
+                                    <div className="mt-8 max-w-sm">
+                                        <label htmlFor="booking-date" className="mb-2 block text-sm font-semibold text-slate-700">Fecha de la cita</label>
+                                        <input
+                                            id="booking-date"
+                                            type="date"
+                                            min={today}
+                                            value={selectedDate}
+                                            onChange={handleDateChange}
+                                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-slate-950"
+                                            data-testid="booking-date-input"
+                                        />
+                                    </div>
+
+                                    <div className="mt-8" data-testid="booking-slots">
+                                        {!selectedDate ? (
+                                            <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">Elige una fecha para cargar los horarios disponibles.</div>
+                                        ) : loadingSlots ? (
+                                            <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">Cargando horarios disponibles...</div>
+                                        ) : availableSlots.length === 0 ? (
+                                            <div className="rounded-[1.75rem] border border-dashed border-amber-200 bg-amber-50 px-6 py-10 text-center text-sm text-amber-900">No hay horarios disponibles para esta fecha. Prueba con otro dia.</div>
+                                        ) : (
+                                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                                {availableSlots.map((slot) => (
+                                                    <button
+                                                        key={slot.time}
+                                                        type="button"
+                                                        onClick={() => handleTimeSelect(slot)}
+                                                        className={`rounded-2xl border px-4 py-4 text-left transition ${
+                                                            data.time === slot.time
+                                                                ? 'border-slate-950 bg-slate-950 text-white'
+                                                                : 'border-slate-200 bg-white text-slate-950 hover:border-slate-950'
+                                                        }`}
+                                                        data-testid={`booking-slot-${slot.time.replace(':', '-')}`}
+                                                    >
+                                                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">Horario</p>
+                                                        <p className="mt-2 text-lg font-black">{slot.display}</p>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </section>
+                            ) : null}
+
+                            {services.length > 0 && step === 4 ? (
+                                <form onSubmit={handleSubmit} className="space-y-6" data-testid="booking-step-confirm">
+                                    <button type="button" onClick={goBack} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-slate-950">
+                                        <ChevronLeft className="h-4 w-4" />
+                                        Cambiar horario
+                                    </button>
+
+                                    <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Paso 4</p>
+                                    <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">Confirma tus datos</h2>
+                                    <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">Cierra la reserva con la informacion minima necesaria para confirmar la atencion y dar seguimiento.</p>
+
+                                    <div className="grid gap-5 md:grid-cols-2">
+                                        <div>
+                                            <label htmlFor="customer_name" className="mb-2 block text-sm font-semibold text-slate-700">Nombre completo</label>
+                                            <input id="customer_name" type="text" value={data.customer_name} onChange={(event) => setData('customer_name', event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-slate-950" placeholder="Juan Perez" required data-testid="booking-name-input" />
+                                            {errors.customer_name ? <p className="mt-2 text-sm text-rose-600">{errors.customer_name}</p> : null}
                                         </div>
-                                    ) : availableSlots.length === 0 ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                            No hay horarios disponibles para esta fecha
+
+                                        <div>
+                                            <label htmlFor="customer_phone" className="mb-2 block text-sm font-semibold text-slate-700">Telefono</label>
+                                            <input id="customer_phone" type="tel" value={data.customer_phone} onChange={(event) => setData('customer_phone', event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-slate-950" placeholder="9999-9999" required data-testid="booking-phone-input" />
+                                            {errors.customer_phone ? <p className="mt-2 text-sm text-rose-600">{errors.customer_phone}</p> : null}
                                         </div>
-                                    ) : (
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {availableSlots.map((slot) => (
-                                                <button
-                                                    key={slot.time}
-                                                    onClick={() => handleTimeSelect(slot)}
-                                                    className={`py-3 px-2 text-sm border rounded-lg transition-colors ${
-                                                        data.time === slot.time
-                                                            ? 'bg-black text-white border-black'
-                                                            : 'bg-white border-gray-200 hover:border-black'
-                                                    }`}
-                                                >
-                                                    {slot.display}
-                                                </button>
-                                            ))}
+
+                                        <div className="md:col-span-2">
+                                            <label htmlFor="customer_email" className="mb-2 block text-sm font-semibold text-slate-700">Correo electronico</label>
+                                            <input id="customer_email" type="email" value={data.customer_email} onChange={(event) => setData('customer_email', event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-slate-950" placeholder="juan@ejemplo.com" required data-testid="booking-email-input" />
+                                            {errors.customer_email ? <p className="mt-2 text-sm text-rose-600">{errors.customer_email}</p> : null}
                                         </div>
-                                    )}
-                                </div>
-                            )}
+
+                                        <div className="md:col-span-2">
+                                            <label htmlFor="customer_notes" className="mb-2 block text-sm font-semibold text-slate-700">Notas opcionales</label>
+                                            <textarea id="customer_notes" value={data.customer_notes} onChange={(event) => setData('customer_notes', event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-slate-950" rows={4} placeholder="Comparte detalles utiles para atender mejor tu cita." data-testid="booking-notes-input" />
+                                        </div>
+                                    </div>
+
+                                    {errors.time ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errors.time}</div> : null}
+                                    {bookingFlowError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{bookingFlowError}</div> : null}
+
+                                    <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Resumen final</p>
+                                        <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
+                                            <div><span className="font-semibold text-slate-950">Servicio:</span> {selectedService?.name}</div>
+                                            <div><span className="font-semibold text-slate-950">Atiende:</span> {selectedProvider?.name || 'Sin preferencia'}</div>
+                                            <div><span className="font-semibold text-slate-950">Fecha:</span> {selectedDate}</div>
+                                            <div><span className="font-semibold text-slate-950">Hora:</span> {data.time}</div>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" disabled={processing} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-6 py-4 text-sm font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60" data-testid="booking-submit">
+                                        {processing ? 'Confirmando reserva...' : 'Confirmar reserva'}
+                                    </button>
+                                </form>
+                            ) : null}
                         </div>
-                    )}
-
-                    {/* Step 4: Contact Info & Confirm */}
-                    {step === 4 && (
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <button type="button" onClick={goBack} className="text-gray-500 hover:text-black mb-4">
-                                ← Volver
-                            </button>
-                            <h2 className="text-lg font-semibold">Completa tu reserva</h2>
-
-                            {/* Summary */}
-                            <div className="bg-gray-100 p-4 rounded-lg space-y-2">
-                                <p><strong>Servicio:</strong> {selectedService?.name}</p>
-                                <p><strong>Con:</strong> {selectedProvider?.name || 'Sin preferencia'}</p>
-                                <p><strong>Fecha:</strong> {selectedDate}</p>
-                                <p><strong>Hora:</strong> {data.time}</p>
-                                <p><strong>Precio:</strong> {selectedService?.price}</p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Tu nombre *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={data.customer_name}
-                                    onChange={(e) => setData('customer_name', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-                                    placeholder="Juan Pérez"
-                                    required
-                                />
-                                {errors.customer_name && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.customer_name}</p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Correo Electrónico *
-                                </label>
-                                <input
-                                    type="email"
-                                    value={data.customer_email}
-                                    onChange={(e) => setData('customer_email', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-                                    placeholder="juan@ejemplo.com"
-                                    required
-                                />
-                                {errors.customer_email && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.customer_email}</p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Tu teléfono *
-                                </label>
-                                <input
-                                    type="tel"
-                                    value={data.customer_phone}
-                                    onChange={(e) => setData('customer_phone', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-                                    placeholder="9999-9999"
-                                    required
-                                />
-                                {errors.customer_phone && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.customer_phone}</p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Notas (opcional)
-                                </label>
-                                <textarea
-                                    value={data.customer_notes}
-                                    onChange={(e) => setData('customer_notes', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-                                    rows={3}
-                                    placeholder="Algún comentario especial..."
-                                />
-                            </div>
-
-                            {errors.time && (
-                                <div className="bg-red-50 text-red-600 p-4 rounded-lg">
-                                    {errors.time}
-                                </div>
-                            )}
-
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="w-full py-4 bg-black text-white font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
-                            >
-                                {processing ? 'Reservando...' : 'Confirmar Reserva'}
-                            </button>
-                        </form>
-                    )}
+                    </div>
                 </div>
             </div>
         </PublicLayout>

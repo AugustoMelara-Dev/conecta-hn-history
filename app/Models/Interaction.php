@@ -24,8 +24,14 @@ class Interaction extends Model
     use BelongsToTenant;
 
     protected $fillable = [
+        'visitor_id',
+        'session_id',
         'product_id',
         'type',
+        'ip_address',
+        'user_agent',
+        'referrer',
+        'url',
         'metadata',
     ];
 

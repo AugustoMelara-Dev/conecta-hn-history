@@ -9,13 +9,6 @@ use App\Domain\Sales\Repositories\LeadRepositoryInterface;
 use App\Infrastructure\Sales\Mappers\LeadMapper;
 use App\Models\Lead;
 
-/**
- * EloquentLeadRepository - Infrastructure Adapter for Lead Persistence
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  DATA MAPPER: Converts Eloquent models to domain entities.              ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- */
 final class EloquentLeadRepository implements LeadRepositoryInterface
 {
     /**
@@ -25,13 +18,16 @@ final class EloquentLeadRepository implements LeadRepositoryInterface
         string $tenantId,
         ?int $productId,
         string $source,
-        ?string $message = null
+        ?string $message = null,
+        ?string $sessionId = null
     ): LeadEntity {
         $model = Lead::create([
             'tenant_id' => $tenantId,
+            'name' => $source === 'whatsapp_click' ? 'Lead desde WhatsApp' : 'Lead web',
             'product_id' => $productId,
             'source' => $source,
-            'message' => $message ?? 'Clic en WhatsApp desde el Catálogo',
+            'session_id' => $sessionId,
+            'message' => $message ?? 'Clic en WhatsApp desde el catalogo',
             'status' => 'new',
         ]);
 

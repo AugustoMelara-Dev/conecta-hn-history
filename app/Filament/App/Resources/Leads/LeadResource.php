@@ -65,7 +65,7 @@ class LeadResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('phone')
                     ->label('Telefono')
-                    ->placeholder('Sin telefono')
+                    ->placeholder('Sin teléfono')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('product.name')
                     ->label('Producto')
@@ -78,7 +78,7 @@ class LeadResource extends Resource
                         'whatsapp_click' => 'WhatsApp',
                         'manual' => 'Manual',
                         'website' => 'Sitio web',
-                        'catalog' => 'Catalogo',
+                        'catalog' => 'Catálogo',
                         null, '' => 'Manual',
                         default => ucfirst(str_replace('_', ' ', $state)),
                     })
@@ -112,7 +112,7 @@ class LeadResource extends Resource
                     ->options([
                         'manual' => 'Manual',
                         'website' => 'Sitio web',
-                        'catalog' => 'Catalogo',
+                        'catalog' => 'Catálogo',
                         'whatsapp_click' => 'WhatsApp',
                     ]),
             ])
@@ -126,8 +126,8 @@ class LeadResource extends Resource
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => 'Prospectos',
-                'heading' => 'Todavia no tienes prospectos',
-                'description' => 'Aqui veras los contactos manuales y tambien las consultas que entren desde tus canales publicos.',
+                'heading' => 'Todavía no tienes prospectos',
+                'description' => 'Aquí verás los contactos manuales y también las consultas que entren desde tus canales públicos.',
                 'buttonLabel' => 'Crear prospecto',
                 'buttonUrl' => static::getUrl('create'),
             ]));

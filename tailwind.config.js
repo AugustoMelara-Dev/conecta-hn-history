@@ -6,6 +6,8 @@ export default {
     content: [
         './app/**/*.php',
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
+        './vendor/filament/**/*.blade.php',
+        './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
         './resources/js/**/*.jsx',
     ],

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Filament\App\Resources\OrderResource\Pages;
 use App\Models\Location;
 use App\Models\Order;
@@ -34,10 +35,19 @@ class OrderResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return Gate::allows('viewAny', Order::class);
+        $tenant = static::getTenantRecord();
+
+        return $tenant instanceof Tenant
+            && $tenant->business_type !== BusinessType::SERVICE
+            && Gate::allows('viewAny', Order::class);
     }
 
     public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function canAccess(): bool
     {
         return static::canViewAny();
     }
@@ -247,8 +257,8 @@ class OrderResource extends Resource
             ->striped()
             ->defaultSort('created_at', 'desc')
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Todavia no tienes pedidos',
-                'description' => 'Cuando un cliente haga una compra o reservacion, el pedido aparecera aqui.',
+                'heading' => 'Todavía no tienes pedidos',
+                'description' => 'Cuando un cliente haga una compra o reservación, el pedido aparecerá aquí.',
             ]));
     }
 

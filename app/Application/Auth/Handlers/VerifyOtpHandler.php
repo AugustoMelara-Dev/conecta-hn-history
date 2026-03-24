@@ -18,11 +18,10 @@ use App\Domain\Shared\Contracts\ClockInterface;
 /**
  * VerifyOtpHandler - Atomic Protocol Edition
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  ATOMIC PROTOCOL: "Insert-or-Die" Gatekeeper                            â•‘
- * â•‘  CONSISTENCY: Transactional Outbox within Atomic Lock                   â•‘
- * â•‘  PURITY: No side effects (Events/Mailers) outside Outbox                â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * Atomic protocol:
+ * - "Insert-or-Die" gatekeeper.
+ * - Transactional outbox dentro del bloqueo atómico.
+ * - Sin efectos secundarios fuera del outbox.
  */
 final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
 {
@@ -62,7 +61,7 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
             // and stop the flow immediately.
             $this->otpRepository->incrementAttemptsAtomically((string) $otp->id, $this->maxOtpAttempts);
 
-            throw new InvalidOtpException('CÃ³digo incorrecto.');
+            throw new InvalidOtpException('Código incorrecto.');
         }
 
         // 2. Consume OTP (Effect)

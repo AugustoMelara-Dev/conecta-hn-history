@@ -25,74 +25,32 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /**
- * AppPanelProvider - Panel del Inquilino (Mobile-First)
+ * Panel operativo para negocios.
  *
- * Arquitectura optimizada para:
- * - 90% de interacciones desde móviles Android gama media
- * - Conexiones a internet intermitentes
- * - Experiencia de aplicación nativa
- *
- * Diferenciación Visual:
- * - Color Indigo (vs Blue del Admin) para clara distinción
- * - Tipografía Inter para legibilidad móvil
- * - Logo vectorial compartido con brand.blade.php
+ * Priorizamos navegación clara, tiempos cortos y una experiencia sólida
+ * en móvil para dueños de negocio que gestionan su operación desde el teléfono.
  */
 class AppPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            // ═══════════════════════════════════════════════════════════════
-            // IDENTIDAD DEL PANEL
-            // ═══════════════════════════════════════════════════════════════
             ->id('app')
             ->path('app')
-
-            // ═══════════════════════════════════════════════════════════════
-            // BRANDING: Logo Vectorial y Nombre
-            // ═══════════════════════════════════════════════════════════════
-            ->brandName('Vito Business OS')
             ->brandLogo(fn () => view('filament.components.brand'))
             ->brandLogoHeight('2.5rem')
             ->favicon(asset('favicon.ico'))
-
-            // ═══════════════════════════════════════════════════════════════
-            // AUTENTICACIÓN
-            // Deshabilitamos registro nativo - usamos wizard público
-            // ═══════════════════════════════════════════════════════════════
             ->login()
-            // ->registration() // Disabled - using /registrar-negocio wizard
+            // ->registration() // El alta se maneja en el flujo público.
             ->profile()
             ->passwordReset()
             ->emailVerification()
-
-            // ═══════════════════════════════════════════════════════════════
-            // MULTI-TENANCY
-            // ═══════════════════════════════════════════════════════════════
-            ->tenant(\App\Models\Tenant::class, slugAttribute: 'slug')
-
-            // ═══════════════════════════════════════════════════════════════
-            // MODO SPA (Single Page Application)
-            // Transiciones instantáneas sin recargas de página
-            // ═══════════════════════════════════════════════════════════════
-            ->viteTheme('resources/css/filament/app-panel.css')
-            ->renderHook(
-                PanelsRenderHook::HEAD_END,
-                fn (): string => view('filament.components.panel-critical-styles')->render(),
-            )
-            ->renderHook(
-                PanelsRenderHook::BODY_START,
-                fn (): string => view('filament.components.local-dev-runtime-reset')->render(),
-            )
-
-            // ═══════════════════════════════════════════════════════════════
-            // LAYOUT ADAPTATIVO (Mobile-First)
-            // ═══════════════════════════════════════════════════════════════
+            ->tenant(Tenant::class, slugAttribute: 'slug')
             ->topNavigation(false)
-
-            // ═══════════════════════════════════════════════════════════════
-            // PALETA DE COLORES: INDIGO (Diferenciación del Admin)
-            // ═══════════════════════════════════════════════════════════════
+            ->sidebarWidth('18rem')
+            ->sidebarCollapsibleOnDesktop(false)
+            ->sidebarFullyCollapsibleOnDesktop(false)
+            ->collapsibleNavigationGroups(false)
             ->colors([
                 'primary' => Color::Emerald,
                 'gray' => Color::Zinc,
@@ -101,46 +59,27 @@ class AppPanelProvider extends PanelProvider
                 'danger' => Color::Rose,
                 'info' => Color::Cyan,
             ])
-
-            // ═══════════════════════════════════════════════════════════════
-            // TIPOGRAFÍA: Inter (Optimizada para móvil)
-            // ═══════════════════════════════════════════════════════════════
             ->font('Manrope')
-
-            // ═══════════════════════════════════════════════════════════════
-            // DARK MODE
-            // ═══════════════════════════════════════════════════════════════
             ->darkMode(true)
-
-            // ═══════════════════════════════════════════════════════════════
-            // NAVEGACIÓN CON ICONOS SEMÁNTICOS
-            // ═══════════════════════════════════════════════════════════════
             ->navigationGroups([
-                NavigationGroup::make()
-                    ->label('Ventas'),
-                NavigationGroup::make()
-                    ->label('Catalogo'),
-                NavigationGroup::make()
-                    ->label('Marketing'),
-                NavigationGroup::make()
-                    ->label('Marketing PRO'),
-                NavigationGroup::make()
-                    ->label('Inventario'),
-                NavigationGroup::make()
-                    ->label('Configuracion'),
-                NavigationGroup::make()
-                    ->label('Cuenta'),
+                NavigationGroup::make()->label('Ventas'),
+                NavigationGroup::make()->label('Catálogo'),
+                NavigationGroup::make()->label('Servicios'),
+                NavigationGroup::make()->label('Marketing'),
+                NavigationGroup::make()->label('Marketing PRO'),
+                NavigationGroup::make()->label('Operacion'),
+                NavigationGroup::make()->label('Inventario'),
+                NavigationGroup::make()->label('Configuración'),
+                NavigationGroup::make()->label('Cuenta'),
             ])
             ->navigationItems([
-                // Enlace externo: Ver mi página pública
-                NavigationItem::make('Ver mi sitio publico')
+                NavigationItem::make('Ver mi sitio público')
                     ->url(fn () => $this->getTenantPublicUrl())
                     ->icon('heroicon-o-arrow-top-right-on-square')
                     ->group('Ventas')
                     ->sort(99)
                     ->openUrlInNewTab(),
 
-                // Enlace externo: Compartir en WhatsApp
                 NavigationItem::make('Compartir negocio')
                     ->url(fn () => $this->getShareUrl())
                     ->icon('heroicon-o-share')
@@ -148,18 +87,24 @@ class AppPanelProvider extends PanelProvider
                     ->sort(100)
                     ->openUrlInNewTab(),
             ])
-
-            // ═══════════════════════════════════════════════════════════════
-            // RECURSOS Y PÁGINAS
-            // ═══════════════════════════════════════════════════════════════
             ->resources([
+                \App\Filament\App\Resources\OperationalPlaybookTaskResource::class,
                 \App\Filament\App\Resources\ProductResource::class,
+                \App\Filament\App\Resources\MenuSectionResource::class,
                 \App\Filament\App\Resources\OrderResource::class,
+                \App\Filament\App\Resources\ServiceResource::class,
+                \App\Filament\App\Resources\AppointmentResource::class,
+                \App\Filament\App\Resources\ServiceProviderResource::class,
                 \App\Filament\App\Resources\Leads\LeadResource::class,
                 \App\Filament\App\Resources\FollowerResource::class,
                 \App\Filament\App\Resources\CampaignResource::class,
+                \App\Filament\App\Resources\CouponResource::class,
+                \App\Filament\App\Resources\AnnouncementResource::class,
+                \App\Filament\App\Resources\LoyaltyProgramResource::class,
                 \App\Filament\App\Resources\InventoryLevelResource::class,
                 \App\Filament\App\Resources\InventoryMovementResource::class,
+                \App\Filament\App\Resources\LocationResource::class,
+                \App\Filament\App\Resources\TenantUserResource::class,
             ])
             ->pages([
                 Dashboard::class,
@@ -168,21 +113,12 @@ class AppPanelProvider extends PanelProvider
                 \App\Filament\App\Pages\ManageBilling::class,
                 \App\Filament\App\Pages\UpgradeToPro::class,
             ])
-
-            // ═══════════════════════════════════════════════════════════════
-            // WIDGETS DEL DASHBOARD (Filament v4 compatible)
-            // Ordenados por prioridad: Stats Bento > Límite > Completitud > Acciones
-            // ═══════════════════════════════════════════════════════════════
             ->widgets([])
-
-            // ═══════════════════════════════════════════════════════════════
-            // RENDIMIENTO Y UX
-            // ═══════════════════════════════════════════════════════════════
             ->maxContentWidth('full')
-
-            // ═══════════════════════════════════════════════════════════════
-            // MIDDLEWARE
-            // ═══════════════════════════════════════════════════════════════
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): \Illuminate\Contracts\View\View => view('filament.components.app-inline-overrides'),
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -221,12 +157,10 @@ class AppPanelProvider extends PanelProvider
         });
     }
 
-    /**
-     * Obtiene la URL pública del tenant actual
-     */
     protected function getTenantPublicUrl(): string
     {
         $tenant = $this->getCurrentTenant();
+
         if ($tenant instanceof Tenant) {
             return route('tenant.microsite.show', ['tenant' => $tenant->slug]);
         }
@@ -234,17 +168,15 @@ class AppPanelProvider extends PanelProvider
         return url('/');
     }
 
-    /**
-     * Genera URL para compartir en WhatsApp
-     */
     protected function getShareUrl(): string
     {
         $tenant = $this->getCurrentTenant();
+
         if ($tenant instanceof Tenant) {
             $url = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
-            $text = "¡Mira mi negocio {$tenant->name} en Conecta HN!";
+            $text = "Mira mi negocio {$tenant->name} en Conecta HN.";
 
-            return 'https://wa.me/?text='.urlencode("{$text}\n\n{$url}");
+            return 'https://wa.me/?text=' . urlencode("{$text}\n\n{$url}");
         }
 
         return '#';

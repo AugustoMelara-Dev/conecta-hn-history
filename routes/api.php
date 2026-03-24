@@ -8,6 +8,9 @@ use App\Http\Controllers\Auth\OtpController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::post('/analytics/track', [\App\Http\Controllers\Api\V1\AnalyticsController::class, 'track'])
+    ->middleware('throttle:api');
+
 // ═══════════════════════════════════════════════════════════════════════════
 // API V1 ROUTING GROUP
 // ═══════════════════════════════════════════════════════════════════════════
@@ -177,6 +180,15 @@ Route::prefix('v1')->group(function () {
         Route::post('/optimize-profile', [\App\Http\Controllers\Api\V1\AiOptimizationController::class, 'optimizeProfile'])
             ->name('api.ai.optimize-profile');
     });
+});
+
+// SPA compatibility layer:
+// the current notification bell consumes /api/notifications directly.
+Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('notifications')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\V1\NotificationController::class, 'index']);
+    Route::get('/count', [\App\Http\Controllers\Api\V1\NotificationController::class, 'count']);
+    Route::patch('/read-all', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAllAsRead']);
+    Route::patch('/{id}/read', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAsRead']);
 });
 
 Route::post('/orders', [\App\Http\Controllers\Public\OrderController::class, 'store'])

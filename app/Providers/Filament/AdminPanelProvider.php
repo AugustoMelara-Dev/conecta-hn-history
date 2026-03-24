@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
-use App\Domain\Identity\Enums\UserRole;
-use App\Models\User;
-use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -31,10 +28,9 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(\App\Filament\Auth\AdminLogin::class)
             ->authGuard('web')
             ->profile()
-            ->brandName('Vito Business OS Admin')
             ->brandLogo(fn () => view('filament.components.brand'))
             ->brandLogoHeight('2.5rem')
             ->favicon(asset('favicon.ico'))
@@ -53,21 +49,20 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make()->label('Negocios'),
                 NavigationGroup::make()->label('Finanzas'),
                 NavigationGroup::make()->label('Seguridad'),
-                NavigationGroup::make()->label('Configuracion')->collapsed(),
+                NavigationGroup::make()->label('Configuración')->collapsed(),
             ])
+            ->sidebarWidth('18rem')
+            ->sidebarCollapsibleOnDesktop(false)
+            ->sidebarFullyCollapsibleOnDesktop(false)
             ->collapsibleNavigationGroups(false)
             ->maxContentWidth('full')
-            ->viteTheme('resources/css/filament/admin-panel.css')
+            ->darkMode(true)
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn (): string => view('filament.components.panel-critical-styles')->render(),
+                fn (): \Illuminate\Contracts\View\View => view('filament.components.admin-inline-overrides'),
             )
-            ->renderHook(
-                PanelsRenderHook::BODY_START,
-                fn (): string => view('filament.components.local-dev-runtime-reset')->render(),
-            )
-            ->darkMode(true)
             ->resources([
+                \App\Filament\Resources\OperationalPlaybookTaskResource::class,
                 \App\Filament\Resources\TenantResource::class,
                 \App\Filament\Resources\UserResource::class,
                 \App\Filament\Resources\PaymentResource::class,
@@ -95,38 +90,5 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
-    }
-
-    public function boot(): void
-    {
-        Filament::serving(function (): void {
-            $panel = Filament::getCurrentPanel();
-
-            if (! $panel || $panel->getId() !== 'admin') {
-                return;
-            }
-
-            if (! auth()->check()) {
-                return;
-            }
-
-            $user = auth()->user();
-
-            if (! $user instanceof User) {
-                abort(403, 'Acceso denegado. Usuario invalido.');
-            }
-
-            $superAdmins = config('auth.super_admins', []);
-            $isSuperAdmin = $user->role === UserRole::SUPER_ADMIN;
-            $isWhitelistedAdmin = $isSuperAdmin && in_array($user->email, $superAdmins, true);
-
-            if ($isWhitelistedAdmin) {
-                return;
-            }
-
-            if (! $isSuperAdmin) {
-                abort(403, 'Acceso denegado. Se requiere rol de Super Admin.');
-            }
-        });
     }
 }

@@ -19,6 +19,9 @@ class CreateTenantUser extends CreateRecord
     {
         $tenant = Filament::getTenant();
         $tenantId = $tenant instanceof Tenant ? (string) $tenant->getKey() : null;
+        $normalizedData = $tenant instanceof Tenant
+            ? TenantUserResource::normalizeMembershipData($tenant, $data)
+            : $data;
 
         $membership = TenantMembership::query()
             ->where('tenant_id', $tenantId)
@@ -28,12 +31,16 @@ class CreateTenantUser extends CreateRecord
         if (! $membership instanceof TenantMembership) {
             $membership = new TenantMembership([
                 'user_id' => $data['user_id'],
-                'role' => $data['role'],
+                'role' => $normalizedData['role'],
+                'preset_key' => $normalizedData['preset_key'] ?? null,
+                'granted_permissions' => $normalizedData['granted_permissions'] ?? [],
                 'accepted_at' => now(),
             ]);
             $membership->tenant_id = $tenantId;
         } else {
-            $membership->role = $data['role'];
+            $membership->role = $normalizedData['role'];
+            $membership->preset_key = $normalizedData['preset_key'] ?? null;
+            $membership->granted_permissions = $normalizedData['granted_permissions'] ?? [];
             $membership->accepted_at = now();
         }
 

@@ -43,7 +43,7 @@ class LeadForm
                             ->options([
                                 'manual' => 'Manual',
                                 'website' => 'Sitio web',
-                                'catalog' => 'Catalogo',
+                                'catalog' => 'Catálogo',
                                 'whatsapp_click' => 'WhatsApp',
                             ])
                             ->default('manual')

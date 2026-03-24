@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Infrastructure\Interactions\Actions\RecordInteractionAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
 use Psr\Log\LoggerInterface;
@@ -60,7 +61,7 @@ final class AnalyticsController extends Controller
             type: (string) $validated['type'],
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
-            sessionId: $request->session()->getId(),
+            sessionId: $this->resolveVisitorId($request),
             productId: isset($validated['product_id']) ? (string) $validated['product_id'] : null,
             metadata: $metadata,
         ));
@@ -105,7 +106,7 @@ final class AnalyticsController extends Controller
                 type: $event,
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
-                sessionId: $request->session()->getId(),
+                sessionId: $this->resolveVisitorId($request),
                 productId: null,
                 metadata: [
                     'event' => $event,
@@ -132,5 +133,14 @@ final class AnalyticsController extends Controller
 
             return response()->json(['status' => 'error']);
         }
+    }
+
+    private function resolveVisitorId(Request $request): string
+    {
+        if ($request->hasSession()) {
+            return (string) $request->session()->getId();
+        }
+
+        return (string) Str::uuid();
     }
 }

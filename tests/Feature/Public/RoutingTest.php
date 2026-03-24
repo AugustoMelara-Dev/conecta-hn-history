@@ -6,6 +6,8 @@ namespace Tests\Feature\Public;
 
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Shared\Services\TenantContext;
+use App\Models\Service;
+use App\Models\ServiceProvider;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,6 +52,42 @@ final class RoutingTest extends TestCase
         $response = $this->get('/t/test-barbershop');
 
         $response->assertStatus(200);
+    }
+
+    #[Test]
+    public function tenant_microsite_exposes_business_type_aware_props(): void
+    {
+        $user = User::factory()->create();
+        $tenant = Tenant::factory()->pro()->create([
+            'user_id' => $user->id,
+            'slug' => 'legal-studio-hn',
+            'business_type' => 'service',
+            'status' => 'approved',
+            'subscription_status' => 'active',
+        ]);
+
+        Service::factory()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Consulta legal',
+        ]);
+
+        ServiceProvider::factory()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Ana López',
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $response = $this->get('/t/legal-studio-hn');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Tenant/Show')
+            ->where('tenant.business_type', 'service')
+            ->where('tenant.storefront_profile.label', 'Servicios y citas')
+            ->where('tenant.storefront_profile.primary_cta_label', 'Reservar ahora')
+            ->has('tenant.services', 1)
+        );
     }
 
     #[Test]

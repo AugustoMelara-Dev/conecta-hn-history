@@ -10,11 +10,7 @@ use Illuminate\Validation\Rules;
 /**
  * RegisterTenantRequest - Form Request for User + Tenant Registration
  *
- * ARCHITECTURAL PURPOSE:
- * Encapsulates ALL validation rules for the registration flow.
- * Controllers MUST NOT contain inline validation logic.
- *
- * SECURITY: Validation runs BEFORE controller is invoked.
+ * Encapsulates validation for the public business onboarding flow.
  */
 final class RegisterTenantRequest extends FormRequest
 {
@@ -30,12 +26,9 @@ final class RegisterTenantRequest extends FormRequest
         'images', 'assets', 'public', 'static', 'uploads', 'media',
     ];
 
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return true; // Public registration endpoint
+        return true;
     }
 
     protected function prepareForValidation(): void
@@ -51,18 +44,16 @@ final class RegisterTenantRequest extends FormRequest
                 : \Illuminate\Support\Str::slug((string) $businessName),
             'whatsapp' => $this->input('whatsapp', $this->input('whatsapp_number')),
             'selected_plan' => $this->input('selected_plan', $this->input('plan', 'free')),
+            'business_type' => $this->input('business_type', config('business-types.default', 'retail')),
         ]);
     }
 
     /**
-     * Get the validation rules that apply to the request.
-     *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            // Step 1: Identity Claim
             'business_name' => ['required', 'string', 'max:255', 'min:3'],
             'slug' => [
                 'required',
@@ -71,32 +62,25 @@ final class RegisterTenantRequest extends FormRequest
                 'min:3',
                 'alpha_dash',
                 'unique:tenants,slug',
-                'not_in:'.implode(',', self::RESERVED_SLUGS),
+                'not_in:' . implode(',', self::RESERVED_SLUGS),
             ],
-
-            // Step 2: User Credentials
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-
-            // Step 3: Business Profile
             'city_id' => ['required', 'integer', 'exists:cities,id'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
+            'business_type' => ['required', 'in:retail,food,service,hybrid'],
             'whatsapp' => ['nullable', 'string', 'max:20'],
             'description' => ['nullable', 'string', 'max:1000'],
             'phone' => ['nullable', 'string', 'max:20'],
             'address' => ['nullable', 'string', 'max:500'],
             'logo' => ['nullable', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=2000,max_height=2000'],
-
-            // Step 4: Plan Selection
             'selected_plan' => ['nullable', 'in:free,pro'],
             'terms_accepted' => ['required', 'accepted'],
         ];
     }
 
     /**
-     * Get custom messages for validator errors.
-     *
      * @return array<string, string>
      */
     public function messages(): array
@@ -119,6 +103,8 @@ final class RegisterTenantRequest extends FormRequest
             'city_id.exists' => 'La ciudad seleccionada no es válida.',
             'category_id.required' => 'Selecciona una categoría.',
             'category_id.exists' => 'La categoría seleccionada no es válida.',
+            'business_type.required' => 'Selecciona el tipo de negocio que más se parece a tu operación.',
+            'business_type.in' => 'El tipo de negocio seleccionado no es válido.',
             'selected_plan.in' => 'El plan seleccionado no es válido.',
             'terms_accepted.accepted' => 'Debes aceptar los términos para continuar.',
         ];

@@ -20,11 +20,11 @@ test('optimizeProfile dispatches GenerateBusinessProfileJob and returns 202', fu
 
     /** @var array<string, mixed> $payload */
     $payload = [
-        'business_name' => 'CafÃ© Tegus',
-        'description' => 'El mejor cafÃ© de Honduras con granos seleccionados',
+        'business_name' => 'Café Tegus',
+        'description' => 'El mejor café de Honduras con granos seleccionados',
         'target_audience' => 'Millennials',
         'tone' => 'professional',
-        'keywords' => ['cafÃ©', 'honduras'],
+        'keywords' => ['café', 'honduras'],
     ];
 
     $request = OptimizeProfileRequest::create('/api/v1/ai/optimize', 'POST', $payload);
@@ -43,12 +43,12 @@ test('optimizeProfile dispatches GenerateBusinessProfileJob and returns 202', fu
     expect($data['message'])->toBe('Profile optimization has been queued.');
 
     Queue::assertPushed(GenerateBusinessProfileJob::class, function ($job) use ($user) {
-        return $job->businessName === 'CafÃ© Tegus'
+        return $job->businessName === 'Café Tegus'
             && $job->tenantId === '00000000-0000-0000-0000-000000000001'
             && $job->userId === (string) $user->getAuthIdentifier()
             && $job->targetAudience === 'Millennials'
             && $job->tone === 'professional'
-            && $job->keywords === ['cafÃ©', 'honduras'];
+            && $job->keywords === ['café', 'honduras'];
     });
 });
 
@@ -89,3 +89,5 @@ final class StubAiTenantContext implements TenantContext
         return ['id' => $this->tenantUuid];
     }
 }
+
+

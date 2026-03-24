@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -57,6 +58,40 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public const DEFAULT_SUBSCRIPTION_STATUS = 'active';
 
+    public const CRM_STATUS_NEW = 'new';
+
+    public const CRM_STATUS_ONBOARDING = 'onboarding';
+
+    public const CRM_STATUS_ACTIVE = 'active';
+
+    public const CRM_STATUS_UPSELL = 'upsell';
+
+    public const CRM_STATUS_RENEWAL = 'renewal';
+
+    public const CRM_STATUS_AT_RISK = 'at_risk';
+
+    public const CRM_STATUS_PAUSED = 'paused';
+
+    public const CRM_PRIORITY_LOW = 'low';
+
+    public const CRM_PRIORITY_NORMAL = 'normal';
+
+    public const CRM_PRIORITY_HIGH = 'high';
+
+    public const CRM_PRIORITY_CRITICAL = 'critical';
+
+    public const CRM_TEAM_ACTIVATION = 'activation';
+
+    public const CRM_TEAM_GROWTH = 'growth';
+
+    public const CRM_TEAM_RETENTION = 'retention';
+
+    public const CRM_TEAM_BILLING = 'billing';
+
+    public const CRM_TEAM_SUPPORT = 'support';
+
+    public const DEFAULT_CRM_SLA_HOURS = 24;
+
     // ═══════════════════════════════════════════════════════════════════════════
     // SECURITY: Mass Assignment Protection
     // ═══════════════════════════════════════════════════════════════════════════
@@ -87,6 +122,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'pickup_enabled',
         'minimum_order',
         'business_type',
+        'business_segment_key',
         // Premium Profile Fields (unlocked for microsite customization)
         'about',
         'hero_image',
@@ -123,6 +159,11 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'minimum_order' => 'decimal:2',
         'is_ai_enhanced' => 'boolean',
         'landing_page_data' => 'array',
+        'crm_sla_hours' => 'integer',
+        'crm_watch_score' => 'integer',
+        'crm_next_follow_up_at' => 'datetime',
+        'crm_last_contacted_at' => 'datetime',
+        'crm_watch_flagged_at' => 'datetime',
         // TITANIUM UPGRADE: STRICT CASTING
         'plan_type' => TenantPlan::class,
         'business_type' => BusinessType::class,
@@ -292,7 +333,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             return null;
         }
 
-        return max(0, now()->diffInDays($subscriptionEndsAt, false));
+        return (int) max(0, now()->diffInDays($subscriptionEndsAt, false));
     }
 
     public function isExpiringSoon(int $days = 7): bool
@@ -340,9 +381,143 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $labels[$value] ?? 'Plan Semilla';
     }
 
+    public function getCrmStatusLabelAttribute(): string
+    {
+        return match ((string) ($this->getAttributes()['crm_status'] ?? self::CRM_STATUS_NEW)) {
+            self::CRM_STATUS_ONBOARDING => 'En onboarding',
+            self::CRM_STATUS_ACTIVE => 'Operando',
+            self::CRM_STATUS_UPSELL => 'Upsell',
+            self::CRM_STATUS_RENEWAL => 'Renovacion',
+            self::CRM_STATUS_AT_RISK => 'En riesgo',
+            self::CRM_STATUS_PAUSED => 'Pausado',
+            default => 'Nuevo',
+        };
+    }
+
+    public function getCrmPriorityLabelAttribute(): string
+    {
+        return match ((string) ($this->getAttributes()['crm_priority'] ?? self::CRM_PRIORITY_NORMAL)) {
+            self::CRM_PRIORITY_LOW => 'Baja',
+            self::CRM_PRIORITY_HIGH => 'Alta',
+            self::CRM_PRIORITY_CRITICAL => 'Critica',
+            default => 'Normal',
+        };
+    }
+
+    public function getCrmTeamLabelAttribute(): string
+    {
+        return match ((string) ($this->getAttributes()['crm_team'] ?? self::CRM_TEAM_ACTIVATION)) {
+            self::CRM_TEAM_GROWTH => 'Growth',
+            self::CRM_TEAM_RETENTION => 'Retencion',
+            self::CRM_TEAM_BILLING => 'Cobros',
+            self::CRM_TEAM_SUPPORT => 'Soporte',
+            default => 'Activacion',
+        };
+    }
+
+    public function getCrmWatchLabelAttribute(): string
+    {
+        $score = (int) ($this->getAttributes()['crm_watch_score'] ?? 0);
+
+        if ($score >= 90) {
+            return 'Critico';
+        }
+
+        if ($score >= 80) {
+            return 'Alto';
+        }
+
+        if ($score >= 60) {
+            return 'En observacion';
+        }
+
+        return 'Sin alerta';
+    }
+
+    public function getBusinessSegmentLabelAttribute(): string
+    {
+        $segmentKey = (string) ($this->getAttributes()['business_segment_key'] ?? '');
+
+        if ($segmentKey === '') {
+            return 'General';
+        }
+
+        $label = config("business-segments.profiles.{$segmentKey}.label");
+
+        return is_string($label) && $label !== ''
+            ? $label
+            : Str::of($segmentKey)->replace('_', ' ')->title()->value();
+    }
+
     public function getPlanExpiresAtAttribute(mixed $value): ?Carbon
     {
         return $this->resolveDateAttribute($value) ?? $this->resolveSubscriptionEndsAt();
+    }
+
+    public function approveForOperations(): void
+    {
+        $this->forceFill([
+            'status' => 'approved',
+            'is_active' => true,
+        ])->save();
+    }
+
+    public function rejectForOperations(): void
+    {
+        $this->forceFill([
+            'status' => 'rejected',
+            'is_active' => false,
+        ])->save();
+    }
+
+    public function toggleOperationalStatus(): void
+    {
+        $this->forceFill([
+            'is_active' => ! (bool) $this->getAttribute('is_active'),
+        ])->save();
+    }
+
+    public function activateProManually(int $months): void
+    {
+        $baseDate = $this->resolveSubscriptionEndsAt() ?? now();
+
+        if ($baseDate->isPast()) {
+            $baseDate = now();
+        }
+
+        $this->forceFill([
+            'is_pro' => true,
+            'is_active' => true,
+            'plan_type' => TenantPlan::PRO->value,
+            'subscription_status' => 'active',
+            'subscription_ends_at' => $baseDate->copy()->addMonths($months),
+        ])->save();
+    }
+
+    /**
+     * Record an operational event without allowing audit issues to break admin flows.
+     *
+     * @param  array<string, mixed>  $properties
+     */
+    public function logOperationalEvent(string $description, ?User $actor = null, array $properties = []): void
+    {
+        try {
+            $activity = activity('operations')->performedOn($this);
+
+            if ($actor instanceof User) {
+                $activity->causedBy($actor);
+            }
+
+            $activity
+                ->event('operations')
+                ->withProperties(array_merge([
+                    'source' => 'superpanel',
+                    'ip' => request()?->ip(),
+                ], $properties))
+                ->log($description);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -456,6 +631,11 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->belongsTo(User::class);
     }
 
+    public function crmOwner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'crm_owner_id');
+    }
+
     public function memberships(): HasMany
     {
         return $this->hasMany(TenantMembership::class);
@@ -504,6 +684,11 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
+    }
+
+    public function activityLogs(): MorphMany
+    {
+        return $this->morphMany(ActivityModel::class, 'subject')->latest('created_at');
     }
 
     public function tenantVisits(): HasMany

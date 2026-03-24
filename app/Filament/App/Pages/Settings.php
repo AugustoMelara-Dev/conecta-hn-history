@@ -45,17 +45,17 @@ class Settings extends Page
 
     public static function getNavigationLabel(): string
     {
-        return 'Configuracion';
+        return 'Configuración';
     }
 
     public function getTitle(): string
     {
-        return 'Configuracion del negocio';
+        return 'Configuración del negocio';
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Configuracion';
+        return 'Configuración';
     }
 
     public static function getNavigationSort(): ?int
@@ -86,21 +86,21 @@ class Settings extends Page
     {
         return $schema
             ->schema([
-                Section::make('Informacion base')
-                    ->description('Estos datos se usan en el panel y en la pagina publica del negocio.')
+                Section::make('Información base')
+                    ->description('Estos datos se usan en el panel y en la página pública del negocio.')
                     ->schema([
                         TextInput::make('name')
                             ->label('Nombre del negocio')
                             ->required(),
                         TextInput::make('whatsapp_number')
-                            ->label('Numero de WhatsApp')
+                            ->label('Número de WhatsApp')
                             ->required(),
                         Textarea::make('description')
-                            ->label('Descripcion corta')
+                            ->label('Descripción corta')
                             ->rows(4)
                             ->columnSpanFull(),
                         Textarea::make('address')
-                            ->label('Direccion')
+                            ->label('Dirección')
                             ->rows(3)
                             ->columnSpanFull(),
                     ])
@@ -125,7 +125,7 @@ class Settings extends Page
         if (! $tenant instanceof Tenant) {
             Notification::make()
                 ->danger()
-                ->title('No se pudo guardar la configuracion')
+                ->title('No se pudo guardar la configuración')
                 ->send();
 
             return;
@@ -141,7 +141,7 @@ class Settings extends Page
 
         Notification::make()
             ->success()
-            ->title('Configuracion guardada')
+            ->title('Configuración guardada')
             ->send();
     }
 

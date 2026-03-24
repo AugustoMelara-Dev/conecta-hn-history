@@ -35,18 +35,18 @@ class StatsOverview extends StatsOverviewWidget
 
         return [
             Stat::make('Ingresos Totales', 'L. '.number_format((float) $totalRevenue, 2))
-                ->description('Ordenes entregadas')
+                ->description('Órdenes entregadas')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('gray'),
             Stat::make('Pedidos Pendientes', $pendingOrders)
-                ->description('Requieren tu atencion')
+                ->description('Requieren tu atención')
                 ->descriptionIcon('heroicon-m-clock')
                 ->color($pendingOrders > 0 ? 'warning' : 'gray'),
             Stat::make('Visitas Totales', $views)
-                ->description('Vistas de tu pagina')
+                ->description('Vistas de tu página')
                 ->descriptionIcon('heroicon-m-eye')
                 ->color('gray'),
-            Stat::make('Tasa de Conversion', $conversionRate.'%')
+            Stat::make('Tasa de conversión', $conversionRate.'%')
                 ->description('De visitas a clics')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('gray'),

@@ -11,6 +11,8 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Settings\GeneralSettings;
 use Filament\Actions;
+use Filament\Forms;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 
@@ -24,6 +26,41 @@ class EditTenant extends EditAdminRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('logSupportNote')
+                ->label('Nota interna')
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->color('info')
+                ->modalHeading('Agregar nota interna')
+                ->modalDescription('Usa esta nota para dejar contexto comercial, soporte o seguimiento sin salir de la ficha del negocio.')
+                ->form([
+                    Forms\Components\Textarea::make('note')
+                        ->label('Nota')
+                        ->rows(4)
+                        ->required()
+                        ->maxLength(800)
+                        ->placeholder('Ej: Cliente pidio seguimiento por WhatsApp el viernes.'),
+                ])
+                ->action(function (array $data): void {
+                    if (! $this->record instanceof Tenant) {
+                        return;
+                    }
+
+                    $actor = auth()->user();
+
+                    $this->record->logOperationalEvent(
+                        'Nota interna agregada desde soporte',
+                        $actor instanceof User ? $actor : null,
+                        [
+                            'note' => trim((string) ($data['note'] ?? '')),
+                        ],
+                    );
+
+                    Notification::make()
+                        ->success()
+                        ->title('Nota interna registrada')
+                        ->body('La nota ya aparece en el timeline del negocio.')
+                        ->send();
+                }),
             Actions\DeleteAction::make(),
         ];
     }
@@ -43,6 +80,7 @@ class EditTenant extends EditAdminRecord
         $record->save();
 
         $this->syncOwner($record, $previousOwnerId, $data['user_id'] ?? null);
+        $this->logCrmChanges($record, $data);
 
         return $record;
     }
@@ -87,6 +125,13 @@ class EditTenant extends EditAdminRecord
             'delivery_enabled' => $data['delivery_enabled'] ?? null,
             'pickup_enabled' => $data['pickup_enabled'] ?? null,
             'minimum_order' => $data['minimum_order'] ?? null,
+            'crm_owner_id' => $data['crm_owner_id'] ?? null,
+            'crm_team' => $data['crm_team'] ?? Tenant::CRM_TEAM_ACTIVATION,
+            'crm_status' => $data['crm_status'] ?? Tenant::CRM_STATUS_NEW,
+            'crm_priority' => $data['crm_priority'] ?? Tenant::CRM_PRIORITY_NORMAL,
+            'crm_sla_hours' => $data['crm_sla_hours'] ?? Tenant::DEFAULT_CRM_SLA_HOURS,
+            'crm_next_follow_up_at' => $data['crm_next_follow_up_at'] ?? null,
+            'crm_notes' => $data['crm_notes'] ?? null,
         ]);
     }
 
@@ -122,5 +167,32 @@ class EditTenant extends EditAdminRecord
         self::$tenantColumns ??= Schema::getColumnListing((new Tenant())->getTable());
 
         return array_intersect_key($payload, array_flip(self::$tenantColumns));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function logCrmChanges(Tenant $tenant, array $data): void
+    {
+        $crmPayload = [
+            'crm_owner_id' => $data['crm_owner_id'] ?? null,
+            'crm_team' => $data['crm_team'] ?? null,
+            'crm_status' => $data['crm_status'] ?? null,
+            'crm_priority' => $data['crm_priority'] ?? null,
+            'crm_sla_hours' => $data['crm_sla_hours'] ?? null,
+            'crm_next_follow_up_at' => $data['crm_next_follow_up_at'] ?? null,
+        ];
+
+        if (collect($crmPayload)->filter(static fn (mixed $value): bool => $value !== null && $value !== '')->isEmpty()) {
+            return;
+        }
+
+        $actor = auth()->user();
+
+        $tenant->logOperationalEvent(
+            'Ficha CRM guardada desde la vista de negocio',
+            $actor instanceof User ? $actor : null,
+            $crmPayload,
+        );
     }
 }

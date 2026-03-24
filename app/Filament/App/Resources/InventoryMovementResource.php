@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\InventoryMovementResource\Pages;
 use App\Filament\Traits\ScopesToTenant;
 use App\Models\InventoryMovement;
+use App\Models\Tenant;
+use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
@@ -38,6 +41,24 @@ class InventoryMovementResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return 'Movimientos';
+    }
+
+    public static function canViewAny(): bool
+    {
+        $tenant = static::getTenantRecord();
+
+        return $tenant instanceof Tenant
+            && $tenant->hasCapability(Capability::INVENTORY_TRACKING);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function canAccess(): bool
+    {
+        return static::canViewAny();
     }
 
     public static function form(Schema $schema): Schema
@@ -91,8 +112,8 @@ class InventoryMovementResource extends Resource
             ->actions([])
             ->bulkActions([])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Todavia no hay movimientos de inventario',
-                'description' => 'Aqui quedaran registrados los ajustes, ventas, compras, mermas y traslados de stock.',
+                'heading' => 'Todavía no hay movimientos de inventario',
+                'description' => 'Aquí quedarán registrados los ajustes, ventas, compras, mermas y traslados de stock.',
             ]));
     }
 
@@ -116,5 +137,12 @@ class InventoryMovementResource extends Resource
         return [
             'index' => Pages\ListInventoryMovements::route('/'),
         ];
+    }
+
+    protected static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

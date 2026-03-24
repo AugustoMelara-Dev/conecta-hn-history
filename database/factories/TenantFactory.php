@@ -48,6 +48,7 @@ class TenantFactory extends Factory
             'slug' => Str::slug($name).'-'.Str::random(6),
             'is_active' => true,
             'plan_type' => 'semilla', // String value for MySQL ENUM column
+            'business_type' => 'retail',
             'subscription_status' => 'active',
             'ai_balance' => 0.000000, // AI Budget columns (EDoS Prevention)
             'ai_reserved_balance' => 0.000000,

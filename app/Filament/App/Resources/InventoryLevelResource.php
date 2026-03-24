@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\Inventory\Enums\MovementType;
 use App\Filament\App\Resources\InventoryLevelResource\Pages;
 use App\Filament\Traits\ScopesToTenant;
 use App\Models\InventoryLevel;
 use App\Models\InventoryMovement;
+use App\Models\Tenant;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -43,6 +46,24 @@ class InventoryLevelResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return 'Existencias';
+    }
+
+    public static function canViewAny(): bool
+    {
+        $tenant = static::getTenantRecord();
+
+        return $tenant instanceof Tenant
+            && $tenant->hasCapability(Capability::INVENTORY_TRACKING);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function canAccess(): bool
+    {
+        return static::canViewAny();
     }
 
     public static function form(Schema $schema): Schema
@@ -82,7 +103,7 @@ class InventoryLevelResource extends Resource
                             ->label('Cantidad a ajustar')
                             ->numeric()
                             ->required()
-                            ->helperText('Usa numeros positivos para sumar y negativos para restar.'),
+                            ->helperText('Usa números positivos para sumar y negativos para restar.'),
                         Forms\Components\Textarea::make('notes')
                             ->label('Motivo')
                             ->required(),
@@ -149,8 +170,8 @@ class InventoryLevelResource extends Resource
             ])
             ->bulkActions([])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Todavia no hay existencias registradas',
-                'description' => 'El inventario aparecera aqui cuando tus productos tengan entradas, ventas o ajustes.',
+                'heading' => 'Todavía no hay existencias registradas',
+                'description' => 'El inventario aparecerá aquí cuando tus productos tengan entradas, ventas o ajustes.',
             ]));
     }
 
@@ -174,5 +195,12 @@ class InventoryLevelResource extends Resource
         return [
             'index' => Pages\ListInventoryLevels::route('/'),
         ];
+    }
+
+    protected static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

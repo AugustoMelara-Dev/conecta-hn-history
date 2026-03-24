@@ -102,9 +102,9 @@ class FollowerResource extends Resource
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => $isPro ? 'Audiencia' : 'Solo PRO',
-                'heading' => $isPro ? 'Todavia no tienes seguidores registrados' : 'La lista de seguidores se desbloquea con PRO',
+                'heading' => $isPro ? 'Todavía no tienes seguidores registrados' : 'La lista de seguidores se desbloquea con PRO',
                 'description' => $isPro
-                    ? 'Cuando alguien siga tu negocio, su registro aparecera aqui para que puedas entender mejor tu audiencia.'
+                    ? 'Cuando alguien siga tu negocio, su registro aparecerá aquí para que puedas entender mejor tu audiencia.'
                     : 'En el plan Base mantienes el contador general. La lista completa con nombres y correos se habilita al activar PRO.',
             ]));
     }

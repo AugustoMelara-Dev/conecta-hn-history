@@ -37,8 +37,8 @@ class CreateProduct extends CreateTenantRecord
         if ($currentCount >= $limit) {
             Notification::make()
                 ->danger()
-                ->title('Limite del Plan Alcanzado')
-                ->body("Has alcanzado el limite de {$limit} productos de tu plan. Actualiza a PRO para productos ilimitados.")
+                ->title('Límite del plan alcanzado')
+                ->body("Has alcanzado el límite de {$limit} productos de tu plan. Actualiza a PRO para productos ilimitados.")
                 ->persistent()
                 ->actions([
                     Action::make('upgrade')

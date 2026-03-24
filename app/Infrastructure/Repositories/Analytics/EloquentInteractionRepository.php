@@ -6,6 +6,7 @@ namespace App\Infrastructure\Repositories\Analytics;
 
 use App\Domain\Analytics\Entities\InteractionEntity;
 use App\Domain\Analytics\Repositories\InteractionRepositoryInterface;
+use App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope;
 use App\Models\Interaction;
 use DateTimeImmutable;
 
@@ -28,9 +29,14 @@ final class EloquentInteractionRepository implements InteractionRepositoryInterf
         string $type,
         int $withinMinutes = 5
     ): bool {
-        return Interaction::query()
+        return $this->trustedTenantQuery()
             ->where('tenant_id', $tenantId)
-            ->where('visitor_id', $visitorId) // CRITICAL: Per-visitor deduplication
+            ->where(function ($query) use ($visitorId): void {
+                $query
+                    ->where('visitor_id', $visitorId)
+                    ->orWhere('session_id', $visitorId)
+                    ->orWhere('metadata->session_id', $visitorId);
+            })
             ->where('type', $type)
             ->where('created_at', '>=', now()->subMinutes($withinMinutes))
             ->exists();
@@ -50,9 +56,11 @@ final class EloquentInteractionRepository implements InteractionRepositoryInterf
         ?string $url = null,
         array $metadata = []
     ): InteractionEntity {
-        $model = Interaction::create([
+        $model = new Interaction;
+        $model->forceFill([
             'tenant_id' => $tenantId,
             'visitor_id' => $visitorId,
+            'session_id' => $visitorId,
             'type' => $type,
             'product_id' => $productId,
             'ip_address' => $ipAddress,
@@ -61,8 +69,18 @@ final class EloquentInteractionRepository implements InteractionRepositoryInterf
             'url' => $url,
             'metadata' => $metadata,
         ]);
+        $model->save();
 
         return $this->toEntity($model);
+    }
+
+    private function trustedTenantQuery()
+    {
+        // Public analytics requests arrive without an initialized TenantContext.
+        // This repository already receives an explicit tenant identifier, so we
+        // bypass only the global tenant scope and keep the rest of the model
+        // behavior intact.
+        return Interaction::query()->withoutGlobalScope(TenantScope::class);
     }
 
     /**

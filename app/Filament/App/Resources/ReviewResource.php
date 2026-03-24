@@ -22,11 +22,11 @@ class ReviewResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-star';
 
-    protected static ?string $navigationLabel = 'Resenas';
+    protected static ?string $navigationLabel = 'Reseñas';
 
     protected static ?string $modelLabel = 'Resena';
 
-    protected static ?string $pluralModelLabel = 'Resenas';
+    protected static ?string $pluralModelLabel = 'Reseñas';
 
     protected static string|\UnitEnum|null $navigationGroup = 'Marketing';
 
@@ -34,7 +34,7 @@ class ReviewResource extends Resource
     {
         return $schema->schema([
             Toggle::make('is_approved')
-                ->label('Aprobada para publicacion')
+                ->label('Aprobada para publicación')
                 ->required(),
             TextInput::make('rating')
                 ->label('Calificacion')
@@ -91,8 +91,8 @@ class ReviewResource extends Resource
                 DeleteAction::make(),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Todavia no tienes resenas',
-                'description' => 'Aqui podras aprobar, ocultar o revisar las opiniones que lleguen desde tu pagina publica.',
+                'heading' => 'Todavía no tienes reseñas',
+                'description' => 'Aquí podrás aprobar, ocultar o revisar las opiniones que lleguen desde tu página pública.',
             ]))
             ->defaultSort('created_at', 'desc');
     }

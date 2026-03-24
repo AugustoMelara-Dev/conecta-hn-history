@@ -38,12 +38,12 @@ use Illuminate\Support\Str;
  * ProductResource - Herramienta de Merchandising Visual
  *
  * Optimizado para uso móvil con una sola mano.
- * Implementa el "Muro de Contención" para límites de suscripción.
+ * Implementa el "muro de contención" para límites de suscripción.
  *
  * Características:
  * - Instagram-style image upload con editor 1:1
  * - Toggle columns para gestión rápida
- * - Límite de productos según plan (canCreate)
+ * - Límite de productos según plan (`canCreate`)
  */
 class ProductResource extends Resource
 {
@@ -78,12 +78,12 @@ class ProductResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Catalogo';
+        return 'Catálogo';
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // MURO DE CONTENCIÓN: Límite de productos según plan
-    // ═══════════════════════════════════════════════════════════════════════
+    // ---
+    // Muro de contención: límite de productos según plan.
+    // ---
 
     /**
      * Verifica si el usuario puede crear más productos
@@ -94,7 +94,7 @@ class ProductResource extends Resource
     }
 
     /**
-     * Obtiene información del límite para mostrar en UI
+     * Obtiene información del límite para mostrar en UI.
      */
     public static function getProductLimitInfo(): array
     {
@@ -139,21 +139,21 @@ class ProductResource extends Resource
         ];
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // FORMULARIO VISUAL OPTIMIZADO PARA MÓVIL
-    // ═══════════════════════════════════════════════════════════════════════
+    // ---
+    // Formulario visual optimizado para móvil.
+    // ---
 
     public static function form(Schema $schema): Schema
     {
         return $schema
             ->schema([
-                // ═══════════════════════════════════════════════════════════
-                // SECCIÓN 1: IMAGEN INSTAGRAM-STYLE
-                // ═══════════════════════════════════════════════════════════
-                Section::make('📷 Imagen del Producto')
+                // ---
+                // Sección 1: imagen principal.
+                // ---
+                Section::make('Imagen del producto')
                     ->description(fn (): string => static::currentTenantIsPro()
                         ? 'Sube hasta 5 imágenes. Arrastra para reordenar.'
-                        : '⚠️ Plan Gratuito: Solo 1 imagen. Actualiza a PRO para más.')
+                        : 'Plan gratuito: solo 1 imagen. Actualiza a PRO para publicar más.')
                     ->schema([
                         Forms\Components\FileUpload::make('image_path')
                             ->label('')
@@ -169,96 +169,19 @@ class ProductResource extends Resource
                             ->imageCropAspectRatio('1:1')
                             ->imageResizeTargetWidth('800')
                             ->imageResizeTargetHeight('800')
-                            // PRO: múltiples imágenes
+                            // PRO: multiples imagenes
                             ->maxFiles(fn (): int => static::currentTenantIsPro() ? 5 : 1)
                             ->multiple(fn (): bool => static::currentTenantIsPro())
                             ->reorderable(fn (): bool => static::currentTenantIsPro())
                             ->panelLayout('grid')
-                            ->columnSpanFull(), /*
-                            ->hintAction(
-                                Action::make('generate_ai_profile')
-                                    ->label('Generar con IA (PRO)')
-                                    ->icon('heroicon-m-sparkles')
-                                    ->color('gray')
-                                    ->visible(fn (): bool => static::currentTenantIsPro())
-                                    ->requiresConfirmation()
-                                    ->modalHeading('GeneraciÃ³n Inteligente')
-                                    ->modalDescription('Usaremos tu descripciÃ³n actual para generar un texto persuasivo y optimizado. Esto consumirÃ¡ crÃ©ditos de tu presupuesto de IA.')
-                                    ->modalSubmitActionLabel('Generar Perfil')
-                                    ->action(function (Set $set, Get $get): void {
-                                        $tenant = static::getCurrentTenant();
-                                        $user = auth()->user();
-                                        $productName = trim((string) ($get('name') ?? ''));
-                                        $currentDescription = trim((string) ($get('description') ?? ''));
-
-                                        if (! $tenant || ! $user) {
-                                            Notification::make()
-                                                ->title('SesiÃ³n no disponible')
-                                                ->body('No pudimos identificar tu sesiÃ³n o negocio actual.')
-                                                ->danger()
-                                                ->send();
-
-                                            return;
-                                        }
-
-                                        if ($productName === '' || $currentDescription === '') {
-                                            Notification::make()
-                                                ->title('Faltan datos')
-                                                ->body('Ingresa un nombre y una descripciÃ³n bÃ¡sica primero.')
-                                                ->warning()
-                                                ->send();
-
-                                            return;
-                                        }
-
-                                        $userId = (string) $user->getAuthIdentifier();
-
-                                        try {
-                                            $aiService = app(\App\Services\AI\OpenAIService::class);
-
-                                            $result = $aiService->generateStructuredProfile(
-                                                businessName: $productName,
-                                                description: $currentDescription,
-                                                userId: $userId,
-                                                tenantId: (string) $tenant->id
-                                            );
-
-                                            $set('description', strip_tags((string) $result['description']));
-
-                                            Notification::make()
-                                                ->title('Magia aplicada')
-                                                ->body('La descripciÃ³n de tu producto ha sido optimizada.')
-                                                ->success()
-                                                ->send();
-                                        } catch (\App\Exceptions\InsufficientAiCreditsException $e) {
-                                            Notification::make()
-                                                ->title('Presupuesto agotado')
-                                                ->body('Has alcanzado tu lÃ­mite de IA este mes.')
-                                                ->danger()
-                                                ->send();
-                                        } catch (\Throwable $e) {
-                                            \Illuminate\Support\Facades\Log::error('[ProductResource] AI generation failed', [
-                                                'tenant_id' => $tenant->id,
-                                                'user_id' => $userId,
-                                                'error' => $e->getMessage(),
-                                            ]);
-
-                                            Notification::make()
-                                                ->title('Error del motor')
-                                                ->body('La IA estÃ¡ descansando. Intenta de nuevo.')
-                                                ->danger()
-                                                ->send();
-                                        }
-                                    })
-                            ),
-                            */
+                            ->columnSpanFull(),
                     ])
                     ->collapsible(),
 
-                // ═══════════════════════════════════════════════════════════
-                // SECCIÓN 2: DATOS ESENCIALES
-                // ═══════════════════════════════════════════════════════════
-                Section::make('🏷️ Información Básica')
+                // ---
+                // Sección 2: datos esenciales.
+                // ---
+                Section::make('Información básica')
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre del Producto')
@@ -292,8 +215,8 @@ class ProductResource extends Resource
                                     ->color('gray')
                                     ->visible(fn (): bool => static::currentTenantIsPro())
                                     ->requiresConfirmation()
-                                    ->modalHeading('Generacion inteligente')
-                                    ->modalDescription('Usaremos tu descripcion actual para generar un texto persuasivo y optimizado. Esto consumira creditos de tu presupuesto de IA.')
+                                    ->modalHeading('Generación inteligente')
+                                    ->modalDescription('Usaremos tu descripción actual para generar un texto persuasivo y optimizado. Esto consumirá créditos de tu presupuesto de IA.')
                                     ->modalSubmitActionLabel('Generar perfil')
                                     ->action(function (Set $set, Get $get): void {
                                         $tenant = static::getCurrentTenant();
@@ -303,8 +226,8 @@ class ProductResource extends Resource
 
                                         if (! $tenant || ! $user) {
                                             Notification::make()
-                                                ->title('Sesion no disponible')
-                                                ->body('No pudimos identificar tu sesion o negocio actual.')
+                                                ->title('Sesión no disponible')
+                                                ->body('No pudimos identificar tu sesión o negocio actual.')
                                                 ->danger()
                                                 ->send();
 
@@ -314,7 +237,7 @@ class ProductResource extends Resource
                                         if ($productName === '' || $currentDescription === '') {
                                             Notification::make()
                                                 ->title('Faltan datos')
-                                                ->body('Ingresa un nombre y una descripcion basica primero.')
+                                                ->body('Ingresa un nombre y una descripción básica primero.')
                                                 ->warning()
                                                 ->send();
 
@@ -337,13 +260,13 @@ class ProductResource extends Resource
 
                                             Notification::make()
                                                 ->title('Magia aplicada')
-                                                ->body('La descripcion de tu producto ha sido optimizada.')
+                                                ->body('La descripción de tu producto ha sido optimizada.')
                                                 ->success()
                                                 ->send();
                                         } catch (\App\Exceptions\InsufficientAiCreditsException $e) {
                                             Notification::make()
                                                 ->title('Presupuesto agotado')
-                                                ->body('Has alcanzado tu limite de IA este mes.')
+                                                ->body('Has alcanzado tu límite de IA este mes.')
                                                 ->danger()
                                                 ->send();
                                         } catch (\Throwable $e) {
@@ -355,7 +278,7 @@ class ProductResource extends Resource
 
                                             Notification::make()
                                                 ->title('Error del motor')
-                                                ->body('La IA esta descansando. Intenta de nuevo.')
+                                                ->body('La IA está descansando. Intenta de nuevo.')
                                                 ->danger()
                                                 ->send();
                                         }
@@ -364,10 +287,10 @@ class ProductResource extends Resource
                     ])
                     ->columns(2),
 
-                // ═══════════════════════════════════════════════════════════
-                // SECCIÓN 3: ORGANIZACIÓN
-                // ═══════════════════════════════════════════════════════════
-                Section::make('📂 Organización')
+                // ---
+                // Sección 3: organización.
+                // ---
+                Section::make('Organización')
                     ->schema([
                         Forms\Components\Select::make('category_id')
                             ->relationship('category', 'name')
@@ -376,18 +299,13 @@ class ProductResource extends Resource
                             ->preload()
                             ->required(),
 
-                        // ═══════════════════════════════════════════════════
-                        // VELVET ROPE: Selector de Sección (PRO-ONLY)
-                        // ═══════════════════════════════════════════════════
-                        // VERSIÓN A: Campo funcional para usuarios PRO
-                        // - Relación con tenant scoping
-                        // - Creación en línea con modal
-                        // ═══════════════════════════════════════════════════
+                        // Selector de seccion para negocios PRO.
+                        // Incluye scoping por tenant y creacion rapida.
                         Forms\Components\Select::make('menu_section_id')
-                            // Solo visible para tenants con organizacion de menu
+                            // Solo visible para negocios con organizacion de menu.
                             ->visible(fn (): bool => static::currentTenantHasCapability(Capability::MENU_MODIFIERS))
 
-                            // SEGURIDAD: Filtro estricto por tenant_id
+                            // Seguridad: filtro estricto por tenant_id.
                             ->relationship(
                                 'menuSection',
                                 'name',
@@ -401,7 +319,7 @@ class ProductResource extends Resource
                             ->searchable()
                             ->preload()
 
-                            // CREACIÓN EN LÍNEA: Modal de alta velocidad
+                            // Creacion en linea.
                             ->createOptionForm([
                                 Forms\Components\TextInput::make('name')
                                     ->label('Nombre de la Sección')
@@ -410,52 +328,43 @@ class ProductResource extends Resource
                                     ->maxLength(100)
                                     ->autofocus(),
 
-                                // Inyección automática del tenant_id (seguridad)
 
-                                // Sección activa por defecto
+                                // Seccion activa por defecto.
                                 Forms\Components\Hidden::make('is_active')
                                     ->default(true),
 
-                                // Sort order auto-calculado al final
+                                // Sort order al final.
                                 Forms\Components\Hidden::make('sort_order')
                                     ->default(fn (): int => ((int) \App\Models\MenuSection::where('tenant_id', static::currentTenantId())->max('sort_order')) + 1),
                             ])
                             ->createOptionModalHeading('Crear Nueva Sección')
-                            ->helperText('✨ Organiza tu catálogo en secciones arrastrables'),
+                            ->helperText('Organiza tu catálogo en secciones arrastrables.'),
 
-                        // ═══════════════════════════════════════════════════
-                        // VELVET ROPE: Campo Señuelo (FREE - UPSELL)
-                        // ═══════════════════════════════════════════════════
-                        // VERSIÓN B: Campo bloqueado que genera FOMO
-                        // - Visible pero disabled para usuarios FREE
-                        // - Link persuasivo hacia upgrade
-                        // ═══════════════════════════════════════════════════
+                        // Campo senuelo para plan Base con upsell a PRO.
                         Forms\Components\Select::make('menu_section_id_locked')
-                            // Mostrar version bloqueada cuando el tenant no tenga esta capacidad
+                            // Mostrar version bloqueada cuando el tenant no tenga esta capacidad.
                             ->visible(fn (): bool => ! static::currentTenantHasCapability(Capability::MENU_MODIFIERS))
 
-                            // Estado bloqueado
+                            // Estado bloqueado.
                             ->disabled()
-                            ->dehydrated(false) // No se envía al backend
+                            ->dehydrated(false) // No se envia al backend.
 
-                            ->label('🔒 Sección del Menú')
+                            ->label('Sección del menú')
                             ->placeholder('Disponible solo en Plan PRO')
                             ->options([])
 
-                            // Mensaje persuasivo con link de upsell
+                            // Mensaje persuasivo con link de upsell.
                             ->helperText(new \Illuminate\Support\HtmlString(
                                 '<span class="text-gray-600">Organiza tus productos en secciones personalizadas.</span> '.
                                 '<a href="'.route('filament.app.pages.manage-billing', ['tenant' => static::currentTenantSlug()]).'" '.
-                                'class="text-primary-600 font-bold hover:underline">→ Desbloquear con PRO</a>'
+                                'class="text-primary-600 font-bold hover:underline">Desbloquear con PRO</a>'
                             )),
                     ])
                     ->columns(2)
                     ->collapsible(),
 
-                // ═══════════════════════════════════════════════════════════
-                // SECCIÓN 4: CONTROL DE ESTADO
-                // ═══════════════════════════════════════════════════════════
-                Section::make('⚙️ Control')
+                // Seccion 4: control de estado.
+                Section::make('Control')
                     ->schema([
                         Forms\Components\Toggle::make('is_visible')
                             ->label('Visible en Catálogo')
@@ -468,9 +377,7 @@ class ProductResource extends Resource
                             ->visible(fn (): bool => static::currentTenantIsPro())
                             ->helperText('Aparecerá primero en tu catálogo'),
 
-                        // ═══════════════════════════════════════════════════
-                        // CROSS-SELLING: Producto de Impulso (PRO Feature)
-                        // ═══════════════════════════════════════════════════
+                        // Cross-selling para negocios PRO.
                         Forms\Components\Toggle::make('is_impulse_buy')
                             ->label('Producto de Impulso (Cross-Selling)')
                             ->default(false)
@@ -481,10 +388,8 @@ class ProductResource extends Resource
                     ->columns(2)
                     ->collapsed(),
 
-                // ═══════════════════════════════════════════════════════════
-                // SECCIÓN: UPSELL MARKETING (Solo para Free)
-                // ═══════════════════════════════════════════════════════════
-                Section::make('✨ Desbloquea Funciones PRO')
+                // Upsell marketing para negocios Base.
+                Section::make('Desbloquea funciones PRO')
                     ->description('Mejora tu presencia y convierte más clientes.')
                     ->visible(fn (): bool => ! static::currentTenantIsPro())
                     ->schema([
@@ -493,28 +398,28 @@ class ProductResource extends Resource
                             ->content(new \Illuminate\Support\HtmlString('
                                 <div class="space-y-3">
                                     <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 rounded-lg border border-amber-200 dark:border-amber-700">
-                                        <span class="text-2xl">📸</span>
+                                        <span class="text-sm font-semibold text-amber-700 dark:text-amber-300">PRO</span>
                                         <div>
                                             <p class="font-semibold text-amber-800 dark:text-amber-200">Galería de Fotos</p>
                                             <p class="text-sm text-amber-600 dark:text-amber-400">Sube hasta 5 imágenes por producto</p>
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                                        <span class="text-2xl">📂</span>
+                                        <span class="text-sm font-semibold text-blue-700 dark:text-blue-300">MENÚ</span>
                                         <div>
                                             <p class="font-semibold text-blue-800 dark:text-blue-200">Secciones de Menú</p>
                                             <p class="text-sm text-blue-600 dark:text-blue-400">Organiza tus productos por categorías</p>
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg border border-purple-200 dark:border-purple-700">
-                                        <span class="text-2xl">⭐</span>
+                                        <span class="text-sm font-semibold text-purple-700 dark:text-purple-300">TOP</span>
                                         <div>
                                             <p class="font-semibold text-purple-800 dark:text-purple-200">Productos Destacados</p>
                                             <p class="text-sm text-purple-600 dark:text-purple-400">Muestra tus mejores productos primero</p>
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg border border-green-200 dark:border-green-700">
-                                        <span class="text-2xl">🎨</span>
+                                        <span class="text-sm font-semibold text-green-700 dark:text-green-300">PLUS</span>
                                         <div>
                                             <p class="font-semibold text-green-800 dark:text-green-200">Variantes de Producto</p>
                                             <p class="text-sm text-green-600 dark:text-green-400">Tallas, colores, sabores con precios extras</p>
@@ -525,7 +430,7 @@ class ProductResource extends Resource
 
                         SchemaActions::make([
                             Action::make('upgrade_to_pro')
-                                ->label('🚀 Mejorar a Plan PRO')
+                                ->label('Mejorar a plan PRO')
                                 ->color('warning')
                                 ->size('lg')
                                 ->extraAttributes(['class' => 'w-full justify-center'])
@@ -534,10 +439,8 @@ class ProductResource extends Resource
                     ])
                     ->collapsible(),
 
-                // ═══════════════════════════════════════════════════════════
-                // SECCIÓN 5: VARIANTES (Solo PRO)
-                // ═══════════════════════════════════════════════════════════
-                Section::make('🎨 Variantes del Producto')
+                // Seccion 5: variantes para negocios PRO.
+                Section::make('Variantes del producto')
                     ->description('Define opciones como talla, color, tamaño.')
                     ->visible(fn (): bool => static::currentTenantHasCapability(Capability::PRODUCT_VARIANTS))
                     ->schema([
@@ -573,9 +476,9 @@ class ProductResource extends Resource
             ]);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // TABLA OPTIMIZADA PARA MÓVIL CON TOGGLE COLUMNS
-    // ═══════════════════════════════════════════════════════════════════════
+    // ---
+    // Tabla optimizada para móvil con columnas activables.
+    // ---
 
     public static function table(Table $table): Table
     {
@@ -595,12 +498,9 @@ class ProductResource extends Resource
                     ->limit(30)
                     ->weight('bold'),
 
-                // ═══════════════════════════════════════════════════════════
-                // EDICIÓN EN LÍNEA: Modo "Hoja de Cálculo"
-                // ═══════════════════════════════════════════════════════════
-                // Click → Editar → Blur = Guardar automático vía AJAX
-                // Reduce tiempo de actualización de precios en 90%
-                // ═══════════════════════════════════════════════════════════
+                // ---
+                // Edición en línea para ajustar precios con pocos toques.
+                // ---
                 Tables\Columns\TextInputColumn::make('price')
                     ->label('Precio')
                     ->type('number')
@@ -609,7 +509,7 @@ class ProductResource extends Resource
                     ->extraAttributes(['class' => 'text-success-600 font-bold'])
                     ->tooltip('Clic para editar precio'),
 
-                // Sección del menú
+                // Seccion del menu.
                 Tables\Columns\TextColumn::make('menuSection.name')
                     ->label('Sección')
                     ->badge()
@@ -617,9 +517,7 @@ class ProductResource extends Resource
                     ->visible(fn (): bool => static::currentTenantHasCapability(Capability::MENU_MODIFIERS))
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                // ═══════════════════════════════════════════════════════════
-                // TOGGLE COLUMNS: Gestión rápida con un toque
-                // ═══════════════════════════════════════════════════════════
+                // Toggles rapidos para visibilidad y destacado.
                 Tables\Columns\ToggleColumn::make('is_visible')
                     ->label('Visible')
                     ->onColor('success')
@@ -627,23 +525,20 @@ class ProductResource extends Resource
                     ->tooltip('Clic para cambiar visibilidad'),
 
                 Tables\Columns\ToggleColumn::make('is_featured')
-                    ->label('⭐')
+                    ->label('Destacado')
                     ->onColor('warning')
                     ->visible(fn (): bool => static::currentTenantIsPro())
                     ->tooltip('Producto destacado'),
 
-                // Fecha de creación
+                // Fecha de creacion.
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Creado')
                     ->dateTime('d/m/Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            // ═══════════════════════════════════════════════════════════════
-            // AGRUPACIÓN VISUAL: Vista estructurada por secciones
-            // ═══════════════════════════════════════════════════════════════
-            // Refleja el modelo mental del restaurantero (Desayunos, Almuerzos, Cenas)
-            // ═══════════════════════════════════════════════════════════════
+            // Agrupacion visual por secciones del menu.
+            // Refleja el modelo mental del restaurantero.
             ->groups([
                 Tables\Grouping\Group::make('menuSection.name')
                     ->label('Sección del Menú')
@@ -670,24 +565,20 @@ class ProductResource extends Resource
                 EditAction::make()
                     ->iconButton(),
 
-                // ═══════════════════════════════════════════════════════════
-                // CLONACIÓN INTELIGENTE: Crear variaciones rápidamente
-                // ═══════════════════════════════════════════════════════════
-                // Hamburguesa Sencilla → Hamburguesa Doble en 1 clic
-                // ═══════════════════════════════════════════════════════════
+                // Duplicado rapido para crear variaciones.
                 ReplicateAction::make()
                     ->iconButton()
                     ->icon('heroicon-o-document-duplicate')
                     ->label('Duplicar')
-                    // Excluir slug para evitar error de unicidad
+                    // Excluir slug para evitar error de unicidad.
                     ->excludeAttributes(['slug', 'created_at', 'updated_at'])
-                    // Modificar datos antes de guardar
+                    // Ajustar datos antes de guardar.
                     ->mutateRecordDataUsing(function (array $data): array {
-                        // Añadir sufijo al nombre
+                        // Anadir sufijo al nombre.
                         $data['name'] = $data['name'].' (Copia)';
-                        // Generar nuevo slug único
+                        // Generar un nuevo slug unico.
                         $data['slug'] = Str::slug($data['name']).'-'.uniqid();
-                        // Nacer inactivo para evitar publicación accidental
+                        // Nacer inactivo para evitar publicacion accidental.
                         $data['is_visible'] = false;
                         $data['is_featured'] = false;
 
@@ -705,27 +596,22 @@ class ProductResource extends Resource
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
 
-                    // ═══════════════════════════════════════════════════════════
-                    // BULK ACTION PRO: Asignación Masiva de Sección
-                    // ═══════════════════════════════════════════════════════════
-                    // Resuelve el pain point de migrar 50+ productos al plan PRO
-                    // Permite mover múltiples productos a una sección en 1 clic
-                    // ═══════════════════════════════════════════════════════════
+                    // Accion masiva para mover productos entre secciones.
                     BulkAction::make('assign_section')
                         ->label('Mover a Sección')
                         ->icon('heroicon-o-folder-arrow-down')
                         ->color('primary')
 
-                        // Solo visible cuando el tenant tiene organización de menú
+                        // Solo visible cuando el tenant tiene organizacion de menu.
                         ->visible(fn (): bool => static::currentTenantHasCapability(Capability::MENU_MODIFIERS))
 
-                        // Modal con selector de sección
+                        // Modal con selector de seccion.
                         ->form([
                             Forms\Components\Select::make('menu_section_id')
                                 ->label('Selecciona la sección destino')
-                                ->placeholder('¿A qué sección mover estos productos?')
+                                ->placeholder('¿A qué sección quieres mover estos productos?')
                                 ->required()
-                                // SEGURIDAD: Scoped al tenant actual
+                                // Seguridad: scoped al tenant actual.
                                 ->options(function () {
                                     return \App\Models\MenuSection::query()
                                         ->where('tenant_id', static::currentTenantId())
@@ -738,21 +624,21 @@ class ProductResource extends Resource
                                 ->helperText('Solo se muestran tus secciones activas'),
                         ])
 
-                        // Motor de procesamiento
+                        // Motor de procesamiento.
                         ->action(function (Collection $records, array $data): void {
                             $sectionId = $data['menu_section_id'];
                             $count = $records->count();
 
-                            // Actualización masiva eficiente
+                            // Actualizacion masiva eficiente.
                             $records->each(function ($record) use ($sectionId) {
                                 $record->update(['menu_section_id' => $sectionId]);
                             });
 
-                            // Obtener nombre de la sección para el mensaje
+                            // Obtener nombre de la seccion para el mensaje.
                             $section = \App\Models\MenuSection::find($sectionId);
                             $sectionName = $section instanceof \App\Models\MenuSection ? $section->name : 'la sección';
 
-                            // Notificación de éxito
+                            // Notificacion de exito.
                             Notification::make()
                                 ->success()
                                 ->title('¡Productos movidos!')
@@ -761,10 +647,10 @@ class ProductResource extends Resource
                                 ->send();
                         })
 
-                        // Limpiar selección después de completar
+                        // Limpiar seleccion despues de completar.
                         ->deselectRecordsAfterCompletion()
 
-                        // Confirmación antes de ejecutar
+                        // Confirmacion antes de ejecutar.
                         ->requiresConfirmation()
                         ->modalHeading('Mover productos a sección')
                         ->modalDescription('Selecciona la sección destino para los productos seleccionados.')
@@ -772,8 +658,8 @@ class ProductResource extends Resource
                 ]),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Todavia no tienes productos',
-                'description' => 'Crea tu primer producto para empezar a vender y llenar tu catalogo publico.',
+                'heading' => 'Todavía no tienes productos',
+                'description' => 'Crea tu primer producto para empezar a vender y llenar tu catálogo público.',
                 'buttonLabel' => 'Crear producto',
                 'buttonUrl' => static::getUrl('create'),
             ]))

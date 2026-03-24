@@ -37,6 +37,9 @@ enum Permission: string
     case STAFF_VIEW = 'staff.view';
     case STAFF_MANAGE = 'staff.manage';
     case STAFF_ASSIGN_ROLES = 'staff.assign_roles';
+    case PLAYBOOKS_VIEW = 'playbooks.view';
+    case PLAYBOOKS_MANAGE = 'playbooks.manage';
+    case PLAYBOOKS_ASSIGN = 'playbooks.assign';
     case MARKETING_VIEW = 'marketing.view';
     case MARKETING_MANAGE = 'marketing.manage';
     case ANALYTICS_VIEW = 'analytics.view';

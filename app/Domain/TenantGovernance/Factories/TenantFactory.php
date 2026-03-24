@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Factories;
 
 use App\Domain\TenantGovernance\Entities\TenantEntity;
+use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 
 final class TenantFactory
@@ -40,6 +41,7 @@ final class TenantFactory
         TenantPlan $planType,
         bool $isPro = false,
         int $productLimit = 10,
+        BusinessType $businessType = BusinessType::RETAIL,
         ?string $logoPath = null,
         ?int $categoryId = null,
         ?int $cityId = null,
@@ -55,6 +57,7 @@ final class TenantFactory
             ownerId: $ownerId,
             categoryId: $categoryId,
             cityId: $cityId,
+            businessType: $businessType,
             logoPath: $logoPath,
             whatsapp: $whatsapp,
             isPro: $isPro,

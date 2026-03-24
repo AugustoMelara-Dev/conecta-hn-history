@@ -14,15 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * InteractionController - Hexagonal Compliant (DIP Remediation)
- *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  ARCHITECTURAL COMPLIANCE:                                               â•‘
- * â•‘  - Zero App\Models imports (DIP compliant)                               â•‘
- * â•‘  - Uses Domain Enum for interaction types                                â•‘
- * â•‘  - Uses TenantResolver instead of Route Model Binding                   â•‘
- * â•‘  - Scalars in method signatures, not Eloquent models                    â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * Registra interacciones públicas y redirige al canal solicitado.
  */
 final class InteractionController extends Controller
 {
@@ -71,7 +63,7 @@ final class InteractionController extends Controller
         $phone = new PhoneNumber($tenant->phone() ?? $tenant->whatsappNumber());
 
         if (! $phone->isValid()) {
-            return redirect()->back()->with('error', 'Este negocio no tiene telÃ©fono configurado.');
+            return redirect()->back()->with('error', 'Este negocio no tiene teléfono configurado.');
         }
 
         $dto = new InteractionData(
@@ -101,9 +93,9 @@ final class InteractionController extends Controller
                 $tenant->longitude()
             );
         } elseif (! empty($tenant->address())) {
-            $url = 'https://www.google.com/maps/search/?api=1&query='.urlencode($tenant->address());
+            $url = 'https://www.google.com/maps/search/?api=1&query=' . urlencode($tenant->address());
         } else {
-            return redirect()->back()->with('error', 'Este negocio no tiene ubicacion configurada.');
+            return redirect()->back()->with('error', 'Este negocio no tiene ubicación configurada.');
         }
 
         $dto = new InteractionData(

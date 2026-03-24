@@ -39,7 +39,9 @@ class UpdateTenantSubscription
             // STEP 1: FETCH PAYMENT WITH LOCK AND VALIDATE STATE
             // Fail-fast: No silent failures, throw on invalid state
             // ═══════════════════════════════════════════════════════════════
-            $payment = SubscriptionPayment::lockForUpdate()
+            $payment = SubscriptionPayment::query()
+                ->withoutGlobalScopes()
+                ->lockForUpdate()
                 ->find($event->paymentId);
 
             if (! $payment) {
@@ -72,7 +74,10 @@ class UpdateTenantSubscription
             // Pessimistic Locking: Concurrent processes will WAIT here
             // This mathematically eliminates race conditions
             // ═══════════════════════════════════════════════════════════════
-            $tenant = Tenant::lockForUpdate()->find($event->tenantId()->toString());
+            $tenant = Tenant::query()
+                ->withoutGlobalScopes()
+                ->lockForUpdate()
+                ->find($event->tenantId()->toString());
 
             if (! $tenant) {
                 throw new \RuntimeException(

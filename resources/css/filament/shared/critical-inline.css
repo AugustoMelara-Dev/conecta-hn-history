@@ -1,0 +1,32 @@
+:root {
+    color-scheme: dark;
+}
+
+body.fi-body {
+    min-height: 100%;
+    background: #09090b;
+    color: #ffffff;
+}
+
+.fi-layout,
+.fi-main,
+.fi-main-ctn,
+.fi-page,
+.fi-page-content {
+    min-width: 0;
+}
+
+.fi-page-content {
+    display: grid;
+    gap: 1.5rem;
+    align-content: start;
+}
+
+.fi-page-content > * {
+    min-width: 0;
+}
+
+.fi-panel-admin .fi-simple-layout,
+.fi-panel-admin .fi-simple-main-ctn {
+    min-height: 100vh;
+}

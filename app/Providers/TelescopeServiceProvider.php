@@ -39,7 +39,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
         // but this early return prevents the filter closures and observers
         // from being registered, saving ~2-5ms per request.
         // ═══════════════════════════════════════════════════════════════════════
-        if (! config('telescope.enabled', false) && ! $this->app->environment('local')) {
+        if (! config('telescope.enabled', false)) {
             return;
         }
 

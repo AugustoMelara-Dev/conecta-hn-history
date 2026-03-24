@@ -31,7 +31,7 @@ class ProductResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'GestiÃ³n de CatÃ¡logo';
+        return 'Gestion de Catalogo';
     }
 
     public static function getNavigationLabel(): string
@@ -54,15 +54,15 @@ class ProductResource extends Resource
             ->schema([
                 Group::make()
                     ->schema([
-                        Section::make('InformaciÃ³n del Producto')
+                        Section::make('Informacion del producto')
                             ->schema([
                                 Forms\Components\TextInput::make('name')
-                                    ->label('Nombre del Producto')
+                                    ->label('Nombre del producto')
                                     ->required()
                                     ->maxLength(255),
 
                                 Forms\Components\RichEditor::make('description')
-                                    ->label('DescripciÃ³n')
+                                    ->label('Descripcion')
                                     ->toolbarButtons([
                                         'bold',
                                         'italic',
@@ -75,10 +75,10 @@ class ProductResource extends Resource
                                     ->columnSpan('full'),
                             ]),
 
-                        Section::make('GalerÃ­a de ImÃ¡genes')
+                        Section::make('Galeria de imagenes')
                             ->schema([
                                 SpatieMediaLibraryFileUpload::make('images')
-                                    ->label('ImÃ¡genes del Producto')
+                                    ->label('Imagenes del producto')
                                     ->collection('product-images')
                                     ->image()
                                     ->imageEditor()
@@ -89,23 +89,23 @@ class ProductResource extends Resource
                                     ->columnSpan('full'),
                             ]),
 
-                        Section::make('Opciones y Modificadores')
+                        Section::make('Opciones y modificadores')
                             ->schema([
                                 $isPro
                                     ? Forms\Components\Repeater::make('modifiers')
-                                        ->label('Grupos de Opciones')
+                                        ->label('Grupos de opciones')
                                         ->relationship('modifierGroups')
                                         ->schema([
                                             Forms\Components\TextInput::make('name')->label('Nombre (ej. Tallas)')->required(),
-                                            Forms\Components\TextInput::make('min_selections')->numeric()->default(0)->label('MÃ­n'),
-                                            Forms\Components\TextInput::make('max_selections')->numeric()->default(1)->label('MÃ¡x'),
+                                            Forms\Components\TextInput::make('min_selections')->numeric()->default(0)->label('Min'),
+                                            Forms\Components\TextInput::make('max_selections')->numeric()->default(1)->label('Max'),
                                         ])
                                         ->collapsed()
                                     : Forms\Components\Placeholder::make('upgrade_promo')
-                                        ->label('Opciones Avanzadas')
+                                        ->label('Opciones avanzadas')
                                         ->content(new HtmlString('
                                             <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700">
-                                                <p class="font-bold">Disponible en Plan Pro</p>
+                                                <p class="font-bold">Disponible en plan PRO</p>
                                                 <p>Actualiza para agregar tallas, colores y extras a tus productos.</p>
                                             </div>
                                         ')),
@@ -115,7 +115,7 @@ class ProductResource extends Resource
 
                 Group::make()
                     ->schema([
-                        Section::make('Detalles y Precio')
+                        Section::make('Detalles y precio')
                             ->schema([
                                 Forms\Components\TextInput::make('price')
                                     ->label('Precio (Lps)')
@@ -125,19 +125,19 @@ class ProductResource extends Resource
 
                                 Forms\Components\Select::make('category_id')
                                     ->relationship('category', 'name')
-                                    ->label('CategorÃ­a')
+                                    ->label('Categoria')
                                     ->searchable()
                                     ->preload()
                                     ->required(),
 
                                 Forms\Components\Select::make('menu_section_id')
                                     ->relationship('menuSection', 'name')
-                                    ->label('SecciÃ³n del MenÃº')
+                                    ->label('Seccion del menu')
                                     ->searchable()
                                     ->preload(),
 
                                 Forms\Components\Toggle::make('is_visible')
-                                    ->label('Visible al PÃºblico')
+                                    ->label('Visible al publico')
                                     ->default(true)
                                     ->onColor('success')
                                     ->offColor('danger'),
@@ -165,7 +165,7 @@ class ProductResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('category.name')
-                    ->label('CategorÃ­a')
+                    ->label('Categoria')
                     ->badge()
                     ->color('gray')
                     ->sortable(),
@@ -185,7 +185,7 @@ class ProductResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_id')
-                    ->label('CategorÃ­a')
+                    ->label('Categoria')
                     ->relationship('category', 'name'),
 
                 Tables\Filters\TernaryFilter::make('is_visible')

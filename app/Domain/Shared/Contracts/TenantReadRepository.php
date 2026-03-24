@@ -9,5 +9,5 @@ namespace App\Domain\Shared\Contracts;
  */
 interface TenantReadRepository
 {
-    public function exists(int $id): bool;
+    public function exists(string|int $id): bool;
 }

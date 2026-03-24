@@ -35,8 +35,8 @@ class OptionGroupsRelationManager extends RelationManager
     {
         return $schema
             ->schema([
-                Section::make('Configuracion del Grupo')
-                    ->description('Define como los clientes seleccionaran estas opciones.')
+                Section::make('Configuración del grupo')
+                    ->description('Define cómo los clientes seleccionarán estas opciones.')
                     ->icon('heroicon-o-squares-plus')
                     ->columns(2)
                     ->schema([
@@ -70,7 +70,7 @@ class OptionGroupsRelationManager extends RelationManager
                             ->label('Maximo de Opciones')
                             ->numeric()
                             ->minValue(1)
-                            ->placeholder('Sin limite')
+                            ->placeholder('Sin límite')
                             ->helperText('Dejar vacio para ilimitado.')
                             ->visible(fn (Get $get): bool => $get('type') === 'multiple'),
                         TextInput::make('sort_order')
@@ -109,7 +109,7 @@ class OptionGroupsRelationManager extends RelationManager
                                     ->columnSpan(1),
                                 Toggle::make('is_available')
                                     ->label('Disponible')
-                                    ->helperText('Desactivar si esta agotado')
+                                    ->helperText('Desactivar si está agotado')
                                     ->default(true)
                                     ->inline(false)
                                     ->columnSpan(1),

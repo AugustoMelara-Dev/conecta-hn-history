@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Filament\App\Resources\MenuSectionResource\Pages;
 use App\Models\MenuSection;
 use App\Models\Tenant;
@@ -31,30 +32,39 @@ class MenuSectionResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'Secciones de Menu';
+        return 'Secciones de menú';
     }
 
     public static function getModelLabel(): string
     {
-        return 'Seccion';
+        return 'Sección';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Secciones de Menu';
+        return 'Secciones de menú';
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Catalogo';
+        return 'Catálogo';
     }
 
     public static function canViewAny(): bool
     {
-        return Gate::allows('viewAny', MenuSection::class);
+        $tenant = static::getTenantRecord();
+
+        return $tenant instanceof Tenant
+            && $tenant->business_type !== BusinessType::SERVICE
+            && Gate::allows('viewAny', MenuSection::class);
     }
 
     public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function canAccess(): bool
     {
         return static::canViewAny();
     }
@@ -83,12 +93,12 @@ class MenuSectionResource extends Resource
     {
         return $schema
             ->schema([
-                Section::make('Nueva seccion')
-                    ->description('Crea categorias para organizar tu menu.')
+                Section::make('Nueva sección')
+                    ->description('Crea categorías para organizar tu menú.')
                     ->icon('heroicon-o-folder-plus')
                     ->schema([
                         Forms\Components\TextInput::make('name')
-                            ->label('Nombre de la seccion')
+                            ->label('Nombre de la sección')
                             ->required()
                             ->maxLength(100)
                             ->placeholder('Ej: Platos fuertes, bebidas, postres')
@@ -107,10 +117,10 @@ class MenuSectionResource extends Resource
                                     ->max('sort_order')) + 1;
                             }),
                         Forms\Components\Toggle::make('is_active')
-                            ->label('Visible en mi menu')
+                            ->label('Visible en mi menú')
                             ->default(true)
                             ->inline(false)
-                            ->helperText('Desactiva para ocultar temporalmente la seccion.'),
+                            ->helperText('Desactiva para ocultar temporalmente la sección.'),
                     ]),
             ]);
     }
@@ -132,8 +142,8 @@ class MenuSectionResource extends Resource
                     ->color(fn (int|string|null $state): string => (int) $state > 0 ? 'success' : 'danger')
                     ->icon(fn (int|string|null $state): string => (int) $state > 0 ? 'heroicon-o-check-circle' : 'heroicon-o-exclamation-triangle')
                     ->tooltip(fn (int|string|null $state): string => (int) $state > 0
-                        ? "Esta seccion tiene {$state} productos"
-                        : 'Seccion vacia - Agrega productos'),
+                        ? "Esta sección tiene {$state} productos"
+                        : 'Sección vacía - Agrega productos'),
                 Tables\Columns\TextColumn::make('sort_order')
                     ->label('Orden')
                     ->sortable()
@@ -144,7 +154,7 @@ class MenuSectionResource extends Resource
                     ->label('Activa')
                     ->onColor('success')
                     ->offColor('danger')
-                    ->tooltip('Activar o desactivar seccion'),
+                    ->tooltip('Activar o desactivar sección'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Creado')
                     ->dateTime('d/m/Y')
@@ -164,22 +174,22 @@ class MenuSectionResource extends Resource
                 EditAction::make()->iconButton(),
                 DeleteAction::make()
                     ->iconButton()
-                    ->modalHeading('Eliminar esta seccion?')
-                    ->modalDescription('Los productos dentro de esta seccion no se eliminaran.')
-                    ->modalSubmitActionLabel('Si, eliminar seccion')
-                    ->successNotificationTitle('Seccion eliminada'),
+                    ->modalHeading('¿Eliminar esta sección?')
+                    ->modalDescription('Los productos dentro de esta sección no se eliminarán.')
+                    ->modalSubmitActionLabel('Sí, eliminar sección')
+                    ->successNotificationTitle('Sección eliminada'),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->modalHeading('Eliminar secciones seleccionadas?')
-                        ->modalDescription('Los productos dentro de estas secciones no se eliminaran.'),
+                        ->modalHeading('¿Eliminar secciones seleccionadas?')
+                        ->modalDescription('Los productos dentro de estas secciones no se eliminarán.'),
                 ]),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Todavia no tienes secciones creadas',
-                'description' => 'Crea secciones para organizar tu catalogo y hacerlo mas claro para el cliente.',
-                'buttonLabel' => 'Crear primera seccion',
+                'heading' => 'Todavía no tienes secciones creadas',
+                'description' => 'Crea secciones para organizar tu catálogo y hacerlo más claro para el cliente.',
+                'buttonLabel' => 'Crear primera sección',
                 'buttonUrl' => static::getUrl('create'),
             ]));
     }

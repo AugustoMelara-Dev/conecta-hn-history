@@ -1,0 +1,486 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'retail_general' => [
+        'journey_title' => 'Descubre, compara y avanza',
+        'journey_copy' => 'La vitrina tiene que mover una accion concreta: explorar, cotizar o escribir al negocio sin perder impulso.',
+        'journey_steps' => [
+            [
+                'eyebrow' => 'Paso 1',
+                'title' => 'Presenta lo mas buscado',
+                'copy' => 'El cliente detecta rapido productos, precios y categorias con mejor salida.',
+            ],
+            [
+                'eyebrow' => 'Paso 2',
+                'title' => 'Reduce la friccion de compra',
+                'copy' => 'WhatsApp, catalogo y bloques claros evitan que la visita se enfrie.',
+            ],
+            [
+                'eyebrow' => 'Paso 3',
+                'title' => 'Empuja una siguiente accion',
+                'copy' => 'La experiencia termina en cotizacion, llamada o visita a tienda, no en una duda.',
+            ],
+        ],
+        'growth_title' => 'Palancas para retail local',
+        'growth_copy' => 'Conecta HN ayuda a que una tienda se vea profesional y convierta mejor desde movil y escritorio.',
+        'growth_cards' => [
+            [
+                'eyebrow' => 'Vitrina',
+                'title' => 'Destaca productos ganadores',
+                'copy' => 'Usa la portada y el catalogo para empujar novedades, top sellers y bundles.',
+                'cta_label' => 'Ver catalogo',
+                'cta_target' => '#catalogo',
+            ],
+            [
+                'eyebrow' => 'Conversion',
+                'title' => 'Acelera cotizaciones',
+                'copy' => 'El cliente llega con mas contexto antes de escribir y pregunta con mejor intencion.',
+                'cta_label' => 'Abrir WhatsApp',
+                'cta_target' => 'whatsapp',
+            ],
+            [
+                'eyebrow' => 'Operacion',
+                'title' => 'Sostiene presencia constante',
+                'copy' => 'Horarios, contacto y propuesta comercial quedan visibles aunque el negocio no este respondiendo al instante.',
+                'cta_label' => 'Ver informacion',
+                'cta_target' => '#informacion',
+            ],
+        ],
+        'catalog_panel_title' => 'Catalogo listo para vender',
+        'catalog_panel_copy' => 'Productos visibles, precios claros y una vitrina que lleva al cliente a cotizar o comprar sin perderse.',
+    ],
+    'restaurant' => [
+        'journey_title' => 'Descubre, pide y vuelve',
+        'journey_copy' => 'Un buen micrositio gastronomico hace tres cosas bien: abre apetito, acelera el pedido y deja espacio para recompra.',
+        'journey_steps' => [
+            [
+                'eyebrow' => 'Paso 1',
+                'title' => 'Muestra platos que venden solos',
+                'copy' => 'Combos, platos estrella y bebidas quedan claros antes de abrir el chat.',
+            ],
+            [
+                'eyebrow' => 'Paso 2',
+                'title' => 'Empuja el pedido rapido',
+                'copy' => 'La transicion a WhatsApp o al menu ocurre sin perder el hambre del cliente.',
+            ],
+            [
+                'eyebrow' => 'Paso 3',
+                'title' => 'Activa recompra y promos',
+                'copy' => 'Promociones del dia y extras ayudan a subir ticket y retorno.',
+            ],
+        ],
+        'growth_title' => 'Palancas para restaurante',
+        'growth_copy' => 'La portada publica se convierte en un canal comercial real para menu, pedidos y promociones.',
+        'growth_cards' => [
+            [
+                'eyebrow' => 'Menu',
+                'title' => 'Combos que levantan ticket',
+                'copy' => 'Organiza secciones para vender entradas, platos fuertes, bebidas y extras con mas claridad.',
+                'cta_label' => 'Ver menu',
+                'cta_target' => '#catalogo',
+            ],
+            [
+                'eyebrow' => 'Pedidos',
+                'title' => 'Canal directo a WhatsApp',
+                'copy' => 'El cliente no tiene que preguntar desde cero para pedir; ya llega orientado.',
+                'cta_label' => 'Pedir ahora',
+                'cta_target' => 'whatsapp',
+            ],
+            [
+                'eyebrow' => 'Retencion',
+                'title' => 'Promos del dia mas visibles',
+                'copy' => 'La experiencia deja espacio para especiales, combos de almuerzo y novedades.',
+                'cta_label' => 'Explorar platos',
+                'cta_target' => '#catalogo',
+            ],
+        ],
+        'catalog_panel_title' => 'Platos, combos y bebidas',
+        'catalog_panel_copy' => 'Explora el menu publico con secciones, platos destacados y bloques listos para convertir hambre en pedido.',
+    ],
+    'cellphone_store' => [
+        'journey_title' => 'Descubre, compara y cierra',
+        'journey_copy' => 'En tecnologia ligera, la vitrina debe mostrar producto premium, bundles y una salida rapida a cotizacion o soporte.',
+        'journey_steps' => [
+            [
+                'eyebrow' => 'Paso 1',
+                'title' => 'Destaca equipos bandera',
+                'copy' => 'El cliente detecta rapido smartphones, modelos premium y accesorios clave.',
+            ],
+            [
+                'eyebrow' => 'Paso 2',
+                'title' => 'Muestra bundles y extras',
+                'copy' => 'Cases, cargadores, protectores y kits elevan el valor promedio sin complicar la experiencia.',
+            ],
+            [
+                'eyebrow' => 'Paso 3',
+                'title' => 'Conecta venta y soporte',
+                'copy' => 'La misma vitrina sirve para vender, cotizar y abrir una conversacion postventa.',
+            ],
+        ],
+        'growth_title' => 'Palancas para retail avanzado',
+        'growth_copy' => 'La tienda se ve como un negocio moderno: vitrina fuerte, bundles claros y soporte visible.',
+        'growth_cards' => [
+            [
+                'eyebrow' => 'Flagship',
+                'title' => 'Empuja equipos premium',
+                'copy' => 'Los productos mas deseados deben aparecer primero y con mejor contexto comercial.',
+                'cta_label' => 'Ver equipos',
+                'cta_target' => '#catalogo',
+            ],
+            [
+                'eyebrow' => 'Upsell',
+                'title' => 'Convierte accesorios en margen',
+                'copy' => 'La vitrina debe vender cargadores, cases y kits sin depender del mostrador fisico.',
+                'cta_label' => 'Explorar catalogo',
+                'cta_target' => '#catalogo',
+            ],
+            [
+                'eyebrow' => 'Posventa',
+                'title' => 'Haz visible garantia y soporte',
+                'copy' => 'El cliente entiende rapido que no solo vendes el equipo, tambien lo acompanias.',
+                'cta_label' => 'Cotizar por WhatsApp',
+                'cta_target' => 'whatsapp',
+            ],
+        ],
+        'catalog_panel_title' => 'Equipos, accesorios y bundles',
+        'catalog_panel_copy' => 'Desde flagship phones hasta kits de upsell: esta vitrina esta pensada para retail tecnologico que quiere vender mas y mejor.',
+    ],
+    'clinic' => [
+        'journey_title' => 'Orienta, agenda y da seguimiento',
+        'journey_copy' => 'Una clinica vende confianza antes de vender tiempo. El micrositio tiene que ordenar la primera consulta y bajar la ansiedad del paciente.',
+        'journey_steps' => [
+            [
+                'eyebrow' => 'Paso 1',
+                'title' => 'Muestra especialidades y valoraciones',
+                'copy' => 'El paciente entiende que servicios existen y cual es el siguiente paso correcto.',
+            ],
+            [
+                'eyebrow' => 'Paso 2',
+                'title' => 'Lleva a agenda o recepcion',
+                'copy' => 'Reservar o escribir debe sentirse claro, serio y facil desde movil.',
+            ],
+            [
+                'eyebrow' => 'Paso 3',
+                'title' => 'Refuerza seguimiento',
+                'copy' => 'Horarios, ubicacion y contexto ayudan a que la visita termine en cita y no en abandono.',
+            ],
+        ],
+        'growth_title' => 'Palancas para clinica o centro de salud',
+        'growth_copy' => 'La experiencia publica ayuda a orientar mejor al paciente y a ordenar la demanda desde el primer clic.',
+        'growth_cards' => [
+            [
+                'eyebrow' => 'Agenda',
+                'title' => 'Reservas mas claras',
+                'copy' => 'Servicios, duracion y recepcion visible reducen llamadas repetidas y dudas basicas.',
+                'cta_label' => 'Reservar evaluacion',
+                'cta_target' => 'booking',
+            ],
+            [
+                'eyebrow' => 'Confianza',
+                'title' => 'Mas seriedad institucional',
+                'copy' => 'El paciente ve una clinica organizada, con especialidades, horarios y ubicacion bien explicados.',
+                'cta_label' => 'Ver informacion',
+                'cta_target' => '#informacion',
+            ],
+            [
+                'eyebrow' => 'Orientacion',
+                'title' => 'Filtra mejor la demanda',
+                'copy' => 'El primer contacto llega mas preparado y con mejor expectativa de atencion.',
+                'cta_label' => 'Ver servicios',
+                'cta_target' => '#servicios',
+            ],
+        ],
+        'service_panel_title' => 'Especialidades, evaluaciones y seguimiento',
+        'service_panel_copy' => 'Servicios visibles, agenda clara y contexto suficiente para que el paciente reserve con mas confianza.',
+    ],
+    'barbershop' => [
+        'journey_title' => 'Muestra estilo, llena agenda y empuja promos',
+        'journey_copy' => 'En belleza y grooming, la presencia manda. El micrositio tiene que verse premium y llevar rapido a reserva.',
+        'journey_steps' => [
+            [
+                'eyebrow' => 'Paso 1',
+                'title' => 'Explica servicios con claridad',
+                'copy' => 'Cortes, barba, grooming y extras se entienden de inmediato.',
+            ],
+            [
+                'eyebrow' => 'Paso 2',
+                'title' => 'Empuja la cita',
+                'copy' => 'La agenda visible convierte la visita en una reserva real y no en un mensaje frio.',
+            ],
+            [
+                'eyebrow' => 'Paso 3',
+                'title' => 'Mueve promociones y recurrencia',
+                'copy' => 'Promos, combos y slots disponibles ayudan a llenar horas ociosas.',
+            ],
+        ],
+        'growth_title' => 'Palancas para grooming y belleza',
+        'growth_copy' => 'La portada publica ayuda a vender estilo, confianza y disponibilidad desde movil.',
+        'growth_cards' => [
+            [
+                'eyebrow' => 'Agenda',
+                'title' => 'Slots listos para reservar',
+                'copy' => 'El cliente puede pasar de interes a cita sin pasos innecesarios.',
+                'cta_label' => 'Reservar cita',
+                'cta_target' => 'booking',
+            ],
+            [
+                'eyebrow' => 'Imagen',
+                'title' => 'Presencia premium desde la portada',
+                'copy' => 'Una barberia o salon debe verse tan bien como atiende.',
+                'cta_label' => 'Ver servicios',
+                'cta_target' => '#servicios',
+            ],
+            [
+                'eyebrow' => 'Promos',
+                'title' => 'Campanas y combos mas visibles',
+                'copy' => 'Ideal para impulsar grooming kits, promos de temporada o recompra.',
+                'cta_label' => 'Consultar',
+                'cta_target' => 'whatsapp',
+            ],
+        ],
+        'service_panel_title' => 'Cortes, grooming y citas visibles',
+        'service_panel_copy' => 'Servicios con precio, duracion y CTA listos para convertir la visita en reserva.',
+    ],
+    'law_firm' => [
+        'journey_title' => 'Filtra el caso, agenda y prepara la reunion',
+        'journey_copy' => 'Una firma legal no solo necesita presencia; necesita reducir consultas frias y atraer conversaciones mejor preparadas.',
+        'journey_steps' => [
+            [
+                'eyebrow' => 'Paso 1',
+                'title' => 'Explica areas de practica',
+                'copy' => 'El cliente sabe rapido si el despacho puede ayudarle y por donde empezar.',
+            ],
+            [
+                'eyebrow' => 'Paso 2',
+                'title' => 'Lleva a consulta inicial',
+                'copy' => 'La reserva o el contacto se sienten serios, claros y coherentes con un servicio profesional.',
+            ],
+            [
+                'eyebrow' => 'Paso 3',
+                'title' => 'Ordena el primer filtro',
+                'copy' => 'El despacho recibe casos con mejor contexto y menos ida y vuelta inicial.',
+            ],
+        ],
+        'growth_title' => 'Palancas para firma legal',
+        'growth_copy' => 'El micrositio profesional ayuda a elevar la seriedad percibida y a mejorar la calidad del primer contacto.',
+        'growth_cards' => [
+            [
+                'eyebrow' => 'Practica',
+                'title' => 'Areas visibles y mejor encaje',
+                'copy' => 'Presenta servicios legales para clientes personales o corporativos con menos ambiguedad.',
+                'cta_label' => 'Ver servicios',
+                'cta_target' => '#servicios',
+            ],
+            [
+                'eyebrow' => 'Intake',
+                'title' => 'Primera consulta mejor filtrada',
+                'copy' => 'Reduce ruido operativo dejando claro como reservar, escribir o preparar la reunion.',
+                'cta_label' => 'Agendar consulta',
+                'cta_target' => 'booking',
+            ],
+            [
+                'eyebrow' => 'Confianza',
+                'title' => 'Presencia mas seria y consistente',
+                'copy' => 'Ubicacion, horarios y narrativa profesional ayudan a cerrar mejor el primer contacto.',
+                'cta_label' => 'Hablar con el despacho',
+                'cta_target' => 'whatsapp',
+            ],
+        ],
+        'service_panel_title' => 'Consultas, areas de practica y primera llamada',
+        'service_panel_copy' => 'Servicios legales visibles, propuesta clara y un canal serio para pasar de visita a consulta.',
+    ],
+    'consultancy' => [
+        'journey_title' => 'Diagnostica, propone y acompana',
+        'journey_copy' => 'La consultoria crece cuando la visita termina en una discovery call util y no en una duda abierta.',
+        'journey_steps' => [
+            [
+                'eyebrow' => 'Paso 1',
+                'title' => 'Define el problema que resuelves',
+                'copy' => 'Servicios y paquetes ayudan a que el lead entienda para quien es la propuesta.',
+            ],
+            [
+                'eyebrow' => 'Paso 2',
+                'title' => 'Lleva a llamada o diagnostico',
+                'copy' => 'La primera reunion llega mas preparada y con mejor intencion comercial.',
+            ],
+            [
+                'eyebrow' => 'Paso 3',
+                'title' => 'Abre espacio para seguimiento',
+                'copy' => 'WhatsApp y la narrativa del sitio ayudan a sostener el funnel despues de la primera conversacion.',
+            ],
+        ],
+        'growth_title' => 'Palancas para consultoria',
+        'growth_copy' => 'La presencia publica pasa de brochure a herramienta real de captura, filtro y seguimiento comercial.',
+        'growth_cards' => [
+            [
+                'eyebrow' => 'Discovery',
+                'title' => 'Llamadas de diagnostico mejor encuadradas',
+                'copy' => 'El lead entiende el valor de la primera reunion antes de escribir.',
+                'cta_label' => 'Agendar llamada',
+                'cta_target' => 'booking',
+            ],
+            [
+                'eyebrow' => 'Oferta',
+                'title' => 'Servicios y paquetes mas vendibles',
+                'copy' => 'La propuesta deja de verse abstracta y se vuelve mas concreta para la PYME.',
+                'cta_label' => 'Ver servicios',
+                'cta_target' => '#servicios',
+            ],
+            [
+                'eyebrow' => 'Funnel',
+                'title' => 'Seguimiento comercial mas ordenado',
+                'copy' => 'Conecta landing, llamada y WhatsApp dentro de una misma experiencia de marca.',
+                'cta_label' => 'Solicitar informacion',
+                'cta_target' => 'whatsapp',
+            ],
+        ],
+        'service_panel_title' => 'Discovery calls, sesiones y paquetes de acompanamiento',
+        'service_panel_copy' => 'Servicios visibles, CTA consultivos y una experiencia pensada para cerrar llamadas con mas contexto.',
+    ],
+    'workshop' => [
+        'journey_title' => 'Diagnostica, aprueba y entrega',
+        'journey_copy' => 'Un taller o servicio tecnico debe dejar claro que hace, como inicia el diagnostico y que extras puede resolver en el mismo proceso.',
+        'journey_steps' => [
+            [
+                'eyebrow' => 'Paso 1',
+                'title' => 'Explica el servicio tecnico',
+                'copy' => 'Diagnosticos, revisiones o mantenimientos se entienden rapido sin depender del mostrador.',
+            ],
+            [
+                'eyebrow' => 'Paso 2',
+                'title' => 'Abre el canal correcto',
+                'copy' => 'WhatsApp o reserva sirven para recibir mejor el caso antes de que llegue al negocio.',
+            ],
+            [
+                'eyebrow' => 'Paso 3',
+                'title' => 'Conecta repuestos y extras',
+                'copy' => 'La misma experiencia ayuda a vender repuestos, accesorios y soluciones complementarias.',
+            ],
+        ],
+        'growth_title' => 'Palancas para taller o servicio tecnico',
+        'growth_copy' => 'El micrositio deja de ser solo presencia y se vuelve una entrada operativa para diagnosticos y ventas complementarias.',
+        'growth_cards' => [
+            [
+                'eyebrow' => 'Diagnostico',
+                'title' => 'Primer contacto con mejor contexto',
+                'copy' => 'El cliente puede explicar su caso despues de ver servicios y alcance.',
+                'cta_label' => 'Consultar diagnostico',
+                'cta_target' => 'whatsapp',
+            ],
+            [
+                'eyebrow' => 'Repuestos',
+                'title' => 'Catalogo tecnico mas vendible',
+                'copy' => 'Repuestos y accesorios visibles elevan la oportunidad de ticket mixto.',
+                'cta_label' => 'Ver catalogo tecnico',
+                'cta_target' => '#catalogo',
+            ],
+            [
+                'eyebrow' => 'Operacion',
+                'title' => 'Servicio y venta sin fragmentar la experiencia',
+                'copy' => 'Productos, mano de obra y contacto viven dentro del mismo frente comercial.',
+                'cta_label' => 'Ver ofertas',
+                'cta_target' => '#ofertas',
+            ],
+        ],
+        'service_panel_title' => 'Diagnosticos, mano de obra y seguimiento tecnico',
+        'service_panel_copy' => 'Servicios tecnicos visibles con un canal de entrada mas ordenado para cada caso.',
+        'catalog_panel_title' => 'Repuestos, accesorios y soluciones tecnicas',
+        'catalog_panel_copy' => 'El catalogo tecnico acompana al servicio: repuestos visibles, extras claros y mejor contexto comercial.',
+    ],
+    'service_general' => [
+        'journey_title' => 'Aclara, reserva y da seguimiento',
+        'journey_copy' => 'Todo negocio de servicios necesita una ruta simple desde la duda hasta la consulta o la reserva.',
+        'journey_steps' => [
+            [
+                'eyebrow' => 'Paso 1',
+                'title' => 'Presenta servicios con contexto',
+                'copy' => 'Duracion, precio y foco ayudan a tomar una mejor decision.',
+            ],
+            [
+                'eyebrow' => 'Paso 2',
+                'title' => 'Abre el canal correcto',
+                'copy' => 'Reserva, llamada o WhatsApp segun como convenga al negocio.',
+            ],
+            [
+                'eyebrow' => 'Paso 3',
+                'title' => 'Mantiene una presencia creible',
+                'copy' => 'Horarios, ubicacion y propuesta quedan visibles aunque el equipo este ocupado.',
+            ],
+        ],
+        'growth_title' => 'Palancas para negocio de servicios',
+        'growth_copy' => 'El micrositio ayuda a que el cliente llegue mas preparado y el negocio responda mejor.',
+        'growth_cards' => [
+            [
+                'eyebrow' => 'Servicios',
+                'title' => 'Oferta mas entendible',
+                'copy' => 'Deja claro que resuelves y como se empieza a trabajar contigo.',
+                'cta_label' => 'Ver servicios',
+                'cta_target' => '#servicios',
+            ],
+            [
+                'eyebrow' => 'Contacto',
+                'title' => 'Canal directo a consulta',
+                'copy' => 'El visitante pasa de interes a accion sin demasiados pasos.',
+                'cta_label' => 'Consultar',
+                'cta_target' => 'whatsapp',
+            ],
+            [
+                'eyebrow' => 'Operacion',
+                'title' => 'Presencia profesional constante',
+                'copy' => 'Una base clara para crecer con campanas, SEO local y recomendaciones.',
+                'cta_label' => 'Ver informacion',
+                'cta_target' => '#informacion',
+            ],
+        ],
+        'service_panel_title' => 'Servicios visibles y contacto directo',
+        'service_panel_copy' => 'Servicios, tiempos y precios listos para que el cliente avance con menos friccion.',
+    ],
+    'hybrid_general' => [
+        'journey_title' => 'Muestra, resuelve y acompana',
+        'journey_copy' => 'Los negocios mixtos crecen cuando el cliente entiende que puede comprar, consultar y reservar desde una sola experiencia.',
+        'journey_steps' => [
+            [
+                'eyebrow' => 'Paso 1',
+                'title' => 'Explica la mezcla del negocio',
+                'copy' => 'Productos y servicios aparecen conectados, no como mundos separados.',
+            ],
+            [
+                'eyebrow' => 'Paso 2',
+                'title' => 'Lleva a la accion correcta',
+                'copy' => 'Reserva, consulta o compra segun el contexto del negocio y del cliente.',
+            ],
+            [
+                'eyebrow' => 'Paso 3',
+                'title' => 'Empuja ticket y seguimiento',
+                'copy' => 'La misma visita puede abrir espacio para upsells, soporte o recompra.',
+            ],
+        ],
+        'growth_title' => 'Palancas para negocio mixto',
+        'growth_copy' => 'Conecta catalogo, agenda y contacto dentro de un solo frente comercial.',
+        'growth_cards' => [
+            [
+                'eyebrow' => 'Oferta',
+                'title' => 'Productos y servicios sin friccion',
+                'copy' => 'Una misma portada puede vender, explicar y activar seguimiento.',
+                'cta_label' => 'Ver ofertas',
+                'cta_target' => '#ofertas',
+            ],
+            [
+                'eyebrow' => 'Conversion',
+                'title' => 'CTA mas coherentes',
+                'copy' => 'El cliente no tiene que adivinar si debe reservar, escribir o explorar catalogo.',
+                'cta_label' => 'Abrir workspace',
+                'cta_target' => '#workspace',
+            ],
+            [
+                'eyebrow' => 'Crecimiento',
+                'title' => 'Base lista para escalar',
+                'copy' => 'Ideal para negocios que evolucionan y agregan nuevas lineas de ingreso.',
+                'cta_label' => 'Ver informacion',
+                'cta_target' => '#informacion',
+            ],
+        ],
+    ],
+];

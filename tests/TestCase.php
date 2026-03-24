@@ -2,6 +2,9 @@
 
 namespace Tests;
 
+use App\Application\Shared\Contracts\CommandValidatorRegistryInterface;
+use App\Domain\Shared\Services\TenantContext;
+use App\Infrastructure\Shared\Middleware\CommandValidatorRegistry;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -11,28 +14,22 @@ use Illuminate\Support\Facades\Cache;
 abstract class TestCase extends BaseTestCase
 {
     /**
-     * Setup the test environment.
+     * Prepare a hermetic test environment.
      *
-     * ╔══════════════════════════════════════════════════════════════════════════╗
-     * ║  TEST ISOLATION: Hermetic Environment Setup                              ║
-     * ╠══════════════════════════════════════════════════════════════════════════╣
-     * ║  This setUp() disables side-effects that conflict with RefreshDatabase: ║
-     * ║    1. Spatie Activity Logger (via config override)                       ║
-     * ║    2. All Model Observers (via withoutModelEvents in specific tests)     ║
-     * ║  Tests requiring observers should explicitly re-enable them.             ║
-     * ╚══════════════════════════════════════════════════════════════════════════╝
+     * Notes:
+     * - `tests/bootstrap.php` isolates MySQL databases per worker when Pest is
+     *   executed with `--parallel`.
+     * - This setup disables side-effects that commonly interfere with
+     *   `RefreshDatabase`, such as the activity logger and CSRF protection.
+     * - Tests that need model observers should opt back in explicitly.
      */
     protected function setUp(): void
     {
         parent::setUp();
 
-        // Disable Vite manifest during tests
         $this->withoutVite();
         $this->withoutMiddleware(VerifyCsrfToken::class);
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // KILL SWITCH: Disable Spatie Activity Logger (Defense in Depth)
-        // ═══════════════════════════════════════════════════════════════════════
         config(['activitylog.enabled' => false]);
         config(['logging.channels.security.channels' => ['security_file']]);
         config(['app.locale' => 'es']);
@@ -43,18 +40,16 @@ abstract class TestCase extends BaseTestCase
         setlocale(LC_TIME, 'es_HN.UTF-8', 'es_HN', 'es_ES.UTF-8', 'es_ES', 'es');
 
         $this->app->instance(
-            \App\Application\Shared\Contracts\CommandValidatorRegistryInterface::class,
-            new \App\Infrastructure\Shared\Middleware\CommandValidatorRegistry
+            CommandValidatorRegistryInterface::class,
+            new CommandValidatorRegistry
         );
     }
 
     /**
-     * Run callback without model events (for use in individual tests).
+     * Run a callback without model events.
      *
-     * Usage in tests:
-     * $this->withoutModelEvents(function() {
-     * Tenant::factory()->create();
-     * });
+     * Example:
+     * $this->withoutModelEvents(fn () => Tenant::factory()->create());
      */
     protected function withoutModelEvents(callable $callback): mixed
     {
@@ -62,13 +57,11 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Hermetically initialize the Tenant Context for testing.
-     * Uses Reflection to safely mutate the strict state machine properties
-     * without assuming public setter names.
+     * Initialize tenant context for tests with an explicit tenant id.
      */
     public function actingAsTenant(string|int $tenantId = 'tenant-1'): self
     {
-        $context = $this->app->make(\App\Domain\Shared\Services\TenantContext::class);
+        $context = $this->app->make(TenantContext::class);
         $context->reset();
         $context->setTenant($tenantId);
 

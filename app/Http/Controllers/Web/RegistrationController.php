@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
+use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
@@ -15,16 +16,11 @@ use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/**
- * RegistrationController - React/Inertia Tenant Registration
- *
- * MIGRATED FROM: App\Livewire\Pages\RegisterTenant
- * REFACTORED: Now uses Repository interfaces instead of Eloquent models
- */
 final class RegistrationController extends Controller
 {
     public function __construct(
@@ -34,9 +30,6 @@ final class RegistrationController extends Controller
         private readonly StatefulGuard $guard,
     ) {}
 
-    /**
-     * Display the registration form.
-     */
     public function create(): Response|RedirectResponse
     {
         if ($this->guard->check()) {
@@ -52,6 +45,9 @@ final class RegistrationController extends Controller
         return Inertia::render('Auth/RegisterTenant', [
             'cities' => $this->referenceDataReader->getAvailableCities(),
             'categories' => $this->referenceDataReader->getActiveCategories(),
+            'businessTypes' => $this->businessTypes(),
+            'businessTypeSuggestions' => $this->businessTypeSuggestions(),
+            'segmentProfiles' => $this->segmentProfiles(),
             'settings' => [
                 'freeProductLimit' => config('conecta.free_plan_product_limit', 10),
                 'proProductLimit' => config('conecta.pro_plan_product_limit', 100),
@@ -60,9 +56,6 @@ final class RegistrationController extends Controller
         ]);
     }
 
-    /**
-     * Check slug availability (API endpoint for real-time validation).
-     */
     public function checkSlug(Request $request): JsonResponse
     {
         $request->validate([
@@ -71,7 +64,6 @@ final class RegistrationController extends Controller
 
         $slug = Str::slug($request->input('slug'));
 
-        // Check reserved slugs
         if (SlugPolicy::isReservedSlug($slug)) {
             return response()->json([
                 'available' => false,
@@ -79,7 +71,6 @@ final class RegistrationController extends Controller
             ]);
         }
 
-        // Check database via Repository (not direct Eloquent)
         $exists = $this->tenantRepository->existsBySlug($slug);
 
         if ($exists) {
@@ -92,13 +83,10 @@ final class RegistrationController extends Controller
 
         return response()->json([
             'available' => true,
-            'message' => '¡Esta dirección está disponible!',
+            'message' => 'Esta dirección está disponible.',
         ]);
     }
 
-    /**
-     * Process the registration.
-     */
     public function store(RegisterTenantRequest $request): RedirectResponse
     {
         $cityId = (int) $request->validated('city_id');
@@ -113,6 +101,7 @@ final class RegistrationController extends Controller
             password: $request->validated('password'),
             cityId: $cityId,
             categoryId: $categoryId,
+            businessType: $request->validated('business_type', config('business-types.default', BusinessType::RETAIL->value)),
             whatsapp: $request->validated('whatsapp'),
             selectedPlan: $request->validated('selected_plan', 'free'),
             logoPath: $logoPath,
@@ -127,6 +116,79 @@ final class RegistrationController extends Controller
 
         return redirect()
             ->to(AuthRedirector::destinationFor($user))
-            ->with('success', '¡Bienvenido a Conecta HN! Tu negocio está activo.');
+            ->with('success', 'Bienvenido a Conecta HN. Tu negocio ya quedó activo.');
+    }
+
+    /**
+     * @return list<array{value: string, label: string, description: string, examples: list<string>, capabilities: list<string>}>
+     */
+    private function businessTypes(): array
+    {
+        return collect(config('business-types.options', []))
+            ->map(
+                static fn (array $definition, string $value): array => [
+                    'value' => $value,
+                    'label' => (string) ($definition['label'] ?? Str::of($value)->replace('_', ' ')->title()),
+                    'description' => (string) ($definition['description'] ?? ''),
+                    'examples' => array_values((array) ($definition['examples'] ?? [])),
+                    'capabilities' => array_values((array) ($definition['capabilities'] ?? [])),
+                ]
+            )
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function businessTypeSuggestions(): array
+    {
+        /** @var Collection<string, array<string, mixed>> $options */
+        $options = collect(config('business-types.options', []));
+
+        return $options
+            ->flatMap(function (array $definition, string $value): array {
+                return collect((array) ($definition['suggested_categories'] ?? []))
+                    ->mapWithKeys(static fn (string $slug): array => [$slug => $value])
+                    ->all();
+            })
+            ->all();
+    }
+
+    /**
+     * @return list<array{
+     *     key: string,
+     *     businessType: string,
+     *     label: string,
+     *     teaser: string,
+     *     onboardingTitle: string,
+     *     onboardingCopy: string,
+     *     playbookTitle: string,
+     *     categories: list<string>,
+     *     modules: list<string>
+     * }>
+     */
+    private function segmentProfiles(): array
+    {
+        return collect(config('business-segments.profiles', []))
+            ->map(
+                static fn (array $profile, string $key): array => [
+                    'key' => $key,
+                    'businessType' => (string) ($profile['business_type'] ?? ''),
+                    'label' => (string) ($profile['label'] ?? Str::of($key)->replace('_', ' ')->title()),
+                    'teaser' => (string) ($profile['teaser'] ?? ''),
+                    'onboardingTitle' => (string) ($profile['onboarding_title'] ?? 'Ruta sugerida para tu panel'),
+                    'onboardingCopy' => (string) ($profile['onboarding_copy'] ?? ''),
+                    'playbookTitle' => (string) ($profile['playbook_title'] ?? 'Playbook operativo'),
+                    'categories' => array_values((array) ($profile['categories'] ?? [])),
+                    'modules' => collect((array) ($profile['recommended_modules'] ?? []))
+                        ->pluck('title')
+                        ->filter(static fn (mixed $title): bool => is_string($title) && $title !== '')
+                        ->values()
+                        ->all(),
+                ]
+            )
+            ->values()
+            ->all();
     }
 }

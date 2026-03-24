@@ -15,10 +15,10 @@ function makeNotificationOrder(array $overrides = []): Order
         'order_number' => '#1042',
         'total' => 350.50,
         'tenant_id' => '00000000-0000-0000-0000-000000000001',
-        'customer_name' => 'MarÃ­a LÃ³pez',
+        'customer_name' => 'María López',
         'customer_email' => 'maria@example.com',
         'created_at' => now(),
-        'tenant_name' => 'CafÃ© Tegus',
+        'tenant_name' => 'Café Tegus',
     ];
 
     $data = array_merge($defaults, $overrides);
@@ -49,7 +49,7 @@ test('toMail includes order number and tenant in subject', function () {
 
     expect($mail)->toBeInstanceOf(MailMessage::class);
     expect($mail->subject)->toContain('#1042');
-    expect($mail->subject)->toContain('CafÃ© Tegus');
+    expect($mail->subject)->toContain('Café Tegus');
 });
 
 test('toMail includes customer name and formatted total in body', function () {
@@ -58,7 +58,7 @@ test('toMail includes customer name and formatted total in body', function () {
     $mail = $notification->toMail((object) []);
     $body = collect($mail->introLines)->implode(' ');
 
-    expect($body)->toContain('MarÃ­a LÃ³pez');
+    expect($body)->toContain('María López');
     expect($body)->toContain('L. 350.50');
 });
 
@@ -116,7 +116,7 @@ test('toBroadcast includes order and tenant identifiers', function () {
 
     expect($broadcast->data['order_id'])->toBe(100);
     expect($broadcast->data['tenant_id'])->toBe('00000000-0000-0000-0000-000000000001');
-    expect($broadcast->data['customer_name'])->toBe('MarÃ­a LÃ³pez');
+    expect($broadcast->data['customer_name'])->toBe('María López');
 });
 
 test('broadcastOn uses tenant-scoped private channel', function () {

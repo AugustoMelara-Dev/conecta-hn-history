@@ -46,6 +46,28 @@ final class BusinessCrudSmokeTest extends TestCase
         $this->assertSame('Lanzamiento del menu de temporada', $campaign->subject);
     }
 
+    public function test_pro_owner_can_create_campaign_even_if_a_stale_client_sends_name_instead_of_subject(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner(isPro: true);
+
+        $this->actingAs($user);
+        $this->setAppPanelTenantContext($tenant);
+
+        Livewire::test(CreateCampaign::class)
+            ->set('data.audience_type', 'followers')
+            ->set('data.name', 'Campana heredada')
+            ->set('data.content', '<p>Compatibilidad con snapshots viejos.</p>')
+            ->call('create')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('filament.app.resources.campaigns.index', ['tenant' => $tenant->slug], false));
+
+        $campaign = Campaign::query()->latest()->first();
+
+        $this->assertNotNull($campaign);
+        $this->assertSame((string) $tenant->getKey(), (string) $campaign->tenant_id);
+        $this->assertSame('Campana heredada', $campaign->subject);
+    }
+
     public function test_owner_can_create_lead_from_filament_page(): void
     {
         [$user, $tenant] = $this->makeTenantOwner(isPro: false);

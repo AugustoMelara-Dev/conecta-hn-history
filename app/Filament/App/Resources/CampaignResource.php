@@ -30,17 +30,17 @@ class CampaignResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'Campanas';
+        return 'Campañas';
     }
 
     public static function getModelLabel(): string
     {
-        return 'Campana';
+        return 'Campaña';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Campanas';
+        return 'Campañas';
     }
 
     public static function getNavigationGroup(): ?string
@@ -66,7 +66,7 @@ class CampaignResource extends Resource
     {
         return $schema
             ->schema([
-                Section::make('Detalles de la Campana')
+                Section::make('Detalles de la campaña')
                     ->schema([
                         Forms\Components\Select::make('audience_type')
                             ->label('Destinatarios (Audiencia)')
@@ -75,7 +75,7 @@ class CampaignResource extends Resource
                                 ->all())
                             ->required()
                             ->default(AudienceType::FOLLOWERS->value)
-                            ->helperText('A que segmento deseas enviar esta campana?'),
+                            ->helperText('¿A qué segmento deseas enviar esta campaña?'),
 
                         Forms\Components\TextInput::make('subject')
                             ->label('Asunto')
@@ -86,7 +86,7 @@ class CampaignResource extends Resource
                         Forms\Components\RichEditor::make('content')
                             ->label('Contenido')
                             ->required()
-                            ->placeholder('Escribe tu mensaje aqui...')
+                            ->placeholder('Escribe tu mensaje aquí...')
                             ->columnSpanFull()
                             ->toolbarButtons([
                                 'bold',
@@ -102,11 +102,11 @@ class CampaignResource extends Resource
                     ->schema([
                         Forms\Components\Placeholder::make('recipients_count')
                             ->label('Destinatarios')
-                            ->content(fn (?Campaign $record) => $record ? $record->recipients_count.' personas' : 'Se calculara al enviar'),
+                            ->content(fn (?Campaign $record) => $record ? $record->recipients_count.' personas' : 'Se calculará al enviar'),
 
                         Forms\Components\Placeholder::make('sent_at')
-                            ->label('Fecha de envio')
-                            ->content(fn (?Campaign $record) => $record && $record->sent_at ? $record->sent_at->format('d/m/Y H:i') : 'Aun no enviada'),
+                            ->label('Fecha de envío')
+                            ->content(fn (?Campaign $record) => $record && $record->sent_at ? $record->sent_at->format('d/m/Y H:i') : 'Aún no enviada'),
                     ])
                     ->columns(2)
                     ->hidden(fn (string $operation) => $operation === 'create'),
@@ -137,7 +137,7 @@ class CampaignResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('sent_at')
-                    ->label('Enviada')
+                    ->label('Envío')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->badge()
@@ -157,8 +157,8 @@ class CampaignResource extends Resource
                     ->icon('heroicon-o-paper-airplane')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Enviar Campana')
-                    ->modalDescription(fn (Campaign $record) => 'Se enviara esta campana al segmento seleccionado. Estas seguro?')
+                    ->modalHeading('Enviar campaña')
+                    ->modalDescription(fn (Campaign $record) => 'Se enviará esta campaña al segmento seleccionado. ¿Estás seguro?')
                     ->visible(fn (Campaign $record) => ! $record->sent_at)
                     ->action(function (Campaign $record) {
                         $tenant = self::getTenantRecord();
@@ -170,9 +170,9 @@ class CampaignResource extends Resource
 
                         if ($audienceCount === 0) {
                             Notification::make()
-                                ->title('Audiencia vacia')
+                                ->title('Audiencia vacía')
                                 ->warning()
-                                ->body('No tienes contactos en este segmento para enviar la campana.')
+                                ->body('No tienes contactos en este segmento para enviar la campaña.')
                                 ->send();
 
                             return;
@@ -185,9 +185,9 @@ class CampaignResource extends Resource
                         ]);
 
                         Notification::make()
-                            ->title('Campana Encolada')
+                            ->title('Campaña en cola')
                             ->success()
-                            ->body("Se procesara el envio a {$audienceCount} destinatarios en breve.")
+                            ->body("Se procesará el envío a {$audienceCount} destinatarios en breve.")
                             ->send();
                     }),
 
@@ -202,9 +202,9 @@ class CampaignResource extends Resource
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => 'Marketing PRO',
-                'heading' => 'Todavia no has creado campanas',
-                'description' => 'Prepara mensajes para seguidores, prospectos o clientes desde aqui. Cuando guardes la primera campana, aparecera en esta tabla.',
-                'buttonLabel' => 'Crear campana',
+                'heading' => 'Todavía no has creado campañas',
+                'description' => 'Prepara mensajes para seguidores, prospectos o clientes desde aquí. Cuando guardes la primera campaña, aparecerá en esta tabla.',
+                'buttonLabel' => 'Crear campaña',
                 'buttonUrl' => static::getUrl('create'),
             ]));
     }

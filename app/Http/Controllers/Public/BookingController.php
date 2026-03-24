@@ -9,8 +9,10 @@ use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\ServiceProviderRepositoryInterface;
 use App\Application\Shared\Contracts\ServiceRepositoryInterface;
 use App\Application\Tenant\Commands\CreateAppointmentCommand;
+use App\Domain\Shared\Services\TenantContext;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
+use App\Models\Tenant;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -42,8 +44,12 @@ final class BookingController extends Controller
      *
      * GET /{tenant:slug}/book
      */
-    public function index(string $tenantSlug): Response
+    public function index(Request $request, string $tenantSlug): Response
     {
+        if (! $this->initializeTenantContext($tenantSlug)) {
+            abort(404, 'Tenant not found.');
+        }
+
         $tenant = $this->tenantRepository->findBySlug($tenantSlug);
         if (! $tenant) {
             abort(404, 'Tenant not found.');
@@ -62,6 +68,11 @@ final class BookingController extends Controller
             ->all();
 
         $providers = $this->providerRepository->getActiveForTenant($tenant->id());
+        $preselectedServiceId = (string) $request->input('service', '');
+        $validPreselectedServiceId = collect($services)
+            ->contains(fn (array $service): bool => (string) $service['id'] === $preselectedServiceId)
+            ? $preselectedServiceId
+            : null;
 
         return Inertia::render('Public/Book/Index', [
             'tenant' => [
@@ -70,9 +81,12 @@ final class BookingController extends Controller
                 'slug' => $tenant->slug(),
                 'logo_url' => null,
                 'primary_color' => '#000000',
+                'description' => $tenant->description(),
+                'whatsapp' => $tenant->whatsappNumber(),
             ],
             'services' => $services,
             'providers' => $providers,
+            'preselectedServiceId' => $validPreselectedServiceId,
         ]);
     }
 
@@ -83,6 +97,10 @@ final class BookingController extends Controller
      */
     public function getProviders(string $tenantSlug, string $serviceId): JsonResponse
     {
+        if (! $this->initializeTenantContext($tenantSlug)) {
+            abort(404, 'Tenant not found.');
+        }
+
         $tenant = $this->tenantRepository->findBySlug($tenantSlug);
         $service = $this->serviceRepository->findById($serviceId);
 
@@ -108,6 +126,10 @@ final class BookingController extends Controller
      */
     public function getSlots(Request $request, string $tenantSlug): JsonResponse
     {
+        if (! $this->initializeTenantContext($tenantSlug)) {
+            abort(404, 'Tenant not found.');
+        }
+
         $tenant = $this->tenantRepository->findBySlug($tenantSlug);
         if (! $tenant) {
             abort(404, 'Tenant not found.');
@@ -115,8 +137,8 @@ final class BookingController extends Controller
 
         $validated = $request->validate([
             'date' => 'required|date|after_or_equal:today',
-            'service_id' => 'required|string',
-            'provider_id' => 'nullable|string',
+            'service_id' => 'required|integer',
+            'provider_id' => 'nullable|integer',
         ]);
 
         $date = Carbon::parse($validated['date']);
@@ -149,14 +171,18 @@ final class BookingController extends Controller
      */
     public function store(Request $request, string $tenantSlug): RedirectResponse
     {
+        if (! $this->initializeTenantContext($tenantSlug)) {
+            abort(404, 'Tenant not found.');
+        }
+
         $tenant = $this->tenantRepository->findBySlug($tenantSlug);
         if (! $tenant) {
             abort(404, 'Tenant not found.');
         }
 
         $validated = $request->validate([
-            'service_id' => 'required|string',
-            'service_provider_id' => 'required|string',
+            'service_id' => 'required|integer',
+            'service_provider_id' => 'required|integer',
             'date' => 'required|date|after_or_equal:today',
             'time' => 'required|date_format:H:i',
             'customer_name' => 'required|string|max:255',
@@ -218,6 +244,10 @@ final class BookingController extends Controller
      */
     public function success(string $tenantSlug, Request $request): Response
     {
+        if (! $this->initializeTenantContext($tenantSlug)) {
+            abort(404, 'Tenant not found.');
+        }
+
         $tenant = $this->tenantRepository->findBySlug($tenantSlug);
         if (! $tenant) {
             abort(404, 'Tenant not found.');
@@ -245,5 +275,22 @@ final class BookingController extends Controller
                 'customer_name' => $appointment->customer_name,
             ] : null,
         ]);
+    }
+
+    private function initializeTenantContext(string $tenantSlug): ?Tenant
+    {
+        $tenant = Tenant::query()
+            ->withoutGlobalScopes()
+            ->select(['id', 'slug'])
+            ->where('slug', $tenantSlug)
+            ->first();
+
+        if ($tenant === null) {
+            return null;
+        }
+
+        app(TenantContext::class)->setTenant((string) $tenant->id);
+
+        return $tenant;
     }
 }

@@ -35,13 +35,23 @@ final class StandardTenantPermissionGuard implements TenantPermissionGuardInterf
                 return true;
             }
 
-            if ($role === null) {
+            if (! $role instanceof Role) {
                 return false;
             }
 
-            $rolePermissions = config("rbac.roles.{$role->value}", []);
+            /** @var array<int, string> $rolePermissions */
+            $rolePermissions = array_values(array_filter(
+                (array) config("rbac.roles.{$role->value}", []),
+                static fn (mixed $value): bool => is_string($value) && $value !== ''
+            ));
 
-            return in_array($permission->value, $rolePermissions, true);
+            $membershipPermissions = $membership->extraPermissions();
+
+            return in_array(
+                $permission->value,
+                array_values(array_unique(array_merge($rolePermissions, $membershipPermissions))),
+                true
+            );
         }
 
         return (string) $tenant->user_id === (string) $user->id;

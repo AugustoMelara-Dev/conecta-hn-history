@@ -1,2 +1,4 @@
+@import './shared/panel-tokens.css';
 @import './shared/theme-overrides.css';
-@import './admin/theme.css';
+@import './shared/panel-shell.css';
+@import './admin/panel-overrides.css';

@@ -33,12 +33,18 @@ final class EloquentTenantStorefrontRepository implements TenantStorefrontReposi
             'city:id,name,slug',
             'category:id,name,slug,icon',
             'openingHours',
-            'menuSections' => fn ($q) => $q->where('is_active', true)->orderBy('name'),
+            'menuSections' => fn ($q) => $q
+                ->where('is_active', true)
+                ->withCount(['products' => fn ($query) => $query->where('is_visible', true)])
+                ->orderBy('sort_order')
+                ->orderBy('name'),
             'products' => function ($query) use ($productLimit) {
                 $query->where('is_visible', true)
                     ->orderBy('name')
                     ->limit($productLimit);
             },
+            'services' => fn ($q) => $q->where('is_active', true)->orderBy('name'),
+            'serviceProviders' => fn ($q) => $q->where('is_active', true)->orderBy('name'),
         ];
 
         if ($canShowModifiers) {

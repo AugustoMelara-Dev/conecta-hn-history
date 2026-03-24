@@ -74,6 +74,13 @@ class CreateTenant extends CreateAdminRecord
             'delivery_enabled' => $data['delivery_enabled'] ?? null,
             'pickup_enabled' => $data['pickup_enabled'] ?? null,
             'minimum_order' => $data['minimum_order'] ?? null,
+            'crm_owner_id' => $data['crm_owner_id'] ?? null,
+            'crm_team' => $data['crm_team'] ?? Tenant::CRM_TEAM_ACTIVATION,
+            'crm_status' => $data['crm_status'] ?? Tenant::CRM_STATUS_NEW,
+            'crm_priority' => $data['crm_priority'] ?? Tenant::CRM_PRIORITY_NORMAL,
+            'crm_sla_hours' => $data['crm_sla_hours'] ?? Tenant::DEFAULT_CRM_SLA_HOURS,
+            'crm_next_follow_up_at' => $data['crm_next_follow_up_at'] ?? null,
+            'crm_notes' => $data['crm_notes'] ?? null,
         ]);
     }
 

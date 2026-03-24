@@ -1,6 +1,6 @@
 import { Head } from "@inertiajs/react"
 
-import { SignupForm } from "@/Components/Auth/SignupForm"
+import { RegisterTenantWizard } from "@/Components/Auth/RegisterTenantWizard"
 
 export default function RegisterTenant(props) {
     return (
@@ -9,16 +9,12 @@ export default function RegisterTenant(props) {
                 <title>Registrar negocio</title>
                 <meta
                     name="description"
-                    content="Registra tu negocio en Conecta HN y crea la cuenta operativa conectada al panel real."
+                    content="Registra tu negocio en Conecta HN y arranca con el flujo correcto para tiendas, restaurantes, servicios o modelos mixtos."
                 />
                 <link rel="canonical" href={route("tenant.register")} />
             </Head>
 
-            <div className="flex min-h-svh w-full items-center justify-center bg-white p-6 md:p-10">
-                <div className="w-full max-w-sm">
-                    <SignupForm {...props} />
-                </div>
-            </div>
+            <RegisterTenantWizard {...props} />
         </>
     )
 }

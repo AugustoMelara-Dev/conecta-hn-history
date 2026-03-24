@@ -21,6 +21,7 @@ final readonly class RegisterTenantValidator
             'password' => ['required', 'string', 'min:8'],
             'cityId' => ['required', 'integer', 'exists:cities,id'],
             'categoryId' => ['required', 'integer', 'exists:categories,id'],
+            'businessType' => ['required', 'in:retail,food,service,hybrid'],
             'whatsapp' => ['nullable', 'string', 'max:20'],
             'selectedPlan' => ['nullable', 'in:free,pro'],
             'logoPath' => ['nullable', 'string', 'max:2048'],

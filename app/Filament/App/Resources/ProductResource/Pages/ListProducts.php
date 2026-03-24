@@ -31,17 +31,17 @@ class ListProducts extends ListTenantRecords
         $limitInfo = ProductResource::getProductLimitInfo();
 
         if ($limitInfo['isPro'] ?? false) {
-            return 'Administra tu catalogo y manten visibles solo los productos que quieres ofrecer hoy.';
+            return 'Administra tu catálogo y mantén visibles solo los productos que quieres ofrecer hoy.';
         }
 
         if (($limitInfo['percentage'] ?? 0) >= 80) {
             return sprintf(
-                'Estas usando el %d%% del limite de productos del plan Base.',
+                'Estás usando el %d%% del límite de productos del plan Base.',
                 $limitInfo['percentage']
             );
         }
 
-        return 'Agrega, edita y publica tu catalogo desde una sola vista.';
+        return 'Agrega, edita y publica tu catálogo desde una sola vista.';
     }
 
     protected function getHeaderActions(): array
@@ -69,8 +69,8 @@ class ListProducts extends ListTenantRecords
 
                     Notification::make()
                         ->danger()
-                        ->title('Llegaste al limite del plan Base')
-                        ->body("Ya usaste {$limitInfo['limit']} productos. Activa PRO para trabajar con catalogo ampliado.")
+                        ->title('Llegaste al límite del plan Base')
+                        ->body("Ya usaste {$limitInfo['limit']} productos. Activa PRO para trabajar con catálogo ampliado.")
                         ->persistent()
                         ->actions([
                             Action::make('upgrade')

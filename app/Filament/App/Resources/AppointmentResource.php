@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
 use App\Models\Service;
+use App\Models\Tenant;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
@@ -37,10 +40,19 @@ class AppointmentResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return Gate::allows('viewAny', Appointment::class);
+        $tenant = static::getTenantRecord();
+
+        return $tenant instanceof Tenant
+            && $tenant->hasCapability(Capability::APPOINTMENT_BOOKING)
+            && Gate::allows('viewAny', Appointment::class);
     }
 
     public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function canAccess(): bool
     {
         return static::canViewAny();
     }
@@ -228,5 +240,12 @@ class AppointmentResource extends Resource
             'create' => Pages\CreateAppointment::route('/create'),
             'edit' => Pages\EditAppointment::route('/{record}/edit'),
         ];
+    }
+
+    protected static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

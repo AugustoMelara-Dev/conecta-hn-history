@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Application\Shared\DTOs\Mail\TenantMailData;
+use App\Domain\Contracts\AdminNotifier;
+use App\Domain\TenantGovernance\Services\OperationalPlaybookTaskManager;
 use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
 use App\Mail\SubscriptionExpiredMail;
 use App\Mail\SubscriptionExpiringMail;
@@ -172,7 +174,17 @@ class SubscriptionLifecycleCommand extends Command
             return;
         }
 
+        $operationalNotificationSent = false;
+
         try {
+            app(AdminNotifier::class)->notifyRenewalAttention($tenant, $daysUntilExpiry);
+            $operationalNotificationSent = true;
+            app(OperationalPlaybookTaskManager::class)->syncForTrigger($tenant, 'renewal_attention', [
+                'related_type' => Tenant::class,
+                'related_id' => (string) $tenant->getKey(),
+                'days_until_expiry' => $daysUntilExpiry,
+            ]);
+
             // Try notification first (queued)
             if (class_exists(SubscriptionExpiringNotification::class)) {
                 $user->notify(new SubscriptionExpiringNotification($tenant));
@@ -191,6 +203,17 @@ class SubscriptionLifecycleCommand extends Command
                 $user->email
             );
         } catch (\Exception $e) {
+            if (! $operationalNotificationSent) {
+                try {
+                    app(AdminNotifier::class)->notifyRenewalAttention($tenant, $daysUntilExpiry);
+                } catch (\Throwable $notificationException) {
+                    Log::warning('SubscriptionLifecycle: Failed to send operational renewal alert', [
+                        'tenant_id' => $tenant->id,
+                        'error' => $notificationException->getMessage(),
+                    ]);
+                }
+            }
+
             $this->errorCount++;
             Log::error('SubscriptionLifecycle: Failed to send warning', [
                 'tenant_id' => $tenant->id,

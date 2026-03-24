@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\ServiceResource\Pages;
 use App\Models\Service;
+use App\Models\Tenant;
+use Filament\Facades\Filament;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -29,16 +32,25 @@ class ServiceResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Servicios';
 
-    protected static ?string $navigationLabel = 'Catalogo de Servicios';
+    protected static ?string $navigationLabel = 'Catálogo de servicios';
 
     protected static ?int $navigationSort = 1;
 
     public static function canViewAny(): bool
     {
-        return Gate::allows('viewAny', Service::class);
+        $tenant = static::getTenantRecord();
+
+        return $tenant instanceof Tenant
+            && $tenant->hasCapability(Capability::APPOINTMENT_BOOKING)
+            && Gate::allows('viewAny', Service::class);
     }
 
     public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function canAccess(): bool
     {
         return static::canViewAny();
     }
@@ -141,5 +153,12 @@ class ServiceResource extends Resource
             'create' => Pages\CreateService::route('/create'),
             'edit' => Pages\EditService::route('/{record}/edit'),
         ];
+    }
+
+    private static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

@@ -1,9 +1,9 @@
-# ─────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # VITO BUSINESS OS - GITIGNORE COMPLETO
 # Actualizado para deployment seguro y Git Flow
-# ─────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-# ═══ CREDENCIALES Y SECRETOS (CRÍTICO) ═══
+# â•â•â• CREDENCIALES Y SECRETOS (CRÃTICO) â•â•â•
 .env
 .env.*
 .env.backup
@@ -16,11 +16,11 @@ auth.json
 *.p12
 .credentials/
 
-# ═══ DEPENDENCIAS ═══
+# â•â•â• DEPENDENCIAS â•â•â•
 /vendor
 /node_modules
 
-# ═══ BUILD Y COMPILADOS ═══
+# â•â•â• BUILD Y COMPILADOS â•â•â•
 /public/build
 /public/hot
 /public/storage
@@ -29,7 +29,7 @@ auth.json
 *.compiled.*
 .vite/
 
-# ═══ CACHE Y LOGS ═══
+# â•â•â• CACHE Y LOGS â•â•â•
 *.log
 *.cache
 .phpunit.result.cache
@@ -47,7 +47,7 @@ storage/framework/views/*
 bootstrap/cache/*.php
 /bootstrap/cache/filament/
 
-# ═══ IDEs Y EDITORES ═══
+# â•â•â• IDEs Y EDITORES â•â•â•
 .idea/
 .vscode/
 .fleet/
@@ -62,7 +62,7 @@ bootstrap/cache/*.php
 .settings/
 nbproject/
 
-# ═══ SISTEMA OPERATIVO ═══
+# â•â•â• SISTEMA OPERATIVO â•â•â•
 .DS_Store
 ._*
 Thumbs.db
@@ -71,41 +71,41 @@ Desktop.ini
 *.bak
 *~
 
-# ═══ TESTING ═══
+# â•â•â• TESTING â•â•â•
 /coverage
 .phpunit.result.cache
 phpunit.xml.bak
 .pest/
 .phpunit/
 
-# ═══ DEPLOYMENT ═══
+# â•â•â• DEPLOYMENT â•â•â•
 Homestead.json
 Homestead.yaml
 docker-compose.override.yml
 .vagrant/
 *.box
 
-# ═══ UPLOADS LOCALES (desarrollo) ═══
+# â•â•â• UPLOADS LOCALES (desarrollo) â•â•â•
 storage/app/public/*
 !storage/app/public/.gitkeep
 
-# ═══ ARCHIVOS TEMPORALES ═══
+# â•â•â• ARCHIVOS TEMPORALES â•â•â•
 *.tmp
 *.temp
 *.swp
 .sass-cache/
 
-# ═══ DATABASE ═══
+# â•â•â• DATABASE â•â•â•
 *.sqlite
 *.sqlite-journal
 database/database.sqlite
 
-# ═══ DOCUMENTOS DE AUDITORÍA LOCAL ═══
+# â•â•â• DOCUMENTOS DE AUDITORÃA LOCAL â•â•â•
 AUDIT_REPORT.md
 QA_CERTIFICATION.md
 error_log.txt
 
-# ═══ ARCHIVOS DE DESARROLLO ═══
+# â•â•â• ARCHIVOS DE DESARROLLO â•â•â•
 todo.md
 notes.md
 scratch.php
@@ -143,3 +143,12 @@ test.php
 /http_diagnostic.md
 /pest_arch_result*.txt
 bootstrap/cache/*.tmp
+
+# Codex / local runtime artifacts
+/.codex-admin-dashboard.html
+/.codex-admin-login.html
+/_tmp_admin_probe.php
+/route-list.json
+/.codex-appdata/runtime/
+/playwright-report/
+/test-results/

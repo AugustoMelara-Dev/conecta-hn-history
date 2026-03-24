@@ -4,12 +4,15 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
+        "test:e2e": "playwright test",
+        "test:e2e:headed": "playwright test --headed",
         "type-check": "tsc --noEmit",
         "types:sync": "php artisan typescript:transform"
     },
     "devDependencies": {
         "@headlessui/react": "^2.0.0",
         "@inertiajs/react": "^2.0.0",
+        "@playwright/test": "^1.58.2",
         "@tailwindcss/forms": "^0.5.3",
         "@vitejs/plugin-react": "^4.2.0",
         "autoprefixer": "^10.4.12",

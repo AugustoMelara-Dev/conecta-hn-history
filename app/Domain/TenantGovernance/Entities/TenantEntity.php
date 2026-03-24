@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Entities;
 
 use App\Domain\Common\Traits\EventSourcedAggregate;
+use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Events\TenantCreated;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use DateTimeImmutable;
@@ -47,6 +48,8 @@ final class TenantEntity
     private ?int $categoryId = null;
 
     private ?int $cityId = null;
+
+    private BusinessType $businessType = BusinessType::RETAIL;
 
     private ?string $logoPath = null;
 
@@ -335,6 +338,7 @@ final class TenantEntity
         string $ownerId,
         ?int $categoryId = null,
         ?int $cityId = null,
+        ?BusinessType $businessType = null,
         ?string $logoPath = null,
         ?string $whatsapp = null,
         bool $isPro = false,
@@ -343,6 +347,7 @@ final class TenantEntity
         $this->ownerId = $ownerId;
         $this->categoryId = $categoryId;
         $this->cityId = $cityId;
+        $this->businessType = $businessType ?? BusinessType::RETAIL;
         $this->logoPath = $logoPath;
         $this->whatsapp = $whatsapp;
         $this->isPro = $isPro;
@@ -465,6 +470,7 @@ final class TenantEntity
             'owner_id' => $this->ownerId,
             'category_id' => $this->categoryId,
             'city_id' => $this->cityId,
+            'business_type' => $this->businessType->value,
             'logo_path' => $this->logoPath,
             'cover_path' => $this->coverPath,
             'whatsapp' => $this->whatsapp,
@@ -531,6 +537,9 @@ final class TenantEntity
         $tenant->ownerId = isset($state['owner_id']) ? (string) $state['owner_id'] : null;
         $tenant->categoryId = isset($state['category_id']) ? (int) $state['category_id'] : null;
         $tenant->cityId = isset($state['city_id']) ? (int) $state['city_id'] : null;
+        $tenant->businessType = isset($state['business_type'])
+            ? BusinessType::from((string) $state['business_type'])
+            : BusinessType::RETAIL;
         $tenant->logoPath = isset($state['logo_path']) ? (string) $state['logo_path'] : null;
         $tenant->coverPath = isset($state['cover_path']) ? (string) $state['cover_path'] : null;
         $tenant->whatsapp = isset($state['whatsapp']) ? (string) $state['whatsapp'] : null;

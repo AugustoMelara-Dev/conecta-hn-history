@@ -6,6 +6,7 @@ namespace App\Filament\Resources;
 
 use App\Domain\Identity\Enums\UserRole;
 use App\Filament\Resources\UserResource\Pages;
+use App\Models\Tenant;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -66,14 +67,14 @@ class UserResource extends Resource
                 Forms\Components\Select::make('role')
                     ->label('Rol')
                     ->options([
-                        UserRole::TENANT_OWNER->value => 'Dueno de negocio',
+                        UserRole::TENANT_OWNER->value => 'Dueño de negocio',
                         UserRole::STAFF->value => 'Personal',
                         UserRole::CUSTOMER->value => 'Cliente',
                         UserRole::SUPER_ADMIN->value => 'Superadministrador',
                     ])
                     ->default(UserRole::CUSTOMER->value),
                 Forms\Components\TextInput::make('password')
-                    ->label('Contrasena')
+                    ->label('Contraseña')
                     ->password()
                     ->dehydrated(fn ($state) => filled($state))
                     ->required(fn (string $context): bool => $context === 'create'),
@@ -110,7 +111,7 @@ class UserResource extends Resource
                 Tables\Filters\SelectFilter::make('role')
                     ->label('Rol')
                     ->options([
-                        UserRole::TENANT_OWNER->value => 'Dueno de negocio',
+                        UserRole::TENANT_OWNER->value => 'Dueño de negocio',
                         UserRole::STAFF->value => 'Personal',
                         UserRole::CUSTOMER->value => 'Cliente',
                         UserRole::SUPER_ADMIN->value => 'Superadministrador',
@@ -119,27 +120,26 @@ class UserResource extends Resource
             ->actions([
                 EditAction::make(),
                 Action::make('change_password')
-                    ->label('Cambiar contrasena')
+                    ->label('Cambiar contraseña')
                     ->icon('heroicon-o-key')
                     ->color('warning')
                     ->form([
                         Forms\Components\TextInput::make('new_password')
-                            ->label('Nueva contrasena')
+                            ->label('Nueva contraseña')
                             ->password()
                             ->required()
                             ->minLength(8),
                         Forms\Components\TextInput::make('new_password_confirmation')
-                            ->label('Confirmar contrasena')
+                            ->label('Confirmar contraseña')
                             ->password()
                             ->required()
                             ->same('new_password'),
                     ])
                     ->action(function (User $record, array $data): void {
-                        $record->update([
-                            'password' => Hash::make($data['new_password']),
-                        ]);
+                        $record->updatePassword(Hash::make($data['new_password']));
+                        static::logTenantSideUserAction($record, 'Contraseña del propietario actualizada desde superadmin');
 
-                        Notification::make()->title('Contrasena actualizada')->success()->send();
+                        Notification::make()->title('Contraseña actualizada')->success()->send();
                     }),
                 Action::make('ban')
                     ->label('Banear')
@@ -148,7 +148,11 @@ class UserResource extends Resource
                     ->requiresConfirmation()
                     ->visible(fn (User $record): bool => is_null($record->banned_at) && $record->id !== auth()->id())
                     ->action(function (User $record): void {
-                        $record->update(['banned_at' => now()]);
+                        $record->forceFill(['banned_at' => now()])->save();
+                        static::logTenantSideUserAction($record, 'Propietario suspendido desde superadmin', [
+                            'status' => 'banned',
+                            'target_user_email' => (string) $record->email,
+                        ]);
                         Notification::make()->title('Usuario baneado')->success()->send();
                     }),
                 Action::make('unban')
@@ -158,7 +162,12 @@ class UserResource extends Resource
                     ->requiresConfirmation()
                     ->visible(fn (User $record): bool => ! is_null($record->banned_at))
                     ->action(function (User $record): void {
-                        $record->update(['banned_at' => null]);
+                        $record->reactivate();
+                        $record->save();
+                        static::logTenantSideUserAction($record, 'Propietario reactivado desde superadmin', [
+                            'status' => 'active',
+                            'target_user_email' => (string) $record->email,
+                        ]);
                         Notification::make()->title('Usuario desbaneado')->success()->send();
                     }),
                 DeleteAction::make(),
@@ -214,5 +223,26 @@ class UserResource extends Resource
             UserRole::CUSTOMER->value => 'gray',
             default => 'gray',
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $properties
+     */
+    private static function logTenantSideUserAction(User $user, string $description, array $properties = []): void
+    {
+        $actor = auth()->user();
+
+        $user->tenants()
+            ->get()
+            ->each(function (Tenant $tenant) use ($actor, $description, $properties, $user): void {
+                $tenant->logOperationalEvent(
+                    $description,
+                    $actor instanceof User ? $actor : null,
+                    array_merge([
+                        'target_user_id' => (string) $user->getKey(),
+                        'target_user_email' => (string) $user->email,
+                    ], $properties),
+                );
+            });
     }
 }

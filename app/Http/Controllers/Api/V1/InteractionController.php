@@ -11,6 +11,7 @@ use App\Http\Requests\StoreInteractionRequest;
 use App\Infrastructure\Interactions\Actions\RecordInteractionAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 final class InteractionController extends Controller
 {
@@ -27,12 +28,12 @@ final class InteractionController extends Controller
                 type: (string) $request->input('type'),
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
-                sessionId: $request->session()->getId(),
+                sessionId: $request->hasSession() ? (string) $request->session()->getId() : (string) Str::uuid(),
                 productId: $request->filled('product_id') ? (string) $request->input('product_id') : null,
                 metadata: is_array($metadata) ? $metadata : [],
             );
 
-            if (! $this->tenantReader->exists((int) $dto->tenantId)) {
+            if (! $this->tenantReader->exists($dto->tenantId)) {
                 return response()->json(['status' => 'accepted'], 202);
             }
 

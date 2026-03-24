@@ -1,6 +1,4 @@
 <x-filament-widgets::widget>
-    @include('filament.components.panel-critical-styles')
-
     <div class="biz-card-warning">
         <div class="biz-grid-two">
             <div class="biz-stack">
@@ -9,7 +7,7 @@
                 <div>
                     <h2 class="biz-heading">Tu negocio ya pide el siguiente paso</h2>
                     <p class="biz-copy">
-                        Activa PRO para habilitar pedidos por WhatsApp, una presencia publica mas completa y mayor capacidad de catalogo.
+                        Activa PRO para habilitar pedidos por WhatsApp, una presencia pública más completa y mayor capacidad de catálogo.
                     </p>
                 </div>
             </div>
@@ -19,7 +17,7 @@
                     <div class="biz-stat">
                         <p class="biz-stat-label">Uso actual</p>
                         <p class="biz-stat-value">{{ $productCount }} / {{ $limit }}</p>
-                        <p class="biz-stat-copy">{{ $percentage }}% del limite del plan base.</p>
+                        <p class="biz-stat-copy">{{ $percentage }}% del límite del plan base.</p>
                     </div>
 
                     <div class="biz-button-row">

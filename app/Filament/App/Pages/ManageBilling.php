@@ -23,6 +23,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
+
 /**
  * @property-read Schema $form
  */
@@ -77,7 +78,7 @@ class ManageBilling extends Page implements HasForms, HasTable
 
     public static function getNavigationLabel(): string
     {
-        return 'Suscripcion';
+        return 'Suscripción';
     }
 
     public static function getNavigationGroup(): ?string
@@ -87,7 +88,7 @@ class ManageBilling extends Page implements HasForms, HasTable
 
     public function getTitle(): string
     {
-        return 'Suscripcion y Pagos';
+        return 'Suscripción y pagos';
     }
 
     public static function getNavigationSort(): ?int
@@ -133,18 +134,18 @@ class ManageBilling extends Page implements HasForms, HasTable
         return $schema
             ->schema([
                 Section::make('Pago por transferencia')
-                    ->description('Transfiere el monto exacto, guarda tu comprobante y envialo a revision.')
+                    ->description('Transfiere el monto exacto, guarda tu comprobante y envíalo a revisión.')
                     ->schema([
                         Forms\Components\Placeholder::make('bank_info')
                             ->label('')
                             ->content(fn (): HtmlString => new HtmlString($this->getBankInstructionsHtml())),
 
                         Forms\Components\TextInput::make('bank_reference')
-                            ->label('Numero de referencia')
+                            ->label('Número de referencia')
                             ->placeholder('Ej: 12345678')
                             ->required()
                             ->maxLength(100)
-                            ->helperText('Usa el numero que aparece en la banca en linea o en tu recibo.'),
+                            ->helperText('Usa el número que aparece en la banca en línea o en tu recibo.'),
 
                         Forms\Components\FileUpload::make('proof_image_path')
                             ->label('Comprobante')
@@ -156,7 +157,7 @@ class ManageBilling extends Page implements HasForms, HasTable
                             ->maxSize(5120)
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                             ->imagePreviewHeight('180')
-                            ->helperText('Sube una captura clara de la transferencia. Maximo 5 MB.')
+                            ->helperText('Sube una captura clara de la transferencia. Máximo 5 MB.')
                             ->columnSpanFull(),
                     ])
                     ->columns(1),
@@ -202,7 +203,7 @@ class ManageBilling extends Page implements HasForms, HasTable
 
                     <div class="biz-empty-state" style="padding: 1rem; text-align: left;">
                         <p class="biz-action-copy">
-                            Guarda una captura clara del deposito. El equipo revisa el pago manualmente y activa tu negocio cuando la transferencia queda validada.
+                            Guarda una captura clara del depósito. El equipo revisa el pago manualmente y activa tu negocio cuando la transferencia queda validada.
                         </p>
                     </div>
                 </div>
@@ -251,7 +252,7 @@ class ManageBilling extends Page implements HasForms, HasTable
 
         Notification::make()
             ->success()
-            ->title('Pago enviado a revision')
+            ->title('Pago enviado a revisión')
             ->body('Ya recibimos tu comprobante y lo validaremos en breve.')
             ->send();
 
@@ -306,8 +307,8 @@ class ManageBilling extends Page implements HasForms, HasTable
                     ->action(fn (SubscriptionPayment $record) => $this->downloadReceipt($record)),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Todavia no tienes pagos registrados',
-                'description' => 'Cuando un pago sea aprobado o rechazado, aqui veras el historial y podras descargar el recibo.',
+                'heading' => 'Todavía no tienes pagos registrados',
+                'description' => 'Cuando un pago sea aprobado o rechazado, aquí verás el historial y podrás descargar el recibo.',
             ]));
     }
 
@@ -332,17 +333,26 @@ class ManageBilling extends Page implements HasForms, HasTable
 
     protected function getHeaderActions(): array
     {
+        $actions = [];
+        $supportUrl = $this->getSupportWhatsAppUrl();
+
         if ($this->isPro && $this->daysRemaining <= 7) {
-            return [
-                Action::make('renew')
-                    ->label('Renovar suscripcion')
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('warning')
-                    ->url(self::getUrl()),
-            ];
+            $actions[] = Action::make('renew')
+                ->label('Renovar suscripción')
+                ->icon('heroicon-o-arrow-path')
+                ->color('warning')
+                ->url(self::getUrl());
         }
 
-        return [];
+        if ($supportUrl !== null) {
+            $actions[] = Action::make('contact_support')
+                ->label('Hablar con soporte')
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->color('gray')
+                ->url($supportUrl, shouldOpenInNewTab: true);
+        }
+
+        return $actions;
     }
 
     private function loadSettings(): void
@@ -359,6 +369,23 @@ class ManageBilling extends Page implements HasForms, HasTable
             $this->bankInstructions = '';
             $this->supportWhatsApp = '';
         }
+    }
+
+    private function getSupportWhatsAppUrl(): ?string
+    {
+        $digits = preg_replace('/\D+/', '', $this->supportWhatsApp);
+
+        if ($digits === null || $digits === '') {
+            return null;
+        }
+
+        if (strlen($digits) === 8) {
+            $digits = '504' . $digits;
+        }
+
+        $message = rawurlencode('Hola, necesito ayuda con la suscripción de mi negocio en Conecta HN.');
+
+        return "https://wa.me/{$digits}?text={$message}";
     }
 
     protected function getTenantRecord(): ?Tenant

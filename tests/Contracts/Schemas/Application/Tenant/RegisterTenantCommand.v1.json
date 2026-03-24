@@ -10,6 +10,10 @@
     "password": { "type": "string" },
     "cityId": { "type": "integer" },
     "categoryId": { "type": "integer" },
+    "businessType": {
+      "type": "string",
+      "enum": ["retail", "food", "service", "hybrid"]
+    },
     "whatsapp": { "type": ["string", "null"] },
     "selectedPlan": { "type": "string" },
     "logoPath": { "type": ["string", "null"] },

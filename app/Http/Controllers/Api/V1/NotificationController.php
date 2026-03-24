@@ -18,10 +18,11 @@ final class NotificationController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $morphClass = $user->getMorphClass();
 
         $notifications = DatabaseNotification::query()
             ->where('notifiable_id', (string) $user->getAuthIdentifier())
-            ->where('notifiable_type', User::class)
+            ->where('notifiable_type', $morphClass)
             ->orderByRaw('read_at IS NULL DESC')
             ->orderByDesc('created_at')
             ->paginate(10);
@@ -33,10 +34,11 @@ final class NotificationController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $morphClass = $user->getMorphClass();
 
         $unreadCount = DatabaseNotification::query()
             ->where('notifiable_id', (string) $user->getAuthIdentifier())
-            ->where('notifiable_type', User::class)
+            ->where('notifiable_type', $morphClass)
             ->whereNull('read_at')
             ->count();
 
@@ -49,10 +51,11 @@ final class NotificationController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $morphClass = $user->getMorphClass();
 
         DatabaseNotification::query()
             ->where('notifiable_id', (string) $user->getAuthIdentifier())
-            ->where('notifiable_type', User::class)
+            ->where('notifiable_type', $morphClass)
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
@@ -63,10 +66,11 @@ final class NotificationController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $morphClass = $user->getMorphClass();
 
         DatabaseNotification::query()
             ->where('notifiable_id', (string) $user->getAuthIdentifier())
-            ->where('notifiable_type', User::class)
+            ->where('notifiable_type', $morphClass)
             ->where('id', $id)
             ->update(['read_at' => now()]);
 

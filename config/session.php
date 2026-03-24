@@ -2,6 +2,20 @@
 
 use Illuminate\Support\Str;
 
+$appUrl = (string) env('APP_URL', 'http://localhost');
+$sessionSecureCookie = env('SESSION_SECURE_COOKIE');
+$sessionCookieUsesHttps = str_starts_with(strtolower($appUrl), 'https://');
+
+if ($sessionSecureCookie !== null) {
+    $sessionCookieUsesHttps = filter_var($sessionSecureCookie, FILTER_VALIDATE_BOOL);
+
+    // En local HTTP el navegador descarta cookies "Secure", lo que rompe
+    // autenticación, Livewire y navegación dentro de Filament.
+    if (! str_starts_with(strtolower($appUrl), 'https://')) {
+        $sessionCookieUsesHttps = false;
+    }
+}
+
 return [
 
     /*
@@ -169,7 +183,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE', true),
+    'secure' => $sessionCookieUsesHttps,
 
     /*
     |--------------------------------------------------------------------------

@@ -13,6 +13,7 @@ use App\Application\Tenant\Results\RegisterTenantResult;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Identity\Events\TenantRegistered;
 use App\Domain\Identity\Factories\UserFactory;
+use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Security\Contracts\HasherInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
@@ -87,6 +88,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             planType: $planType,
             isPro: $isPro,
             productLimit: $productLimit,
+            businessType: BusinessType::from($command->businessType),
             logoPath: $command->logoPath,
             categoryId: $command->categoryId,
             cityId: $command->cityId,
