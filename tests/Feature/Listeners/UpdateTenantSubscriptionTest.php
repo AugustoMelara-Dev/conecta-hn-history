@@ -42,6 +42,7 @@ test('listener extends subscription exactly once for approved payments', functio
     $tenant->refresh();
 
     expect($payment->subscription_extended_at)->not->toBeNull()
+        ->and($payment->plan_before_upgrade)->toBe('semilla')
         ->and($tenant->subscription_status)->toBe('active')
         ->and($tenant->subscription_ends_at)->not->toBeNull();
 

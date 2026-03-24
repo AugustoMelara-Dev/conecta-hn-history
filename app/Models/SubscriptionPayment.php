@@ -27,6 +27,7 @@ use Illuminate\Support\Str;
  * @property string|null $admin_notes
  * @property string|null $reviewed_by
  * @property \Carbon\Carbon|null $reviewed_at
+ * @property string|null $plan_before_upgrade
  *                                            SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class SubscriptionPayment extends Model
@@ -55,6 +56,7 @@ class SubscriptionPayment extends Model
         'reviewed_by',
         'reviewed_at',
         'subscription_extended_at',
+        'plan_before_upgrade',
     ];
 
     /**
@@ -67,6 +69,7 @@ class SubscriptionPayment extends Model
         'amount' => 'decimal:2',
         'reviewed_at' => 'datetime',
         'subscription_extended_at' => 'datetime',
+        'plan_before_upgrade' => 'string',
         'id' => 'string',
         'version' => 'integer',
     ];

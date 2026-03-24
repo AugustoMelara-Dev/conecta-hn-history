@@ -101,6 +101,11 @@ class UpdateTenantSubscription
             }
 
             $newEndDate = $baseDate->copy()->addDays($event->daysToAdd);
+            $planBeforeUpgrade = (string) ($tenant->getRawOriginal('plan_type') ?? '');
+
+            if ($planBeforeUpgrade === '') {
+                $planBeforeUpgrade = $tenant->is_pro ? 'pro' : Tenant::PLAN_SEMILLA;
+            }
 
             $tenantUpdates = [
                 'is_active' => true,
@@ -123,12 +128,14 @@ class UpdateTenantSubscription
             // ═══════════════════════════════════════════════════════════════
             $payment->update([
                 'subscription_extended_at' => now(),
+                'plan_before_upgrade' => $planBeforeUpgrade,
             ]);
 
             Log::info('PaymentApproved: Subscription extended successfully', [
                 'payment_id' => $event->paymentId,
                 'tenant_id' => $event->tenantId()->toString(),
                 'tenant_name' => $tenant->name,
+                'plan_before_upgrade' => $planBeforeUpgrade,
                 'days_added' => $event->daysToAdd,
                 'new_end_date' => $newEndDate->toDateString(),
                 'reviewer_id' => $event->reviewerId,

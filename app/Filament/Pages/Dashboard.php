@@ -306,7 +306,6 @@ class Dashboard extends \Filament\Pages\Page
                 ])
                 ->orderByDesc('subscription_extended_at')
                 ->get()
-                ->filter(fn (SubscriptionPayment $payment): bool => $payment->tenant instanceof Tenant)
                 ->all();
         } catch (\Throwable) {
             $this->monthlyProConversions = [];
@@ -873,9 +872,16 @@ class Dashboard extends \Filament\Pages\Page
 
     private function loadPlanCohorts(): void
     {
-        $this->planCohorts = $this->portfolioCollection()
-            ->groupBy(fn (Tenant $tenant): string => $this->planKeyForTenant($tenant))
-            ->map(function (Collection $tenants, string $planKey): array {
+        $planKeys = $this->portfolioCollection()
+            ->map(fn (Tenant $tenant): string => $this->planKeyForTenant($tenant))
+            ->merge($this->monthlyProConversionCollection()->map(fn (SubscriptionPayment $payment): string => $this->planKeyForPayment($payment)))
+            ->filter()
+            ->unique();
+
+        $this->planCohorts = $planKeys
+            ->map(function (string $planKey): array {
+                $tenants = $this->portfolioCollection()
+                    ->filter(fn (Tenant $tenant): bool => $this->planKeyForTenant($tenant) === $planKey);
                 $count = $tenants->count();
                 $converted = $this->convertedTenantCount(
                     fn (SubscriptionPayment $payment): bool => $this->planKeyForPayment($payment) === $planKey
@@ -895,6 +901,7 @@ class Dashboard extends \Filament\Pages\Page
                     'href' => $this->billingUrl,
                 ];
             })
+            ->filter(fn (array $item): bool => $item['count'] > 0 || $item['converted'] > 0 || $item['pro'] > 0)
             ->sortByDesc(fn (array $item): int => ($item['converted'] * 100) + ($item['expansion'] * 50) + ($item['count'] * 10))
             ->values()
             ->all();
@@ -1424,6 +1431,12 @@ class Dashboard extends \Filament\Pages\Page
 
     private function planKeyForPayment(SubscriptionPayment $payment): string
     {
+        $originPlan = (string) ($payment->plan_before_upgrade ?? '');
+
+        if ($originPlan !== '') {
+            return $originPlan;
+        }
+
         return $payment->tenant instanceof Tenant
             ? $this->planKeyForTenant($payment->tenant)
             : 'pro';

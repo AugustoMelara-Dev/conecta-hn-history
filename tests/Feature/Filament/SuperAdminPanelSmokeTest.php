@@ -162,6 +162,7 @@ final class SuperAdminPanelSmokeTest extends TestCase
                 'reviewed_by' => (string) $superAdmin->getKey(),
                 'reviewed_at' => now()->subHour(),
                 'subscription_extended_at' => now()->subHour(),
+                'plan_before_upgrade' => 'crecimiento',
             ]);
 
         $this->actingAs($superAdmin);

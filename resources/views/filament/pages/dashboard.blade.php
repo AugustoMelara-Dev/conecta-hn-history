@@ -568,7 +568,7 @@
                                     <div class="biz-split">
                                         <div>
                                             <p class="biz-action-title">{{ $cohort['plan'] }}</p>
-                                            <p class="biz-action-copy">PRO este mes: {{ $cohort['converted'] }} | PRO activos: {{ $cohort['pro'] }}</p>
+                                            <p class="biz-action-copy">PRO este mes desde este plan: {{ $cohort['converted'] }} | PRO activos: {{ $cohort['pro'] }}</p>
                                         </div>
 
                                         <x-filament::badge color="{{ $cohort['tone'] }}">

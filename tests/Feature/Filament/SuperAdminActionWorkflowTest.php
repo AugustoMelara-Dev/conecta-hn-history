@@ -170,6 +170,7 @@ final class SuperAdminActionWorkflowTest extends TestCase
         $this->assertSame((string) $superAdmin->getKey(), (string) $payment->reviewed_by);
         $this->assertNotNull($payment->reviewed_at);
         $this->assertNotNull($payment->subscription_extended_at);
+        $this->assertSame('semilla', (string) $payment->plan_before_upgrade);
         $this->assertSame('pro', (string) $tenant->getRawOriginal('plan_type'));
         $this->assertSame('active', (string) $tenant->getRawOriginal('subscription_status'));
         $this->assertTrue($tenant->is_pro);
