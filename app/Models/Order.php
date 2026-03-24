@@ -111,6 +111,7 @@ class Order extends Model
         // FOREIGN KEYS (user_id is nullable, set by authenticated orders)
         // ═══════════════════════════════════════════════════════════════════════
         'user_id',
+        'customer_profile_id',
         'location_id',
         'order_number',
         'tracking_uuid', // Real-time tracking token (UUID v4)
@@ -182,6 +183,11 @@ class Order extends Model
     public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function customerProfile(): BelongsTo
+    {
+        return $this->belongsTo(CustomerProfile::class);
     }
 
     public function location(): BelongsTo

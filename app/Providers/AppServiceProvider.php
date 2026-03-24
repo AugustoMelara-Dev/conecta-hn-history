@@ -7,6 +7,7 @@ namespace App\Providers;
 // Models
 use App\Contracts\Events\DomainEventBus;
 use App\Infrastructure\Events\LaravelEventBus;
+use App\Models\Appointment;
 use App\Models\Campaign;
 use App\Models\Coupon;
 use App\Models\Lead;
@@ -940,6 +941,9 @@ class AppServiceProvider extends ServiceProvider
         // Observers
         Product::observe(\App\Observers\ProductObserver::class);
         \App\Models\Tenant::observe(\App\Observers\TenantObserver::class);
+        Order::observe(\App\Observers\OrderCustomerProfileObserver::class);
+        Appointment::observe(\App\Observers\AppointmentCustomerProfileObserver::class);
+        Lead::observe(\App\Observers\LeadCustomerProfileObserver::class);
 
         // SECURITY: Rate Limiters
         \Illuminate\Support\Facades\RateLimiter::for('analytics-protection', function (\Illuminate\Http\Request $request) {

@@ -8,6 +8,7 @@ use App\Domain\Identity\Enums\UserRole;
 use App\Models\Campaign;
 use App\Models\Category;
 use App\Models\City;
+use App\Models\CustomerProfile;
 use App\Models\Lead;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -95,6 +96,14 @@ final class BusinessRecordPageSmokeTest extends TestCase
             ->assertSee('Cliente')
             ->assertSee('Ticket de orden')
             ->assertSee('#QA1001');
+
+        $customerProfile = CustomerProfile::query()->firstOrFail();
+
+        $this->get(route('filament.app.resources.customer-profiles.edit', ['tenant' => $tenant->slug, 'record' => $customerProfile], false))
+            ->assertOk()
+            ->assertSee('Operacion comercial')
+            ->assertSee('Historial de pedidos')
+            ->assertSee('Historial de prospectos');
 
         $this->get(route('filament.app.resources.campaigns.edit', ['tenant' => $tenant->slug, 'record' => $campaign], false))
             ->assertOk()

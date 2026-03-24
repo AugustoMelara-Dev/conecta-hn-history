@@ -39,6 +39,7 @@ class Appointment extends Model
 
     protected $fillable = [
         'user_id',
+        'customer_profile_id',
         'service_id',
         'service_provider_id',
         'scheduled_at',
@@ -72,6 +73,11 @@ class Appointment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function customerProfile(): BelongsTo
+    {
+        return $this->belongsTo(CustomerProfile::class);
     }
 
     /**

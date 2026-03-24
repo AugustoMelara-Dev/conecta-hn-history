@@ -6,8 +6,10 @@ namespace App\Filament\App\Pages;
 
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Services\BusinessGrowthBlueprint;
+use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
 use App\Filament\App\Resources\AppointmentResource;
+use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\CouponResource;
 use App\Filament\App\Resources\FollowerResource;
 use App\Filament\App\Resources\Leads\LeadResource;
@@ -16,6 +18,7 @@ use App\Filament\App\Resources\OperationalPlaybookTaskResource;
 use App\Filament\App\Resources\OrderResource;
 use App\Models\Appointment;
 use App\Models\Campaign;
+use App\Models\CustomerProfile;
 use App\Models\Follow;
 use App\Models\Lead;
 use App\Models\LoyaltyProgram;
@@ -109,6 +112,8 @@ class GrowthCenter extends Page
 
     public int $waitlistCount = 0;
 
+    public int $crmProfilesCount = 0;
+
     public int $campaignsSent30d = 0;
 
     public int $openPlaybooksCount = 0;
@@ -122,6 +127,8 @@ class GrowthCenter extends Page
     public string $growthUrl = '#';
 
     public string $leadsUrl = '#';
+
+    public string $customersUrl = '#';
 
     public string $marketingUrl = '#';
 
@@ -180,6 +187,7 @@ class GrowthCenter extends Page
 
         $this->growthUrl = $this->safeRoute('filament.app.pages.growth-center', ['tenant' => $tenantSlug]);
         $this->leadsUrl = $this->safeResourceUrl(LeadResource::class, ['tenant' => $tenantSlug]);
+        $this->customersUrl = $this->safeResourceUrl(CustomerProfileResource::class, ['tenant' => $tenantSlug]);
         $this->marketingUrl = $this->safeRoute('filament.app.pages.manage-marketing', ['tenant' => $tenantSlug]);
         $this->ordersUrl = $this->safeResourceUrl(OrderResource::class, ['tenant' => $tenantSlug]);
         $this->appointmentsUrl = $this->safeResourceUrl(AppointmentResource::class, ['tenant' => $tenantSlug]);
@@ -217,6 +225,8 @@ class GrowthCenter extends Page
         $tenantId = (string) $tenant->getKey();
         $thirtyDaysAgo = now()->subDays(30)->startOfDay();
         $oneHundredEightyDaysAgo = now()->subDays(180)->startOfDay();
+
+        $this->ensureCustomerProfilesBootstrapped($tenantId);
 
         try {
             $leadBase = Lead::query()
@@ -313,6 +323,25 @@ class GrowthCenter extends Page
         }
 
         try {
+            $profilesBase = CustomerProfile::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId);
+
+            $this->crmProfilesCount = (clone $profilesBase)->count();
+            $this->reactivationPoolCount = max(
+                $this->reactivationPoolCount,
+                (clone $profilesBase)->where('reactivation_score', '>=', 65)->count(),
+            );
+            $this->repeatCustomerCount = max(
+                $this->repeatCustomerCount,
+                (clone $profilesBase)->whereIn('customer_segment', ['repeat', 'vip'])->count(),
+            );
+            $this->distinctCustomersCount = max($this->distinctCustomersCount, $this->crmProfilesCount);
+        } catch (\Throwable) {
+            // CRM can be empty on brand new tenants.
+        }
+
+        try {
             $this->followersCount = Follow::query()
                 ->withoutGlobalScopes()
                 ->where('tenant_id', $tenantId)
@@ -401,6 +430,7 @@ class GrowthCenter extends Page
     private function buildCustomerSignals(): void
     {
         $this->customerSignals = [
+            $this->metric('Clientes CRM', (string) $this->crmProfilesCount, $this->crmProfilesCount > 0 ? 'Ya tienes fichas listas para seguimiento y reactivacion.' : 'Todavia no hay clientes consolidados en CRM.'),
             $this->metric('Seguidores', (string) $this->followersCount, $this->followersCount > 0 ? 'Tu audiencia ya existe y se puede nutrir.' : 'Todavia no hay audiencia guardada en PRO.'),
             $this->metric('Waitlist activa', (string) $this->waitlistCount, $this->waitlistCount > 0 ? 'Hay demanda esperando huecos u oferta.' : 'No hay espera activa en este momento.'),
             $this->metric('Campanas 30 dias', (string) $this->campaignsSent30d, $this->campaignsSent30d > 0 ? 'Ya tienes empuje comercial reciente.' : 'Aun no has activado una campana reciente.'),
@@ -411,6 +441,7 @@ class GrowthCenter extends Page
     private function buildGrowthActions(): void
     {
         $actions = [
+            $this->action('Abrir clientes', 'Trabaja fichas, notas, segmentos y reactivacion desde un CRM unificado.', $this->customersUrl),
             $this->action('Abrir prospectos', 'Ordena pipeline, fuentes y estado de cierre.', $this->leadsUrl),
             $this->action('Ir a marketing', 'Ajusta CTA, QR, WhatsApp y campanas.', $this->marketingUrl),
             $this->action('Ver centro operativo', 'Convierte automatizaciones en cola con SLA.', $this->operationsUrl),
@@ -584,6 +615,7 @@ class GrowthCenter extends Page
     private function resolveGrowthHref(string $routeKey): string
     {
         return match ($routeKey) {
+            'customers' => $this->customersUrl,
             'leads' => $this->leadsUrl,
             'marketing' => $this->marketingUrl,
             'orders' => $this->ordersUrl,
@@ -679,5 +711,44 @@ class GrowthCenter extends Page
             'direct' => 'Directo',
             default => ucfirst(str_replace('_', ' ', $source)),
         };
+    }
+
+    private function ensureCustomerProfilesBootstrapped(string $tenantId): void
+    {
+        $profilesExist = CustomerProfile::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->exists();
+
+        if ($profilesExist) {
+            return;
+        }
+
+        $hasCustomerSignals = Order::query()
+            ->withoutGlobalScopes()
+            ->without(['items'])
+            ->where('tenant_id', $tenantId)
+            ->where(function ($query): void {
+                $query->whereNotNull('customer_email')->orWhereNotNull('customer_phone');
+            })
+            ->exists()
+            || Appointment::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where(function ($query): void {
+                    $query->whereNotNull('customer_email')->orWhereNotNull('customer_phone');
+                })
+                ->exists()
+            || Lead::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where(function ($query): void {
+                    $query->whereNotNull('email')->orWhereNotNull('phone');
+                })
+                ->exists();
+
+        if ($hasCustomerSignals) {
+            app(CustomerProfileManager::class)->syncTenant($tenantId);
+        }
     }
 }

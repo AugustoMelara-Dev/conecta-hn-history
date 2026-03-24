@@ -28,8 +28,8 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 /**
  * Panel operativo para negocios.
  *
- * Priorizamos navegación clara, tiempos cortos y una experiencia sólida
- * en móvil para dueños de negocio que gestionan su operación desde el teléfono.
+ * Priorizamos navegacion clara, tiempos cortos y una experiencia solida
+ * en movil para duenos de negocio que gestionan su operacion desde el telefono.
  */
 class AppPanelProvider extends PanelProvider
 {
@@ -42,7 +42,7 @@ class AppPanelProvider extends PanelProvider
             ->brandLogoHeight('2.5rem')
             ->favicon(asset('favicon.ico'))
             ->login()
-            // ->registration() // El alta se maneja en el flujo público.
+            // ->registration() // El alta se maneja en el flujo publico.
             ->profile()
             ->passwordReset()
             ->emailVerification()
@@ -64,17 +64,17 @@ class AppPanelProvider extends PanelProvider
             ->darkMode(true)
             ->navigationGroups([
                 NavigationGroup::make()->label('Ventas'),
-                NavigationGroup::make()->label('Catálogo'),
+                NavigationGroup::make()->label('Catalogo'),
                 NavigationGroup::make()->label('Servicios'),
                 NavigationGroup::make()->label('Marketing'),
                 NavigationGroup::make()->label('Marketing PRO'),
                 NavigationGroup::make()->label('Operacion'),
                 NavigationGroup::make()->label('Inventario'),
-                NavigationGroup::make()->label('Configuración'),
+                NavigationGroup::make()->label('Configuracion'),
                 NavigationGroup::make()->label('Cuenta'),
             ])
             ->navigationItems([
-                NavigationItem::make('Ver mi sitio público')
+                NavigationItem::make('Ver mi sitio publico')
                     ->url(fn () => $this->getTenantPublicUrl())
                     ->icon('heroicon-o-arrow-top-right-on-square')
                     ->group('Ventas')
@@ -93,6 +93,7 @@ class AppPanelProvider extends PanelProvider
                 \App\Filament\App\Resources\ProductResource::class,
                 \App\Filament\App\Resources\MenuSectionResource::class,
                 \App\Filament\App\Resources\OrderResource::class,
+                \App\Filament\App\Resources\CustomerProfileResource::class,
                 \App\Filament\App\Resources\ServiceResource::class,
                 \App\Filament\App\Resources\AppointmentResource::class,
                 \App\Filament\App\Resources\ServiceProviderResource::class,

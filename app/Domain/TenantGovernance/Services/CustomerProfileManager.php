@@ -1,0 +1,598 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\TenantGovernance\Services;
+
+use App\Models\Appointment;
+use App\Models\CustomerProfile;
+use App\Models\Lead;
+use App\Models\Order;
+use App\Models\Tenant;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
+
+class CustomerProfileManager
+{
+    public function syncTenant(Tenant|string $tenant): void
+    {
+        $tenantId = $tenant instanceof Tenant ? (string) $tenant->getKey() : (string) $tenant;
+
+        Order::query()
+            ->withoutGlobalScopes()
+            ->without(['items'])
+            ->where('tenant_id', $tenantId)
+            ->where(function ($query): void {
+                $query->whereNotNull('customer_email')->orWhereNotNull('customer_phone');
+            })
+            ->lazyById(100)
+            ->each(fn (Order $order) => $this->syncOrder($order));
+
+        Appointment::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where(function ($query): void {
+                $query->whereNotNull('customer_email')->orWhereNotNull('customer_phone');
+            })
+            ->lazyById(100)
+            ->each(fn (Appointment $appointment) => $this->syncAppointment($appointment));
+
+        Lead::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where(function ($query): void {
+                $query->whereNotNull('email')->orWhereNotNull('phone');
+            })
+            ->lazyById(100)
+            ->each(fn (Lead $lead) => $this->syncLead($lead));
+
+        $this->pruneEmptyProfiles($tenantId);
+    }
+
+    public function syncOrder(Order $order, ?int $previousProfileId = null): ?CustomerProfile
+    {
+        return $this->syncSourceRecord(
+            source: $order,
+            tenantId: (string) $order->tenant_id,
+            name: $order->customer_name,
+            email: $order->customer_email,
+            phone: $order->customer_phone,
+            previousProfileId: $previousProfileId,
+        );
+    }
+
+    public function syncAppointment(Appointment $appointment, ?int $previousProfileId = null): ?CustomerProfile
+    {
+        return $this->syncSourceRecord(
+            source: $appointment,
+            tenantId: (string) $appointment->tenant_id,
+            name: $appointment->customer_name,
+            email: $appointment->customer_email,
+            phone: $appointment->customer_phone,
+            previousProfileId: $previousProfileId,
+        );
+    }
+
+    public function syncLead(Lead $lead, ?int $previousProfileId = null): ?CustomerProfile
+    {
+        return $this->syncSourceRecord(
+            source: $lead,
+            tenantId: (string) $lead->tenant_id,
+            name: $lead->name,
+            email: $lead->email,
+            phone: $lead->phone,
+            previousProfileId: $previousProfileId,
+        );
+    }
+
+    public function syncProfileById(?int $profileId): void
+    {
+        if (! is_int($profileId) || $profileId <= 0) {
+            return;
+        }
+
+        $profile = CustomerProfile::query()
+            ->withoutGlobalScopes()
+            ->find($profileId);
+
+        if (! $profile instanceof CustomerProfile) {
+            return;
+        }
+
+        $this->recalculateProfile($profile);
+        $this->deleteIfOrphaned($profile);
+    }
+
+    private function syncSourceRecord(
+        Model $source,
+        string $tenantId,
+        ?string $name,
+        ?string $email,
+        ?string $phone,
+        ?int $previousProfileId = null,
+    ): ?CustomerProfile {
+        $normalizedEmail = $this->normalizeEmail($email);
+        $normalizedPhone = $this->normalizePhone($phone);
+        $currentProfileId = $this->normalizeProfileId($source->getAttribute('customer_profile_id'));
+        $previousProfileId ??= $currentProfileId;
+
+        if ($normalizedEmail === null && $normalizedPhone === null) {
+            $this->updateSourceLink($source, null);
+            $this->syncProfileById($previousProfileId);
+
+            return null;
+        }
+
+        $profile = $this->resolveProfile(
+            tenantId: $tenantId,
+            normalizedEmail: $normalizedEmail,
+            normalizedPhone: $normalizedPhone,
+        );
+
+        if (! $profile instanceof CustomerProfile) {
+            $profile = CustomerProfile::query()
+                ->withoutGlobalScopes()
+                ->forceCreate([
+                    'tenant_id' => $tenantId,
+                    'normalized_email' => $normalizedEmail,
+                    'normalized_phone' => $normalizedPhone,
+                    'name' => $this->sanitizeText($name),
+                    'email' => $normalizedEmail,
+                    'phone' => $this->sanitizeText($phone),
+                    'preferred_channel' => $this->resolvePreferredChannel(null, $normalizedEmail, $normalizedPhone),
+                ]);
+        }
+
+        $profile->forceFill([
+            'normalized_email' => $normalizedEmail ?? $profile->normalized_email,
+            'normalized_phone' => $normalizedPhone ?? $profile->normalized_phone,
+            'name' => $this->resolveBestName($profile->name, $name),
+            'email' => $normalizedEmail ?? $profile->email,
+            'phone' => $this->sanitizeText($phone) ?? $profile->phone,
+            'preferred_channel' => $this->resolvePreferredChannel(
+                $profile->preferred_channel,
+                $normalizedEmail ?? $profile->normalized_email,
+                $normalizedPhone ?? $profile->normalized_phone,
+            ),
+        ])->save();
+
+        $this->updateSourceLink($source, (int) $profile->getKey());
+        $this->recalculateProfile($profile);
+
+        if ($previousProfileId !== null && $previousProfileId !== (int) $profile->getKey()) {
+            $this->syncProfileById($previousProfileId);
+        }
+
+        return $profile->fresh();
+    }
+
+    private function resolveProfile(
+        string $tenantId,
+        ?string $normalizedEmail,
+        ?string $normalizedPhone,
+    ): ?CustomerProfile {
+        $matches = CustomerProfile::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where(function ($query) use ($normalizedEmail, $normalizedPhone): void {
+                if ($normalizedEmail !== null) {
+                    $query->where('normalized_email', $normalizedEmail);
+                }
+
+                if ($normalizedPhone !== null) {
+                    $method = $normalizedEmail !== null ? 'orWhere' : 'where';
+                    $query->{$method}('normalized_phone', $normalizedPhone);
+                }
+            })
+            ->orderBy('id')
+            ->get();
+
+        if ($matches->isEmpty()) {
+            return null;
+        }
+
+        /** @var CustomerProfile $canonical */
+        $canonical = $matches->first();
+
+        if ($matches->count() === 1) {
+            return $canonical;
+        }
+
+        $duplicateIds = $matches
+            ->skip(1)
+            ->pluck('id')
+            ->filter(static fn (mixed $value): bool => is_numeric($value))
+            ->map(static fn (mixed $value): int => (int) $value)
+            ->values()
+            ->all();
+
+        if ($duplicateIds === []) {
+            return $canonical;
+        }
+
+        Order::withoutEvents(function () use ($canonical, $duplicateIds): void {
+            Order::query()
+                ->withoutGlobalScopes()
+                ->whereIn('customer_profile_id', $duplicateIds)
+                ->update(['customer_profile_id' => $canonical->getKey()]);
+        });
+
+        Appointment::withoutEvents(function () use ($canonical, $duplicateIds): void {
+            Appointment::query()
+                ->withoutGlobalScopes()
+                ->whereIn('customer_profile_id', $duplicateIds)
+                ->update(['customer_profile_id' => $canonical->getKey()]);
+        });
+
+        Lead::withoutEvents(function () use ($canonical, $duplicateIds): void {
+            Lead::query()
+                ->withoutGlobalScopes()
+                ->whereIn('customer_profile_id', $duplicateIds)
+                ->update(['customer_profile_id' => $canonical->getKey()]);
+        });
+
+        CustomerProfile::query()
+            ->withoutGlobalScopes()
+            ->whereIn('id', $duplicateIds)
+            ->delete();
+
+        $canonical->forceFill([
+            'normalized_email' => $normalizedEmail ?? $canonical->normalized_email,
+            'normalized_phone' => $normalizedPhone ?? $canonical->normalized_phone,
+        ])->save();
+
+        return $canonical;
+    }
+
+    private function updateSourceLink(Model $source, ?int $profileId): void
+    {
+        $currentProfileId = $this->normalizeProfileId($source->getAttribute('customer_profile_id'));
+
+        if ($currentProfileId === $profileId) {
+            return;
+        }
+
+        match (true) {
+            $source instanceof Order => Order::withoutEvents(function () use ($source, $profileId): void {
+                Order::query()
+                    ->withoutGlobalScopes()
+                    ->whereKey($source->getKey())
+                    ->update(['customer_profile_id' => $profileId]);
+            }),
+            $source instanceof Appointment => Appointment::withoutEvents(function () use ($source, $profileId): void {
+                Appointment::query()
+                    ->withoutGlobalScopes()
+                    ->whereKey($source->getKey())
+                    ->update(['customer_profile_id' => $profileId]);
+            }),
+            $source instanceof Lead => Lead::withoutEvents(function () use ($source, $profileId): void {
+                Lead::query()
+                    ->withoutGlobalScopes()
+                    ->whereKey($source->getKey())
+                    ->update(['customer_profile_id' => $profileId]);
+            }),
+            default => null,
+        };
+
+        $source->forceFill(['customer_profile_id' => $profileId]);
+    }
+
+    private function recalculateProfile(CustomerProfile $profile): void
+    {
+        $tenantId = (string) $profile->tenant_id;
+        $profileId = (int) $profile->getKey();
+
+        $orders = Order::query()
+            ->withoutGlobalScopes()
+            ->without(['items'])
+            ->where('tenant_id', $tenantId)
+            ->where('customer_profile_id', $profileId)
+            ->whereNotIn('status', [Order::STATUS_CANCELLED])
+            ->get(['id', 'customer_name', 'customer_email', 'customer_phone', 'total', 'created_at']);
+
+        $appointments = Appointment::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('customer_profile_id', $profileId)
+            ->whereNotIn('status', [Appointment::STATUS_CANCELLED, Appointment::STATUS_NO_SHOW])
+            ->get(['id', 'customer_name', 'customer_email', 'customer_phone', 'scheduled_at', 'created_at']);
+
+        $leads = Lead::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('customer_profile_id', $profileId)
+            ->get(['id', 'name', 'email', 'phone', 'created_at']);
+
+        $ordersCount = $orders->count();
+        $appointmentsCount = $appointments->count();
+        $leadsCount = $leads->count();
+        $totalSpent = round((float) $orders->sum('total'), 2);
+        $averageTicket = $ordersCount > 0 ? round($totalSpent / $ordersCount, 2) : 0.0;
+
+        $firstSeenAt = collect([
+            $orders->min('created_at'),
+            $appointments->min('created_at'),
+            $leads->min('created_at'),
+        ])->filter()->map(fn (mixed $value): Carbon => Carbon::parse((string) $value))->sort()->first();
+
+        $lastOrderAt = $this->asCarbon($orders->max('created_at'));
+        $lastAppointmentAt = $this->asCarbon($appointments->max('scheduled_at') ?: $appointments->max('created_at'));
+        $lastLeadAt = $this->asCarbon($leads->max('created_at'));
+        $lastSeenAt = collect([$lastOrderAt, $lastAppointmentAt, $lastLeadAt, $profile->last_contacted_at])
+            ->filter(static fn (mixed $value): bool => $value instanceof Carbon)
+            ->sort()
+            ->last();
+
+        $bestName = collect([
+            $profile->name,
+            $orders->pluck('customer_name')->filter()->sortByDesc(fn (string $value): int => strlen($value))->first(),
+            $appointments->pluck('customer_name')->filter()->sortByDesc(fn (string $value): int => strlen($value))->first(),
+            $leads->pluck('name')->filter()->sortByDesc(fn (string $value): int => strlen($value))->first(),
+        ])->filter()->first();
+
+        $bestEmail = collect([
+            $profile->normalized_email,
+            $orders->pluck('customer_email')->map(fn (mixed $value): ?string => $this->normalizeEmail($value))->filter()->first(),
+            $appointments->pluck('customer_email')->map(fn (mixed $value): ?string => $this->normalizeEmail($value))->filter()->first(),
+            $leads->pluck('email')->map(fn (mixed $value): ?string => $this->normalizeEmail($value))->filter()->first(),
+        ])->filter()->first();
+
+        $bestPhone = collect([
+            $profile->phone,
+            $orders->pluck('customer_phone')->filter()->first(),
+            $appointments->pluck('customer_phone')->filter()->first(),
+            $leads->pluck('phone')->filter()->first(),
+        ])->filter()->first();
+
+        $reactivationScore = $this->calculateReactivationScore($lastSeenAt, $ordersCount, $appointmentsCount, $leadsCount, $totalSpent);
+
+        $profile->forceFill([
+            'name' => $this->sanitizeText(is_string($bestName) ? $bestName : null),
+            'email' => $bestEmail ?? $profile->email,
+            'phone' => $this->sanitizeText(is_string($bestPhone) ? $bestPhone : null) ?? $profile->phone,
+            'normalized_email' => $bestEmail ?? $profile->normalized_email,
+            'normalized_phone' => $this->normalizePhone(is_string($bestPhone) ? $bestPhone : null) ?? $profile->normalized_phone,
+            'preferred_channel' => $this->resolvePreferredChannel($profile->preferred_channel, $bestEmail, $this->normalizePhone(is_string($bestPhone) ? $bestPhone : null)),
+            'orders_count' => $ordersCount,
+            'appointments_count' => $appointmentsCount,
+            'leads_count' => $leadsCount,
+            'total_spent' => $totalSpent,
+            'average_ticket' => $averageTicket,
+            'first_seen_at' => $firstSeenAt,
+            'last_seen_at' => $lastSeenAt,
+            'last_order_at' => $lastOrderAt,
+            'last_appointment_at' => $lastAppointmentAt,
+            'last_lead_at' => $lastLeadAt,
+            'lifecycle_stage' => $this->resolveLifecycleStage($ordersCount, $appointmentsCount, $leadsCount, $lastSeenAt),
+            'customer_segment' => $this->resolveCustomerSegment($ordersCount, $appointmentsCount, $leadsCount, $totalSpent, $reactivationScore, $lastSeenAt),
+            'reactivation_score' => $reactivationScore,
+        ])->save();
+    }
+
+    private function deleteIfOrphaned(CustomerProfile $profile): void
+    {
+        if ($profile->orders_count > 0 || $profile->appointments_count > 0 || $profile->leads_count > 0) {
+            return;
+        }
+
+        CustomerProfile::query()
+            ->withoutGlobalScopes()
+            ->whereKey($profile->getKey())
+            ->delete();
+    }
+
+    private function pruneEmptyProfiles(string $tenantId): void
+    {
+        CustomerProfile::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->get()
+            ->each(fn (CustomerProfile $profile) => $this->deleteIfOrphaned($profile));
+    }
+
+    private function resolveLifecycleStage(
+        int $ordersCount,
+        int $appointmentsCount,
+        int $leadsCount,
+        ?Carbon $lastSeenAt,
+    ): string {
+        if (($ordersCount > 0 || $appointmentsCount > 0) && $lastSeenAt instanceof Carbon && $lastSeenAt->lt(now()->subDays(60))) {
+            return 'dormant';
+        }
+
+        if ($ordersCount >= 2 || $appointmentsCount >= 2) {
+            return 'loyal';
+        }
+
+        if ($ordersCount > 0 || $appointmentsCount > 0) {
+            return 'active';
+        }
+
+        if ($leadsCount > 0) {
+            return 'prospect';
+        }
+
+        return 'new';
+    }
+
+    private function resolveCustomerSegment(
+        int $ordersCount,
+        int $appointmentsCount,
+        int $leadsCount,
+        float $totalSpent,
+        int $reactivationScore,
+        ?Carbon $lastSeenAt,
+    ): string {
+        if (($ordersCount >= 5 || $totalSpent >= 5000) && $reactivationScore < 65) {
+            return 'vip';
+        }
+
+        if ($reactivationScore >= 65) {
+            return 'reactivation';
+        }
+
+        if ($ordersCount >= 2 || $appointmentsCount >= 2) {
+            return 'repeat';
+        }
+
+        if ($appointmentsCount > 0) {
+            return 'booked_service';
+        }
+
+        if ($ordersCount > 0) {
+            return 'active';
+        }
+
+        if ($leadsCount > 0 && $lastSeenAt instanceof Carbon && $lastSeenAt->gte(now()->subDays(14))) {
+            return 'prospect';
+        }
+
+        return 'new';
+    }
+
+    private function calculateReactivationScore(
+        ?Carbon $lastSeenAt,
+        int $ordersCount,
+        int $appointmentsCount,
+        int $leadsCount,
+        float $totalSpent,
+    ): int {
+        if (! $lastSeenAt instanceof Carbon) {
+            return 0;
+        }
+
+        $days = $lastSeenAt->diffInDays(now());
+        $score = 0;
+
+        if ($ordersCount > 0 || $appointmentsCount > 0) {
+            $score = match (true) {
+                $days >= 90 => 90,
+                $days >= 60 => 75,
+                $days >= 45 => 65,
+                $days >= 30 => 50,
+                $days >= 21 => 35,
+                default => 0,
+            };
+        } elseif ($leadsCount > 0) {
+            $score = match (true) {
+                $days >= 30 => 45,
+                $days >= 14 => 25,
+                default => 0,
+            };
+        }
+
+        if ($ordersCount >= 2 || $appointmentsCount >= 2) {
+            $score += 10;
+        }
+
+        if ($totalSpent >= 5000) {
+            $score += 5;
+        }
+
+        return max(0, min(100, $score));
+    }
+
+    private function resolvePreferredChannel(?string $current, ?string $normalizedEmail, ?string $normalizedPhone): string
+    {
+        if (is_string($current) && $current !== '') {
+            if ($current === 'email' && $normalizedEmail !== null) {
+                return $current;
+            }
+
+            if (in_array($current, ['whatsapp', 'phone'], true) && $normalizedPhone !== null) {
+                return $current;
+            }
+        }
+
+        if ($normalizedPhone !== null) {
+            return 'whatsapp';
+        }
+
+        if ($normalizedEmail !== null) {
+            return 'email';
+        }
+
+        return 'phone';
+    }
+
+    private function resolveBestName(?string $existing, ?string $incoming): ?string
+    {
+        $existing = $this->sanitizeText($existing);
+        $incoming = $this->sanitizeText($incoming);
+
+        if ($existing === null) {
+            return $incoming;
+        }
+
+        if ($incoming === null) {
+            return $existing;
+        }
+
+        return strlen($incoming) > strlen($existing) ? $incoming : $existing;
+    }
+
+    private function normalizeEmail(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $email = mb_strtolower(trim($value));
+
+        return $email !== '' ? $email : null;
+    }
+
+    private function normalizePhone(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $value) ?: '';
+
+        if ($digits === '') {
+            return null;
+        }
+
+        if (str_starts_with($digits, '504') && strlen($digits) === 11) {
+            return substr($digits, 3);
+        }
+
+        return $digits;
+    }
+
+    private function sanitizeText(?string $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $clean = trim($value);
+
+        return $clean !== '' ? $clean : null;
+    }
+
+    private function normalizeProfileId(mixed $value): ?int
+    {
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        $id = (int) $value;
+
+        return $id > 0 ? $id : null;
+    }
+
+    private function asCarbon(mixed $value): ?Carbon
+    {
+        if ($value instanceof Carbon) {
+            return $value;
+        }
+
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        return Carbon::parse($value);
+    }
+}

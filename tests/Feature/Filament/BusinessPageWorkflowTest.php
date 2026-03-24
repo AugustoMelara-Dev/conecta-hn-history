@@ -11,6 +11,7 @@ use App\Filament\App\Pages\ManageMarketing;
 use App\Filament\App\Pages\Settings;
 use App\Models\Appointment;
 use App\Filament\App\Resources\AppointmentResource;
+use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\MenuSectionResource;
 use App\Filament\App\Resources\OperationalPlaybookTaskResource;
 use App\Filament\App\Resources\ServiceResource;
@@ -364,12 +365,18 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Centro de crecimiento')
             ->assertSee('CRM y upsell para celulares premium')
+            ->assertSee('Abrir clientes')
             ->assertSee('Pipeline y conversion')
             ->assertSee('Automatizaciones externas')
             ->assertSee('Seguimiento de cotizaciones')
             ->assertSee('Fidelidad para clientes frecuentes')
             ->assertSee('L. 840.00')
             ->assertSee('Clientes que vuelven');
+
+        $this->get(CustomerProfileResource::getUrl('index', ['tenant' => $tenant->slug]))
+            ->assertOk()
+            ->assertSee('CRM de clientes')
+            ->assertSee('Ana');
     }
 
     public function test_growth_center_adapts_to_dental_clinic_playbook(): void

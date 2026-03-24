@@ -23,6 +23,7 @@ class Lead extends Model
         'name',
         'email',
         'phone',
+        'customer_profile_id',
         'product_id',
         'source',
         'session_id',
@@ -44,6 +45,11 @@ class Lead extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function customerProfile(): BelongsTo
+    {
+        return $this->belongsTo(CustomerProfile::class);
     }
 
     public function getCustomerNameAttribute(): ?string
