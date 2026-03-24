@@ -12,13 +12,13 @@ use App\Domain\Identity\Entities\UserEntity;
 use App\Infrastructure\Auth\Listeners\SendOtpNotificationListener;
 use App\Models\OneTimePassword;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class SendOtpNotificationListenerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function it_delivers_the_otp_using_the_ephemeral_payload_store(): void

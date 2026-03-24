@@ -1,6 +1,6 @@
 <?php
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
 use App\Application\Inventory\Contracts\InventoryHoldPortInterface;
 use App\Domain\Inventory\Enums\MovementType;

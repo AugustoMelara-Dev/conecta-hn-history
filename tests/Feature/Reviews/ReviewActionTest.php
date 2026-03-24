@@ -4,9 +4,9 @@ use App\Application\Actions\Reviews\SubmitReviewAction;
 use App\Application\Reviews\Results\SubmitReviewResult;
 use App\Filament\App\Resources\ReviewResource;
 use App\Filament\App\Resources\ReviewResource\Pages\ListReviews;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 
-uses(RefreshDatabase::class);
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
 test('submit review action, dto and resource classes compile correctly', function () {
     expect(class_exists(SubmitReviewResult::class))->toBeTrue();

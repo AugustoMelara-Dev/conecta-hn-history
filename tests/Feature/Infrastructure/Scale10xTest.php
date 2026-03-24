@@ -8,6 +8,7 @@ use App\Application\Shared\Contracts\SchemaValidatorInterface;
 use App\Domain\Shared\Exceptions\SchemaViolationException;
 use App\Http\Middleware\EnsureIdempotencyKey;
 use App\Infrastructure\Shared\Services\Upcasting\UpcasterChain;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -16,7 +17,7 @@ use Tests\TestCase;
 
 class Scale10xTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use DatabaseTransactions;
 
     #[\PHPUnit\Framework\Attributes\Test]
     public function phase_1_schema_registry_blocks_malformed_events()

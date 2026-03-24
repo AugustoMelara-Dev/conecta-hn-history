@@ -10,12 +10,12 @@ use App\Models\Interaction;
 use App\Models\Lead;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class AnalyticsTrackFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_public_tracking_endpoint_accepts_uuid_tenant_and_creates_live_lead_flow(): void
     {

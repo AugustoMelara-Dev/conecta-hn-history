@@ -12,10 +12,7 @@ use Tests\TestCase;
 
 class AtomicIdempotencyIntegrationTest extends TestCase
 {
-    // Use DatabaseTransactions to roll back changes after each test
-    // This assumes the table exists in the DB.
-    // If migration failed on the test DB, this will fail.
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use DatabaseTransactions;
 
     private AtomicIdempotencyService $service;
 

@@ -5,9 +5,9 @@ declare(strict_types=1);
 use App\Models\Location;
 use App\Models\Order;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 
-uses(RefreshDatabase::class);
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
 it('can create a location scoped to a tenant', function () {
     $tenant = Tenant::factory()->create();

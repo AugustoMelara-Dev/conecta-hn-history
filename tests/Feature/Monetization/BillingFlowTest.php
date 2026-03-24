@@ -4,11 +4,11 @@ use App\Events\PaymentApproved;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
-uses(RefreshDatabase::class);
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
 test('subscription payment state machine accepts uuid reviewers', function () {
     Event::fake([PaymentApproved::class]);

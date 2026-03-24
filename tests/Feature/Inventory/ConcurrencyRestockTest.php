@@ -19,14 +19,14 @@ namespace Tests\Feature\Inventory;
 
 use App\Models\Order;
 use App\Services\InventoryManager;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class ConcurrencyRestockTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private InventoryManager $inventoryManager;
 

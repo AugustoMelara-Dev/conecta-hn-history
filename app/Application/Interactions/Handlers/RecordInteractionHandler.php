@@ -109,7 +109,10 @@ final readonly class RecordInteractionHandler
                 ]);
 
                 $tenant = Tenant::query()->find($command->tenantId);
-                $leadModel = Lead::query()->find($lead->id);
+                $leadModel = Lead::withoutGlobalScopes()
+                    ->whereKey($lead->id)
+                    ->where('tenant_id', $command->tenantId)
+                    ->first();
 
                 if ($tenant instanceof Tenant && $leadModel instanceof Lead) {
                     $this->playbookTaskManager->syncForTrigger($tenant, 'lead_follow_up', [

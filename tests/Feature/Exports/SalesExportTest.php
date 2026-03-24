@@ -13,7 +13,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Event;
 use ReflectionNamedType;
 use Tests\TestCase;
@@ -34,7 +34,7 @@ use Tests\TestCase;
 class SalesExportTest extends TestCase
 {
     // RefreshDatabase: En MySQL envuelve el test en transacción + ROLLBACK
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {

@@ -8,14 +8,14 @@ use App\Domain\Identity\Enums\UserRole;
 use App\Infrastructure\Identity\Fortify\Actions\Identity\CreateNewUser;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class UserRegistrationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function it_creates_a_new_tenant_and_owner_when_no_tenant_id_is_provided(): void

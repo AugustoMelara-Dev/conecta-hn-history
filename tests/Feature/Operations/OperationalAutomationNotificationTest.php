@@ -24,7 +24,7 @@ use App\Models\ServiceProvider;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Event;
@@ -33,7 +33,7 @@ use Tests\TestCase;
 
 final class OperationalAutomationNotificationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {

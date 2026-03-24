@@ -7,12 +7,12 @@ namespace Tests\Feature\Identity\Auth;
 use App\Application\Identity\Commands\RegisterUserCommand;
 use App\Application\Identity\Handlers\RegisterUserHandlerInterface;
 use App\Domain\Identity\Enums\UserRole;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class RegisterUserGuardTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[\PHPUnit\Framework\Attributes\Test]
     public function it_throws_domain_exception_when_tenant_id_is_null_on_staff_registration_path()

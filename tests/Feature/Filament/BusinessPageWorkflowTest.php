@@ -29,7 +29,7 @@ use App\Models\Tenant;
 use App\Models\TenantAnalytic;
 use App\Models\User;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -37,7 +37,7 @@ use Tests\TestCase;
 
 final class BusinessPageWorkflowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_dashboard_response_includes_panel_theme_and_retail_playbook(): void
     {

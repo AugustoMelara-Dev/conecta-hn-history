@@ -11,13 +11,13 @@ use App\Models\Product;
 use App\Models\Service;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 final class TenantCrmPortfolioManagerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_it_persists_watchlist_and_opens_renewal_attention_for_expiring_pro_accounts(): void
     {

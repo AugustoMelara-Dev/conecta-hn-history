@@ -16,13 +16,13 @@ use App\Filament\App\Widgets\TenantStatsWidget;
 use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 final class AppPanelWidgetSmokeTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_dashboard_widgets_render_without_livewire_errors(): void
     {

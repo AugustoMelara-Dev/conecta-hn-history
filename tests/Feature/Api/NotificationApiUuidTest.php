@@ -6,14 +6,14 @@ namespace Tests\Feature\Api;
 
 use App\Models\User;
 use Filament\Notifications\Notification as FilamentNotification;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Notifications\DatabaseNotification;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 final class NotificationApiUuidTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_uuid_users_can_receive_and_query_database_notifications(): void
     {

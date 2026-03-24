@@ -15,13 +15,13 @@ use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
 use DomainException;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class OrderLocationResolutionTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function it_resolves_the_primary_active_location_when_checkout_omits_location_id(): void

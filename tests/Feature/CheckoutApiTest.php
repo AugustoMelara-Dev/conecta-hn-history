@@ -8,7 +8,7 @@ use App\Domain\Shared\Services\TenantContext;
 use App\Models\Coupon;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 /**
@@ -25,7 +25,7 @@ use Tests\TestCase;
  */
 class CheckoutApiTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private Tenant $tenant;
 

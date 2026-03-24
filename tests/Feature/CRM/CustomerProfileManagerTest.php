@@ -15,12 +15,12 @@ use App\Models\Service;
 use App\Models\ServiceProvider;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class CustomerProfileManagerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_customer_profile_aggregates_orders_appointments_and_leads(): void
     {

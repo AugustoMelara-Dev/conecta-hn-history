@@ -10,7 +10,7 @@ use App\Exceptions\TenantMismatchException;
 use App\Infrastructure\Auth\SanctumAuthTokenService;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
 use PHPUnit\Framework\Attributes\Test;
@@ -18,7 +18,7 @@ use Tests\TestCase;
 
 final class SanctumAuthTokenServiceTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private Tenant $tenantA;
 

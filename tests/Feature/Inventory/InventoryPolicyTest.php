@@ -6,10 +6,10 @@ use App\Models\InventoryLevel;
 use App\Models\InventoryMovement;
 use App\Policies\InventoryLevelPolicy;
 use App\Policies\InventoryMovementPolicy;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Gate;
 
-uses(RefreshDatabase::class);
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
 it('successfully registers and resolves inventory policies', function () {
     expect(class_exists(InventoryLevelPolicy::class))->toBeTrue();

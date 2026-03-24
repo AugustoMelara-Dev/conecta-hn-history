@@ -7,14 +7,14 @@ namespace Tests\Feature\Public;
 use App\Http\Middleware\CheckMaintenanceMode;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class ReviewEndpointTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function it_returns_an_inertia_compliant_redirect_after_submitting_a_review(): void

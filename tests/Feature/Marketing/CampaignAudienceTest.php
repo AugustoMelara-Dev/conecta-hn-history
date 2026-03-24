@@ -8,14 +8,14 @@ use App\Domain\Marketing\Enums\AudienceType;
 use App\Domain\Shared\Services\TenantContext;
 use App\Models\Campaign;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class CampaignAudienceTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function it_stores_and_casts_the_dynamic_audience_type(): void

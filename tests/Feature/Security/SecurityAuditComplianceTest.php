@@ -6,7 +6,7 @@ namespace Tests\Feature\Security;
 
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 /**
@@ -18,7 +18,7 @@ use Tests\TestCase;
  */
 class SecurityAuditComplianceTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // VC-AUDIT-002: Middleware Abort Test

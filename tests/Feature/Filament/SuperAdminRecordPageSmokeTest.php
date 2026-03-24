@@ -12,12 +12,12 @@ use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class SuperAdminRecordPageSmokeTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_superadmin_record_pages_render_with_real_data(): void
     {

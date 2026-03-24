@@ -7,13 +7,13 @@ namespace Tests\Feature\Identity\Infrastructure;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Events\TenantCreated;
 use App\Infrastructure\Tenancy\Repositories\EventSourcedTenantRepository;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class TenantPersistenceAuditTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {

@@ -7,9 +7,9 @@ use App\Domain\Shared\ValueObjects\TenantId;
 use App\Listeners\InvalidateStorefrontCache;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 
-uses(RefreshDatabase::class);
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
 test('storefront cache listener bypasses integer guards and resolves tenant via uuid', function () {
     // Setup

@@ -8,12 +8,13 @@ use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
 use App\Domain\Shared\Exceptions\ValidationException;
 use App\Infrastructure\Shared\Telemetry\TraceContext;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
 class TelemetryIntegrationTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {

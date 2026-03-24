@@ -14,13 +14,13 @@ use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\User;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 final class TenantUserPresetWorkflowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_owner_can_create_team_member_with_vertical_preset_permissions(): void
     {

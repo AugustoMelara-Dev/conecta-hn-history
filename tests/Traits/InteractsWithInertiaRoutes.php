@@ -128,9 +128,13 @@ trait InteractsWithInertiaRoutes
             }
         }
 
-        // Clear tenant binding if exists
+        // Clear tenant bindings if they were set during the test
         if (app()->has('currentTenant')) {
             app()->forgetInstance('currentTenant');
+        }
+
+        if (app()->has('current_tenant')) {
+            app()->forgetInstance('current_tenant');
         }
 
         $this->registeredTestRoutes = [];

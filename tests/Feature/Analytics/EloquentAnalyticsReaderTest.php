@@ -7,12 +7,12 @@ namespace Tests\Feature\Analytics;
 use App\Infrastructure\Analytics\EloquentAnalyticsReader;
 use App\Models\Tenant;
 use App\Models\TenantAnalytic;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class EloquentAnalyticsReaderTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_reader_maps_legacy_tenant_analytics_columns_to_canonical_contract(): void
     {

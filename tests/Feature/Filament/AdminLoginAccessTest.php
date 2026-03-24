@@ -6,12 +6,12 @@ namespace Tests\Feature\Filament;
 
 use App\Domain\Identity\Enums\UserRole;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class AdminLoginAccessTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_business_user_can_open_admin_login_without_hitting_a_403_loop(): void
     {

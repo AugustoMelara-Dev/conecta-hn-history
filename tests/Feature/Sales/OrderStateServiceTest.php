@@ -11,13 +11,13 @@ use App\Models\Order;
 use App\Models\OrderEvent;
 use App\Models\Tenant;
 use App\Services\OrderStateService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class OrderStateServiceTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function tearDown(): void
     {

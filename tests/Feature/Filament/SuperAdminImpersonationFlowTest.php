@@ -9,13 +9,13 @@ use App\Filament\Resources\TenantResource\Pages\ListTenants;
 use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 final class SuperAdminImpersonationFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_superadmin_can_impersonate_a_business_owner_and_return_to_support_mode(): void
     {

@@ -12,12 +12,12 @@ use App\Policies\ProductPolicy;
 use App\Settings\BaseSettings;
 use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-uses(RefreshDatabase::class);
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
 afterEach(function () {
     app(TenantContext::class)->reset();

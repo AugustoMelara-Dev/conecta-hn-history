@@ -37,8 +37,13 @@ class SendAppointmentReminders implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function handle(AdminNotifier $notifier, OperationalPlaybookTaskManager $playbookTaskManager): void
+    public function handle(
+        AdminNotifier $notifier,
+        ?OperationalPlaybookTaskManager $playbookTaskManager = null,
+    ): void
     {
+        $playbookTaskManager ??= app(OperationalPlaybookTaskManager::class);
+
         // Define the 24-hour window (23h to 24h from now)
         $windowStart = now()->addHours(23);
         $windowEnd = now()->addHours(24);

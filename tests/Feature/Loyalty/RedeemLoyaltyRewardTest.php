@@ -8,13 +8,13 @@ use App\Application\Loyalty\Commands\RedeemLoyaltyRewardCommand;
 use App\Application\Loyalty\Contracts\LoyaltyRedemptionPortInterface;
 use App\Application\Loyalty\Handlers\RedeemLoyaltyRewardHandler;
 use DomainException;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class RedeemLoyaltyRewardTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function it_throws_when_the_reward_is_unavailable(): void

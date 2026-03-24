@@ -10,7 +10,7 @@ use App\Infrastructure\AI\BudgetEnforcer;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AI\OpenAIService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -29,7 +29,7 @@ use Tests\TestCase;
  */
 final class OpenAIServiceTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private OpenAIService $service;
 

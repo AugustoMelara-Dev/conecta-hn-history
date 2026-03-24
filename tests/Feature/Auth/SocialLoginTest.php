@@ -22,12 +22,12 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Http\Requests\Auth\SocialLoginRequest;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class SocialLoginTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private const SOCIAL_LOGIN_ENDPOINT = '/api/v1/auth/social';
 

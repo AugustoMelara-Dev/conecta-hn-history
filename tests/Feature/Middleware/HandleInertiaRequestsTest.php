@@ -7,7 +7,7 @@ namespace Tests\Feature\Middleware;
 use App\Models\Announcement;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithInertiaRoutes;
 
@@ -23,7 +23,7 @@ use Tests\Traits\InteractsWithInertiaRoutes;
 class HandleInertiaRequestsTest extends TestCase
 {
     use InteractsWithInertiaRoutes;
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {

@@ -7,12 +7,12 @@ namespace Tests\Feature\Filament;
 use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class BusinessPanelSmokeTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_free_retail_owner_route_matrix_matches_expected_access(): void
     {

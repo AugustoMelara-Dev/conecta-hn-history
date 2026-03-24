@@ -7,12 +7,12 @@ namespace Tests\Feature\Filament;
 use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class TenantPanelAccessTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_verified_tenant_owner_can_open_the_filament_app_dashboard(): void
     {

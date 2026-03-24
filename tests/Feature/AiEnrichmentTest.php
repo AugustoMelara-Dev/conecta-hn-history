@@ -17,7 +17,7 @@ use App\Infrastructure\Jobs\AI\EnhanceTenantProfileJob;
 use App\Models\Tenant;
 use App\Models\User;
 use Exception;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use PHPUnit\Framework\Attributes\Test;
@@ -26,7 +26,7 @@ use Tests\TestCase;
 
 final class AiEnrichmentTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {

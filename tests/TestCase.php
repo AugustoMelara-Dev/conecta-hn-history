@@ -5,7 +5,9 @@ namespace Tests;
 use App\Application\Shared\Contracts\CommandValidatorRegistryInterface;
 use App\Domain\Shared\Services\TenantContext;
 use App\Infrastructure\Shared\Middleware\CommandValidatorRegistry;
+use App\Settings\GeneralSettings;
 use Carbon\Carbon;
+use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
@@ -43,6 +45,16 @@ abstract class TestCase extends BaseTestCase
             CommandValidatorRegistryInterface::class,
             new CommandValidatorRegistry
         );
+
+        $this->resetSharedTenantState();
+        $this->primeSafeSystemSettings();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resetSharedTenantState();
+
+        parent::tearDown();
     }
 
     /**
@@ -66,5 +78,51 @@ abstract class TestCase extends BaseTestCase
         $context->setTenant($tenantId);
 
         return $this;
+    }
+
+    private function resetSharedTenantState(): void
+    {
+        $this->app->make(TenantContext::class)->reset();
+
+        if ($this->app->has('currentTenant')) {
+            $this->app->forgetInstance('currentTenant');
+        }
+
+        if ($this->app->has('current_tenant')) {
+            $this->app->forgetInstance('current_tenant');
+        }
+
+        if (class_exists(Filament::class)) {
+            try {
+                $filamentRoot = Filament::getFacadeRoot();
+
+                if ($filamentRoot !== null && str_starts_with(get_debug_type($filamentRoot), 'Mockery_')) {
+                    return;
+                }
+
+                Filament::setTenant(null, isQuiet: true);
+                Filament::setCurrentPanel(null);
+                Filament::setServingStatus(false);
+            } catch (\Throwable) {
+                // Some policy tests replace the Filament manager with strict mocks.
+                // Skipping the reset in that scenario keeps the global cleanup safe.
+            }
+        }
+    }
+
+    private function primeSafeSystemSettings(): void
+    {
+        if (! class_exists(GeneralSettings::class)) {
+            return;
+        }
+
+        try {
+            $settings = $this->app->make(GeneralSettings::class);
+            $settings->maintenance_mode = false;
+
+            $this->app->instance(GeneralSettings::class, $settings);
+        } catch (\Throwable) {
+            // Some lower-level tests may boot before the settings store is available.
+        }
     }
 }

@@ -13,13 +13,13 @@ use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 final class CustomerAutomationManagerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_manual_email_follow_up_is_sent_and_logged(): void
     {

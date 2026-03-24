@@ -10,14 +10,14 @@ use App\Models\Service;
 use App\Models\ServiceProvider;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class BookingPageRouteTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function it_renders_the_booking_wizard_with_a_preselected_service_when_requested_from_the_microsite(): void

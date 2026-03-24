@@ -7,11 +7,11 @@ use App\Mail\WaitlistSlotFreedMail;
 use App\Models\Service;
 use App\Models\Tenant;
 use App\Models\Waitlist;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
-uses(RefreshDatabase::class);
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
 test('listener dispatches mail and updates waitlist status to notified', function () {
     Mail::fake();

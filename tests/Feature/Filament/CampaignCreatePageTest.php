@@ -8,12 +8,12 @@ use App\Domain\Identity\Enums\UserRole;
 use App\Models\Campaign;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class CampaignCreatePageTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_campaign_model_accepts_tenant_assignment_and_pro_owner_can_open_create_page(): void
     {

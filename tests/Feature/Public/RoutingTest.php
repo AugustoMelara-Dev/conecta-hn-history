@@ -10,7 +10,7 @@ use App\Models\Service;
 use App\Models\ServiceProvider;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -18,7 +18,7 @@ use Tests\TestCase;
 
 final class RoutingTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function renders_landing_page_at_root(): void

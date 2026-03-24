@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Identity\Http;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class RegisterUserEndpointTest extends TestCase
 {
     // USO DE MIGRACIONES REALES PARA EVITAR DEADLOCKS TRANSACCIONALES
     // Esto destruye y recrea las tablas por cada test, eliminando conflictos de bloqueo.
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private string $endpoint = '/api/v1/register';
 

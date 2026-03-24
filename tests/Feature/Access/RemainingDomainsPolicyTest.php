@@ -11,13 +11,13 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Policies\AppointmentPolicy;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class RemainingDomainsPolicyTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function it_denies_appointment_management_if_the_guard_rejects_the_permission(): void

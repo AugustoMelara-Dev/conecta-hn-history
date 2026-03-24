@@ -4,10 +4,10 @@ use App\Application\Shared\DTOs\Mail\CampaignMailData;
 use App\Domain\Shared\Services\TenantContext;
 use App\Models\Campaign;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 
-uses(RefreshDatabase::class);
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
 test('campaign schema model and dto are aligned', function () {
     $tenantId = Str::uuid()->toString();

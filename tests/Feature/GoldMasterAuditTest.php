@@ -3,13 +3,13 @@
 namespace Tests\Feature;
 
 use App\Infrastructure\Jobs\Analytics\RecordInteraction;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class GoldMasterAuditTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_landing_page_renders_correctly(): void
     {

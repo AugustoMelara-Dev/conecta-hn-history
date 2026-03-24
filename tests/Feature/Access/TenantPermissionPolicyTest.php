@@ -12,9 +12,9 @@ use App\Policies\OrderPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\TenantMembershipPolicy;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 
-uses(RefreshDatabase::class);
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
 function attachMembership(User $user, Tenant $tenant, Role $role): void
 {

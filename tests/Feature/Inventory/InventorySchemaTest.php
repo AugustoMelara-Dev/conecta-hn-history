@@ -7,9 +7,9 @@ use App\Models\Location;
 use App\Models\Product;
 use App\Models\Tenant;
 use Illuminate\Database\QueryException;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 
-uses(RefreshDatabase::class);
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
 it('enforces unique location and product combinations', function () {
     $tenant = Tenant::factory()->create();

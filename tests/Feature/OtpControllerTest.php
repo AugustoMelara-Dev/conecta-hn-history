@@ -7,12 +7,12 @@ use App\Application\Auth\Commands\VerifyOtpCommand;
 use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
 use App\Application\Auth\Results\VerifyOtpResult;
 use DateTimeImmutable;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class OtpControllerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_otp_generation_requires_identifier(): void
     {

@@ -2,11 +2,11 @@
 
 use App\Settings\BaseSettings;
 use App\Settings\GeneralSettings;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
-uses(RefreshDatabase::class);
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
 test('native general settings abstraction loads from database', function () {
     DB::table('settings')->updateOrInsert(

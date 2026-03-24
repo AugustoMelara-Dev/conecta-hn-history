@@ -11,13 +11,13 @@ use App\Models\Product;
 use App\Models\Service;
 use App\Models\ServiceProvider;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class TenantMicrositeTransformerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function it_exposes_the_about_field_for_storytelling(): void

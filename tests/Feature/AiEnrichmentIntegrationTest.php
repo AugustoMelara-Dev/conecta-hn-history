@@ -11,7 +11,7 @@ use App\Infrastructure\Jobs\AI\EnhanceTenantProfileJob;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AiProfileGeneratorService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -24,7 +24,7 @@ use Tests\TestCase;
  */
 class AiEnrichmentIntegrationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private User $user;
 

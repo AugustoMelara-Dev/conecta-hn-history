@@ -7,14 +7,14 @@ namespace Tests\Feature\AI;
 use App\Exceptions\InsufficientAiCreditsException;
 use App\Infrastructure\AI\BudgetEnforcer;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use Tests\TestCase;
 
 final class BudgetEnforcerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private Tenant $tenant;
 
