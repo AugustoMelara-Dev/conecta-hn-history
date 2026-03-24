@@ -1,9 +1,10 @@
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# VITO BUSINESS OS - GITIGNORE COMPLETO
-# Actualizado para deployment seguro y Git Flow
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ----------------------------------------------------------------------
+# VITO BUSINESS OS - shared gitignore
+# Keep local secrets, build output, diagnostics, and runtime artifacts
+# out of version control.
+# ----------------------------------------------------------------------
 
-# â•â•â• CREDENCIALES Y SECRETOS (CRÃTICO) â•â•â•
+# Secrets and credentials
 .env
 .env.*
 .env.backup
@@ -16,11 +17,11 @@ auth.json
 *.p12
 .credentials/
 
-# â•â•â• DEPENDENCIAS â•â•â•
+# Dependencies
 /vendor
 /node_modules
 
-# â•â•â• BUILD Y COMPILADOS â•â•â•
+# Build output
 /public/build
 /public/hot
 /public/storage
@@ -29,7 +30,7 @@ auth.json
 *.compiled.*
 .vite/
 
-# â•â•â• CACHE Y LOGS â•â•â•
+# Cache and logs
 *.log
 *.cache
 .phpunit.result.cache
@@ -47,7 +48,7 @@ storage/framework/views/*
 bootstrap/cache/*.php
 /bootstrap/cache/filament/
 
-# â•â•â• IDEs Y EDITORES â•â•â•
+# Editors and IDEs
 .idea/
 .vscode/
 .fleet/
@@ -62,7 +63,7 @@ bootstrap/cache/*.php
 .settings/
 nbproject/
 
-# â•â•â• SISTEMA OPERATIVO â•â•â•
+# Operating system noise
 .DS_Store
 ._*
 Thumbs.db
@@ -71,46 +72,47 @@ Desktop.ini
 *.bak
 *~
 
-# â•â•â• TESTING â•â•â•
+# Testing
 /coverage
 .phpunit.result.cache
 phpunit.xml.bak
 .pest/
 .phpunit/
 
-# â•â•â• DEPLOYMENT â•â•â•
+# Deployment
 Homestead.json
 Homestead.yaml
 docker-compose.override.yml
 .vagrant/
 *.box
 
-# â•â•â• UPLOADS LOCALES (desarrollo) â•â•â•
+# Local uploads
 storage/app/public/*
 !storage/app/public/.gitkeep
 
-# â•â•â• ARCHIVOS TEMPORALES â•â•â•
+# Temporary files
 *.tmp
 *.temp
 *.swp
 .sass-cache/
 
-# â•â•â• DATABASE â•â•â•
+# Databases
 *.sqlite
 *.sqlite-journal
 database/database.sqlite
 
-# â•â•â• DOCUMENTOS DE AUDITORÃA LOCAL â•â•â•
+# Local audit output
 AUDIT_REPORT.md
 QA_CERTIFICATION.md
 error_log.txt
 
-# â•â•â• ARCHIVOS DE DESARROLLO â•â•â•
+# Development scratch files
 todo.md
 notes.md
 scratch.php
 test.php
-# GENERATED DEBUG / EVIDENCE ARTIFACTS
+
+# Generated debug and evidence artifacts
 /analysis_out.txt
 /evidence*.txt
 /*_result*.txt
@@ -130,11 +132,13 @@ test.php
 /latest_error*.txt
 /http_evidence.txt
 /spatie_result.txt
-# PHPSTAN / STATIC ANALYSIS SNAPSHOTS
+
+# PHPStan and static analysis snapshots
 /phpstan*.json
 /arch_*detailed.txt
 /fortify_actions_inspect.txt
-# ROOT-LEVEL LOCAL DIAGNOSTICS
+
+# Root-level local diagnostics
 /*.py
 /discovery.ps1
 /run_evidence.sh
@@ -144,11 +148,12 @@ test.php
 /pest_arch_result*.txt
 bootstrap/cache/*.tmp
 
-# Codex / local runtime artifacts
+# Codex and local runtime artifacts
 /.codex-admin-dashboard.html
 /.codex-admin-login.html
 /_tmp_admin_probe.php
 /route-list.json
 /.codex-appdata/runtime/
+/.codex-appdata/PsySH/
 /playwright-report/
 /test-results/

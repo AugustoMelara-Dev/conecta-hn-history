@@ -5,32 +5,29 @@ declare(strict_types=1);
 namespace App\Application\Auth\Commands;
 
 /**
- * VerifyOtpCommand - Immutable OTP Verification Credentials
+ * VerifyOtpCommand - Immutable OTP verification credentials.
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  TRANSPORT ONLY: No validation logic - Handler validates cryptography.  â•‘
- * â•‘  SECURITY METADATA: Carries IP for audit and brute-force detection.     â•‘
- * â•‘  TENANT AWARE: Mandatory tenantId to prevent cross-tenant verification. â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * Transport only. The handler validates cryptography, tenant boundaries, and
+ * brute-force protection.
  */
 final readonly class VerifyOtpCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
 {
     use \App\Application\Shared\Traits\HasSchemaVersion;
 
     public function __construct(
-        /** Mandatory Tenant Context (Axiom A) */
+        /** Mandatory tenant context. */
         public string $tenantId,
 
-        /** Email or phone number associated with OTP */
+        /** Email or phone number associated with the OTP. */
         #[\SensitiveParameter] public string $identifier,
 
-        /** 6-digit OTP code entered by user (plain text) */
+        /** Six-digit OTP code entered by the user. */
         #[\SensitiveParameter] public string $code,
 
-        /** Client IP for security audit and brute-force detection */
+        /** Client IP used for audit and brute-force detection. */
         #[\SensitiveParameter] public string $ipAddress,
 
-        /** Unique Receipt ID (UUID v7) for transactional idempotency */
+        /** Unique receipt ID for transactional idempotency. */
         public string $idempotencyKey,
         public int $schemaVersion = 1,
     ) {}

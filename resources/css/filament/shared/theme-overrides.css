@@ -12,7 +12,7 @@ body {
 
 html,
 body,
-:where(.fi-sidebar, .fi-main, .fi-main-ctn) {
+:where(.fi-main, .fi-main-ctn) {
     scrollbar-width: thin;
     -ms-overflow-style: auto;
     scrollbar-color: rgba(82, 82, 91, 0.68) transparent;
@@ -20,7 +20,6 @@ body,
 
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
-.fi-sidebar::-webkit-scrollbar,
 .fi-main::-webkit-scrollbar,
 .fi-main-ctn::-webkit-scrollbar {
     width: 0.55rem;
@@ -29,7 +28,6 @@ body::-webkit-scrollbar,
 
 html::-webkit-scrollbar-track,
 body::-webkit-scrollbar-track,
-.fi-sidebar::-webkit-scrollbar-track,
 .fi-main::-webkit-scrollbar-track,
 .fi-main-ctn::-webkit-scrollbar-track {
     background: transparent;
@@ -37,7 +35,6 @@ body::-webkit-scrollbar-track,
 
 html::-webkit-scrollbar-thumb,
 body::-webkit-scrollbar-thumb,
-.fi-sidebar::-webkit-scrollbar-thumb,
 .fi-main::-webkit-scrollbar-thumb,
 .fi-main-ctn::-webkit-scrollbar-thumb {
     border: 2px solid transparent;
@@ -48,7 +45,6 @@ body::-webkit-scrollbar-thumb,
 
 html::-webkit-scrollbar-thumb:hover,
 body::-webkit-scrollbar-thumb:hover,
-.fi-sidebar::-webkit-scrollbar-thumb:hover,
 .fi-main::-webkit-scrollbar-thumb:hover,
 .fi-main-ctn::-webkit-scrollbar-thumb:hover {
     background: rgba(113, 113, 122, 0.58);
@@ -100,35 +96,7 @@ body::-webkit-scrollbar-thumb:hover,
     min-width: var(--sidebar-width);
 }
 
-.fi-sidebar-header {
-    min-height: 4.5rem;
-}
-
-:where(.fi-sidebar-item-btn, .fi-sidebar-group-btn) {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 0.75rem;
-    width: 100%;
-    min-height: 2.9rem;
-    border-radius: var(--biz-radius-control);
-    padding: 0.8rem 0.95rem;
-    text-align: left;
-    transition: background-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-:where(.fi-sidebar-item-btn, .fi-sidebar-group-btn):hover {
-    background: var(--biz-nav-hover-bg);
-}
-
-.fi-sidebar-item.fi-active .fi-sidebar-item-btn,
-.fi-sidebar-group.fi-active > .fi-sidebar-group-btn {
-    background: var(--biz-nav-active-bg);
-    color: var(--biz-text-strong);
-    box-shadow: inset 0 0 0 1px var(--biz-nav-active-ring);
-}
-
-:where(.fi-topbar nav input, .fi-ta-table, .fi-section, .fi-dropdown-panel, .fi-modal-window) {
+:where(.fi-ta-table, .fi-section, .fi-dropdown-panel, .fi-modal-window) {
     border-radius: var(--biz-radius-control);
 }
 
@@ -138,7 +106,7 @@ body::-webkit-scrollbar-thumb:hover,
 }
 
 /*
- * Forward-compatibility note:
- * dejamos que Filament controle logo, alineación de labels, iconos, avatares,
- * empty states y file uploads para reducir acoplamiento con clases internas.
+ * Forward compatibility:
+ * let Filament control detailed navigation states, labels, icons, avatars,
+ * empty states, and uploads so the shared shell stays lighter over upgrades.
  */

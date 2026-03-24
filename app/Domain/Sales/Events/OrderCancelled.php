@@ -10,41 +10,17 @@ use App\Domain\Shared\ValueObjects\TenantId;
 use App\ValueObjects\OrderNumber;
 
 /**
- * OrderCancelled - Pure Domain Event for Order Voiding
+ * OrderCancelled - Pure domain event for order cancellation.
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  PURE DOMAIN EVENT: Business Fact Only                                  â•‘
- * â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•£
- * â•‘                                                                          â•‘
- * â•‘  INVARIANTS GUARANTEED:                                                 â•‘
- * â•‘    - The order was in a cancellable state (not delivered)              â•‘
- * â•‘    - Inventory restoration is triggered                                 â•‘
- * â•‘    - Refund is initiated if payment was received                       â•‘
- * â•‘    - This event is only dispatched AFTER the transaction commits       â•‘
- * â•‘                                                                          â•‘
- * â•‘  PURITY RULES:                                                          â•‘
- * â•‘    - âŒ NO Eloquent models                                              â•‘
- * â•‘    - âŒ NO ShouldBroadcast (moved to OrderCancelledBroadcast)          â•‘
- * â•‘    - âŒ NO Dispatchable trait (use DomainEventBus)                     â•‘
- * â•‘    - âœ… Only primitives and Value Objects                               â•‘
- * â•‘    - âœ… toPrimitives() for safe queue serialization                     â•‘
- * â•‘    - âœ… eventId() for idempotency                                       â•‘
- * â•‘                                                                          â•‘
- * â•‘  CANCELLATION SOURCES:                                                  â•‘
- * â•‘    - Customer request                                                   â•‘
- * â•‘    - Merchant decision (out of stock)                                  â•‘
- * â•‘    - System (payment timeout via ReleaseStaleOrders job)               â•‘
- * â•‘    - Fraud detection                                                    â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * This event snapshots the state needed to restore inventory, trigger refunds,
+ * update analytics, and notify the UI safely after cancellation.
  *
- * LISTENERS:
- *   - SendCancellationEmailListener
- *   - RestoreInventoryListener
- *   - InitiateRefundListener
- *   - UpdateAnalyticsListener
- *   - â†’ OrderCancelledBroadcastListener (fires UI event)
- *
- * DISPATCH POINT: OrderStateService::onCancelled() via DomainEventBus
+ * Listeners:
+ * - SendCancellationEmailListener
+ * - RestoreInventoryListener
+ * - InitiateRefundListener
+ * - UpdateAnalyticsListener
+ * - OrderCancelledBroadcastListener
  */
 final readonly class OrderCancelled implements DomainEvent
 {
@@ -62,8 +38,8 @@ final readonly class OrderCancelled implements DomainEvent
      * @param  int  $orderId  The order aggregate root ID
      * @param  OrderNumber  $orderNumber  Human-readable order reference
      * @param  string  $reason  Machine or human-readable cancellation reason
-     * @param  int|null  $cancelledById  User ID who initiated cancellation (null for system)
-     * @param  bool  $wasPaid  Whether the order was paid (affects refund logic)
+     * @param  int|null  $cancelledById  User ID who initiated cancellation
+     * @param  bool  $wasPaid  Whether the order was paid
      */
     public function __construct(
         private TenantId $tenantId,
@@ -72,7 +48,6 @@ final readonly class OrderCancelled implements DomainEvent
         public string $reason,
         public ?int $cancelledById,
         public bool $wasPaid,
-        // Restoration parameters for fromPrimitives()
         ?string $restoredEventId = null,
         ?string $restoredOccurredAt = null,
         ?string $restoredCorrelationId = null,
@@ -88,7 +63,7 @@ final readonly class OrderCancelled implements DomainEvent
     }
 
     /**
-     * Factory: Create from order data (snapshotted at creation time).
+     * Factory: create from order data captured at cancellation time.
      */
     public static function create(
         string $tenantId,
@@ -124,9 +99,7 @@ final readonly class OrderCancelled implements DomainEvent
         return $this->wasPaid;
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // DomainEvent Interface Implementation
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // DomainEvent interface
 
     public function tenantId(): TenantId
     {
@@ -138,9 +111,7 @@ final readonly class OrderCancelled implements DomainEvent
         return (string) $this->orderId;
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // Safe Serialization (Queue-Safe, Refactor-Proof)
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Safe serialization
 
     public function toPrimitives(): array
     {
@@ -159,14 +130,7 @@ final readonly class OrderCancelled implements DomainEvent
 
     public static function fromPrimitives(array $primitives): self
     {
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-        // FAIL-FAST VALIDATION: Critical Fields Must Exist
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-        // RATIONALE: The 'was_paid' field determines whether a refund should
-        // be initiated. Defaulting to 'false' when missing causes paid orders
-        // to NOT receive refunds - a critical business logic failure.
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
+        // Fail fast on missing values because refund behavior depends on them.
         $requiredKeys = [
             'tenant_id',
             'order_id',
@@ -183,7 +147,6 @@ final readonly class OrderCancelled implements DomainEvent
             }
         }
 
-        // was_paid is CRITICAL for refund logic - must be explicitly set
         if (! array_key_exists('was_paid', $primitives)) {
             throw \App\Exceptions\CorruptedDomainEventException::missingKey('was_paid', self::class);
         }
@@ -193,7 +156,7 @@ final readonly class OrderCancelled implements DomainEvent
             orderId: $primitives['order_id'],
             orderNumber: OrderNumber::fromString($primitives['order_number']),
             reason: $primitives['reason'],
-            cancelledById: $primitives['cancelled_by_id'] ?? null, // nullable by design
+            cancelledById: $primitives['cancelled_by_id'] ?? null,
             wasPaid: (bool) $primitives['was_paid'],
             restoredEventId: $primitives['event_id'] ?? null,
             restoredOccurredAt: $primitives['occurred_at'] ?? null,

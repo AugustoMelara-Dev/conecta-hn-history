@@ -11,13 +11,11 @@ use Illuminate\Redis\Connections\Connection;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * RedisIdempotencyService - Distributed Idempotency with Redis Backend
+ * RedisIdempotencyService - Distributed idempotency with Redis.
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  CRITICAL: This service is the last defense against duplicate payments. â•‘
- * â•‘  INTERFACE COMPLIANCE: Strictly implements IdempotencyServiceInterface. â•‘
- * â•‘  PROTOCOL: Uses {status, data} envelope for state management.           â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * This service is part of the last line of defense against duplicate
+ * processing. It stores an envelope with {status, data} so requests can move
+ * safely between PROCESSING and COMPLETED states.
  */
 final class RedisIdempotencyService implements IdempotencyServiceInterface
 {
@@ -40,7 +38,6 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
 
         $data = unserialize($value);
 
-        // Unwrap envelope if present
         if (is_array($data) && isset($data['status'])) {
             return $data['data'] ?? null;
         }
@@ -65,7 +62,8 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
             return $data['status'];
         }
 
-        // Legacy compatibility: If value exists but no status, assume COMPLETED
+        // Legacy compatibility: if the value exists but no status is stored,
+        // treat it as a completed request.
         return 'COMPLETED';
     }
 
@@ -80,16 +78,12 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
             'timestamp' => time(),
         ]);
 
-        // SETNX: Set if Not Exists
-        // Returns 1 if set, 0 if not set (already exists)
         $acquired = $this->redis->setnx($this->formatKey($key), $payload);
 
         if (! $acquired) {
-            // Key exists. It might be PROCESSING or COMPLETED.
             throw ConcurrentRequestException::forKey($key);
         }
 
-        // Set expiry for the processing lock
         $this->redis->expire($this->formatKey($key), $ttlSeconds);
     }
 

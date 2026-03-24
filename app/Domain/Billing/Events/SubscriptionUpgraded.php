@@ -11,15 +11,10 @@ use DateTimeImmutable;
 use DateTimeInterface;
 
 /**
- * SubscriptionUpgraded - Domain Event for Plan Upgrade
+ * SubscriptionUpgraded - Domain event for plan upgrades.
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  TYPE SAFE: Uses string IDs (UUID/ULID compatible).                      â•‘
- * â•‘  TRANSACTIONAL: Implements ShouldDispatchAfterCommit for Outbox safety.  â•‘
- * â•‘  TEMPORAL ACCURACY: occurredAt is immutable, set at creation time.       â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
- * Implements DomainEvent (canonical) via Bridge (W-01).
- * Uses HasEventIdentity (W-03).
+ * Uses string identifiers and immutable timestamps, and dispatches only after
+ * the surrounding transaction commits.
  */
 final readonly class SubscriptionUpgraded implements DomainEvent, ShouldDispatchAfterCommit
 {
@@ -63,7 +58,7 @@ final readonly class SubscriptionUpgraded implements DomainEvent, ShouldDispatch
         );
     }
 
-    // â”€â”€â”€ DomainEvent interface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // DomainEvent interface
 
     public function tenantId(): mixed
     {
@@ -90,7 +85,7 @@ final readonly class SubscriptionUpgraded implements DomainEvent, ShouldDispatch
         return self::fromPayload($primitives);
     }
 
-    // â”€â”€â”€ Serialization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Serialization
 
     public static function fromPayload(array $payload): static
     {

@@ -15,15 +15,10 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * ProcessOutboxCommand - Level 66: The Obsidian Monolith
+ * ProcessOutboxCommand - Long-running outbox relay.
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  IMMORTAL: Global Exception Sentinel (No Exit Policy)                    â•‘
- * â•‘  AMNESTIC: Total state wipe on infra failure (No Split-Brain)            â•‘
- * â•‘  OBSERVABLE: Hibernate with Heartbeats & Signal Awareness                â•‘
- * â•‘  ENTROPY: Jittered Exponential Backoff (No Thundering Herd)              â•‘
- * â•‘  DISCRIMINATION: Smart Death on Code Errors vs Infra Sleep               â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * Handles shard acquisition, retries with backoff, heartbeats, and graceful
+ * shutdown for the event relay worker.
  */
 final class ProcessOutboxCommand extends Command
 {
