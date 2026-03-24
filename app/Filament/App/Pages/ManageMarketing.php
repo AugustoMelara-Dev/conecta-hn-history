@@ -67,7 +67,12 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
     public function getTitle(): string
     {
-        return 'Herramientas de venta';
+        return 'Marketing y difusión';
+    }
+
+    public function getSubheading(): ?string
+    {
+        return 'Configura WhatsApp, comparte tu QR y ordena el catálogo público desde un solo flujo.';
     }
 
     public static function getNavigationSort(): ?int
@@ -112,7 +117,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
                             ->placeholder('+504 9999-9999')
                             ->prefix('+504')
                             ->prefixIcon('heroicon-o-device-phone-mobile')
-                            ->helperText('Escribe solo los 8 dígitos de tu número. Ejemplo: 9876-5432')
+                            ->helperText('Escribe solo los 8 dígitos de tu número. Ejemplo: 9876-5432.')
                             ->mask('9999-9999')
                             ->live(onBlur: true)
                             ->required(),
@@ -158,14 +163,14 @@ class ManageMarketing extends Page implements HasForms, HasTable
                         ? 'heroicon-o-check-circle'
                         : 'heroicon-o-exclamation-triangle')
                     ->tooltip(fn (int $state): string => $state > 0
-                        ? "Esta sección tiene {$state} producto(s)"
-                        : 'Sección vacía: agrega productos'),
+                        ? "Esta sección tiene {$state} producto(s)."
+                        : 'Sección vacía: agrega productos para mostrarla en tu vitrina.'),
 
                 Tables\Columns\ToggleColumn::make('is_active')
                     ->label('Activa')
                     ->onColor('success')
                     ->offColor('danger')
-                    ->tooltip('Activar o desactivar visibilidad en el menú público'),
+                    ->tooltip('Activa o desactiva la visibilidad en el menú público.'),
 
                 Tables\Columns\TextColumn::make('sort_order')
                     ->label('Orden')
@@ -179,12 +184,12 @@ class ManageMarketing extends Page implements HasForms, HasTable
                 CreateAction::make()
                     ->label('Nueva sección')
                     ->icon('heroicon-o-plus')
-                    ->modalHeading('Crear sección de menú')
-                    ->modalDescription('Las secciones ayudan a organizar tus productos. Ejemplo: "Entradas", "Platos Fuertes" o "Bebidas".')
+                    ->modalHeading('Crear sección del catálogo')
+                    ->modalDescription('Las secciones ayudan a organizar tu oferta. Por ejemplo: "Entradas", "Servicios" o "Promociones".')
                     ->form([
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre de la sección')
-                            ->placeholder('Ej: Platos Fuertes')
+                            ->placeholder('Ej: Promociones')
                             ->required()
                             ->maxLength(50)
                             ->minLength(2)
@@ -192,7 +197,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
                         Forms\Components\Toggle::make('is_active')
                             ->label('Activa')
                             ->default(true)
-                            ->helperText('Las secciones inactivas no se muestran en el menú público.'),
+                            ->helperText('Las secciones inactivas no se muestran en el catálogo público.'),
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
                         $tenant = $this->getTenantRecord();
@@ -228,18 +233,18 @@ class ManageMarketing extends Page implements HasForms, HasTable
                                 . "Si la eliminas:\n"
                                 . "- Los productos **no se borrarán** de la base de datos.\n"
                                 . "- Quedarán en **Sin categoría**.\n"
-                                . "- **Dejarán de ser visibles** en tu menú público hasta que los reasignes.\n\n"
-                                . '¿Estás seguro de continuar?';
+                                . "- **Dejarán de ser visibles** en el catálogo público hasta que los reasignes.\n\n"
+                                . '¿Seguro que quieres continuar?';
                         }
 
-                        return "Esta sección está vacía (0 productos). ¿Estás seguro de eliminarla?\n\nEsta acción no se puede deshacer.";
+                        return "Esta sección está vacía (0 productos). ¿Seguro que quieres eliminarla?\n\nEsta acción no se puede deshacer.";
                     })
                     ->modalSubmitActionLabel('Sí, eliminar sección')
                     ->successNotificationTitle('Sección eliminada'),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Aún no has creado secciones del menú',
-                'description' => 'Usa el botón "Nueva sección" para ordenar tu catálogo público en bloques como Bebidas, Entradas o Promociones.',
+                'heading' => 'Aún no has creado secciones del catálogo',
+                'description' => 'Usa "Nueva sección" para ordenar tu oferta en bloques como bebidas, servicios o promociones.',
             ]));
     }
 
@@ -281,7 +286,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
             Notification::make()
                 ->danger()
                 ->title('Acción no autorizada')
-                ->body('Debes tener un plan PRO para usar esta funcionalidad.')
+                ->body('Debes activar PRO para usar esta funcionalidad.')
                 ->send();
 
             return;
@@ -311,7 +316,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
         Notification::make()
             ->success()
             ->title('Configuración guardada')
-            ->body('Tu mensaje de WhatsApp ha sido actualizado.')
+            ->body('Tu mensaje de WhatsApp fue actualizado correctamente.')
             ->send();
     }
 
@@ -321,7 +326,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
             Notification::make()
                 ->danger()
                 ->title('Acción no autorizada')
-                ->body('Debes tener un plan PRO para descargar carteles.')
+                ->body('Debes activar PRO para descargar carteles.')
                 ->send();
 
             return;
@@ -332,8 +337,8 @@ class ManageMarketing extends Page implements HasForms, HasTable
         if (! $tenant instanceof Tenant) {
             Notification::make()
                 ->danger()
-                ->title('Error')
-                ->body('No se pudo generar el cartel.')
+                ->title('No se pudo generar el cartel')
+                ->body('Vuelve a intentarlo en unos segundos.')
                 ->send();
 
             return;
@@ -380,6 +385,12 @@ class ManageMarketing extends Page implements HasForms, HasTable
         }
 
         return [
+            Action::make('save_whatsapp')
+                ->label('Guardar WhatsApp')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->keyBindings(['mod+s'])
+                ->action('saveWhatsAppConfig'),
             Action::make('public_page')
                 ->label('Ver página pública')
                 ->icon('heroicon-o-arrow-top-right-on-square')

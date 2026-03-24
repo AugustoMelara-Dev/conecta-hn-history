@@ -1,8 +1,5 @@
-body {
-    --filament-panel-scope: admin;
-}
-
 .fi-panel-admin {
+    --filament-panel-scope: admin;
     --biz-panel-bg: var(--biz-surface-950);
     --biz-topbar-bg: var(--biz-surface-875);
     --biz-sidebar-bg: var(--biz-surface-900);

@@ -44,6 +44,11 @@ class ManageGeneralSettings extends Page implements HasForms
         return 'Configuración';
     }
 
+    public function getSubheading(): ?string
+    {
+        return 'Administra precios, soporte y disponibilidad global desde el flujo nativo del superpanel.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
@@ -105,7 +110,7 @@ class ManageGeneralSettings extends Page implements HasForms
                                             ->helperText('Días antes de suspender el servicio por falta de pago.'),
                                     ])->columns(2),
                                 Section::make('Límites de productos')
-                                    ->description('Define el límite de catálogo disponible por plan.')
+                                    ->description('Define la capacidad de catálogo disponible por plan.')
                                     ->schema([
                                         TextInput::make('free_plan_product_limit')
                                             ->label('Límite plan gratuito')
@@ -147,19 +152,19 @@ class ManageGeneralSettings extends Page implements HasForms
                                             ->prefix('+504')
                                             ->placeholder('99999999')
                                             ->required()
-                                            ->helperText('Número completo con código de país.'),
+                                            ->helperText('Número de soporte al que llegan consultas de cobros y activación.'),
                                         TextInput::make('support_email')
-                                            ->label('Email de soporte')
+                                            ->label('Correo de soporte')
                                             ->email()
                                             ->required()
-                                            ->helperText('Correo para consultas de clientes.'),
+                                            ->helperText('Correo principal para consultas de clientes y negocios.'),
                                     ])->columns(2),
                             ]),
                         Tab::make('Sistema')
                             ->icon('heroicon-o-power')
                             ->schema([
                                 Section::make('Control de disponibilidad')
-                                    ->description('Interruptores generales del sistema.')
+                                    ->description('Interruptores globales del sistema.')
                                     ->schema([
                                         Toggle::make('maintenance_mode')
                                             ->label('Modo mantenimiento')
@@ -199,7 +204,7 @@ class ManageGeneralSettings extends Page implements HasForms
         Notification::make()
             ->success()
             ->title('Configuración guardada')
-            ->body('Los cambios se aplicaron en todo el sistema.')
+            ->body('Los cambios se aplicaron en toda la plataforma.')
             ->send();
     }
 

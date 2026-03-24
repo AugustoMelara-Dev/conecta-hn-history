@@ -72,7 +72,7 @@
         </div>
     @else
         <div class="biz-grid-two">
-            <div class="biz-card">
+            <div class="biz-card" wire:loading.class="opacity-80" wire:target="submitPayment">
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">Activación</p>
@@ -82,19 +82,14 @@
                         </p>
                     </div>
 
-                    <form wire:submit="submitPayment" class="biz-stack">
-                        {{ $this->form }}
+                    {{ $this->form }}
 
-                        <button
-                            type="submit"
-                            class="biz-button"
-                            wire:loading.attr="disabled"
-                            wire:target="submitPayment"
-                        >
-                            <span wire:loading.remove wire:target="submitPayment">Enviar pago a revisión</span>
-                            <span wire:loading wire:target="submitPayment">Enviando comprobante...</span>
-                        </button>
-                    </form>
+                    <div class="biz-empty-state" style="padding: 1rem; text-align: left;">
+                        <p class="biz-action-copy">
+                            Envía el comprobante desde el encabezado con <strong>Enviar pago a revisión</strong> para seguir el mismo flujo nativo del panel.
+                        </p>
+                        <p class="biz-note" wire:loading wire:target="submitPayment">Enviando comprobante...</p>
+                    </div>
                 </div>
             </div>
 

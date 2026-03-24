@@ -38,7 +38,7 @@
             </div>
         </div>
 
-        <div class="biz-card">
+        <div class="biz-card" wire:loading.class="opacity-80" wire:target="save">
             <div class="biz-stack">
                 <div>
                     <p class="biz-kicker">Formulario</p>
@@ -48,21 +48,14 @@
                     </p>
                 </div>
 
-                <form
-                    wire:submit="save"
-                    wire:loading.class="opacity-80"
-                    wire:target="save"
-                    class="biz-stack"
-                >
-                    {{ $this->form }}
+                {{ $this->form }}
 
-                    <div class="biz-empty-state" style="padding: 1rem; text-align: left;">
-                        <p class="biz-action-copy">
-                            Guarda los cambios con el botón <strong>Guardar configuración</strong> del encabezado para seguir el mismo flujo nativo de Filament en todo el superpanel.
-                        </p>
-                        <p class="biz-note" wire:loading wire:target="save">Guardando ajustes globales...</p>
-                    </div>
-                </form>
+                <div class="biz-empty-state" style="padding: 1rem; text-align: left;">
+                    <p class="biz-action-copy">
+                        Guarda los cambios con el botón <strong>Guardar configuración</strong> del encabezado para mantener un flujo consistente en todo el superpanel.
+                    </p>
+                    <p class="biz-note" wire:loading wire:target="save">Guardando ajustes globales...</p>
+                </div>
             </div>
         </div>
     </div>

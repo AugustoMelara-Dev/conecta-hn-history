@@ -14,7 +14,7 @@
                             <p class="biz-kicker">Herramientas de venta</p>
                             <h1 class="biz-title">Impulsa tu negocio con QR y WhatsApp</h1>
                             <p class="biz-copy">
-                                Activa materiales para compartir tu página, mensajes listos para clientes y una organización más clara del menú.
+                                Activa materiales para compartir tu página, mensajes listos para clientes y una organización más clara del catálogo.
                             </p>
                         </div>
 
@@ -30,8 +30,8 @@
                             </div>
 
                             <div class="biz-stat">
-                                <p class="biz-action-title">Secciones del menú</p>
-                                <p class="biz-action-copy">Ordena tu catálogo para que el cliente entienda mejor lo que ofreces.</p>
+                                <p class="biz-action-title">Secciones del catálogo</p>
+                                <p class="biz-action-copy">Ordena tu oferta para que el cliente entienda mejor lo que vendes.</p>
                             </div>
                         </div>
                     </div>
@@ -67,8 +67,8 @@
                             <div class="biz-checklist-item">
                                 <div class="biz-checklist-index is-complete">3</div>
                                 <div>
-                                    <p class="biz-checklist-title">Secciones del menú</p>
-                                    <p class="biz-checklist-copy">Presenta tu catálogo por bloques claros y fáciles de explorar.</p>
+                                    <p class="biz-checklist-title">Secciones del catálogo</p>
+                                    <p class="biz-checklist-copy">Presenta tu oferta por bloques claros y fáciles de explorar.</p>
                                 </div>
                             </div>
                         </div>
@@ -83,7 +83,7 @@
     @else
         <div class="biz-shell">
             <div class="biz-grid-two">
-                <div class="biz-card">
+                <div class="biz-card" wire:loading.class="opacity-80" wire:target="saveWhatsAppConfig">
                     <div class="biz-stack">
                         <div>
                             <p class="biz-kicker">WhatsApp</p>
@@ -93,26 +93,19 @@
                             </p>
                         </div>
 
-                        <form wire:submit="saveWhatsAppConfig" class="biz-stack">
-                            {{ $this->form }}
+                        {{ $this->form }}
 
-                            <div class="biz-button-row">
-                                <button
-                                    type="submit"
-                                    class="biz-button"
-                                    wire:loading.attr="disabled"
-                                    wire:target="saveWhatsAppConfig"
-                                >
-                                    <span wire:loading.remove wire:target="saveWhatsAppConfig">Guardar configuración</span>
-                                    <span wire:loading wire:target="saveWhatsAppConfig">Guardando...</span>
-                                </button>
-                            </div>
+                        <div class="biz-empty-state" style="padding: 1rem; text-align: left;">
+                            <p class="biz-action-copy">
+                                Guarda estos cambios desde el encabezado con <strong>Guardar WhatsApp</strong> para mantener el flujo nativo del panel.
+                            </p>
+                            <p class="biz-note" wire:loading wire:target="saveWhatsAppConfig">Guardando configuración...</p>
+                        </div>
 
-                            <div class="biz-preview">
-                                <p class="biz-action-title">Vista previa</p>
-                                <div class="biz-preview-bubble">{{ $messagePreview }}</div>
-                            </div>
-                        </form>
+                        <div class="biz-preview">
+                            <p class="biz-action-title">Vista previa</p>
+                            <div class="biz-preview-bubble">{{ $messagePreview }}</div>
+                        </div>
                     </div>
                 </div>
 
@@ -155,9 +148,6 @@
                                     <span wire:loading.remove wire:target="downloadPoster">Descargar cartel PDF</span>
                                     <span wire:loading wire:target="downloadPoster">Generando PDF...</span>
                                 </button>
-                                <a href="{{ $businessUrl }}" target="_blank" class="biz-button-secondary">
-                                    Ver página pública
-                                </a>
                             </div>
                         </div>
                     </div>
@@ -167,10 +157,10 @@
             <div class="biz-card">
                 <div class="biz-stack">
                     <div>
-                        <p class="biz-kicker">Menú</p>
-                        <h2 class="biz-heading">Secciones del catálogo</h2>
+                        <p class="biz-kicker">Catálogo</p>
+                        <h2 class="biz-heading">Secciones de tu vitrina</h2>
                         <p class="biz-muted">
-                            Crea y ordena las secciones que usa tu menú público.
+                            Crea y ordena las secciones que usa tu catálogo público.
                         </p>
                     </div>
 

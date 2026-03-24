@@ -24,7 +24,9 @@ final class EloquentAnalyticsReader implements AnalyticsReader
         $carbonStart = Carbon::instance($startDate);
         $carbonEnd = Carbon::instance($endDate);
 
-        return TenantAnalytic::where('tenant_id', $tenantId)
+        return TenantAnalytic::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
             ->whereBetween('date', [$carbonStart, $carbonEnd])
             ->orderBy('date', 'asc')
             ->get()
@@ -34,8 +36,8 @@ final class EloquentAnalyticsReader implements AnalyticsReader
 
                 return [
                     'date' => $date->format('Y-m-d'),
-                    'visits' => (int) ($record->getAttribute('unique_visits') ?? 0),
-                    'total' => (int) ($record->getAttribute('total_visits') ?? 0),
+                    'visits' => (int) $record->getAttribute('unique_visits'),
+                    'total' => (int) $record->getAttribute('total_visits'),
                 ];
             })
             ->all();

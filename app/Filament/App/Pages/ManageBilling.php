@@ -91,6 +91,11 @@ class ManageBilling extends Page implements HasForms, HasTable
         return 'Suscripción y pagos';
     }
 
+    public function getSubheading(): ?string
+    {
+        return 'Revisa la vigencia del plan, reporta transferencias y descarga recibos desde un flujo más claro.';
+    }
+
     public static function getNavigationSort(): ?int
     {
         return 4;
@@ -335,6 +340,15 @@ class ManageBilling extends Page implements HasForms, HasTable
     {
         $actions = [];
         $supportUrl = $this->getSupportWhatsAppUrl();
+
+        if ($this->isFree && ! $this->isPending) {
+            $actions[] = Action::make('submit_payment')
+                ->label('Enviar pago a revisión')
+                ->icon('heroicon-o-paper-airplane')
+                ->color('success')
+                ->keyBindings(['mod+s'])
+                ->action('submitPayment');
+        }
 
         if ($this->isPro && $this->daysRemaining <= 7) {
             $actions[] = Action::make('renew')

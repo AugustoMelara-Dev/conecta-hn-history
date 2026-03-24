@@ -33,7 +33,11 @@ final class SyncTenantAnalytics implements ShouldQueue
     {
         TenantAnalytic::updateOrCreate(
             ['tenant_id' => $this->tenantId, 'date' => $this->date],
-            ['synced_at' => now()]
+            [
+                'views' => 0,
+                'whatsapp_clicks' => 0,
+                'unique_visitors' => 0,
+            ]
         );
     }
 

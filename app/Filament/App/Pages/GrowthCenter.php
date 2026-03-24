@@ -28,7 +28,6 @@ use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 class GrowthCenter extends Page
 {
@@ -302,16 +301,13 @@ class GrowthCenter extends Page
         }
 
         try {
-            $viewsColumn = DatabaseSchema::hasColumn('tenant_analytics', 'views') ? 'views' : 'total_visits';
-            $uniqueVisitorsColumn = DatabaseSchema::hasColumn('tenant_analytics', 'unique_visitors') ? 'unique_visitors' : 'unique_visits';
-
             $analyticsBase = TenantAnalytic::query()
                 ->withoutGlobalScopes()
                 ->where('tenant_id', $tenantId)
                 ->where('date', '>=', $thirtyDaysAgo->toDateString());
 
-            $this->visits30d = (int) ((clone $analyticsBase)->sum($uniqueVisitorsColumn) ?: 0);
-            $this->totalVisits30d = (int) ((clone $analyticsBase)->sum($viewsColumn) ?: 0);
+            $this->visits30d = (int) ((clone $analyticsBase)->sum(TenantAnalytic::uniqueVisitsColumn()) ?: 0);
+            $this->totalVisits30d = (int) ((clone $analyticsBase)->sum(TenantAnalytic::totalVisitsColumn()) ?: 0);
         } catch (\Throwable) {
             // Analytics sync may still be disabled.
         }

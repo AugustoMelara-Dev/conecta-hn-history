@@ -51,39 +51,21 @@ body::-webkit-scrollbar-thumb:hover,
     background-clip: padding-box;
 }
 
-:where(.fi-body, .fi-layout, .fi-main, .fi-main-ctn) {
+:where(.fi-body, .fi-layout) {
     min-height: 100vh;
     background: var(--biz-panel-bg);
 }
 
-:where(.fi-page, .fi-main, .fi-page-content, .fi-fo-field-label-col, .fi-fo-field-content-col) {
-    min-width: 0;
+:where(.fi-main, .fi-main-ctn) {
+    min-height: 100vh;
+    background: transparent;
 }
 
-.fi-main {
-    padding-bottom: 2rem;
-}
-
-.fi-page {
-    width: 100%;
-}
-
-.fi-page-header {
-    margin-bottom: 1.5rem;
-}
-
-.fi-page-content {
-    display: grid;
-    gap: 1.5rem;
-    align-content: start;
-}
-
-.fi-page-content > * {
+:where(.fi-page, .fi-section, .fi-modal-window, .fi-dropdown-panel, .fi-ta-table, .fi-fo-field-label-col, .fi-fo-field-content-col) {
     min-width: 0;
 }
 
 .fi-topbar {
-    min-height: 4.5rem;
     border-bottom: 1px solid var(--biz-topbar-border);
     background: var(--biz-topbar-bg);
     backdrop-filter: blur(18px);
@@ -92,8 +74,6 @@ body::-webkit-scrollbar-thumb:hover,
 :where(.fi-sidebar, .fi-main-sidebar) {
     border-right: 1px solid var(--biz-sidebar-border);
     background: var(--biz-sidebar-bg);
-    width: var(--sidebar-width);
-    min-width: var(--sidebar-width);
 }
 
 :where(.fi-ta-table, .fi-section, .fi-dropdown-panel, .fi-modal-window) {
@@ -106,7 +86,7 @@ body::-webkit-scrollbar-thumb:hover,
 }
 
 /*
- * Forward compatibility:
- * let Filament control detailed navigation states, labels, icons, avatars,
- * empty states, and uploads so the shared shell stays lighter over upgrades.
+ * Keep the shared shell intentionally light:
+ * Filament controls page spacing, navigation states, and detailed layout.
+ * We only own surface tone, shell chrome, and generic media behavior.
  */
