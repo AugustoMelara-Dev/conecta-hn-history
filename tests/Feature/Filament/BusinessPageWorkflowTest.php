@@ -382,6 +382,7 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertSee('Retries pendientes')
             ->assertSee('Plantilla que mas convierte')
             ->assertSee('Analitica por secuencia')
+            ->assertSee('Attribution multi-touch')
             ->assertSee('Canal que mas cierra')
             ->assertSee('Segmento que reactiva')
             ->assertSee('Entrega de email')

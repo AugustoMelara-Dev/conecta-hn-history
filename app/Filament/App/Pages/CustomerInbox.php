@@ -529,6 +529,10 @@ class CustomerInbox extends Page
                         ? str((string) $recommendedTemplateKey)->replace('_', ' ')->replace('-', ' ')->title()->value()
                         : 'Sin recomendacion',
                     'journeyStep' => data_get($journeyRun?->metadata, 'current_step.title'),
+                    'journeyBranchLabel' => (string) data_get($journeyRun?->metadata, 'current_branch_label', 'Ruta base'),
+                    'journeySequenceLabel' => (string) data_get($journeyRun?->metadata, 'current_sequence_label', 'Secuencia principal'),
+                    'nextSequenceLabel' => (string) data_get($journeyRun?->metadata, 'next_sequence_label', 'Sin siguiente secuencia'),
+                    'nextTriggerLabel' => $journeyRun?->step_due_at?->diffForHumans(),
                     'profileUrl' => $profile !== null
                         ? CustomerProfileResource::getUrl('edit', [
                             'record' => $profile,
@@ -647,9 +651,14 @@ class CustomerInbox extends Page
                 'currentStep' => data_get($journeyRun->metadata, 'current_step.title'),
                 'currentStepCopy' => data_get($journeyRun->metadata, 'current_step.copy'),
                 'currentLane' => data_get($journeyRun->metadata, 'lane'),
+                'currentBranchLabel' => data_get($journeyRun->metadata, 'current_branch_label', 'Ruta base'),
+                'currentSequenceLabel' => data_get($journeyRun->metadata, 'current_sequence_label', 'Secuencia principal'),
                 'nextStep' => data_get($journeyRun->metadata, 'next_step.title'),
+                'nextBranchLabel' => data_get($journeyRun->metadata, 'next_branch_label'),
+                'nextSequenceLabel' => data_get($journeyRun->metadata, 'next_sequence_label'),
                 'nextTemplateKey' => $journeyRun->next_template_key,
                 'recommendedTemplateKey' => data_get($journeyRun->metadata, 'recommended_template_key'),
+                'nextTriggerAt' => $journeyRun->step_due_at?->diffForHumans(),
             ] : null,
             'currentStep' => $journey['current_step'],
             'nextStep' => $journey['next_step'],

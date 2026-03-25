@@ -201,7 +201,9 @@ final class CustomerInboxPageTest extends TestCase
             ->assertSet('selectedConversationId', (int) $note->getKey())
             ->assertSee('Laura Flores')
             ->assertSee('Journey activo')
-            ->assertSee('Carga por equipo');
+            ->assertSee('Carga por equipo')
+            ->assertSee('Ruta actual')
+            ->assertSee('Disparo automatico estimado');
 
         $note->refresh();
 

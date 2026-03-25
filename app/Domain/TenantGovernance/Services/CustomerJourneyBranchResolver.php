@@ -6,6 +6,7 @@ namespace App\Domain\TenantGovernance\Services;
 
 use App\Models\CustomerConversation;
 use App\Models\CustomerProfile;
+use App\Models\CustomerTouchpoint;
 use Illuminate\Support\Carbon;
 
 class CustomerJourneyBranchResolver
@@ -107,6 +108,16 @@ class CustomerJourneyBranchResolver
             'closing_ready' => (int) ($profile->orders_count ?? 0) > 0
                 || (int) ($profile->appointments_count ?? 0) > 0
                 || (float) ($profile->total_spent ?? 0) > 0,
+            'last_step_opened' => $this->latestOutcome($conversation) === CustomerTouchpoint::DELIVERY_OPENED,
+            'last_step_clicked' => $this->latestOutcome($conversation) === CustomerTouchpoint::DELIVERY_CLICKED,
+            'last_step_replied' => $this->latestOutcome($conversation) === CustomerTouchpoint::DELIVERY_REPLIED,
+            'last_step_read' => $this->latestOutcome($conversation) === CustomerTouchpoint::DELIVERY_READ,
+            'last_step_failed' => in_array($this->latestOutcome($conversation), [
+                CustomerTouchpoint::DELIVERY_FAILED,
+                CustomerTouchpoint::DELIVERY_BOUNCED,
+                CustomerTouchpoint::DELIVERY_DELAYED,
+            ], true),
+            'last_step_unengaged' => $this->latestOutcome($conversation) === CustomerTouchpoint::DELIVERY_SENT,
             default => false,
         };
     }
@@ -120,6 +131,25 @@ class CustomerJourneyBranchResolver
         $deadline = $conversation->next_action_at ?? $conversation->response_due_at;
 
         return $deadline instanceof Carbon && $deadline->isPast();
+    }
+
+    private function latestOutcome(?CustomerConversation $conversation): ?string
+    {
+        if (! $conversation instanceof CustomerConversation) {
+            return null;
+        }
+
+        $touchpoint = $conversation->touchpoints()
+            ->withoutGlobalScopes()
+            ->latest('sent_at')
+            ->latest('id')
+            ->first();
+
+        if (! $touchpoint instanceof CustomerTouchpoint) {
+            return null;
+        }
+
+        return $touchpoint->delivery_status ?: $touchpoint->status;
     }
 
     /**

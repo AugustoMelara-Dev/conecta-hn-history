@@ -16,6 +16,7 @@ class CustomerTouchpointEventRecorder
     public function __construct(
         private readonly CustomerConversationOpsManager $conversationOpsManager,
         private readonly CustomerTouchpointGovernance $governance,
+        private readonly CustomerJourneyManager $journeyManager,
     ) {}
 
     /**
@@ -91,6 +92,7 @@ class CustomerTouchpointEventRecorder
                 );
 
             $this->applyTouchpointState($touchpoint, $eventType, $payload, $occurredAt);
+            $this->syncJourneyAfterOutcome($touchpoint);
 
             if (in_array($eventType, ['email.received', 'email.replied'], true)) {
                 $this->logInboundReply(
@@ -408,6 +410,8 @@ class CustomerTouchpointEventRecorder
                 : CustomerTouchpoint::STATUS_SENT,
         ])->save();
 
+        $this->syncJourneyAfterOutcome($touchpoint);
+
         $webhook->forceFill(['tenant_id' => (string) $touchpoint->tenant_id, 'status' => 'completed'])->save();
 
         return true;
@@ -497,6 +501,8 @@ class CustomerTouchpointEventRecorder
             ],
         );
 
+        $this->syncJourneyAfterOutcome($touchpoint);
+
         $webhook->forceFill(['tenant_id' => (string) $touchpoint->tenant_id, 'status' => 'completed'])->save();
 
         return true;
@@ -559,5 +565,15 @@ class CustomerTouchpointEventRecorder
                     'accepted' => $accepting,
                 ],
             ]);
+    }
+
+    private function syncJourneyAfterOutcome(CustomerTouchpoint $touchpoint): void
+    {
+        $conversation = $touchpoint->conversation()->withoutGlobalScopes()->first();
+        $profile = $touchpoint->customerProfile()->withoutGlobalScopes()->with('tenant')->first();
+
+        if ($conversation instanceof \App\Models\CustomerConversation && $profile instanceof \App\Models\CustomerProfile) {
+            $this->journeyManager->sync($conversation, $profile);
+        }
     }
 }

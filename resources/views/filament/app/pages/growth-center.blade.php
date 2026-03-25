@@ -257,6 +257,43 @@
             </div>
         </div>
 
+        <div class="biz-card">
+            <div class="biz-stack">
+                <div>
+                    <p class="biz-kicker">Attribution multi-touch</p>
+                    <h2 class="biz-heading">Que secuencias se estan llevando revenue real</h2>
+                    <p class="biz-muted">Aqui el revenue se reparte entre las rutas que tocaron una conversacion cerrada, para no mentirte con un falso last-touch.</p>
+                </div>
+
+                <div class="biz-actions">
+                    @forelse ($sequenceAttribution as $item)
+                        <div class="biz-action">
+                            <div class="biz-split">
+                                <div>
+                                    <p class="biz-action-title">{{ $item['label'] }}</p>
+                                    <p class="biz-action-copy">Revenue atribuido: {{ $item['revenue'] }}</p>
+                                </div>
+
+                                <x-filament::badge color="{{ (float) $item['conversions'] >= 1 ? 'success' : 'info' }}">
+                                    {{ $item['conversions'] }} conv.
+                                </x-filament::badge>
+                            </div>
+
+                            <p class="biz-muted">
+                                <strong>Replies:</strong> {{ $item['replies'] }}
+                                | <strong>Clicks/reads:</strong> {{ $item['clicks'] }}
+                            </p>
+                        </div>
+                    @empty
+                        <div class="biz-action">
+                            <p class="biz-action-title">Todavia no hay attribution multi-touch suficiente</p>
+                            <p class="biz-action-copy">Hace falta mas recorrido de secuencias en conversaciones cerradas para repartir revenue con criterio.</p>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
         <div class="biz-grid-two">
             <div class="biz-card">
                 <div class="biz-stack">

@@ -293,7 +293,8 @@
                                                         <p class="biz-muted"><strong>Siguiente toque:</strong> {{ $item['nextTouch'] }}</p>
                                                         <p class="biz-muted"><strong>Movimiento loyalty:</strong> {{ $item['loyaltyMove'] }}</p>
                                                         <p class="biz-muted"><strong>Owner:</strong> {{ $item['assignedTo'] ?? 'Sin asignar' }} | <strong>Sede:</strong> {{ $item['locationName'] }} | <strong>Equipo:</strong> {{ $item['assignmentGroupLabel'] }}</p>
-                                                        <p class="biz-muted"><strong>Journey:</strong> {{ $item['journeyStep'] ?? 'Sin paso activo' }} | <strong>Lane:</strong> {{ str($item['queueLane'])->replace('_', ' ')->title() }} | <strong>Estado secuencia:</strong> {{ $item['sequenceStateLabel'] }}</p>
+                                                        <p class="biz-muted"><strong>Journey:</strong> {{ $item['journeyStep'] ?? 'Sin paso activo' }} | <strong>Ruta:</strong> {{ $item['journeyBranchLabel'] }} | <strong>Secuencia:</strong> {{ $item['journeySequenceLabel'] }}</p>
+                                                        <p class="biz-muted"><strong>Lane:</strong> {{ str($item['queueLane'])->replace('_', ' ')->title() }} | <strong>Estado secuencia:</strong> {{ $item['sequenceStateLabel'] }} | <strong>Disparo siguiente:</strong> {{ $item['nextTriggerLabel'] ?? 'Sin trigger' }}</p>
                                                         <p class="biz-muted"><strong>Plantilla recomendada:</strong> {{ $item['recommendedTemplateLabel'] }} | <strong>Lectura de due:</strong> {{ $item['dueStateLabel'] }}</p>
                                                         <p class="biz-muted">
                                                             <strong>Operador actual:</strong> {{ $item['handledBy'] ?? 'Sin tomar' }}
@@ -448,6 +449,7 @@
                                             <p class="biz-action-copy">
                                                 {{ $selectedConversation['journeyRun']['currentStepCopy'] ?? 'La secuencia ya esta sincronizada con el mejor siguiente paso para esta conversacion.' }}
                                             </p>
+                                            <p class="biz-muted"><strong>Ruta actual:</strong> {{ $selectedConversation['journeyRun']['currentBranchLabel'] ?? 'Ruta base' }} | <strong>Secuencia:</strong> {{ $selectedConversation['journeyRun']['currentSequenceLabel'] ?? 'Secuencia principal' }}</p>
                                             @if ($selectedConversation['journeyRun']['currentLane'])
                                                 <p class="biz-muted"><strong>Lane:</strong> {{ str($selectedConversation['journeyRun']['currentLane'])->replace('_', ' ')->title() }}</p>
                                             @endif
@@ -459,6 +461,12 @@
                                             @endif
                                             @if ($selectedConversation['journeyRun']['nextStep'])
                                                 <p class="biz-muted"><strong>Paso siguiente:</strong> {{ $selectedConversation['journeyRun']['nextStep'] }}</p>
+                                            @endif
+                                            @if ($selectedConversation['journeyRun']['nextBranchLabel'] || $selectedConversation['journeyRun']['nextSequenceLabel'])
+                                                <p class="biz-muted"><strong>Ruta siguiente:</strong> {{ $selectedConversation['journeyRun']['nextBranchLabel'] ?? 'Ruta base' }} | <strong>Secuencia siguiente:</strong> {{ $selectedConversation['journeyRun']['nextSequenceLabel'] ?? 'Sin siguiente secuencia' }}</p>
+                                            @endif
+                                            @if ($selectedConversation['journeyRun']['nextTriggerAt'])
+                                                <p class="biz-muted"><strong>Disparo automatico estimado:</strong> {{ $selectedConversation['journeyRun']['nextTriggerAt'] }}</p>
                                             @endif
                                             @if ($selectedConversation['journeyRun']['recommendedTemplateKey'])
                                                 <p class="biz-muted"><strong>Plantilla guia:</strong> {{ str($selectedConversation['journeyRun']['recommendedTemplateKey'])->replace('_', ' ')->replace('-', ' ')->title() }}</p>

@@ -282,6 +282,9 @@ class GrowthCenter extends Page
     /** @var list<array{label:string,branch:string,lane:string,sent:int,replied:int,conversions:int,revenue:string,replyRate:string,closeRate:string}> */
     public array $sequencePerformance = [];
 
+    /** @var list<array{label:string,revenue:string,replies:int,clicks:int,conversions:string}> */
+    public array $sequenceAttribution = [];
+
     /** @var list<array{name:string,total:int,closed:int,conversions:int,revenue:string,waiting:int,breached:int,avgFirstResponse:string,conversionRate:string}> */
     public array $ownerConversationPerformance = [];
 
@@ -1022,6 +1025,7 @@ class GrowthCenter extends Page
         if (! $tenant instanceof Tenant) {
             $this->templatePerformance = [];
             $this->sequencePerformance = [];
+            $this->sequenceAttribution = [];
             $this->ownerConversationPerformance = [];
             $this->locationConversationPerformance = [];
 
@@ -1049,6 +1053,8 @@ class GrowthCenter extends Page
                 'customer_profile_id',
                 'metadata',
             ]);
+
+        $sequenceRevenueShares = $this->buildAttributedSequenceShares($touchpoints);
 
         $this->templatePerformance = $touchpoints
             ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->template_key ?: 'manual'))
@@ -1118,6 +1124,22 @@ class GrowthCenter extends Page
             ->values()
             ->all();
 
+        $this->sequenceAttribution = collect($sequenceRevenueShares)
+            ->map(function (array $share, string $sequenceKey): array {
+                return [
+                    'label' => (string) ($share['label'] ?? $this->formatSourceLabel($sequenceKey)),
+                    'revenue' => $this->formatCurrency((float) ($share['revenue'] ?? 0.0)),
+                    'replies' => (int) ($share['replies'] ?? 0),
+                    'clicks' => (int) ($share['clicks'] ?? 0),
+                    'conversions' => number_format((float) ($share['conversions'] ?? 0.0), 2),
+                    'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
+                ];
+            })
+            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['clicks'] ?? 0) * 10) + (int) ($row['replies'] ?? 0))
+            ->take(4)
+            ->values()
+            ->all();
+
         $conversations = CustomerConversation::query()
             ->withoutGlobalScopes()
             ->with([
@@ -1145,6 +1167,57 @@ class GrowthCenter extends Page
 
         $this->ownerConversationPerformance = $this->buildConversationPerformanceRows($conversations, 'owner_user_id', 'ownerLabel', 'Sin owner');
         $this->locationConversationPerformance = $this->buildConversationPerformanceRows($conversations, 'location_id', 'locationLabel', 'Sin sede');
+    }
+
+    /**
+     * @param  Collection<int, CustomerTouchpoint>  $touchpoints
+     * @return array<string, array{label:string,revenue:float,replies:int,clicks:int,conversions:float}>
+     */
+    private function buildAttributedSequenceShares(Collection $touchpoints): array
+    {
+        $shares = [];
+
+        $touchpoints
+            ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->customer_conversation_id ?? ''))
+            ->each(function (Collection $items) use (&$shares): void {
+                $conversation = $items->first()?->conversation;
+
+                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') {
+                    return;
+                }
+
+                $sequenceGroups = $items
+                    ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_key', $touchpoint->template_key ?: 'manual'))
+                    ->filter(fn (Collection $slice, string $key): bool => $key !== '');
+
+                if ($sequenceGroups->isEmpty()) {
+                    return;
+                }
+
+                $revenue = $this->conversationRevenueValue($conversation);
+                $conversionShare = 1 / max(1, $sequenceGroups->count());
+                $revenueShare = $revenue / max(1, $sequenceGroups->count());
+
+                $sequenceGroups->each(function (Collection $slice, string $sequenceKey) use (&$shares, $conversionShare, $revenueShare): void {
+                    $shares[$sequenceKey] ??= [
+                        'label' => (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey)),
+                        'revenue' => 0.0,
+                        'replies' => 0,
+                        'clicks' => 0,
+                        'conversions' => 0.0,
+                    ];
+
+                    $shares[$sequenceKey]['revenue'] += $revenueShare;
+                    $shares[$sequenceKey]['replies'] += $slice->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->replied_at !== null)->count();
+                    $shares[$sequenceKey]['clicks'] += $slice->filter(fn (CustomerTouchpoint $touchpoint): bool => in_array($touchpoint->delivery_status, [
+                        CustomerTouchpoint::DELIVERY_CLICKED,
+                        CustomerTouchpoint::DELIVERY_READ,
+                    ], true))->count();
+                    $shares[$sequenceKey]['conversions'] += $conversionShare;
+                });
+            });
+
+        return $shares;
     }
 
     private function buildGrowthActions(): void

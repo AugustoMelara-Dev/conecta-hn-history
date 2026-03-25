@@ -148,6 +148,7 @@ return [
                     ['key' => 'vip_priority', 'label' => 'Ruta VIP', 'title' => 'Mover continuidad premium', 'copy' => 'Usa tono premium, beneficio visible y prioridad real para no enfriar un cliente de alto valor.', 'template_key' => 'vip_priority', 'lane' => 'premium_follow_up', 'when' => 'vip_customer'],
                 ]],
                 ['key' => 'repeat_close_continuity', 'title' => 'Cerrar continuidad', 'copy' => 'Busca salida a recompra, paquete o nueva cita.', 'template_key' => 'close_sale', 'lane' => 'closing', 'wait_hours' => 30, 'branches' => [
+                    ['key' => 'clicked_offer', 'label' => 'Interes alto', 'title' => 'Cerrar despues del clic', 'copy' => 'El cliente ya mostro interes con clic o lectura fuerte: conviene empujar cierre y no solo seguimiento.', 'template_key' => 'final_close_push', 'lane' => 'engaged_close', 'when' => ['last_step_clicked']],
                     ['key' => 'high_value_close', 'label' => 'Cierre alto valor', 'title' => 'Cerrar continuidad de alto valor', 'copy' => 'Enfatiza paquete, bundle o beneficio premium porque el cliente ya tiene valor claro.', 'template_key' => 'final_close_push', 'lane' => 'high_value_close', 'when' => 'high_value_customer'],
                 ]],
             ],
@@ -160,7 +161,10 @@ return [
                     ['key' => 'high_risk_reactivation', 'label' => 'Riesgo alto', 'title' => 'Mover regreso con urgencia sana', 'copy' => 'El cliente muestra riesgo alto de fuga: deja una salida clara y acompaniada.', 'template_key' => 'reactivation_last_call', 'lane' => 'urgent_reactivation', 'when' => ['high_reactivation_risk', 'stalled_sequence']],
                     ['key' => 'email_recovery', 'label' => 'Recuperacion por email', 'title' => 'Recuperar con recordatorio formal', 'copy' => 'Usa email como carril principal cuando el cliente responde mejor ahi.', 'template_key' => 'follow_up_reminder', 'lane' => 'email_reactivation', 'when' => 'email_preferred'],
                 ]],
-                ['key' => 'reactivation_close_week', 'title' => 'Cerrar en esta semana', 'copy' => 'No dejes la reactivacion sin fecha o CTA concreto.', 'template_key' => 'reactivation_last_call', 'lane' => 'last_call', 'wait_hours' => 48],
+                ['key' => 'reactivation_close_week', 'title' => 'Cerrar en esta semana', 'copy' => 'No dejes la reactivacion sin fecha o CTA concreto.', 'template_key' => 'reactivation_last_call', 'lane' => 'last_call', 'wait_hours' => 48, 'branches' => [
+                    ['key' => 'reply_returning', 'label' => 'Volvio a responder', 'title' => 'Cerrar reactivacion con acompañamiento', 'copy' => 'Ya hubo reply: cambia de rescate a cierre guiado con salida concreta.', 'template_key' => 'close_sale', 'lane' => 'reactivation_close', 'when' => 'last_step_replied'],
+                    ['key' => 'recovery_failed', 'label' => 'Sin traccion', 'title' => 'Ultimo rescate de secuencia', 'copy' => 'No hubo senal positiva en los ultimos toques: usa un ultimo intento claro antes de enfriar.', 'template_key' => 'reactivation_last_call', 'lane' => 'rescue_last_call', 'when' => ['last_step_failed', 'stalled_sequence']],
+                ]],
             ],
             'templates' => ['reactivation_recovery', 'fast_follow_up', 'close_sale'],
         ],
@@ -186,8 +190,12 @@ return [
                 ['key' => 'prospect_clarify_offer', 'title' => 'Aclarar propuesta', 'copy' => 'Reduce friccion y deja CTA simple de cierre o discovery.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 12, 'branches' => [
                     ['key' => 'whatsapp_speed', 'label' => 'WhatsApp rapido', 'title' => 'Aclarar propuesta por WhatsApp', 'copy' => 'Empuja velocidad y baja friccion desde el canal donde este prospecto responde mejor.', 'template_key' => 'fast_follow_up', 'lane' => 'whatsapp_follow_up', 'when' => 'whatsapp_preferred'],
                     ['key' => 'warm_close', 'label' => 'Prospecto caliente', 'title' => 'Acercar cierre comercial', 'copy' => 'Ya hay varias respuestas: mueve discovery o cierre en vez de otro toque tibio.', 'template_key' => 'close_sale', 'lane' => 'warm_closing', 'when' => ['multiple_replies', 'closing_ready']],
+                    ['key' => 'clicked_offer', 'label' => 'Interes activo', 'title' => 'Aclarar propuesta despues del clic', 'copy' => 'El cliente ya mostro interes con apertura o clic: baja friccion y empuja discovery o cierre ahora.', 'template_key' => 'close_sale', 'lane' => 'engaged_follow_up', 'when' => ['last_step_clicked']],
                 ]],
-                ['key' => 'prospect_close_or_archive', 'title' => 'No perder el seguimiento', 'copy' => 'Si no responde, reprograma siguiente toque con owner claro.', 'template_key' => 'close_sale', 'lane' => 'closing', 'wait_hours' => 24],
+                ['key' => 'prospect_close_or_archive', 'title' => 'No perder el seguimiento', 'copy' => 'Si no responde, reprograma siguiente toque con owner claro.', 'template_key' => 'close_sale', 'lane' => 'closing', 'wait_hours' => 24, 'branches' => [
+                    ['key' => 'opened_but_not_replied', 'label' => 'Abrio pero no respondio', 'title' => 'Empujar cierre tras apertura', 'copy' => 'Ya hubo apertura: conviene tocar con CTA mas claro antes de enfriar el lead.', 'template_key' => 'final_close_push', 'lane' => 'opened_follow_up', 'when' => ['last_step_opened', 'last_step_unengaged']],
+                    ['key' => 'prospect_reply_close', 'label' => 'Reply listo', 'title' => 'Cerrar prospecto caliente', 'copy' => 'Si ya respondio, mueve el siguiente paso de discovery o cierre sin meter otro recordatorio tibio.', 'template_key' => 'close_sale', 'lane' => 'reply_close', 'when' => 'last_step_replied'],
+                ]],
             ],
             'templates' => ['close_sale', 'fast_follow_up', 'reactivation_recovery'],
         ],

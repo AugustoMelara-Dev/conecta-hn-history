@@ -91,6 +91,7 @@ class CustomerConversationTemplateManager
                     'lane' => (string) ($definition['lane'] ?? 'follow_up'),
                     'wait_hours' => max(0, (int) ($definition['wait_hours'] ?? 0)),
                     'auto_send' => (bool) ($definition['auto_send'] ?? $index > 0),
+                    'branches' => array_values(array_filter((array) ($definition['branches'] ?? []), 'is_array')),
                 ];
             })
             ->values()
