@@ -294,6 +294,11 @@ class GrowthCenter extends Page
     /** @var list<array{name:string,revenue:string,replies:int,clicks:int,conversions:string,context:string}> */
     public array $channelSequenceAttribution = [];
 
+    /** @var list<array{label:string,revenue:string,purchaseClosures:int,noShowRecovered:int,rewardRepurchases:int,upgradeAssists:int}> */
+    public array $sequenceOutcomeAttribution = [];
+
+    public float $upgradeAssistedRevenue30d = 0.0;
+
     /** @var list<array{name:string,total:int,closed:int,conversions:int,revenue:string,waiting:int,breached:int,avgFirstResponse:string,conversionRate:string}> */
     public array $ownerConversationPerformance = [];
 
@@ -958,6 +963,7 @@ class GrowthCenter extends Page
             $this->metric('Respuestas por WhatsApp', (string) $this->whatsAppReplies30d, $this->whatsAppTouchpoints30d > 0 ? "{$this->whatsAppReplies30d} conversaciones devolvieron respuesta reciente." : 'Todavia no hay conversaciones de WhatsApp suficientes para medir respuesta.'),
             $this->metric('Plantilla que mas convierte', $this->topTemplateLabel, $this->touchpoints30d > 0 ? 'Es la plantilla con mejor senal reciente de respuesta o cierre dentro del CRM.' : 'Todavia no hay suficiente volumen para detectar una plantilla ganadora.'),
             $this->metric('Canal que mas cierra', $this->topClosingChannel, $this->resolvedReplies30d > 0 ? 'Es el canal que mas conversaciones esta cerrando en el periodo reciente.' : 'Aun no hay suficientes cierres recientes para detectar un canal dominante.'),
+            $this->metric('Revenue con uplift PRO', $this->formatCurrency($this->upgradeAssistedRevenue30d), $this->upgradeAssistedRevenue30d > 0 ? "Revenue atribuido a secuencias apoyadas por el upgrade reciente del negocio en {$this->segmentLabel}." : 'Todavia no se detecta uplift de revenue ligado al upgrade reciente del negocio.'),
             $this->metric('Retries programados', (string) $this->scheduledTouchpointRetriesCount, $this->scheduledTouchpointRetriesCount > 0 ? 'La cola ya tiene reintentos futuros listos para ejecutar.' : 'No hay reintentos en espera ahora mismo.'),
         ];
     }
@@ -1038,6 +1044,7 @@ class GrowthCenter extends Page
             $this->ownerSequenceAttribution = [];
             $this->locationSequenceAttribution = [];
             $this->channelSequenceAttribution = [];
+            $this->sequenceOutcomeAttribution = [];
             $this->ownerConversationPerformance = [];
             $this->locationConversationPerformance = [];
 
@@ -1161,6 +1168,25 @@ class GrowthCenter extends Page
         $this->channelSequenceAttribution = $this->buildAttributedDimensionRows(
             $this->buildAttributedSequenceShares($touchpoints, 'channel')
         );
+        $outcomeShares = $this->buildOutcomeAttributedSequenceShares($touchpoints);
+        $this->sequenceOutcomeAttribution = collect($outcomeShares)
+            ->map(function (array $share): array {
+                return [
+                    'label' => (string) ($share['label'] ?? 'Secuencia CRM'),
+                    'revenue' => $this->formatCurrency((float) ($share['revenue'] ?? 0.0)),
+                    'purchaseClosures' => (int) ($share['purchase_closures'] ?? 0),
+                    'noShowRecovered' => (int) ($share['no_show_recovered'] ?? 0),
+                    'rewardRepurchases' => (int) ($share['reward_repurchases'] ?? 0),
+                    'upgradeAssists' => (int) ($share['upgrade_assists'] ?? 0),
+                    'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
+                ];
+            })
+            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['purchaseClosures'] ?? 0) * 100) + ((int) ($row['upgradeAssists'] ?? 0) * 10))
+            ->take(4)
+            ->values()
+            ->all();
+        $this->upgradeAssistedRevenue30d = collect($outcomeShares)
+            ->sum(fn (array $share): float => (int) ($share['upgrade_assists'] ?? 0) > 0 ? (float) ($share['revenue'] ?? 0.0) : 0.0);
 
         $conversations = CustomerConversation::query()
             ->withoutGlobalScopes()
@@ -1286,6 +1312,56 @@ class GrowthCenter extends Page
             ->take(4)
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  Collection<int, CustomerTouchpoint>  $touchpoints
+     * @return array<string, array{label:string,revenue:float,purchase_closures:int,no_show_recovered:int,reward_repurchases:int,upgrade_assists:int}>
+     */
+    private function buildOutcomeAttributedSequenceShares(Collection $touchpoints): array
+    {
+        $shares = [];
+
+        $touchpoints
+            ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->customer_conversation_id ?? ''))
+            ->each(function (Collection $items) use (&$shares): void {
+                $conversation = $items->first()?->conversation;
+
+                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') {
+                    return;
+                }
+
+                $sequenceGroups = $items
+                    ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_key', $touchpoint->template_key ?: 'manual'))
+                    ->filter(fn (Collection $slice, string $key): bool => $key !== '');
+
+                if ($sequenceGroups->isEmpty()) {
+                    return;
+                }
+
+                $signals = (array) data_get($conversation->metadata, 'business_signals', []);
+                $revenue = $this->conversationRevenueValue($conversation);
+                $revenueShare = $revenue / max(1, $sequenceGroups->count());
+
+                $sequenceGroups->each(function (Collection $slice, string $sequenceKey) use (&$shares, $signals, $revenueShare): void {
+                    $shares[$sequenceKey] ??= [
+                        'label' => (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey)),
+                        'revenue' => 0.0,
+                        'purchase_closures' => 0,
+                        'no_show_recovered' => 0,
+                        'reward_repurchases' => 0,
+                        'upgrade_assists' => 0,
+                    ];
+
+                    $shares[$sequenceKey]['revenue'] += $revenueShare;
+                    $shares[$sequenceKey]['purchase_closures'] += array_key_exists('purchase_closed', $signals) ? 1 : 0;
+                    $shares[$sequenceKey]['no_show_recovered'] += array_key_exists('no_show_recovered', $signals) ? 1 : 0;
+                    $shares[$sequenceKey]['reward_repurchases'] += array_key_exists('reward_repurchase', $signals) ? 1 : 0;
+                    $shares[$sequenceKey]['upgrade_assists'] += array_key_exists('tenant_upgrade', $signals) ? 1 : 0;
+                });
+            });
+
+        return $shares;
     }
 
     private function buildGrowthActions(): void

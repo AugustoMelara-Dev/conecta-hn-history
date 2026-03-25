@@ -20,11 +20,12 @@ class AppointmentCustomerProfileObserver implements ShouldHandleEventsAfterCommi
         );
 
         if ($profile !== null && ($appointment->wasRecentlyCreated || $appointment->wasChanged('status'))) {
+            $signalRecorder = app(CustomerJourneySignalRecorder::class);
             $signalKey = $appointment->status === Appointment::STATUS_NO_SHOW
                 ? 'appointment_no_show'
                 : ($appointment->status === Appointment::STATUS_COMPLETED ? 'appointment_completed' : 'appointment_booked');
 
-            app(CustomerJourneySignalRecorder::class)->recordForProfile(
+            $conversation = $signalRecorder->recordForProfile(
                 $profile,
                 $signalKey,
                 [
@@ -34,6 +35,21 @@ class AppointmentCustomerProfileObserver implements ShouldHandleEventsAfterCommi
                 ],
                 'crm',
             );
+
+            if (
+                $appointment->status === Appointment::STATUS_COMPLETED
+                && data_get($conversation?->metadata, 'business_signals.appointment_no_show.at')
+            ) {
+                $signalRecorder->recordForProfile(
+                    $profile,
+                    'no_show_recovered',
+                    [
+                        'appointment_id' => (int) $appointment->getKey(),
+                        'scheduled_for' => optional($appointment->start_time)->toIso8601String(),
+                    ],
+                    'crm',
+                );
+            }
         }
 
         if (

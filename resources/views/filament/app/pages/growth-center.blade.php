@@ -294,6 +294,44 @@
             </div>
         </div>
 
+        <div class="biz-card">
+            <div class="biz-stack">
+                <div>
+                    <p class="biz-kicker">Revenue por outcomes reales</p>
+                    <h2 class="biz-heading">Que secuencias estan cerrando compra, recuperando no-show y moviendo recompra</h2>
+                    <p class="biz-muted">Aqui ya no solo ves reply o click: ves outcomes de negocio reales ligados a la secuencia.</p>
+                </div>
+
+                <div class="biz-actions">
+                    @forelse ($sequenceOutcomeAttribution as $item)
+                        <div class="biz-action">
+                            <div class="biz-split">
+                                <div>
+                                    <p class="biz-action-title">{{ $item['label'] }}</p>
+                                    <p class="biz-action-copy">Revenue atribuido: {{ $item['revenue'] }}</p>
+                                </div>
+
+                                <x-filament::badge color="{{ $item['purchaseClosures'] > 0 ? 'success' : ($item['upgradeAssists'] > 0 ? 'info' : 'gray') }}">
+                                    {{ $item['purchaseClosures'] }} compras
+                                </x-filament::badge>
+                            </div>
+
+                            <p class="biz-muted">
+                                <strong>No-show recuperado:</strong> {{ $item['noShowRecovered'] }}
+                                | <strong>Recompra tras reward:</strong> {{ $item['rewardRepurchases'] }}
+                                | <strong>Upgrade assist:</strong> {{ $item['upgradeAssists'] }}
+                            </p>
+                        </div>
+                    @empty
+                        <div class="biz-action">
+                            <p class="biz-action-title">Todavia no hay outcomes reales suficientes por secuencia</p>
+                            <p class="biz-action-copy">Hace falta mas cierre, recuperacion o recompra real para abrir esta lectura.</p>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
         <div class="biz-grid-two">
             <div class="biz-card">
                 <div class="biz-stack">

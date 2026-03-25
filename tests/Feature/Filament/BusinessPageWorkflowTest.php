@@ -386,6 +386,8 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertSee('Revenue atribuido por owner')
             ->assertSee('Revenue atribuido por sede')
             ->assertSee('Revenue atribuido por canal')
+            ->assertSee('Revenue por outcomes reales')
+            ->assertSee('Revenue con uplift PRO')
             ->assertSee('Canal que mas cierra')
             ->assertSee('Segmento que reactiva')
             ->assertSee('Entrega de email')

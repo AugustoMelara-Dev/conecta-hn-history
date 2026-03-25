@@ -20,7 +20,8 @@ class OrderCustomerProfileObserver implements ShouldHandleEventsAfterCommit
         );
 
         if ($profile !== null && ($order->wasRecentlyCreated || $order->wasChanged('status'))) {
-            app(CustomerJourneySignalRecorder::class)->recordForProfile(
+            $signalRecorder = app(CustomerJourneySignalRecorder::class);
+            $conversation = $signalRecorder->recordForProfile(
                 $profile,
                 'purchase',
                 [
@@ -31,6 +32,30 @@ class OrderCustomerProfileObserver implements ShouldHandleEventsAfterCommit
                 ],
                 'crm',
             );
+
+            if ($order->status === Order::STATUS_DELIVERED) {
+                $signalRecorder->recordForProfile(
+                    $profile,
+                    'purchase_closed',
+                    [
+                        'order_id' => (int) $order->getKey(),
+                        'order_total' => (float) ($order->total ?? 0),
+                    ],
+                    'crm',
+                );
+
+                if (data_get($conversation?->metadata, 'business_signals.reward_redemption.at')) {
+                    $signalRecorder->recordForProfile(
+                        $profile,
+                        'reward_repurchase',
+                        [
+                            'order_id' => (int) $order->getKey(),
+                            'order_total' => (float) ($order->total ?? 0),
+                        ],
+                        'crm',
+                    );
+                }
+            }
         }
 
         if ($order->wasRecentlyCreated || ($order->wasChanged('status') && $order->status === Order::STATUS_DELIVERED)) {
