@@ -6,12 +6,14 @@ namespace App\Domain\TenantGovernance\Services;
 
 use App\Models\Appointment;
 use App\Models\CustomerProfile;
+use App\Models\CustomerTask;
 use App\Models\CustomerTouchpoint;
 use App\Models\Lead;
 use App\Models\LoyaltyProgram;
 use App\Models\Order;
 use App\Models\Tenant;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 
 class CustomerProfileManager
@@ -110,6 +112,70 @@ class CustomerProfileManager
 
         $this->recalculateProfile($profile);
         $this->deleteIfOrphaned($profile);
+    }
+
+    public function mergeProfiles(CustomerProfile $primary, CustomerProfile $duplicate, ?string $actorUserId = null): CustomerProfile
+    {
+        if ((int) $primary->getKey() === (int) $duplicate->getKey()) {
+            return $primary->fresh();
+        }
+
+        return DB::transaction(function () use ($primary, $duplicate, $actorUserId): CustomerProfile {
+            $primary = CustomerProfile::query()->withoutGlobalScopes()->findOrFail($primary->getKey());
+            $duplicate = CustomerProfile::query()->withoutGlobalScopes()->findOrFail($duplicate->getKey());
+
+            $mergePayload = [
+                'normalized_email' => $primary->normalized_email ?? $duplicate->normalized_email,
+                'normalized_phone' => $primary->normalized_phone ?? $duplicate->normalized_phone,
+                'name' => $this->resolveBestName($primary->name, $duplicate->name),
+                'email' => $primary->email ?? $duplicate->email,
+                'phone' => $primary->phone ?? $duplicate->phone,
+                'preferred_channel' => $this->resolvePreferredChannel(
+                    $primary->preferred_channel,
+                    $primary->normalized_email ?? $duplicate->normalized_email,
+                    $primary->normalized_phone ?? $duplicate->normalized_phone,
+                ),
+                'manual_segment' => $primary->manual_segment ?? $duplicate->manual_segment,
+                'assigned_user_id' => $primary->assigned_user_id ?? $duplicate->assigned_user_id,
+                'location_id' => $primary->location_id ?? $duplicate->location_id,
+                'marketing_opt_in' => (bool) $primary->marketing_opt_in || (bool) $duplicate->marketing_opt_in,
+                'whatsapp_opt_in' => (bool) $primary->whatsapp_opt_in || (bool) $duplicate->whatsapp_opt_in,
+                'email_opt_in' => (bool) $primary->email_opt_in || (bool) $duplicate->email_opt_in,
+                'tags' => collect(array_merge((array) $primary->tags, (array) $duplicate->tags))
+                    ->filter(static fn (mixed $tag): bool => is_string($tag) && trim($tag) !== '')
+                    ->map(static fn (string $tag): string => trim($tag))
+                    ->unique()
+                    ->values()
+                    ->all(),
+                'crm_notes' => collect([$primary->crm_notes, $duplicate->crm_notes])
+                    ->filter(static fn (mixed $value): bool => is_string($value) && trim($value) !== '')
+                    ->implode("\n\n"),
+            ];
+
+            $this->moveRelatedRecords($primary, $duplicate);
+
+            CustomerProfile::query()
+                ->withoutGlobalScopes()
+                ->whereKey($duplicate->getKey())
+                ->delete();
+
+            $primary->forceFill($mergePayload)->save();
+
+            $this->recalculateProfile($primary);
+
+            $freshPrimary = $primary->fresh();
+
+            if ($actorUserId !== null) {
+                $freshPrimary?->forceFill([
+                    'crm_notes' => trim((string) collect([
+                        $freshPrimary?->crm_notes,
+                        'Merge manual ejecutado el '.now()->format('d/m/Y H:i').' por '.$actorUserId.'.',
+                    ])->filter()->implode("\n\n")),
+                ])->save();
+            }
+
+            return $freshPrimary?->fresh() ?? $primary->fresh();
+        });
     }
 
     private function syncSourceRecord(
@@ -234,26 +300,12 @@ class CustomerProfileManager
             return $canonical;
         }
 
-        Order::withoutEvents(function () use ($canonical, $duplicateIds): void {
-            Order::query()
-                ->withoutGlobalScopes()
-                ->whereIn('customer_profile_id', $duplicateIds)
-                ->update(['customer_profile_id' => $canonical->getKey()]);
-        });
+        $duplicates = CustomerProfile::query()
+            ->withoutGlobalScopes()
+            ->whereIn('id', $duplicateIds)
+            ->get();
 
-        Appointment::withoutEvents(function () use ($canonical, $duplicateIds): void {
-            Appointment::query()
-                ->withoutGlobalScopes()
-                ->whereIn('customer_profile_id', $duplicateIds)
-                ->update(['customer_profile_id' => $canonical->getKey()]);
-        });
-
-        Lead::withoutEvents(function () use ($canonical, $duplicateIds): void {
-            Lead::query()
-                ->withoutGlobalScopes()
-                ->whereIn('customer_profile_id', $duplicateIds)
-                ->update(['customer_profile_id' => $canonical->getKey()]);
-        });
+        $duplicates->each(fn (CustomerProfile $duplicate) => $this->moveRelatedRecords($canonical, $duplicate));
 
         CustomerProfile::query()
             ->withoutGlobalScopes()
@@ -266,6 +318,61 @@ class CustomerProfileManager
         ])->save();
 
         return $canonical;
+    }
+
+    private function moveRelatedRecords(CustomerProfile $primary, CustomerProfile $duplicate): void
+    {
+        $duplicateId = (int) $duplicate->getKey();
+        $primaryId = (int) $primary->getKey();
+
+        Order::withoutEvents(function () use ($primaryId, $duplicateId): void {
+            Order::query()
+                ->withoutGlobalScopes()
+                ->where('customer_profile_id', $duplicateId)
+                ->update(['customer_profile_id' => $primaryId]);
+        });
+
+        Appointment::withoutEvents(function () use ($primaryId, $duplicateId): void {
+            Appointment::query()
+                ->withoutGlobalScopes()
+                ->where('customer_profile_id', $duplicateId)
+                ->update(['customer_profile_id' => $primaryId]);
+        });
+
+        Lead::withoutEvents(function () use ($primaryId, $duplicateId): void {
+            Lead::query()
+                ->withoutGlobalScopes()
+                ->where('customer_profile_id', $duplicateId)
+                ->update(['customer_profile_id' => $primaryId]);
+        });
+
+        CustomerTouchpoint::query()
+            ->withoutGlobalScopes()
+            ->where('customer_profile_id', $duplicateId)
+            ->update(['customer_profile_id' => $primaryId]);
+
+        \App\Models\CustomerNote::query()
+            ->withoutGlobalScopes()
+            ->where('customer_profile_id', $duplicateId)
+            ->update([
+                'customer_profile_id' => $primaryId,
+                'assigned_user_id' => $primary->assigned_user_id ?? $duplicate->assigned_user_id,
+                'location_id' => $primary->location_id ?? $duplicate->location_id,
+            ]);
+
+        \App\Models\CustomerLoyaltyLedger::query()
+            ->withoutGlobalScopes()
+            ->where('customer_profile_id', $duplicateId)
+            ->update(['customer_profile_id' => $primaryId]);
+
+        CustomerTask::query()
+            ->withoutGlobalScopes()
+            ->where('customer_profile_id', $duplicateId)
+            ->update([
+                'customer_profile_id' => $primaryId,
+                'assigned_user_id' => $primary->assigned_user_id ?? $duplicate->assigned_user_id,
+                'location_id' => $primary->location_id ?? $duplicate->location_id,
+            ]);
     }
 
     private function findProfileById(string $tenantId, ?int $profileId): ?CustomerProfile

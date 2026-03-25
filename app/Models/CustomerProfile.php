@@ -153,6 +153,11 @@ class CustomerProfile extends Model
         return $this->hasMany(CustomerNote::class)->latest('pinned_at')->latest('created_at');
     }
 
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(CustomerTask::class)->latest('sla_due_at')->latest('created_at');
+    }
+
     public function loyaltyLedger(): HasMany
     {
         return $this->hasMany(CustomerLoyaltyLedger::class)->latest('awarded_at')->latest('created_at');

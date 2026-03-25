@@ -37,7 +37,7 @@
                     <div class="biz-stack">
                         <div>
                             <p class="biz-kicker">Palancas inmediatas</p>
-                            <h2 class="biz-heading">CRM, analítica y ejecución</h2>
+                            <h2 class="biz-heading">CRM, analÃ­tica y ejecuciÃ³n</h2>
                             <p class="biz-muted">
                                 Usa este frente para decidir que mover primero, no solo para mirar datos.
                             </p>
@@ -88,7 +88,7 @@
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">{{ $analyticsTitle }}</p>
-                        <h2 class="biz-heading">Clientes, audiencias y retención</h2>
+                        <h2 class="biz-heading">Clientes, audiencias y retenciÃ³n</h2>
                         <p class="biz-muted">{{ $analyticsCopy }}</p>
                     </div>
 
@@ -134,7 +134,7 @@
                     <div class="biz-button-row">
                         <a href="{{ $contactsUrl }}" class="biz-button">Ver entregas</a>
                         <a href="{{ $customersUrl }}" class="biz-button-secondary">Trabajar clientes</a>
-                        <a href="{{ $campaignsUrl }}" class="biz-button-secondary">Ver campañas</a>
+                        <a href="{{ $campaignsUrl }}" class="biz-button-secondary">Ver campaÃ±as</a>
                     </div>
                 </div>
             </div>
@@ -165,14 +165,14 @@
                             </a>
                         @empty
                             <div class="biz-action">
-                                <p class="biz-action-title">Todavía no hay playbooks de cadence configurados</p>
-                                <p class="biz-action-copy">Define una cadencia básica por segmento y recompensa para sostener recompra, reactivación y upsell.</p>
+                                <p class="biz-action-title">TodavÃ­a no hay playbooks de cadence configurados</p>
+                                <p class="biz-action-copy">Define una cadencia bÃ¡sica por segmento y recompensa para sostener recompra, reactivaciÃ³n y upsell.</p>
                             </div>
                         @endforelse
                     </div>
 
                     <div class="biz-button-row">
-                        <a href="{{ $campaignsUrl }}" class="biz-button">Programar campañas</a>
+                        <a href="{{ $campaignsUrl }}" class="biz-button">Programar campaÃ±as</a>
                         <a href="{{ $customersUrl }}" class="biz-button-secondary">Ver segmentos</a>
                     </div>
                 </div>
@@ -185,7 +185,7 @@
                     <div>
                         <p class="biz-kicker">Cohortes y LTV</p>
                         <h2 class="biz-heading">Lectura de valor temprano y ritmo de repeticion</h2>
-                        <p class="biz-muted">Esto te dice si las cohortes nuevas se están activando bien y cuáles segmentos o canales dejan mejor valor.</p>
+                        <p class="biz-muted">Esto te dice si las cohortes nuevas se estÃ¡n activando bien y cuÃ¡les segmentos o canales dejan mejor valor.</p>
                     </div>
 
                     <div class="biz-badge biz-badge-neutral">
@@ -201,6 +201,92 @@
                             <p class="biz-stat-copy">{{ $metric['copy'] }}</p>
                         </div>
                     @endforeach
+                </div>
+            </div>
+        </div>
+
+        <div class="biz-grid-two">
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div class="biz-split">
+                        <div>
+                            <p class="biz-kicker">Comparativa por owner</p>
+                            <h2 class="biz-heading">Quien esta sosteniendo cartera, revenue y SLA</h2>
+                            <p class="biz-muted">Lee carga activa, valor acumulado y repeticion por responsable.</p>
+                        </div>
+
+                        <div class="biz-badge biz-badge-neutral">
+                            <span>{{ $openCustomerTasksCount }} tareas abiertas / {{ $overdueCustomerTasksCount }} vencidas</span>
+                        </div>
+                    </div>
+
+                    <div class="biz-actions">
+                        @forelse ($ownerComparisons as $item)
+                            <div class="biz-action">
+                                <div class="biz-split">
+                                    <div>
+                                        <p class="biz-action-title">{{ $item['name'] }}</p>
+                                        <p class="biz-action-copy">{{ $item['context'] }}</p>
+                                    </div>
+
+                                    <x-filament::badge color="{{ $item['overdueTasks'] > 0 ? 'danger' : 'success' }}">
+                                        {{ $item['overdueTasks'] > 0 ? $item['overdueTasks'].' vencidas' : 'SLA sano' }}
+                                    </x-filament::badge>
+                                </div>
+
+                                <p class="biz-muted">
+                                    <strong>Revenue:</strong> {{ $item['revenue'] }}
+                                    | <strong>Clientes:</strong> {{ $item['customers'] }}
+                                    | <strong>Tareas:</strong> {{ $item['openTasks'] }}
+                                    | <strong>Repeat:</strong> {{ $item['repeatRate'] }}
+                                </p>
+                            </div>
+                        @empty
+                            <div class="biz-action">
+                                <p class="biz-action-title">Todavia no hay comparativa por owner</p>
+                                <p class="biz-action-copy">Asigna cartera y tareas para ver rendimiento comercial por responsable.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div>
+                        <p class="biz-kicker">Comparativa por sede</p>
+                        <h2 class="biz-heading">Donde se concentra mejor la continuidad comercial</h2>
+                        <p class="biz-muted">Compara revenue, clientes y carga operativa entre sucursales o puntos de atencion.</p>
+                    </div>
+
+                    <div class="biz-actions">
+                        @forelse ($locationComparisons as $item)
+                            <div class="biz-action">
+                                <div class="biz-split">
+                                    <div>
+                                        <p class="biz-action-title">{{ $item['name'] }}</p>
+                                        <p class="biz-action-copy">{{ $item['context'] }}</p>
+                                    </div>
+
+                                    <x-filament::badge color="{{ $item['overdueTasks'] > 0 ? 'warning' : 'info' }}">
+                                        {{ $item['openTasks'] }} activas
+                                    </x-filament::badge>
+                                </div>
+
+                                <p class="biz-muted">
+                                    <strong>Revenue:</strong> {{ $item['revenue'] }}
+                                    | <strong>Clientes:</strong> {{ $item['customers'] }}
+                                    | <strong>Vencidas:</strong> {{ $item['overdueTasks'] }}
+                                    | <strong>Repeat:</strong> {{ $item['repeatRate'] }}
+                                </p>
+                            </div>
+                        @empty
+                            <div class="biz-action">
+                                <p class="biz-action-title">Todavia no hay comparativa por sede</p>
+                                <p class="biz-action-copy">Etiquetar clientes y tareas por ubicacion va a abrir lectura real de operacion distribuida.</p>
+                            </div>
+                        @endforelse
+                    </div>
                 </div>
             </div>
         </div>
@@ -281,7 +367,7 @@
                             <div>
                                 <p class="biz-checklist-title">Canal de WhatsApp</p>
                                 <p class="biz-checklist-copy">
-                                    {{ $hasWhatsApp ? 'Tu negocio ya tiene un canal rápido para seguimiento y cierre.' : 'Todavía te falta el canal más directo para convertir visitas en conversaciones.' }}
+                                    {{ $hasWhatsApp ? 'Tu negocio ya tiene un canal rÃ¡pido para seguimiento y cierre.' : 'TodavÃ­a te falta el canal mÃ¡s directo para convertir visitas en conversaciones.' }}
                                 </p>
                             </div>
                         </div>
@@ -315,7 +401,7 @@
                             <div class="biz-action">
                                 <p class="biz-action-title">Tu frente de crecimiento esta ordenado</p>
                                 <p class="biz-action-copy">
-                                    Sigue usando prospectos, playbooks y campañas para no perder el ritmo comercial.
+                                    Sigue usando prospectos, playbooks y campaÃ±as para no perder el ritmo comercial.
                                 </p>
                             </div>
                         @endforelse

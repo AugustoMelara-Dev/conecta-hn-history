@@ -11,6 +11,7 @@ use App\Mail\CustomerLifecycleMail;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\CustomerProfile;
+use App\Models\CustomerTask;
 use App\Models\CustomerTouchpoint;
 use App\Models\Location;
 use App\Models\Tenant;
@@ -82,6 +83,12 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertSame((string) $user->getKey(), (string) $note->assigned_user_id);
         $this->assertSame((string) $location->getKey(), (string) $note->location_id);
 
+        $task = CustomerTask::query()->withoutGlobalScopes()->where('customer_note_id', $note->getKey())->first();
+        $this->assertInstanceOf(CustomerTask::class, $task);
+        $this->assertSame('open', $task->status);
+        $this->assertSame((string) $user->getKey(), (string) $task->assigned_user_id);
+        $this->assertSame((string) $location->getKey(), (string) $task->location_id);
+
         app(CustomerAutomationManager::class)->sendEmailTouchpoint(
             profile: $profile,
             subject: 'Te respondemos hoy',
@@ -98,6 +105,7 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertSame((string) $user->getKey(), (string) $note->assigned_user_id);
         $this->assertNotNull($note->first_response_at);
         $this->assertNotNull($note->last_team_message_at);
+        $this->assertSame('waiting_customer', (string) $task->fresh()?->status);
 
         $reopened = $ops->recordInboundReply(
             $touchpoint->fresh(),
@@ -113,6 +121,7 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertSame(2, $reopened->reply_count);
         $this->assertNotNull($reopened->response_due_at);
         $this->assertSame((string) $location->getKey(), (string) $reopened->location_id);
+        $this->assertSame('open', (string) $task->fresh()?->status);
 
         Mail::assertSent(CustomerLifecycleMail::class, 1);
     }

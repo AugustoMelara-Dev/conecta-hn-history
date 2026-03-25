@@ -101,10 +101,13 @@ final class BusinessRecordPageSmokeTest extends TestCase
 
         $this->get(route('filament.app.resources.customer-profiles.edit', ['tenant' => $tenant->slug, 'record' => $customerProfile], false))
             ->assertOk()
+            ->assertSee('Vista 360 del cliente')
+            ->assertSee('Timeline 360')
             ->assertSee('Operacion comercial')
             ->assertSee('Historial de pedidos')
             ->assertSee('Historial de prospectos')
             ->assertSee('Historial de contactos')
+            ->assertSee('Tareas y SLA')
             ->assertSee('Notas del cliente');
 
         $this->get(route('filament.app.resources.campaigns.edit', ['tenant' => $tenant->slug, 'record' => $campaign], false))

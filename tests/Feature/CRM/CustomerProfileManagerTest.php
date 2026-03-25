@@ -8,7 +8,10 @@ use App\Domain\Identity\Enums\UserRole;
 use App\Models\Appointment;
 use App\Models\Category;
 use App\Models\City;
+use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
+use App\Models\CustomerTask;
+use App\Models\CustomerTouchpoint;
 use App\Models\Lead;
 use App\Models\LoyaltyProgram;
 use App\Models\Order;
@@ -173,6 +176,98 @@ final class CustomerProfileManagerTest extends TestCase
         $this->assertSame('manual', $profile->acquisition_channel);
         $this->assertSame('1200.00', $profile->initial_ltv);
         $this->assertSame(0, $profile->repeat_purchase_count);
+    }
+
+    public function test_manual_merge_moves_customer_workspace_into_single_profile(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner('crm-manual-merge');
+
+        $primary = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'name' => 'Ana Castillo',
+            'email' => 'ana@example.com',
+            'preferred_channel' => 'email',
+            'customer_segment' => 'repeat',
+            'marketing_opt_in' => true,
+        ]);
+
+        $duplicate = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Ana C.',
+            'phone' => '9999-1111',
+            'preferred_channel' => 'whatsapp',
+            'customer_segment' => 'reactivation',
+            'whatsapp_opt_in' => true,
+            'crm_notes' => 'Cliente contactada por WhatsApp.',
+        ]);
+
+        $order = Order::withoutEvents(function () use ($tenant, $user, $duplicate): Order {
+            return Order::factory()
+                ->forTenant($tenant)
+                ->delivered()
+                ->create([
+                    'user_id' => $user->getKey(),
+                    'customer_profile_id' => $duplicate->getKey(),
+                    'customer_name' => 'Ana Castillo',
+                    'customer_email' => 'ana@example.com',
+                    'customer_phone' => '9999-1111',
+                    'total' => 640.00,
+                    'subtotal' => 640.00,
+                    'discount' => 0.00,
+                    'delivery_fee' => 0.00,
+                ]);
+        });
+
+        $note = CustomerNote::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $duplicate->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'note_type' => 'follow_up',
+            'status' => 'open',
+            'priority' => 'high',
+            'source_channel' => 'whatsapp',
+            'requires_follow_up' => true,
+            'body' => 'Confirmar recompra esta semana.',
+        ]);
+
+        $task = CustomerTask::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $duplicate->getKey(),
+            'customer_note_id' => $note->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'task_type' => 'reply_follow_up',
+            'title' => 'Responder a Ana',
+            'status' => 'open',
+            'priority' => 'high',
+        ]);
+
+        $touchpoint = CustomerTouchpoint::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $duplicate->getKey(),
+            'channel' => 'whatsapp',
+            'direction' => 'outbound',
+            'automation_key' => 'manual_follow_up_whatsapp',
+            'message' => 'Seguimos pendientes de tu compra.',
+            'recipient_address' => '9999-1111',
+            'status' => CustomerTouchpoint::STATUS_SENT,
+            'delivery_status' => CustomerTouchpoint::DELIVERY_SENT,
+        ]);
+
+        $merged = app(\App\Domain\TenantGovernance\Services\CustomerProfileManager::class)->mergeProfiles(
+            $primary,
+            $duplicate,
+            (string) $user->getKey(),
+        );
+
+        $this->assertSame(1, CustomerProfile::query()->withoutGlobalScopes()->count());
+        $this->assertSame((int) $merged->getKey(), (int) $order->fresh()->customer_profile_id);
+        $this->assertSame((int) $merged->getKey(), (int) $note->fresh()->customer_profile_id);
+        $this->assertSame((int) $merged->getKey(), (int) $task->fresh()->customer_profile_id);
+        $this->assertSame((int) $merged->getKey(), (int) $touchpoint->fresh()->customer_profile_id);
+        $this->assertSame('9999-1111', $merged->phone);
+        $this->assertTrue((bool) $merged->whatsapp_opt_in);
+        $this->assertStringContainsString('Cliente contactada por WhatsApp.', (string) $merged->crm_notes);
     }
 
     /**

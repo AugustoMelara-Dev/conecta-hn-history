@@ -375,6 +375,8 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertSee('Automatizaciones externas')
             ->assertSee('Analitica PYME profunda')
             ->assertSee('Cohortes y LTV')
+            ->assertSee('Comparativa por owner')
+            ->assertSee('Comparativa por sede')
             ->assertSee('Oferta top')
             ->assertSee('Recurrencia')
             ->assertSee('Entrega de email')

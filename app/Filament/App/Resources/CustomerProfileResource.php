@@ -7,6 +7,7 @@ namespace App\Filament\App\Resources;
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
 use App\Domain\TenantGovernance\Services\CustomerLoyaltyManager;
+use App\Domain\TenantGovernance\Services\CustomerProfileTimelineBuilder;
 use App\Domain\TenantGovernance\Services\CustomerSegmentPlaybook;
 use App\Filament\App\Resources\CustomerProfileResource\Pages;
 use App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
@@ -30,6 +31,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class CustomerProfileResource extends Resource
 {
@@ -217,6 +219,17 @@ class CustomerProfileResource extends Resource
                             ->disabled()
                             ->dehydrated(false)
                             ->rows(2),
+                    ]),
+
+                Section::make('Vista 360 del cliente')
+                    ->description('Aqui se juntan operaciones, conversaciones, valor y continuidad en una sola lectura.')
+                    ->schema([
+                        Forms\Components\Placeholder::make('customer_workspace_summary')
+                            ->label('Workspace operativo')
+                            ->content(fn (?CustomerProfile $record): HtmlString|string => static::buildCustomerWorkspaceHtml($record)),
+                        Forms\Components\Placeholder::make('customer_timeline')
+                            ->label('Timeline 360')
+                            ->content(fn (?CustomerProfile $record): HtmlString|string => static::buildCustomerTimelineHtml($record)),
                     ]),
 
                 Section::make('Operacion comercial')
@@ -624,7 +637,7 @@ class CustomerProfileResource extends Resource
                             : '#';
                     }),
                 Action::make('campaigns')
-                    ->label('Campañas CRM')
+                    ->label('CampaÃ±as CRM')
                     ->icon('heroicon-o-megaphone')
                     ->url(function (): string {
                         $tenant = static::getTenantRecord();
@@ -648,6 +661,7 @@ class CustomerProfileResource extends Resource
             RelationManagers\AppointmentsRelationManager::class,
             RelationManagers\LeadsRelationManager::class,
             RelationManagers\TouchpointsRelationManager::class,
+            RelationManagers\TasksRelationManager::class,
             RelationManagers\NotesRelationManager::class,
             RelationManagers\LoyaltyLedgerRelationManager::class,
         ];
@@ -671,7 +685,7 @@ class CustomerProfileResource extends Resource
     /**
      * @return array<string, string>
      */
-    protected static function teamOptions(): array
+    public static function teamOptions(): array
     {
         $tenant = static::getTenantRecord();
 
@@ -700,7 +714,7 @@ class CustomerProfileResource extends Resource
     /**
      * @return array<string, string>
      */
-    protected static function locationOptions(): array
+    public static function locationOptions(): array
     {
         $tenant = static::getTenantRecord();
 
@@ -717,6 +731,88 @@ class CustomerProfileResource extends Resource
             ->pluck('name', 'id')
             ->map(static fn (mixed $value): string => (string) $value)
             ->all();
+    }
+
+    protected static function buildCustomerWorkspaceHtml(?CustomerProfile $record): HtmlString|string
+    {
+        if (! $record instanceof CustomerProfile) {
+            return 'Abre una ficha real para ver el workspace consolidado del cliente.';
+        }
+
+        $openTasks = $record->tasks()
+            ->withoutGlobalScopes()
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->count();
+        $breachedTasks = $record->tasks()
+            ->withoutGlobalScopes()
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->whereNotNull('sla_due_at')
+            ->where('sla_due_at', '<', now())
+            ->count();
+        $openReplies = $record->notes()
+            ->withoutGlobalScopes()
+            ->where('requires_follow_up', true)
+            ->whereIn('status', ['open', 'in_progress', 'pending_customer'])
+            ->count();
+        $lastOrder = $record->last_order_at?->diffForHumans() ?? 'Sin pedidos';
+        $lastAppointment = $record->last_appointment_at?->diffForHumans() ?? 'Sin citas';
+
+        $cards = [
+            ['label' => 'Valor acumulado', 'value' => 'L. '.number_format((float) $record->total_spent, 2), 'copy' => 'Ticket promedio: L. '.number_format((float) $record->average_ticket, 2)],
+            ['label' => 'Tareas activas', 'value' => (string) $openTasks, 'copy' => $breachedTasks > 0 ? $breachedTasks.' vencidas por SLA.' : 'Sin vencimientos ahora.'],
+            ['label' => 'Conversaciones', 'value' => (string) $openReplies, 'copy' => 'Canal preferido: '.$record->preferred_channel_label],
+            ['label' => 'Continuidad', 'value' => $record->segment_display_label, 'copy' => 'Ultimo pedido: '.$lastOrder.' / Ultima cita: '.$lastAppointment],
+        ];
+
+        $items = collect($cards)
+            ->map(fn (array $card): string => '<div style="border:1px solid rgba(15,23,42,.08); border-radius:1rem; padding:1rem; background:#fff;">'
+                .'<p style="margin:0; color:#64748b; font-size:.75rem; text-transform:uppercase; letter-spacing:.08em;">'.$card['label'].'</p>'
+                .'<p style="margin:.35rem 0 0; font-size:1.35rem; font-weight:700; color:#0f172a;">'.$card['value'].'</p>'
+                .'<p style="margin:.5rem 0 0; color:#475569; font-size:.92rem;">'.$card['copy'].'</p>'
+                .'</div>')
+            ->implode('');
+
+        return new HtmlString('<div style="display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));">'.$items.'</div>');
+    }
+
+    protected static function buildCustomerTimelineHtml(?CustomerProfile $record): HtmlString|string
+    {
+        if (! $record instanceof CustomerProfile) {
+            return 'Todavia no hay timeline disponible.';
+        }
+
+        $items = app(CustomerProfileTimelineBuilder::class)->build($record);
+
+        if ($items === []) {
+            return 'Aun no hay eventos suficientes para armar la historia operativa de este cliente.';
+        }
+
+        $html = collect($items)
+            ->map(function (array $item): string {
+                $channel = $item['channel'] !== null ? ' / '.$item['channel'] : '';
+
+                return '<div style="display:grid; grid-template-columns:auto 1fr; gap:.85rem; align-items:flex-start; padding:1rem 0; border-bottom:1px solid rgba(15,23,42,.08);">'
+                    .'<span style="display:inline-flex; width:.8rem; height:.8rem; border-radius:999px; margin-top:.4rem; background:'
+                    .match ($item['color']) {
+                        'danger' => '#dc2626',
+                        'warning' => '#d97706',
+                        'success' => '#059669',
+                        'info', 'primary' => '#2563eb',
+                        default => '#64748b',
+                    }
+                    .';"></span>'
+                    .'<div>'
+                    .'<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;">'
+                    .'<p style="margin:0; font-weight:700; color:#0f172a;">'.$item['title'].'</p>'
+                    .'<p style="margin:0; color:#64748b; font-size:.9rem;">'.$item['when'].$channel.'</p>'
+                    .'</div>'
+                    .'<p style="margin:.35rem 0 0; color:#475569;">'.$item['copy'].'</p>'
+                    .'</div>'
+                    .'</div>';
+            })
+            ->implode('');
+
+        return new HtmlString('<div style="display:grid;">'.$html.'</div>');
     }
 }
 

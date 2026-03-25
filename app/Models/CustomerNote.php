@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class CustomerNote extends Model
 {
@@ -73,6 +74,11 @@ class CustomerNote extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    public function task(): HasOne
+    {
+        return $this->hasOne(CustomerTask::class, 'customer_note_id');
     }
 
     public function getNoteTypeLabelAttribute(): string

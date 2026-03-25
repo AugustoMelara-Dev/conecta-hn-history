@@ -23,15 +23,18 @@ use App\Models\Campaign;
 use App\Models\CustomerLoyaltyLedger;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
+use App\Models\CustomerTask;
 use App\Models\CustomerTouchpoint;
 use App\Models\Follow;
 use App\Models\Lead;
 use App\Models\LoyaltyProgram;
+use App\Models\Location;
 use App\Models\OperationalPlaybookTask;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Tenant;
 use App\Models\TenantAnalytic;
+use App\Models\User;
 use App\Models\Waitlist;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
@@ -204,6 +207,10 @@ class GrowthCenter extends Page
 
     public float $cohortLtv = 0.0;
 
+    public int $openCustomerTasksCount = 0;
+
+    public int $overdueCustomerTasksCount = 0;
+
     public string $growthUrl = '#';
 
     public string $leadsUrl = '#';
@@ -244,6 +251,12 @@ class GrowthCenter extends Page
 
     /** @var list<array{label: string, value: string, copy: string}> */
     public array $cohortMetrics = [];
+
+    /** @var list<array{name: string, revenue: string, customers: int, openTasks: int, overdueTasks: int, repeatRate: string, context: string}> */
+    public array $ownerComparisons = [];
+
+    /** @var list<array{name: string, revenue: string, customers: int, openTasks: int, overdueTasks: int, repeatRate: string, context: string}> */
+    public array $locationComparisons = [];
 
     /** @var list<array{title: string, copy: string, href: string}> */
     public array $growthActions = [];
@@ -319,6 +332,7 @@ class GrowthCenter extends Page
         $this->buildPriorityQueue();
         $this->buildAutomationJourneys();
         $this->buildCadencePlaybooks();
+        $this->buildOperationalComparisons();
     }
 
     private function loadSignals(Tenant $tenant): void
@@ -670,6 +684,18 @@ class GrowthCenter extends Page
                 ->where('status', 'resolved')
                 ->where('handled_at', '>=', $thirtyDaysAgo)
                 ->count();
+            $this->openCustomerTasksCount = CustomerTask::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereNotIn('status', ['completed', 'cancelled'])
+                ->count();
+            $this->overdueCustomerTasksCount = CustomerTask::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereNotIn('status', ['completed', 'cancelled'])
+                ->whereNotNull('sla_due_at')
+                ->where('sla_due_at', '<', now())
+                ->count();
 
             $respondedNotes = (clone $notesBase)
                 ->whereNotNull('first_response_at')
@@ -687,6 +713,8 @@ class GrowthCenter extends Page
             $this->openRepliesCount = 0;
             $this->breachedRepliesCount = 0;
             $this->resolvedReplies30d = 0;
+            $this->openCustomerTasksCount = 0;
+            $this->overdueCustomerTasksCount = 0;
             $this->averageFirstResponseMinutes = 0.0;
         }
 
@@ -781,7 +809,7 @@ class GrowthCenter extends Page
             $this->metric('Contactos enviados', (string) $this->touchpoints30d, $this->touchpoints30d > 0 ? 'Tu CRM ya esta ejecutando seguimiento auditable.' : 'Todavia no has movido seguimientos desde el CRM.'),
             $this->metric('Bandeja abierta', (string) $this->openRepliesCount, $this->openRepliesCount > 0 ? 'Conversaciones esperando respuesta o cierre humano.' : 'No hay replies pendientes en la cola activa.'),
             $this->metric('Canjeables hoy', (string) $this->redeemableCustomersCount, $this->redeemableCustomersCount > 0 ? 'Clientes que ya pueden canjear una recompensa visible.' : 'Todavia no hay clientes listos para un canje inmediato.'),
-            $this->metric('Listos para campaña', (string) $this->campaignReadyCustomersCount, $this->campaignReadyCustomersCount > 0 ? 'Base con opt-in y canal util para una campaña segmentada.' : 'Todavia falta base con permiso claro para campañas CRM.'),
+            $this->metric('Listos para campaÃ±a', (string) $this->campaignReadyCustomersCount, $this->campaignReadyCustomersCount > 0 ? 'Base con opt-in y canal util para una campaÃ±a segmentada.' : 'Todavia falta base con permiso claro para campaÃ±as CRM.'),
             $this->metric('Con owner', (string) $this->assignedCustomersCount, $this->assignedCustomersCount > 0 ? 'Clientes ya asignados a alguien del equipo para continuidad.' : 'Todavia no has repartido cartera entre el equipo.'),
             $this->metric('Con sede', (string) $this->locatedCustomersCount, $this->locatedCustomersCount > 0 ? 'Clientes ya conectados a una sucursal o punto de atencion.' : 'Todavia no hay base suficiente etiquetada por sede.'),
             $this->metric('Reactivar', (string) $this->reactivationPoolCount, $this->reactivationPoolCount > 0 ? 'Clientes con senales para volver a tocar.' : 'La base reciente no muestra fuga grande todavia.'),
@@ -816,10 +844,61 @@ class GrowthCenter extends Page
             $this->metric('Repeat rate cohorte', $this->cohortRepeatRate.'%', $this->currentCohortCustomersCount > 0 ? 'Mide cuantos clientes del mes actual ya dieron una segunda compra o cita.' : 'Necesitas clientes nuevos para medir repeticion temprana.'),
             $this->metric('LTV cohorte actual', $this->formatCurrency($this->cohortLtv), $this->cohortLtv > 0 ? 'Valor medio acumulado que ya deja la cohorte del mes.' : 'Aun no hay gasto suficiente en la cohorte actual.'),
             $this->metric('Canal loyalty dominante', $this->topLoyaltyChannel, $this->hasLoyaltyProgram ? 'Canal que mas sostiene interaccion en clientes con fidelidad activa.' : 'Activa fidelidad para detectar el canal que mejor sostiene continuidad.'),
-            $this->metric('Canjes 30 dias', (string) $this->loyaltyRedeems30d, $this->loyaltyRedeems30d > 0 ? 'Clientes que ya canjearon beneficios en el periodo reciente.' : 'Todavia no hay canjes recientes conectados a tus campañas.'),
+            $this->metric('Canjes 30 dias', (string) $this->loyaltyRedeems30d, $this->loyaltyRedeems30d > 0 ? 'Clientes que ya canjearon beneficios en el periodo reciente.' : 'Todavia no hay canjes recientes conectados a tus campaÃ±as.'),
             $this->metric('Campanas programadas', (string) $this->scheduledCampaignsCount, $this->scheduledCampaignsCount > 0 ? 'Ya tienes empujes preparados para sostener la cadencia comercial.' : 'Todavia no hay envios agendados saliendo solos.'),
             $this->metric('Cadencias activas', (string) $this->recurringCampaignsCount, $this->recurringCampaignsCount > 0 ? 'Campanas que siguen operando con repeticion configurada.' : 'Todavia no has encendido campanas recurrentes por segmento.'),
         ];
+    }
+
+    private function buildOperationalComparisons(): void
+    {
+        $tenant = $this->getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            $this->ownerComparisons = [];
+            $this->locationComparisons = [];
+
+            return;
+        }
+
+        $tenantId = (string) $tenant->getKey();
+        $profiles = CustomerProfile::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->get([
+                'id',
+                'assigned_user_id',
+                'location_id',
+                'customer_segment',
+                'total_spent',
+                'repeat_purchase_count',
+            ]);
+        $tasks = CustomerTask::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->get([
+                'assigned_user_id',
+                'location_id',
+                'status',
+                'sla_due_at',
+            ]);
+
+        $userLabels = User::query()
+            ->withoutGlobalScopes()
+            ->whereIn('id', $profiles->pluck('assigned_user_id')->merge($tasks->pluck('assigned_user_id'))->filter()->unique()->all())
+            ->pluck('name', 'id')
+            ->mapWithKeys(fn (mixed $name, mixed $id): array => [(string) $id => (string) $name])
+            ->all();
+        $locationLabels = Location::query()
+            ->withoutGlobalScopes()
+            ->whereIn('id', $profiles->pluck('location_id')->merge($tasks->pluck('location_id'))->filter()->unique()->all())
+            ->pluck('name', 'id')
+            ->mapWithKeys(fn (mixed $name, mixed $id): array => [(string) $id => (string) $name])
+            ->all();
+
+        $this->ownerComparisons = $this->buildPortfolioComparisonRows($profiles, $tasks, 'assigned_user_id', $userLabels, 'Sin owner');
+        $this->locationComparisons = $this->buildPortfolioComparisonRows($profiles, $tasks, 'location_id', $locationLabels, 'Sin sede');
     }
 
     private function buildGrowthActions(): void
@@ -864,7 +943,7 @@ class GrowthCenter extends Page
         }
 
         if ($this->campaignsSent30d === 0 && $this->isPro && ($this->followersCount > 0 || $this->closedLeadsCount > 0 || $this->campaignReadyCustomersCount > 0)) {
-            $queue[] = $this->priority('Lanza una campana', $this->campaignReadyCustomersCount > 0 ? 'Tu CRM ya tiene base opt-in lista para una campaña por segmento, owner o sede.' : 'Tu base ya aguanta un empuje comercial y todavia no lo estas usando.', $this->marketingUrl, 'info');
+            $queue[] = $this->priority('Lanza una campana', $this->campaignReadyCustomersCount > 0 ? 'Tu CRM ya tiene base opt-in lista para una campaÃ±a por segmento, owner o sede.' : 'Tu base ya aguanta un empuje comercial y todavia no lo estas usando.', $this->marketingUrl, 'info');
         }
 
         if ($this->isPro && $this->campaignReadyCustomersCount > 0 && $this->recurringCampaignsCount === 0) {
@@ -948,6 +1027,49 @@ class GrowthCenter extends Page
             ->all();
 
         $this->cadencePlaybooks = $playbooks;
+    }
+
+    /**
+     * @param  Collection<int, CustomerProfile>  $profiles
+     * @param  Collection<int, CustomerTask>  $tasks
+     * @param  array<string, string>  $labels
+     * @return list<array{name: string, revenue: string, customers: int, openTasks: int, overdueTasks: int, repeatRate: string, context: string}>
+     */
+    private function buildPortfolioComparisonRows(
+        Collection $profiles,
+        Collection $tasks,
+        string $dimensionKey,
+        array $labels,
+        string $emptyLabel,
+    ): array {
+        return $profiles->pluck($dimensionKey)
+            ->merge($tasks->pluck($dimensionKey))
+            ->map(fn (mixed $value): string => (string) ($value ?: 'none'))
+            ->unique()
+            ->values()
+            ->map(function (string $key) use ($profiles, $tasks, $dimensionKey, $labels, $emptyLabel): array {
+                $profileSlice = $profiles->filter(fn (CustomerProfile $profile): bool => (string) ($profile->{$dimensionKey} ?: 'none') === $key);
+                $taskSlice = $tasks->filter(fn (CustomerTask $task): bool => (string) ($task->{$dimensionKey} ?: 'none') === $key);
+                $customerCount = $profileSlice->count();
+                $repeatCustomers = $profileSlice->filter(fn (CustomerProfile $profile): bool => (int) $profile->repeat_purchase_count > 0)->count();
+                $overdueTasks = $taskSlice->filter(fn (CustomerTask $task): bool => $task->sla_due_at !== null && $task->sla_due_at->isPast())->count();
+                $topSegment = (string) ($profileSlice->pluck('customer_segment')->filter()->countBy()->sortDesc()->keys()->first() ?? 'sin segmento');
+                $revenue = (float) $profileSlice->sum('total_spent');
+
+                return [
+                    'name' => $labels[$key] ?? $emptyLabel,
+                    'revenue' => $this->formatCurrency($revenue),
+                    'customers' => $customerCount,
+                    'openTasks' => $taskSlice->count(),
+                    'overdueTasks' => $overdueTasks,
+                    'repeatRate' => $customerCount > 0 ? number_format(($repeatCustomers / $customerCount) * 100, 1).'%' : '0.0%',
+                    'context' => 'Segmento dominante: '.$this->formatSourceLabel($topSegment),
+                ];
+            })
+            ->sortByDesc(fn (array $row): float => ($row['overdueTasks'] * 1000) + ($row['openTasks'] * 100) + (float) str_replace(['L. ', ','], '', $row['revenue']))
+            ->take(4)
+            ->values()
+            ->all();
     }
 
     /**

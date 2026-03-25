@@ -14,6 +14,7 @@ class CustomerConversationOpsManager
 {
     public function __construct(
         private readonly CustomerSegmentPlaybook $segmentPlaybook,
+        private readonly CustomerTaskManager $customerTaskManager,
     ) {}
 
     public function recordInboundReply(
@@ -58,10 +59,13 @@ class CustomerConversationOpsManager
                 ]),
             ])->save();
 
-            return $conversation->fresh();
+            $freshConversation = $conversation->fresh();
+            $this->customerTaskManager->syncFromNote($freshConversation);
+
+            return $freshConversation;
         }
 
-        return CustomerNote::query()
+        $note = CustomerNote::query()
             ->withoutGlobalScopes()
             ->create([
                 'tenant_id' => (string) $touchpoint->tenant_id,
@@ -88,6 +92,10 @@ class CustomerConversationOpsManager
                 'pinned_at' => null,
                 'next_action_at' => $occurredAt->copy()->addHours($slaHours),
             ]);
+
+        $this->customerTaskManager->syncFromNote($note);
+
+        return $note;
     }
 
     public function markOutboundResponse(CustomerProfile $profile, CustomerTouchpoint $touchpoint, ?string $actorUserId = null): ?CustomerNote
@@ -124,7 +132,10 @@ class CustomerConversationOpsManager
             ]),
         ])->save();
 
-        return $conversation->fresh();
+        $freshConversation = $conversation->fresh();
+        $this->customerTaskManager->syncFromNote($freshConversation);
+
+        return $freshConversation;
     }
 
     public function take(CustomerNote $note, ?string $userId = null): CustomerNote
@@ -135,7 +146,10 @@ class CustomerConversationOpsManager
             'assigned_user_id' => $userId ?? $note->assigned_user_id,
         ])->save();
 
-        return $note->fresh();
+        $freshNote = $note->fresh();
+        $this->customerTaskManager->syncFromNote($freshNote);
+
+        return $freshNote;
     }
 
     public function resolve(CustomerNote $note, ?string $userId = null): CustomerNote
@@ -149,7 +163,10 @@ class CustomerConversationOpsManager
             'next_action_at' => null,
         ])->save();
 
-        return $note->fresh();
+        $freshNote = $note->fresh();
+        $this->customerTaskManager->syncFromNote($freshNote);
+
+        return $freshNote;
     }
 
     public function reassign(CustomerNote $note, ?string $userId = null, ?string $actorUserId = null): CustomerNote
@@ -169,7 +186,10 @@ class CustomerConversationOpsManager
             ]),
         ])->save();
 
-        return $note->fresh();
+        $freshNote = $note->fresh();
+        $this->customerTaskManager->syncFromNote($freshNote);
+
+        return $freshNote;
     }
 
     public function moveToLocation(CustomerNote $note, ?string $locationId = null, ?string $actorUserId = null): CustomerNote
@@ -183,7 +203,10 @@ class CustomerConversationOpsManager
             ]),
         ])->save();
 
-        return $note->fresh();
+        $freshNote = $note->fresh();
+        $this->customerTaskManager->syncFromNote($freshNote);
+
+        return $freshNote;
     }
 
     private function latestConversation(CustomerTouchpoint $touchpoint, string $channel): ?CustomerNote
