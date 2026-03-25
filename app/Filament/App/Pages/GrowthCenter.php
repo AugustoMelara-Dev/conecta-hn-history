@@ -279,6 +279,9 @@ class GrowthCenter extends Page
     /** @var list<array{label:string,channel:string,sent:int,replied:int,conversions:int,revenue:string,replyRate:string,closeRate:string}> */
     public array $templatePerformance = [];
 
+    /** @var list<array{label:string,branch:string,lane:string,sent:int,replied:int,conversions:int,revenue:string,replyRate:string,closeRate:string}> */
+    public array $sequencePerformance = [];
+
     /** @var list<array{name:string,total:int,closed:int,conversions:int,revenue:string,waiting:int,breached:int,avgFirstResponse:string,conversionRate:string}> */
     public array $ownerConversationPerformance = [];
 
@@ -1018,6 +1021,7 @@ class GrowthCenter extends Page
 
         if (! $tenant instanceof Tenant) {
             $this->templatePerformance = [];
+            $this->sequencePerformance = [];
             $this->ownerConversationPerformance = [];
             $this->locationConversationPerformance = [];
 
@@ -1043,6 +1047,7 @@ class GrowthCenter extends Page
                 'replied_at',
                 'customer_conversation_id',
                 'customer_profile_id',
+                'metadata',
             ]);
 
         $this->templatePerformance = $touchpoints
@@ -1063,6 +1068,42 @@ class GrowthCenter extends Page
                 return [
                     'label' => $this->formatSourceLabel($templateKey),
                     'channel' => $this->formatSourceLabel($topChannel),
+                    'sent' => $sent,
+                    'replied' => $replied,
+                    'conversions' => $conversions,
+                    'revenue' => $this->formatCurrency($revenue),
+                    'revenue_raw' => $revenue,
+                    'replyRate' => $sent > 0 ? number_format(($replied / $sent) * 100, 1).'%' : '0.0%',
+                    'closeRate' => $sent > 0 ? number_format(($conversions / $sent) * 100, 1).'%' : '0.0%',
+                ];
+            })
+            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['conversions'] ?? 0) * 100) + ((int) ($row['replied'] ?? 0) * 10) + (int) ($row['sent'] ?? 0))
+            ->take(4)
+            ->values()
+            ->all();
+
+        $this->sequencePerformance = $touchpoints
+            ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_key', $touchpoint->template_key ?: 'manual'))
+            ->map(function (Collection $items, string $sequenceKey): array {
+                $sent = $items->count();
+                $replied = $items->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->replied_at !== null)->count();
+                $closedConversations = $items
+                    ->map(fn (CustomerTouchpoint $touchpoint): ?CustomerConversation => $touchpoint->conversation)
+                    ->filter(fn (?CustomerConversation $conversation): bool => $conversation instanceof CustomerConversation && $conversation->status === 'closed')
+                    ->unique(fn (CustomerConversation $conversation): int => (int) $conversation->getKey())
+                    ->values();
+                $conversions = $closedConversations->count();
+                $revenue = $closedConversations
+                    ->sum(fn (CustomerConversation $conversation): float => $this->conversationRevenueValue($conversation));
+                $first = $items->first();
+                $label = (string) data_get($first?->metadata, 'journey_sequence_label', data_get($first?->metadata, 'journey_step_title', $this->formatSourceLabel($sequenceKey)));
+                $branch = (string) data_get($first?->metadata, 'journey_branch_label', 'Ruta base');
+                $lane = (string) data_get($first?->metadata, 'journey_lane', 'follow_up');
+
+                return [
+                    'label' => $label,
+                    'branch' => $branch,
+                    'lane' => $this->formatSourceLabel($lane),
                     'sent' => $sent,
                     'replied' => $replied,
                     'conversions' => $conversions,

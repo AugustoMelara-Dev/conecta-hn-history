@@ -10,6 +10,8 @@ use App\Mail\CustomerLifecycleMail;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\CustomerMessageTemplate;
+use App\Models\CustomerConversation;
+use App\Models\CustomerJourneyRun;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
@@ -99,6 +101,82 @@ final class CustomerConversationTemplateManagerTest extends TestCase
 
         $this->assertFalse($definition['available']);
         $this->assertStringContainsString('marketing', (string) $definition['warning']);
+    }
+
+    public function test_branching_context_enriches_touchpoint_metadata_with_sequence_information(): void
+    {
+        Mail::fake();
+
+        [$user, $tenant] = $this->makeTenantOwner('crm-template-branching');
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'name' => 'Lucia Maradiaga',
+            'email' => 'lucia.branch@example.com',
+            'preferred_channel' => 'email',
+            'customer_segment' => 'repeat',
+            'lifecycle_stage' => 'active',
+            'email_opt_in' => true,
+            'marketing_opt_in' => true,
+            'redeemable_rewards_count' => 1,
+        ]);
+
+        $conversation = CustomerConversation::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $profile->getKey(),
+            'owner_user_id' => $user->getKey(),
+            'conversation_key' => 'branch-repeat-001',
+            'source_channel' => 'email',
+            'status' => 'waiting_customer',
+            'priority' => 'normal',
+            'response_sla_minutes' => 90,
+            'opened_at' => now()->subDay(),
+            'last_team_message_at' => now()->subHours(26),
+            'next_action_at' => now()->subHour(),
+            'response_due_at' => now()->subHour(),
+            'metadata' => [],
+        ]);
+
+        $steps = app(CustomerConversationTemplateManager::class)->journeyDefinition($profile);
+
+        CustomerJourneyRun::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_conversation_id' => $conversation->getKey(),
+            'customer_profile_id' => $profile->getKey(),
+            'journey_key' => 'repeat',
+            'segment_key' => 'repeat',
+            'status' => 'active',
+            'current_step_key' => 'repeat_bundle_offer',
+            'next_template_key' => 'close_sale',
+            'sequence_state' => 'waiting_customer',
+            'due_state' => 'breached',
+            'current_step_index' => 1,
+            'next_action_at' => now()->subHour(),
+            'step_due_at' => now()->subHour(),
+            'auto_step_count' => 0,
+            'metadata' => [
+                'steps' => $steps,
+                'current_step' => [
+                    'key' => 'repeat_bundle_offer',
+                    'title' => 'Conectar recompensa lista',
+                    'template_key' => 'close_sale',
+                    'lane' => 'loyalty_follow_up',
+                    'branch_key' => 'reward_ready',
+                    'branch_label' => 'Canje listo',
+                    'sequence_key' => 'repeat:repeat_bundle_offer:reward_ready',
+                    'sequence_label' => 'Conectar recompensa lista',
+                ],
+                'next_step' => $steps[2],
+            ],
+        ]);
+
+        $touchpoint = app(CustomerConversationTemplateManager::class)->send($profile, 'close_sale', null, (string) $user->getKey());
+
+        $this->assertSame('repeat_bundle_offer', data_get($touchpoint->metadata, 'journey_step_key'));
+        $this->assertSame('reward_ready', data_get($touchpoint->metadata, 'journey_branch_key'));
+        $this->assertSame('repeat:repeat_bundle_offer:reward_ready', data_get($touchpoint->metadata, 'journey_sequence_key'));
+        $this->assertSame('loyalty_follow_up', data_get($touchpoint->metadata, 'journey_lane'));
     }
 
     public function test_tenant_template_override_replaces_default_copy_and_can_disable_a_default_template(): void

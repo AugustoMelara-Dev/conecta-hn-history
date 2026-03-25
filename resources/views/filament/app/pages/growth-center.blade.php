@@ -218,6 +218,45 @@
             </div>
         </div>
 
+        <div class="biz-card">
+            <div class="biz-stack">
+                <div>
+                    <p class="biz-kicker">Analitica por secuencia</p>
+                    <h2 class="biz-heading">Que rutas del journey estan moviendo reply, cierre y revenue</h2>
+                    <p class="biz-muted">Sirve para entender si la secuencia correcta es seguimiento, loyalty, rescate o cierre premium, no solo que texto envio mas.</p>
+                </div>
+
+                <div class="biz-actions">
+                    @forelse ($sequencePerformance as $item)
+                        <div class="biz-action">
+                            <div class="biz-split">
+                                <div>
+                                    <p class="biz-action-title">{{ $item['label'] }}</p>
+                                    <p class="biz-action-copy">{{ $item['branch'] }} / Lane: {{ $item['lane'] }}</p>
+                                </div>
+
+                                <x-filament::badge color="{{ $item['conversions'] > 0 ? 'success' : ($item['replied'] > 0 ? 'info' : 'gray') }}">
+                                    {{ $item['closeRate'] }} conversion
+                                </x-filament::badge>
+                            </div>
+
+                            <p class="biz-muted">
+                                <strong>Envios:</strong> {{ $item['sent'] }}
+                                | <strong>Replies:</strong> {{ $item['replied'] }} ({{ $item['replyRate'] }})
+                                | <strong>Conversiones:</strong> {{ $item['conversions'] }}
+                                | <strong>Revenue:</strong> {{ $item['revenue'] }}
+                            </p>
+                        </div>
+                    @empty
+                        <div class="biz-action">
+                            <p class="biz-action-title">Todavia no hay lectura por secuencia</p>
+                            <p class="biz-action-copy">Hace falta que los journeys empiecen a recorrer rutas distintas para medir que secuencia gana por segmento y vertical.</p>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
         <div class="biz-grid-two">
             <div class="biz-card">
                 <div class="biz-stack">

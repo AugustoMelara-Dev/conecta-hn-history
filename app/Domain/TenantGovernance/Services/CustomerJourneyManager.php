@@ -12,6 +12,10 @@ use Illuminate\Support\Carbon;
 
 class CustomerJourneyManager
 {
+    public function __construct(
+        private readonly CustomerJourneyBranchResolver $branchResolver,
+    ) {}
+
     public function sync(CustomerConversation $conversation, CustomerProfile $profile): CustomerJourneyRun
     {
         /** @var CustomerConversationTemplateManager $templateManager */
@@ -27,8 +31,21 @@ class CustomerJourneyManager
                 'customer_conversation_id' => (int) $conversation->getKey(),
             ]);
         $resolved = $this->resolveStepState($conversation, $steps, $segmentKey, $run->exists ? (int) $run->current_step_index : null);
-        $currentStep = $resolved['current_step'];
-        $nextStep = $resolved['next_step'];
+        $journeyKey = $this->journeyKey($segmentKey, $businessSegmentKey);
+        $currentStep = $this->branchResolver->resolve(
+            $profile,
+            $conversation,
+            $resolved['current_step'],
+            $journeyKey,
+            (int) ($resolved['current_step_index'] ?? 0),
+        );
+        $nextStep = $this->branchResolver->resolve(
+            $profile,
+            $conversation,
+            $resolved['next_step'],
+            $journeyKey,
+            min((int) ($resolved['current_step_index'] ?? 0) + 1, max(0, count($steps) - 1)),
+        );
         $stepDueAt = $resolved['step_due_at'];
         $status = $conversation->status === 'closed' ? 'completed' : 'active';
         $sequenceState = $this->resolveSequenceState($conversation, $stepDueAt, $status);
@@ -41,7 +58,7 @@ class CustomerJourneyManager
         $run->forceFill([
             'tenant_id' => (string) $conversation->tenant_id,
             'customer_profile_id' => (int) $profile->getKey(),
-            'journey_key' => $this->journeyKey($segmentKey, $businessSegmentKey),
+            'journey_key' => $journeyKey,
             'segment_key' => $segmentKey,
             'business_segment_key' => $businessSegmentKey,
             'status' => $status,
@@ -64,6 +81,14 @@ class CustomerJourneyManager
                 'conversation_status' => $conversation->status,
                 'recommended_template_key' => $currentStep['template_key'] ?? $nextStep['template_key'] ?? null,
                 'lane' => $currentStep['lane'] ?? null,
+                'current_branch_key' => $currentStep['branch_key'] ?? 'base',
+                'current_branch_label' => $currentStep['branch_label'] ?? 'Ruta base',
+                'next_branch_key' => $nextStep['branch_key'] ?? null,
+                'next_branch_label' => $nextStep['branch_label'] ?? null,
+                'current_sequence_key' => $currentStep['sequence_key'] ?? null,
+                'current_sequence_label' => $currentStep['sequence_label'] ?? null,
+                'next_sequence_key' => $nextStep['sequence_key'] ?? null,
+                'next_sequence_label' => $nextStep['sequence_label'] ?? null,
                 'sequence_state_label' => $this->sequenceStateLabel($sequenceState),
                 'due_state_label' => $this->dueStateLabel($dueState),
                 'step_due_at' => $stepDueAt?->toIso8601String(),
@@ -84,8 +109,9 @@ class CustomerJourneyManager
         }
 
         $conversation = $run->conversation()->withoutGlobalScopes()->first();
+        $profile = $run->customerProfile()->withoutGlobalScopes()->with('tenant')->first();
 
-        if (! $conversation instanceof CustomerConversation) {
+        if (! $conversation instanceof CustomerConversation || ! $profile instanceof CustomerProfile) {
             return $run;
         }
 
@@ -102,8 +128,9 @@ class CustomerJourneyManager
         $currentIndex = min(max(0, (int) $run->current_step_index), max(0, count($steps) - 1));
         $nextIndex = min($currentIndex + 1, max(0, count($steps) - 1));
         $hasAdvanced = $nextIndex > $currentIndex;
-        $currentStep = $steps[$nextIndex] ?? null;
-        $nextStep = $nextIndex < count($steps) - 1 ? ($steps[$nextIndex + 1] ?? null) : null;
+        $journeyKey = (string) ($run->journey_key ?? $this->journeyKey((string) $run->segment_key, $run->business_segment_key));
+        $currentStep = $this->branchResolver->resolve($profile, $conversation, $steps[$nextIndex] ?? null, $journeyKey, $nextIndex);
+        $nextStep = $this->branchResolver->resolve($profile, $conversation, $nextIndex < count($steps) - 1 ? ($steps[$nextIndex + 1] ?? null) : null, $journeyKey, $nextIndex + 1);
         $stepDueAt = $this->stepDueAtFromExecution($executedAt, $currentStep, $conversation);
 
         $conversation->forceFill([
@@ -133,6 +160,14 @@ class CustomerJourneyManager
                 'next_step' => $nextStep,
                 'recommended_template_key' => $currentStep['template_key'] ?? $nextStep['template_key'] ?? null,
                 'lane' => $currentStep['lane'] ?? data_get($run->metadata, 'lane'),
+                'current_branch_key' => $currentStep['branch_key'] ?? 'base',
+                'current_branch_label' => $currentStep['branch_label'] ?? 'Ruta base',
+                'next_branch_key' => $nextStep['branch_key'] ?? null,
+                'next_branch_label' => $nextStep['branch_label'] ?? null,
+                'current_sequence_key' => $currentStep['sequence_key'] ?? null,
+                'current_sequence_label' => $currentStep['sequence_label'] ?? null,
+                'next_sequence_key' => $nextStep['sequence_key'] ?? null,
+                'next_sequence_label' => $nextStep['sequence_label'] ?? null,
                 'sequence_state_label' => $this->sequenceStateLabel($sequenceState),
                 'due_state_label' => $this->dueStateLabel($dueState),
                 'step_due_at' => $stepDueAt?->toIso8601String(),

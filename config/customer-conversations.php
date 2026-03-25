@@ -143,15 +143,23 @@ return [
         'repeat' => [
             'journey' => [
                 ['key' => 'repeat_fast_follow_up', 'title' => 'Responder rapido', 'copy' => 'No dejes que una recompra se enfrie por falta de seguimiento humano.', 'template_key' => 'fast_follow_up', 'lane' => 'intake', 'wait_hours' => 0],
-                ['key' => 'repeat_bundle_offer', 'title' => 'Conectar bundle o reward', 'copy' => 'Usa fidelidad o continuidad como palanca del siguiente paso.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 18],
-                ['key' => 'repeat_close_continuity', 'title' => 'Cerrar continuidad', 'copy' => 'Busca salida a recompra, paquete o nueva cita.', 'template_key' => 'close_sale', 'lane' => 'closing', 'wait_hours' => 30],
+                ['key' => 'repeat_bundle_offer', 'title' => 'Conectar bundle o reward', 'copy' => 'Usa fidelidad o continuidad como palanca del siguiente paso.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 18, 'branches' => [
+                    ['key' => 'reward_ready', 'label' => 'Canje listo', 'title' => 'Conectar recompensa lista', 'copy' => 'Ya hay una recompensa disponible: usa ese momento para mover recompra o continuidad.', 'template_key' => 'close_sale', 'lane' => 'loyalty_follow_up', 'when' => 'reward_ready'],
+                    ['key' => 'vip_priority', 'label' => 'Ruta VIP', 'title' => 'Mover continuidad premium', 'copy' => 'Usa tono premium, beneficio visible y prioridad real para no enfriar un cliente de alto valor.', 'template_key' => 'vip_priority', 'lane' => 'premium_follow_up', 'when' => 'vip_customer'],
+                ]],
+                ['key' => 'repeat_close_continuity', 'title' => 'Cerrar continuidad', 'copy' => 'Busca salida a recompra, paquete o nueva cita.', 'template_key' => 'close_sale', 'lane' => 'closing', 'wait_hours' => 30, 'branches' => [
+                    ['key' => 'high_value_close', 'label' => 'Cierre alto valor', 'title' => 'Cerrar continuidad de alto valor', 'copy' => 'Enfatiza paquete, bundle o beneficio premium porque el cliente ya tiene valor claro.', 'template_key' => 'final_close_push', 'lane' => 'high_value_close', 'when' => 'high_value_customer'],
+                ]],
             ],
             'templates' => ['close_sale', 'fast_follow_up', 'service_rebook'],
         ],
         'reactivation' => [
             'journey' => [
                 ['key' => 'reactivation_reopen_interest', 'title' => 'Volver a abrir interes', 'copy' => 'Recupera contexto y baja friccion en el siguiente paso.', 'template_key' => 'reactivation_recovery', 'lane' => 'reactivation', 'wait_hours' => 0],
-                ['key' => 'reactivation_reason_to_return', 'title' => 'Ofrecer motivo de regreso', 'copy' => 'Usa incentivo claro, control, bundle o regreso asistido.', 'template_key' => 'follow_up_reminder', 'lane' => 'reminder', 'wait_hours' => 24],
+                ['key' => 'reactivation_reason_to_return', 'title' => 'Ofrecer motivo de regreso', 'copy' => 'Usa incentivo claro, control, bundle o regreso asistido.', 'template_key' => 'follow_up_reminder', 'lane' => 'reminder', 'wait_hours' => 24, 'branches' => [
+                    ['key' => 'high_risk_reactivation', 'label' => 'Riesgo alto', 'title' => 'Mover regreso con urgencia sana', 'copy' => 'El cliente muestra riesgo alto de fuga: deja una salida clara y acompaniada.', 'template_key' => 'reactivation_last_call', 'lane' => 'urgent_reactivation', 'when' => ['high_reactivation_risk', 'stalled_sequence']],
+                    ['key' => 'email_recovery', 'label' => 'Recuperacion por email', 'title' => 'Recuperar con recordatorio formal', 'copy' => 'Usa email como carril principal cuando el cliente responde mejor ahi.', 'template_key' => 'follow_up_reminder', 'lane' => 'email_reactivation', 'when' => 'email_preferred'],
+                ]],
                 ['key' => 'reactivation_close_week', 'title' => 'Cerrar en esta semana', 'copy' => 'No dejes la reactivacion sin fecha o CTA concreto.', 'template_key' => 'reactivation_last_call', 'lane' => 'last_call', 'wait_hours' => 48],
             ],
             'templates' => ['reactivation_recovery', 'fast_follow_up', 'close_sale'],
@@ -175,7 +183,10 @@ return [
         'prospect' => [
             'journey' => [
                 ['key' => 'prospect_first_touch', 'title' => 'Responder hoy', 'copy' => 'La primera velocidad importa mas que el texto perfecto.', 'template_key' => 'fast_follow_up', 'lane' => 'intake', 'wait_hours' => 0],
-                ['key' => 'prospect_clarify_offer', 'title' => 'Aclarar propuesta', 'copy' => 'Reduce friccion y deja CTA simple de cierre o discovery.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 12],
+                ['key' => 'prospect_clarify_offer', 'title' => 'Aclarar propuesta', 'copy' => 'Reduce friccion y deja CTA simple de cierre o discovery.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 12, 'branches' => [
+                    ['key' => 'whatsapp_speed', 'label' => 'WhatsApp rapido', 'title' => 'Aclarar propuesta por WhatsApp', 'copy' => 'Empuja velocidad y baja friccion desde el canal donde este prospecto responde mejor.', 'template_key' => 'fast_follow_up', 'lane' => 'whatsapp_follow_up', 'when' => 'whatsapp_preferred'],
+                    ['key' => 'warm_close', 'label' => 'Prospecto caliente', 'title' => 'Acercar cierre comercial', 'copy' => 'Ya hay varias respuestas: mueve discovery o cierre en vez de otro toque tibio.', 'template_key' => 'close_sale', 'lane' => 'warm_closing', 'when' => ['multiple_replies', 'closing_ready']],
+                ]],
                 ['key' => 'prospect_close_or_archive', 'title' => 'No perder el seguimiento', 'copy' => 'Si no responde, reprograma siguiente toque con owner claro.', 'template_key' => 'close_sale', 'lane' => 'closing', 'wait_hours' => 24],
             ],
             'templates' => ['close_sale', 'fast_follow_up', 'reactivation_recovery'],

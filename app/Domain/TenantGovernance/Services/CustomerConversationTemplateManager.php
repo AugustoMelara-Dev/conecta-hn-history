@@ -16,6 +16,7 @@ class CustomerConversationTemplateManager
 {
     public function __construct(
         private readonly CustomerAutomationManager $automationManager,
+        private readonly CustomerJourneyBranchResolver $branchResolver,
     ) {}
 
     /**
@@ -44,6 +45,13 @@ class CustomerConversationTemplateManager
         $conversation = $this->resolveConversation($profile, $note);
         $currentStep = $this->currentStepFromConversation($conversation, $journey);
         $nextStep = $this->nextStepFromConversation($conversation);
+
+        if ($conversation === null) {
+            $journeyKey = $this->journeyKey($profile, $segmentKey);
+            $currentStep = $this->branchResolver->resolve($profile, null, $currentStep, $journeyKey, 0);
+            $nextStep = $this->branchResolver->resolve($profile, null, $nextStep, $journeyKey, 1);
+        }
+
         $recommendedTemplateKey = $this->recommendedTemplateKey($currentStep, $nextStep, $conversation);
         $templates = $this->templateKeysForConversation($profile, $segmentKey, $recommendedTemplateKey)
             ->map(fn (mixed $templateKey): array => $this->templateDefinition(
@@ -92,6 +100,8 @@ class CustomerConversationTemplateManager
     public function send(CustomerProfile $profile, string $templateKey, ?CustomerNote $note = null, ?string $actorUserId = null): CustomerTouchpoint
     {
         $definition = $this->templateDefinition($profile, $templateKey, $note);
+        $conversation = $this->resolveConversation($profile, $note);
+        $journeyContext = $this->journeyContext($profile, $conversation, $templateKey);
 
         if (! $definition['available']) {
             throw new \RuntimeException((string) ($definition['warning'] ?? 'La plantilla no se puede enviar en este momento.'));
@@ -116,6 +126,14 @@ class CustomerConversationTemplateManager
             'source_note_id' => $note?->getKey(),
             'source_channel' => $note?->source_channel,
             'journey_template_key' => $templateKey,
+            'journey_key' => $journeyContext['journey_key'],
+            'journey_lane' => $journeyContext['lane'],
+            'journey_step_key' => $journeyContext['step_key'],
+            'journey_step_title' => $journeyContext['step_title'],
+            'journey_branch_key' => $journeyContext['branch_key'],
+            'journey_branch_label' => $journeyContext['branch_label'],
+            'journey_sequence_key' => $journeyContext['sequence_key'],
+            'journey_sequence_label' => $journeyContext['sequence_label'],
         ];
 
         if ($channel === 'whatsapp') {
@@ -452,7 +470,9 @@ class CustomerConversationTemplateManager
     {
         $conversation = $note?->conversation()
             ->withoutGlobalScopes()
-            ->with('journeyRun')
+            ->with([
+                'journeyRun' => fn ($query) => $query->withoutGlobalScopes(),
+            ])
             ->first();
 
         if ($conversation instanceof CustomerConversation) {
@@ -461,7 +481,9 @@ class CustomerConversationTemplateManager
 
         return CustomerConversation::query()
             ->withoutGlobalScopes()
-            ->with('journeyRun')
+            ->with([
+                'journeyRun' => fn ($query) => $query->withoutGlobalScopes(),
+            ])
             ->where('tenant_id', (string) $profile->tenant_id)
             ->where('customer_profile_id', (int) $profile->getKey())
             ->whereIn('status', ['open', 'in_progress', 'waiting_customer'])
@@ -526,5 +548,103 @@ class CustomerConversationTemplateManager
         return is_string($nextTemplate) && $nextTemplate !== ''
             ? $nextTemplate
             : null;
+    }
+
+    /**
+     * @return array{
+     *     journey_key:?string,
+     *     lane:?string,
+     *     step_key:?string,
+     *     step_title:?string,
+     *     branch_key:?string,
+     *     branch_label:?string,
+     *     sequence_key:?string,
+     *     sequence_label:?string
+     * }
+     */
+    private function journeyContext(CustomerProfile $profile, ?CustomerConversation $conversation, string $templateKey): array
+    {
+        $journeyRun = $conversation?->journeyRun()
+            ->withoutGlobalScopes()
+            ->first();
+        $currentStep = is_array(data_get($journeyRun?->metadata, 'current_step'))
+            ? data_get($journeyRun?->metadata, 'current_step')
+            : null;
+        $nextStep = is_array(data_get($journeyRun?->metadata, 'next_step'))
+            ? data_get($journeyRun?->metadata, 'next_step')
+            : null;
+        $step = $this->matchingJourneyStep($templateKey, $currentStep, $nextStep);
+
+        if ($step === null) {
+            $segmentKey = (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new');
+            $journeyKey = $this->journeyKey($profile, $segmentKey);
+            $steps = $this->journeyDefinition($profile, $segmentKey);
+            $step = $this->matchingJourneyStep(
+                $templateKey,
+                $this->branchResolver->resolve($profile, $conversation, $steps[0] ?? null, $journeyKey, 0),
+                $this->branchResolver->resolve($profile, $conversation, $steps[1] ?? null, $journeyKey, 1),
+            );
+        }
+
+        $journeyKey = filled($journeyRun?->journey_key)
+            ? (string) $journeyRun->journey_key
+            : $this->journeyKey($profile, (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new'));
+
+        if (is_array($step)) {
+            $step = $this->hydrateJourneyStepContext($step, $journeyKey);
+        }
+
+        return [
+            'journey_key' => $journeyKey,
+            'lane' => is_array($step) ? (string) ($step['lane'] ?? '') : null,
+            'step_key' => is_array($step) ? (string) ($step['key'] ?? '') : null,
+            'step_title' => is_array($step) ? (string) ($step['title'] ?? '') : null,
+            'branch_key' => is_array($step) ? (string) ($step['branch_key'] ?? 'base') : null,
+            'branch_label' => is_array($step) ? (string) ($step['branch_label'] ?? 'Ruta base') : null,
+            'sequence_key' => is_array($step) ? (string) ($step['sequence_key'] ?? '') : null,
+            'sequence_label' => is_array($step) ? (string) ($step['sequence_label'] ?? '') : null,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $currentStep
+     * @param  array<string, mixed>|null  $nextStep
+     * @return array<string, mixed>|null
+     */
+    private function matchingJourneyStep(string $templateKey, ?array $currentStep, ?array $nextStep): ?array
+    {
+        foreach ([$currentStep, $nextStep] as $step) {
+            if (is_array($step) && (string) ($step['template_key'] ?? '') === $templateKey) {
+                return $step;
+            }
+        }
+
+        return $currentStep;
+    }
+
+    private function journeyKey(CustomerProfile $profile, string $segmentKey): string
+    {
+        $businessSegmentKey = $this->businessSegmentKey($profile);
+
+        return $businessSegmentKey !== null
+            ? "{$businessSegmentKey}:{$segmentKey}"
+            : $segmentKey;
+    }
+
+    /**
+     * @param  array<string, mixed>  $step
+     * @return array<string, mixed>
+     */
+    private function hydrateJourneyStepContext(array $step, string $journeyKey): array
+    {
+        $branchKey = (string) ($step['branch_key'] ?? 'base');
+        $stepKey = (string) ($step['key'] ?? 'step');
+
+        $step['branch_key'] = $branchKey;
+        $step['branch_label'] = (string) ($step['branch_label'] ?? 'Ruta base');
+        $step['sequence_key'] = (string) ($step['sequence_key'] ?? "{$journeyKey}:{$stepKey}:{$branchKey}");
+        $step['sequence_label'] = (string) ($step['sequence_label'] ?? ($step['title'] ?? 'Secuencia CRM'));
+
+        return $step;
     }
 }
