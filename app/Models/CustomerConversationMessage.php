@@ -24,6 +24,9 @@ class CustomerConversationMessage extends Model
         'channel',
         'body',
         'status',
+        'provider_message_id',
+        'provider_thread_key',
+        'provider_reply_to',
         'occurred_at',
         'metadata',
     ];

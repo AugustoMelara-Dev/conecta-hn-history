@@ -20,11 +20,13 @@ class CustomerTask extends Model
         'created_by_user_id',
         'assigned_user_id',
         'location_id',
+        'assignment_group',
         'task_type',
         'title',
         'body',
         'status',
         'priority',
+        'response_sla_minutes',
         'source_channel',
         'due_at',
         'sla_due_at',
@@ -36,6 +38,7 @@ class CustomerTask extends Model
         'due_at' => 'datetime',
         'sla_due_at' => 'datetime',
         'completed_at' => 'datetime',
+        'response_sla_minutes' => 'integer',
         'metadata' => 'array',
     ];
 
@@ -132,5 +135,18 @@ class CustomerTask extends Model
             'Cerrada' => 'gray',
             default => 'warning',
         };
+    }
+
+    public function getAssignmentGroupLabelAttribute(): string
+    {
+        $label = config("customer-operations.groups.{$this->assignment_group}.label");
+
+        if (is_string($label) && $label !== '') {
+            return $label;
+        }
+
+        return $this->assignment_group !== null && $this->assignment_group !== ''
+            ? str((string) $this->assignment_group)->replace('_', ' ')->title()->value()
+            : 'Sin equipo';
     }
 }

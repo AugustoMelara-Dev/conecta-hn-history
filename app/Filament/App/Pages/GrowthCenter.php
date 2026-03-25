@@ -276,13 +276,13 @@ class GrowthCenter extends Page
     /** @var list<array{name: string, revenue: string, customers: int, openTasks: int, overdueTasks: int, repeatRate: string, context: string}> */
     public array $locationComparisons = [];
 
-    /** @var list<array{label:string,channel:string,sent:int,replied:int,closed:int,replyRate:string,closeRate:string}> */
+    /** @var list<array{label:string,channel:string,sent:int,replied:int,conversions:int,revenue:string,replyRate:string,closeRate:string}> */
     public array $templatePerformance = [];
 
-    /** @var list<array{name:string,total:int,closed:int,waiting:int,breached:int,avgFirstResponse:string}> */
+    /** @var list<array{name:string,total:int,closed:int,conversions:int,revenue:string,waiting:int,breached:int,avgFirstResponse:string,conversionRate:string}> */
     public array $ownerConversationPerformance = [];
 
-    /** @var list<array{name:string,total:int,closed:int,waiting:int,breached:int,avgFirstResponse:string}> */
+    /** @var list<array{name:string,total:int,closed:int,conversions:int,revenue:string,waiting:int,breached:int,avgFirstResponse:string,conversionRate:string}> */
     public array $locationConversationPerformance = [];
 
     /** @var list<array{title: string, copy: string, href: string}> */
@@ -1029,15 +1029,20 @@ class GrowthCenter extends Page
 
         $touchpoints = CustomerTouchpoint::query()
             ->withoutGlobalScopes()
-            ->with('conversation')
+            ->with([
+                'conversation' => fn ($query) => $query->withoutGlobalScopes()->with('customerProfile'),
+                'customerProfile' => fn ($query) => $query->withoutGlobalScopes(),
+            ])
             ->where('tenant_id', $tenantId)
             ->where('created_at', '>=', $window)
             ->whereNotNull('template_key')
             ->get([
+                'id',
                 'template_key',
                 'channel',
                 'replied_at',
                 'customer_conversation_id',
+                'customer_profile_id',
             ]);
 
         $this->templatePerformance = $touchpoints
@@ -1045,7 +1050,14 @@ class GrowthCenter extends Page
             ->map(function (Collection $items, string $templateKey): array {
                 $sent = $items->count();
                 $replied = $items->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->replied_at !== null)->count();
-                $closed = $items->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->conversation?->status === 'closed')->count();
+                $closedConversations = $items
+                    ->map(fn (CustomerTouchpoint $touchpoint): ?CustomerConversation => $touchpoint->conversation)
+                    ->filter(fn (?CustomerConversation $conversation): bool => $conversation instanceof CustomerConversation && $conversation->status === 'closed')
+                    ->unique(fn (CustomerConversation $conversation): int => (int) $conversation->getKey())
+                    ->values();
+                $conversions = $closedConversations->count();
+                $revenue = $closedConversations
+                    ->sum(fn (CustomerConversation $conversation): float => $this->conversationRevenueValue($conversation));
                 $topChannel = (string) ($items->pluck('channel')->filter()->countBy()->sortDesc()->keys()->first() ?? 'crm');
 
                 return [
@@ -1053,12 +1065,14 @@ class GrowthCenter extends Page
                     'channel' => $this->formatSourceLabel($topChannel),
                     'sent' => $sent,
                     'replied' => $replied,
-                    'closed' => $closed,
+                    'conversions' => $conversions,
+                    'revenue' => $this->formatCurrency($revenue),
+                    'revenue_raw' => $revenue,
                     'replyRate' => $sent > 0 ? number_format(($replied / $sent) * 100, 1).'%' : '0.0%',
-                    'closeRate' => $sent > 0 ? number_format(($closed / $sent) * 100, 1).'%' : '0.0%',
+                    'closeRate' => $sent > 0 ? number_format(($conversions / $sent) * 100, 1).'%' : '0.0%',
                 ];
             })
-            ->sortByDesc(fn (array $row): array => [(int) $row['closed'], (int) $row['replied'], (int) $row['sent']])
+            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['conversions'] ?? 0) * 100) + ((int) ($row['replied'] ?? 0) * 10) + (int) ($row['sent'] ?? 0))
             ->take(4)
             ->values()
             ->all();
@@ -1068,6 +1082,7 @@ class GrowthCenter extends Page
             ->with([
                 'owner' => fn ($query) => $query->withoutGlobalScopes(),
                 'location' => fn ($query) => $query->withoutGlobalScopes(),
+                'customerProfile' => fn ($query) => $query->withoutGlobalScopes(),
             ])
             ->where('tenant_id', $tenantId)
             ->where(function ($query) use ($window): void {
@@ -1077,6 +1092,7 @@ class GrowthCenter extends Page
             })
             ->get([
                 'id',
+                'customer_profile_id',
                 'owner_user_id',
                 'location_id',
                 'status',
@@ -1267,7 +1283,7 @@ class GrowthCenter extends Page
 
     /**
      * @param  Collection<int, CustomerConversation>  $conversations
-     * @return list<array{name:string,total:int,closed:int,waiting:int,breached:int,avgFirstResponse:string}>
+     * @return list<array{name:string,total:int,closed:int,conversions:int,revenue:string,waiting:int,breached:int,avgFirstResponse:string,conversionRate:string}>
      */
     private function buildConversationPerformanceRows(
         Collection $conversations,
@@ -1287,22 +1303,53 @@ class GrowthCenter extends Page
                         return max(0, (int) $conversation->last_customer_message_at?->diffInMinutes($conversation->first_response_at));
                     })->avg(), 1)
                     : 0.0;
+                $closed = $slice->where('status', 'closed')->count();
+                $revenue = $slice
+                    ->filter(fn (CustomerConversation $conversation): bool => $conversation->status === 'closed')
+                    ->sum(fn (CustomerConversation $conversation): float => $this->conversationRevenueValue($conversation));
 
                 return [
                     'name' => $key === 'none'
                         ? $emptyLabel
                         : (string) data_get($slice->first(), $labelAccessor, $emptyLabel),
                     'total' => $slice->count(),
-                    'closed' => $slice->where('status', 'closed')->count(),
+                    'closed' => $closed,
+                    'conversions' => $closed,
+                    'revenue' => $this->formatCurrency($revenue),
+                    'revenue_raw' => $revenue,
                     'waiting' => $slice->where('status', 'waiting_customer')->count(),
                     'breached' => $slice->filter(fn (CustomerConversation $conversation): bool => $conversation->response_due_at !== null && $conversation->response_due_at->isPast())->count(),
                     'avgFirstResponse' => $avgResponse > 0 ? $avgResponse.' min' : 'Sin datos',
+                    'conversionRate' => $slice->count() > 0 ? number_format(($closed / $slice->count()) * 100, 1).'%' : '0.0%',
                 ];
             })
-            ->sortByDesc(fn (array $row): int => ($row['breached'] * 1000) + ($row['waiting'] * 100) + $row['total'])
+            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['closed'] ?? 0) * 100) + ((int) ($row['breached'] ?? 0) * 10) + (int) ($row['total'] ?? 0))
             ->take(4)
             ->values()
             ->all();
+    }
+
+    private function conversationRevenueValue(CustomerConversation $conversation): float
+    {
+        $profile = $conversation->customerProfile;
+
+        if (! $profile instanceof CustomerProfile) {
+            return 0.0;
+        }
+
+        $firstConversion = (float) ($profile->first_conversion_value ?? 0);
+
+        if ($firstConversion > 0) {
+            return $firstConversion;
+        }
+
+        $initialLtv = (float) ($profile->initial_ltv ?? 0);
+
+        if ($initialLtv > 0) {
+            return $initialLtv;
+        }
+
+        return (float) ($profile->total_spent ?? 0);
     }
 
     /**

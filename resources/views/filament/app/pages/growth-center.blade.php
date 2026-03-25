@@ -184,7 +184,7 @@
                 <div>
                     <p class="biz-kicker">Analitica por plantilla</p>
                     <h2 class="biz-heading">Que mensajes realmente estan moviendo reply y cierre</h2>
-                    <p class="biz-muted">Sirve para dejar de enviar por intuicion y empezar a repetir las secuencias que si convierten.</p>
+                    <p class="biz-muted">Sirve para dejar de enviar por intuicion y empezar a repetir las secuencias que si convierten en revenue real.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -196,15 +196,16 @@
                                     <p class="biz-action-copy">Canal dominante: {{ $item['channel'] }}</p>
                                 </div>
 
-                                <x-filament::badge color="{{ $item['closed'] > 0 ? 'success' : ($item['replied'] > 0 ? 'info' : 'gray') }}">
-                                    {{ $item['closeRate'] }} cierre
+                                <x-filament::badge color="{{ $item['conversions'] > 0 ? 'success' : ($item['replied'] > 0 ? 'info' : 'gray') }}">
+                                    {{ $item['closeRate'] }} conversion
                                 </x-filament::badge>
                             </div>
 
                             <p class="biz-muted">
                                 <strong>Envios:</strong> {{ $item['sent'] }}
                                 | <strong>Replies:</strong> {{ $item['replied'] }} ({{ $item['replyRate'] }})
-                                | <strong>Cierres:</strong> {{ $item['closed'] }}
+                                | <strong>Conversiones:</strong> {{ $item['conversions'] }}
+                                | <strong>Revenue:</strong> {{ $item['revenue'] }}
                             </p>
                         </div>
                     @empty
@@ -223,7 +224,7 @@
                     <div>
                         <p class="biz-kicker">Analitica conversacional por owner</p>
                         <h2 class="biz-heading">Quien esta cerrando mejor la conversacion</h2>
-                        <p class="biz-muted">Cruza volumen, cierres, conversaciones esperando reply y velocidad inicial por responsable.</p>
+                        <p class="biz-muted">Cruza volumen, conversiones, revenue, conversaciones esperando reply y velocidad inicial por responsable.</p>
                     </div>
 
                     <div class="biz-actions">
@@ -242,7 +243,9 @@
 
                                 <p class="biz-muted">
                                     <strong>Total:</strong> {{ $item['total'] }}
-                                    | <strong>Cerradas:</strong> {{ $item['closed'] }}
+                                    | <strong>Conversiones:</strong> {{ $item['conversions'] }}
+                                    | <strong>Revenue:</strong> {{ $item['revenue'] }}
+                                    | <strong>Tasa:</strong> {{ $item['conversionRate'] }}
                                     | <strong>Esperando:</strong> {{ $item['waiting'] }}
                                 </p>
                             </div>
@@ -261,7 +264,7 @@
                     <div>
                         <p class="biz-kicker">Analitica conversacional por sede</p>
                         <h2 class="biz-heading">Donde se esta quedando o cerrando la conversacion</h2>
-                        <p class="biz-muted">Compara rapidez, cierres y carga operativa entre sucursales o puntos de atencion.</p>
+                        <p class="biz-muted">Compara rapidez, conversiones, revenue y carga operativa entre sucursales o puntos de atencion.</p>
                     </div>
 
                     <div class="biz-actions">
@@ -280,7 +283,9 @@
 
                                 <p class="biz-muted">
                                     <strong>Total:</strong> {{ $item['total'] }}
-                                    | <strong>Cerradas:</strong> {{ $item['closed'] }}
+                                    | <strong>Conversiones:</strong> {{ $item['conversions'] }}
+                                    | <strong>Revenue:</strong> {{ $item['revenue'] }}
+                                    | <strong>Tasa:</strong> {{ $item['conversionRate'] }}
                                     | <strong>Vencidas:</strong> {{ $item['breached'] }}
                                 </p>
                             </div>

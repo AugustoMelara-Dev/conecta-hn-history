@@ -27,6 +27,9 @@ class CustomerJourneyRun extends Model
         'current_step_index',
         'next_action_at',
         'step_due_at',
+        'current_step_executed_at',
+        'auto_step_count',
+        'last_auto_touchpoint_id',
         'last_transition_at',
         'completed_at',
         'metadata',
@@ -36,6 +39,8 @@ class CustomerJourneyRun extends Model
         'current_step_index' => 'integer',
         'next_action_at' => 'datetime',
         'step_due_at' => 'datetime',
+        'current_step_executed_at' => 'datetime',
+        'auto_step_count' => 'integer',
         'last_transition_at' => 'datetime',
         'completed_at' => 'datetime',
         'metadata' => 'array',
@@ -49,6 +54,11 @@ class CustomerJourneyRun extends Model
     public function customerProfile(): BelongsTo
     {
         return $this->belongsTo(CustomerProfile::class);
+    }
+
+    public function lastAutoTouchpoint(): BelongsTo
+    {
+        return $this->belongsTo(CustomerTouchpoint::class, 'last_auto_touchpoint_id');
     }
 
     public function getStatusLabelAttribute(): string

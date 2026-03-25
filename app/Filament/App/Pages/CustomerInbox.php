@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Pages;
 
 use App\Domain\TenantGovernance\Services\CustomerConversationOpsManager;
+use App\Domain\TenantGovernance\Services\CustomerConversationRouting;
 use App\Domain\TenantGovernance\Services\CustomerConversationTemplateManager;
 use App\Domain\TenantGovernance\Services\CustomerConversationThreadBuilder;
 use App\Domain\TenantGovernance\Services\CustomerSegmentPlaybook;
@@ -68,6 +69,8 @@ class CustomerInbox extends Page
 
     public ?string $selectedLocationId = null;
 
+    public string $selectedAssignmentGroup = 'all';
+
     public string $selectedSlaState = 'all';
 
     public ?int $selectedConversationId = null;
@@ -80,8 +83,14 @@ class CustomerInbox extends Page
     /** @var array<string, string> */
     public array $locationOptions = [];
 
+    /** @var array<string, string> */
+    public array $assignmentGroupOptions = [];
+
     /** @var list<array{label:string,total:int,waiting:int,breached:int}> */
     public array $channelOverview = [];
+
+    /** @var list<array{name:string,label:string,total:int,waiting:int,breached:int}> */
+    public array $assignmentGroupOverview = [];
 
     /** @var list<array{name:string,total:int,waiting:int,breached:int}> */
     public array $ownerOverview = [];
@@ -89,7 +98,7 @@ class CustomerInbox extends Page
     /** @var list<array{name:string,total:int,waiting:int,breached:int}> */
     public array $locationOverview = [];
 
-    /** @var list<array{id:int,conversationId:?int,title:string,body:string,status:string,statusLabel:string,priority:string,priorityLabel:string,channel:string,channelLabel:string,customerName:string,segmentLabel:string,loyaltyTier:string,nextTouch:string,loyaltyMove:string,handledBy:?string,assignedTo:?string,assignedUserId:?string,locationName:string,locationId:?string,nextActionAt:?string,profileUrl:string,slaLabel:string,slaColor:string,replyCount:int,responseDueAt:?string}> */
+    /** @var list<array{id:int,conversationId:?int,title:string,body:string,status:string,statusLabel:string,priority:string,priorityLabel:string,channel:string,channelLabel:string,customerName:string,segmentLabel:string,loyaltyTier:string,nextTouch:string,loyaltyMove:string,handledBy:?string,assignedTo:?string,assignedUserId:?string,locationName:string,locationId:?string,assignmentGroup:string,assignmentGroupLabel:string,nextActionAt:?string,profileUrl:string,slaLabel:string,slaColor:string,replyCount:int,responseDueAt:?string}> */
     public array $queue = [];
 
     /** @var array<string, mixed> */
@@ -134,6 +143,7 @@ class CustomerInbox extends Page
         $this->tenantName = (string) $tenant->name;
         $this->teamOptions = $this->resolveTeamOptions($tenant);
         $this->locationOptions = $this->resolveLocationOptions($tenant);
+        $this->assignmentGroupOptions = app(CustomerConversationRouting::class)->options();
         $this->refreshQueue();
     }
 
@@ -158,6 +168,11 @@ class CustomerInbox extends Page
     }
 
     public function updatedSelectedLocationId(): void
+    {
+        $this->refreshQueue();
+    }
+
+    public function updatedSelectedAssignmentGroup(): void
     {
         $this->refreshQueue();
     }
@@ -248,6 +263,26 @@ class CustomerInbox extends Page
             ->title('Sede actualizada')
             ->success()
             ->body($normalizedLocationId !== null ? 'La conversacion ya esta ligada a otra sede.' : 'La conversacion quedo sin sede asignada.')
+            ->send();
+    }
+
+    public function routeGroup(int $noteId, ?string $group = null): void
+    {
+        $note = $this->findTenantNote($noteId);
+
+        if (! $note instanceof CustomerNote) {
+            return;
+        }
+
+        $normalizedGroup = filled($group) ? (string) $group : null;
+        app(CustomerConversationOpsManager::class)->routeGroup($note, $normalizedGroup, auth()->id());
+        $this->selectedConversationId = $noteId;
+        $this->refreshQueue();
+
+        Notification::make()
+            ->title('Equipo actualizado')
+            ->success()
+            ->body($normalizedGroup !== null ? 'La conversacion ya cambio de equipo operativo.' : 'La conversacion quedo sin equipo asignado.')
             ->send();
     }
 
@@ -350,6 +385,7 @@ class CustomerInbox extends Page
             $this->selectedConversation = [];
             $this->selectedConversationId = null;
             $this->channelOverview = [];
+            $this->assignmentGroupOverview = [];
             $this->ownerOverview = [];
             $this->locationOverview = [];
 
@@ -408,6 +444,7 @@ class CustomerInbox extends Page
             'email' => 'Email',
             'crm' => 'CRM',
         ]);
+        $this->assignmentGroupOverview = $this->buildConversationOverviewRows($activeConversations, 'assignment_group', $this->assignmentGroupOptions);
         $this->ownerOverview = $this->buildConversationOverviewRows($activeConversations, 'owner_user_id');
         $this->locationOverview = $this->buildConversationOverviewRows($activeConversations, 'location_id');
 
@@ -477,6 +514,9 @@ class CustomerInbox extends Page
                     'locationId' => $conversation?->location_id !== null
                         ? (string) $conversation->location_id
                         : ($note->location_id !== null ? (string) $note->location_id : ($profile?->location_id !== null ? (string) $profile->location_id : null)),
+                    'assignmentGroup' => (string) ($conversation?->assignment_group ?? data_get($note->metadata, 'assignment_group', '')),
+                    'assignmentGroupLabel' => $conversation?->assignment_group_label
+                        ?? (string) data_get($note->metadata, 'assignment_group_label', 'Sin equipo'),
                     'nextActionAt' => ($conversation?->next_action_at ?? $note->next_action_at)?->diffForHumans(),
                     'slaLabel' => $conversation?->sla_label ?? $note->sla_label,
                     'slaColor' => $conversation?->sla_color ?? $note->sla_color,
@@ -581,6 +621,9 @@ class CustomerInbox extends Page
             'loyaltyTier' => (string) $profile->loyalty_tier_label,
             'slaLabel' => $conversation?->sla_label ?? $note->sla_label,
             'slaColor' => $conversation?->sla_color ?? $note->sla_color,
+            'assignmentGroup' => (string) ($conversation?->assignment_group ?? data_get($note->metadata, 'assignment_group', '')),
+            'assignmentGroupLabel' => $conversation?->assignment_group_label
+                ?? (string) data_get($note->metadata, 'assignment_group_label', 'Sin equipo'),
             'ownerLabel' => $conversation?->owner?->name ?? $note->assignedUser?->name ?? $profile->assigned_owner_label,
             'locationLabel' => $conversation?->location?->name ?? $note->location?->name ?? $profile->location_label,
             'lastActionAt' => ($conversation?->next_action_at ?? $note->next_action_at)?->diffForHumans(),
@@ -616,6 +659,7 @@ class CustomerInbox extends Page
                 'statusLabel' => $task->status_label,
                 'priorityLabel' => $task->priority_label,
                 'slaLabel' => $task->sla_label,
+                'assignmentGroupLabel' => $task->assignment_group_label,
                 'ownerLabel' => $task->assignedUser?->name ?? $profile->assigned_owner_label,
                 'locationLabel' => $task->location?->name ?? $profile->location_label,
                 'dueAt' => $task->due_at?->diffForHumans(),
@@ -660,6 +704,16 @@ class CustomerInbox extends Page
                     ->orWhereHas('conversation', function ($conversation): void {
                         $conversation->withoutGlobalScopes()
                             ->where('location_id', (string) $this->selectedLocationId);
+                    });
+            });
+        }
+
+        if ($this->selectedAssignmentGroup !== 'all') {
+            $query->where(function ($assignment): void {
+                $assignment->where('metadata->assignment_group', $this->selectedAssignmentGroup)
+                    ->orWhereHas('conversation', function ($conversation): void {
+                        $conversation->withoutGlobalScopes()
+                            ->where('assignment_group', $this->selectedAssignmentGroup);
                     });
             });
         }
@@ -747,6 +801,7 @@ class CustomerInbox extends Page
                 /** @var \Illuminate\Support\Collection<int, CustomerConversation> $items */
                 $name = match ($groupBy) {
                     'source_channel' => $labels[$key] ?? $this->formatChannelLabel($key),
+                    'assignment_group' => $labels[$key] ?? ($key !== '' ? str($key)->replace('_', ' ')->title()->value() : 'Sin equipo'),
                     'owner_user_id' => $items->first()?->owner?->name ?? 'Sin owner',
                     'location_id' => $items->first()?->location?->name ?? 'Sin sede',
                     default => $labels[$key] ?? ($key !== '' ? $key : 'Sin contexto'),

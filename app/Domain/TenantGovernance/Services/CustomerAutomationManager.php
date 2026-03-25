@@ -27,6 +27,15 @@ class CustomerAutomationManager
         array $options = [],
     ): CustomerTouchpoint {
         $profile->loadMissing('tenant');
+        $conversationKey = isset($options['conversation_key']) && is_string($options['conversation_key']) && $options['conversation_key'] !== ''
+            ? $options['conversation_key']
+            : null;
+        $providerThreadKey = isset($options['provider_thread_key']) && is_string($options['provider_thread_key']) && $options['provider_thread_key'] !== ''
+            ? $options['provider_thread_key']
+            : $conversationKey;
+        $providerReplyTo = isset($options['provider_reply_to']) && is_string($options['provider_reply_to']) && $options['provider_reply_to'] !== ''
+            ? $options['provider_reply_to']
+            : null;
 
         $governance = $this->governance->definition($automationKey, 'email', $options);
         $touchpoint = CustomerTouchpoint::query()
@@ -49,7 +58,11 @@ class CustomerAutomationManager
                 'attempt_count' => 0,
                 'retry_limit' => $governance['retry_limit'],
                 'opt_in_snapshot' => (bool) $profile->email_opt_in,
-                'metadata' => $this->touchpointMetadata($profile, $options, $governance),
+                'metadata' => $this->touchpointMetadata($profile, array_merge($options, [
+                    'conversation_key' => $conversationKey,
+                    'provider_thread_key' => $providerThreadKey,
+                    'provider_reply_to' => $providerReplyTo,
+                ]), $governance),
             ]);
 
         return $this->dispatchEmailTouchpoint($touchpoint, $profile, $subject, $body, $actorUserId, $options);
@@ -63,6 +76,15 @@ class CustomerAutomationManager
         array $options = [],
     ): CustomerTouchpoint {
         $profile->loadMissing('tenant');
+        $conversationKey = isset($options['conversation_key']) && is_string($options['conversation_key']) && $options['conversation_key'] !== ''
+            ? $options['conversation_key']
+            : null;
+        $providerThreadKey = isset($options['provider_thread_key']) && is_string($options['provider_thread_key']) && $options['provider_thread_key'] !== ''
+            ? $options['provider_thread_key']
+            : $conversationKey;
+        $providerReplyTo = isset($options['provider_reply_to']) && is_string($options['provider_reply_to']) && $options['provider_reply_to'] !== ''
+            ? $options['provider_reply_to']
+            : null;
 
         $governance = $this->governance->definition($automationKey, 'whatsapp', $options);
         $touchpoint = CustomerTouchpoint::query()
@@ -85,7 +107,11 @@ class CustomerAutomationManager
                 'attempt_count' => 0,
                 'retry_limit' => $governance['retry_limit'],
                 'opt_in_snapshot' => (bool) $profile->whatsapp_opt_in,
-                'metadata' => $this->touchpointMetadata($profile, $options, $governance),
+                'metadata' => $this->touchpointMetadata($profile, array_merge($options, [
+                    'conversation_key' => $conversationKey,
+                    'provider_thread_key' => $providerThreadKey,
+                    'provider_reply_to' => $providerReplyTo,
+                ]), $governance),
             ]);
 
         return $this->dispatchWhatsAppTouchpoint($touchpoint, $profile, $body, $actorUserId, $options);
@@ -352,6 +378,8 @@ class CustomerAutomationManager
                 'touchpoint_id' => (string) $touchpoint->getKey(),
                 'segment' => $this->segmentKey($profile),
                 'conversation_key' => $options['conversation_key'] ?? data_get($touchpoint->metadata, 'conversation_key'),
+                'provider_thread_key' => $options['provider_thread_key'] ?? data_get($touchpoint->metadata, 'provider_thread_key', data_get($touchpoint->metadata, 'conversation_key')),
+                'provider_reply_to' => $options['provider_reply_to'] ?? data_get($touchpoint->metadata, 'provider_reply_to'),
                 'source_note_id' => $options['source_note_id'] ?? data_get($touchpoint->metadata, 'source_note_id'),
                 'source_channel' => $options['source_channel'] ?? data_get($touchpoint->metadata, 'source_channel'),
                 'campaign_id' => $options['campaign_id'] ?? data_get($touchpoint->metadata, 'campaign_id'),
@@ -373,6 +401,10 @@ class CustomerAutomationManager
                 'provider_payload' => $dispatch['payload'] ?? null,
                 'metadata' => array_merge($touchpoint->metadata ?? [], [
                     'transport' => $dispatch['payload'] ?? [],
+                    'provider_thread_key' => $options['provider_thread_key']
+                        ?? data_get($touchpoint->metadata, 'provider_thread_key')
+                        ?? data_get($touchpoint->metadata, 'conversation_key'),
+                    'provider_reply_to' => $options['provider_reply_to'] ?? data_get($touchpoint->metadata, 'provider_reply_to'),
                 ]),
             ])->save();
 
@@ -463,6 +495,8 @@ class CustomerAutomationManager
                 'touchpoint_id' => (string) $touchpoint->getKey(),
                 'segment' => $this->segmentKey($profile),
                 'conversation_key' => $options['conversation_key'] ?? data_get($touchpoint->metadata, 'conversation_key'),
+                'provider_thread_key' => $options['provider_thread_key'] ?? data_get($touchpoint->metadata, 'provider_thread_key', data_get($touchpoint->metadata, 'conversation_key')),
+                'provider_reply_to' => $options['provider_reply_to'] ?? data_get($touchpoint->metadata, 'provider_reply_to'),
                 'source_note_id' => $options['source_note_id'] ?? data_get($touchpoint->metadata, 'source_note_id'),
                 'source_channel' => $options['source_channel'] ?? data_get($touchpoint->metadata, 'source_channel'),
                 'cta_url' => $options['cta_url'] ?? data_get($touchpoint->metadata, 'cta_url'),
@@ -486,6 +520,10 @@ class CustomerAutomationManager
                 'provider_payload' => $dispatch['payload'] ?? null,
                 'metadata' => array_merge($touchpoint->metadata ?? [], [
                     'transport' => $dispatch['payload'] ?? [],
+                    'provider_thread_key' => $options['provider_thread_key']
+                        ?? data_get($touchpoint->metadata, 'provider_thread_key')
+                        ?? data_get($touchpoint->metadata, 'conversation_key'),
+                    'provider_reply_to' => $options['provider_reply_to'] ?? data_get($touchpoint->metadata, 'provider_reply_to'),
                 ]),
             ])->save();
 
@@ -558,6 +596,8 @@ class CustomerAutomationManager
             'requires_marketing_opt_in' => (bool) ($options['requires_marketing_opt_in'] ?? false),
             'segment' => $this->segmentKey($profile),
             'conversation_key' => $options['conversation_key'] ?? null,
+            'provider_thread_key' => $options['provider_thread_key'] ?? ($options['conversation_key'] ?? null),
+            'provider_reply_to' => $options['provider_reply_to'] ?? null,
             'source_note_id' => $options['source_note_id'] ?? null,
             'source_channel' => $options['source_channel'] ?? null,
             'journey_template_key' => $options['journey_template_key'] ?? null,
@@ -586,6 +626,8 @@ class CustomerAutomationManager
             'cta_url' => data_get($touchpoint->metadata, 'cta_url'),
             'requires_marketing_opt_in' => (bool) data_get($touchpoint->metadata, 'requires_marketing_opt_in', false),
             'conversation_key' => data_get($touchpoint->metadata, 'conversation_key'),
+            'provider_thread_key' => data_get($touchpoint->metadata, 'provider_thread_key', data_get($touchpoint->metadata, 'conversation_key')),
+            'provider_reply_to' => data_get($touchpoint->metadata, 'provider_reply_to'),
             'source_note_id' => data_get($touchpoint->metadata, 'source_note_id'),
             'source_channel' => data_get($touchpoint->metadata, 'source_channel'),
             'journey_template_key' => data_get($touchpoint->metadata, 'journey_template_key'),

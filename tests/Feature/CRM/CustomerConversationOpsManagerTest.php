@@ -85,6 +85,7 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertSame(1, $note->reply_count);
         $this->assertSame((string) $user->getKey(), (string) $note->assigned_user_id);
         $this->assertSame((string) $location->getKey(), (string) $note->location_id);
+        $this->assertSame('retention', (string) data_get($note->metadata, 'assignment_group'));
         $this->assertNotNull($note->customer_conversation_id);
 
         $conversation = CustomerConversation::query()
@@ -95,6 +96,7 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertSame('open', $conversation->status);
         $this->assertSame((string) $user->getKey(), (string) $conversation->owner_user_id);
         $this->assertSame((string) $location->getKey(), (string) $conversation->location_id);
+        $this->assertSame('retention', (string) $conversation->assignment_group);
 
         $inboundMessage = CustomerConversationMessage::query()
             ->withoutGlobalScopes()
@@ -107,6 +109,8 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertInstanceOf(CustomerConversationMessage::class, $inboundMessage);
         $this->assertSame('customer', $inboundMessage->direction);
         $this->assertSame('Quiero confirmar la compra esta tarde.', $inboundMessage->body);
+        $this->assertSame('email_conversation_1', (string) $inboundMessage->provider_reply_to);
+        $this->assertNotNull($inboundMessage->provider_thread_key);
 
         $journeyRun = CustomerJourneyRun::query()
             ->withoutGlobalScopes()
@@ -126,6 +130,7 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertSame((string) $user->getKey(), (string) $task->assigned_user_id);
         $this->assertSame((string) $location->getKey(), (string) $task->location_id);
         $this->assertSame((int) $conversation->getKey(), (int) $task->customer_conversation_id);
+        $this->assertSame('retention', (string) $task->assignment_group);
 
         app(CustomerAutomationManager::class)->sendEmailTouchpoint(
             profile: $profile,
@@ -158,6 +163,7 @@ final class CustomerConversationOpsManagerTest extends TestCase
 
         $this->assertInstanceOf(CustomerConversationMessage::class, $outboundMessage);
         $this->assertSame('team', $outboundMessage->direction);
+        $this->assertNotNull($outboundMessage->provider_thread_key);
 
         $reopened = $ops->recordInboundReply(
             $touchpoint->fresh(),

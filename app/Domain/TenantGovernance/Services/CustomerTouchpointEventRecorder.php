@@ -101,6 +101,13 @@ class CustomerTouchpointEventRecorder
                     'email',
                     [
                         'source_touchpoint_id' => (int) $touchpoint->getKey(),
+                        'provider_message_id' => $providerMessageId !== '' ? $providerMessageId : $touchpoint->provider_message_id,
+                        'provider_thread_key' => (string) ($tags['provider_thread_key']
+                            ?? data_get($touchpoint->metadata, 'provider_thread_key')
+                            ?? data_get($touchpoint->metadata, 'conversation_key')
+                            ?? $touchpoint->provider_message_id
+                            ?? ''),
+                        'provider_reply_to' => (string) data_get($payload, 'data.in_reply_to', $touchpoint->provider_message_id),
                     ],
                 );
             }
@@ -481,6 +488,12 @@ class CustomerTouchpointEventRecorder
             [
                 'source_touchpoint_id' => (int) $touchpoint->getKey(),
                 'from' => (string) ($messagePayload['from'] ?? ''),
+                'provider_message_id' => (string) ($messagePayload['id'] ?? ''),
+                'provider_thread_key' => (string) (data_get($touchpoint->metadata, 'provider_thread_key')
+                    ?? data_get($touchpoint->metadata, 'conversation_key')
+                    ?? $contextMessageId
+                    ?? ''),
+                'provider_reply_to' => $contextMessageId !== '' ? $contextMessageId : null,
             ],
         );
 

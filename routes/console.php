@@ -39,6 +39,12 @@ Schedule::command('crm:retry-touchpoints --limit=50')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/customer-touchpoint-retries.log'));
 
+Schedule::command('crm:dispatch-journeys --limit=50')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/customer-journey-dispatch.log'));
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // AUTOMATED INVENTORY RECOVERY - Stale Order Garbage Collector
 // ═══════════════════════════════════════════════════════════════════════════════

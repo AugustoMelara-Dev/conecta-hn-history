@@ -8,6 +8,7 @@ use App\Domain\Identity\Enums\UserRole;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\CustomerNote;
+use App\Models\CustomerConversationMessage;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
 use App\Models\CustomerTouchpointEvent;
@@ -168,6 +169,26 @@ final class WhatsAppCloudWebhookControllerTest extends TestCase
         $this->assertSame('whatsapp', $profile->last_engaged_channel);
         $this->assertNotNull($profile->last_inbound_reply_at);
         $this->assertSame(2, CustomerNote::query()->withoutGlobalScopes()->count());
+
+        $inboundNote = CustomerNote::query()
+            ->withoutGlobalScopes()
+            ->where('note_type', 'inbound_reply')
+            ->latest('id')
+            ->first();
+
+        $this->assertSame('wamid.reply.1', (string) data_get($inboundNote?->metadata, 'provider_message_id'));
+
+        $message = CustomerConversationMessage::query()
+            ->withoutGlobalScopes()
+            ->where('customer_note_id', $inboundNote?->getKey())
+            ->where('direction', 'customer')
+            ->latest('id')
+            ->first();
+
+        $this->assertInstanceOf(CustomerConversationMessage::class, $message);
+        $this->assertSame('wamid.reply.1', (string) $message->provider_message_id);
+        $this->assertSame('wamid.inbound.1', (string) $message->provider_reply_to);
+        $this->assertNotNull($message->provider_thread_key);
     }
 
     /**

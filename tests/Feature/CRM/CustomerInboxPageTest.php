@@ -100,6 +100,7 @@ final class CustomerInboxPageTest extends TestCase
             ->assertSee('Plantillas productizadas')
             ->assertSee('Notas internas')
             ->assertSee('Carga por canal')
+            ->assertSee('Carga por equipo')
             ->assertSee('Carga por owner')
             ->assertSee('Carga por ubicacion')
             ->assertSee('Sin owner', false);
@@ -108,7 +109,9 @@ final class CustomerInboxPageTest extends TestCase
             ->set('selectedScope', 'mine')
             ->set('selectedQueueLane', 'active')
             ->set('selectedChannel', 'whatsapp')
+            ->set('selectedAssignmentGroup', 'appointments')
             ->set('selectedSlaState', 'today')
+            ->call('routeGroup', $note->getKey(), 'appointments')
             ->call('moveLocation', $note->getKey(), (string) $secondLocation->getKey())
             ->call('reassignOwner', $note->getKey(), (string) $teammate->getKey())
             ->set('draftInternalNote', 'Cliente listo para cierre si confirmamos disponibilidad en sucursal sur.')
@@ -121,7 +124,14 @@ final class CustomerInboxPageTest extends TestCase
         $this->assertSame((string) $secondLocation->getKey(), (string) $note->location_id);
         $this->assertSame((string) $teammate->getKey(), (string) data_get($note->metadata, 'last_owner_id'));
         $this->assertSame((string) $secondLocation->getKey(), (string) data_get($note->metadata, 'last_location_id'));
+        $this->assertSame('appointments', (string) data_get($note->metadata, 'assignment_group'));
         $this->assertNotNull($note->customer_conversation_id);
+
+        $conversation = $note->conversation()->withoutGlobalScopes()->first();
+        $task = $note->task()->withoutGlobalScopes()->first();
+
+        $this->assertSame('appointments', (string) $conversation?->assignment_group);
+        $this->assertSame('appointments', (string) $task?->assignment_group);
 
         $internalNote = CustomerConversationMessage::query()
             ->withoutGlobalScopes()
@@ -190,7 +200,8 @@ final class CustomerInboxPageTest extends TestCase
             ->call('sendSuggestedReply', $note->getKey(), 'close_sale')
             ->assertSet('selectedConversationId', (int) $note->getKey())
             ->assertSee('Laura Flores')
-            ->assertSee('Journey activo');
+            ->assertSee('Journey activo')
+            ->assertSee('Carga por equipo');
 
         $note->refresh();
 

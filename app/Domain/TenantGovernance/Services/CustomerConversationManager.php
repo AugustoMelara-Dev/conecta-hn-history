@@ -64,14 +64,17 @@ class CustomerConversationManager
         $payload = array_filter([
             'owner_user_id' => $attributes['owner_user_id'] ?? $conversation->owner_user_id ?? $profile->assigned_user_id,
             'location_id' => $attributes['location_id'] ?? $conversation->location_id ?? $profile->location_id,
+            'assignment_group' => $attributes['assignment_group'] ?? null,
             'status' => $attributes['status'] ?? null,
             'priority' => $attributes['priority'] ?? null,
+            'response_sla_minutes' => $attributes['response_sla_minutes'] ?? null,
             'source_channel' => $attributes['source_channel'] ?? null,
             'first_response_at' => $attributes['first_response_at'] ?? null,
             'last_customer_message_at' => $attributes['last_customer_message_at'] ?? null,
             'last_team_message_at' => $attributes['last_team_message_at'] ?? null,
             'next_action_at' => $attributes['next_action_at'] ?? null,
             'response_due_at' => $attributes['response_due_at'] ?? null,
+            'escalation_due_at' => $attributes['escalation_due_at'] ?? null,
             'closed_at' => $attributes['closed_at'] ?? null,
         ], static fn (mixed $value): bool => $value !== null);
 
@@ -95,6 +98,13 @@ class CustomerConversationManager
         ?string $status = null,
         array $metadata = [],
     ): CustomerConversationMessage {
+        $providerMessageId = $metadata['provider_message_id'] ?? $touchpoint?->provider_message_id;
+        $providerReplyTo = $metadata['provider_reply_to'] ?? data_get($touchpoint?->metadata, 'provider_reply_to');
+        $providerThreadKey = $metadata['provider_thread_key']
+            ?? data_get($touchpoint?->metadata, 'provider_thread_key')
+            ?? data_get($touchpoint?->metadata, 'conversation_key')
+            ?? $conversation->conversation_key;
+
         $message = CustomerConversationMessage::query()
             ->withoutGlobalScopes()
             ->create([
@@ -109,6 +119,9 @@ class CustomerConversationManager
                 'channel' => $channel,
                 'body' => $body,
                 'status' => $status,
+                'provider_message_id' => is_string($providerMessageId) && $providerMessageId !== '' ? $providerMessageId : null,
+                'provider_thread_key' => is_string($providerThreadKey) && $providerThreadKey !== '' ? $providerThreadKey : null,
+                'provider_reply_to' => is_string($providerReplyTo) && $providerReplyTo !== '' ? $providerReplyTo : null,
                 'occurred_at' => $occurredAt ?? now(),
                 'metadata' => $metadata,
             ]);

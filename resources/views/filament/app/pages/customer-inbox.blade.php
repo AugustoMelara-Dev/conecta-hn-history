@@ -91,7 +91,7 @@
                         </p>
                     </div>
 
-                    <div class="biz-grid-two" style="grid-template-columns: repeat(3, minmax(10rem, 1fr)); gap: 0.75rem; width: min(100%, 54rem);">
+                    <div class="biz-grid-two" style="grid-template-columns: repeat(4, minmax(10rem, 1fr)); gap: 0.75rem; width: min(100%, 72rem);">
                         <label class="biz-stack" style="gap: 0.35rem;">
                             <span class="biz-muted">Vista</span>
                             <select wire:model.live="selectedScope" class="fi-input">
@@ -151,10 +151,20 @@
                                 @endforeach
                             </select>
                         </label>
+
+                        <label class="biz-stack" style="gap: 0.35rem;">
+                            <span class="biz-muted">Equipo</span>
+                            <select wire:model.live="selectedAssignmentGroup" class="fi-input">
+                                <option value="all">Todos</option>
+                                @foreach ($assignmentGroupOptions as $groupKey => $label)
+                                    <option value="{{ $groupKey }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
                     </div>
                 </div>
 
-                <div class="biz-grid-two" style="grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem;">
+                <div class="biz-grid-two" style="grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem;">
                     <div class="biz-card">
                         <div class="biz-stack">
                             <div>
@@ -198,6 +208,30 @@
                                     </div>
                                 @empty
                                     <p class="biz-muted">Todavia no hay cartera suficiente para leer carga por owner.</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="biz-card">
+                        <div class="biz-stack">
+                            <div>
+                                <p class="biz-kicker">Equipos</p>
+                                <h3 class="biz-heading">Carga por equipo</h3>
+                            </div>
+
+                            <div class="biz-actions">
+                                @forelse ($assignmentGroupOverview as $item)
+                                    <div class="biz-action">
+                                        <p class="biz-action-title">{{ $item['label'] }}</p>
+                                        <p class="biz-muted">
+                                            <strong>Total:</strong> {{ $item['total'] }}
+                                            | <strong>Esperando:</strong> {{ $item['waiting'] }}
+                                            | <strong>Vencidas:</strong> {{ $item['breached'] }}
+                                        </p>
+                                    </div>
+                                @empty
+                                    <p class="biz-muted">Todavia no hay suficiente operacion para leer carga por equipo.</p>
                                 @endforelse
                             </div>
                         </div>
@@ -258,7 +292,7 @@
                                                         <p class="biz-muted"><strong>Segmento:</strong> {{ $item['segmentLabel'] }} | <strong>Fidelidad:</strong> {{ $item['loyaltyTier'] }}</p>
                                                         <p class="biz-muted"><strong>Siguiente toque:</strong> {{ $item['nextTouch'] }}</p>
                                                         <p class="biz-muted"><strong>Movimiento loyalty:</strong> {{ $item['loyaltyMove'] }}</p>
-                                                        <p class="biz-muted"><strong>Owner:</strong> {{ $item['assignedTo'] ?? 'Sin asignar' }} | <strong>Sede:</strong> {{ $item['locationName'] }}</p>
+                                                        <p class="biz-muted"><strong>Owner:</strong> {{ $item['assignedTo'] ?? 'Sin asignar' }} | <strong>Sede:</strong> {{ $item['locationName'] }} | <strong>Equipo:</strong> {{ $item['assignmentGroupLabel'] }}</p>
                                                         <p class="biz-muted"><strong>Journey:</strong> {{ $item['journeyStep'] ?? 'Sin paso activo' }} | <strong>Lane:</strong> {{ str($item['queueLane'])->replace('_', ' ')->title() }} | <strong>Estado secuencia:</strong> {{ $item['sequenceStateLabel'] }}</p>
                                                         <p class="biz-muted"><strong>Plantilla recomendada:</strong> {{ $item['recommendedTemplateLabel'] }} | <strong>Lectura de due:</strong> {{ $item['dueStateLabel'] }}</p>
                                                         <p class="biz-muted">
@@ -282,13 +316,23 @@
                                                 </div>
                                             </div>
 
-                                            <div class="biz-grid-two" style="grid-template-columns: repeat(2, minmax(12rem, 1fr)); gap: 0.75rem;">
+                                            <div class="biz-grid-two" style="grid-template-columns: repeat(3, minmax(12rem, 1fr)); gap: 0.75rem;">
                                                 <label class="biz-stack" style="gap: 0.35rem;">
                                                     <span class="biz-muted">Reasignar owner</span>
                                                     <select wire:change="reassignOwner({{ $item['id'] }}, $event.target.value)" class="fi-input">
                                                         <option value="">Sin owner</option>
                                                         @foreach ($teamOptions as $userId => $label)
                                                             <option value="{{ $userId }}" @selected($item['assignedUserId'] === (string) $userId)>{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </label>
+
+                                                <label class="biz-stack" style="gap: 0.35rem;">
+                                                    <span class="biz-muted">Mover equipo</span>
+                                                    <select wire:change="routeGroup({{ $item['id'] }}, $event.target.value)" class="fi-input">
+                                                        <option value="">Sin equipo</option>
+                                                        @foreach ($assignmentGroupOptions as $groupKey => $label)
+                                                            <option value="{{ $groupKey }}" @selected($item['assignmentGroup'] === (string) $groupKey)>{{ $label }}</option>
                                                         @endforeach
                                                     </select>
                                                 </label>
@@ -372,7 +416,7 @@
                                         <p class="biz-muted"><strong>Segmento:</strong> {{ $selectedConversation['segmentLabel'] }} | <strong>Fidelidad:</strong> {{ $selectedConversation['loyaltyTier'] }}</p>
                                         <p class="biz-muted"><strong>Promesa del segmento:</strong> {{ $selectedConversation['segmentPromise'] }}</p>
                                         <p class="biz-muted"><strong>Siguiente toque:</strong> {{ $selectedConversation['nextTouch'] }}</p>
-                                        <p class="biz-muted"><strong>Owner:</strong> {{ $selectedConversation['ownerLabel'] }} | <strong>Sede:</strong> {{ $selectedConversation['locationLabel'] }}</p>
+                                        <p class="biz-muted"><strong>Owner:</strong> {{ $selectedConversation['ownerLabel'] }} | <strong>Sede:</strong> {{ $selectedConversation['locationLabel'] }} | <strong>Equipo:</strong> {{ $selectedConversation['assignmentGroupLabel'] }}</p>
                                         <p class="biz-muted">
                                             <strong>Estado:</strong> {{ $selectedConversation['statusLabel'] }}
                                             | <strong>Prioridad:</strong> {{ $selectedConversation['priorityLabel'] }}
@@ -496,7 +540,8 @@
                                                 Estado {{ $selectedConversation['task']['statusLabel'] }} | Prioridad {{ $selectedConversation['task']['priorityLabel'] }} | SLA {{ $selectedConversation['task']['slaLabel'] }}
                                             </p>
                                             <p class="biz-muted">
-                                                <strong>Owner:</strong> {{ $selectedConversation['task']['ownerLabel'] }}
+                                                <strong>Equipo:</strong> {{ $selectedConversation['task']['assignmentGroupLabel'] }}
+                                                | <strong>Owner:</strong> {{ $selectedConversation['task']['ownerLabel'] }}
                                                 | <strong>Sede:</strong> {{ $selectedConversation['task']['locationLabel'] }}
                                                 @if ($selectedConversation['task']['dueAt'])
                                                     | <strong>Due:</strong> {{ $selectedConversation['task']['dueAt'] }}
@@ -565,6 +610,9 @@
                                                             {{ $item['direction'] === 'customer' ? 'Cliente' : 'Equipo' }}
                                                         </span>
                                                         <span class="biz-badge biz-badge-neutral">{{ $item['channel'] }}</span>
+                                                        @if ($item['thread'])
+                                                            <span class="biz-badge biz-badge-neutral">Thread {{ \Illuminate\Support\Str::limit($item['thread'], 16, '...') }}</span>
+                                                        @endif
                                                         <span class="biz-badge {{ $item['color'] === 'danger' ? 'biz-badge-danger' : ($item['color'] === 'success' ? 'biz-badge-success' : 'biz-badge-neutral') }}">{{ $item['when'] }}</span>
                                                     </div>
                                                     <p class="biz-action-title">{{ $item['title'] }}</p>

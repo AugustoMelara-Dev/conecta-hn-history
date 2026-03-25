@@ -19,10 +19,12 @@ class CustomerConversation extends Model
         'customer_profile_id',
         'owner_user_id',
         'location_id',
+        'assignment_group',
         'conversation_key',
         'source_channel',
         'status',
         'priority',
+        'response_sla_minutes',
         'message_count',
         'internal_note_count',
         'reply_count',
@@ -32,6 +34,7 @@ class CustomerConversation extends Model
         'last_team_message_at',
         'next_action_at',
         'response_due_at',
+        'escalation_due_at',
         'closed_at',
         'metadata',
     ];
@@ -40,12 +43,14 @@ class CustomerConversation extends Model
         'message_count' => 'integer',
         'internal_note_count' => 'integer',
         'reply_count' => 'integer',
+        'response_sla_minutes' => 'integer',
         'opened_at' => 'datetime',
         'first_response_at' => 'datetime',
         'last_customer_message_at' => 'datetime',
         'last_team_message_at' => 'datetime',
         'next_action_at' => 'datetime',
         'response_due_at' => 'datetime',
+        'escalation_due_at' => 'datetime',
         'closed_at' => 'datetime',
         'metadata' => 'array',
     ];
@@ -150,5 +155,18 @@ class CustomerConversation extends Model
     public function getLocationLabelAttribute(): string
     {
         return $this->location?->name ?? 'Sin sede';
+    }
+
+    public function getAssignmentGroupLabelAttribute(): string
+    {
+        $label = config("customer-operations.groups.{$this->assignment_group}.label");
+
+        if (is_string($label) && $label !== '') {
+            return $label;
+        }
+
+        return $this->assignment_group !== null && $this->assignment_group !== ''
+            ? str((string) $this->assignment_group)->replace('_', ' ')->title()->value()
+            : 'Sin equipo';
     }
 }

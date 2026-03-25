@@ -8,6 +8,7 @@ use App\Domain\Identity\Enums\UserRole;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\CustomerNote;
+use App\Models\CustomerConversationMessage;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
 use App\Models\CustomerTouchpointEvent;
@@ -143,10 +144,24 @@ final class ResendWebhookControllerTest extends TestCase
         $this->assertSame('replied', $touchpoint->delivery_status);
         $this->assertNotNull($touchpoint->replied_at);
         $this->assertSame(1, CustomerNote::query()->withoutGlobalScopes()->count());
+        $note = CustomerNote::query()->withoutGlobalScopes()->first();
         $this->assertStringContainsString(
             'manana por la tarde',
-            (string) CustomerNote::query()->withoutGlobalScopes()->first()->body,
+            (string) $note?->body,
         );
+        $this->assertSame('email_456', (string) data_get($note?->metadata, 'provider_message_id'));
+
+        $message = CustomerConversationMessage::query()
+            ->withoutGlobalScopes()
+            ->where('customer_note_id', $note?->getKey())
+            ->where('direction', 'customer')
+            ->latest('id')
+            ->first();
+
+        $this->assertInstanceOf(CustomerConversationMessage::class, $message);
+        $this->assertSame('email_456', (string) $message->provider_message_id);
+        $this->assertSame('email_456', (string) $message->provider_reply_to);
+        $this->assertNotNull($message->provider_thread_key);
     }
 
     public function test_resend_bounced_webhook_schedules_retry_for_failed_touchpoint(): void

@@ -128,6 +128,16 @@ class CustomerMessagingGateway
             $payload['template']['components'] = $components;
         }
 
+        $replyToMessageId = isset($context['provider_reply_to']) && is_string($context['provider_reply_to']) && $context['provider_reply_to'] !== ''
+            ? $context['provider_reply_to']
+            : null;
+
+        if ($replyToMessageId !== null) {
+            $payload['context'] = [
+                'message_id' => $replyToMessageId,
+            ];
+        }
+
         $response = Http::timeout(15)
             ->acceptJson()
             ->withToken($accessToken)
@@ -156,6 +166,8 @@ class CustomerMessagingGateway
             'touchpoint_id' => isset($context['touchpoint_id']) ? (string) $context['touchpoint_id'] : null,
             'segment' => isset($context['segment']) ? (string) $context['segment'] : null,
             'conversation_key' => isset($context['conversation_key']) ? (string) $context['conversation_key'] : null,
+            'provider_thread_key' => isset($context['provider_thread_key']) ? (string) $context['provider_thread_key'] : null,
+            'provider_reply_to' => isset($context['provider_reply_to']) ? (string) $context['provider_reply_to'] : null,
             'source_note_id' => isset($context['source_note_id']) ? (string) $context['source_note_id'] : null,
             'source_channel' => isset($context['source_channel']) ? (string) $context['source_channel'] : null,
         ];

@@ -7,6 +7,7 @@ namespace App\Domain\TenantGovernance\Services;
 use App\Models\CustomerConversation;
 use App\Models\CustomerJourneyRun;
 use App\Models\CustomerProfile;
+use App\Models\CustomerTouchpoint;
 use Illuminate\Support\Carbon;
 
 class CustomerJourneyManager
@@ -20,21 +21,22 @@ class CustomerJourneyManager
         $businessSegmentKey = filled($profile->tenant?->business_segment_key)
             ? (string) $profile->tenant->business_segment_key
             : null;
-        $resolved = $this->resolveStepState($conversation, $steps, $segmentKey);
+        $run = CustomerJourneyRun::query()
+            ->withoutGlobalScopes()
+            ->firstOrNew([
+                'customer_conversation_id' => (int) $conversation->getKey(),
+            ]);
+        $resolved = $this->resolveStepState($conversation, $steps, $segmentKey, $run->exists ? (int) $run->current_step_index : null);
         $currentStep = $resolved['current_step'];
         $nextStep = $resolved['next_step'];
         $stepDueAt = $resolved['step_due_at'];
         $status = $conversation->status === 'closed' ? 'completed' : 'active';
         $sequenceState = $this->resolveSequenceState($conversation, $stepDueAt, $status);
         $dueState = $this->resolveDueState($conversation, $stepDueAt, $status);
-
-        $run = CustomerJourneyRun::query()
-            ->withoutGlobalScopes()
-            ->firstOrNew([
-                'customer_conversation_id' => (int) $conversation->getKey(),
-            ]);
-
         $currentStepIndex = (int) ($resolved['current_step_index'] ?? 0);
+        $currentStepKey = (string) ($currentStep['key'] ?? '');
+        $stepChanged = $currentStepKey !== (string) ($run->current_step_key ?? '');
+        $currentStepExecutedAt = $stepChanged ? null : $run->current_step_executed_at;
 
         $run->forceFill([
             'tenant_id' => (string) $conversation->tenant_id,
@@ -50,6 +52,9 @@ class CustomerJourneyManager
             'current_step_index' => $currentStepIndex,
             'next_action_at' => $conversation->next_action_at,
             'step_due_at' => $stepDueAt,
+            'current_step_executed_at' => $currentStepExecutedAt,
+            'auto_step_count' => (int) ($run->auto_step_count ?? 0),
+            'last_auto_touchpoint_id' => $run->last_auto_touchpoint_id,
             'last_transition_at' => now(),
             'completed_at' => $status === 'completed' ? ($conversation->closed_at ?? now()) : null,
             'metadata' => [
@@ -62,7 +67,79 @@ class CustomerJourneyManager
                 'sequence_state_label' => $this->sequenceStateLabel($sequenceState),
                 'due_state_label' => $this->dueStateLabel($dueState),
                 'step_due_at' => $stepDueAt?->toIso8601String(),
+                'auto_send' => (bool) ($currentStep['auto_send'] ?? false),
+                'current_step_executed_at' => $currentStepExecutedAt?->toIso8601String(),
             ],
+        ])->save();
+
+        return $run->fresh();
+    }
+
+    public function advanceAfterAutomation(CustomerJourneyRun $run, CustomerTouchpoint $touchpoint): CustomerJourneyRun
+    {
+        $run = $run->fresh();
+
+        if (! $run instanceof CustomerJourneyRun) {
+            return $run;
+        }
+
+        $conversation = $run->conversation()->withoutGlobalScopes()->first();
+
+        if (! $conversation instanceof CustomerConversation) {
+            return $run;
+        }
+
+        $steps = collect((array) data_get($run->metadata, 'steps', []))
+            ->map(static fn (mixed $step): array => is_array($step) ? $step : [])
+            ->values()
+            ->all();
+
+        if ($steps === []) {
+            return $run;
+        }
+
+        $executedAt = $touchpoint->sent_at ?? now();
+        $currentIndex = min(max(0, (int) $run->current_step_index), max(0, count($steps) - 1));
+        $nextIndex = min($currentIndex + 1, max(0, count($steps) - 1));
+        $hasAdvanced = $nextIndex > $currentIndex;
+        $currentStep = $steps[$nextIndex] ?? null;
+        $nextStep = $nextIndex < count($steps) - 1 ? ($steps[$nextIndex + 1] ?? null) : null;
+        $stepDueAt = $this->stepDueAtFromExecution($executedAt, $currentStep, $conversation);
+
+        $conversation->forceFill([
+            'status' => 'waiting_customer',
+            'last_team_message_at' => $executedAt,
+            'next_action_at' => $stepDueAt,
+            'escalation_due_at' => $stepDueAt,
+        ])->save();
+
+        $currentStepExecutedAt = $hasAdvanced ? null : $executedAt;
+        $sequenceState = 'waiting_customer';
+        $dueState = $stepDueAt instanceof Carbon && $stepDueAt->isPast() ? 'breached' : 'scheduled';
+
+        $run->forceFill([
+            'current_step_index' => $nextIndex,
+            'current_step_key' => $currentStep['key'] ?? null,
+            'next_template_key' => $currentStep['template_key'] ?? $nextStep['template_key'] ?? null,
+            'sequence_state' => $sequenceState,
+            'due_state' => $dueState,
+            'step_due_at' => $stepDueAt,
+            'current_step_executed_at' => $currentStepExecutedAt,
+            'auto_step_count' => ((int) $run->auto_step_count) + 1,
+            'last_auto_touchpoint_id' => (int) $touchpoint->getKey(),
+            'last_transition_at' => now(),
+            'metadata' => array_merge((array) $run->metadata, [
+                'current_step' => $currentStep,
+                'next_step' => $nextStep,
+                'recommended_template_key' => $currentStep['template_key'] ?? $nextStep['template_key'] ?? null,
+                'lane' => $currentStep['lane'] ?? data_get($run->metadata, 'lane'),
+                'sequence_state_label' => $this->sequenceStateLabel($sequenceState),
+                'due_state_label' => $this->dueStateLabel($dueState),
+                'step_due_at' => $stepDueAt?->toIso8601String(),
+                'auto_send' => (bool) ($currentStep['auto_send'] ?? false),
+                'current_step_executed_at' => $currentStepExecutedAt?->toIso8601String(),
+                'last_auto_touchpoint_id' => (int) $touchpoint->getKey(),
+            ]),
         ])->save();
 
         return $run->fresh();
@@ -77,7 +154,7 @@ class CustomerJourneyManager
      *     step_due_at:?Carbon
      * }
      */
-    private function resolveStepState(CustomerConversation $conversation, array $steps, string $segmentKey): array
+    private function resolveStepState(CustomerConversation $conversation, array $steps, string $segmentKey, ?int $persistedStepIndex = null): array
     {
         $stepsCount = count($steps);
 
@@ -113,6 +190,10 @@ class CustomerJourneyManager
             $currentStepIndex = min(1, $lastStepIndex);
         } elseif ($conversation->reply_count >= 2 || $conversation->status === 'in_progress') {
             $currentStepIndex = min(2, $lastStepIndex);
+        }
+
+        if ($persistedStepIndex !== null && $conversation->status !== 'closed') {
+            $currentStepIndex = min(max($currentStepIndex, $persistedStepIndex), $lastStepIndex);
         }
 
         $currentStep = $steps[$currentStepIndex] ?? null;
@@ -160,6 +241,24 @@ class CustomerJourneyManager
         }
 
         return $base instanceof Carbon ? $base->copy()->addHours($waitHours) : $conversation->next_action_at;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $step
+     */
+    private function stepDueAtFromExecution(Carbon $executedAt, ?array $step, CustomerConversation $conversation): ?Carbon
+    {
+        if ($step === null) {
+            return $conversation->next_action_at ?? $executedAt->copy()->addHours(24);
+        }
+
+        $waitHours = max(0, (int) ($step['wait_hours'] ?? 0));
+
+        if ($waitHours === 0) {
+            return $conversation->next_action_at ?? $executedAt->copy()->addHours(24);
+        }
+
+        return $executedAt->copy()->addHours($waitHours);
     }
 
     private function resolveSequenceState(CustomerConversation $conversation, ?Carbon $stepDueAt, string $status): string

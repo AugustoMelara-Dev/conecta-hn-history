@@ -19,6 +19,7 @@ class CustomerConversationOpsManager
         private readonly CustomerTaskManager $customerTaskManager,
         private readonly CustomerConversationManager $conversationManager,
         private readonly CustomerJourneyManager $journeyManager,
+        private readonly CustomerConversationRouting $routing,
     ) {}
 
     public function recordInboundReply(
@@ -30,23 +31,28 @@ class CustomerConversationOpsManager
     ): CustomerNote {
         $profile = $touchpoint->customerProfile()->withoutGlobalScopes()->with(['assignedUser', 'location', 'tenant'])->first();
         $existingNote = $this->latestConversation($touchpoint, $channel);
-        $slaHours = $profile instanceof CustomerProfile
-            ? max(1, (int) ($this->segmentPlaybook->forProfile($profile)['response_sla_hours'] ?? 24))
-            : 24;
+        $routing = $profile instanceof CustomerProfile
+            ? $this->routing->resolve($profile, $channel)
+            : $this->fallbackRouting($channel);
         $message = trim($body) !== '' ? trim($body) : 'Respuesta recibida del cliente.';
         $priority = $channel === 'whatsapp' ? 'high' : 'normal';
         $conversationKey = (string) ($existingNote?->conversation_key ?: data_get($touchpoint->metadata, 'conversation_key') ?: Str::uuid()->toString());
         $assignedUserId = $existingNote?->assigned_user_id ?? $profile?->assigned_user_id;
         $locationId = $existingNote?->location_id ?? $profile?->location_id;
+        $responseDueAt = $occurredAt->copy()->addMinutes((int) $routing['response_sla_minutes']);
+        $escalationDueAt = $occurredAt->copy()->addMinutes((int) $routing['escalation_minutes']);
         $conversation = $profile instanceof CustomerProfile
             ? $this->conversationManager->ensure($profile, $channel, $conversationKey, [
                 'owner_user_id' => $assignedUserId,
                 'location_id' => $locationId,
+                'assignment_group' => $routing['assignment_group'],
                 'status' => 'open',
                 'priority' => $priority,
+                'response_sla_minutes' => (int) $routing['response_sla_minutes'],
                 'last_customer_message_at' => $occurredAt,
-                'next_action_at' => $occurredAt->copy()->addHours($slaHours),
-                'response_due_at' => $occurredAt->copy()->addHours($slaHours),
+                'next_action_at' => $responseDueAt,
+                'response_due_at' => $responseDueAt,
+                'escalation_due_at' => $escalationDueAt,
                 'closed_at' => null,
             ])
             : null;
@@ -63,16 +69,23 @@ class CustomerConversationOpsManager
                 'conversation_key' => $conversationKey,
                 'assigned_user_id' => $assignedUserId,
                 'location_id' => $locationId,
-                'response_due_at' => $occurredAt->copy()->addHours($slaHours),
+                'response_due_at' => $responseDueAt,
                 'last_customer_message_at' => $occurredAt,
                 'reply_count' => max(1, (int) $existingNote->reply_count) + 1,
-                'next_action_at' => $occurredAt->copy()->addHours($slaHours),
+                'next_action_at' => $responseDueAt,
                 'metadata' => array_merge((array) $existingNote->metadata, [
                     'provider' => $metadata['provider'] ?? null,
                     'channel' => $channel,
+                    'assignment_group' => $routing['assignment_group'],
+                    'assignment_group_label' => $routing['assignment_group_label'],
+                    'response_sla_minutes' => (int) $routing['response_sla_minutes'],
+                    'escalation_minutes' => (int) $routing['escalation_minutes'],
                     'source_touchpoint_id' => $metadata['source_touchpoint_id'] ?? null,
                     'last_message_preview' => $message,
                     'last_customer_message_at' => $occurredAt->toIso8601String(),
+                    'provider_message_id' => $metadata['provider_message_id'] ?? null,
+                    'provider_thread_key' => $metadata['provider_thread_key'] ?? data_get($touchpoint->metadata, 'provider_thread_key'),
+                    'provider_reply_to' => $metadata['provider_reply_to'] ?? $touchpoint->provider_message_id,
                 ]),
             ])->save();
 
@@ -93,18 +106,25 @@ class CustomerConversationOpsManager
                     'requires_follow_up' => true,
                     'body' => $message,
                     'conversation_key' => $conversationKey,
-                    'response_due_at' => $occurredAt->copy()->addHours($slaHours),
+                    'response_due_at' => $responseDueAt,
                     'last_customer_message_at' => $occurredAt,
                     'reply_count' => 1,
                     'metadata' => [
                         'provider' => $metadata['provider'] ?? null,
                         'channel' => $channel,
+                        'assignment_group' => $routing['assignment_group'],
+                        'assignment_group_label' => $routing['assignment_group_label'],
+                        'response_sla_minutes' => (int) $routing['response_sla_minutes'],
+                        'escalation_minutes' => (int) $routing['escalation_minutes'],
                         'source_touchpoint_id' => $metadata['source_touchpoint_id'] ?? null,
                         'last_message_preview' => $message,
                         'last_customer_message_at' => $occurredAt->toIso8601String(),
+                        'provider_message_id' => $metadata['provider_message_id'] ?? null,
+                        'provider_thread_key' => $metadata['provider_thread_key'] ?? data_get($touchpoint->metadata, 'provider_thread_key'),
+                        'provider_reply_to' => $metadata['provider_reply_to'] ?? $touchpoint->provider_message_id,
                     ],
                     'pinned_at' => null,
-                    'next_action_at' => $occurredAt->copy()->addHours($slaHours),
+                    'next_action_at' => $responseDueAt,
                 ]);
         }
 
@@ -127,6 +147,9 @@ class CustomerConversationOpsManager
                 [
                     'provider' => $metadata['provider'] ?? null,
                     'source_touchpoint_id' => $metadata['source_touchpoint_id'] ?? null,
+                    'provider_message_id' => $metadata['provider_message_id'] ?? null,
+                    'provider_thread_key' => $metadata['provider_thread_key'] ?? data_get($touchpoint->metadata, 'provider_thread_key'),
+                    'provider_reply_to' => $metadata['provider_reply_to'] ?? $touchpoint->provider_message_id,
                 ],
             );
 
@@ -140,6 +163,7 @@ class CustomerConversationOpsManager
 
     public function markOutboundResponse(CustomerProfile $profile, CustomerTouchpoint $touchpoint, ?string $actorUserId = null): ?CustomerNote
     {
+        $routing = $this->routing->resolve($profile, (string) $touchpoint->channel);
         $note = CustomerNote::query()
             ->withoutGlobalScopes()
             ->where('tenant_id', (string) $profile->tenant_id)
@@ -155,12 +179,15 @@ class CustomerConversationOpsManager
         $conversation = $this->conversationManager->ensure($profile, (string) $touchpoint->channel, $conversationKey, [
             'owner_user_id' => $actorUserId ?? $note?->assigned_user_id ?? $profile->assigned_user_id,
             'location_id' => $note?->location_id ?? $profile->location_id,
+            'assignment_group' => data_get($note?->metadata, 'assignment_group', $routing['assignment_group']),
             'status' => 'waiting_customer',
             'priority' => $note?->priority ?? 'normal',
+            'response_sla_minutes' => (int) $routing['response_sla_minutes'],
             'first_response_at' => $note?->first_response_at ?? $respondedAt,
             'last_team_message_at' => $respondedAt,
             'next_action_at' => $respondedAt->copy()->addHours($this->followUpGraceHours()),
             'response_due_at' => $note?->response_due_at,
+            'escalation_due_at' => $respondedAt->copy()->addMinutes((int) max($routing['escalation_minutes'], $this->followUpGraceHours() * 60)),
             'closed_at' => null,
         ]);
 
@@ -181,6 +208,8 @@ class CustomerConversationOpsManager
                 'last_team_message_at' => $respondedAt,
                 'next_action_at' => $respondedAt->copy()->addHours($this->followUpGraceHours()),
                 'metadata' => array_merge((array) $note->metadata, [
+                    'assignment_group' => data_get($note->metadata, 'assignment_group', $routing['assignment_group']),
+                    'assignment_group_label' => data_get($note->metadata, 'assignment_group_label', $routing['assignment_group_label']),
                     'last_outbound_touchpoint_id' => (int) $touchpoint->getKey(),
                     'last_outbound_at' => $respondedAt->toIso8601String(),
                 ]),
@@ -204,6 +233,9 @@ class CustomerConversationOpsManager
             [
                 'template_key' => $touchpoint->template_key,
                 'automation_key' => $touchpoint->automation_key,
+                'provider_message_id' => $touchpoint->provider_message_id,
+                'provider_thread_key' => data_get($touchpoint->metadata, 'provider_thread_key', data_get($touchpoint->metadata, 'conversation_key')),
+                'provider_reply_to' => data_get($touchpoint->metadata, 'provider_reply_to'),
             ],
         );
 
@@ -287,6 +319,26 @@ class CustomerConversationOpsManager
         return $freshNote;
     }
 
+    public function routeGroup(CustomerNote $note, ?string $group = null, ?string $actorUserId = null): CustomerNote
+    {
+        $note->forceFill([
+            'status' => $note->status === 'resolved' ? 'open' : $note->status,
+            'requires_follow_up' => true,
+            'metadata' => array_merge((array) $note->metadata, [
+                'assignment_group' => $group,
+                'assignment_group_label' => $group !== null ? (string) config("customer-operations.groups.{$group}.label", ucfirst($group)) : 'Sin equipo',
+                'last_group_routed_at' => now()->toIso8601String(),
+                'last_group_routed_by' => $actorUserId,
+            ]),
+        ])->save();
+
+        $freshNote = $note->fresh();
+        $this->syncConversationFromNote($freshNote);
+        $this->customerTaskManager->syncFromNote($freshNote);
+
+        return $freshNote;
+    }
+
     public function addInternalNote(CustomerNote $note, string $body, ?string $actorUserId = null): ?CustomerConversationMessage
     {
         $message = trim($body);
@@ -358,15 +410,18 @@ class CustomerConversationOpsManager
         }
 
         $conversation = $this->conversationManager->ensure($profile, (string) ($note->source_channel ?? 'crm'), $note->conversation_key, [
+            'assignment_group' => data_get($note->metadata, 'assignment_group', $this->routing->resolve($profile, (string) ($note->source_channel ?? 'crm'))['assignment_group']),
             'owner_user_id' => $note->assigned_user_id ?? $profile->assigned_user_id,
             'location_id' => $note->location_id ?? $profile->location_id,
             'status' => $this->conversationStatusFromNote($note),
             'priority' => $note->priority ?: 'normal',
+            'response_sla_minutes' => (int) data_get($note->metadata, 'response_sla_minutes', $this->routing->resolve($profile, (string) ($note->source_channel ?? 'crm'))['response_sla_minutes']),
             'first_response_at' => $note->first_response_at,
             'last_customer_message_at' => $note->last_customer_message_at,
             'last_team_message_at' => $note->last_team_message_at,
             'next_action_at' => $note->next_action_at,
             'response_due_at' => $note->response_due_at,
+            'escalation_due_at' => $note->response_due_at?->copy()->addMinutes((int) data_get($note->metadata, 'escalation_minutes', $this->routing->resolve($profile, (string) ($note->source_channel ?? 'crm'))['escalation_minutes'])),
             'closed_at' => $note->status === 'resolved' ? ($note->handled_at ?? now()) : null,
         ]);
 
@@ -388,5 +443,23 @@ class CustomerConversationOpsManager
             'pending_customer' => 'waiting_customer',
             default => (string) $note->status,
         };
+    }
+
+    /**
+     * @return array{assignment_group:string,assignment_group_label:string,response_sla_minutes:int,escalation_minutes:int}
+     */
+    private function fallbackRouting(string $channel): array
+    {
+        $groups = (array) config('customer-operations.groups', []);
+        $group = 'sales';
+        $definition = (array) ($groups[$group] ?? []);
+        $channelDelta = (int) data_get(config('customer-operations.channels', []), "{$channel}.sla_delta_minutes", 0);
+
+        return [
+            'assignment_group' => $group,
+            'assignment_group_label' => (string) ($definition['label'] ?? 'Ventas'),
+            'response_sla_minutes' => max(15, ((int) ($definition['sla_minutes'] ?? 90)) + $channelDelta),
+            'escalation_minutes' => max(30, (int) ($definition['escalation_minutes'] ?? 120)),
+        ];
     }
 }

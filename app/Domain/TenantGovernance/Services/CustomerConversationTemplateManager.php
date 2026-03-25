@@ -82,6 +82,7 @@ class CustomerConversationTemplateManager
                     'template_key' => isset($definition['template_key']) ? (string) $definition['template_key'] : null,
                     'lane' => (string) ($definition['lane'] ?? 'follow_up'),
                     'wait_hours' => max(0, (int) ($definition['wait_hours'] ?? 0)),
+                    'auto_send' => (bool) ($definition['auto_send'] ?? $index > 0),
                 ];
             })
             ->values()
@@ -110,6 +111,8 @@ class CustomerConversationTemplateManager
             'retry_limit' => $definition['retry_limit'],
             'requires_marketing_opt_in' => $definition['requires_marketing_opt_in'],
             'conversation_key' => $note?->conversation_key,
+            'provider_thread_key' => data_get($note?->metadata, 'provider_thread_key', $note?->conversation_key),
+            'provider_reply_to' => data_get($note?->metadata, 'provider_message_id', data_get($note?->metadata, 'provider_reply_to')),
             'source_note_id' => $note?->getKey(),
             'source_channel' => $note?->source_channel,
             'journey_template_key' => $templateKey,

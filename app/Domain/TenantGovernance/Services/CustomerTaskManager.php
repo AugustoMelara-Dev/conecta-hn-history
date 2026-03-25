@@ -16,6 +16,8 @@ class CustomerTaskManager
             return null;
         }
 
+        $conversation = $note->conversation()->withoutGlobalScopes()->first();
+
         $task = CustomerTask::query()
             ->withoutGlobalScopes()
             ->firstOrNew([
@@ -28,11 +30,13 @@ class CustomerTaskManager
             'customer_conversation_id' => $note->customer_conversation_id,
             'assigned_user_id' => $note->assigned_user_id,
             'location_id' => $note->location_id,
+            'assignment_group' => $conversation?->assignment_group ?? data_get($note->metadata, 'assignment_group'),
             'task_type' => $note->note_type === 'inbound_reply' ? 'reply_follow_up' : ($note->note_type ?: 'follow_up'),
             'title' => $this->resolveTitle($note),
             'body' => $note->body,
             'status' => $this->resolveStatus($note),
             'priority' => $note->priority ?: 'normal',
+            'response_sla_minutes' => $conversation?->response_sla_minutes,
             'source_channel' => $note->source_channel,
             'due_at' => $note->next_action_at,
             'sla_due_at' => $note->response_due_at,

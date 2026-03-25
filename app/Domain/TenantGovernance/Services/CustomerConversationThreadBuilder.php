@@ -22,7 +22,7 @@ class CustomerConversationThreadBuilder
      *         last_customer_message:?string,
      *         last_team_message:?string
      *     },
-     *     items: list<array{kind:string,direction:string,title:string,body:string,channel:string,when:string,color:string}>,
+     *     items: list<array{kind:string,direction:string,title:string,body:string,channel:string,when:string,color:string,thread:?string}>,
      *     internal_notes: list<array{title:string,body:string,when:string,author:string}>
      * }
      */
@@ -49,7 +49,7 @@ class CustomerConversationThreadBuilder
      *         last_customer_message:?string,
      *         last_team_message:?string
      *     },
-     *     items: list<array{kind:string,direction:string,title:string,body:string,channel:string,when:string,color:string}>,
+     *     items: list<array{kind:string,direction:string,title:string,body:string,channel:string,when:string,color:string,thread:?string}>,
      *     internal_notes: list<array{title:string,body:string,when:string,author:string}>
      * }
      */
@@ -77,6 +77,7 @@ class CustomerConversationThreadBuilder
                     'channel' => ucfirst((string) ($message->channel ?? 'crm')),
                     'when' => $message->occurred_at?->diffForHumans() ?? 'Hace un momento',
                     'color' => $isCustomer ? 'warning' : 'info',
+                    'thread' => $message->provider_thread_key,
                 ];
             })
             ->values()
@@ -117,7 +118,7 @@ class CustomerConversationThreadBuilder
      *         last_customer_message:?string,
      *         last_team_message:?string
      *     },
-     *     items: list<array{kind:string,direction:string,title:string,body:string,channel:string,when:string,color:string}>,
+     *     items: list<array{kind:string,direction:string,title:string,body:string,channel:string,when:string,color:string,thread:?string}>,
      *     internal_notes: list<array{title:string,body:string,when:string,author:string}>
      * }
      */
@@ -167,6 +168,7 @@ class CustomerConversationThreadBuilder
                 'channel' => ucfirst((string) ($threadNote->source_channel ?? 'crm')),
                 'when' => ($threadNote->last_customer_message_at ?? $threadNote->created_at ?? now())->diffForHumans(),
                 'color' => $threadNote->sla_color,
+                'thread' => $threadNote->conversation_key,
             ]))
             ->concat($touchpoints->map(fn (CustomerTouchpoint $touchpoint): array => [
                 'kind' => 'touchpoint',
@@ -187,6 +189,7 @@ class CustomerConversationThreadBuilder
                     CustomerTouchpoint::STATUS_SKIPPED => 'warning',
                     default => 'info',
                 },
+                'thread' => (string) data_get($touchpoint->metadata, 'provider_thread_key', data_get($touchpoint->metadata, 'conversation_key')),
             ]))
             ->take($limit)
             ->values()
