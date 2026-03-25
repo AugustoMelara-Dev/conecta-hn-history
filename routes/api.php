@@ -204,3 +204,11 @@ Route::post('/webhooks/payment', [\App\Http\Controllers\Webhook\PaymentWebhookCo
 Route::post('/webhooks/resend/email', [\App\Http\Controllers\Webhook\ResendWebhookController::class, 'handle'])
     ->name('webhooks.resend.email')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
+Route::get('/webhooks/whatsapp-cloud', [\App\Http\Controllers\Webhook\WhatsAppCloudWebhookController::class, 'verify'])
+    ->name('webhooks.whatsapp-cloud.verify')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
+Route::post('/webhooks/whatsapp-cloud', [\App\Http\Controllers\Webhook\WhatsAppCloudWebhookController::class, 'handle'])
+    ->name('webhooks.whatsapp-cloud.handle')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);

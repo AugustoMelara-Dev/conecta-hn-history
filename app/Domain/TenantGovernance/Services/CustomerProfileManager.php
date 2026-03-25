@@ -6,7 +6,9 @@ namespace App\Domain\TenantGovernance\Services;
 
 use App\Models\Appointment;
 use App\Models\CustomerProfile;
+use App\Models\CustomerTouchpoint;
 use App\Models\Lead;
+use App\Models\LoyaltyProgram;
 use App\Models\Order;
 use App\Models\Tenant;
 use Carbon\Carbon;
@@ -14,6 +16,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class CustomerProfileManager
 {
+    /** @var array<string, LoyaltyProgram|null> */
+    private array $loyaltyPrograms = [];
+
     public function syncTenant(Tenant|string $tenant): void
     {
         $tenantId = $tenant instanceof Tenant ? (string) $tenant->getKey() : (string) $tenant;
@@ -288,7 +293,7 @@ class CustomerProfileManager
             ->where('tenant_id', $tenantId)
             ->where('customer_profile_id', $profileId)
             ->whereNotIn('status', [Order::STATUS_CANCELLED])
-            ->get(['id', 'customer_name', 'customer_email', 'customer_phone', 'total', 'created_at']);
+            ->get(['id', 'customer_name', 'customer_email', 'customer_phone', 'total', 'source', 'created_at']);
 
         $appointments = Appointment::query()
             ->withoutGlobalScopes()
@@ -301,19 +306,23 @@ class CustomerProfileManager
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->where('customer_profile_id', $profileId)
-            ->get(['id', 'name', 'email', 'phone', 'created_at']);
+            ->get(['id', 'name', 'email', 'phone', 'source', 'created_at']);
 
         $ordersCount = $orders->count();
         $appointmentsCount = $appointments->count();
         $leadsCount = $leads->count();
         $totalSpent = round((float) $orders->sum('total'), 2);
         $averageTicket = $ordersCount > 0 ? round($totalSpent / $ordersCount, 2) : 0.0;
+        $repeatPurchaseCount = max(0, $ordersCount - 1);
 
         $firstSeenAt = collect([
             $orders->min('created_at'),
             $appointments->min('created_at'),
             $leads->min('created_at'),
         ])->filter()->map(fn (mixed $value): Carbon => Carbon::parse((string) $value))->sort()->first();
+        $firstOrder = $orders->sortBy('created_at')->first();
+        $firstAppointment = $appointments->sortBy('created_at')->first();
+        $firstLead = $leads->sortBy('created_at')->first();
 
         $lastOrderAt = $this->asCarbon($orders->max('created_at'));
         $lastAppointmentAt = $this->asCarbon($appointments->max('scheduled_at') ?: $appointments->max('created_at'));
@@ -344,7 +353,23 @@ class CustomerProfileManager
             $leads->pluck('phone')->filter()->first(),
         ])->filter()->first();
 
+        $acquisitionChannel = $this->resolveAcquisitionChannel($firstLead, $firstOrder, $firstAppointment);
+        $firstConversionChannel = is_object($firstOrder) ? $this->normalizeChannelValue($firstOrder->source ?? null, 'orders') : null;
+        $firstConversionValue = is_object($firstOrder) ? round((float) ($firstOrder->total ?? 0), 2) : 0.0;
+        $initialLtv = $this->calculateInitialLtv($orders, $firstOrder);
         $reactivationScore = $this->calculateReactivationScore($lastSeenAt, $ordersCount, $appointmentsCount, $leadsCount, $totalSpent);
+        $loyaltyProgram = $this->resolveLoyaltyProgram($tenantId);
+        $loyaltyPointsBalance = $loyaltyProgram instanceof LoyaltyProgram
+            ? $loyaltyProgram->calculatePoints($totalSpent)
+            : 0;
+        $loyaltyTier = $this->resolveLoyaltyTier($ordersCount, $repeatPurchaseCount, $totalSpent);
+        $lastReplyTouchpoint = CustomerTouchpoint::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('customer_profile_id', $profileId)
+            ->whereNotNull('replied_at')
+            ->latest('replied_at')
+            ->first(['channel', 'replied_at']);
 
         $profile->forceFill([
             'name' => $this->sanitizeText(is_string($bestName) ? $bestName : null),
@@ -353,8 +378,15 @@ class CustomerProfileManager
             'normalized_email' => $bestEmail ?? $profile->normalized_email,
             'normalized_phone' => $this->normalizePhone(is_string($bestPhone) ? $bestPhone : null) ?? $profile->normalized_phone,
             'preferred_channel' => $this->resolvePreferredChannel($profile->preferred_channel, $bestEmail, $this->normalizePhone(is_string($bestPhone) ? $bestPhone : null)),
+            'acquisition_channel' => $acquisitionChannel,
+            'first_conversion_channel' => $firstConversionChannel,
+            'first_conversion_value' => $firstConversionValue,
+            'initial_ltv' => $initialLtv,
             'orders_count' => $ordersCount,
             'appointments_count' => $appointmentsCount,
+            'repeat_purchase_count' => $repeatPurchaseCount,
+            'loyalty_points_balance' => $loyaltyPointsBalance,
+            'loyalty_tier' => $loyaltyTier,
             'leads_count' => $leadsCount,
             'total_spent' => $totalSpent,
             'average_ticket' => $averageTicket,
@@ -363,6 +395,8 @@ class CustomerProfileManager
             'last_order_at' => $lastOrderAt,
             'last_appointment_at' => $lastAppointmentAt,
             'last_lead_at' => $lastLeadAt,
+            'last_engaged_channel' => $lastReplyTouchpoint?->channel ?? $profile->last_engaged_channel ?? $profile->preferred_channel,
+            'last_inbound_reply_at' => $lastReplyTouchpoint?->replied_at ?? $profile->last_inbound_reply_at,
             'lifecycle_stage' => $this->resolveLifecycleStage($ordersCount, $appointmentsCount, $leadsCount, $lastSeenAt),
             'customer_segment' => $this->resolveCustomerSegment($ordersCount, $appointmentsCount, $leadsCount, $totalSpent, $reactivationScore, $lastSeenAt),
             'reactivation_score' => $reactivationScore,
@@ -448,6 +482,74 @@ class CustomerProfileManager
         }
 
         return 'new';
+    }
+
+    private function resolveAcquisitionChannel(mixed $firstLead, mixed $firstOrder, mixed $firstAppointment): ?string
+    {
+        $events = collect([
+            is_object($firstLead) ? [
+                'channel' => $this->normalizeChannelValue($firstLead->source ?? null, 'manual'),
+                'date' => $this->asCarbon($firstLead->created_at ?? null),
+            ] : null,
+            is_object($firstOrder) ? [
+                'channel' => $this->normalizeChannelValue($firstOrder->source ?? null, 'orders'),
+                'date' => $this->asCarbon($firstOrder->created_at ?? null),
+            ] : null,
+            is_object($firstAppointment) ? [
+                'channel' => 'appointments',
+                'date' => $this->asCarbon($firstAppointment->created_at ?? null),
+            ] : null,
+        ])->filter(static fn (?array $event): bool => is_array($event) && $event['date'] instanceof Carbon)
+            ->sortBy(fn (array $event): int => $event['date']->getTimestamp())
+            ->values();
+
+        return $events->first()['channel'] ?? null;
+    }
+
+    private function calculateInitialLtv(\Illuminate\Support\Collection $orders, mixed $firstOrder): float
+    {
+        if (! is_object($firstOrder) || ! isset($firstOrder->created_at)) {
+            return 0.0;
+        }
+
+        $firstOrderAt = $this->asCarbon($firstOrder->created_at);
+
+        if (! $firstOrderAt instanceof Carbon) {
+            return 0.0;
+        }
+
+        return round((float) $orders
+            ->filter(function (Order $order) use ($firstOrderAt): bool {
+                $createdAt = $this->asCarbon($order->created_at);
+
+                return $createdAt instanceof Carbon
+                    ? $createdAt->lte($firstOrderAt->copy()->addDays(30))
+                    : false;
+            })
+            ->sum('total'), 2);
+    }
+
+    private function resolveLoyaltyProgram(string $tenantId): ?LoyaltyProgram
+    {
+        if (array_key_exists($tenantId, $this->loyaltyPrograms)) {
+            return $this->loyaltyPrograms[$tenantId];
+        }
+
+        return $this->loyaltyPrograms[$tenantId] = LoyaltyProgram::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('is_active', true)
+            ->first();
+    }
+
+    private function resolveLoyaltyTier(int $ordersCount, int $repeatPurchaseCount, float $totalSpent): string
+    {
+        return match (true) {
+            $ordersCount >= 5 || $totalSpent >= 8000 => 'vip',
+            $ordersCount >= 3 || $repeatPurchaseCount >= 2 || $totalSpent >= 4000 => 'gold',
+            $ordersCount >= 2 || $totalSpent >= 1500 => 'silver',
+            default => 'base',
+        };
     }
 
     private function calculateReactivationScore(
@@ -570,6 +672,15 @@ class CustomerProfileManager
         $clean = trim($value);
 
         return $clean !== '' ? $clean : null;
+    }
+
+    private function normalizeChannelValue(mixed $value, string $fallback): string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return $fallback;
+        }
+
+        return strtolower(trim($value));
     }
 
     private function normalizeProfileId(mixed $value): ?int

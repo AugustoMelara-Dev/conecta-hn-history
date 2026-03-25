@@ -164,9 +164,11 @@ class CustomerTouchpointResource extends Resource
                         CustomerTouchpoint::DELIVERY_DELIVERED => 'success',
                         CustomerTouchpoint::DELIVERY_OPENED => 'info',
                         CustomerTouchpoint::DELIVERY_CLICKED => 'primary',
+                        CustomerTouchpoint::DELIVERY_READ => 'success',
                         CustomerTouchpoint::DELIVERY_REPLIED => 'success',
                         CustomerTouchpoint::DELIVERY_BOUNCED,
-                        CustomerTouchpoint::DELIVERY_COMPLAINED => 'danger',
+                        CustomerTouchpoint::DELIVERY_COMPLAINED,
+                        CustomerTouchpoint::DELIVERY_FAILED => 'danger',
                         CustomerTouchpoint::DELIVERY_DELAYED => 'warning',
                         default => 'gray',
                     }),
@@ -233,7 +235,7 @@ class CustomerTouchpointResource extends Resource
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => 'Automatizacion',
                 'heading' => 'Todavia no hay contactos registrados',
-                'description' => 'Aqui apareceran los correos y seguimientos que ejecutes desde el CRM del negocio.',
+                'description' => 'Aqui apareceran los correos, WhatsApp y seguimientos que ejecutes desde el CRM del negocio.',
             ]));
     }
 

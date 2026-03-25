@@ -152,6 +152,50 @@ final class CustomerAutomationManagerTest extends TestCase
         $this->assertSame('sent', data_get($touchpoint->provider_payload, 'last_event'));
     }
 
+    public function test_whatsapp_follow_up_is_sent_and_logged_with_provider_metadata(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner('crm-automation-whatsapp');
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Laura Pineda',
+            'phone' => '9999-1111',
+            'preferred_channel' => 'whatsapp',
+            'customer_segment' => 'repeat',
+            'lifecycle_stage' => 'active',
+            'whatsapp_opt_in' => true,
+            'marketing_opt_in' => true,
+            'reactivation_score' => 12,
+        ]);
+
+        $gateway = \Mockery::mock(CustomerMessagingGateway::class);
+        $gateway->shouldReceive('sendLifecycleWhatsApp')
+            ->once()
+            ->andReturn([
+                'provider' => 'whatsapp_cloud',
+                'provider_message_id' => 'wamid.123',
+                'delivery_status' => 'sent',
+                'payload' => ['messages' => [['id' => 'wamid.123']]],
+            ]);
+
+        $this->app->instance(CustomerMessagingGateway::class, $gateway);
+
+        $touchpoint = app(CustomerAutomationManager::class)->sendSuggestedAutomation(
+            profile: $profile,
+            automationKey: 'manual_follow_up_whatsapp',
+            actorUserId: (string) $user->getKey(),
+            channel: 'whatsapp',
+        );
+
+        $this->assertSame('whatsapp', $touchpoint->channel);
+        $this->assertSame(CustomerTouchpoint::STATUS_SENT, $touchpoint->status);
+        $this->assertSame('whatsapp_cloud', $touchpoint->provider);
+        $this->assertSame('wamid.123', $touchpoint->provider_message_id);
+        $this->assertSame('sent', $touchpoint->delivery_status);
+        $this->assertSame('manual_follow_up_whatsapp', $touchpoint->automation_key);
+        $this->assertSame('whatsapp', $profile->fresh()->last_engaged_channel);
+    }
+
     /**
      * @return array{0: User, 1: Tenant}
      */

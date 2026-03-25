@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Models\Order;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
@@ -16,6 +17,10 @@ class OrderCustomerProfileObserver implements ShouldHandleEventsAfterCommit
             $order,
             $this->originalProfileId($order),
         );
+
+        if ($order->wasRecentlyCreated || ($order->wasChanged('status') && $order->status === Order::STATUS_DELIVERED)) {
+            app(CustomerLifecycleTriggerManager::class)->handleOrderSaved($order->fresh());
+        }
     }
 
     public function deleted(Order $order): void

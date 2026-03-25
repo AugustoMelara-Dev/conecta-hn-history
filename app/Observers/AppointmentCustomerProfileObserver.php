@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Models\Appointment;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
@@ -16,6 +17,16 @@ class AppointmentCustomerProfileObserver implements ShouldHandleEventsAfterCommi
             $appointment,
             $this->originalProfileId($appointment),
         );
+
+        if (
+            $appointment->wasRecentlyCreated
+            || ($appointment->wasChanged('status') && in_array($appointment->status, [
+                Appointment::STATUS_CONFIRMED,
+                Appointment::STATUS_COMPLETED,
+            ], true))
+        ) {
+            app(CustomerLifecycleTriggerManager::class)->handleAppointmentSaved($appointment->fresh());
+        }
     }
 
     public function deleted(Appointment $appointment): void

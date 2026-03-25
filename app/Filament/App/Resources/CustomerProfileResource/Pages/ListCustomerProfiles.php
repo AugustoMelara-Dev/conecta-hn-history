@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\CustomerProfileResource\Pages;
 
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
+use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\CustomerTouchpointResource;
@@ -78,9 +79,8 @@ class ListCustomerProfiles extends ListTenantRecords
                         return;
                     }
 
-                    $result = app(CustomerAutomationManager::class)->runSuggestedAutomationBatch(
+                    $result = app(CustomerLifecycleTriggerManager::class)->runReactivationSweep(
                         tenant: $tenant,
-                        automationKey: 'reactivation_email',
                         actorUserId: auth()->id(),
                         limit: 25,
                     );

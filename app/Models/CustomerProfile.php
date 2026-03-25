@@ -29,8 +29,15 @@ class CustomerProfile extends Model
         'marketing_opt_in',
         'whatsapp_opt_in',
         'email_opt_in',
+        'acquisition_channel',
+        'first_conversion_channel',
+        'first_conversion_value',
+        'initial_ltv',
         'orders_count',
         'appointments_count',
+        'repeat_purchase_count',
+        'loyalty_points_balance',
+        'loyalty_tier',
         'leads_count',
         'total_spent',
         'average_ticket',
@@ -40,6 +47,9 @@ class CustomerProfile extends Model
         'last_appointment_at',
         'last_lead_at',
         'last_contacted_at',
+        'last_engaged_channel',
+        'last_reactivated_at',
+        'last_inbound_reply_at',
         'reactivation_score',
     ];
 
@@ -48,6 +58,10 @@ class CustomerProfile extends Model
         'marketing_opt_in' => 'boolean',
         'whatsapp_opt_in' => 'boolean',
         'email_opt_in' => 'boolean',
+        'first_conversion_value' => 'decimal:2',
+        'initial_ltv' => 'decimal:2',
+        'repeat_purchase_count' => 'integer',
+        'loyalty_points_balance' => 'integer',
         'total_spent' => 'decimal:2',
         'average_ticket' => 'decimal:2',
         'first_seen_at' => 'datetime',
@@ -56,6 +70,8 @@ class CustomerProfile extends Model
         'last_appointment_at' => 'datetime',
         'last_lead_at' => 'datetime',
         'last_contacted_at' => 'datetime',
+        'last_reactivated_at' => 'datetime',
+        'last_inbound_reply_at' => 'datetime',
         'reactivation_score' => 'integer',
     ];
 
@@ -126,6 +142,31 @@ class CustomerProfile extends Model
             'phone' => 'Llamada',
             'in_person' => 'Presencial',
             default => 'WhatsApp',
+        };
+    }
+
+    public function getAcquisitionChannelLabelAttribute(): string
+    {
+        return match ($this->acquisition_channel) {
+            'whatsapp', 'whatsapp_click' => 'WhatsApp',
+            'email' => 'Email',
+            'website', 'web' => 'Sitio web',
+            'appointments', 'booking' => 'Agenda',
+            'catalog' => 'Catalogo',
+            'manual' => 'Manual',
+            default => $this->acquisition_channel !== null
+                ? str($this->acquisition_channel)->replace('_', ' ')->title()->value()
+                : 'Sin datos',
+        };
+    }
+
+    public function getLoyaltyTierLabelAttribute(): string
+    {
+        return match ($this->loyalty_tier) {
+            'vip' => 'VIP',
+            'gold' => 'Gold',
+            'silver' => 'Silver',
+            default => 'Base',
         };
     }
 

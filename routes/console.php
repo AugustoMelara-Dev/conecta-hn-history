@@ -27,6 +27,12 @@ Schedule::command('crm:sync-portfolio')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/crm-portfolio-sync.log'));
 
+Schedule::command('crm:dispatch-retention --limit=25')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/customer-retention.log'));
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // AUTOMATED INVENTORY RECOVERY - Stale Order Garbage Collector
 // ═══════════════════════════════════════════════════════════════════════════════

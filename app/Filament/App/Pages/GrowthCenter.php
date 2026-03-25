@@ -126,6 +126,10 @@ class GrowthCenter extends Page
 
     public int $touchpointsBounced30d = 0;
 
+    public int $whatsAppTouchpoints30d = 0;
+
+    public int $whatsAppReplies30d = 0;
+
     public int $campaignsSent30d = 0;
 
     public int $openPlaybooksCount = 0;
@@ -146,6 +150,10 @@ class GrowthCenter extends Page
 
     public int $notes7dCount = 0;
 
+    public int $reactivatedCustomers30d = 0;
+
+    public int $loyaltyReadyCustomersCount = 0;
+
     public float $recurrenceRate = 0.0;
 
     public float $deliveryRate30d = 0.0;
@@ -153,6 +161,10 @@ class GrowthCenter extends Page
     public float $openRate30d = 0.0;
 
     public float $optInCoverageRate = 0.0;
+
+    public float $averageInitialLtv = 0.0;
+
+    public string $topAcquisitionChannel = 'Sin datos';
 
     public string $growthUrl = '#';
 
@@ -371,15 +383,23 @@ class GrowthCenter extends Page
 
             $this->crmProfilesCount = (clone $profilesBase)->count();
             $emailOptInCount = (clone $profilesBase)->where('email_opt_in', true)->count();
+            $this->averageInitialLtv = round((float) ((clone $profilesBase)->avg('initial_ltv') ?: 0), 2);
             $this->reactivationPoolCount = max(
                 $this->reactivationPoolCount,
                 (clone $profilesBase)->where('reactivation_score', '>=', 65)->count(),
             );
             $this->repeatCustomerCount = max(
                 $this->repeatCustomerCount,
-                (clone $profilesBase)->whereIn('customer_segment', ['repeat', 'vip'])->count(),
+                (clone $profilesBase)->where('repeat_purchase_count', '>', 0)->count(),
             );
             $this->distinctCustomersCount = max($this->distinctCustomersCount, $this->crmProfilesCount);
+            $this->reactivatedCustomers30d = (clone $profilesBase)
+                ->whereNotNull('last_reactivated_at')
+                ->where('last_reactivated_at', '>=', $thirtyDaysAgo)
+                ->count();
+            $this->loyaltyReadyCustomersCount = (clone $profilesBase)
+                ->whereIn('loyalty_tier', ['silver', 'gold', 'vip'])
+                ->count();
             $this->vipCustomersCount = (clone $profilesBase)
                 ->where(function ($query): void {
                     $query->where('manual_segment', 'vip')
@@ -394,6 +414,16 @@ class GrowthCenter extends Page
             $this->optInCoverageRate = $this->crmProfilesCount > 0
                 ? round(($emailOptInCount / $this->crmProfilesCount) * 100, 1)
                 : 0.0;
+
+            $topAcquisition = (clone $profilesBase)
+                ->selectRaw('coalesce(acquisition_channel, "manual") as channel_key, count(*) as total')
+                ->groupBy('channel_key')
+                ->orderByDesc('total')
+                ->first();
+
+            if ($topAcquisition !== null) {
+                $this->topAcquisitionChannel = $this->formatSourceLabel((string) $topAcquisition->channel_key);
+            }
         } catch (\Throwable) {
             // CRM can be empty on brand new tenants.
         }
@@ -447,6 +477,15 @@ class GrowthCenter extends Page
                     $query->whereNotNull('bounced_at')->orWhereNotNull('complained_at');
                 })
                 ->count();
+            $whatsAppTouchpoints = CustomerTouchpoint::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('channel', 'whatsapp')
+                ->where('created_at', '>=', $thirtyDaysAgo)
+                ->where('status', CustomerTouchpoint::STATUS_SENT);
+
+            $this->whatsAppTouchpoints30d = (clone $whatsAppTouchpoints)->count();
+            $this->whatsAppReplies30d = (clone $whatsAppTouchpoints)->whereNotNull('replied_at')->count();
             $this->deliveryRate30d = $totalEmailTouchpoints > 0
                 ? round(($this->touchpointsDelivered30d / $totalEmailTouchpoints) * 100, 1)
                 : 0.0;
@@ -536,6 +575,8 @@ class GrowthCenter extends Page
             $this->metric('Campanas 30 dias', (string) $this->campaignsSent30d, $this->campaignsSent30d > 0 ? 'Ya tienes empuje comercial reciente.' : 'Aun no has activado una campana reciente.'),
             $this->metric('Contactos enviados', (string) $this->touchpoints30d, $this->touchpoints30d > 0 ? 'Tu CRM ya esta ejecutando seguimiento auditable.' : 'Todavia no has movido seguimientos desde el CRM.'),
             $this->metric('Reactivar', (string) $this->reactivationPoolCount, $this->reactivationPoolCount > 0 ? 'Clientes con senales para volver a tocar.' : 'La base reciente no muestra fuga grande todavia.'),
+            $this->metric('Reactivados 30 dias', (string) $this->reactivatedCustomers30d, $this->reactivatedCustomers30d > 0 ? 'Clientes que ya respondieron a una nueva activacion reciente.' : 'Aun no tienes reactivaciones recientes registradas.'),
+            $this->metric('Tier con fidelidad', (string) $this->loyaltyReadyCustomersCount, $this->loyaltyReadyCustomersCount > 0 ? 'Clientes listos para beneficios, bundles o continuidad.' : 'Todavia no hay base suficiente para fidelidad segmentada.'),
         ];
     }
 
@@ -543,9 +584,12 @@ class GrowthCenter extends Page
     {
         $this->engagementMetrics = [
             $this->metric('Oferta top', $this->topOfferLabel, $this->topOfferCopy),
+            $this->metric('LTV inicial', $this->formatCurrency($this->averageInitialLtv), $this->averageInitialLtv > 0 ? 'Promedio del valor capturado en los primeros 30 dias desde la primera conversion.' : 'Aun no hay conversion suficiente para estimar LTV inicial.'),
             $this->metric('Recurrencia', $this->recurrenceRate.'%', $this->repeatCustomerCount > 0 ? "{$this->repeatCustomerCount} clientes ya compraron o reservaron mas de una vez." : 'Todavia no se ve repeticion fuerte en la base.'),
+            $this->metric('Canal dominante', $this->topAcquisitionChannel, 'La entrada que mas clientes reales esta trayendo al CRM hoy.'),
             $this->metric('Entrega de email', $this->deliveryRate30d.'%', $this->touchpoints30d > 0 ? "{$this->touchpointsDelivered30d} contactos llegaron a bandeja de entrada." : 'Aun no hay seguimiento suficiente para medir entrega.'),
             $this->metric('Apertura de email', $this->openRate30d.'%', $this->touchpointsOpened30d > 0 ? "{$this->touchpointsOpened30d} contactos ya abrieron tus mensajes." : 'Todavia no hay aperturas registradas por proveedor.'),
+            $this->metric('Respuestas por WhatsApp', (string) $this->whatsAppReplies30d, $this->whatsAppTouchpoints30d > 0 ? "{$this->whatsAppReplies30d} conversaciones devolvieron respuesta reciente." : 'Todavia no hay conversaciones de WhatsApp suficientes para medir respuesta.'),
         ];
     }
 

@@ -46,6 +46,7 @@ class CustomerNote extends Model
             'service' => 'Servicio',
             'sale' => 'Venta',
             'inbound_reply' => 'Respuesta',
+            'opt_in_update' => 'Opt-in',
             default => 'General',
         };
     }

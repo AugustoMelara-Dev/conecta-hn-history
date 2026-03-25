@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
+use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
 use App\Filament\App\Resources\CustomerProfileResource\Pages;
 use App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
 use App\Models\CustomerProfile;
@@ -139,6 +140,10 @@ class CustomerProfileResource extends Resource
                                     ->label('Pedidos')
                                     ->disabled()
                                     ->dehydrated(false),
+                                Forms\Components\TextInput::make('repeat_purchase_count')
+                                    ->label('Recompras')
+                                    ->disabled()
+                                    ->dehydrated(false),
                                 Forms\Components\TextInput::make('appointments_count')
                                     ->label('Citas')
                                     ->disabled()
@@ -149,6 +154,33 @@ class CustomerProfileResource extends Resource
                                     ->dehydrated(false),
                                 Forms\Components\TextInput::make('total_spent')
                                     ->label('Valor acumulado')
+                                    ->prefix('L. ')
+                                    ->disabled()
+                                    ->dehydrated(false),
+                            ]),
+                    ]),
+
+                Section::make('Retencion y fidelidad')
+                    ->description('Lecturas utiles para recompra, segmentacion y continuidad.')
+                    ->schema([
+                        Grid::make(4)
+                            ->schema([
+                                Forms\Components\TextInput::make('acquisition_channel')
+                                    ->label('Canal de entrada')
+                                    ->formatStateUsing(fn (CustomerProfile $record): string => $record->acquisition_channel_label)
+                                    ->disabled()
+                                    ->dehydrated(false),
+                                Forms\Components\TextInput::make('loyalty_tier')
+                                    ->label('Tier')
+                                    ->formatStateUsing(fn (CustomerProfile $record): string => $record->loyalty_tier_label)
+                                    ->disabled()
+                                    ->dehydrated(false),
+                                Forms\Components\TextInput::make('loyalty_points_balance')
+                                    ->label('Puntos estimados')
+                                    ->disabled()
+                                    ->dehydrated(false),
+                                Forms\Components\TextInput::make('initial_ltv')
+                                    ->label('LTV inicial')
                                     ->prefix('L. ')
                                     ->disabled()
                                     ->dehydrated(false),
@@ -247,9 +279,23 @@ class CustomerProfileResource extends Resource
                     ->money('HNL')
                     ->sortable()
                     ->weight('bold'),
+                Tables\Columns\TextColumn::make('loyalty_tier')
+                    ->label('Fidelidad')
+                    ->badge()
+                    ->state(fn (CustomerProfile $record): string => $record->loyalty_tier_label)
+                    ->color(fn (CustomerProfile $record): string => match ($record->loyalty_tier) {
+                        'vip' => 'success',
+                        'gold' => 'warning',
+                        'silver' => 'info',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('orders_count')
                     ->label('Pedidos')
                     ->badge(),
+                Tables\Columns\TextColumn::make('repeat_purchase_count')
+                    ->label('Recompra')
+                    ->badge()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('appointments_count')
                     ->label('Citas')
                     ->badge()
@@ -306,6 +352,14 @@ class CustomerProfileResource extends Resource
                         'phone' => 'Llamada',
                         'in_person' => 'Presencial',
                     ]),
+                Tables\Filters\SelectFilter::make('loyalty_tier')
+                    ->label('Fidelidad')
+                    ->options([
+                        'vip' => 'VIP',
+                        'gold' => 'Gold',
+                        'silver' => 'Silver',
+                        'base' => 'Base',
+                    ]),
                 Tables\Filters\Filter::make('reactivation')
                     ->label('Solo reactivacion')
                     ->query(fn ($query) => $query->where('reactivation_score', '>=', 65)),
@@ -358,27 +412,28 @@ class CustomerProfileResource extends Resource
                             ->body((string) ($touchpoint->last_error ?: 'El CRM ya guardo este movimiento en el historial del cliente.'))
                             ->send();
                     }),
-                Action::make('reactivation_email')
-                    ->label('Reactivar')
-                    ->icon('heroicon-o-bolt')
-                    ->color('warning')
+                Action::make('whatsapp_follow_up')
+                    ->label('WhatsApp')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Lanzar reactivacion por email')
-                    ->modalDescription('Usa la plantilla sugerida por rubro y respeta opt-in antes de enviar.')
-                    ->visible(fn (CustomerProfile $record): bool => (int) $record->reactivation_score >= 65 && filled($record->email))
+                    ->modalHeading('Enviar seguimiento por WhatsApp')
+                    ->modalDescription('Esto usa una plantilla auditable de WhatsApp Cloud API y deja trazabilidad en el CRM.')
+                    ->visible(fn (CustomerProfile $record): bool => filled($record->phone))
                     ->action(function (CustomerProfile $record): void {
                         $touchpoint = app(CustomerAutomationManager::class)->sendSuggestedAutomation(
                             profile: $record,
-                            automationKey: 'reactivation_email',
+                            automationKey: 'manual_follow_up_whatsapp',
                             actorUserId: auth()->id(),
+                            channel: 'whatsapp',
                         );
 
                         Notification::make()
                             ->title(match ($touchpoint->status) {
-                                CustomerTouchpoint::STATUS_SENT => 'Reactivacion enviada',
-                                CustomerTouchpoint::STATUS_SKIPPED => 'Cliente no elegible',
-                                CustomerTouchpoint::STATUS_FAILED => 'Fallo la reactivacion',
-                                default => 'Reactivacion registrada',
+                                CustomerTouchpoint::STATUS_SENT => 'Seguimiento enviado',
+                                CustomerTouchpoint::STATUS_SKIPPED => 'Contacto omitido',
+                                CustomerTouchpoint::STATUS_FAILED => 'No se pudo enviar',
+                                default => 'Contacto registrado',
                             })
                             ->color(match ($touchpoint->status) {
                                 CustomerTouchpoint::STATUS_SENT => 'success',
@@ -386,7 +441,38 @@ class CustomerProfileResource extends Resource
                                 CustomerTouchpoint::STATUS_FAILED => 'danger',
                                 default => 'info',
                             })
-                            ->body((string) ($touchpoint->last_error ?: 'El mensaje ya quedo auditado en el CRM.'))
+                            ->body((string) ($touchpoint->last_error ?: 'El seguimiento por WhatsApp ya quedo auditado en el CRM.'))
+                            ->send();
+                    }),
+                Action::make('reactivation_email')
+                    ->label('Reactivar')
+                    ->icon('heroicon-o-bolt')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Lanzar reactivacion')
+                    ->modalDescription('Usa el mejor canal segun el cliente y respeta opt-in antes de enviar.')
+                    ->visible(fn (CustomerProfile $record): bool => (int) $record->reactivation_score >= 65 && filled($record->email))
+                    ->action(function (CustomerProfile $record): void {
+                        $touchpoint = app(CustomerLifecycleTriggerManager::class)->triggerJourney(
+                            profile: $record,
+                            journeyKey: 'reactivation',
+                            actorUserId: auth()->id(),
+                        );
+
+                        Notification::make()
+                            ->title(match ($touchpoint?->status) {
+                                CustomerTouchpoint::STATUS_SENT => 'Reactivacion enviada',
+                                CustomerTouchpoint::STATUS_SKIPPED => 'Reactivacion omitida',
+                                CustomerTouchpoint::STATUS_FAILED => 'No se pudo enviar',
+                                default => 'Reactivacion procesada',
+                            })
+                            ->color(match ($touchpoint?->status) {
+                                CustomerTouchpoint::STATUS_SENT => 'success',
+                                CustomerTouchpoint::STATUS_SKIPPED => 'warning',
+                                CustomerTouchpoint::STATUS_FAILED => 'danger',
+                                default => 'info',
+                            })
+                            ->body((string) ($touchpoint?->last_error ?: 'El CRM ya registro la accion de reactivacion para este cliente.'))
                             ->send();
                     }),
                 EditAction::make()

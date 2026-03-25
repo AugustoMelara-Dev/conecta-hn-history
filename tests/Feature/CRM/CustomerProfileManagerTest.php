@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\CustomerProfile;
 use App\Models\Lead;
+use App\Models\LoyaltyProgram;
 use App\Models\Order;
 use App\Models\Service;
 use App\Models\ServiceProvider;
@@ -38,6 +39,15 @@ final class CustomerProfileManagerTest extends TestCase
         $service = Service::factory()->create([
             'tenant_id' => $tenant->getKey(),
             'name' => 'Consulta premium',
+        ]);
+
+        LoyaltyProgram::query()->withoutGlobalScopes()->forceCreate([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Club Norte',
+            'earn_ratio' => 10,
+            'redemption_ratio' => 100,
+            'expiry_days' => 365,
+            'is_active' => true,
         ]);
 
         $provider = ServiceProvider::factory()->create([
@@ -74,6 +84,7 @@ final class CustomerProfileManagerTest extends TestCase
                 'subtotal' => 840.00,
                 'discount' => 0.00,
                 'delivery_fee' => 0.00,
+                'source' => 'whatsapp',
             ]);
 
         $profile = CustomerProfile::query()->withoutGlobalScopes()->firstOrFail();
@@ -85,7 +96,14 @@ final class CustomerProfileManagerTest extends TestCase
         $this->assertSame(1, $profile->leads_count);
         $this->assertSame('active', $profile->lifecycle_stage);
         $this->assertSame('booked_service', $profile->customer_segment);
+        $this->assertSame('website', $profile->acquisition_channel);
+        $this->assertSame('whatsapp', $profile->first_conversion_channel);
+        $this->assertSame('840.00', $profile->first_conversion_value);
+        $this->assertSame('840.00', $profile->initial_ltv);
         $this->assertSame('840.00', $profile->total_spent);
+        $this->assertSame(0, $profile->repeat_purchase_count);
+        $this->assertSame(84, $profile->loyalty_points_balance);
+        $this->assertSame('base', $profile->loyalty_tier);
         $this->assertNotNull($profile->last_seen_at);
         $this->assertSame((int) $profile->getKey(), (int) $order->fresh()->customer_profile_id);
     }
@@ -152,6 +170,9 @@ final class CustomerProfileManagerTest extends TestCase
         $this->assertSame(1, $profile->orders_count);
         $this->assertSame(1, $profile->appointments_count);
         $this->assertSame(1, $profile->leads_count);
+        $this->assertSame('manual', $profile->acquisition_channel);
+        $this->assertSame('1200.00', $profile->initial_ltv);
+        $this->assertSame(0, $profile->repeat_purchase_count);
     }
 
     /**

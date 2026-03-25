@@ -111,12 +111,127 @@ class CustomerAutomationManager
         return $touchpoint->fresh();
     }
 
+    public function sendWhatsAppTouchpoint(
+        CustomerProfile $profile,
+        string $body,
+        string $automationKey,
+        ?string $actorUserId = null,
+        array $options = [],
+    ): CustomerTouchpoint {
+        $profile->loadMissing('tenant');
+
+        $requiresMarketingOptIn = (bool) ($options['requires_marketing_opt_in'] ?? false);
+        $templateName = $options['template_name'] ?? null;
+        $templateLanguage = $options['template_language'] ?? 'es_HN';
+        $templateVariables = array_values((array) ($options['template_variables'] ?? []));
+        $ctaUrl = $options['cta_url'] ?? $this->defaultCtaUrl($profile);
+
+        $touchpoint = CustomerTouchpoint::query()
+            ->withoutGlobalScopes()
+            ->create([
+                'tenant_id' => (string) $profile->tenant_id,
+                'customer_profile_id' => (int) $profile->getKey(),
+                'created_by_user_id' => $actorUserId,
+                'channel' => 'whatsapp',
+                'direction' => 'outbound',
+                'automation_key' => $automationKey,
+                'subject' => null,
+                'message' => $body,
+                'recipient_address' => $profile->phone,
+                'status' => CustomerTouchpoint::STATUS_QUEUED,
+                'provider' => null,
+                'provider_message_id' => null,
+                'delivery_status' => CustomerTouchpoint::DELIVERY_SENT,
+                'opt_in_snapshot' => (bool) $profile->whatsapp_opt_in,
+                'metadata' => [
+                    'cta_url' => $ctaUrl,
+                    'requires_marketing_opt_in' => $requiresMarketingOptIn,
+                    'segment' => $this->segmentKey($profile),
+                    'template_name' => $templateName,
+                    'template_language' => $templateLanguage,
+                    'template_variables' => $templateVariables,
+                ],
+            ]);
+
+        if (! filled($profile->phone)) {
+            return $this->markSkipped($touchpoint, 'El cliente no tiene telefono para WhatsApp.');
+        }
+
+        if (! $profile->whatsapp_opt_in) {
+            return $this->markSkipped($touchpoint, 'El cliente no tiene opt-in de WhatsApp.');
+        }
+
+        if ($requiresMarketingOptIn && ! $profile->marketing_opt_in) {
+            return $this->markSkipped($touchpoint, 'El cliente no tiene opt-in de marketing.');
+        }
+
+        try {
+            $dispatch = $this->messagingGateway->sendLifecycleWhatsApp($profile, [
+                'body' => $body,
+                'template_name' => $templateName,
+                'template_language' => $templateLanguage,
+                'template_variables' => $templateVariables,
+            ], [
+                'automation_key' => $automationKey,
+                'touchpoint_id' => (string) $touchpoint->getKey(),
+                'segment' => $this->segmentKey($profile),
+                'cta_url' => $ctaUrl,
+            ]);
+
+            $touchpoint->forceFill([
+                'status' => CustomerTouchpoint::STATUS_SENT,
+                'provider' => $dispatch['provider'] ?? null,
+                'provider_message_id' => $dispatch['provider_message_id'] ?: null,
+                'delivery_status' => $dispatch['delivery_status'] ?: CustomerTouchpoint::DELIVERY_SENT,
+                'sent_at' => now(),
+                'last_error' => null,
+                'provider_payload' => $dispatch['payload'] ?? null,
+                'metadata' => array_merge($touchpoint->metadata ?? [], [
+                    'transport' => $dispatch['payload'] ?? [],
+                ]),
+            ])->save();
+
+            $profile->forceFill([
+                'last_contacted_at' => now(),
+                'last_engaged_channel' => 'whatsapp',
+            ])->save();
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            $touchpoint->forceFill([
+                'status' => CustomerTouchpoint::STATUS_FAILED,
+                'delivery_status' => CustomerTouchpoint::DELIVERY_FAILED,
+                'failed_at' => now(),
+                'last_error' => $exception->getMessage(),
+            ])->save();
+        }
+
+        return $touchpoint->fresh();
+    }
+
     public function sendSuggestedAutomation(
         CustomerProfile $profile,
         string $automationKey = 'reactivation_email',
         ?string $actorUserId = null,
+        ?string $channel = null,
     ): CustomerTouchpoint {
-        $template = $this->preview($profile, $automationKey);
+        $template = $this->preview($profile, $automationKey, $channel);
+
+        if ($template['channel'] === 'whatsapp') {
+            return $this->sendWhatsAppTouchpoint(
+                profile: $profile,
+                body: $template['body'],
+                automationKey: $automationKey,
+                actorUserId: $actorUserId,
+                options: [
+                    'cta_url' => $template['cta_url'],
+                    'template_name' => $template['template_name'],
+                    'template_language' => $template['template_language'],
+                    'template_variables' => $template['template_variables'],
+                    'requires_marketing_opt_in' => $template['requires_marketing_opt_in'],
+                ],
+            );
+        }
 
         return $this->sendEmailTouchpoint(
             profile: $profile,
@@ -173,9 +288,9 @@ class CustomerAutomationManager
     }
 
     /**
-     * @return array{subject: string, body: string, cta_label: string|null, cta_url: string|null, requires_marketing_opt_in: bool}
+     * @return array{subject: string, body: string, cta_label: string|null, cta_url: string|null, requires_marketing_opt_in: bool, channel: string, template_name: string|null, template_language: string|null, template_variables: array<int, string>}
      */
-    public function preview(CustomerProfile $profile, string $automationKey = 'reactivation_email'): array
+    public function preview(CustomerProfile $profile, string $automationKey = 'reactivation_email', ?string $channel = null): array
     {
         $tenant = $profile->tenant()->withoutGlobalScopes()->first();
         $segmentKey = $this->segmentKey($profile, $tenant);
@@ -196,6 +311,10 @@ class CustomerAutomationManager
             'cta_label' => isset($definition['cta_label']) ? (string) $definition['cta_label'] : null,
             'cta_url' => $ctaUrl,
             'requires_marketing_opt_in' => (bool) ($definition['requires_marketing_opt_in'] ?? false),
+            'channel' => $channel ?? (string) ($definition['channel'] ?? 'email'),
+            'template_name' => isset($definition['template_name']) ? (string) $definition['template_name'] : null,
+            'template_language' => isset($definition['template_language']) ? (string) $definition['template_language'] : null,
+            'template_variables' => array_values((array) ($definition['template_variables'] ?? [])),
         ];
     }
 

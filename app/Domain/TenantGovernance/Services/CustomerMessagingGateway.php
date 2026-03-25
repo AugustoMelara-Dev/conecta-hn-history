@@ -6,6 +6,7 @@ namespace App\Domain\TenantGovernance\Services;
 
 use App\Mail\CustomerLifecycleMail;
 use App\Models\CustomerProfile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
 class CustomerMessagingGateway
@@ -65,6 +66,84 @@ class CustomerMessagingGateway
     }
 
     /**
+     * @param  array{body: string, template_name?: string|null, template_language?: string|null, template_variables?: array<int, string>}  $message
+     * @param  array<string, mixed>  $context
+     * @return array{provider: string, provider_message_id: string|null, delivery_status: string|null, payload: array<string, mixed>}
+     */
+    public function sendLifecycleWhatsApp(CustomerProfile $profile, array $message, array $context = []): array
+    {
+        $provider = (string) config('customer-automation.whatsapp_provider', 'whatsapp_cloud');
+
+        if ($provider !== 'whatsapp_cloud') {
+            throw new \RuntimeException('WhatsApp provider is not supported.');
+        }
+
+        $accessToken = (string) config('services.whatsapp_cloud.access_token', '');
+        $phoneNumberId = (string) config('services.whatsapp_cloud.phone_number_id', '');
+        $apiVersion = (string) config('services.whatsapp_cloud.version', 'v23.0');
+        $templateName = (string) ($message['template_name'] ?? '');
+        $templateLanguage = (string) ($message['template_language'] ?? 'es_HN');
+        $templateVariables = array_values((array) ($message['template_variables'] ?? []));
+        $to = $this->normalizeWhatsAppNumber($profile->phone);
+
+        if ($accessToken === '' || $phoneNumberId === '') {
+            throw new \RuntimeException('WhatsApp Cloud API is not configured.');
+        }
+
+        if ($to === null) {
+            throw new \RuntimeException('Customer phone number is not available for WhatsApp delivery.');
+        }
+
+        if ($templateName === '') {
+            throw new \RuntimeException('WhatsApp template name is missing.');
+        }
+
+        $components = [];
+
+        if ($templateVariables !== []) {
+            $components[] = [
+                'type' => 'body',
+                'parameters' => collect($templateVariables)
+                    ->map(function (string $key) use ($profile, $context): array {
+                        return [
+                            'type' => 'text',
+                            'text' => $this->resolveTemplateVariable($key, $profile, $context),
+                        ];
+                    })
+                    ->all(),
+            ];
+        }
+
+        $payload = [
+            'messaging_product' => 'whatsapp',
+            'to' => $to,
+            'type' => 'template',
+            'template' => [
+                'name' => $templateName,
+                'language' => ['code' => $templateLanguage],
+            ],
+        ];
+
+        if ($components !== []) {
+            $payload['template']['components'] = $components;
+        }
+
+        $response = Http::timeout(15)
+            ->acceptJson()
+            ->withToken($accessToken)
+            ->post("https://graph.facebook.com/{$apiVersion}/{$phoneNumberId}/messages", $payload)
+            ->throw()
+            ->json();
+
+        return [
+            'provider' => 'whatsapp_cloud',
+            'provider_message_id' => (string) data_get($response, 'messages.0.id'),
+            'delivery_status' => 'sent',
+            'payload' => $response,
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $context
      * @return list<array{name: string, value: string}>
      */
@@ -86,5 +165,44 @@ class CustomerMessagingGateway
             ])
             ->values()
             ->all();
+    }
+
+    private function normalizeWhatsAppNumber(?string $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $value) ?: '';
+
+        if ($digits === '') {
+            return null;
+        }
+
+        if (strlen($digits) === 8) {
+            return '504'.$digits;
+        }
+
+        if (str_starts_with($digits, '504') && strlen($digits) === 11) {
+            return $digits;
+        }
+
+        return $digits;
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function resolveTemplateVariable(string $key, CustomerProfile $profile, array $context): string
+    {
+        $businessName = (string) ($profile->tenant?->name ?? 'Conecta HN');
+        $ctaUrl = (string) ($context['cta_url'] ?? '');
+
+        return match ($key) {
+            'customer_name' => (string) ($profile->name ?? 'cliente'),
+            'business_name' => $businessName,
+            'cta_url' => $ctaUrl,
+            default => (string) ($context[$key] ?? ''),
+        };
     }
 }

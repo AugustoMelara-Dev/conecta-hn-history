@@ -31,6 +31,8 @@ class CustomerTouchpoint extends Model
 
     public const DELIVERY_CLICKED = 'clicked';
 
+    public const DELIVERY_READ = 'read';
+
     public const DELIVERY_BOUNCED = 'bounced';
 
     public const DELIVERY_COMPLAINED = 'complained';
@@ -38,6 +40,8 @@ class CustomerTouchpoint extends Model
     public const DELIVERY_REPLIED = 'replied';
 
     public const DELIVERY_DELAYED = 'delayed';
+
+    public const DELIVERY_FAILED = 'failed';
 
     protected $fillable = [
         'tenant_id',
@@ -102,10 +106,12 @@ class CustomerTouchpoint extends Model
             self::DELIVERY_DELIVERED => 'Entregado',
             self::DELIVERY_OPENED => 'Abierto',
             self::DELIVERY_CLICKED => 'Con clic',
+            self::DELIVERY_READ => 'Leido',
             self::DELIVERY_BOUNCED => 'Rebotado',
             self::DELIVERY_COMPLAINED => 'Queja',
             self::DELIVERY_REPLIED => 'Respondido',
             self::DELIVERY_DELAYED => 'Retrasado',
+            self::DELIVERY_FAILED => 'Fallido',
             default => 'Enviado',
         };
     }

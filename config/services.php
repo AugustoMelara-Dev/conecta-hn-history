@@ -23,6 +23,15 @@ return [
         'webhook_secret' => env('RESEND_WEBHOOK_SECRET'),
     ],
 
+    'whatsapp_cloud' => [
+        'access_token' => env('WHATSAPP_CLOUD_ACCESS_TOKEN'),
+        'phone_number_id' => env('WHATSAPP_CLOUD_PHONE_NUMBER_ID'),
+        'business_account_id' => env('WHATSAPP_CLOUD_BUSINESS_ACCOUNT_ID'),
+        'verify_token' => env('WHATSAPP_CLOUD_VERIFY_TOKEN'),
+        'app_secret' => env('WHATSAPP_CLOUD_APP_SECRET'),
+        'version' => env('WHATSAPP_CLOUD_VERSION', 'v23.0'),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
