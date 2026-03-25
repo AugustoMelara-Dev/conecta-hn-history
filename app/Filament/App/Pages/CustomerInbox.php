@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\App\Pages;
 
 use App\Domain\TenantGovernance\Services\CustomerConversationOpsManager;
+use App\Domain\TenantGovernance\Services\CustomerConversationTemplateManager;
+use App\Domain\TenantGovernance\Services\CustomerConversationThreadBuilder;
 use App\Domain\TenantGovernance\Services\CustomerSegmentPlaybook;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Models\CustomerNote;
+use App\Models\CustomerProfile;
+use App\Models\CustomerTask;
 use App\Models\Location;
 use App\Models\Tenant;
 use App\Models\TenantUser;
@@ -58,6 +62,8 @@ class CustomerInbox extends Page
 
     public string $selectedSlaState = 'all';
 
+    public ?int $selectedConversationId = null;
+
     /** @var array<string, string> */
     public array $teamOptions = [];
 
@@ -66,6 +72,9 @@ class CustomerInbox extends Page
 
     /** @var list<array{id:int,title:string,body:string,status:string,statusLabel:string,priority:string,priorityLabel:string,channel:string,channelLabel:string,customerName:string,segmentLabel:string,loyaltyTier:string,nextTouch:string,loyaltyMove:string,handledBy:?string,assignedTo:?string,assignedUserId:?string,locationName:string,locationId:?string,nextActionAt:?string,profileUrl:string,slaLabel:string,slaColor:string,replyCount:int,responseDueAt:?string}> */
     public array $queue = [];
+
+    /** @var array<string, mixed> */
+    public array $selectedConversation = [];
 
     public static function getNavigationGroup(): ?string
     {
@@ -129,6 +138,12 @@ class CustomerInbox extends Page
         $this->refreshQueue();
     }
 
+    public function selectConversation(int $noteId): void
+    {
+        $this->selectedConversationId = $noteId;
+        $this->refreshSelectedConversation();
+    }
+
     public function take(int $noteId): void
     {
         $note = $this->findTenantNote($noteId);
@@ -138,7 +153,7 @@ class CustomerInbox extends Page
         }
 
         app(CustomerConversationOpsManager::class)->take($note, auth()->id());
-
+        $this->selectedConversationId = $noteId;
         $this->refreshQueue();
 
         Notification::make()
@@ -157,7 +172,7 @@ class CustomerInbox extends Page
         }
 
         app(CustomerConversationOpsManager::class)->resolve($note, auth()->id());
-
+        $this->selectedConversationId = $noteId;
         $this->refreshQueue();
 
         Notification::make()
@@ -177,7 +192,7 @@ class CustomerInbox extends Page
 
         $normalizedUserId = filled($userId) ? (string) $userId : null;
         app(CustomerConversationOpsManager::class)->reassign($note, $normalizedUserId, auth()->id());
-
+        $this->selectedConversationId = $noteId;
         $this->refreshQueue();
 
         Notification::make()
@@ -197,7 +212,7 @@ class CustomerInbox extends Page
 
         $normalizedLocationId = filled($locationId) ? (string) $locationId : null;
         app(CustomerConversationOpsManager::class)->moveToLocation($note, $normalizedLocationId, auth()->id());
-
+        $this->selectedConversationId = $noteId;
         $this->refreshQueue();
 
         Notification::make()
@@ -207,12 +222,69 @@ class CustomerInbox extends Page
             ->send();
     }
 
+    public function sendSuggestedReply(int $noteId, string $templateKey): void
+    {
+        $note = $this->findTenantNote($noteId);
+
+        if (! $note instanceof CustomerNote) {
+            return;
+        }
+
+        $profile = $note->customerProfile()
+            ->withoutGlobalScopes()
+            ->with(['assignedUser', 'location', 'tenant'])
+            ->first();
+
+        if (! $profile instanceof CustomerProfile) {
+            Notification::make()
+                ->title('No se pudo enviar')
+                ->danger()
+                ->body('La conversacion no tiene un cliente valido ligado al CRM.')
+                ->send();
+
+            return;
+        }
+
+        try {
+            $touchpoint = app(CustomerConversationTemplateManager::class)->send(
+                profile: $profile,
+                templateKey: $templateKey,
+                note: $note,
+                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            );
+        } catch (\Throwable $exception) {
+            Notification::make()
+                ->title('No se pudo enviar')
+                ->danger()
+                ->body($exception->getMessage())
+                ->send();
+
+            return;
+        }
+
+        $this->selectedConversationId = $noteId;
+        $this->refreshQueue();
+
+        $title = $touchpoint->status === 'sent' ? 'Respuesta enviada' : 'Plantilla procesada';
+        $body = $touchpoint->status === 'sent'
+            ? 'La conversacion ya quedo en espera del cliente con seguimiento registrado.'
+            : ((string) ($touchpoint->last_error ?? 'La plantilla no se pudo entregar como envio real.'));
+
+        Notification::make()
+            ->title($title)
+            ->success()
+            ->body($body)
+            ->send();
+    }
+
     private function refreshQueue(): void
     {
         $tenant = Filament::getTenant();
 
         if (! $tenant instanceof Tenant) {
             $this->queue = [];
+            $this->selectedConversation = [];
+            $this->selectedConversationId = null;
 
             return;
         }
@@ -311,6 +383,102 @@ class CustomerInbox extends Page
             })
             ->values()
             ->all();
+
+        $this->refreshSelectedConversation();
+    }
+
+    private function refreshSelectedConversation(): void
+    {
+        if ($this->selectedConversationId === null && $this->queue !== []) {
+            $this->selectedConversationId = (int) $this->queue[0]['id'];
+        }
+
+        if ($this->selectedConversationId === null) {
+            $this->selectedConversation = [];
+
+            return;
+        }
+
+        $note = $this->findTenantNote($this->selectedConversationId);
+
+        if (! $note instanceof CustomerNote) {
+            $this->selectedConversation = [];
+            $this->selectedConversationId = $this->queue !== [] ? (int) $this->queue[0]['id'] : null;
+
+            if ($this->selectedConversationId !== null) {
+                $this->refreshSelectedConversation();
+            }
+
+            return;
+        }
+
+        $this->selectedConversation = $this->buildConversationWorkspace($note);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildConversationWorkspace(CustomerNote $note): array
+    {
+        $tenant = Filament::getTenant();
+        $profile = $note->customerProfile()
+            ->withoutGlobalScopes()
+            ->with(['assignedUser', 'location', 'tenant'])
+            ->first();
+
+        if (! $tenant instanceof Tenant || ! $profile instanceof CustomerProfile) {
+            return [];
+        }
+
+        $playbook = app(CustomerSegmentPlaybook::class)->forProfile($profile);
+        $thread = app(CustomerConversationThreadBuilder::class)->build(
+            $profile,
+            $note,
+            max(8, (int) config('customer-conversations.defaults.thread_limit', 16)),
+        );
+        $journey = app(CustomerConversationTemplateManager::class)->forConversation($profile, $note);
+        $task = $note->task()->withoutGlobalScopes()->with(['assignedUser', 'location'])->first();
+
+        return [
+            'id' => (int) $note->getKey(),
+            'title' => $note->note_type_label,
+            'body' => (string) $note->body,
+            'status' => (string) $note->status,
+            'statusLabel' => $note->status_label,
+            'priorityLabel' => $note->priority_label,
+            'channelLabel' => $note->source_channel_label,
+            'customerName' => (string) ($profile->name ?? 'Cliente sin nombre'),
+            'segmentLabel' => (string) ($playbook['label'] ?? $profile->segment_display_label),
+            'segmentPromise' => (string) ($playbook['promise'] ?? 'Cliente en seguimiento.'),
+            'nextTouch' => (string) ($playbook['next_touch'] ?? 'Conviene responder en este turno.'),
+            'loyaltyMove' => (string) ($playbook['loyalty_move'] ?? 'Conviene mover continuidad.'),
+            'loyaltyTier' => (string) $profile->loyalty_tier_label,
+            'slaLabel' => $note->sla_label,
+            'slaColor' => $note->sla_color,
+            'ownerLabel' => $note->assignedUser?->name ?? $profile->assigned_owner_label,
+            'locationLabel' => $note->location?->name ?? $profile->location_label,
+            'lastActionAt' => $note->next_action_at?->diffForHumans(),
+            'responseDueAt' => $note->response_due_at?->diffForHumans(),
+            'replyCount' => max(1, (int) $note->reply_count),
+            'profileUrl' => CustomerProfileResource::getUrl('edit', [
+                'record' => $profile,
+                'tenant' => $tenant->slug,
+            ]),
+            'threadSummary' => $thread['summary'],
+            'threadItems' => $thread['items'],
+            'journey' => $journey['journey'],
+            'templates' => $journey['templates'],
+            'task' => $task instanceof CustomerTask ? [
+                'title' => (string) $task->title,
+                'statusLabel' => $task->status_label,
+                'priorityLabel' => $task->priority_label,
+                'slaLabel' => $task->sla_label,
+                'ownerLabel' => $task->assignedUser?->name ?? $profile->assigned_owner_label,
+                'locationLabel' => $task->location?->name ?? $profile->location_label,
+                'dueAt' => $task->due_at?->diffForHumans(),
+                'slaDueAt' => $task->sla_due_at?->diffForHumans(),
+            ] : null,
+        ];
     }
 
     private function applyQueueFilters($query)
@@ -353,6 +521,11 @@ class CustomerInbox extends Page
         return CustomerNote::query()
             ->withoutGlobalScopes()
             ->where('tenant_id', (string) $tenant->getKey())
+            ->with([
+                'assignedUser' => fn ($query) => $query->withoutGlobalScopes(),
+                'handledBy' => fn ($query) => $query->withoutGlobalScopes(),
+                'location' => fn ($query) => $query->withoutGlobalScopes(),
+            ])
             ->find($noteId);
     }
 

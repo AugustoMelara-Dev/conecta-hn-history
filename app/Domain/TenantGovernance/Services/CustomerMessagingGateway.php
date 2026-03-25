@@ -155,6 +155,9 @@ class CustomerMessagingGateway
             'automation_key' => isset($context['automation_key']) ? (string) $context['automation_key'] : null,
             'touchpoint_id' => isset($context['touchpoint_id']) ? (string) $context['touchpoint_id'] : null,
             'segment' => isset($context['segment']) ? (string) $context['segment'] : null,
+            'conversation_key' => isset($context['conversation_key']) ? (string) $context['conversation_key'] : null,
+            'source_note_id' => isset($context['source_note_id']) ? (string) $context['source_note_id'] : null,
+            'source_channel' => isset($context['source_channel']) ? (string) $context['source_channel'] : null,
         ];
 
         return collect($candidateTags)

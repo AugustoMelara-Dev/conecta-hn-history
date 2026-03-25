@@ -11,12 +11,14 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
+use App\Models\CustomerTouchpoint;
 use App\Models\Location;
 use App\Models\Tenant;
 use App\Models\TenantUser;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -92,6 +94,9 @@ final class CustomerInboxPageTest extends TestCase
             ->assertSee('Recurrente')
             ->assertSee('Sucursal Norte')
             ->assertSee($user->name)
+            ->assertSee('Hilo conversacional')
+            ->assertSee('Journey activo')
+            ->assertSee('Respuestas sugeridas')
             ->assertSee('Sin owner', false);
 
         Livewire::test(CustomerInbox::class)
@@ -120,6 +125,66 @@ final class CustomerInboxPageTest extends TestCase
         $this->assertSame((string) $secondLocation->getKey(), (string) $note->location_id);
         $this->assertFalse($note->requires_follow_up);
         $this->assertNotNull($note->handled_at);
+    }
+
+    public function test_customer_inbox_can_send_suggested_reply_and_keep_conversation_selected(): void
+    {
+        Mail::fake();
+
+        [$user, $tenant] = $this->makeTenantOwner('crm-inbox-template');
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'name' => 'Laura Flores',
+            'email' => 'laura@example.com',
+            'preferred_channel' => 'email',
+            'customer_segment' => 'prospect',
+            'loyalty_tier' => 'base',
+            'email_opt_in' => true,
+            'marketing_opt_in' => true,
+        ]);
+
+        $note = CustomerNote::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $profile->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'note_type' => 'inbound_reply',
+            'conversation_key' => 'conv-prospect-001',
+            'status' => 'open',
+            'priority' => 'normal',
+            'source_channel' => 'email',
+            'requires_follow_up' => true,
+            'body' => 'Necesito una propuesta para hoy.',
+            'next_action_at' => now()->addHours(4),
+            'response_due_at' => now()->addHours(2),
+        ]);
+
+        $this->actingAs($user);
+        $this->setAppPanelTenantContext($tenant);
+
+        Livewire::test(CustomerInbox::class)
+            ->call('selectConversation', $note->getKey())
+            ->call('sendSuggestedReply', $note->getKey(), 'close_sale')
+            ->assertSet('selectedConversationId', (int) $note->getKey())
+            ->assertSee('Laura Flores')
+            ->assertSee('Journey activo');
+
+        $note->refresh();
+
+        $touchpoint = CustomerTouchpoint::query()
+            ->withoutGlobalScopes()
+            ->where('customer_profile_id', $profile->getKey())
+            ->latest('id')
+            ->first();
+
+        $this->assertInstanceOf(CustomerTouchpoint::class, $touchpoint);
+        $this->assertSame(CustomerTouchpoint::STATUS_SENT, $touchpoint->status);
+        $this->assertSame('close_sale', $touchpoint->template_key);
+        $this->assertSame('conv-prospect-001', data_get($touchpoint->metadata, 'conversation_key'));
+        $this->assertSame((int) $note->getKey(), (int) data_get($touchpoint->metadata, 'source_note_id'));
+        $this->assertSame('pending_customer', $note->status);
+        $this->assertFalse($note->requires_follow_up);
     }
 
     protected function tearDown(): void

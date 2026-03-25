@@ -8,7 +8,7 @@
                         <h1 class="biz-title">{{ $tenantName }}</h1>
                         <p class="biz-heading">Conversaciones que necesitan seguimiento humano</p>
                         <p class="biz-copy">
-                            Trabaja replies, opt-in y continuidad desde una sola cola. Aqui importa responder bien, a tiempo y con ownership claro.
+                            Trabaja replies, ownership, segmento y continuidad desde una sola cola. La meta no es solo responder: es cerrar el siguiente paso correcto.
                         </p>
                     </div>
 
@@ -50,24 +50,24 @@
                     <div class="biz-stack">
                         <div>
                             <p class="biz-kicker">Regla operativa</p>
-                            <h2 class="biz-heading">Respuesta clara, seguimiento corto, cierre visible</h2>
+                            <h2 class="biz-heading">Responder con contexto, mover el siguiente paso, dejar huella clara</h2>
                             <p class="biz-muted">
-                                Usa el segmento, el SLA, la sede y el owner del cliente para decidir el siguiente toque.
+                                Usa segmento, fidelidad, owner, sede y SLA para decidir el mejor toque y no solo el mas rapido.
                             </p>
                         </div>
 
                         <div class="biz-actions">
                             <div class="biz-action">
-                                <p class="biz-action-title">Prospectos</p>
-                                <p class="biz-action-copy">Responder hoy con CTA simple y cerrar primera conversion.</p>
+                                <p class="biz-action-title">Prospectos y nuevos</p>
+                                <p class="biz-action-copy">Responde hoy y deja una salida clara a compra, llamada o agenda.</p>
                             </div>
                             <div class="biz-action">
-                                <p class="biz-action-title">Recurrentes</p>
-                                <p class="biz-action-copy">Mover recompra, continuidad o bundle antes de que se enfrien.</p>
+                                <p class="biz-action-title">Recurrentes y VIP</p>
+                                <p class="biz-action-copy">Usa bundle, reward o trato prioritario para mover continuidad real.</p>
                             </div>
                             <div class="biz-action">
-                                <p class="biz-action-title">VIP y loyalty</p>
-                                <p class="biz-action-copy">Priorizar experiencia, exclusividad y un siguiente canje visible.</p>
+                                <p class="biz-action-title">Reactivacion</p>
+                                <p class="biz-action-copy">Baja friccion y deja un motivo concreto para volver esta semana.</p>
                             </div>
                         </div>
                     </div>
@@ -79,10 +79,10 @@
             <div class="biz-stack">
                 <div class="biz-split" style="align-items: flex-end; gap: 1rem; flex-wrap: wrap;">
                     <div>
-                        <p class="biz-kicker">Cola activa</p>
-                        <h2 class="biz-heading">Seguimiento por cliente</h2>
+                        <p class="biz-kicker">Mesa operativa</p>
+                        <h2 class="biz-heading">Cola, hilo y respuesta sugerida</h2>
                         <p class="biz-muted">
-                            Filtra por owner, sede y SLA; luego toma, reasigna o resuelve desde la misma cola.
+                            Filtra por owner, sede y SLA; luego trabaja la conversacion desde el hilo, no solo desde la tarjeta.
                         </p>
                     </div>
 
@@ -128,87 +128,290 @@
                     </div>
                 </div>
 
-                @if ($queue === [])
-                    <div class="biz-stat">
-                        <p class="biz-stat-label">Todo al dia</p>
-                        <p class="biz-stat-copy">No hay respuestas pendientes con este filtro.</p>
+                <div class="biz-grid-two" style="align-items: flex-start; gap: 1.25rem;">
+                    <div class="biz-stack">
+                        @if ($queue === [])
+                            <div class="biz-stat">
+                                <p class="biz-stat-label">Todo al dia</p>
+                                <p class="biz-stat-copy">No hay respuestas pendientes con este filtro.</p>
+                            </div>
+                        @else
+                            <div class="biz-actions">
+                                @foreach ($queue as $item)
+                                    <div class="biz-action" style="{{ $selectedConversationId === $item['id'] ? 'border-color: rgba(14,165,233,.4); box-shadow: 0 0 0 1px rgba(14,165,233,.2) inset;' : '' }}">
+                                        <div class="biz-stack" style="gap: 0.75rem;">
+                                            <div class="biz-split" style="gap: 0.75rem; align-items: flex-start;">
+                                                <div class="biz-stack" style="gap: 0.5rem; flex: 1 1 auto;">
+                                                    <div class="biz-button-row">
+                                                        <span class="biz-badge biz-badge-neutral">{{ $item['channelLabel'] }}</span>
+                                                        <span class="biz-badge {{ $item['priority'] === 'urgent' ? 'biz-badge-danger' : ($item['priority'] === 'high' ? 'biz-badge-warning' : 'biz-badge-neutral') }}">{{ $item['priorityLabel'] }}</span>
+                                                        <span class="biz-badge {{ $item['status'] === 'resolved' ? 'biz-badge-success' : ($item['status'] === 'in_progress' ? 'biz-badge-info' : ($item['status'] === 'pending_customer' ? 'biz-badge-neutral' : 'biz-badge-warning')) }}">{{ $item['statusLabel'] }}</span>
+                                                        <span class="biz-badge {{ $item['slaColor'] === 'danger' ? 'biz-badge-danger' : ($item['slaColor'] === 'success' ? 'biz-badge-success' : 'biz-badge-neutral') }}">{{ $item['slaLabel'] }}</span>
+                                                    </div>
+
+                                                    <div>
+                                                        <p class="biz-action-title">{{ $item['customerName'] }}</p>
+                                                        <p class="biz-action-copy">{{ $item['body'] }}</p>
+                                                    </div>
+
+                                                    <div class="biz-stack" style="gap: 0.35rem;">
+                                                        <p class="biz-muted"><strong>Segmento:</strong> {{ $item['segmentLabel'] }} | <strong>Fidelidad:</strong> {{ $item['loyaltyTier'] }}</p>
+                                                        <p class="biz-muted"><strong>Siguiente toque:</strong> {{ $item['nextTouch'] }}</p>
+                                                        <p class="biz-muted"><strong>Movimiento loyalty:</strong> {{ $item['loyaltyMove'] }}</p>
+                                                        <p class="biz-muted"><strong>Owner:</strong> {{ $item['assignedTo'] ?? 'Sin asignar' }} | <strong>Sede:</strong> {{ $item['locationName'] }}</p>
+                                                        <p class="biz-muted">
+                                                            <strong>Operador actual:</strong> {{ $item['handledBy'] ?? 'Sin tomar' }}
+                                                            @if ($item['nextActionAt'])
+                                                                | <strong>Proxima accion:</strong> {{ $item['nextActionAt'] }}
+                                                            @endif
+                                                            @if ($item['responseDueAt'])
+                                                                | <strong>SLA:</strong> {{ $item['responseDueAt'] }}
+                                                            @endif
+                                                            | <strong>Mensajes:</strong> {{ $item['replyCount'] }}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div class="biz-button-row" style="justify-content: flex-end;">
+                                                    <x-filament::button color="{{ $selectedConversationId === $item['id'] ? 'info' : 'gray' }}" wire:click="selectConversation({{ $item['id'] }})">
+                                                        Ver hilo
+                                                    </x-filament::button>
+                                                    <a href="{{ $item['profileUrl'] }}" class="biz-button-secondary">Abrir ficha</a>
+                                                </div>
+                                            </div>
+
+                                            <div class="biz-grid-two" style="grid-template-columns: repeat(2, minmax(12rem, 1fr)); gap: 0.75rem;">
+                                                <label class="biz-stack" style="gap: 0.35rem;">
+                                                    <span class="biz-muted">Reasignar owner</span>
+                                                    <select wire:change="reassignOwner({{ $item['id'] }}, $event.target.value)" class="fi-input">
+                                                        <option value="">Sin owner</option>
+                                                        @foreach ($teamOptions as $userId => $label)
+                                                            <option value="{{ $userId }}" @selected($item['assignedUserId'] === (string) $userId)>{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </label>
+
+                                                <label class="biz-stack" style="gap: 0.35rem;">
+                                                    <span class="biz-muted">Mover sede</span>
+                                                    <select wire:change="moveLocation({{ $item['id'] }}, $event.target.value)" class="fi-input">
+                                                        <option value="">Sin sede</option>
+                                                        @foreach ($locationOptions as $locationId => $label)
+                                                            <option value="{{ $locationId }}" @selected($item['locationId'] === (string) $locationId)>{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </label>
+                                            </div>
+
+                                            <div class="biz-button-row" style="justify-content: flex-end;">
+                                                @if ($item['status'] === 'open')
+                                                    <x-filament::button color="info" wire:click="take({{ $item['id'] }})">
+                                                        Tomar
+                                                    </x-filament::button>
+                                                @endif
+                                                @if ($item['status'] !== 'pending_customer')
+                                                    <x-filament::button color="success" wire:click="resolve({{ $item['id'] }})">
+                                                        Resolver
+                                                    </x-filament::button>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
-                @else
-                    <div class="biz-actions">
-                        @foreach ($queue as $item)
-                            <div class="biz-action">
-                                <div class="biz-split" style="gap: 0.75rem; align-items: flex-start;">
-                                    <div class="biz-stack" style="gap: 0.5rem; flex: 1 1 auto;">
-                                        <div class="biz-button-row">
-                                            <span class="biz-badge biz-badge-neutral">{{ $item['channelLabel'] }}</span>
-                                            <span class="biz-badge {{ $item['priority'] === 'urgent' ? 'biz-badge-danger' : ($item['priority'] === 'high' ? 'biz-badge-warning' : 'biz-badge-neutral') }}">{{ $item['priorityLabel'] }}</span>
-                                            <span class="biz-badge {{ $item['status'] === 'resolved' ? 'biz-badge-success' : ($item['status'] === 'in_progress' ? 'biz-badge-info' : ($item['status'] === 'pending_customer' ? 'biz-badge-neutral' : 'biz-badge-warning')) }}">{{ $item['statusLabel'] }}</span>
-                                            <span class="biz-badge {{ $item['slaColor'] === 'danger' ? 'biz-badge-danger' : ($item['slaColor'] === 'success' ? 'biz-badge-success' : 'biz-badge-neutral') }}">{{ $item['slaLabel'] }}</span>
+
+                    <div class="biz-stack">
+                        @if ($selectedConversation === [])
+                            <div class="biz-stat">
+                                <p class="biz-stat-label">Selecciona un caso</p>
+                                <p class="biz-stat-copy">Abre una conversacion de la cola para trabajar el hilo, el journey y la respuesta sugerida desde aqui.</p>
+                            </div>
+                        @else
+                            <div class="biz-card-accent">
+                                <div class="biz-stack">
+                                    <div class="biz-split" style="gap: 0.75rem; align-items: flex-start;">
+                                        <div class="biz-stack" style="gap: 0.5rem;">
+                                            <p class="biz-kicker">Hilo conversacional</p>
+                                            <h2 class="biz-heading">{{ $selectedConversation['customerName'] }}</h2>
+                                            <p class="biz-copy">{{ $selectedConversation['body'] }}</p>
                                         </div>
 
-                                        <div>
-                                            <p class="biz-action-title">{{ $item['customerName'] }}</p>
-                                            <p class="biz-action-copy">{{ $item['body'] }}</p>
-                                        </div>
-
-                                        <div class="biz-stack" style="gap: 0.35rem;">
-                                            <p class="biz-muted"><strong>Segmento:</strong> {{ $item['segmentLabel'] }} | <strong>Fidelidad:</strong> {{ $item['loyaltyTier'] }}</p>
-                                            <p class="biz-muted"><strong>Siguiente toque:</strong> {{ $item['nextTouch'] }}</p>
-                                            <p class="biz-muted"><strong>Movimiento loyalty:</strong> {{ $item['loyaltyMove'] }}</p>
-                                            <p class="biz-muted"><strong>Owner:</strong> {{ $item['assignedTo'] ?? 'Sin asignar' }} | <strong>Sede:</strong> {{ $item['locationName'] }}</p>
-                                            <p class="biz-muted">
-                                                <strong>Operador actual:</strong> {{ $item['handledBy'] ?? 'Sin tomar' }}
-                                                @if ($item['nextActionAt'])
-                                                    | <strong>Proxima accion:</strong> {{ $item['nextActionAt'] }}
-                                                @endif
-                                                @if ($item['responseDueAt'])
-                                                    | <strong>SLA:</strong> {{ $item['responseDueAt'] }}
-                                                @endif
-                                                | <strong>Mensajes:</strong> {{ $item['replyCount'] }}
-                                            </p>
-                                        </div>
-
-                                        <div class="biz-grid-two" style="grid-template-columns: repeat(2, minmax(12rem, 1fr)); gap: 0.75rem;">
-                                            <label class="biz-stack" style="gap: 0.35rem;">
-                                                <span class="biz-muted">Reasignar owner</span>
-                                                <select wire:change="reassignOwner({{ $item['id'] }}, $event.target.value)" class="fi-input">
-                                                    <option value="">Sin owner</option>
-                                                    @foreach ($teamOptions as $userId => $label)
-                                                        <option value="{{ $userId }}" @selected($item['assignedUserId'] === (string) $userId)>{{ $label }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </label>
-
-                                            <label class="biz-stack" style="gap: 0.35rem;">
-                                                <span class="biz-muted">Mover sede</span>
-                                                <select wire:change="moveLocation({{ $item['id'] }}, $event.target.value)" class="fi-input">
-                                                    <option value="">Sin sede</option>
-                                                    @foreach ($locationOptions as $locationId => $label)
-                                                        <option value="{{ $locationId }}" @selected($item['locationId'] === (string) $locationId)>{{ $label }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </label>
+                                        <div class="biz-button-row" style="justify-content: flex-end;">
+                                            <span class="biz-badge {{ $selectedConversation['slaColor'] === 'danger' ? 'biz-badge-danger' : ($selectedConversation['slaColor'] === 'success' ? 'biz-badge-success' : 'biz-badge-neutral') }}">{{ $selectedConversation['slaLabel'] }}</span>
+                                            <a href="{{ $selectedConversation['profileUrl'] }}" class="biz-button-secondary">Abrir ficha</a>
                                         </div>
                                     </div>
 
-                                    <div class="biz-button-row" style="justify-content: flex-end;">
-                                        <a href="{{ $item['profileUrl'] }}" class="biz-button-secondary">Abrir ficha</a>
-                                        @if ($item['status'] === 'open')
-                                            <x-filament::button color="info" wire:click="take({{ $item['id'] }})">
-                                                Tomar
-                                            </x-filament::button>
-                                        @endif
-                                        @if ($item['status'] !== 'pending_customer')
-                                            <x-filament::button color="success" wire:click="resolve({{ $item['id'] }})">
-                                                Resolver
-                                            </x-filament::button>
-                                        @endif
+                                    <div class="biz-metrics" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                        <div class="biz-stat">
+                                            <p class="biz-stat-label">Ultimo cliente</p>
+                                            <p class="biz-stat-value" style="font-size: 1rem;">{{ $selectedConversation['threadSummary']['last_customer_message'] ?? 'Sin dato' }}</p>
+                                            <p class="biz-stat-copy">Ultima senal del cliente en este hilo.</p>
+                                        </div>
+                                        <div class="biz-stat">
+                                            <p class="biz-stat-label">Ultimo equipo</p>
+                                            <p class="biz-stat-value" style="font-size: 1rem;">{{ $selectedConversation['threadSummary']['last_team_message'] ?? 'Sin dato' }}</p>
+                                            <p class="biz-stat-copy">Ultima respuesta o toque enviado desde tu negocio.</p>
+                                        </div>
+                                        <div class="biz-stat">
+                                            <p class="biz-stat-label">Respuestas abiertas</p>
+                                            <p class="biz-stat-value">{{ $selectedConversation['threadSummary']['open_replies'] ?? 0 }}</p>
+                                            <p class="biz-stat-copy">Mensajes aun pidiendo accion del equipo.</p>
+                                        </div>
+                                        <div class="biz-stat">
+                                            <p class="biz-stat-label">Esperando cliente</p>
+                                            <p class="biz-stat-value">{{ $selectedConversation['threadSummary']['pending_customer'] ?? 0 }}</p>
+                                            <p class="biz-stat-copy">Toques ya enviados que quedaron esperando reply.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="biz-stack" style="gap: 0.35rem;">
+                                        <p class="biz-muted"><strong>Segmento:</strong> {{ $selectedConversation['segmentLabel'] }} | <strong>Fidelidad:</strong> {{ $selectedConversation['loyaltyTier'] }}</p>
+                                        <p class="biz-muted"><strong>Promesa del segmento:</strong> {{ $selectedConversation['segmentPromise'] }}</p>
+                                        <p class="biz-muted"><strong>Siguiente toque:</strong> {{ $selectedConversation['nextTouch'] }}</p>
+                                        <p class="biz-muted"><strong>Owner:</strong> {{ $selectedConversation['ownerLabel'] }} | <strong>Sede:</strong> {{ $selectedConversation['locationLabel'] }}</p>
+                                        <p class="biz-muted">
+                                            <strong>Estado:</strong> {{ $selectedConversation['statusLabel'] }}
+                                            | <strong>Prioridad:</strong> {{ $selectedConversation['priorityLabel'] }}
+                                            | <strong>Canal:</strong> {{ $selectedConversation['channelLabel'] }}
+                                            @if ($selectedConversation['responseDueAt'])
+                                                | <strong>Vence:</strong> {{ $selectedConversation['responseDueAt'] }}
+                                            @endif
+                                        </p>
                                     </div>
                                 </div>
                             </div>
-                        @endforeach
+
+                            <div class="biz-grid-two" style="align-items: flex-start; gap: 1rem;">
+                                <div class="biz-card">
+                                    <div class="biz-stack">
+                                        <div>
+                                            <p class="biz-kicker">Journey activo</p>
+                                            <h3 class="biz-heading">Que deberia pasar ahora</h3>
+                                        </div>
+
+                                        @if ($selectedConversation['journey'] === [])
+                                            <p class="biz-muted">Este segmento no tiene un journey cargado todavia.</p>
+                                        @else
+                                            <div class="biz-actions">
+                                                @foreach ($selectedConversation['journey'] as $step)
+                                                    <div class="biz-action">
+                                                        <p class="biz-action-title">{{ $step['title'] }}</p>
+                                                        <p class="biz-action-copy">{{ $step['copy'] }}</p>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <div class="biz-card">
+                                    <div class="biz-stack">
+                                        <div>
+                                            <p class="biz-kicker">Respuestas sugeridas</p>
+                                            <h3 class="biz-heading">Plantillas productizadas</h3>
+                                            <p class="biz-muted">Usa la mejor salida para este segmento sin perder ownership ni contexto del hilo.</p>
+                                        </div>
+
+                                        <div class="biz-actions">
+                                            @foreach ($selectedConversation['templates'] as $template)
+                                                <div class="biz-action">
+                                                    <div class="biz-split" style="gap: 0.75rem; align-items: flex-start;">
+                                                        <div class="biz-stack" style="gap: 0.35rem; flex: 1 1 auto;">
+                                                            <div class="biz-button-row">
+                                                                <span class="biz-badge biz-badge-neutral">{{ $template['channel_label'] }}</span>
+                                                                @if ($template['requires_marketing_opt_in'])
+                                                                    <span class="biz-badge biz-badge-warning">Marketing opt-in</span>
+                                                                @endif
+                                                            </div>
+                                                            <p class="biz-action-title">{{ $template['label'] }}</p>
+                                                            <p class="biz-action-copy">{{ $template['description'] }}</p>
+                                                            @if ($template['warning'])
+                                                                <p class="biz-muted"><strong>Bloqueo:</strong> {{ $template['warning'] }}</p>
+                                                            @endif
+                                                        </div>
+
+                                                        <div class="biz-button-row" style="justify-content: flex-end;">
+                                                            @if ($template['available'])
+                                                                <x-filament::button color="info" wire:click="sendSuggestedReply({{ $selectedConversation['id'] }}, '{{ $template['key'] }}')">
+                                                                    Enviar
+                                                                </x-filament::button>
+                                                            @else
+                                                                <x-filament::button color="gray" disabled>
+                                                                    No disponible
+                                                                </x-filament::button>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="biz-card">
+                                <div class="biz-stack">
+                                    <div>
+                                        <p class="biz-kicker">Operacion por cliente</p>
+                                        <h3 class="biz-heading">Tarea y SLA</h3>
+                                    </div>
+
+                                    @if ($selectedConversation['task'])
+                                        <div class="biz-action">
+                                            <p class="biz-action-title">{{ $selectedConversation['task']['title'] }}</p>
+                                            <p class="biz-action-copy">
+                                                Estado {{ $selectedConversation['task']['statusLabel'] }} | Prioridad {{ $selectedConversation['task']['priorityLabel'] }} | SLA {{ $selectedConversation['task']['slaLabel'] }}
+                                            </p>
+                                            <p class="biz-muted">
+                                                <strong>Owner:</strong> {{ $selectedConversation['task']['ownerLabel'] }}
+                                                | <strong>Sede:</strong> {{ $selectedConversation['task']['locationLabel'] }}
+                                                @if ($selectedConversation['task']['dueAt'])
+                                                    | <strong>Due:</strong> {{ $selectedConversation['task']['dueAt'] }}
+                                                @endif
+                                                @if ($selectedConversation['task']['slaDueAt'])
+                                                    | <strong>Limite:</strong> {{ $selectedConversation['task']['slaDueAt'] }}
+                                                @endif
+                                            </p>
+                                        </div>
+                                    @else
+                                        <p class="biz-muted">Esta conversacion todavia no tiene una tarea ligada aparte del seguimiento base.</p>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="biz-card">
+                                <div class="biz-stack">
+                                    <div>
+                                        <p class="biz-kicker">Timeline vivo</p>
+                                        <h3 class="biz-heading">Hilo del cliente</h3>
+                                    </div>
+
+                                    @if ($selectedConversation['threadItems'] === [])
+                                        <p class="biz-muted">Todavia no hay eventos suficientes para construir el hilo.</p>
+                                    @else
+                                        <div class="biz-actions">
+                                            @foreach ($selectedConversation['threadItems'] as $item)
+                                                <div class="biz-action">
+                                                    <div class="biz-button-row">
+                                                        <span class="biz-badge {{ $item['direction'] === 'customer' ? 'biz-badge-warning' : 'biz-badge-info' }}">
+                                                            {{ $item['direction'] === 'customer' ? 'Cliente' : 'Equipo' }}
+                                                        </span>
+                                                        <span class="biz-badge biz-badge-neutral">{{ $item['channel'] }}</span>
+                                                        <span class="biz-badge {{ $item['color'] === 'danger' ? 'biz-badge-danger' : ($item['color'] === 'success' ? 'biz-badge-success' : 'biz-badge-neutral') }}">{{ $item['when'] }}</span>
+                                                    </div>
+                                                    <p class="biz-action-title">{{ $item['title'] }}</p>
+                                                    <p class="biz-action-copy">{{ $item['body'] }}</p>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
                     </div>
-                @endif
+                </div>
             </div>
         </div>
     </div>
