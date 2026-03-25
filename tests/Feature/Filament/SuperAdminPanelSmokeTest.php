@@ -66,6 +66,8 @@ final class SuperAdminPanelSmokeTest extends TestCase
             ->assertSee('Cohortes por owner')
             ->assertSee('Expansión por segmento')
             ->assertSee('Churn por vertical')
+            ->assertSee('Revenue asistido por journeys')
+            ->assertSee('Paths multitoque de la red')
             ->assertSee('Playbooks revenue ops')
             ->assertSee('Mesa operativa')
             ->assertSee('Seguimiento comercial entre tenants');

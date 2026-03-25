@@ -297,6 +297,43 @@
         <div class="biz-card">
             <div class="biz-stack">
                 <div>
+                    <p class="biz-kicker">Rutas completas</p>
+                    <h2 class="biz-heading">Que conversaciones completas se estan llevando el revenue</h2>
+                    <p class="biz-muted">Aqui ya no se reparte solo por secuencia: ves la ruta completa que siguio una conversacion hasta cerrar.</p>
+                </div>
+
+                <div class="biz-actions">
+                    @forelse ($conversationPathAttribution as $item)
+                        <div class="biz-action">
+                            <div class="biz-split">
+                                <div>
+                                    <p class="biz-action-title">{{ $item['label'] }}</p>
+                                    <p class="biz-action-copy">Revenue atribuido: {{ $item['revenue'] }}</p>
+                                </div>
+
+                                <x-filament::badge color="{{ $item['conversations'] > 1 ? 'success' : 'info' }}">
+                                    {{ $item['conversations'] }} conv.
+                                </x-filament::badge>
+                            </div>
+
+                            <p class="biz-muted">
+                                <strong>Owners:</strong> {{ $item['owners'] }}
+                                | <strong>Canales:</strong> {{ $item['channels'] }}
+                            </p>
+                        </div>
+                    @empty
+                        <div class="biz-action">
+                            <p class="biz-action-title">Todavia no hay rutas conversacionales cerradas</p>
+                            <p class="biz-action-copy">Hace falta mas recorrido de conversaciones multitoque para leer revenue por ruta completa.</p>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
+        <div class="biz-card">
+            <div class="biz-stack">
+                <div>
                     <p class="biz-kicker">Revenue por outcomes reales</p>
                     <h2 class="biz-heading">Que secuencias estan cerrando compra, recuperando no-show y moviendo recompra</h2>
                     <p class="biz-muted">Aqui ya no solo ves reply o click: ves outcomes de negocio reales ligados a la secuencia.</p>

@@ -733,6 +733,47 @@
             <div class="biz-card">
                 <div class="biz-stack">
                     <div>
+                        <p class="biz-kicker">Uplift por vertical</p>
+                        <h2 class="biz-heading">Revenue asistido por journeys</h2>
+                        <p class="biz-muted">
+                            Compara que verticales estan cerrando mas revenue asistido por conversaciones, journeys y secuencias CRM.
+                        </p>
+                    </div>
+
+                    @if ($verticalJourneyUplift !== [])
+                        <div class="biz-actions">
+                            @foreach ($verticalJourneyUplift as $vertical)
+                                <a href="{{ $vertical['href'] }}" class="biz-action">
+                                    <div class="biz-split">
+                                        <div>
+                                            <p class="biz-action-title">{{ $vertical['vertical'] }}</p>
+                                            <p class="biz-action-copy">{{ $vertical['top_path'] }}</p>
+                                        </div>
+
+                                        <x-filament::badge color="{{ $vertical['tone'] }}">
+                                            {{ $vertical['uplift'] }}
+                                        </x-filament::badge>
+                                    </div>
+                                    <p class="biz-muted">Revenue asistido: {{ $vertical['assisted_revenue'] }} | Revenue total: {{ $vertical['total_revenue'] }}</p>
+                                    <p class="biz-note">Conversaciones cerradas: {{ $vertical['conversations'] }} | Asistidas: {{ $vertical['assisted'] }}</p>
+                                </a>
+                            @endforeach
+                        </div>
+                    @else
+                        @include('filament.app.components.table-empty-state', [
+                            'badge' => 'Uplift',
+                            'heading' => 'Todavia no hay uplift comparativo por vertical',
+                            'description' => 'Cuando la red tenga revenue asistido por journeys, aqui veras que verticales cierran mejor y con que ruta.',
+                            'buttonLabel' => 'Abrir mesa operativa',
+                            'buttonUrl' => $operationsUrl,
+                        ])
+                    @endif
+                </div>
+            </div>
+
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div>
                         <p class="biz-kicker">Playbooks</p>
                         <h2 class="biz-heading">Playbooks revenue ops</h2>
                         <p class="biz-muted">
@@ -766,6 +807,49 @@
                             'badge' => 'Playbooks',
                             'heading' => 'Todavía no hay revenue ops activo',
                             'description' => 'Cuando activación, expansión o renovación automáticas disparen seguimiento, todo caerá en esta cola.',
+                            'buttonLabel' => 'Abrir mesa operativa',
+                            'buttonUrl' => $operationsUrl,
+                        ])
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="biz-grid-two">
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div>
+                        <p class="biz-kicker">Rutas CRM</p>
+                        <h2 class="biz-heading">Paths multitoque de la red</h2>
+                        <p class="biz-muted">
+                            No solo mide plantillas o secuencias sueltas: aqui ves la ruta conversacional completa que termina moviendo revenue entre tenants.
+                        </p>
+                    </div>
+
+                    @if ($networkJourneyPaths !== [])
+                        <div class="biz-actions">
+                            @foreach ($networkJourneyPaths as $path)
+                                <a href="{{ $path['href'] }}" class="biz-action">
+                                    <div class="biz-split">
+                                        <div>
+                                            <p class="biz-action-title">{{ $path['path'] }}</p>
+                                            <p class="biz-action-copy">{{ $path['vertical'] }}</p>
+                                        </div>
+
+                                        <x-filament::badge color="{{ $path['tone'] }}">
+                                            {{ $path['revenue'] }}
+                                        </x-filament::badge>
+                                    </div>
+                                    <p class="biz-muted">Owners: {{ $path['owners'] }} | Canales: {{ $path['channels'] }}</p>
+                                    <p class="biz-note">Conversaciones: {{ $path['conversations'] }}</p>
+                                </a>
+                            @endforeach
+                        </div>
+                    @else
+                        @include('filament.app.components.table-empty-state', [
+                            'badge' => 'Rutas',
+                            'heading' => 'Todavia no hay rutas multitoque visibles',
+                            'description' => 'Cuando las conversaciones empiecen a cerrar con secuencias completas, aqui veras los paths dominantes de la red.',
                             'buttonLabel' => 'Abrir mesa operativa',
                             'buttonUrl' => $operationsUrl,
                         ])

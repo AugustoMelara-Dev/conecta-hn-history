@@ -45,6 +45,12 @@ Schedule::command('crm:dispatch-journeys --limit=50')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/customer-journey-dispatch.log'));
 
+Schedule::command('crm:sync-journey-ops --limit=50')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/customer-journey-ops.log'));
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // AUTOMATED INVENTORY RECOVERY - Stale Order Garbage Collector
 // ═══════════════════════════════════════════════════════════════════════════════

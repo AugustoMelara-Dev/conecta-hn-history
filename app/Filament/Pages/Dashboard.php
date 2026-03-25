@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
+use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
+use App\Models\CustomerConversation;
+use App\Models\CustomerTouchpoint;
 use App\Models\OperationalPlaybookTask;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
@@ -144,6 +147,12 @@ class Dashboard extends \Filament\Pages\Page
     /** @var list<array{playbook: string, business: string, queue: string, segment: string, owner: string, follow_up: string, next_touch: string, sla: string, conversion_signal: string, tone: string, href: string}> */
     public array $revenuePlaybooks = [];
 
+    /** @var list<array{vertical:string,assisted_revenue:string,total_revenue:string,uplift:string,conversations:int,assisted:int,top_path:string,tone:string,href:string}> */
+    public array $verticalJourneyUplift = [];
+
+    /** @var list<array{path:string,revenue:string,vertical:string,owners:string,channels:string,conversations:int,tone:string,href:string}> */
+    public array $networkJourneyPaths = [];
+
     /** @var list<array{business: string, owner: string, internal_owner: string, reason: string, metric: string, flagged_at: string, tone: string, href: string}> */
     public array $churnWatchlist = [];
 
@@ -162,7 +171,7 @@ class Dashboard extends \Filament\Pages\Page
     /** @var list<SubscriptionPayment> */
     private array $monthlyProConversions = [];
 
-    public function mount(TenantCrmPortfolioManager $portfolioManager): void
+    public function mount(TenantCrmPortfolioManager $portfolioManager, TenantJourneyOpsMonitor $journeyOpsMonitor): void
     {
         $this->tenantsUrl = $this->safeRoute('filament.admin.resources.tenants.index');
         $this->usersUrl = $this->safeRoute('filament.admin.resources.users.index');
@@ -175,6 +184,12 @@ class Dashboard extends \Filament\Pages\Page
             $portfolioManager->syncSignals();
         } catch (\Throwable) {
             // Evita que una sincronizacion CRM incompleta tumbe el dashboard del superadmin.
+        }
+
+        try {
+            $journeyOpsMonitor->syncSignals();
+        } catch (\Throwable) {
+            // Evita que la lectura de journeys CRM tumbe el dashboard.
         }
 
         $this->loadGlobalPlaybookState();
@@ -197,7 +212,9 @@ class Dashboard extends \Filament\Pages\Page
         $this->loadOwnerCohorts();
         $this->loadSegmentExpansion();
         $this->loadVerticalChurn();
+        $this->loadVerticalJourneyUplift();
         $this->loadRevenuePlaybooks();
+        $this->loadNetworkJourneyPaths();
         $this->loadAssigneeLoadBoard();
         $this->loadChurnWatchlist();
         $this->loadCommercialFollowups();
@@ -1064,6 +1081,63 @@ class Dashboard extends \Filament\Pages\Page
             ->all();
     }
 
+    private function loadVerticalJourneyUplift(): void
+    {
+        $window = now()->subDays(30)->startOfDay();
+        $conversations = CustomerConversation::query()
+            ->withoutGlobalScopes()
+            ->with([
+                'customerProfile' => fn ($query) => $query->withoutGlobalScopes()->with('tenant'),
+                'owner' => fn ($query) => $query->withoutGlobalScopes(),
+            ])
+            ->where('status', 'closed')
+            ->where('closed_at', '>=', $window)
+            ->get(['id', 'tenant_id', 'customer_profile_id', 'owner_user_id', 'status', 'source_channel', 'metadata', 'closed_at']);
+
+        $touchpoints = CustomerTouchpoint::query()
+            ->withoutGlobalScopes()
+            ->where('created_at', '>=', $window)
+            ->whereNotNull('customer_conversation_id')
+            ->get(['id', 'customer_conversation_id', 'channel', 'metadata', 'replied_at', 'delivery_status']);
+
+        $byVertical = $conversations
+            ->groupBy(function (CustomerConversation $conversation): string {
+                $tenant = $conversation->customerProfile?->tenant;
+
+                return $tenant instanceof Tenant ? $this->segmentKeyForTenant($tenant) : 'retail_general';
+            })
+            ->map(function (Collection $items, string $segmentKey) use ($touchpoints): array {
+                $conversationIds = $items->map(fn (CustomerConversation $conversation): string => (string) $conversation->getKey())->all();
+                $verticalTouchpoints = $touchpoints->filter(
+                    fn (CustomerTouchpoint $touchpoint): bool => in_array((string) $touchpoint->customer_conversation_id, $conversationIds, true)
+                );
+                $assisted = $items->filter(fn (CustomerConversation $conversation): bool => $this->conversationHasJourneyAssistance($conversation));
+                $assistedRevenue = $assisted->sum(fn (CustomerConversation $conversation): float => $this->conversationRevenueValue($conversation));
+                $totalRevenue = $items->sum(fn (CustomerConversation $conversation): float => $this->conversationRevenueValue($conversation));
+                $topPath = $this->topConversationPathLabel($verticalTouchpoints);
+                $uplift = $totalRevenue > 0 ? number_format(($assistedRevenue / $totalRevenue) * 100, 1).'%' : '0.0%';
+
+                return [
+                    'vertical' => $this->segmentLabel($segmentKey),
+                    'assisted_revenue' => 'L. '.number_format($assistedRevenue, 2),
+                    'assisted_revenue_raw' => $assistedRevenue,
+                    'total_revenue' => 'L. '.number_format($totalRevenue, 2),
+                    'uplift' => $uplift,
+                    'conversations' => $items->count(),
+                    'assisted' => $assisted->count(),
+                    'top_path' => $topPath,
+                    'tone' => $assistedRevenue > 0 ? 'success' : ($items->count() > 0 ? 'warning' : 'gray'),
+                    'href' => $this->operationsUrl,
+                ];
+            })
+            ->sortByDesc(fn (array $item): float => ((float) ($item['assisted_revenue_raw'] ?? 0.0) * 1000) + ((int) ($item['assisted'] ?? 0) * 100) + (int) ($item['conversations'] ?? 0))
+            ->take(6)
+            ->values()
+            ->all();
+
+        $this->verticalJourneyUplift = $byVertical;
+    }
+
     private function loadRevenuePlaybooks(): void
     {
         $this->revenuePlaybooks = $this->activePlaybookCollection()
@@ -1095,6 +1169,41 @@ class Dashboard extends \Filament\Pages\Page
                     'href' => $this->taskAdminHref($task),
                 ];
             })
+            ->values()
+            ->all();
+    }
+
+    private function loadNetworkJourneyPaths(): void
+    {
+        $window = now()->subDays(30)->startOfDay();
+        $touchpoints = CustomerTouchpoint::query()
+            ->withoutGlobalScopes()
+            ->with([
+                'conversation' => fn ($query) => $query->withoutGlobalScopes()->with([
+                    'customerProfile' => fn ($profileQuery) => $profileQuery->withoutGlobalScopes()->with('tenant'),
+                    'owner' => fn ($ownerQuery) => $ownerQuery->withoutGlobalScopes(),
+                ]),
+            ])
+            ->where('created_at', '>=', $window)
+            ->whereNotNull('customer_conversation_id')
+            ->get(['id', 'customer_conversation_id', 'channel', 'metadata']);
+
+        $this->networkJourneyPaths = collect($this->buildConversationPathShares($touchpoints))
+            ->map(function (array $share): array {
+                return [
+                    'path' => (string) ($share['label'] ?? 'Ruta CRM'),
+                    'revenue' => 'L. '.number_format((float) ($share['revenue'] ?? 0.0), 2),
+                    'vertical' => (string) ($share['vertical'] ?? 'General'),
+                    'owners' => (string) ($share['owners'] ?? 'Sin owner'),
+                    'channels' => (string) ($share['channels'] ?? 'CRM'),
+                    'conversations' => (int) ($share['conversations'] ?? 0),
+                    'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
+                    'tone' => (float) ($share['revenue'] ?? 0.0) > 0 ? 'success' : 'info',
+                    'href' => $this->operationsUrl,
+                ];
+            })
+            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['conversations'] ?? 0) * 100))
+            ->take(6)
             ->values()
             ->all();
     }
@@ -1289,6 +1398,103 @@ class Dashboard extends \Filament\Pages\Page
             ->filter()
             ->unique()
             ->count();
+    }
+
+    private function conversationRevenueValue(CustomerConversation $conversation): float
+    {
+        $profile = $conversation->customerProfile;
+
+        if (! $profile instanceof \App\Models\CustomerProfile) {
+            return 0.0;
+        }
+
+        $firstConversion = (float) ($profile->first_conversion_value ?? 0);
+
+        if ($firstConversion > 0) {
+            return $firstConversion;
+        }
+
+        $initialLtv = (float) ($profile->initial_ltv ?? 0);
+
+        if ($initialLtv > 0) {
+            return $initialLtv;
+        }
+
+        return (float) ($profile->total_spent ?? 0);
+    }
+
+    private function conversationHasJourneyAssistance(CustomerConversation $conversation): bool
+    {
+        $signals = (array) data_get($conversation->metadata, 'business_signals', []);
+
+        if ($signals !== []) {
+            return true;
+        }
+
+        return $conversation->source_channel !== null && $conversation->source_channel !== '';
+    }
+
+    /**
+     * @param  Collection<int, CustomerTouchpoint>  $touchpoints
+     * @return array<string, array{label:string,revenue:float,vertical:string,owners:string,channels:string,conversations:int}>
+     */
+    private function buildConversationPathShares(Collection $touchpoints): array
+    {
+        $shares = [];
+
+        $touchpoints
+            ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->customer_conversation_id ?? ''))
+            ->each(function (Collection $items) use (&$shares): void {
+                $conversation = $items->first()?->conversation;
+
+                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') {
+                    return;
+                }
+
+                $path = $items
+                    ->sortBy('id')
+                    ->map(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_label', data_get($touchpoint->metadata, 'journey_step_title', $touchpoint->template_label)))
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                if ($path->isEmpty()) {
+                    return;
+                }
+
+                $tenant = $conversation->customerProfile?->tenant;
+                $label = $path->implode(' -> ');
+                $channels = $items->pluck('channel')->filter()->unique()->map(fn (string $channel): string => Str::of($channel)->replace('_', ' ')->title()->value())->implode(', ');
+                $owner = $conversation->owner?->name ?? 'Sin owner';
+                $segmentLabel = $tenant instanceof Tenant ? $this->segmentLabel($this->segmentKeyForTenant($tenant)) : 'General';
+
+                $shares[$label] ??= [
+                    'label' => $label,
+                    'revenue' => 0.0,
+                    'vertical' => $segmentLabel,
+                    'owners' => $owner,
+                    'channels' => $channels !== '' ? $channels : 'CRM',
+                    'conversations' => 0,
+                ];
+
+                $shares[$label]['revenue'] += $this->conversationRevenueValue($conversation);
+                $shares[$label]['conversations']++;
+            });
+
+        return $shares;
+    }
+
+    private function topConversationPathLabel(Collection $touchpoints): string
+    {
+        $shares = collect($this->buildConversationPathShares($touchpoints));
+
+        if ($shares->isEmpty()) {
+            return 'Sin ruta dominante';
+        }
+
+        $top = $shares->sortByDesc(fn (array $share): float => ((float) ($share['revenue'] ?? 0.0) * 1000) + (int) ($share['conversations'] ?? 0))->first();
+
+        return is_array($top) ? (string) ($top['label'] ?? 'Sin ruta dominante') : 'Sin ruta dominante';
     }
 
     private function playbookTone(OperationalPlaybookTask $task): string

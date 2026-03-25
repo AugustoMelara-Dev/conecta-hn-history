@@ -147,10 +147,12 @@ return [
                     ['key' => 'reward_ready', 'label' => 'Canje listo', 'title' => 'Conectar recompensa lista', 'copy' => 'Ya hay una recompensa disponible: usa ese momento para mover recompra o continuidad.', 'template_key' => 'close_sale', 'lane' => 'loyalty_follow_up', 'when' => 'reward_ready'],
                     ['key' => 'reward_redeemed', 'label' => 'Canje reciente', 'title' => 'Activar continuidad despues del canje', 'copy' => 'El cliente acaba de canjear una recompensa: aprovecha ese momento para mover recompra o continuidad.', 'template_key' => 'close_sale', 'lane' => 'post_redeem_close', 'when' => 'recent_reward_redemption'],
                     ['key' => 'vip_priority', 'label' => 'Ruta VIP', 'title' => 'Mover continuidad premium', 'copy' => 'Usa tono premium, beneficio visible y prioridad real para no enfriar un cliente de alto valor.', 'template_key' => 'vip_priority', 'lane' => 'premium_follow_up', 'when' => 'vip_customer'],
+                    ['key' => 'repeat_revenue_expand', 'label' => 'Revenue acumulado', 'title' => 'Mover continuidad con valor probado', 'copy' => 'Este cliente ya trae revenue recurrente: conviene pasar de recordatorio a expansion con propuesta concreta.', 'template_key' => 'final_close_push', 'lane' => 'revenue_follow_up', 'when' => 'high_repeat_revenue'],
                 ]],
                 ['key' => 'repeat_close_continuity', 'title' => 'Cerrar continuidad', 'copy' => 'Busca salida a recompra, paquete o nueva cita.', 'template_key' => 'close_sale', 'lane' => 'closing', 'wait_hours' => 30, 'branches' => [
                     ['key' => 'clicked_offer', 'label' => 'Interes alto', 'title' => 'Cerrar despues del clic', 'copy' => 'El cliente ya mostro interes con clic o lectura fuerte: conviene empujar cierre y no solo seguimiento.', 'template_key' => 'final_close_push', 'lane' => 'engaged_close', 'when' => ['last_step_clicked']],
                     ['key' => 'high_value_close', 'label' => 'Cierre alto valor', 'title' => 'Cerrar continuidad de alto valor', 'copy' => 'Enfatiza paquete, bundle o beneficio premium porque el cliente ya tiene valor claro.', 'template_key' => 'final_close_push', 'lane' => 'high_value_close', 'when' => 'high_value_customer'],
+                    ['key' => 'repeat_revenue_expand', 'label' => 'Cliente de revenue alto', 'title' => 'Cerrar continuidad con expansion', 'copy' => 'Este cliente ya dejo valor recurrente: conviene mover paquete, continuidad o experiencia premium.', 'template_key' => 'final_close_push', 'lane' => 'revenue_expansion', 'when' => 'high_repeat_revenue'],
                 ]],
             ],
             'templates' => ['close_sale', 'fast_follow_up', 'service_rebook'],
@@ -166,6 +168,7 @@ return [
                 ['key' => 'reactivation_close_week', 'title' => 'Cerrar en esta semana', 'copy' => 'No dejes la reactivacion sin fecha o CTA concreto.', 'template_key' => 'reactivation_last_call', 'lane' => 'last_call', 'wait_hours' => 48, 'branches' => [
                     ['key' => 'reply_returning', 'label' => 'Volvio a responder', 'title' => 'Cerrar reactivacion con acompañamiento', 'copy' => 'Ya hubo reply: cambia de rescate a cierre guiado con salida concreta.', 'template_key' => 'close_sale', 'lane' => 'reactivation_close', 'when' => 'last_step_replied'],
                     ['key' => 'recovery_failed', 'label' => 'Sin traccion', 'title' => 'Ultimo rescate de secuencia', 'copy' => 'No hubo senal positiva en los ultimos toques: usa un ultimo intento claro antes de enfriar.', 'template_key' => 'reactivation_last_call', 'lane' => 'rescue_last_call', 'when' => ['last_step_failed', 'stalled_sequence']],
+                    ['key' => 'reactivation_monetized', 'label' => 'Reward con recompra', 'title' => 'Cerrar regreso con valor real', 'copy' => 'Ya hubo canje o recompra ligada al reward: cambia de rescate a continuidad rentable.', 'template_key' => 'close_sale', 'lane' => 'monetized_return', 'when' => 'reward_monetized_customer'],
                 ]],
             ],
             'templates' => ['reactivation_recovery', 'fast_follow_up', 'close_sale'],
@@ -253,6 +256,9 @@ return [
                             ['key' => 'dental_no_show', 'label' => 'No asistio', 'title' => 'Rescatar control despues del no-show', 'copy' => 'Cuando el paciente no asiste, baja ansiedad y reagenda rapido con ownership visible.', 'template_key' => 'service_rebook', 'lane' => 'no_show_rescue', 'when' => 'recent_no_show'],
                         ]],
                         ['key' => 'dental_close_continuity', 'title' => 'Cerrar continuidad', 'copy' => 'Busca que el paciente salga con control, tratamiento o recordatorio ya planteado.', 'template_key' => 'final_close_push', 'lane' => 'closing', 'wait_hours' => 20],
+                        ['key' => 'dental_revenue_continuity', 'title' => 'Consolidar plan de tratamiento', 'copy' => 'Cuando ya hay valor acumulado, conviene empujar continuidad, plan o paquete con mayor claridad.', 'template_key' => 'vip_priority', 'lane' => 'treatment_plan', 'wait_hours' => 32, 'branches' => [
+                            ['key' => 'dental_mature_plan', 'label' => 'Paciente de alto valor', 'title' => 'Abrir continuidad premium', 'copy' => 'Este paciente ya dejo revenue relevante: mueve plan de tratamiento o continuidad con mas autoridad.', 'template_key' => 'final_close_push', 'lane' => 'premium_continuity', 'when' => 'mature_revenue_customer'],
+                        ]],
                     ],
                     'templates' => ['service_rebook', 'vip_priority', 'fast_follow_up'],
                 ],
@@ -319,6 +325,9 @@ return [
                             ['key' => 'barber_reward_redeemed', 'label' => 'Canje hecho', 'title' => 'Empujar continuidad despues del reward', 'copy' => 'Cuando el cliente ya canjeo, toca mover la siguiente visita antes de que se enfrie la rutina.', 'template_key' => 'vip_priority', 'lane' => 'reward_continuity', 'when' => 'recent_reward_redemption'],
                         ]],
                         ['key' => 'barber_close_next_visit', 'title' => 'Cierra la proxima visita', 'copy' => 'Busca que el cliente salga con nuevo slot o seguimiento claro.', 'template_key' => 'vip_priority', 'lane' => 'closing', 'wait_hours' => 28],
+                        ['key' => 'barber_membership_close', 'title' => 'Cerrar membresia o plan', 'copy' => 'Si ya hay revenue recurrente, empuja membresia, combo o continuidad premium.', 'template_key' => 'vip_priority', 'lane' => 'membership_close', 'wait_hours' => 36, 'branches' => [
+                            ['key' => 'barber_high_repeat_revenue', 'label' => 'Rutina rentable', 'title' => 'Mover membership premium', 'copy' => 'La rutina ya esta monetizada: aprovecha para cerrar membership o paquete premium.', 'template_key' => 'final_close_push', 'lane' => 'membership_upgrade', 'when' => 'high_repeat_revenue'],
+                        ]],
                     ],
                     'templates' => ['service_rebook', 'vip_priority', 'fast_follow_up'],
                 ],
@@ -377,6 +386,9 @@ return [
                             ['key' => 'phone_purchase_aftercare', 'label' => 'Compra reciente', 'title' => 'Abrir aftercare premium', 'copy' => 'Si hubo compra reciente, cambia de venta inicial a continuidad premium con bundle o garantia.', 'template_key' => 'final_close_push', 'lane' => 'aftercare_bundle', 'when' => 'recent_purchase'],
                         ]],
                         ['key' => 'phone_clear_exit', 'title' => 'Dejar salida clara', 'copy' => 'Busca cotizacion cerrada, reserva o visita a tienda.', 'template_key' => 'final_close_push', 'lane' => 'closing', 'wait_hours' => 30],
+                        ['key' => 'phone_upgrade_bundle', 'title' => 'Cerrar bundle de expansion', 'copy' => 'Si el historial ya demuestra valor, mueve bundle, trade-in o garantia premium.', 'template_key' => 'final_close_push', 'lane' => 'upgrade_bundle', 'wait_hours' => 42, 'branches' => [
+                            ['key' => 'phone_revenue_bundle', 'label' => 'Revenue alto', 'title' => 'Empujar aftercare de alto valor', 'copy' => 'Este cliente ya produjo revenue alto: enfoca bundle, garantia o upgrade premium.', 'template_key' => 'final_close_push', 'lane' => 'high_value_aftercare', 'when' => 'mature_revenue_customer'],
+                        ]],
                     ],
                     'templates' => ['close_sale', 'vip_priority', 'fast_follow_up'],
                 ],
@@ -407,6 +419,9 @@ return [
                             ['key' => 'restaurant_recent_purchase', 'label' => 'Pedido reciente', 'title' => 'Mover recompra caliente', 'copy' => 'Si ya hubo compra reciente, usa una ventana mas corta para mover extra o recompra del mismo dia.', 'template_key' => 'close_sale', 'lane' => 'hot_reorder', 'when' => 'recent_purchase'],
                         ]],
                         ['key' => 'restaurant_close_today', 'title' => 'Cerrar pedido hoy', 'copy' => 'Busca compra inmediata o pedido programado.', 'template_key' => 'final_close_push', 'lane' => 'closing', 'wait_hours' => 12],
+                        ['key' => 'restaurant_recurring_window', 'title' => 'Abrir ventana de rutina', 'copy' => 'Cuando la recompra ya trae revenue sostenido, empuja combo o rutina semanal.', 'template_key' => 'final_close_push', 'lane' => 'routine_reorder', 'wait_hours' => 18, 'branches' => [
+                            ['key' => 'restaurant_repeat_revenue', 'label' => 'Rutina rentable', 'title' => 'Mover recompra de alto valor', 'copy' => 'Este cliente ya deja revenue repetido: conviene mover rutina, combo o pedido recurrente.', 'template_key' => 'close_sale', 'lane' => 'high_value_reorder', 'when' => 'high_repeat_revenue'],
+                        ]],
                     ],
                     'templates' => ['close_sale', 'fast_follow_up', 'reactivation_recovery'],
                 ],

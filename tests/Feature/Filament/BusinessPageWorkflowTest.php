@@ -383,6 +383,7 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertSee('Plantilla que mas convierte')
             ->assertSee('Analitica por secuencia')
             ->assertSee('Attribution multi-touch')
+            ->assertSee('Rutas completas')
             ->assertSee('Revenue atribuido por owner')
             ->assertSee('Revenue atribuido por sede')
             ->assertSee('Revenue atribuido por canal')

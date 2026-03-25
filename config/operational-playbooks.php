@@ -132,6 +132,48 @@ return [
                 'Definir owner, siguiente toque y plan de recuperacion dentro del panel.',
             ],
         ],
+        'journey_conversion_watch' => [
+            'queue' => 'growth',
+            'priority' => 'critical',
+            'sla_minutes' => 360,
+            'route_key' => 'dashboard',
+            'title' => 'Intervenir secuencia comercial degradada',
+            'summary' => '{tenant_name} esta perdiendo traccion en {segment_label}. Atiende {watch_metric} y deja rescate humano antes de seguir quemando la secuencia.',
+            'fallback_roles' => [Role::MANAGER->value, Role::ADMIN->value],
+            'steps' => [
+                'Revisar la ruta activa del journey y donde cae la conversion.',
+                'Asignar owner, sede o equipo responsable del rescate.',
+                'Cambiar oferta, plantilla o siguiente toque con fecha concreta.',
+            ],
+        ],
+        'journey_no_show_watch' => [
+            'queue' => 'appointments',
+            'priority' => 'high',
+            'sla_minutes' => 240,
+            'route_key' => 'appointments',
+            'title' => 'Recuperar no-show en secuencia viva',
+            'summary' => '{tenant_name} esta dejando mas ausencias que rescates. Atiende {watch_metric} y deja playbook por sede antes de perder mas agenda.',
+            'fallback_roles' => [Role::OPERATOR->value, Role::MANAGER->value, Role::ADMIN->value],
+            'steps' => [
+                'Revisar agenda, ownership y mensajes de recordatorio.',
+                'Definir rescate por sede, profesional o equipo.',
+                'Cerrar un siguiente toque para reagendar o confirmar.',
+            ],
+        ],
+        'journey_reward_watch' => [
+            'queue' => 'retention',
+            'priority' => 'high',
+            'sla_minutes' => 720,
+            'route_key' => 'marketing',
+            'title' => 'Convertir reward en recompra real',
+            'summary' => '{tenant_name} ya mueve rewards, pero la recompra cae. Atiende {watch_metric} y reconfigura el playbook de continuidad hoy.',
+            'fallback_roles' => [Role::MANAGER->value, Role::ADMIN->value],
+            'steps' => [
+                'Revisar si el reward si conecta con la siguiente compra o cita.',
+                'Ajustar plantilla, oferta o owner de seguimiento.',
+                'Definir una cadencia concreta para convertir canje en recompra.',
+            ],
+        ],
     ],
     'segments' => [
         'dental_clinic' => [

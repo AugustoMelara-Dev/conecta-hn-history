@@ -112,6 +112,12 @@ class CustomerJourneyBranchResolver
             'recent_no_show' => $this->hasRecentSignal($conversation, 'appointment_no_show'),
             'recent_reward_redemption' => $this->hasRecentSignal($conversation, 'reward_redemption'),
             'recent_upgrade' => $this->hasRecentSignal($conversation, 'tenant_upgrade'),
+            'mature_revenue_customer' => (float) ($profile->total_spent ?? 0) >= 2500
+                || (float) ($profile->initial_ltv ?? 0) >= 1000,
+            'high_repeat_revenue' => ((int) ($profile->repeat_purchase_count ?? 0) >= 3 && (float) ($profile->total_spent ?? 0) >= 1200)
+                || ((int) ($profile->orders_count ?? 0) >= 4 && (float) ($profile->average_ticket ?? 0) >= 250),
+            'reward_monetized_customer' => $this->hasRecentSignal($conversation, 'reward_repurchase')
+                || ($this->hasRecentSignal($conversation, 'reward_redemption') && (float) ($profile->total_spent ?? 0) >= 600),
             'closing_ready' => (int) ($profile->orders_count ?? 0) > 0
                 || (int) ($profile->appointments_count ?? 0) > 0
                 || (float) ($profile->total_spent ?? 0) > 0,

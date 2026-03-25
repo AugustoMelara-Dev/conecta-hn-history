@@ -191,6 +191,48 @@ final class CustomerJourneyBranchingTest extends TestCase
         $this->assertSame('corporate_law_firm:prospect:legal_formal_next_step:post_upgrade_authority', data_get($run->metadata, 'current_sequence_key'));
     }
 
+    public function test_repeat_journey_branches_on_accumulated_revenue_signal(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner('crm-journey-branch-repeat-revenue');
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'name' => 'Luis Caceres',
+            'email' => 'luis@example.com',
+            'preferred_channel' => 'whatsapp',
+            'customer_segment' => 'repeat',
+            'marketing_opt_in' => true,
+            'whatsapp_opt_in' => true,
+            'repeat_purchase_count' => 4,
+            'orders_count' => 5,
+            'total_spent' => 1800,
+            'average_ticket' => 320,
+        ]);
+
+        $conversation = CustomerConversation::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $profile->getKey(),
+            'owner_user_id' => $user->getKey(),
+            'conversation_key' => 'repeat-revenue-001',
+            'source_channel' => 'whatsapp',
+            'status' => 'waiting_customer',
+            'priority' => 'normal',
+            'response_sla_minutes' => 90,
+            'opened_at' => now()->subDay(),
+            'last_team_message_at' => now()->subHours(20),
+            'next_action_at' => now()->subHours(2),
+            'response_due_at' => now()->subHours(2),
+            'metadata' => [],
+        ]);
+
+        $run = app(CustomerJourneyManager::class)->sync($conversation, $profile);
+
+        $this->assertSame('repeat_bundle_offer', $run->current_step_key);
+        $this->assertSame('repeat_revenue_expand', data_get($run->metadata, 'current_branch_key'));
+        $this->assertSame('repeat:repeat_bundle_offer:repeat_revenue_expand', data_get($run->metadata, 'current_sequence_key'));
+    }
+
     /**
      * @return array{0: User, 1: Tenant}
      */

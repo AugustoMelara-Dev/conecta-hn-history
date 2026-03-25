@@ -285,6 +285,9 @@ class GrowthCenter extends Page
     /** @var list<array{label:string,revenue:string,replies:int,clicks:int,conversions:string}> */
     public array $sequenceAttribution = [];
 
+    /** @var list<array{label:string,revenue:string,conversations:int,owners:string,channels:string}> */
+    public array $conversationPathAttribution = [];
+
     /** @var list<array{name:string,revenue:string,replies:int,clicks:int,conversions:string,context:string}> */
     public array $ownerSequenceAttribution = [];
 
@@ -1041,6 +1044,7 @@ class GrowthCenter extends Page
             $this->templatePerformance = [];
             $this->sequencePerformance = [];
             $this->sequenceAttribution = [];
+            $this->conversationPathAttribution = [];
             $this->ownerSequenceAttribution = [];
             $this->locationSequenceAttribution = [];
             $this->channelSequenceAttribution = [];
@@ -1155,6 +1159,22 @@ class GrowthCenter extends Page
                 ];
             })
             ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['clicks'] ?? 0) * 10) + (int) ($row['replies'] ?? 0))
+            ->take(4)
+            ->values()
+            ->all();
+
+        $this->conversationPathAttribution = collect($this->buildConversationPathShares($touchpoints))
+            ->map(function (array $share): array {
+                return [
+                    'label' => (string) ($share['label'] ?? 'Ruta CRM'),
+                    'revenue' => $this->formatCurrency((float) ($share['revenue'] ?? 0.0)),
+                    'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
+                    'conversations' => (int) ($share['conversations'] ?? 0),
+                    'owners' => (string) ($share['owners'] ?? 'Sin owner'),
+                    'channels' => (string) ($share['channels'] ?? 'CRM'),
+                ];
+            })
+            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['conversations'] ?? 0) * 100))
             ->take(4)
             ->values()
             ->all();
@@ -1312,6 +1332,53 @@ class GrowthCenter extends Page
             ->take(4)
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  Collection<int, CustomerTouchpoint>  $touchpoints
+     * @return array<string, array{label:string,revenue:float,conversations:int,owners:string,channels:string}>
+     */
+    private function buildConversationPathShares(Collection $touchpoints): array
+    {
+        $shares = [];
+
+        $touchpoints
+            ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->customer_conversation_id ?? ''))
+            ->each(function (Collection $items) use (&$shares): void {
+                $conversation = $items->first()?->conversation;
+
+                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') {
+                    return;
+                }
+
+                $path = $items
+                    ->sortBy('id')
+                    ->map(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_label', data_get($touchpoint->metadata, 'journey_step_title', $touchpoint->template_label)))
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                if ($path->isEmpty()) {
+                    return;
+                }
+
+                $label = $path->implode(' -> ');
+                $channels = $items->pluck('channel')->filter()->map(fn (string $channel): string => $this->formatSourceLabel($channel))->unique()->implode(', ');
+                $owner = $conversation->ownerLabel;
+
+                $shares[$label] ??= [
+                    'label' => $label,
+                    'revenue' => 0.0,
+                    'conversations' => 0,
+                    'owners' => $owner,
+                    'channels' => $channels !== '' ? $channels : 'CRM',
+                ];
+
+                $shares[$label]['revenue'] += $this->conversationRevenueValue($conversation);
+                $shares[$label]['conversations']++;
+            });
+
+        return $shares;
     }
 
     /**
