@@ -273,6 +273,10 @@ class CustomerProfileResource extends Resource
                     ->since()
                     ->sortable()
                     ->description(fn (CustomerProfile $record): string => $record->preferred_channel_label),
+                Tables\Columns\TextColumn::make('last_contacted_at')
+                    ->label('Ultimo contacto')
+                    ->since()
+                    ->toggleable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('lifecycle_stage')
@@ -404,6 +408,7 @@ class CustomerProfileResource extends Resource
             RelationManagers\AppointmentsRelationManager::class,
             RelationManagers\LeadsRelationManager::class,
             RelationManagers\TouchpointsRelationManager::class,
+            RelationManagers\NotesRelationManager::class,
         ];
     }
 

@@ -19,6 +19,7 @@ use App\Filament\App\Resources\OperationalPlaybookTaskResource;
 use App\Filament\App\Resources\OrderResource;
 use App\Models\Appointment;
 use App\Models\Campaign;
+use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
 use App\Models\Follow;
@@ -26,6 +27,7 @@ use App\Models\Lead;
 use App\Models\LoyaltyProgram;
 use App\Models\OperationalPlaybookTask;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Tenant;
 use App\Models\TenantAnalytic;
 use App\Models\Waitlist;
@@ -118,6 +120,12 @@ class GrowthCenter extends Page
 
     public int $touchpoints30d = 0;
 
+    public int $touchpointsDelivered30d = 0;
+
+    public int $touchpointsOpened30d = 0;
+
+    public int $touchpointsBounced30d = 0;
+
     public int $campaignsSent30d = 0;
 
     public int $openPlaybooksCount = 0;
@@ -127,6 +135,24 @@ class GrowthCenter extends Page
     public string $topLeadSource = 'Sin datos';
 
     public string $topSalesChannel = 'Sin datos';
+
+    public string $topOfferLabel = 'Sin datos';
+
+    public string $topOfferCopy = 'Todavia no hay suficiente actividad reciente para destacar una oferta.';
+
+    public int $vipCustomersCount = 0;
+
+    public int $dormantCustomersCount = 0;
+
+    public int $notes7dCount = 0;
+
+    public float $recurrenceRate = 0.0;
+
+    public float $deliveryRate30d = 0.0;
+
+    public float $openRate30d = 0.0;
+
+    public float $optInCoverageRate = 0.0;
 
     public string $growthUrl = '#';
 
@@ -158,6 +184,9 @@ class GrowthCenter extends Page
 
     /** @var list<array{label: string, value: string, copy: string}> */
     public array $customerSignals = [];
+
+    /** @var list<array{label: string, value: string, copy: string}> */
+    public array $engagementMetrics = [];
 
     /** @var list<array{title: string, copy: string, href: string}> */
     public array $growthActions = [];
@@ -222,6 +251,7 @@ class GrowthCenter extends Page
         $this->buildRevenueMetrics();
         $this->buildPipelineMetrics();
         $this->buildCustomerSignals();
+        $this->buildEngagementMetrics();
         $this->buildGrowthActions();
         $this->buildPriorityQueue();
         $this->buildAutomationJourneys();
@@ -294,6 +324,7 @@ class GrowthCenter extends Page
             $this->distinctCustomersCount = $customerSnapshot['distinct'];
             $this->repeatCustomerCount = $customerSnapshot['repeat'];
             $this->reactivationPoolCount = $customerSnapshot['reactivation'];
+            $this->loadTopProductOffer($tenantId, $thirtyDaysAgo);
         } catch (\Throwable) {
             // Orders are optional on service-first tenants.
         }
@@ -312,6 +343,10 @@ class GrowthCenter extends Page
                 $this->distinctCustomersCount = $customerSnapshot['distinct'];
                 $this->repeatCustomerCount = $customerSnapshot['repeat'];
                 $this->reactivationPoolCount = $customerSnapshot['reactivation'];
+            }
+
+            if (in_array($this->businessType, [BusinessType::SERVICE->value, BusinessType::HYBRID->value], true)) {
+                $this->loadTopServiceOffer($tenantId, $thirtyDaysAgo);
             }
         } catch (\Throwable) {
             // Appointments are optional on catalog-first tenants.
@@ -335,6 +370,7 @@ class GrowthCenter extends Page
                 ->where('tenant_id', $tenantId);
 
             $this->crmProfilesCount = (clone $profilesBase)->count();
+            $emailOptInCount = (clone $profilesBase)->where('email_opt_in', true)->count();
             $this->reactivationPoolCount = max(
                 $this->reactivationPoolCount,
                 (clone $profilesBase)->where('reactivation_score', '>=', 65)->count(),
@@ -344,6 +380,20 @@ class GrowthCenter extends Page
                 (clone $profilesBase)->whereIn('customer_segment', ['repeat', 'vip'])->count(),
             );
             $this->distinctCustomersCount = max($this->distinctCustomersCount, $this->crmProfilesCount);
+            $this->vipCustomersCount = (clone $profilesBase)
+                ->where(function ($query): void {
+                    $query->where('manual_segment', 'vip')
+                        ->orWhere(function ($nested): void {
+                            $nested->whereNull('manual_segment')->where('customer_segment', 'vip');
+                        });
+                })
+                ->count();
+            $this->dormantCustomersCount = (clone $profilesBase)
+                ->where('lifecycle_stage', 'dormant')
+                ->count();
+            $this->optInCoverageRate = $this->crmProfilesCount > 0
+                ? round(($emailOptInCount / $this->crmProfilesCount) * 100, 1)
+                : 0.0;
         } catch (\Throwable) {
             // CRM can be empty on brand new tenants.
         }
@@ -381,8 +431,40 @@ class GrowthCenter extends Page
                 ->where('created_at', '>=', $thirtyDaysAgo)
                 ->where('status', CustomerTouchpoint::STATUS_SENT)
                 ->count();
+
+            $emailTouchpoints = CustomerTouchpoint::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('channel', 'email')
+                ->where('created_at', '>=', $thirtyDaysAgo)
+                ->where('status', CustomerTouchpoint::STATUS_SENT);
+
+            $totalEmailTouchpoints = (clone $emailTouchpoints)->count();
+            $this->touchpointsDelivered30d = (clone $emailTouchpoints)->whereNotNull('delivered_at')->count();
+            $this->touchpointsOpened30d = (clone $emailTouchpoints)->whereNotNull('opened_at')->count();
+            $this->touchpointsBounced30d = (clone $emailTouchpoints)
+                ->where(function ($query): void {
+                    $query->whereNotNull('bounced_at')->orWhereNotNull('complained_at');
+                })
+                ->count();
+            $this->deliveryRate30d = $totalEmailTouchpoints > 0
+                ? round(($this->touchpointsDelivered30d / $totalEmailTouchpoints) * 100, 1)
+                : 0.0;
+            $this->openRate30d = $totalEmailTouchpoints > 0
+                ? round(($this->touchpointsOpened30d / $totalEmailTouchpoints) * 100, 1)
+                : 0.0;
         } catch (\Throwable) {
             // Touchpoints are optional until CRM automation starts.
+        }
+
+        try {
+            $this->notes7dCount = CustomerNote::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('created_at', '>=', now()->subDays(7))
+                ->count();
+        } catch (\Throwable) {
+            $this->notes7dCount = 0;
         }
 
         try {
@@ -412,6 +494,10 @@ class GrowthCenter extends Page
         } catch (\Throwable) {
             // No active operational queue yet.
         }
+
+        $this->recurrenceRate = $this->distinctCustomersCount > 0
+            ? round(($this->repeatCustomerCount / $this->distinctCustomersCount) * 100, 1)
+            : 0.0;
     }
 
     private function buildRevenueMetrics(): void
@@ -420,15 +506,11 @@ class GrowthCenter extends Page
             ? round((($this->newLeadsCount + $this->contactedLeadsCount + $this->closedLeadsCount) / $this->visits30d) * 100, 1)
             : 0.0;
 
-        $repeatRate = $this->distinctCustomersCount > 0
-            ? round(($this->repeatCustomerCount / $this->distinctCustomersCount) * 100, 1)
-            : 0.0;
-
         $this->revenueMetrics = [
             $this->metric('Ventas 30 dias', $this->formatCurrency($this->grossSales30d), "{$this->orders30d} operaciones registradas en el periodo."),
             $this->metric('Ticket promedio', $this->formatCurrency($this->averageTicket30d), 'Una lectura rapida para ver si estas vendiendo mejor o solo mas.'),
             $this->metric('Captura de leads', $leadCaptureRate.'%', $this->visits30d > 0 ? "Con {$this->visits30d} visitas unicas recientes." : 'Todavia no hay trafico sincronizado suficiente.'),
-            $this->metric('Clientes que vuelven', $repeatRate.'%', $this->repeatCustomerCount > 0 ? "{$this->repeatCustomerCount} clientes ya repitieron." : 'Aun no tienes recompra identificada.'),
+            $this->metric('Clientes que vuelven', $this->recurrenceRate.'%', $this->repeatCustomerCount > 0 ? "{$this->repeatCustomerCount} clientes ya repitieron." : 'Aun no tienes recompra identificada.'),
         ];
     }
 
@@ -454,6 +536,16 @@ class GrowthCenter extends Page
             $this->metric('Campanas 30 dias', (string) $this->campaignsSent30d, $this->campaignsSent30d > 0 ? 'Ya tienes empuje comercial reciente.' : 'Aun no has activado una campana reciente.'),
             $this->metric('Contactos enviados', (string) $this->touchpoints30d, $this->touchpoints30d > 0 ? 'Tu CRM ya esta ejecutando seguimiento auditable.' : 'Todavia no has movido seguimientos desde el CRM.'),
             $this->metric('Reactivar', (string) $this->reactivationPoolCount, $this->reactivationPoolCount > 0 ? 'Clientes con senales para volver a tocar.' : 'La base reciente no muestra fuga grande todavia.'),
+        ];
+    }
+
+    private function buildEngagementMetrics(): void
+    {
+        $this->engagementMetrics = [
+            $this->metric('Oferta top', $this->topOfferLabel, $this->topOfferCopy),
+            $this->metric('Recurrencia', $this->recurrenceRate.'%', $this->repeatCustomerCount > 0 ? "{$this->repeatCustomerCount} clientes ya compraron o reservaron mas de una vez." : 'Todavia no se ve repeticion fuerte en la base.'),
+            $this->metric('Entrega de email', $this->deliveryRate30d.'%', $this->touchpoints30d > 0 ? "{$this->touchpointsDelivered30d} contactos llegaron a bandeja de entrada." : 'Aun no hay seguimiento suficiente para medir entrega.'),
+            $this->metric('Apertura de email', $this->openRate30d.'%', $this->touchpointsOpened30d > 0 ? "{$this->touchpointsOpened30d} contactos ya abrieron tus mensajes." : 'Todavia no hay aperturas registradas por proveedor.'),
         ];
     }
 
@@ -502,6 +594,10 @@ class GrowthCenter extends Page
 
         if ($this->overduePlaybooksCount > 0) {
             $queue[] = $this->priority('Atiende playbooks vencidos', 'Tus automatizaciones ya generaron cola atrasada y conviene moverla hoy.', $this->operationsUrl, 'danger');
+        }
+
+        if ($this->touchpoints30d > 0 && $this->deliveryRate30d < 70) {
+            $queue[] = $this->priority('Limpia la entregabilidad', 'Tus correos recientes no estan llegando con la fuerza esperada. Ajusta opt-in, copy o reputacion.', $this->contactsUrl, 'warning');
         }
 
         if ($this->waitlistCount > 0 && $this->businessType === BusinessType::SERVICE->value) {
@@ -769,6 +865,46 @@ class GrowthCenter extends Page
 
         if ($hasCustomerSignals) {
             app(CustomerProfileManager::class)->syncTenant($tenantId);
+        }
+    }
+
+    private function loadTopProductOffer(string $tenantId, Carbon $since): void
+    {
+        $topProduct = OrderItem::query()
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->where('orders.tenant_id', $tenantId)
+            ->where('orders.created_at', '>=', $since)
+            ->whereNotIn('orders.status', [Order::STATUS_CANCELLED])
+            ->selectRaw('coalesce(order_items.product_name, "Producto") as offer_name, sum(order_items.quantity) as units, sum(coalesce(order_items.line_total, order_items.total_price, 0)) as revenue')
+            ->groupBy('offer_name')
+            ->orderByDesc('revenue')
+            ->orderByDesc('units')
+            ->first();
+
+        if ($topProduct !== null) {
+            $this->topOfferLabel = (string) $topProduct->offer_name;
+            $this->topOfferCopy = (int) ($topProduct->units ?? 0) > 0
+                ? ((int) $topProduct->units).' unidades movieron '.$this->formatCurrency((float) ($topProduct->revenue ?? 0)).' en los ultimos 30 dias.'
+                : 'Tu catalogo ya muestra una oferta dominante.';
+        }
+    }
+
+    private function loadTopServiceOffer(string $tenantId, Carbon $since): void
+    {
+        $topService = Appointment::query()
+            ->withoutGlobalScopes()
+            ->leftJoin('services', 'services.id', '=', 'appointments.service_id')
+            ->where('appointments.tenant_id', $tenantId)
+            ->where('appointments.created_at', '>=', $since)
+            ->whereNotIn('appointments.status', [Appointment::STATUS_CANCELLED, Appointment::STATUS_NO_SHOW])
+            ->selectRaw('coalesce(services.name, "Servicio") as offer_name, count(*) as units')
+            ->groupBy('offer_name')
+            ->orderByDesc('units')
+            ->first();
+
+        if ($topService !== null && (int) ($topService->units ?? 0) > 0) {
+            $this->topOfferLabel = (string) $topService->offer_name;
+            $this->topOfferCopy = (int) $topService->units.' reservas recientes apuntan a esta oferta como la de mayor traccion.';
         }
     }
 }

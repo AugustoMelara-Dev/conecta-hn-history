@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 return [
+    'email_provider' => env('CUSTOMER_AUTOMATION_EMAIL_PROVIDER', 'mail'),
+
     'defaults' => [
         'manual_follow_up' => [
             'subject' => 'Seguimiento de {business_name}',

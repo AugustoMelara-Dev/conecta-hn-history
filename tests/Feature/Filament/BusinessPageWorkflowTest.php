@@ -370,6 +370,10 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertSee('Ver contactos')
             ->assertSee('Pipeline y conversion')
             ->assertSee('Automatizaciones externas')
+            ->assertSee('Analitica PYME profunda')
+            ->assertSee('Oferta top')
+            ->assertSee('Recurrencia')
+            ->assertSee('Entrega de email')
             ->assertSee('Seguimiento de cotizaciones')
             ->assertSee('Fidelidad para clientes frecuentes')
             ->assertSee('L. 840.00')
@@ -442,7 +446,9 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertSee('WhatsApp de seguimiento clinico')
             ->assertSee('Recordatorio pre-cita')
             ->assertSee('Pacientes para control e higiene')
-            ->assertSee('Agenda lista');
+            ->assertSee('Agenda lista')
+            ->assertSee('Oferta top')
+            ->assertSee('Cobertura de opt-in');
     }
 
     public function test_owner_can_save_business_settings_from_filament_page(): void

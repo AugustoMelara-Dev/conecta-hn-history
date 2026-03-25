@@ -13,6 +13,7 @@ class InboundWebhook extends Model
     use AllowsTrustedTenantAssignment, HasUuids;
 
     protected $fillable = [
+        'tenant_id',
         'provider',
         'event_type',
         'provider_transaction_id',

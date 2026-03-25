@@ -200,3 +200,7 @@ Route::post('/orders', [\App\Http\Controllers\Public\OrderController::class, 'st
 Route::post('/webhooks/payment', [\App\Http\Controllers\Webhook\PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
+Route::post('/webhooks/resend/email', [\App\Http\Controllers\Webhook\ResendWebhookController::class, 'handle'])
+    ->name('webhooks.resend.email')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);

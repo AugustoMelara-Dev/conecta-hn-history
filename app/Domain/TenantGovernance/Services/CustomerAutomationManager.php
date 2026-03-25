@@ -8,10 +8,13 @@ use App\Mail\CustomerLifecycleMail;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
 use App\Models\Tenant;
-use Illuminate\Support\Facades\Mail;
 
 class CustomerAutomationManager
 {
+    public function __construct(
+        private readonly CustomerMessagingGateway $messagingGateway,
+    ) {}
+
     public function sendEmailTouchpoint(
         CustomerProfile $profile,
         string $subject,
@@ -39,6 +42,9 @@ class CustomerAutomationManager
                 'message' => $body,
                 'recipient_address' => $profile->email,
                 'status' => CustomerTouchpoint::STATUS_QUEUED,
+                'provider' => null,
+                'provider_message_id' => null,
+                'delivery_status' => CustomerTouchpoint::DELIVERY_SENT,
                 'opt_in_snapshot' => (bool) $profile->email_opt_in,
                 'metadata' => [
                     'cta_label' => $ctaLabel,
@@ -61,19 +67,32 @@ class CustomerAutomationManager
         }
 
         try {
-            Mail::to($profile->email)->send(new CustomerLifecycleMail($subject, [
+            $mail = new CustomerLifecycleMail($subject, [
                 'tenant_name' => (string) ($profile->tenant?->name ?? 'Conecta HN'),
                 'customer_name' => (string) ($profile->name ?? 'cliente'),
                 'intro' => (string) ($profile->tenant?->name ?? 'Conecta HN'),
                 'body' => $body,
                 'cta_label' => $ctaLabel,
                 'cta_url' => $ctaUrl,
-            ]));
+            ]);
+
+            $dispatch = $this->messagingGateway->sendLifecycleEmail($profile, $mail, [
+                'automation_key' => $automationKey,
+                'touchpoint_id' => (string) $touchpoint->getKey(),
+                'segment' => $this->segmentKey($profile),
+            ]);
 
             $touchpoint->forceFill([
                 'status' => CustomerTouchpoint::STATUS_SENT,
+                'provider' => $dispatch['provider'] ?? null,
+                'provider_message_id' => $dispatch['provider_message_id'] ?: null,
+                'delivery_status' => $dispatch['delivery_status'] ?: CustomerTouchpoint::DELIVERY_SENT,
                 'sent_at' => now(),
                 'last_error' => null,
+                'provider_payload' => $dispatch['payload'] ?? null,
+                'metadata' => array_merge($touchpoint->metadata ?? [], [
+                    'transport' => $dispatch['payload'] ?? [],
+                ]),
             ])->save();
 
             $profile->forceFill([

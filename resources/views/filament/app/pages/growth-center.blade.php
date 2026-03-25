@@ -112,6 +112,80 @@
             </div>
         </div>
 
+        <div class="biz-grid-two">
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div>
+                        <p class="biz-kicker">Analitica PYME profunda</p>
+                        <h2 class="biz-heading">Recurrencia, entregabilidad y oferta top</h2>
+                        <p class="biz-muted">Lee si tu CRM esta llegando, si tus clientes regresan y que oferta esta empujando mas caja.</p>
+                    </div>
+
+                    <div class="biz-metrics">
+                        @foreach ($engagementMetrics as $metric)
+                            <div class="biz-stat">
+                                <p class="biz-stat-label">{{ $metric['label'] }}</p>
+                                <p class="biz-stat-value">{{ $metric['value'] }}</p>
+                                <p class="biz-stat-copy">{{ $metric['copy'] }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="biz-button-row">
+                        <a href="{{ $contactsUrl }}" class="biz-button">Ver entregas</a>
+                        <a href="{{ $customersUrl }}" class="biz-button-secondary">Trabajar clientes</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div>
+                        <p class="biz-kicker">Cadencia comercial</p>
+                        <h2 class="biz-heading">Lo que el CRM esta mostrando hoy</h2>
+                    </div>
+
+                    <div class="biz-list">
+                        <div class="biz-checklist-item">
+                            <div class="biz-checklist-index is-complete">1</div>
+                            <div>
+                                <p class="biz-checklist-title">Oferta que mas tracciona</p>
+                                <p class="biz-checklist-copy">{{ $topOfferLabel }}. {{ $topOfferCopy }}</p>
+                            </div>
+                        </div>
+
+                        <div class="biz-checklist-item">
+                            <div class="biz-checklist-index is-complete">2</div>
+                            <div>
+                                <p class="biz-checklist-title">Clientes VIP detectados</p>
+                                <p class="biz-checklist-copy">{{ $vipCustomersCount }} con valor alto y {{ $dormantCustomersCount }} en ciclo dormido.</p>
+                            </div>
+                        </div>
+
+                        <div class="biz-checklist-item">
+                            <div class="biz-checklist-index {{ $optInCoverageRate >= 50 ? 'is-complete' : 'is-pending' }}">
+                                {{ $optInCoverageRate >= 50 ? 'OK' : '3' }}
+                            </div>
+                            <div>
+                                <p class="biz-checklist-title">Cobertura de opt-in</p>
+                                <p class="biz-checklist-copy">{{ $optInCoverageRate }}% de tu base ya puede recibir email con permiso claro.</p>
+                            </div>
+                        </div>
+
+                        <div class="biz-checklist-item">
+                            <div class="biz-checklist-index {{ $notes7dCount > 0 ? 'is-complete' : 'is-pending' }}">
+                                {{ $notes7dCount > 0 ? 'OK' : '4' }}
+                            </div>
+                            <div>
+                                <p class="biz-checklist-title">Notas recientes del CRM</p>
+                                <p class="biz-checklist-copy">{{ $notes7dCount }} notas creadas en los ultimos 7 dias para no perder contexto comercial.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="biz-card">
             <div class="biz-stack">
                 <div class="biz-split">
@@ -174,8 +248,16 @@
                         </div>
 
                         <div class="biz-checklist-item">
+                            <div class="biz-checklist-index is-complete">3</div>
+                            <div>
+                                <p class="biz-checklist-title">Entrega de email</p>
+                                <p class="biz-checklist-copy">{{ $deliveryRate30d }}% con {{ $touchpointsBounced30d }} rebotes o quejas recientes.</p>
+                            </div>
+                        </div>
+
+                        <div class="biz-checklist-item">
                             <div class="biz-checklist-index {{ $hasWhatsApp ? 'is-complete' : 'is-pending' }}">
-                                {{ $hasWhatsApp ? 'OK' : '3' }}
+                                {{ $hasWhatsApp ? 'OK' : '4' }}
                             </div>
                             <div>
                                 <p class="biz-checklist-title">Canal de WhatsApp</p>

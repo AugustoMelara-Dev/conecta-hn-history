@@ -47,6 +47,19 @@ class TouchpointsRelationManager extends RelationManager
                         CustomerTouchpoint::STATUS_MANUAL => 'Manual',
                         default => 'En cola',
                     }),
+                Tables\Columns\TextColumn::make('delivery_status_label')
+                    ->label('Entrega')
+                    ->badge()
+                    ->color(fn (CustomerTouchpoint $record): string => match ($record->delivery_status) {
+                        CustomerTouchpoint::DELIVERY_DELIVERED => 'success',
+                        CustomerTouchpoint::DELIVERY_OPENED => 'info',
+                        CustomerTouchpoint::DELIVERY_CLICKED => 'primary',
+                        CustomerTouchpoint::DELIVERY_REPLIED => 'success',
+                        CustomerTouchpoint::DELIVERY_BOUNCED,
+                        CustomerTouchpoint::DELIVERY_COMPLAINED => 'danger',
+                        CustomerTouchpoint::DELIVERY_DELAYED => 'warning',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('automation_key')
                     ->label('Playbook')
                     ->formatStateUsing(fn (?string $state): string => filled($state)

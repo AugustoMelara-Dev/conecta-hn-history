@@ -155,6 +155,20 @@ class CustomerTouchpointResource extends Resource
                         CustomerTouchpoint::STATUS_FAILED => 'danger',
                         CustomerTouchpoint::STATUS_MANUAL => 'gray',
                         default => 'info',
+                    })
+                    ->description(fn (CustomerTouchpoint $record): ?string => $record->last_error),
+                Tables\Columns\TextColumn::make('delivery_status_label')
+                    ->label('Entrega')
+                    ->badge()
+                    ->color(fn (CustomerTouchpoint $record): string => match ($record->delivery_status) {
+                        CustomerTouchpoint::DELIVERY_DELIVERED => 'success',
+                        CustomerTouchpoint::DELIVERY_OPENED => 'info',
+                        CustomerTouchpoint::DELIVERY_CLICKED => 'primary',
+                        CustomerTouchpoint::DELIVERY_REPLIED => 'success',
+                        CustomerTouchpoint::DELIVERY_BOUNCED,
+                        CustomerTouchpoint::DELIVERY_COMPLAINED => 'danger',
+                        CustomerTouchpoint::DELIVERY_DELAYED => 'warning',
+                        default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('automation_key')
                     ->label('Playbook')
@@ -169,6 +183,10 @@ class CustomerTouchpointResource extends Resource
                 Tables\Columns\TextColumn::make('author.name')
                     ->label('Responsable')
                     ->default('Sistema')
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('provider')
+                    ->label('Proveedor')
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? strtoupper((string) $state) : 'Interno')
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Registrado')

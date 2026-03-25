@@ -84,6 +84,11 @@ class CustomerProfile extends Model
         return $this->hasMany(CustomerTouchpoint::class)->latest('created_at');
     }
 
+    public function notes(): HasMany
+    {
+        return $this->hasMany(CustomerNote::class)->latest('pinned_at')->latest('created_at');
+    }
+
     public function getSegmentDisplayAttribute(): string
     {
         return $this->manual_segment ?: $this->customer_segment;

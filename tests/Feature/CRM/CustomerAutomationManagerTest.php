@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\CRM;
 
+use App\Domain\TenantGovernance\Services\CustomerMessagingGateway;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Mail\CustomerLifecycleMail;
@@ -107,6 +108,48 @@ final class CustomerAutomationManagerTest extends TestCase
         $this->assertSame(1, CustomerTouchpoint::query()->withoutGlobalScopes()->where('status', CustomerTouchpoint::STATUS_SKIPPED)->count());
 
         Mail::assertSent(CustomerLifecycleMail::class, 1);
+    }
+
+    public function test_gateway_metadata_is_persisted_when_external_provider_returns_message_id(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner('crm-automation-provider');
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Maria Gomez',
+            'email' => 'maria@example.com',
+            'preferred_channel' => 'email',
+            'customer_segment' => 'active',
+            'lifecycle_stage' => 'active',
+            'email_opt_in' => true,
+            'marketing_opt_in' => true,
+            'reactivation_score' => 12,
+        ]);
+
+        $gateway = \Mockery::mock(CustomerMessagingGateway::class);
+        $gateway->shouldReceive('sendLifecycleEmail')
+            ->once()
+            ->andReturn([
+                'provider' => 'resend',
+                'provider_message_id' => 'email_123',
+                'delivery_status' => 'sent',
+                'payload' => ['last_event' => 'sent'],
+            ]);
+
+        $this->app->instance(CustomerMessagingGateway::class, $gateway);
+
+        $touchpoint = app(CustomerAutomationManager::class)->sendEmailTouchpoint(
+            profile: $profile,
+            subject: 'Seguimiento premium',
+            body: 'Queremos ayudarte a cerrar tu siguiente compra.',
+            automationKey: 'manual_follow_up',
+            actorUserId: (string) $user->getKey(),
+        );
+
+        $this->assertSame('resend', $touchpoint->provider);
+        $this->assertSame('email_123', $touchpoint->provider_message_id);
+        $this->assertSame('sent', $touchpoint->delivery_status);
+        $this->assertSame('sent', data_get($touchpoint->provider_payload, 'last_event'));
     }
 
     /**
