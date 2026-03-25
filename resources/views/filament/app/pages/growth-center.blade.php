@@ -37,7 +37,7 @@
                     <div class="biz-stack">
                         <div>
                             <p class="biz-kicker">Palancas inmediatas</p>
-                            <h2 class="biz-heading">CRM, analitica y ejecucion</h2>
+                            <h2 class="biz-heading">CRM, analítica y ejecución</h2>
                             <p class="biz-muted">
                                 Usa este frente para decidir que mover primero, no solo para mirar datos.
                             </p>
@@ -88,7 +88,7 @@
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">{{ $analyticsTitle }}</p>
-                        <h2 class="biz-heading">Clientes, audiencias y retencion</h2>
+                        <h2 class="biz-heading">Clientes, audiencias y retención</h2>
                         <p class="biz-muted">{{ $analyticsCopy }}</p>
                     </div>
 
@@ -134,7 +134,7 @@
                     <div class="biz-button-row">
                         <a href="{{ $contactsUrl }}" class="biz-button">Ver entregas</a>
                         <a href="{{ $customersUrl }}" class="biz-button-secondary">Trabajar clientes</a>
-                        <a href="{{ $campaignsUrl }}" class="biz-button-secondary">Ver campanas</a>
+                        <a href="{{ $campaignsUrl }}" class="biz-button-secondary">Ver campañas</a>
                     </div>
                 </div>
             </div>
@@ -165,14 +165,14 @@
                             </a>
                         @empty
                             <div class="biz-action">
-                                <p class="biz-action-title">Todavia no hay playbooks de cadence configurados</p>
-                                <p class="biz-action-copy">Define una cadencia basica por segmento y recompensa para sostener recompra, reactivacion y upsell.</p>
+                                <p class="biz-action-title">Todavía no hay playbooks de cadence configurados</p>
+                                <p class="biz-action-copy">Define una cadencia básica por segmento y recompensa para sostener recompra, reactivación y upsell.</p>
                             </div>
                         @endforelse
                     </div>
 
                     <div class="biz-button-row">
-                        <a href="{{ $campaignsUrl }}" class="biz-button">Programar campanas</a>
+                        <a href="{{ $campaignsUrl }}" class="biz-button">Programar campañas</a>
                         <a href="{{ $customersUrl }}" class="biz-button-secondary">Ver segmentos</a>
                     </div>
                 </div>
@@ -185,7 +185,7 @@
                     <div>
                         <p class="biz-kicker">Cohortes y LTV</p>
                         <h2 class="biz-heading">Lectura de valor temprano y ritmo de repeticion</h2>
-                        <p class="biz-muted">Esto te dice si las cohortes nuevas se estan activando bien y cuales segmentos o canales dejan mejor valor.</p>
+                        <p class="biz-muted">Esto te dice si las cohortes nuevas se están activando bien y cuáles segmentos o canales dejan mejor valor.</p>
                     </div>
 
                     <div class="biz-badge biz-badge-neutral">
@@ -281,7 +281,7 @@
                             <div>
                                 <p class="biz-checklist-title">Canal de WhatsApp</p>
                                 <p class="biz-checklist-copy">
-                                    {{ $hasWhatsApp ? 'Tu negocio ya tiene un canal rapido para seguimiento y cierre.' : 'Todavia te falta el canal mas directo para convertir visitas en conversaciones.' }}
+                                    {{ $hasWhatsApp ? 'Tu negocio ya tiene un canal rápido para seguimiento y cierre.' : 'Todavía te falta el canal más directo para convertir visitas en conversaciones.' }}
                                 </p>
                             </div>
                         </div>
@@ -315,7 +315,7 @@
                             <div class="biz-action">
                                 <p class="biz-action-title">Tu frente de crecimiento esta ordenado</p>
                                 <p class="biz-action-copy">
-                                    Sigue usando prospectos, playbooks y campanas para no perder el ritmo comercial.
+                                    Sigue usando prospectos, playbooks y campañas para no perder el ritmo comercial.
                                 </p>
                             </div>
                         @endforelse

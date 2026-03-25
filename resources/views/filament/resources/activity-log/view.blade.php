@@ -1,7 +1,7 @@
 <div class="biz-stack">
     <div class="biz-card">
         <div class="biz-stack">
-            <h3 class="biz-heading">Informacion del evento</h3>
+            <h3 class="biz-heading">Información del evento</h3>
 
             <div class="biz-definition-grid">
                 <div>
@@ -34,7 +34,7 @@
 
                 <div class="biz-definition-grid">
                     <div>
-                        <p class="biz-definition-term">Direccion IP</p>
+                        <p class="biz-definition-term">Dirección IP</p>
                         <p class="biz-definition-value biz-table-cell-mono">{{ $record->properties->get('ip') }}</p>
                     </div>
                 </div>
@@ -62,7 +62,7 @@
 
     <div class="biz-card">
         <div class="biz-stack">
-            <h3 class="biz-heading">Descripcion</h3>
+            <h3 class="biz-heading">Descripción</h3>
             <p class="biz-copy">{{ $record->description }}</p>
         </div>
     </div>

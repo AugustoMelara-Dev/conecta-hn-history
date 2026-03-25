@@ -65,17 +65,6 @@ body::-webkit-scrollbar-thumb:hover,
     min-width: 0;
 }
 
-.fi-topbar {
-    border-bottom: 1px solid var(--biz-topbar-border);
-    background: var(--biz-topbar-bg);
-    backdrop-filter: blur(18px);
-}
-
-:where(.fi-sidebar, .fi-main-sidebar) {
-    border-right: 1px solid var(--biz-sidebar-border);
-    background: var(--biz-sidebar-bg);
-}
-
 :where(.fi-ta-table, .fi-section, .fi-dropdown-panel, .fi-modal-window) {
     border-radius: var(--biz-radius-control);
 }
@@ -87,6 +76,6 @@ body::-webkit-scrollbar-thumb:hover,
 
 /*
  * Keep the shared shell intentionally light:
- * Filament controls page spacing, navigation states, and detailed layout.
- * We only own surface tone, shell chrome, and generic media behavior.
+ * Filament owns navigation chrome, spacing, and detailed layout.
+ * We only own global surface tone, scroll behavior, and generic media behavior.
  */
