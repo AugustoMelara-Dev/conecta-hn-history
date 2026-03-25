@@ -9,6 +9,7 @@ use App\Domain\TenantGovernance\Services\CustomerConversationTemplateManager;
 use App\Mail\CustomerLifecycleMail;
 use App\Models\Category;
 use App\Models\City;
+use App\Models\CustomerMessageTemplate;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
@@ -98,6 +99,64 @@ final class CustomerConversationTemplateManagerTest extends TestCase
 
         $this->assertFalse($definition['available']);
         $this->assertStringContainsString('marketing', (string) $definition['warning']);
+    }
+
+    public function test_tenant_template_override_replaces_default_copy_and_can_disable_a_default_template(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner('crm-template-override');
+
+        $tenant->forceFill([
+            'business_segment_key' => 'dental_clinic',
+        ])->save();
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'name' => 'Paola Sierra',
+            'email' => 'paola.override@example.com',
+            'preferred_channel' => 'email',
+            'customer_segment' => 'repeat',
+            'lifecycle_stage' => 'active',
+            'email_opt_in' => true,
+            'marketing_opt_in' => true,
+        ]);
+
+        CustomerMessageTemplate::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'template_key' => 'close_sale',
+            'name' => 'Cierre premium dental',
+            'description' => 'Override interno para pacientes de alto valor.',
+            'channel' => 'email',
+            'customer_segment' => 'repeat',
+            'business_segment_key' => 'dental_clinic',
+            'automation_key' => 'conversation_close_sale',
+            'subject' => 'Tu siguiente tratamiento ya puede quedar reservado',
+            'body' => 'Hola {customer_name}, desde {business_name} podemos dejar tu tratamiento reservado hoy mismo.',
+            'cta_label' => 'Reservar tratamiento',
+            'requires_marketing_opt_in' => false,
+            'is_active' => true,
+            'priority' => 10,
+        ]);
+
+        CustomerMessageTemplate::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'template_key' => 'service_rebook',
+            'name' => 'Sin rebook automatico',
+            'channel' => 'email',
+            'automation_key' => 'conversation_service_rebook',
+            'body' => 'No usar.',
+            'is_active' => false,
+            'priority' => 20,
+        ]);
+
+        $manager = app(CustomerConversationTemplateManager::class);
+        $definition = $manager->templateDefinition($profile, 'close_sale');
+        $playbook = $manager->forConversation($profile);
+
+        $this->assertSame('Cierre premium dental', $definition['label']);
+        $this->assertSame('Tu siguiente tratamiento ya puede quedar reservado', $definition['subject']);
+        $this->assertTrue(collect($playbook['templates'])->contains(fn (array $template): bool => $template['key'] === 'close_sale'));
+        $this->assertFalse(collect($playbook['templates'])->contains(fn (array $template): bool => $template['key'] === 'service_rebook'));
     }
 
     /**

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Models\CustomerMessageTemplate;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
 use App\Models\Tenant;
+use Illuminate\Support\Collection;
 
 class CustomerConversationTemplateManager
 {
@@ -36,7 +38,7 @@ class CustomerConversationTemplateManager
     {
         $segmentKey = (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new');
         $segmentDefinition = (array) config("customer-conversations.segments.{$segmentKey}", []);
-        $templates = collect((array) ($segmentDefinition['templates'] ?? []))
+        $templates = $this->templateKeysForConversation($profile, $segmentKey)
             ->map(fn (mixed $templateKey): array => $this->templateDefinition(
                 $profile,
                 is_string($templateKey) ? $templateKey : 'fast_follow_up',
@@ -123,7 +125,7 @@ class CustomerConversationTemplateManager
     public function templateDefinition(CustomerProfile $profile, string $templateKey, ?CustomerNote $note = null): array
     {
         $tenant = $profile->tenant()->withoutGlobalScopes()->first();
-        $definition = (array) config("customer-conversations.templates.{$templateKey}", []);
+        $definition = $this->resolvedTemplateDefinition($profile, $templateKey);
         $channel = $this->resolveChannel($profile, (string) ($definition['channel'] ?? 'preferred'));
         $replace = [
             '{business_name}' => (string) ($tenant?->name ?? 'Conecta HN'),
@@ -131,6 +133,10 @@ class CustomerConversationTemplateManager
             '{cta_url}' => (string) ($this->defaultCtaUrl($profile, $tenant) ?? ''),
         ];
         $warning = $this->availabilityWarning($profile, $channel, (bool) ($definition['requires_marketing_opt_in'] ?? false));
+
+        if ((bool) ($definition['disabled'] ?? false)) {
+            $warning = 'Esta plantilla esta desactivada para este negocio.';
+        }
 
         if ($warning === null && $note instanceof CustomerNote && $note->status === 'resolved') {
             $warning = 'La conversacion ya esta resuelta. Reabre el caso si quieres seguir el hilo operativo.';
@@ -220,5 +226,147 @@ class CustomerConversationTemplateManager
         }
 
         return route('tenant.microsite.show', ['tenant' => $tenant->slug]);
+    }
+
+    /**
+     * @return Collection<int, string>
+     */
+    private function templateKeysForConversation(CustomerProfile $profile, string $segmentKey): Collection
+    {
+        $segmentDefinition = (array) config("customer-conversations.segments.{$segmentKey}", []);
+        $configKeys = collect((array) ($segmentDefinition['templates'] ?? []))
+            ->filter(static fn (mixed $key): bool => is_string($key) && $key !== '');
+
+        $customTemplates = $this->eligibleCustomTemplates($profile);
+        $disabledKeys = $customTemplates
+            ->where('is_active', false)
+            ->pluck('template_key')
+            ->filter(static fn (mixed $key): bool => is_string($key) && $key !== '');
+        $customKeys = $customTemplates
+            ->where('is_active', true)
+            ->pluck('template_key')
+            ->filter(static fn (mixed $key): bool => is_string($key) && $key !== '');
+
+        return $configKeys
+            ->reject(fn (string $key): bool => $disabledKeys->contains($key))
+            ->concat($customKeys)
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function resolvedTemplateDefinition(CustomerProfile $profile, string $templateKey): array
+    {
+        $definition = (array) config("customer-conversations.templates.{$templateKey}", []);
+        $customTemplate = $this->matchingCustomTemplate($profile, $templateKey);
+
+        if (! $customTemplate instanceof CustomerMessageTemplate) {
+            return $definition;
+        }
+
+        return array_replace($definition, $this->customTemplateDefinition($customTemplate));
+    }
+
+    /**
+     * @return Collection<int, CustomerMessageTemplate>
+     */
+    private function eligibleCustomTemplates(CustomerProfile $profile): Collection
+    {
+        $segmentKey = (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new');
+        $businessSegmentKey = $this->businessSegmentKey($profile);
+
+        return CustomerMessageTemplate::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', (string) $profile->tenant_id)
+            ->where(function ($query) use ($segmentKey): void {
+                $query->whereNull('customer_segment')
+                    ->orWhere('customer_segment', '')
+                    ->orWhere('customer_segment', $segmentKey);
+            })
+            ->where(function ($query) use ($businessSegmentKey): void {
+                $query->whereNull('business_segment_key')
+                    ->orWhere('business_segment_key', '');
+
+                if ($businessSegmentKey !== null) {
+                    $query->orWhere('business_segment_key', $businessSegmentKey);
+                }
+            })
+            ->orderBy('priority')
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function matchingCustomTemplate(CustomerProfile $profile, string $templateKey): ?CustomerMessageTemplate
+    {
+        $segmentKey = (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new');
+        $businessSegmentKey = $this->businessSegmentKey($profile);
+
+        return $this->eligibleCustomTemplates($profile)
+            ->where('template_key', $templateKey)
+            ->sortBy([
+                fn (CustomerMessageTemplate $template): int => $template->customer_segment === $segmentKey ? 0 : 1,
+                fn (CustomerMessageTemplate $template): int => $businessSegmentKey !== null && $template->business_segment_key === $businessSegmentKey ? 0 : 1,
+                fn (CustomerMessageTemplate $template): int => (int) $template->priority,
+                fn (CustomerMessageTemplate $template): string => (string) $template->name,
+            ])
+            ->first();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function customTemplateDefinition(CustomerMessageTemplate $template): array
+    {
+        $definition = [
+            'label' => (string) $template->name,
+            'requires_marketing_opt_in' => (bool) $template->requires_marketing_opt_in,
+            'disabled' => ! $template->is_active,
+        ];
+
+        foreach ([
+            'description',
+            'channel',
+            'automation_key',
+            'subject',
+            'body',
+            'cta_label',
+            'template_name',
+            'template_language',
+        ] as $key) {
+            $value = $template->{$key};
+
+            if (is_string($value) && $value !== '') {
+                $definition[$key] = $value;
+            }
+        }
+
+        if (is_array($template->template_variables) && $template->template_variables !== []) {
+            $definition['template_variables'] = array_values($template->template_variables);
+        }
+
+        if ($template->metadata !== null) {
+            foreach (['daily_limit', 'retry_limit', 'retry_backoff_minutes'] as $governanceKey) {
+                $value = data_get($template->metadata, $governanceKey);
+
+                if ($value !== null) {
+                    $definition[$governanceKey] = (int) $value;
+                }
+            }
+        }
+
+        return $definition;
+    }
+
+    private function businessSegmentKey(CustomerProfile $profile): ?string
+    {
+        $tenant = $profile->tenant()->withoutGlobalScopes()->first();
+
+        if (! $tenant instanceof Tenant) {
+            return null;
+        }
+
+        return filled($tenant->business_segment_key) ? (string) $tenant->business_segment_key : null;
     }
 }
