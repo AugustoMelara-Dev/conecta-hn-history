@@ -7,6 +7,7 @@ namespace App\Filament\App\Resources\CustomerProfileResource\Pages;
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
+use App\Filament\App\Pages\CustomerInbox;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\CustomerTouchpointResource;
 use App\Filament\App\Resources\Pages\ListTenantRecords;
@@ -99,6 +100,16 @@ class ListCustomerProfiles extends ListTenantRecords
 
                     return $tenant instanceof Tenant
                         ? CustomerTouchpointResource::getUrl('index', ['tenant' => $tenant->slug])
+                        : '#';
+                }),
+            Action::make('inbox')
+                ->label('Bandeja')
+                ->icon('heroicon-o-inbox-stack')
+                ->url(function (): string {
+                    $tenant = Filament::getTenant();
+
+                    return $tenant instanceof Tenant
+                        ? CustomerInbox::getUrl(['tenant' => $tenant->slug])
                         : '#';
                 }),
             Action::make('growthCenter')

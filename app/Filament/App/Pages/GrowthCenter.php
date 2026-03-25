@@ -150,6 +150,8 @@ class GrowthCenter extends Page
 
     public int $notes7dCount = 0;
 
+    public int $openRepliesCount = 0;
+
     public int $reactivatedCustomers30d = 0;
 
     public int $loyaltyReadyCustomersCount = 0;
@@ -166,6 +168,8 @@ class GrowthCenter extends Page
 
     public string $topAcquisitionChannel = 'Sin datos';
 
+    public string $topCustomerSegment = 'Sin datos';
+
     public string $growthUrl = '#';
 
     public string $leadsUrl = '#';
@@ -173,6 +177,8 @@ class GrowthCenter extends Page
     public string $customersUrl = '#';
 
     public string $contactsUrl = '#';
+
+    public string $inboxUrl = '#';
 
     public string $marketingUrl = '#';
 
@@ -236,6 +242,7 @@ class GrowthCenter extends Page
         $this->leadsUrl = $this->safeResourceUrl(LeadResource::class, ['tenant' => $tenantSlug]);
         $this->customersUrl = $this->safeResourceUrl(CustomerProfileResource::class, ['tenant' => $tenantSlug]);
         $this->contactsUrl = $this->safeResourceUrl(CustomerTouchpointResource::class, ['tenant' => $tenantSlug]);
+        $this->inboxUrl = $this->safeRoute('filament.app.pages.customer-inbox', ['tenant' => $tenantSlug]);
         $this->marketingUrl = $this->safeRoute('filament.app.pages.manage-marketing', ['tenant' => $tenantSlug]);
         $this->ordersUrl = $this->safeResourceUrl(OrderResource::class, ['tenant' => $tenantSlug]);
         $this->appointmentsUrl = $this->safeResourceUrl(AppointmentResource::class, ['tenant' => $tenantSlug]);
@@ -424,6 +431,16 @@ class GrowthCenter extends Page
             if ($topAcquisition !== null) {
                 $this->topAcquisitionChannel = $this->formatSourceLabel((string) $topAcquisition->channel_key);
             }
+
+            $topSegment = (clone $profilesBase)
+                ->selectRaw('coalesce(manual_segment, customer_segment, "new") as segment_key, count(*) as total')
+                ->groupBy('segment_key')
+                ->orderByDesc('total')
+                ->first();
+
+            if ($topSegment !== null) {
+                $this->topCustomerSegment = ucfirst(str_replace('_', ' ', (string) $topSegment->segment_key));
+            }
         } catch (\Throwable) {
             // CRM can be empty on brand new tenants.
         }
@@ -502,8 +519,15 @@ class GrowthCenter extends Page
                 ->where('tenant_id', $tenantId)
                 ->where('created_at', '>=', now()->subDays(7))
                 ->count();
+            $this->openRepliesCount = CustomerNote::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('requires_follow_up', true)
+                ->whereIn('status', ['open', 'in_progress'])
+                ->count();
         } catch (\Throwable) {
             $this->notes7dCount = 0;
+            $this->openRepliesCount = 0;
         }
 
         try {
@@ -574,6 +598,7 @@ class GrowthCenter extends Page
             $this->metric('Waitlist activa', (string) $this->waitlistCount, $this->waitlistCount > 0 ? 'Hay demanda esperando huecos u oferta.' : 'No hay espera activa en este momento.'),
             $this->metric('Campanas 30 dias', (string) $this->campaignsSent30d, $this->campaignsSent30d > 0 ? 'Ya tienes empuje comercial reciente.' : 'Aun no has activado una campana reciente.'),
             $this->metric('Contactos enviados', (string) $this->touchpoints30d, $this->touchpoints30d > 0 ? 'Tu CRM ya esta ejecutando seguimiento auditable.' : 'Todavia no has movido seguimientos desde el CRM.'),
+            $this->metric('Bandeja abierta', (string) $this->openRepliesCount, $this->openRepliesCount > 0 ? 'Conversaciones esperando respuesta o cierre humano.' : 'No hay replies pendientes en la cola activa.'),
             $this->metric('Reactivar', (string) $this->reactivationPoolCount, $this->reactivationPoolCount > 0 ? 'Clientes con senales para volver a tocar.' : 'La base reciente no muestra fuga grande todavia.'),
             $this->metric('Reactivados 30 dias', (string) $this->reactivatedCustomers30d, $this->reactivatedCustomers30d > 0 ? 'Clientes que ya respondieron a una nueva activacion reciente.' : 'Aun no tienes reactivaciones recientes registradas.'),
             $this->metric('Tier con fidelidad', (string) $this->loyaltyReadyCustomersCount, $this->loyaltyReadyCustomersCount > 0 ? 'Clientes listos para beneficios, bundles o continuidad.' : 'Todavia no hay base suficiente para fidelidad segmentada.'),
@@ -587,6 +612,7 @@ class GrowthCenter extends Page
             $this->metric('LTV inicial', $this->formatCurrency($this->averageInitialLtv), $this->averageInitialLtv > 0 ? 'Promedio del valor capturado en los primeros 30 dias desde la primera conversion.' : 'Aun no hay conversion suficiente para estimar LTV inicial.'),
             $this->metric('Recurrencia', $this->recurrenceRate.'%', $this->repeatCustomerCount > 0 ? "{$this->repeatCustomerCount} clientes ya compraron o reservaron mas de una vez." : 'Todavia no se ve repeticion fuerte en la base.'),
             $this->metric('Canal dominante', $this->topAcquisitionChannel, 'La entrada que mas clientes reales esta trayendo al CRM hoy.'),
+            $this->metric('Segmento dominante', $this->topCustomerSegment, 'El grupo que hoy concentra mas clientes dentro del CRM.'),
             $this->metric('Entrega de email', $this->deliveryRate30d.'%', $this->touchpoints30d > 0 ? "{$this->touchpointsDelivered30d} contactos llegaron a bandeja de entrada." : 'Aun no hay seguimiento suficiente para medir entrega.'),
             $this->metric('Apertura de email', $this->openRate30d.'%', $this->touchpointsOpened30d > 0 ? "{$this->touchpointsOpened30d} contactos ya abrieron tus mensajes." : 'Todavia no hay aperturas registradas por proveedor.'),
             $this->metric('Respuestas por WhatsApp', (string) $this->whatsAppReplies30d, $this->whatsAppTouchpoints30d > 0 ? "{$this->whatsAppReplies30d} conversaciones devolvieron respuesta reciente." : 'Todavia no hay conversaciones de WhatsApp suficientes para medir respuesta.'),
@@ -598,6 +624,7 @@ class GrowthCenter extends Page
         $actions = [
             $this->action('Abrir clientes', 'Trabaja fichas, notas, segmentos y reactivacion desde un CRM unificado.', $this->customersUrl),
             $this->action('Ver contactos', 'Audita correos, seguimientos y entregas del negocio.', $this->contactsUrl),
+            $this->action('Bandeja de respuestas', 'Mueve replies, opt-in y seguimiento humano desde una sola cola.', $this->inboxUrl),
             $this->action('Abrir prospectos', 'Ordena pipeline, fuentes y estado de cierre.', $this->leadsUrl),
             $this->action('Ir a marketing', 'Ajusta CTA, QR, WhatsApp y campanas.', $this->marketingUrl),
             $this->action('Ver centro operativo', 'Convierte automatizaciones en cola con SLA.', $this->operationsUrl),
@@ -642,6 +669,10 @@ class GrowthCenter extends Page
 
         if ($this->touchpoints30d > 0 && $this->deliveryRate30d < 70) {
             $queue[] = $this->priority('Limpia la entregabilidad', 'Tus correos recientes no estan llegando con la fuerza esperada. Ajusta opt-in, copy o reputacion.', $this->contactsUrl, 'warning');
+        }
+
+        if ($this->openRepliesCount > 0) {
+            $queue[] = $this->priority('Responde tu bandeja', 'Hay conversaciones abiertas en CRM que conviene cerrar antes de lanzar mas automatizaciones.', $this->inboxUrl, 'danger');
         }
 
         if ($this->waitlistCount > 0 && $this->businessType === BusinessType::SERVICE->value) {

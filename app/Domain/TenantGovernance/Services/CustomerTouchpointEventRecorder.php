@@ -249,6 +249,10 @@ class CustomerTouchpointEventRecorder
                 'tenant_id' => (string) $touchpoint->tenant_id,
                 'customer_profile_id' => (int) $touchpoint->customer_profile_id,
                 'note_type' => 'inbound_reply',
+                'status' => 'open',
+                'priority' => $channel === 'whatsapp' ? 'high' : 'normal',
+                'source_channel' => $channel,
+                'requires_follow_up' => true,
                 'body' => $message !== '' ? $message : 'Respuesta recibida del cliente.',
                 'metadata' => [
                     'provider' => $provider,
@@ -503,6 +507,11 @@ class CustomerTouchpointEventRecorder
                 'tenant_id' => (string) $touchpoint->tenant_id,
                 'customer_profile_id' => (int) $touchpoint->customer_profile_id,
                 'note_type' => 'opt_in_update',
+                'status' => 'resolved',
+                'priority' => 'low',
+                'source_channel' => 'whatsapp',
+                'requires_follow_up' => false,
+                'handled_at' => now(),
                 'body' => $accepting
                     ? 'El cliente confirmo opt-in por WhatsApp.'
                     : 'El cliente solicito baja de WhatsApp.',

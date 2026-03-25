@@ -6,6 +6,7 @@ namespace Tests\Feature\Filament;
 
 use App\Domain\Identity\Enums\UserRole;
 use App\Filament\App\Pages\GrowthCenter;
+use App\Filament\App\Pages\CustomerInbox;
 use App\Filament\App\Pages\ManageBilling;
 use App\Filament\App\Pages\ManageMarketing;
 use App\Filament\App\Pages\Settings;
@@ -368,6 +369,7 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertSee('CRM y upsell para celulares premium')
             ->assertSee('Abrir clientes')
             ->assertSee('Ver contactos')
+            ->assertSee('Bandeja de respuestas')
             ->assertSee('Pipeline y conversion')
             ->assertSee('Automatizaciones externas')
             ->assertSee('Analitica PYME profunda')
@@ -387,6 +389,10 @@ final class BusinessPageWorkflowTest extends TestCase
         $this->get(CustomerTouchpointResource::getUrl('index', ['tenant' => $tenant->slug]))
             ->assertOk()
             ->assertSee('Historial de contactos');
+
+        $this->get(route('filament.app.pages.customer-inbox', ['tenant' => $tenant->slug], false))
+            ->assertOk()
+            ->assertSee('Bandeja de respuestas');
     }
 
     public function test_growth_center_adapts_to_dental_clinic_playbook(): void

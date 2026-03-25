@@ -6,8 +6,10 @@ namespace App\Filament\App\Resources;
 
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
+use App\Domain\TenantGovernance\Services\CustomerSegmentPlaybook;
 use App\Filament\App\Resources\CustomerProfileResource\Pages;
 use App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
+use App\Filament\App\Pages\CustomerInbox;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
 use App\Models\Tenant;
@@ -257,6 +259,7 @@ class CustomerProfileResource extends Resource
                     ->label('Segmento')
                     ->badge()
                     ->state(fn (CustomerProfile $record): string => $record->segment_display_label)
+                    ->description(fn (CustomerProfile $record): string => app(CustomerSegmentPlaybook::class)->forProfile($record)['next_touch'])
                     ->color(fn (CustomerProfile $record): string => match ($record->segment_display) {
                         'vip' => 'success',
                         'repeat' => 'info',
@@ -283,6 +286,7 @@ class CustomerProfileResource extends Resource
                     ->label('Fidelidad')
                     ->badge()
                     ->state(fn (CustomerProfile $record): string => $record->loyalty_tier_label)
+                    ->description(fn (CustomerProfile $record): string => app(CustomerSegmentPlaybook::class)->forProfile($record)['loyalty_tier_copy'])
                     ->color(fn (CustomerProfile $record): string => match ($record->loyalty_tier) {
                         'vip' => 'success',
                         'gold' => 'warning',
@@ -363,6 +367,9 @@ class CustomerProfileResource extends Resource
                 Tables\Filters\Filter::make('reactivation')
                     ->label('Solo reactivacion')
                     ->query(fn ($query) => $query->where('reactivation_score', '>=', 65)),
+                Tables\Filters\Filter::make('loyalty_ready')
+                    ->label('Listos para fidelidad')
+                    ->query(fn ($query) => $query->whereIn('loyalty_tier', ['silver', 'gold', 'vip'])),
             ])
             ->actions([
                 Action::make('email_follow_up')
@@ -480,6 +487,18 @@ class CustomerProfileResource extends Resource
                     ->icon('heroicon-o-arrow-right'),
             ])
             ->bulkActions([])
+            ->headerActions([
+                Action::make('customerInbox')
+                    ->label('Bandeja de respuestas')
+                    ->icon('heroicon-o-inbox-stack')
+                    ->url(function (): string {
+                        $tenant = static::getTenantRecord();
+
+                        return $tenant instanceof Tenant
+                            ? CustomerInbox::getUrl(['tenant' => $tenant->slug])
+                            : '#';
+                    }),
+            ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => 'CRM',
                 'heading' => 'Todavia no hay clientes consolidados',
