@@ -50,6 +50,16 @@ class NotesRelationManager extends RelationManager
                 Forms\Components\DateTimePicker::make('next_action_at')
                     ->label('Siguiente toque')
                     ->seconds(false),
+                Forms\Components\Select::make('priority')
+                    ->label('Prioridad')
+                    ->options([
+                        'urgent' => 'Urgente',
+                        'high' => 'Alta',
+                        'normal' => 'Normal',
+                        'low' => 'Baja',
+                    ])
+                    ->default('normal')
+                    ->native(false),
                 Forms\Components\Toggle::make('pin_note')
                     ->label('Fijar nota')
                     ->dehydrated(false),
@@ -76,6 +86,19 @@ class NotesRelationManager extends RelationManager
                     ->label('Nota')
                     ->wrap()
                     ->limit(120),
+                Tables\Columns\TextColumn::make('status_label')
+                    ->label('Estado')
+                    ->badge()
+                    ->color(fn (CustomerNote $record): string => match ($record->status) {
+                        'resolved' => 'gray',
+                        'pending_customer' => 'info',
+                        'in_progress' => 'warning',
+                        default => 'danger',
+                    }),
+                Tables\Columns\TextColumn::make('sla_label')
+                    ->label('SLA')
+                    ->badge()
+                    ->color(fn (CustomerNote $record): string => $record->sla_color),
                 Tables\Columns\TextColumn::make('author.name')
                     ->label('Responsable')
                     ->default('Sistema')
@@ -94,6 +117,7 @@ class NotesRelationManager extends RelationManager
                     ->mutateDataUsing(function (array $data): array {
                         $data['tenant_id'] = (string) $this->getOwnerRecord()->tenant_id;
                         $data['created_by_user_id'] = auth()->id();
+                        $data['priority'] = (string) ($data['priority'] ?? 'normal');
                         $data['pinned_at'] = ! empty($data['pin_note']) ? now() : null;
                         unset($data['pin_note']);
 
@@ -106,10 +130,12 @@ class NotesRelationManager extends RelationManager
                         'note_type' => $record->note_type,
                         'body' => $record->body,
                         'next_action_at' => $record->next_action_at,
+                        'priority' => $record->priority,
                         'pin_note' => filled($record->pinned_at),
                     ])
                     ->mutateDataUsing(function (array $data): array {
                         $data['tenant_id'] = (string) $this->getOwnerRecord()->tenant_id;
+                        $data['priority'] = (string) ($data['priority'] ?? 'normal');
                         $data['pinned_at'] = ! empty($data['pin_note']) ? now() : null;
                         unset($data['pin_note']);
 

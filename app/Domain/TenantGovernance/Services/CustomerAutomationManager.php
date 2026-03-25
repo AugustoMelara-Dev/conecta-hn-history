@@ -13,6 +13,7 @@ class CustomerAutomationManager
 {
     public function __construct(
         private readonly CustomerMessagingGateway $messagingGateway,
+        private readonly CustomerConversationOpsManager $conversationOpsManager,
     ) {}
 
     public function sendEmailTouchpoint(
@@ -28,6 +29,11 @@ class CustomerAutomationManager
         $requiresMarketingOptIn = (bool) ($options['requires_marketing_opt_in'] ?? false);
         $ctaLabel = $options['cta_label'] ?? null;
         $ctaUrl = $options['cta_url'] ?? $this->defaultCtaUrl($profile);
+        $campaignId = $options['campaign_id'] ?? null;
+        $campaignSubject = $options['campaign_subject'] ?? null;
+        $rewardName = $options['reward_name'] ?? null;
+        $rewardPointsCost = $options['reward_points_cost'] ?? null;
+        $cadenceIntervalDays = $options['cadence_interval_days'] ?? null;
 
         $touchpoint = CustomerTouchpoint::query()
             ->withoutGlobalScopes()
@@ -51,6 +57,11 @@ class CustomerAutomationManager
                     'cta_url' => $ctaUrl,
                     'requires_marketing_opt_in' => $requiresMarketingOptIn,
                     'segment' => $this->segmentKey($profile),
+                    'campaign_id' => $campaignId,
+                    'campaign_subject' => $campaignSubject,
+                    'reward_name' => $rewardName,
+                    'reward_points_cost' => $rewardPointsCost,
+                    'cadence_interval_days' => $cadenceIntervalDays,
                 ],
             ]);
 
@@ -80,6 +91,11 @@ class CustomerAutomationManager
                 'automation_key' => $automationKey,
                 'touchpoint_id' => (string) $touchpoint->getKey(),
                 'segment' => $this->segmentKey($profile),
+                'campaign_id' => $campaignId,
+                'campaign_subject' => $campaignSubject,
+                'reward_name' => $rewardName,
+                'reward_points_cost' => $rewardPointsCost,
+                'cadence_interval_days' => $cadenceIntervalDays,
             ]);
 
             $touchpoint->forceFill([
@@ -98,6 +114,8 @@ class CustomerAutomationManager
             $profile->forceFill([
                 'last_contacted_at' => now(),
             ])->save();
+
+            $this->conversationOpsManager->markOutboundResponse($profile, $touchpoint, $actorUserId);
         } catch (\Throwable $exception) {
             report($exception);
 
@@ -125,6 +143,12 @@ class CustomerAutomationManager
         $templateLanguage = $options['template_language'] ?? 'es_HN';
         $templateVariables = array_values((array) ($options['template_variables'] ?? []));
         $ctaUrl = $options['cta_url'] ?? $this->defaultCtaUrl($profile);
+        $ctaLabel = $options['cta_label'] ?? null;
+        $campaignId = $options['campaign_id'] ?? null;
+        $campaignSubject = $options['campaign_subject'] ?? null;
+        $rewardName = $options['reward_name'] ?? null;
+        $rewardPointsCost = $options['reward_points_cost'] ?? null;
+        $cadenceIntervalDays = $options['cadence_interval_days'] ?? null;
 
         $touchpoint = CustomerTouchpoint::query()
             ->withoutGlobalScopes()
@@ -150,6 +174,12 @@ class CustomerAutomationManager
                     'template_name' => $templateName,
                     'template_language' => $templateLanguage,
                     'template_variables' => $templateVariables,
+                    'cta_label' => $ctaLabel,
+                    'campaign_id' => $campaignId,
+                    'campaign_subject' => $campaignSubject,
+                    'reward_name' => $rewardName,
+                    'reward_points_cost' => $rewardPointsCost,
+                    'cadence_interval_days' => $cadenceIntervalDays,
                 ],
             ]);
 
@@ -176,6 +206,12 @@ class CustomerAutomationManager
                 'touchpoint_id' => (string) $touchpoint->getKey(),
                 'segment' => $this->segmentKey($profile),
                 'cta_url' => $ctaUrl,
+                'cta_label' => $ctaLabel,
+                'campaign_id' => $campaignId,
+                'campaign_subject' => $campaignSubject,
+                'reward_name' => $rewardName,
+                'reward_points_cost' => $rewardPointsCost,
+                'cadence_interval_days' => $cadenceIntervalDays,
             ]);
 
             $touchpoint->forceFill([
@@ -195,6 +231,8 @@ class CustomerAutomationManager
                 'last_contacted_at' => now(),
                 'last_engaged_channel' => 'whatsapp',
             ])->save();
+
+            $this->conversationOpsManager->markOutboundResponse($profile, $touchpoint, $actorUserId);
         } catch (\Throwable $exception) {
             report($exception);
 
@@ -354,3 +392,4 @@ class CustomerAutomationManager
         return (string) ($tenant->business_segment_key ?: app(BusinessSegmentResolver::class)->resolveForTenant($tenant));
     }
 }
+

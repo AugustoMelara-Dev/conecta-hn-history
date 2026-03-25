@@ -4,9 +4,16 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Application\Marketing\Jobs\DispatchCampaignSegment;
 use App\Domain\Marketing\Enums\AudienceType;
+use App\Domain\TenantGovernance\Services\CustomerCampaignAudienceResolver;
+use App\Domain\TenantGovernance\Services\CustomerLoyaltyManager;
 use App\Models\Campaign;
+use App\Models\Location;
+use App\Models\LoyaltyReward;
 use App\Models\Tenant;
+use App\Models\TenantUser;
+use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -16,10 +23,12 @@ use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class CampaignResource extends Resource
@@ -30,17 +39,27 @@ class CampaignResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'Campañas';
+        return 'Campanas';
     }
 
     public static function getModelLabel(): string
     {
-        return 'Campaña';
+        return 'Campana';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Campañas';
+        return 'Campanas';
+    }
+
+    public static function getTitleCaseModelLabel(): string
+    {
+        return static::getModelLabel();
+    }
+
+    public static function getTitleCasePluralModelLabel(): string
+    {
+        return static::getPluralModelLabel();
     }
 
     public static function getNavigationGroup(): ?string
@@ -66,49 +85,147 @@ class CampaignResource extends Resource
     {
         return $schema
             ->schema([
-                Section::make('Detalles de la campaña')
+                Section::make('Detalles de la campana')
+                    ->description('Disena el mensaje y define si sale por email o por WhatsApp.')
                     ->schema([
-                        Forms\Components\Select::make('audience_type')
-                            ->label('Destinatarios (Audiencia)')
-                            ->options(fn (): array => collect(AudienceType::cases())
-                                ->mapWithKeys(fn (AudienceType $type) => [$type->value => $type->label()])
-                                ->all())
-                            ->required()
-                            ->default(AudienceType::FOLLOWERS->value)
-                            ->helperText('¿A qué segmento deseas enviar esta campaña?'),
-
+                        Grid::make(2)
+                            ->schema([
+                                Forms\Components\Select::make('type')
+                                    ->label('Canal')
+                                    ->options([
+                                        'email' => 'Email',
+                                        'whatsapp' => 'WhatsApp',
+                                    ])
+                                    ->required()
+                                    ->default('email')
+                                    ->native(false),
+                                Forms\Components\Select::make('audience_type')
+                                    ->label('Audiencia base')
+                                    ->options(fn (): array => collect(AudienceType::cases())
+                                        ->mapWithKeys(fn (AudienceType $type) => [$type->value => $type->label()])
+                                        ->all())
+                                    ->required()
+                                    ->default(AudienceType::CRM_CUSTOMERS->value)
+                                    ->native(false),
+                            ]),
                         Forms\Components\TextInput::make('subject')
-                            ->label('Asunto')
+                            ->label('Asunto o nombre interno')
                             ->required()
                             ->maxLength(255)
-                            ->placeholder('Ej: Black Friday! 50% de descuento'),
-
-                        Forms\Components\RichEditor::make('content')
-                            ->label('Contenido')
+                            ->placeholder('Ejemplo: Reactiva clientes VIP de marzo'),
+                        Forms\Components\Textarea::make('content')
+                            ->label('Mensaje')
                             ->required()
-                            ->placeholder('Escribe tu mensaje aquí...')
-                            ->columnSpanFull()
-                            ->toolbarButtons([
-                                'bold',
-                                'italic',
-                                'underline',
-                                'link',
-                                'bulletList',
-                                'orderedList',
+                            ->rows(8)
+                            ->placeholder('Escribe el mensaje principal o el contexto comercial de esta campana.')
+                            ->columnSpanFull(),
+                        Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('whatsapp_template_name')
+                                    ->label('Template de WhatsApp')
+                                    ->placeholder('promo_reactivation_es')
+                                    ->visible(fn ($get): bool => $get('type') === 'whatsapp'),
+                                Forms\Components\TextInput::make('whatsapp_template_language')
+                                    ->label('Idioma template')
+                                    ->default('es_HN')
+                                    ->visible(fn ($get): bool => $get('type') === 'whatsapp'),
                             ]),
                     ]),
-
-                Section::make('Estadisticas')
+                Section::make('Segmentacion CRM')
+                    ->description('Filtra la audiencia por segmento, fidelidad, reward, sede y owner de cartera.')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                Forms\Components\Select::make('customer_segment')
+                                    ->label('Segmento')
+                                    ->options([
+                                        'vip' => 'VIP',
+                                        'repeat' => 'Recurrente',
+                                        'reactivation' => 'Reactivacion',
+                                        'booked_service' => 'Con citas',
+                                        'active' => 'Activo',
+                                        'prospect' => 'Prospecto',
+                                        'new' => 'Nuevo',
+                                    ])
+                                    ->placeholder('Toda la base elegible')
+                                    ->native(false),
+                                Forms\Components\Select::make('loyalty_tier')
+                                    ->label('Tier de fidelidad')
+                                    ->options([
+                                        'vip' => 'VIP',
+                                        'gold' => 'Gold',
+                                        'silver' => 'Silver',
+                                        'base' => 'Base',
+                                    ])
+                                    ->placeholder('Cualquier tier')
+                                    ->native(false),
+                                Forms\Components\Select::make('loyalty_reward_id')
+                                    ->label('Reward destacado')
+                                    ->options(fn (): array => static::rewardOptions())
+                                    ->searchable()
+                                    ->placeholder('Sin reward especial')
+                                    ->helperText('Si eliges uno, la campana puede empujar un canje o una meta clara de puntos.')
+                                    ->native(false),
+                                Forms\Components\Toggle::make('only_redeemable_rewards')
+                                    ->label('Solo clientes listos para canjear')
+                                    ->helperText('Cuando hay reward destacado, usa el costo real del reward para filtrar.'),
+                                Forms\Components\Select::make('location_id')
+                                    ->label('Sede')
+                                    ->options(fn (): array => static::locationOptions())
+                                    ->searchable()
+                                    ->placeholder('Todas las sedes')
+                                    ->native(false),
+                                Forms\Components\Select::make('owner_user_id')
+                                    ->label('Responsable')
+                                    ->options(fn (): array => static::teamOptions())
+                                    ->searchable()
+                                    ->placeholder('Toda la cartera')
+                                    ->native(false),
+                            ]),
+                        Forms\Components\Toggle::make('requires_marketing_opt_in')
+                            ->label('Exigir opt-in marketing')
+                            ->default(true),
+                    ]),
+                Section::make('Cadencia comercial')
+                    ->description('Programa el envio y, si quieres, dejalo corriendo con una cadencia real.')
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                Forms\Components\DateTimePicker::make('scheduled_at')
+                                    ->label('Primer envio')
+                                    ->seconds(false)
+                                    ->helperText('Si queda vacio, la campana se guarda en borrador hasta lanzarla manualmente.'),
+                                Forms\Components\Toggle::make('is_recurring')
+                                    ->label('Cadencia recurrente')
+                                    ->inline(false),
+                                Forms\Components\Select::make('cadence_interval_days')
+                                    ->label('Repeticion')
+                                    ->options([
+                                        1 => 'Diaria',
+                                        3 => 'Cada 3 dias',
+                                        7 => 'Semanal',
+                                        14 => 'Quincenal',
+                                        30 => 'Mensual',
+                                    ])
+                                    ->placeholder('Sin repeticion')
+                                    ->required(fn ($get): bool => (bool) $get('is_recurring'))
+                                    ->visible(fn ($get): bool => (bool) $get('is_recurring'))
+                                    ->native(false),
+                            ]),
+                    ]),
+                Section::make('Despacho')
                     ->schema([
                         Forms\Components\Placeholder::make('recipients_count')
                             ->label('Destinatarios')
-                            ->content(fn (?Campaign $record) => $record ? $record->recipients_count.' personas' : 'Se calculará al enviar'),
-
+                            ->content(fn (?Campaign $record) => $record ? $record->recipients_count.' contactos' : 'Se calculara al enviar'),
                         Forms\Components\Placeholder::make('sent_at')
-                            ->label('Fecha de envío')
-                            ->content(fn (?Campaign $record) => $record && $record->sent_at ? $record->sent_at->format('d/m/Y H:i') : 'Aún no enviada'),
+                            ->label('Ultimo envio')
+                            ->content(fn (?Campaign $record) => $record && $record->sent_at ? $record->sent_at->format('d/m/Y H:i') : 'Aun no enviada'),
+                        Forms\Components\Placeholder::make('next_run_at')
+                            ->label('Proxima corrida')
+                            ->content(fn (?Campaign $record) => $record && $record->next_run_at ? $record->next_run_at->format('d/m/Y H:i') : 'Sin agenda activa'),
                     ])
-                    ->columns(2)
+                    ->columns(3)
                     ->hidden(fn (string $operation) => $operation === 'create'),
             ]);
     }
@@ -118,81 +235,118 @@ class CampaignResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('subject')
-                    ->label('Asunto')
+                    ->label('Campana')
                     ->searchable()
                     ->sortable()
-                    ->limit(50),
-
-                Tables\Columns\TextColumn::make('audience_type')
-                    ->label('Audiencia')
-                    ->formatStateUsing(fn (?AudienceType $state) => $state?->label() ?? 'Seguidores')
+                    ->weight('bold')
+                    ->description(fn (Campaign $record): string => $record->audience_summary),
+                Tables\Columns\TextColumn::make('type')
+                    ->label('Canal')
                     ->badge()
-                    ->color('info')
-                    ->sortable(),
-
+                    ->state(fn (Campaign $record): string => $record->type_label)
+                    ->color(fn (Campaign $record): string => $record->type === 'whatsapp' ? 'success' : 'info'),
+                Tables\Columns\TextColumn::make('cadence_label')
+                    ->label('Cadencia')
+                    ->badge()
+                    ->color(fn (Campaign $record): string => $record->usesCadence() ? 'warning' : ($record->scheduled_at ? 'info' : 'gray')),
+                Tables\Columns\TextColumn::make('loyaltyReward.name')
+                    ->label('Reward')
+                    ->default('Sin reward')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('recipients_count')
                     ->label('Destinatarios')
                     ->badge()
                     ->color('success')
                     ->sortable(),
-
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Estado')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'sending' => 'info',
+                        'queued' => 'warning',
+                        'scheduled' => 'warning',
+                        'failed' => 'danger',
+                        'sent' => 'success',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('sent_at')
-                    ->label('Envío')
+                    ->label('Ultimo envio')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->badge()
-                    ->color(fn ($state) => $state ? 'success' : 'warning')
-                    ->formatStateUsing(fn ($state) => $state ? $state->format('d/m/Y H:i') : 'Pendiente'),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Creada')
-                    ->dateTime('d/m/Y')
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('next_run_at')
+                    ->label('Proxima corrida')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
             ])
             ->defaultSort('created_at', 'desc')
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'draft' => 'Borrador',
+                        'scheduled' => 'Programada',
+                        'queued' => 'En cola',
+                        'sending' => 'Enviando',
+                        'sent' => 'Enviada',
+                        'failed' => 'Fallida',
+                    ]),
+                Tables\Filters\Filter::make('recurring')
+                    ->label('Con cadencia')
+                    ->query(fn ($query) => $query->where('is_recurring', true)),
+                Tables\Filters\Filter::make('reward')
+                    ->label('Con reward')
+                    ->query(fn ($query) => $query->whereNotNull('loyalty_reward_id')),
+            ])
             ->actions([
                 Action::make('send')
-                    ->label('Enviar')
+                    ->label(fn (Campaign $record): string => $record->status === 'scheduled' ? 'Lanzar ahora' : 'Enviar')
                     ->icon('heroicon-o-paper-airplane')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Enviar campaña')
-                    ->modalDescription(fn (Campaign $record) => 'Se enviará esta campaña al segmento seleccionado. ¿Estás seguro?')
-                    ->visible(fn (Campaign $record) => ! $record->sent_at)
+                    ->modalHeading('Despachar campana')
+                    ->modalDescription(fn (Campaign $record) => $record->usesCadence()
+                        ? 'Se lanzara ahora y, como tiene cadencia activa, seguira corriendo con la repeticion configurada.'
+                        : 'Se enviara esta campana a la audiencia filtrada. �Continuamos?')
+                    ->visible(fn (Campaign $record) => $record->status !== 'sending')
                     ->action(function (Campaign $record) {
                         $tenant = self::getTenantRecord();
                         if (! $tenant instanceof Tenant) {
                             return;
                         }
 
-                        $audienceCount = self::calculateAudienceCount($tenant, $record->audience_type);
+                        $audienceCount = self::calculateAudienceCount($tenant, $record);
 
                         if ($audienceCount === 0) {
                             Notification::make()
-                                ->title('Audiencia vacía')
+                                ->title('Audiencia vacia')
                                 ->warning()
-                                ->body('No tienes contactos en este segmento para enviar la campaña.')
+                                ->body('No hay contactos elegibles con estos filtros y opt-in.')
                                 ->send();
 
                             return;
                         }
 
-                        \App\Application\Marketing\Jobs\DispatchCampaignSegment::dispatch($record->id, (string) $tenant->getKey());
-
                         $record->update([
                             'status' => 'queued',
+                            'next_run_at' => $record->usesCadence()
+                                ? (($record->next_run_at instanceof Carbon && $record->next_run_at->isFuture())
+                                    ? $record->next_run_at
+                                    : now()->addDays((int) $record->cadence_interval_days))
+                                : null,
                         ]);
 
+                        DispatchCampaignSegment::dispatch($record->id, (string) $tenant->getKey());
+
                         Notification::make()
-                            ->title('Campaña en cola')
+                            ->title($record->usesCadence() ? 'Cadencia activada' : 'Campana en cola')
                             ->success()
-                            ->body("Se procesará el envío a {$audienceCount} destinatarios en breve.")
+                            ->body($record->usesCadence()
+                                ? "La campana se lanzo ahora y seguira viva para {$audienceCount} destinatarios elegibles."
+                                : "Se procesara el envio a {$audienceCount} destinatarios en breve.")
                             ->send();
                     }),
-
-                EditAction::make()
-                    ->visible(fn (Campaign $record) => ! $record->sent_at),
+                EditAction::make(),
                 DeleteAction::make(),
             ])
             ->bulkActions([
@@ -202,9 +356,9 @@ class CampaignResource extends Resource
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => 'Marketing PRO',
-                'heading' => 'Todavía no has creado campañas',
-                'description' => 'Prepara mensajes para seguidores, prospectos o clientes desde aquí. Cuando guardes la primera campaña, aparecerá en esta tabla.',
-                'buttonLabel' => 'Crear campaña',
+                'heading' => 'Todavia no has creado campanas',
+                'description' => 'Crea campanas por segmento, tier, reward, sede y owner usando la base real de tu CRM.',
+                'buttonLabel' => 'Crear campana',
                 'buttonUrl' => static::getUrl('create'),
             ]));
     }
@@ -218,9 +372,13 @@ class CampaignResource extends Resource
         ];
     }
 
-    private static function calculateAudienceCount(Tenant $tenant, ?AudienceType $audienceType): int
+    private static function calculateAudienceCount(Tenant $tenant, Campaign $campaign): int
     {
-        return match ($audienceType) {
+        if ($campaign->audience_type === AudienceType::CRM_CUSTOMERS) {
+            return app(CustomerCampaignAudienceResolver::class)->countForCampaign($tenant, $campaign);
+        }
+
+        return match ($campaign->audience_type) {
             AudienceType::FOLLOWERS, null => $tenant->followers()->count(),
             AudienceType::LEADS => DB::table('leads')
                 ->where('tenant_id', (string) $tenant->getKey())
@@ -237,6 +395,7 @@ class CampaignResource extends Resource
                 ->whereNotNull('user_id')
                 ->distinct()
                 ->count('user_id'),
+            AudienceType::CRM_CUSTOMERS => 0,
         };
     }
 
@@ -245,5 +404,70 @@ class CampaignResource extends Resource
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function teamOptions(): array
+    {
+        $tenant = self::getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
+        $userIds = TenantUser::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->pluck('user_id')
+            ->push((string) $tenant->user_id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        return User::query()
+            ->withoutGlobalScopes()
+            ->whereIn('id', $userIds->all())
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->map(static fn (mixed $value): string => (string) $value)
+            ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function locationOptions(): array
+    {
+        $tenant = self::getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
+        return Location::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->where('is_active', true)
+            ->orderByDesc('is_primary')
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->map(static fn (mixed $value): string => (string) $value)
+            ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function rewardOptions(): array
+    {
+        $tenant = self::getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
+        return app(CustomerLoyaltyManager::class)->rewardCampaignOptionsForTenant($tenant);
     }
 }

@@ -13,6 +13,10 @@ use Illuminate\Support\Str;
 
 class CustomerTouchpointEventRecorder
 {
+    public function __construct(
+        private readonly CustomerConversationOpsManager $conversationOpsManager,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $payload
      * @param  array<string, string>  $headers
@@ -243,25 +247,16 @@ class CustomerTouchpointEventRecorder
     {
         $message = trim($body);
 
-        CustomerNote::query()
-            ->withoutGlobalScopes()
-            ->create([
-                'tenant_id' => (string) $touchpoint->tenant_id,
-                'customer_profile_id' => (int) $touchpoint->customer_profile_id,
-                'note_type' => 'inbound_reply',
-                'status' => 'open',
-                'priority' => $channel === 'whatsapp' ? 'high' : 'normal',
-                'source_channel' => $channel,
-                'requires_follow_up' => true,
-                'body' => $message !== '' ? $message : 'Respuesta recibida del cliente.',
-                'metadata' => [
-                    'provider' => $provider,
-                    'channel' => $channel,
-                    ...$metadata,
-                ],
-                'pinned_at' => null,
-                'next_action_at' => $occurredAt->copy()->addDay(),
-            ]);
+        $this->conversationOpsManager->recordInboundReply(
+            $touchpoint,
+            $message !== '' ? $message : 'Respuesta recibida del cliente.',
+            $occurredAt,
+            $channel,
+            [
+                'provider' => $provider,
+                ...$metadata,
+            ],
+        );
 
         $touchpoint->customerProfile()
             ->withoutGlobalScopes()

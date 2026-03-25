@@ -119,3 +119,4 @@ Schedule::call(function () {
         dispatch(new \App\Application\Billing\Commands\ReconcilePendingSubscriptionsCommand($tenantId));
     }
 })->hourly()->name('billing:reconcile-pending');
+

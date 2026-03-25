@@ -6,13 +6,18 @@ namespace App\Filament\App\Resources;
 
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
+use App\Domain\TenantGovernance\Services\CustomerLoyaltyManager;
 use App\Domain\TenantGovernance\Services\CustomerSegmentPlaybook;
 use App\Filament\App\Resources\CustomerProfileResource\Pages;
 use App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
 use App\Filament\App\Pages\CustomerInbox;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
+use App\Models\Location;
+use App\Models\LoyaltyReward;
 use App\Models\Tenant;
+use App\Models\TenantUser;
+use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
@@ -178,7 +183,11 @@ class CustomerProfileResource extends Resource
                                     ->disabled()
                                     ->dehydrated(false),
                                 Forms\Components\TextInput::make('loyalty_points_balance')
-                                    ->label('Puntos estimados')
+                                    ->label('Puntos disponibles')
+                                    ->disabled()
+                                    ->dehydrated(false),
+                                Forms\Components\TextInput::make('lifetime_points_earned')
+                                    ->label('Puntos acumulados')
                                     ->disabled()
                                     ->dehydrated(false),
                                 Forms\Components\TextInput::make('initial_ltv')
@@ -187,6 +196,27 @@ class CustomerProfileResource extends Resource
                                     ->disabled()
                                     ->dehydrated(false),
                             ]),
+                        Grid::make(3)
+                            ->schema([
+                                Forms\Components\TextInput::make('redeemable_rewards_count')
+                                    ->label('Canjes listos')
+                                    ->disabled()
+                                    ->dehydrated(false),
+                                Forms\Components\TextInput::make('next_reward_name')
+                                    ->label('Recompensa sugerida')
+                                    ->disabled()
+                                    ->dehydrated(false),
+                                Forms\Components\TextInput::make('points_to_next_reward')
+                                    ->label('Puntos para siguiente')
+                                    ->disabled()
+                                    ->dehydrated(false),
+                            ]),
+                        Forms\Components\Textarea::make('next_reward_copy')
+                            ->label('Lectura de fidelidad')
+                            ->formatStateUsing(fn (CustomerProfile $record): string => $record->next_reward_copy)
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->rows(2),
                     ]),
 
                 Section::make('Operacion comercial')
@@ -220,6 +250,21 @@ class CustomerProfileResource extends Resource
                                 Forms\Components\DateTimePicker::make('last_contacted_at')
                                     ->label('Ultimo contacto')
                                     ->seconds(false),
+                            ]),
+                        Grid::make(2)
+                            ->schema([
+                                Forms\Components\Select::make('assigned_user_id')
+                                    ->label('Owner de cartera')
+                                    ->options(fn (): array => static::teamOptions())
+                                    ->searchable()
+                                    ->placeholder('Sin owner')
+                                    ->native(false),
+                                Forms\Components\Select::make('location_id')
+                                    ->label('Sede')
+                                    ->options(fn (): array => static::locationOptions())
+                                    ->searchable()
+                                    ->placeholder('Sin sede')
+                                    ->native(false),
                             ]),
                         Grid::make(3)
                             ->schema([
@@ -293,6 +338,19 @@ class CustomerProfileResource extends Resource
                         'silver' => 'info',
                         default => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('assignedUser.name')
+                    ->label('Owner')
+                    ->state(fn (CustomerProfile $record): string => $record->assigned_owner_label)
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('location.name')
+                    ->label('Sede')
+                    ->state(fn (CustomerProfile $record): string => $record->location_label)
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('loyalty_points_balance')
+                    ->label('Puntos')
+                    ->badge()
+                    ->description(fn (CustomerProfile $record): string => $record->next_reward_copy)
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('orders_count')
                     ->label('Pedidos')
                     ->badge(),
@@ -364,14 +422,81 @@ class CustomerProfileResource extends Resource
                         'silver' => 'Silver',
                         'base' => 'Base',
                     ]),
+                Tables\Filters\SelectFilter::make('assigned_user_id')
+                    ->label('Owner')
+                    ->options(fn (): array => static::teamOptions()),
+                Tables\Filters\SelectFilter::make('location_id')
+                    ->label('Sede')
+                    ->options(fn (): array => static::locationOptions()),
                 Tables\Filters\Filter::make('reactivation')
                     ->label('Solo reactivacion')
                     ->query(fn ($query) => $query->where('reactivation_score', '>=', 65)),
                 Tables\Filters\Filter::make('loyalty_ready')
                     ->label('Listos para fidelidad')
                     ->query(fn ($query) => $query->whereIn('loyalty_tier', ['silver', 'gold', 'vip'])),
+                Tables\Filters\Filter::make('redeemable')
+                    ->label('Con canje listo')
+                    ->query(fn ($query) => $query->where('redeemable_rewards_count', '>', 0)),
             ])
             ->actions([
+                Action::make('bonus_points')
+                    ->label('Bonificar')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('warning')
+                    ->form([
+                        Forms\Components\TextInput::make('points')
+                            ->label('Puntos')
+                            ->numeric()
+                            ->required()
+                            ->minValue(1),
+                        Forms\Components\Textarea::make('description')
+                            ->label('Motivo')
+                            ->required()
+                            ->rows(3),
+                    ])
+                    ->action(function (CustomerProfile $record, array $data): void {
+                        app(CustomerLoyaltyManager::class)->awardBonus(
+                            profile: $record,
+                            points: (int) $data['points'],
+                            description: (string) $data['description'],
+                            actorUserId: auth()->id(),
+                        );
+
+                        Notification::make()
+                            ->title('Bonificacion aplicada')
+                            ->success()
+                            ->body('El cliente ya tiene puntos nuevos y el CRM lo reflejo en su ficha.')
+                            ->send();
+                    }),
+                Action::make('redeem_reward')
+                    ->label('Canjear')
+                    ->icon('heroicon-o-gift')
+                    ->color('success')
+                    ->visible(fn (CustomerProfile $record): bool => app(CustomerLoyaltyManager::class)->hasRedeemableReward($record))
+                    ->form([
+                        Forms\Components\Select::make('reward_id')
+                            ->label('Recompensa')
+                            ->native(false)
+                            ->required()
+                            ->options(fn (CustomerProfile $record): array => app(CustomerLoyaltyManager::class)->rewardOptionsForProfile($record)),
+                    ])
+                    ->action(function (CustomerProfile $record, array $data): void {
+                        $reward = LoyaltyReward::query()
+                            ->withoutGlobalScopes()
+                            ->findOrFail((int) $data['reward_id']);
+
+                        app(CustomerLoyaltyManager::class)->redeemReward(
+                            profile: $record,
+                            reward: $reward,
+                            actorUserId: auth()->id(),
+                        );
+
+                        Notification::make()
+                            ->title('Canje registrado')
+                            ->success()
+                            ->body('La recompensa y el balance del cliente ya quedaron actualizados.')
+                            ->send();
+                    }),
                 Action::make('email_follow_up')
                     ->label('Email')
                     ->icon('heroicon-o-envelope')
@@ -498,6 +623,16 @@ class CustomerProfileResource extends Resource
                             ? CustomerInbox::getUrl(['tenant' => $tenant->slug])
                             : '#';
                     }),
+                Action::make('campaigns')
+                    ->label('Campañas CRM')
+                    ->icon('heroicon-o-megaphone')
+                    ->url(function (): string {
+                        $tenant = static::getTenantRecord();
+
+                        return $tenant instanceof Tenant
+                            ? CampaignResource::getUrl('index', ['tenant' => $tenant->slug])
+                            : '#';
+                    }),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => 'CRM',
@@ -514,6 +649,7 @@ class CustomerProfileResource extends Resource
             RelationManagers\LeadsRelationManager::class,
             RelationManagers\TouchpointsRelationManager::class,
             RelationManagers\NotesRelationManager::class,
+            RelationManagers\LoyaltyLedgerRelationManager::class,
         ];
     }
 
@@ -531,4 +667,58 @@ class CustomerProfileResource extends Resource
 
         return $tenant instanceof Tenant ? $tenant : null;
     }
+
+    /**
+     * @return array<string, string>
+     */
+    protected static function teamOptions(): array
+    {
+        $tenant = static::getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
+        $userIds = TenantUser::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->pluck('user_id')
+            ->push((string) $tenant->user_id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        return User::query()
+            ->withoutGlobalScopes()
+            ->whereIn('id', $userIds->all())
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->map(static fn (mixed $value): string => (string) $value)
+            ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected static function locationOptions(): array
+    {
+        $tenant = static::getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
+        return Location::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->where('is_active', true)
+            ->orderByDesc('is_primary')
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->map(static fn (mixed $value): string => (string) $value)
+            ->all();
+    }
 }
+
+
+

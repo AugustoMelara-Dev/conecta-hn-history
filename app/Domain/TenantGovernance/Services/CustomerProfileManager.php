@@ -19,6 +19,10 @@ class CustomerProfileManager
     /** @var array<string, LoyaltyProgram|null> */
     private array $loyaltyPrograms = [];
 
+    public function __construct(
+        private readonly CustomerLoyaltyManager $customerLoyaltyManager,
+    ) {}
+
     public function syncTenant(Tenant|string $tenant): void
     {
         $tenantId = $tenant instanceof Tenant ? (string) $tenant->getKey() : (string) $tenant;
@@ -120,6 +124,7 @@ class CustomerProfileManager
         $normalizedPhone = $this->normalizePhone($phone);
         $currentProfileId = $this->normalizeProfileId($source->getAttribute('customer_profile_id'));
         $previousProfileId ??= $currentProfileId;
+        $currentProfile = $this->findProfileById($tenantId, $currentProfileId);
 
         if ($normalizedEmail === null && $normalizedPhone === null) {
             $this->updateSourceLink($source, null);
@@ -132,6 +137,9 @@ class CustomerProfileManager
             tenantId: $tenantId,
             normalizedEmail: $normalizedEmail,
             normalizedPhone: $normalizedPhone,
+            preferredProfile: $this->profileMatchesContact($currentProfile, $normalizedEmail, $normalizedPhone)
+                ? $currentProfile
+                : null,
         );
 
         if (! $profile instanceof CustomerProfile) {
@@ -175,6 +183,7 @@ class CustomerProfileManager
         string $tenantId,
         ?string $normalizedEmail,
         ?string $normalizedPhone,
+        ?CustomerProfile $preferredProfile = null,
     ): ?CustomerProfile {
         $matches = CustomerProfile::query()
             ->withoutGlobalScopes()
@@ -191,6 +200,16 @@ class CustomerProfileManager
             })
             ->orderBy('id')
             ->get();
+
+        if ($preferredProfile instanceof CustomerProfile && ! $matches->contains(
+            fn (CustomerProfile $match): bool => (int) $match->getKey() === (int) $preferredProfile->getKey()
+        )) {
+            $matches->prepend($preferredProfile);
+        }
+
+        $matches = $matches
+            ->unique(fn (CustomerProfile $match): int => (int) $match->getKey())
+            ->values();
 
         if ($matches->isEmpty()) {
             return null;
@@ -249,6 +268,36 @@ class CustomerProfileManager
         return $canonical;
     }
 
+    private function findProfileById(string $tenantId, ?int $profileId): ?CustomerProfile
+    {
+        if (! is_int($profileId) || $profileId <= 0) {
+            return null;
+        }
+
+        $profile = CustomerProfile::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->find($profileId);
+
+        return $profile instanceof CustomerProfile ? $profile : null;
+    }
+
+    private function profileMatchesContact(
+        ?CustomerProfile $profile,
+        ?string $normalizedEmail,
+        ?string $normalizedPhone,
+    ): bool {
+        if (! $profile instanceof CustomerProfile) {
+            return false;
+        }
+
+        $profileEmail = $profile->normalized_email ?? $this->normalizeEmail($profile->email);
+        $profilePhone = $profile->normalized_phone ?? $this->normalizePhone($profile->phone);
+
+        return ($normalizedEmail !== null && $normalizedEmail === $profileEmail)
+            || ($normalizedPhone !== null && $normalizedPhone === $profilePhone);
+    }
+
     private function updateSourceLink(Model $source, ?int $profileId): void
     {
         $currentProfileId = $this->normalizeProfileId($source->getAttribute('customer_profile_id'));
@@ -293,7 +342,7 @@ class CustomerProfileManager
             ->where('tenant_id', $tenantId)
             ->where('customer_profile_id', $profileId)
             ->whereNotIn('status', [Order::STATUS_CANCELLED])
-            ->get(['id', 'customer_name', 'customer_email', 'customer_phone', 'total', 'source', 'created_at']);
+            ->get(['id', 'customer_name', 'customer_email', 'customer_phone', 'total', 'source', 'location_id', 'created_at']);
 
         $appointments = Appointment::query()
             ->withoutGlobalScopes()
@@ -358,10 +407,6 @@ class CustomerProfileManager
         $firstConversionValue = is_object($firstOrder) ? round((float) ($firstOrder->total ?? 0), 2) : 0.0;
         $initialLtv = $this->calculateInitialLtv($orders, $firstOrder);
         $reactivationScore = $this->calculateReactivationScore($lastSeenAt, $ordersCount, $appointmentsCount, $leadsCount, $totalSpent);
-        $loyaltyProgram = $this->resolveLoyaltyProgram($tenantId);
-        $loyaltyPointsBalance = $loyaltyProgram instanceof LoyaltyProgram
-            ? $loyaltyProgram->calculatePoints($totalSpent)
-            : 0;
         $loyaltyTier = $this->resolveLoyaltyTier($ordersCount, $repeatPurchaseCount, $totalSpent);
         $lastReplyTouchpoint = CustomerTouchpoint::query()
             ->withoutGlobalScopes()
@@ -370,6 +415,13 @@ class CustomerProfileManager
             ->whereNotNull('replied_at')
             ->latest('replied_at')
             ->first(['channel', 'replied_at']);
+        $bestLocationId = $orders
+            ->filter(static fn (Order $order): bool => filled($order->location_id))
+            ->sortByDesc('created_at')
+            ->pluck('location_id')
+            ->map(static fn (mixed $value): ?string => filled($value) ? (string) $value : null)
+            ->filter()
+            ->first();
 
         $profile->forceFill([
             'name' => $this->sanitizeText(is_string($bestName) ? $bestName : null),
@@ -378,6 +430,7 @@ class CustomerProfileManager
             'normalized_email' => $bestEmail ?? $profile->normalized_email,
             'normalized_phone' => $this->normalizePhone(is_string($bestPhone) ? $bestPhone : null) ?? $profile->normalized_phone,
             'preferred_channel' => $this->resolvePreferredChannel($profile->preferred_channel, $bestEmail, $this->normalizePhone(is_string($bestPhone) ? $bestPhone : null)),
+            'location_id' => $bestLocationId ?? $profile->location_id,
             'acquisition_channel' => $acquisitionChannel,
             'first_conversion_channel' => $firstConversionChannel,
             'first_conversion_value' => $firstConversionValue,
@@ -385,7 +438,6 @@ class CustomerProfileManager
             'orders_count' => $ordersCount,
             'appointments_count' => $appointmentsCount,
             'repeat_purchase_count' => $repeatPurchaseCount,
-            'loyalty_points_balance' => $loyaltyPointsBalance,
             'loyalty_tier' => $loyaltyTier,
             'leads_count' => $leadsCount,
             'total_spent' => $totalSpent,
@@ -401,6 +453,8 @@ class CustomerProfileManager
             'customer_segment' => $this->resolveCustomerSegment($ordersCount, $appointmentsCount, $leadsCount, $totalSpent, $reactivationScore, $lastSeenAt),
             'reactivation_score' => $reactivationScore,
         ])->save();
+
+        $this->customerLoyaltyManager->syncProfile($profile);
     }
 
     private function deleteIfOrphaned(CustomerProfile $profile): void
@@ -707,3 +761,5 @@ class CustomerProfileManager
         return Carbon::parse($value);
     }
 }
+
+

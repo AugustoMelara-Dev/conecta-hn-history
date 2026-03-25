@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Tests\Feature\CRM;
 
 use App\Domain\Identity\Enums\UserRole;
+use App\Enums\TenantRole;
 use App\Filament\App\Pages\CustomerInbox;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
+use App\Models\Location;
 use App\Models\Tenant;
+use App\Models\TenantUser;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -25,8 +28,34 @@ final class CustomerInboxPageTest extends TestCase
     {
         [$user, $tenant] = $this->makeTenantOwner('crm-inbox-norte');
 
+        $teammate = User::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        TenantUser::query()->withoutGlobalScopes()->forceCreate([
+            'tenant_id' => $tenant->getKey(),
+            'user_id' => $teammate->getKey(),
+            'role' => TenantRole::MANAGER->value,
+        ]);
+
+        $location = Location::query()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Sucursal Norte',
+            'slug' => 'norte',
+            'is_active' => true,
+        ]);
+
+        $secondLocation = Location::query()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Sucursal Sur',
+            'slug' => 'sur',
+            'is_active' => true,
+        ]);
+
         $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
             'tenant_id' => $tenant->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'location_id' => $location->getKey(),
             'name' => 'Ana Castillo',
             'email' => 'ana@example.com',
             'phone' => '9999-1111',
@@ -40,13 +69,16 @@ final class CustomerInboxPageTest extends TestCase
         $note = CustomerNote::query()->withoutGlobalScopes()->create([
             'tenant_id' => $tenant->getKey(),
             'customer_profile_id' => $profile->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'location_id' => $location->getKey(),
             'note_type' => 'inbound_reply',
             'status' => 'open',
             'priority' => 'high',
             'source_channel' => 'whatsapp',
             'requires_follow_up' => true,
-            'body' => 'Quiero agendar mañana por la tarde.',
+            'body' => 'Quiero agendar manana por la tarde.',
             'next_action_at' => now()->addHours(6),
+            'response_due_at' => now()->addHours(2),
         ]);
 
         $this->actingAs($user);
@@ -56,8 +88,25 @@ final class CustomerInboxPageTest extends TestCase
             ->assertOk()
             ->assertSee('Bandeja de respuestas')
             ->assertSee('Ana Castillo')
-            ->assertSee('Quiero agendar mañana por la tarde.')
-            ->assertSee('Recurrente');
+            ->assertSee('Quiero agendar manana por la tarde.')
+            ->assertSee('Recurrente')
+            ->assertSee('Sucursal Norte')
+            ->assertSee($user->name)
+            ->assertSee('Sin owner', false);
+
+        Livewire::test(CustomerInbox::class)
+            ->set('selectedScope', 'mine')
+            ->set('selectedSlaState', 'today')
+            ->call('moveLocation', $note->getKey(), (string) $secondLocation->getKey())
+            ->call('reassignOwner', $note->getKey(), (string) $teammate->getKey());
+
+        $note->refresh();
+
+        $this->assertSame('open', $note->status);
+        $this->assertSame((string) $teammate->getKey(), (string) $note->assigned_user_id);
+        $this->assertSame((string) $secondLocation->getKey(), (string) $note->location_id);
+        $this->assertSame((string) $teammate->getKey(), (string) data_get($note->metadata, 'last_owner_id'));
+        $this->assertSame((string) $secondLocation->getKey(), (string) data_get($note->metadata, 'last_location_id'));
 
         Livewire::test(CustomerInbox::class)
             ->call('take', $note->getKey())
@@ -67,6 +116,8 @@ final class CustomerInboxPageTest extends TestCase
 
         $this->assertSame('resolved', $note->status);
         $this->assertSame((string) $user->getKey(), (string) $note->handled_by_user_id);
+        $this->assertSame((string) $user->getKey(), (string) $note->assigned_user_id);
+        $this->assertSame((string) $secondLocation->getKey(), (string) $note->location_id);
         $this->assertFalse($note->requires_follow_up);
         $this->assertNotNull($note->handled_at);
     }

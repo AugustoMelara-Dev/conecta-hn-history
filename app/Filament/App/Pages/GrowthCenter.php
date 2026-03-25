@@ -156,6 +156,12 @@ class GrowthCenter extends Page
 
     public int $loyaltyReadyCustomersCount = 0;
 
+    public int $redeemableCustomersCount = 0;
+
+    public int $breachedRepliesCount = 0;
+
+    public int $resolvedReplies30d = 0;
+
     public float $recurrenceRate = 0.0;
 
     public float $deliveryRate30d = 0.0;
@@ -165,6 +171,10 @@ class GrowthCenter extends Page
     public float $optInCoverageRate = 0.0;
 
     public float $averageInitialLtv = 0.0;
+
+    public float $averageFirstResponseMinutes = 0.0;
+
+    public float $repeatRevenue30d = 0.0;
 
     public string $topAcquisitionChannel = 'Sin datos';
 
@@ -407,6 +417,25 @@ class GrowthCenter extends Page
             $this->loyaltyReadyCustomersCount = (clone $profilesBase)
                 ->whereIn('loyalty_tier', ['silver', 'gold', 'vip'])
                 ->count();
+            $this->redeemableCustomersCount = (clone $profilesBase)
+                ->where('redeemable_rewards_count', '>', 0)
+                ->count();
+            $this->campaignReadyCustomersCount = (clone $profilesBase)
+                ->where('marketing_opt_in', true)
+                ->where(function ($query): void {
+                    $query->where(function ($email): void {
+                        $email->whereNotNull('email')->where('email_opt_in', true);
+                    })->orWhere(function ($whatsapp): void {
+                        $whatsapp->whereNotNull('phone')->where('whatsapp_opt_in', true);
+                    });
+                })
+                ->count();
+            $this->assignedCustomersCount = (clone $profilesBase)
+                ->whereNotNull('assigned_user_id')
+                ->count();
+            $this->locatedCustomersCount = (clone $profilesBase)
+                ->whereNotNull('location_id')
+                ->count();
             $this->vipCustomersCount = (clone $profilesBase)
                 ->where(function ($query): void {
                     $query->where('manual_segment', 'vip')
@@ -440,6 +469,21 @@ class GrowthCenter extends Page
 
             if ($topSegment !== null) {
                 $this->topCustomerSegment = ucfirst(str_replace('_', ' ', (string) $topSegment->segment_key));
+            }
+
+            $repeatProfileIds = (clone $profilesBase)
+                ->where('repeat_purchase_count', '>', 0)
+                ->pluck('id');
+
+            if ($repeatProfileIds->isNotEmpty()) {
+                $this->repeatRevenue30d = round((float) Order::query()
+                    ->withoutGlobalScopes()
+                    ->without(['items'])
+                    ->where('tenant_id', $tenantId)
+                    ->whereIn('customer_profile_id', $repeatProfileIds->all())
+                    ->where('created_at', '>=', $thirtyDaysAgo)
+                    ->whereNotIn('status', [Order::STATUS_CANCELLED])
+                    ->sum('total'), 2);
             }
         } catch (\Throwable) {
             // CRM can be empty on brand new tenants.
@@ -514,20 +558,44 @@ class GrowthCenter extends Page
         }
 
         try {
-            $this->notes7dCount = CustomerNote::query()
+            $notesBase = CustomerNote::query()
                 ->withoutGlobalScopes()
-                ->where('tenant_id', $tenantId)
+                ->where('tenant_id', $tenantId);
+
+            $this->notes7dCount = (clone $notesBase)
                 ->where('created_at', '>=', now()->subDays(7))
                 ->count();
-            $this->openRepliesCount = CustomerNote::query()
-                ->withoutGlobalScopes()
-                ->where('tenant_id', $tenantId)
+            $this->openRepliesCount = (clone $notesBase)
                 ->where('requires_follow_up', true)
                 ->whereIn('status', ['open', 'in_progress'])
                 ->count();
+            $this->breachedRepliesCount = (clone $notesBase)
+                ->whereIn('status', ['open', 'in_progress'])
+                ->whereNotNull('response_due_at')
+                ->where('response_due_at', '<', now())
+                ->count();
+            $this->resolvedReplies30d = (clone $notesBase)
+                ->where('status', 'resolved')
+                ->where('handled_at', '>=', $thirtyDaysAgo)
+                ->count();
+
+            $respondedNotes = (clone $notesBase)
+                ->whereNotNull('first_response_at')
+                ->whereNotNull('last_customer_message_at')
+                ->where('created_at', '>=', $thirtyDaysAgo)
+                ->get(['first_response_at', 'last_customer_message_at']);
+
+            $this->averageFirstResponseMinutes = round((float) $respondedNotes
+                ->map(function (CustomerNote $note): int {
+                    return max(0, (int) $note->last_customer_message_at?->diffInMinutes($note->first_response_at));
+                })
+                ->avg(), 1);
         } catch (\Throwable) {
             $this->notes7dCount = 0;
             $this->openRepliesCount = 0;
+            $this->breachedRepliesCount = 0;
+            $this->resolvedReplies30d = 0;
+            $this->averageFirstResponseMinutes = 0.0;
         }
 
         try {
@@ -572,6 +640,7 @@ class GrowthCenter extends Page
         $this->revenueMetrics = [
             $this->metric('Ventas 30 dias', $this->formatCurrency($this->grossSales30d), "{$this->orders30d} operaciones registradas en el periodo."),
             $this->metric('Ticket promedio', $this->formatCurrency($this->averageTicket30d), 'Una lectura rapida para ver si estas vendiendo mejor o solo mas.'),
+            $this->metric('Ingreso recurrente', $this->formatCurrency($this->repeatRevenue30d), $this->repeatRevenue30d > 0 ? 'Caja reciente movida por clientes que ya regresaron al menos una vez.' : 'Todavia no hay ingreso recurrente fuerte en el periodo.'),
             $this->metric('Captura de leads', $leadCaptureRate.'%', $this->visits30d > 0 ? "Con {$this->visits30d} visitas unicas recientes." : 'Todavia no hay trafico sincronizado suficiente.'),
             $this->metric('Clientes que vuelven', $this->recurrenceRate.'%', $this->repeatCustomerCount > 0 ? "{$this->repeatCustomerCount} clientes ya repitieron." : 'Aun no tienes recompra identificada.'),
         ];
@@ -599,6 +668,10 @@ class GrowthCenter extends Page
             $this->metric('Campanas 30 dias', (string) $this->campaignsSent30d, $this->campaignsSent30d > 0 ? 'Ya tienes empuje comercial reciente.' : 'Aun no has activado una campana reciente.'),
             $this->metric('Contactos enviados', (string) $this->touchpoints30d, $this->touchpoints30d > 0 ? 'Tu CRM ya esta ejecutando seguimiento auditable.' : 'Todavia no has movido seguimientos desde el CRM.'),
             $this->metric('Bandeja abierta', (string) $this->openRepliesCount, $this->openRepliesCount > 0 ? 'Conversaciones esperando respuesta o cierre humano.' : 'No hay replies pendientes en la cola activa.'),
+            $this->metric('Canjeables hoy', (string) $this->redeemableCustomersCount, $this->redeemableCustomersCount > 0 ? 'Clientes que ya pueden canjear una recompensa visible.' : 'Todavia no hay clientes listos para un canje inmediato.'),
+            $this->metric('Listos para campaña', (string) $this->campaignReadyCustomersCount, $this->campaignReadyCustomersCount > 0 ? 'Base con opt-in y canal util para una campaña segmentada.' : 'Todavia falta base con permiso claro para campañas CRM.'),
+            $this->metric('Con owner', (string) $this->assignedCustomersCount, $this->assignedCustomersCount > 0 ? 'Clientes ya asignados a alguien del equipo para continuidad.' : 'Todavia no has repartido cartera entre el equipo.'),
+            $this->metric('Con sede', (string) $this->locatedCustomersCount, $this->locatedCustomersCount > 0 ? 'Clientes ya conectados a una sucursal o punto de atencion.' : 'Todavia no hay base suficiente etiquetada por sede.'),
             $this->metric('Reactivar', (string) $this->reactivationPoolCount, $this->reactivationPoolCount > 0 ? 'Clientes con senales para volver a tocar.' : 'La base reciente no muestra fuga grande todavia.'),
             $this->metric('Reactivados 30 dias', (string) $this->reactivatedCustomers30d, $this->reactivatedCustomers30d > 0 ? 'Clientes que ya respondieron a una nueva activacion reciente.' : 'Aun no tienes reactivaciones recientes registradas.'),
             $this->metric('Tier con fidelidad', (string) $this->loyaltyReadyCustomersCount, $this->loyaltyReadyCustomersCount > 0 ? 'Clientes listos para beneficios, bundles o continuidad.' : 'Todavia no hay base suficiente para fidelidad segmentada.'),
@@ -613,6 +686,8 @@ class GrowthCenter extends Page
             $this->metric('Recurrencia', $this->recurrenceRate.'%', $this->repeatCustomerCount > 0 ? "{$this->repeatCustomerCount} clientes ya compraron o reservaron mas de una vez." : 'Todavia no se ve repeticion fuerte en la base.'),
             $this->metric('Canal dominante', $this->topAcquisitionChannel, 'La entrada que mas clientes reales esta trayendo al CRM hoy.'),
             $this->metric('Segmento dominante', $this->topCustomerSegment, 'El grupo que hoy concentra mas clientes dentro del CRM.'),
+            $this->metric('Primer respuesta', $this->averageFirstResponseMinutes > 0 ? $this->averageFirstResponseMinutes.' min' : 'Sin datos', $this->averageFirstResponseMinutes > 0 ? 'Tiempo medio entre reply del cliente y primer movimiento del equipo.' : 'Todavia no hay conversaciones respondidas para medir velocidad.'),
+            $this->metric('SLA vencido', (string) $this->breachedRepliesCount, $this->breachedRepliesCount > 0 ? 'Casos de conversacion ya fuera de tiempo comercial.' : 'No hay replies vencidos en este momento.'),
             $this->metric('Entrega de email', $this->deliveryRate30d.'%', $this->touchpoints30d > 0 ? "{$this->touchpointsDelivered30d} contactos llegaron a bandeja de entrada." : 'Aun no hay seguimiento suficiente para medir entrega.'),
             $this->metric('Apertura de email', $this->openRate30d.'%', $this->touchpointsOpened30d > 0 ? "{$this->touchpointsOpened30d} contactos ya abrieron tus mensajes." : 'Todavia no hay aperturas registradas por proveedor.'),
             $this->metric('Respuestas por WhatsApp', (string) $this->whatsAppReplies30d, $this->whatsAppTouchpoints30d > 0 ? "{$this->whatsAppReplies30d} conversaciones devolvieron respuesta reciente." : 'Todavia no hay conversaciones de WhatsApp suficientes para medir respuesta.'),
@@ -640,7 +715,7 @@ class GrowthCenter extends Page
             $actions[] = $this->action('Audiencia y fidelidad', 'Mueve seguidores, loyalty y reactivacion con mas criterio.', $this->hasLoyaltyProgram ? $this->loyaltyUrl : $this->followersUrl);
         }
 
-        $this->growthActions = array_slice($actions, 0, 6);
+        $this->growthActions = array_slice($actions, 0, 7);
     }
 
     private function buildPriorityQueue(): void
@@ -659,8 +734,8 @@ class GrowthCenter extends Page
             $queue[] = $this->priority('Activa fidelidad', 'Ya existe recompra: conviene convertirla en programa y no dejarla al azar.', $this->loyaltyUrl, 'warning');
         }
 
-        if ($this->campaignsSent30d === 0 && $this->isPro && ($this->followersCount > 0 || $this->closedLeadsCount > 0)) {
-            $queue[] = $this->priority('Lanza una campana', 'Tu base ya aguanta un empuje comercial y todavia no lo estas usando.', $this->marketingUrl, 'info');
+        if ($this->campaignsSent30d === 0 && $this->isPro && ($this->followersCount > 0 || $this->closedLeadsCount > 0 || $this->campaignReadyCustomersCount > 0)) {
+            $queue[] = $this->priority('Lanza una campana', $this->campaignReadyCustomersCount > 0 ? 'Tu CRM ya tiene base opt-in lista para una campaña por segmento, owner o sede.' : 'Tu base ya aguanta un empuje comercial y todavia no lo estas usando.', $this->marketingUrl, 'info');
         }
 
         if ($this->overduePlaybooksCount > 0) {
@@ -671,8 +746,14 @@ class GrowthCenter extends Page
             $queue[] = $this->priority('Limpia la entregabilidad', 'Tus correos recientes no estan llegando con la fuerza esperada. Ajusta opt-in, copy o reputacion.', $this->contactsUrl, 'warning');
         }
 
-        if ($this->openRepliesCount > 0) {
+        if ($this->breachedRepliesCount > 0) {
+            $queue[] = $this->priority('Rescata conversaciones vencidas', 'Ya tienes replies fuera de SLA. Conviene responder antes de empujar mas campanas o follow-up.', $this->inboxUrl, 'danger');
+        } elseif ($this->openRepliesCount > 0) {
             $queue[] = $this->priority('Responde tu bandeja', 'Hay conversaciones abiertas en CRM que conviene cerrar antes de lanzar mas automatizaciones.', $this->inboxUrl, 'danger');
+        }
+
+        if ($this->redeemableCustomersCount > 0 && $this->hasLoyaltyProgram) {
+            $queue[] = $this->priority('Activa recompensas listas', 'Ya existen clientes con puntos suficientes para canjear. Esto puede mover recompra y buena experiencia.', $this->customersUrl, 'info');
         }
 
         if ($this->waitlistCount > 0 && $this->businessType === BusinessType::SERVICE->value) {
@@ -983,3 +1064,12 @@ class GrowthCenter extends Page
         }
     }
 }
+
+
+
+
+
+
+
+
+

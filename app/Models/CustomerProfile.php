@@ -15,6 +15,8 @@ class CustomerProfile extends Model
 
     protected $fillable = [
         'tenant_id',
+        'assigned_user_id',
+        'location_id',
         'normalized_email',
         'normalized_phone',
         'name',
@@ -37,7 +39,11 @@ class CustomerProfile extends Model
         'appointments_count',
         'repeat_purchase_count',
         'loyalty_points_balance',
+        'lifetime_points_earned',
         'loyalty_tier',
+        'redeemable_rewards_count',
+        'points_to_next_reward',
+        'next_reward_name',
         'leads_count',
         'total_spent',
         'average_ticket',
@@ -50,6 +56,7 @@ class CustomerProfile extends Model
         'last_engaged_channel',
         'last_reactivated_at',
         'last_inbound_reply_at',
+        'last_loyalty_activity_at',
         'reactivation_score',
     ];
 
@@ -62,6 +69,9 @@ class CustomerProfile extends Model
         'initial_ltv' => 'decimal:2',
         'repeat_purchase_count' => 'integer',
         'loyalty_points_balance' => 'integer',
+        'lifetime_points_earned' => 'integer',
+        'redeemable_rewards_count' => 'integer',
+        'points_to_next_reward' => 'integer',
         'total_spent' => 'decimal:2',
         'average_ticket' => 'decimal:2',
         'first_seen_at' => 'datetime',
@@ -72,12 +82,50 @@ class CustomerProfile extends Model
         'last_contacted_at' => 'datetime',
         'last_reactivated_at' => 'datetime',
         'last_inbound_reply_at' => 'datetime',
+        'last_loyalty_activity_at' => 'datetime',
         'reactivation_score' => 'integer',
     ];
+
+    public function setEmailAttribute(mixed $value): void
+    {
+        $normalized = self::normalizeEmailValue($value);
+
+        $this->attributes['email'] = $normalized;
+        $this->attributes['normalized_email'] = $normalized;
+    }
+
+    public function setNormalizedEmailAttribute(mixed $value): void
+    {
+        $this->attributes['normalized_email'] = self::normalizeEmailValue($value);
+    }
+
+    public function setPhoneAttribute(mixed $value): void
+    {
+        $phone = self::sanitizeTextValue($value);
+        $normalized = self::normalizePhoneValue($value);
+
+        $this->attributes['phone'] = $phone;
+        $this->attributes['normalized_phone'] = $normalized;
+    }
+
+    public function setNormalizedPhoneAttribute(mixed $value): void
+    {
+        $this->attributes['normalized_phone'] = self::normalizePhoneValue($value);
+    }
 
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 
     public function orders(): HasMany
@@ -103,6 +151,11 @@ class CustomerProfile extends Model
     public function notes(): HasMany
     {
         return $this->hasMany(CustomerNote::class)->latest('pinned_at')->latest('created_at');
+    }
+
+    public function loyaltyLedger(): HasMany
+    {
+        return $this->hasMany(CustomerLoyaltyLedger::class)->latest('awarded_at')->latest('created_at');
     }
 
     public function getSegmentDisplayAttribute(): string
@@ -170,6 +223,19 @@ class CustomerProfile extends Model
         };
     }
 
+    public function getNextRewardCopyAttribute(): string
+    {
+        if ($this->next_reward_name === null) {
+            return 'Crea recompensas y usa puntos para mover continuidad, recompra y valor percibido.';
+        }
+
+        if ((int) $this->redeemable_rewards_count > 0) {
+            return 'Ya puede canjear "'.$this->next_reward_name.'".';
+        }
+
+        return 'Le faltan '.max(0, (int) $this->points_to_next_reward).' puntos para desbloquear "'.$this->next_reward_name.'".';
+    }
+
     public function getReactivationLabelAttribute(): string
     {
         $score = (int) $this->reactivation_score;
@@ -181,5 +247,48 @@ class CustomerProfile extends Model
             $score >= 20 => 'Suave',
             default => 'Estable',
         };
+    }
+
+    public function getAssignedOwnerLabelAttribute(): string
+    {
+        return $this->assignedUser?->name ?? 'Sin owner';
+    }
+
+    public function getLocationLabelAttribute(): string
+    {
+        return $this->location?->name ?? 'Sin sede';
+    }
+
+    private static function normalizeEmailValue(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = mb_strtolower(trim($value));
+
+        return $value !== '' ? $value : null;
+    }
+
+    private static function normalizePhoneValue(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $value);
+
+        return is_string($digits) && $digits !== '' ? $digits : null;
+    }
+
+    private static function sanitizeTextValue(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return $value !== '' ? $value : null;
     }
 }

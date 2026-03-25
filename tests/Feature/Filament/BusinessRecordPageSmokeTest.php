@@ -109,7 +109,7 @@ final class BusinessRecordPageSmokeTest extends TestCase
 
         $this->get(route('filament.app.resources.campaigns.edit', ['tenant' => $tenant->slug, 'record' => $campaign], false))
             ->assertOk()
-            ->assertSee('Detalles de la campaña')
+            ->assertSee('Detalles de la campana')
             ->assertSee('Campana QA');
     }
 
@@ -160,3 +160,4 @@ final class BusinessRecordPageSmokeTest extends TestCase
         $this->actingAsTenant((string) $tenant->getKey());
     }
 }
+

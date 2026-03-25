@@ -612,3 +612,4 @@ final class BusinessPageWorkflowTest extends TestCase
         $this->actingAsTenant((string) $tenant->getKey());
     }
 }
+

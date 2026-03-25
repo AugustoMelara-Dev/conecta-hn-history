@@ -66,3 +66,4 @@ final class CampaignCreatePageTest extends TestCase
         return [$user, $tenant];
     }
 }
+
