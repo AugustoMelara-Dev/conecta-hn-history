@@ -134,6 +134,7 @@
                     <div class="biz-button-row">
                         <a href="{{ $contactsUrl }}" class="biz-button">Ver entregas</a>
                         <a href="{{ $customersUrl }}" class="biz-button-secondary">Trabajar clientes</a>
+                        <a href="{{ $campaignsUrl }}" class="biz-button-secondary">Ver campanas</a>
                     </div>
                 </div>
             </div>
@@ -142,46 +143,64 @@
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">Cadencia comercial</p>
-                        <h2 class="biz-heading">Lo que el CRM esta mostrando hoy</h2>
+                        <h2 class="biz-heading">Playbooks recomendados por tu vertical</h2>
                     </div>
 
-                    <div class="biz-list">
-                        <div class="biz-checklist-item">
-                            <div class="biz-checklist-index is-complete">1</div>
-                            <div>
-                                <p class="biz-checklist-title">Oferta que mas tracciona</p>
-                                <p class="biz-checklist-copy">{{ $topOfferLabel }}. {{ $topOfferCopy }}</p>
-                            </div>
-                        </div>
+                    <div class="biz-actions">
+                        @forelse ($cadencePlaybooks as $playbook)
+                            <a href="{{ $playbook['href'] }}" class="biz-action">
+                                <div class="biz-split">
+                                    <div>
+                                        <p class="biz-kicker">{{ $playbook['channel'] }}</p>
+                                        <p class="biz-action-title">{{ $playbook['title'] }}</p>
+                                    </div>
 
-                        <div class="biz-checklist-item">
-                            <div class="biz-checklist-index is-complete">2</div>
-                            <div>
-                                <p class="biz-checklist-title">Clientes VIP detectados</p>
-                                <p class="biz-checklist-copy">{{ $vipCustomersCount }} con valor alto y {{ $dormantCustomersCount }} en ciclo dormido.</p>
-                            </div>
-                        </div>
+                                    <x-filament::badge color="{{ $playbook['statusColor'] }}">
+                                        {{ $playbook['statusLabel'] }}
+                                    </x-filament::badge>
+                                </div>
 
-                        <div class="biz-checklist-item">
-                            <div class="biz-checklist-index {{ $optInCoverageRate >= 50 ? 'is-complete' : 'is-pending' }}">
-                                {{ $optInCoverageRate >= 50 ? 'OK' : '3' }}
+                                <p class="biz-action-copy">{{ $playbook['copy'] }}</p>
+                                <p class="biz-muted">Cadencia: {{ $playbook['cadence'] }} / Disparo: {{ $playbook['trigger'] }}</p>
+                            </a>
+                        @empty
+                            <div class="biz-action">
+                                <p class="biz-action-title">Todavia no hay playbooks de cadence configurados</p>
+                                <p class="biz-action-copy">Define una cadencia basica por segmento y recompensa para sostener recompra, reactivacion y upsell.</p>
                             </div>
-                            <div>
-                                <p class="biz-checklist-title">Cobertura de opt-in</p>
-                                <p class="biz-checklist-copy">{{ $optInCoverageRate }}% de tu base ya puede recibir email con permiso claro.</p>
-                            </div>
-                        </div>
-
-                        <div class="biz-checklist-item">
-                            <div class="biz-checklist-index {{ $notes7dCount > 0 ? 'is-complete' : 'is-pending' }}">
-                                {{ $notes7dCount > 0 ? 'OK' : '4' }}
-                            </div>
-                            <div>
-                                <p class="biz-checklist-title">Notas recientes del CRM</p>
-                                <p class="biz-checklist-copy">{{ $notes7dCount }} notas creadas en los ultimos 7 dias para no perder contexto comercial.</p>
-                            </div>
-                        </div>
+                        @endforelse
                     </div>
+
+                    <div class="biz-button-row">
+                        <a href="{{ $campaignsUrl }}" class="biz-button">Programar campanas</a>
+                        <a href="{{ $customersUrl }}" class="biz-button-secondary">Ver segmentos</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="biz-card">
+            <div class="biz-stack">
+                <div class="biz-split">
+                    <div>
+                        <p class="biz-kicker">Cohortes y LTV</p>
+                        <h2 class="biz-heading">Lectura de valor temprano y ritmo de repeticion</h2>
+                        <p class="biz-muted">Esto te dice si las cohortes nuevas se estan activando bien y cuales segmentos o canales dejan mejor valor.</p>
+                    </div>
+
+                    <div class="biz-badge biz-badge-neutral">
+                        <span>{{ $topLtvSegment }} / {{ $topLtvChannel }}</span>
+                    </div>
+                </div>
+
+                <div class="biz-metrics">
+                    @foreach ($cohortMetrics as $metric)
+                        <div class="biz-stat">
+                            <p class="biz-stat-label">{{ $metric['label'] }}</p>
+                            <p class="biz-stat-value">{{ $metric['value'] }}</p>
+                            <p class="biz-stat-copy">{{ $metric['copy'] }}</p>
+                        </div>
+                    @endforeach
                 </div>
             </div>
         </div>

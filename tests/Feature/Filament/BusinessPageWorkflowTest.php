@@ -368,14 +368,18 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertSee('Centro de crecimiento')
             ->assertSee('CRM y upsell para celulares premium')
             ->assertSee('Abrir clientes')
+            ->assertSee('Abrir campanas')
             ->assertSee('Ver contactos')
             ->assertSee('Bandeja de respuestas')
             ->assertSee('Pipeline y conversion')
             ->assertSee('Automatizaciones externas')
             ->assertSee('Analitica PYME profunda')
+            ->assertSee('Cohortes y LTV')
             ->assertSee('Oferta top')
             ->assertSee('Recurrencia')
             ->assertSee('Entrega de email')
+            ->assertSee('Bundle flagship')
+            ->assertSee('Posventa premium')
             ->assertSee('Seguimiento de cotizaciones')
             ->assertSee('Fidelidad para clientes frecuentes')
             ->assertSee('L. 840.00')
@@ -452,9 +456,11 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertSee('WhatsApp de seguimiento clinico')
             ->assertSee('Recordatorio pre-cita')
             ->assertSee('Pacientes para control e higiene')
+            ->assertSee('Controles e higiene')
+            ->assertSee('Valoracion a tratamiento')
             ->assertSee('Agenda lista')
-            ->assertSee('Oferta top')
-            ->assertSee('Cobertura de opt-in');
+            ->assertSee('Cohortes y LTV')
+            ->assertSee('Canjes 30 dias');
     }
 
     public function test_owner_can_save_business_settings_from_filament_page(): void

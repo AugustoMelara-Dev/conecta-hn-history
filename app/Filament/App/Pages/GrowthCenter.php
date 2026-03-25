@@ -9,6 +9,7 @@ use App\Domain\TenantGovernance\Services\BusinessGrowthBlueprint;
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
 use App\Filament\App\Resources\AppointmentResource;
+use App\Filament\App\Resources\CampaignResource;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\CustomerTouchpointResource;
 use App\Filament\App\Resources\CouponResource;
@@ -19,6 +20,7 @@ use App\Filament\App\Resources\OperationalPlaybookTaskResource;
 use App\Filament\App\Resources\OrderResource;
 use App\Models\Appointment;
 use App\Models\Campaign;
+use App\Models\CustomerLoyaltyLedger;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
@@ -180,6 +182,28 @@ class GrowthCenter extends Page
 
     public string $topCustomerSegment = 'Sin datos';
 
+    public string $topLtvSegment = 'Sin datos';
+
+    public string $topLtvChannel = 'Sin datos';
+
+    public string $topLoyaltyChannel = 'Sin datos';
+
+    public int $scheduledCampaignsCount = 0;
+
+    public int $recurringCampaignsCount = 0;
+
+    public int $rewardCampaignsCount = 0;
+
+    public int $loyaltyRedeems30d = 0;
+
+    public int $currentCohortCustomersCount = 0;
+
+    public int $previousCohortCustomersCount = 0;
+
+    public float $cohortRepeatRate = 0.0;
+
+    public float $cohortLtv = 0.0;
+
     public string $growthUrl = '#';
 
     public string $leadsUrl = '#';
@@ -191,6 +215,8 @@ class GrowthCenter extends Page
     public string $inboxUrl = '#';
 
     public string $marketingUrl = '#';
+
+    public string $campaignsUrl = '#';
 
     public string $ordersUrl = '#';
 
@@ -216,6 +242,9 @@ class GrowthCenter extends Page
     /** @var list<array{label: string, value: string, copy: string}> */
     public array $engagementMetrics = [];
 
+    /** @var list<array{label: string, value: string, copy: string}> */
+    public array $cohortMetrics = [];
+
     /** @var list<array{title: string, copy: string, href: string}> */
     public array $growthActions = [];
 
@@ -224,6 +253,9 @@ class GrowthCenter extends Page
 
     /** @var list<array{eyebrow: string, title: string, copy: string, trigger: string, channel: string, href: string, ready: bool, statusLabel: string, statusColor: string}> */
     public array $automationJourneys = [];
+
+    /** @var list<array{title: string, cadence: string, trigger: string, channel: string, copy: string, href: string, ready: bool, statusLabel: string, statusColor: string}> */
+    public array $cadencePlaybooks = [];
 
     /** @var array<string, mixed> */
     private array $growthProfile = [];
@@ -254,6 +286,7 @@ class GrowthCenter extends Page
         $this->contactsUrl = $this->safeResourceUrl(CustomerTouchpointResource::class, ['tenant' => $tenantSlug]);
         $this->inboxUrl = $this->safeRoute('filament.app.pages.customer-inbox', ['tenant' => $tenantSlug]);
         $this->marketingUrl = $this->safeRoute('filament.app.pages.manage-marketing', ['tenant' => $tenantSlug]);
+        $this->campaignsUrl = $this->safeResourceUrl(CampaignResource::class, ['tenant' => $tenantSlug]);
         $this->ordersUrl = $this->safeResourceUrl(OrderResource::class, ['tenant' => $tenantSlug]);
         $this->appointmentsUrl = $this->safeResourceUrl(AppointmentResource::class, ['tenant' => $tenantSlug]);
         $this->followersUrl = $this->safeResourceUrl(FollowerResource::class, ['tenant' => $tenantSlug]);
@@ -281,9 +314,11 @@ class GrowthCenter extends Page
         $this->buildPipelineMetrics();
         $this->buildCustomerSignals();
         $this->buildEngagementMetrics();
+        $this->buildCohortMetrics();
         $this->buildGrowthActions();
         $this->buildPriorityQueue();
         $this->buildAutomationJourneys();
+        $this->buildCadencePlaybooks();
     }
 
     private function loadSignals(Tenant $tenant): void
@@ -485,6 +520,47 @@ class GrowthCenter extends Page
                     ->whereNotIn('status', [Order::STATUS_CANCELLED])
                     ->sum('total'), 2);
             }
+
+            $currentCohortStart = now()->startOfMonth();
+            $previousCohortStart = now()->copy()->subMonthNoOverflow()->startOfMonth();
+            $previousCohortEnd = $currentCohortStart->copy()->subSecond();
+
+            $currentCohortBase = (clone $profilesBase)
+                ->whereNotNull('first_seen_at')
+                ->where('first_seen_at', '>=', $currentCohortStart);
+
+            $previousCohortBase = (clone $profilesBase)
+                ->whereNotNull('first_seen_at')
+                ->whereBetween('first_seen_at', [$previousCohortStart, $previousCohortEnd]);
+
+            $this->currentCohortCustomersCount = (clone $currentCohortBase)->count();
+            $this->previousCohortCustomersCount = (clone $previousCohortBase)->count();
+            $this->cohortRepeatRate = $this->currentCohortCustomersCount > 0
+                ? round(((clone $currentCohortBase)->where('repeat_purchase_count', '>', 0)->count() / $this->currentCohortCustomersCount) * 100, 1)
+                : 0.0;
+            $this->cohortLtv = round((float) ((clone $currentCohortBase)->avg('total_spent') ?: 0), 2);
+
+            $topLtvSegment = (clone $profilesBase)
+                ->selectRaw('coalesce(manual_segment, customer_segment, "new") as segment_key, avg(total_spent) as avg_ltv')
+                ->where('total_spent', '>', 0)
+                ->groupBy('segment_key')
+                ->orderByDesc('avg_ltv')
+                ->first();
+
+            if ($topLtvSegment !== null) {
+                $this->topLtvSegment = ucfirst(str_replace('_', ' ', (string) $topLtvSegment->segment_key));
+            }
+
+            $topLtvChannel = (clone $profilesBase)
+                ->selectRaw('coalesce(first_conversion_channel, acquisition_channel, "manual") as channel_key, avg(total_spent) as avg_ltv')
+                ->where('total_spent', '>', 0)
+                ->groupBy('channel_key')
+                ->orderByDesc('avg_ltv')
+                ->first();
+
+            if ($topLtvChannel !== null) {
+                $this->topLtvChannel = $this->formatSourceLabel((string) $topLtvChannel->channel_key);
+            }
         } catch (\Throwable) {
             // CRM can be empty on brand new tenants.
         }
@@ -510,6 +586,22 @@ class GrowthCenter extends Page
                 ->where('tenant_id', $tenantId)
                 ->whereNotNull('sent_at')
                 ->where('sent_at', '>=', $thirtyDaysAgo)
+                ->count();
+            $this->scheduledCampaignsCount = Campaign::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereNotNull('scheduled_at')
+                ->whereIn('status', ['draft', 'scheduled', 'queued', 'sending'])
+                ->count();
+            $this->recurringCampaignsCount = Campaign::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('is_recurring', true)
+                ->count();
+            $this->rewardCampaignsCount = Campaign::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereNotNull('loyalty_reward_id')
                 ->count();
         } catch (\Throwable) {
             // Campaigns are optional for free tenants.
@@ -604,6 +696,26 @@ class GrowthCenter extends Page
                 ->where('tenant_id', $tenantId)
                 ->where('is_active', true)
                 ->exists();
+
+            $this->loyaltyRedeems30d = CustomerLoyaltyLedger::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('type', CustomerLoyaltyLedger::TYPE_REDEEM)
+                ->where('awarded_at', '>=', $thirtyDaysAgo)
+                ->count();
+
+            $topLoyaltyChannel = CustomerProfile::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('lifetime_points_earned', '>', 0)
+                ->selectRaw('coalesce(last_engaged_channel, preferred_channel, acquisition_channel, "manual") as channel_key, count(*) as total')
+                ->groupBy('channel_key')
+                ->orderByDesc('total')
+                ->first();
+
+            if ($topLoyaltyChannel !== null) {
+                $this->topLoyaltyChannel = $this->formatSourceLabel((string) $topLoyaltyChannel->channel_key);
+            }
         } catch (\Throwable) {
             $this->hasLoyaltyProgram = false;
         }
@@ -669,7 +781,7 @@ class GrowthCenter extends Page
             $this->metric('Contactos enviados', (string) $this->touchpoints30d, $this->touchpoints30d > 0 ? 'Tu CRM ya esta ejecutando seguimiento auditable.' : 'Todavia no has movido seguimientos desde el CRM.'),
             $this->metric('Bandeja abierta', (string) $this->openRepliesCount, $this->openRepliesCount > 0 ? 'Conversaciones esperando respuesta o cierre humano.' : 'No hay replies pendientes en la cola activa.'),
             $this->metric('Canjeables hoy', (string) $this->redeemableCustomersCount, $this->redeemableCustomersCount > 0 ? 'Clientes que ya pueden canjear una recompensa visible.' : 'Todavia no hay clientes listos para un canje inmediato.'),
-            $this->metric('Listos para campa�a', (string) $this->campaignReadyCustomersCount, $this->campaignReadyCustomersCount > 0 ? 'Base con opt-in y canal util para una campa�a segmentada.' : 'Todavia falta base con permiso claro para campa�as CRM.'),
+            $this->metric('Listos para campaña', (string) $this->campaignReadyCustomersCount, $this->campaignReadyCustomersCount > 0 ? 'Base con opt-in y canal util para una campaña segmentada.' : 'Todavia falta base con permiso claro para campañas CRM.'),
             $this->metric('Con owner', (string) $this->assignedCustomersCount, $this->assignedCustomersCount > 0 ? 'Clientes ya asignados a alguien del equipo para continuidad.' : 'Todavia no has repartido cartera entre el equipo.'),
             $this->metric('Con sede', (string) $this->locatedCustomersCount, $this->locatedCustomersCount > 0 ? 'Clientes ya conectados a una sucursal o punto de atencion.' : 'Todavia no hay base suficiente etiquetada por sede.'),
             $this->metric('Reactivar', (string) $this->reactivationPoolCount, $this->reactivationPoolCount > 0 ? 'Clientes con senales para volver a tocar.' : 'La base reciente no muestra fuga grande todavia.'),
@@ -686,6 +798,8 @@ class GrowthCenter extends Page
             $this->metric('Recurrencia', $this->recurrenceRate.'%', $this->repeatCustomerCount > 0 ? "{$this->repeatCustomerCount} clientes ya compraron o reservaron mas de una vez." : 'Todavia no se ve repeticion fuerte en la base.'),
             $this->metric('Canal dominante', $this->topAcquisitionChannel, 'La entrada que mas clientes reales esta trayendo al CRM hoy.'),
             $this->metric('Segmento dominante', $this->topCustomerSegment, 'El grupo que hoy concentra mas clientes dentro del CRM.'),
+            $this->metric('Segmento con mejor LTV', $this->topLtvSegment, 'El cluster que hoy deja mas valor acumulado por cliente.'),
+            $this->metric('Canal con mejor LTV', $this->topLtvChannel, 'La entrada que esta trayendo clientes con mejor vida util.'),
             $this->metric('Primer respuesta', $this->averageFirstResponseMinutes > 0 ? $this->averageFirstResponseMinutes.' min' : 'Sin datos', $this->averageFirstResponseMinutes > 0 ? 'Tiempo medio entre reply del cliente y primer movimiento del equipo.' : 'Todavia no hay conversaciones respondidas para medir velocidad.'),
             $this->metric('SLA vencido', (string) $this->breachedRepliesCount, $this->breachedRepliesCount > 0 ? 'Casos de conversacion ya fuera de tiempo comercial.' : 'No hay replies vencidos en este momento.'),
             $this->metric('Entrega de email', $this->deliveryRate30d.'%', $this->touchpoints30d > 0 ? "{$this->touchpointsDelivered30d} contactos llegaron a bandeja de entrada." : 'Aun no hay seguimiento suficiente para medir entrega.'),
@@ -694,11 +808,26 @@ class GrowthCenter extends Page
         ];
     }
 
+    private function buildCohortMetrics(): void
+    {
+        $this->cohortMetrics = [
+            $this->metric('Cohorte actual', (string) $this->currentCohortCustomersCount, $this->currentCohortCustomersCount > 0 ? 'Clientes captados en el mes actual que ya entraron al CRM.' : 'Todavia no hay clientes nuevos en la cohorte del mes.'),
+            $this->metric('Cohorte previa', (string) $this->previousCohortCustomersCount, $this->previousCohortCustomersCount > 0 ? 'Base del mes anterior para comparar velocidad de activacion.' : 'Aun no hay cohorte previa suficiente para comparar.'),
+            $this->metric('Repeat rate cohorte', $this->cohortRepeatRate.'%', $this->currentCohortCustomersCount > 0 ? 'Mide cuantos clientes del mes actual ya dieron una segunda compra o cita.' : 'Necesitas clientes nuevos para medir repeticion temprana.'),
+            $this->metric('LTV cohorte actual', $this->formatCurrency($this->cohortLtv), $this->cohortLtv > 0 ? 'Valor medio acumulado que ya deja la cohorte del mes.' : 'Aun no hay gasto suficiente en la cohorte actual.'),
+            $this->metric('Canal loyalty dominante', $this->topLoyaltyChannel, $this->hasLoyaltyProgram ? 'Canal que mas sostiene interaccion en clientes con fidelidad activa.' : 'Activa fidelidad para detectar el canal que mejor sostiene continuidad.'),
+            $this->metric('Canjes 30 dias', (string) $this->loyaltyRedeems30d, $this->loyaltyRedeems30d > 0 ? 'Clientes que ya canjearon beneficios en el periodo reciente.' : 'Todavia no hay canjes recientes conectados a tus campañas.'),
+            $this->metric('Campanas programadas', (string) $this->scheduledCampaignsCount, $this->scheduledCampaignsCount > 0 ? 'Ya tienes empujes preparados para sostener la cadencia comercial.' : 'Todavia no hay envios agendados saliendo solos.'),
+            $this->metric('Cadencias activas', (string) $this->recurringCampaignsCount, $this->recurringCampaignsCount > 0 ? 'Campanas que siguen operando con repeticion configurada.' : 'Todavia no has encendido campanas recurrentes por segmento.'),
+        ];
+    }
+
     private function buildGrowthActions(): void
     {
         $actions = [
             $this->action('Abrir clientes', 'Trabaja fichas, notas, segmentos y reactivacion desde un CRM unificado.', $this->customersUrl),
             $this->action('Ver contactos', 'Audita correos, seguimientos y entregas del negocio.', $this->contactsUrl),
+            $this->action('Abrir campanas', 'Programa cadencias por segmento, owner, sede y reward desde el CRM.', $this->campaignsUrl),
             $this->action('Bandeja de respuestas', 'Mueve replies, opt-in y seguimiento humano desde una sola cola.', $this->inboxUrl),
             $this->action('Abrir prospectos', 'Ordena pipeline, fuentes y estado de cierre.', $this->leadsUrl),
             $this->action('Ir a marketing', 'Ajusta CTA, QR, WhatsApp y campanas.', $this->marketingUrl),
@@ -735,7 +864,15 @@ class GrowthCenter extends Page
         }
 
         if ($this->campaignsSent30d === 0 && $this->isPro && ($this->followersCount > 0 || $this->closedLeadsCount > 0 || $this->campaignReadyCustomersCount > 0)) {
-            $queue[] = $this->priority('Lanza una campana', $this->campaignReadyCustomersCount > 0 ? 'Tu CRM ya tiene base opt-in lista para una campa�a por segmento, owner o sede.' : 'Tu base ya aguanta un empuje comercial y todavia no lo estas usando.', $this->marketingUrl, 'info');
+            $queue[] = $this->priority('Lanza una campana', $this->campaignReadyCustomersCount > 0 ? 'Tu CRM ya tiene base opt-in lista para una campaña por segmento, owner o sede.' : 'Tu base ya aguanta un empuje comercial y todavia no lo estas usando.', $this->marketingUrl, 'info');
+        }
+
+        if ($this->isPro && $this->campaignReadyCustomersCount > 0 && $this->recurringCampaignsCount === 0) {
+            $queue[] = $this->priority('Enciende una cadencia recurrente', 'Ya tienes base con permiso claro, pero ninguna campana recurrente sosteniendo recompra o reactivacion.', $this->campaignsUrl, 'warning');
+        }
+
+        if ($this->hasLoyaltyProgram && $this->redeemableCustomersCount > 0 && $this->rewardCampaignsCount === 0) {
+            $queue[] = $this->priority('Conecta rewards a campanas', 'Tienes clientes listos para canjear, pero ninguna campana esta empujando ese momento de conversion.', $this->campaignsUrl, 'info');
         }
 
         if ($this->overduePlaybooksCount > 0) {
@@ -786,6 +923,31 @@ class GrowthCenter extends Page
             ->all();
 
         $this->automationJourneys = $journeys;
+    }
+
+    private function buildCadencePlaybooks(): void
+    {
+        $playbooks = collect((array) ($this->growthProfile['cadence_playbooks'] ?? []))
+            ->map(function (array $playbook): array {
+                $readiness = $this->resolveAutomationReadiness((string) ($playbook['state'] ?? ''));
+
+                return [
+                    'title' => (string) ($playbook['title'] ?? ''),
+                    'cadence' => (string) ($playbook['cadence'] ?? 'Manual'),
+                    'trigger' => (string) ($playbook['trigger'] ?? ''),
+                    'channel' => (string) ($playbook['channel'] ?? 'CRM'),
+                    'copy' => (string) ($playbook['copy'] ?? ''),
+                    'href' => $this->resolveGrowthHref((string) ($playbook['route_key'] ?? 'campaigns')),
+                    'ready' => $readiness['ready'],
+                    'statusLabel' => $readiness['label'],
+                    'statusColor' => $readiness['color'],
+                ];
+            })
+            ->filter(static fn (array $playbook): bool => $playbook['title'] !== '')
+            ->values()
+            ->all();
+
+        $this->cadencePlaybooks = $playbooks;
     }
 
     /**
@@ -895,6 +1057,7 @@ class GrowthCenter extends Page
             'followers' => $this->followersUrl,
             'loyalty' => $this->loyaltyUrl,
             'coupons' => $this->couponsUrl,
+            'campaigns' => $this->campaignsUrl,
             default => $this->operationsUrl,
         };
     }
@@ -1064,6 +1227,8 @@ class GrowthCenter extends Page
         }
     }
 }
+
+
 
 
 

@@ -26,6 +26,8 @@ final class CampaignCreatePageTest extends TestCase
             ->get(route('filament.app.resources.campaigns.create', ['tenant' => $tenant->slug], false));
 
         $response->assertOk();
+        $response->assertSee('Playbooks sugeridos por tu vertical');
+        $response->assertSee('Recompra de accesorios');
     }
 
     public function test_free_owner_cannot_open_campaign_create_page(): void

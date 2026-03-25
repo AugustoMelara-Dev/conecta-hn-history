@@ -110,6 +110,7 @@ final class BusinessRecordPageSmokeTest extends TestCase
         $this->get(route('filament.app.resources.campaigns.edit', ['tenant' => $tenant->slug, 'record' => $campaign], false))
             ->assertOk()
             ->assertSee('Detalles de la campana')
+            ->assertSee('Playbooks sugeridos por tu vertical')
             ->assertSee('Campana QA');
     }
 

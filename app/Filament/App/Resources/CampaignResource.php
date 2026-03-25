@@ -6,6 +6,7 @@ namespace App\Filament\App\Resources;
 
 use App\Application\Marketing\Jobs\DispatchCampaignSegment;
 use App\Domain\Marketing\Enums\AudienceType;
+use App\Domain\TenantGovernance\Services\BusinessGrowthBlueprint;
 use App\Domain\TenantGovernance\Services\CustomerCampaignAudienceResolver;
 use App\Domain\TenantGovernance\Services\CustomerLoyaltyManager;
 use App\Models\Campaign;
@@ -30,6 +31,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\HtmlString;
 
 class CampaignResource extends Resource
 {
@@ -213,6 +215,13 @@ class CampaignResource extends Resource
                                     ->native(false),
                             ]),
                     ]),
+                Section::make('Playbooks sugeridos por tu vertical')
+                    ->description('Usa estas cadencias como punto de partida para campañas de recompra, reactivacion o upsell.')
+                    ->schema([
+                        Forms\Components\Placeholder::make('cadence_playbooks_hint')
+                            ->hiddenLabel()
+                            ->content(fn () => static::cadencePlaybooksHint()),
+                    ]),
                 Section::make('Despacho')
                     ->schema([
                         Forms\Components\Placeholder::make('recipients_count')
@@ -307,7 +316,7 @@ class CampaignResource extends Resource
                     ->modalHeading('Despachar campana')
                     ->modalDescription(fn (Campaign $record) => $record->usesCadence()
                         ? 'Se lanzara ahora y, como tiene cadencia activa, seguira corriendo con la repeticion configurada.'
-                        : 'Se enviara esta campana a la audiencia filtrada. �Continuamos?')
+                        : 'Se enviara esta campana a la audiencia filtrada. ¿Continuamos?')
                     ->visible(fn (Campaign $record) => $record->status !== 'sending')
                     ->action(function (Campaign $record) {
                         $tenant = self::getTenantRecord();
@@ -469,5 +478,34 @@ class CampaignResource extends Resource
         }
 
         return app(CustomerLoyaltyManager::class)->rewardCampaignOptionsForTenant($tenant);
+    }
+
+    private static function cadencePlaybooksHint(): HtmlString|string
+    {
+        $tenant = self::getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            return 'Selecciona un tenant valido para cargar recomendaciones de cadence.';
+        }
+
+        /** @var array<int, array<string, mixed>> $playbooks */
+        $playbooks = collect((array) (app(BusinessGrowthBlueprint::class)->forTenant($tenant)['cadence_playbooks'] ?? []))
+            ->take(3)
+            ->all();
+
+        if ($playbooks === []) {
+            return 'Todavia no hay playbooks de cadence sugeridos para este rubro.';
+        }
+
+        $items = collect($playbooks)->map(function (array $playbook): string {
+            $title = (string) ($playbook['title'] ?? 'Cadencia sugerida');
+            $cadence = (string) ($playbook['cadence'] ?? 'Manual');
+            $copy = (string) ($playbook['copy'] ?? '');
+            $trigger = (string) ($playbook['trigger'] ?? '');
+
+            return '<li><strong>'.$title.'</strong> · '.$cadence.'<br><span>'.$copy.'</span><br><small>Disparo: '.$trigger.'</small></li>';
+        })->implode('');
+
+        return new HtmlString('<ul style="margin:0; padding-left:1rem; display:grid; gap:0.75rem;">'.$items.'</ul>');
     }
 }

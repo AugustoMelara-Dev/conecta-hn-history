@@ -20,6 +20,26 @@ return [
             'analytics_copy' => 'Mira ventas, visitas, recompra y fuentes de demanda sin ahogarte en dashboards infinitos.',
             'automation_title' => 'Automatizaciones externas para retail',
             'automation_copy' => 'Prioriza WhatsApp, recompra, bundles y audiencias listas para volver a comprar.',
+            'cadence_playbooks' => [
+                [
+                    'title' => 'Recompra de accesorios',
+                    'cadence' => 'Cada 7 dias',
+                    'trigger' => 'Cliente con compra reciente y ticket base util para bundle',
+                    'channel' => 'Email + WhatsApp',
+                    'copy' => 'Mantiene la recompra viva con accesorios, bundles y upgrades ligeros.',
+                    'route_key' => 'campaigns',
+                    'state' => 'audience_ready',
+                ],
+                [
+                    'title' => 'Seguimiento de cotizacion caliente',
+                    'cadence' => 'Cada 3 dias',
+                    'trigger' => 'Lead nuevo con interes comercial',
+                    'channel' => 'WhatsApp',
+                    'copy' => 'Evita fuga de alto ticket cuando alguien pregunta y el equipo aun no cierra.',
+                    'route_key' => 'leads',
+                    'state' => 'whatsapp_and_leads',
+                ],
+            ],
             'journeys' => [
                 [
                     'eyebrow' => 'WhatsApp',
@@ -59,6 +79,26 @@ return [
             'analytics_copy' => 'Entiende horarios, recurrencia y rendimiento de pedidos con una lectura que si sirve al dia a dia.',
             'automation_title' => 'Automatizaciones externas para comida',
             'automation_copy' => 'Empuja pedidos por WhatsApp, recompra semanal y promociones de horas valle.',
+            'cadence_playbooks' => [
+                [
+                    'title' => 'Recompra semanal',
+                    'cadence' => 'Semanal',
+                    'trigger' => 'Cliente activo sin pedido en la ventana esperada',
+                    'channel' => 'WhatsApp',
+                    'copy' => 'Sostiene recurrencia sobre clientes que ya compraron y deben volver a pedir.',
+                    'route_key' => 'campaigns',
+                    'state' => 'orders_or_audience',
+                ],
+                [
+                    'title' => 'Horas valle',
+                    'cadence' => 'Cada 14 dias',
+                    'trigger' => 'Baja demanda en lunch, tarde o cierre',
+                    'channel' => 'Email + cupon',
+                    'copy' => 'Convierte tramos flojos en cajas mas predecibles con promos disciplinadas.',
+                    'route_key' => 'campaigns',
+                    'state' => 'promo_growth',
+                ],
+            ],
             'journeys' => [
                 [
                     'eyebrow' => 'Pedidos',
@@ -98,6 +138,26 @@ return [
             'analytics_copy' => 'Ve citas, asistencia, seguimiento y conversion comercial sin salir del panel.',
             'automation_title' => 'Automatizaciones externas para servicios',
             'automation_copy' => 'Activa recordatorios, follow-up y reactivacion para sostener continuidad comercial.',
+            'cadence_playbooks' => [
+                [
+                    'title' => 'Follow-up consultivo',
+                    'cadence' => 'Cada 3 dias',
+                    'trigger' => 'Lead nuevo o discovery pendiente',
+                    'channel' => 'WhatsApp',
+                    'copy' => 'Empuja valoraciones, discovery o propuesta sin dejar que la consulta se enfrie.',
+                    'route_key' => 'campaigns',
+                    'state' => 'whatsapp_and_leads',
+                ],
+                [
+                    'title' => 'Continuidad post-servicio',
+                    'cadence' => 'Cada 30 dias',
+                    'trigger' => 'Cliente sin nueva cita o control',
+                    'channel' => 'Email + WhatsApp',
+                    'copy' => 'Mantiene continuidad y reactivacion sin depender de memoria manual del equipo.',
+                    'route_key' => 'campaigns',
+                    'state' => 'audience_ready',
+                ],
+            ],
             'journeys' => [
                 [
                     'eyebrow' => 'Lead',
@@ -137,6 +197,26 @@ return [
             'analytics_copy' => 'Mide actividad comercial, visitas y recurrencia sin perder de vista ambos lados del negocio.',
             'automation_title' => 'Automatizaciones externas para negocio mixto',
             'automation_copy' => 'La mejor automatizacion aqui decide el siguiente paso correcto segun el contexto.',
+            'cadence_playbooks' => [
+                [
+                    'title' => 'Venta cruzada producto + servicio',
+                    'cadence' => 'Cada 14 dias',
+                    'trigger' => 'Cliente con actividad reciente y perfil mixto',
+                    'channel' => 'Email + WhatsApp',
+                    'copy' => 'Empuja el siguiente mejor paso mezclando compra, cita y soporte en una sola secuencia.',
+                    'route_key' => 'campaigns',
+                    'state' => 'mixed_activity',
+                ],
+                [
+                    'title' => 'Rescate de oportunidades abiertas',
+                    'cadence' => 'Semanal',
+                    'trigger' => 'Lead o cliente con interaccion sin cierre',
+                    'channel' => 'WhatsApp',
+                    'copy' => 'Evita que la operacion mixta pierda continuidad entre intake, cita y pedido.',
+                    'route_key' => 'campaigns',
+                    'state' => 'whatsapp_and_leads',
+                ],
+            ],
             'journeys' => [
                 [
                     'eyebrow' => 'Intake',
@@ -171,6 +251,26 @@ return [
             'headline' => 'CRM y continuidad para clinica dental',
             'copy' => 'Combina valoraciones, agenda, reactivacion y seguimiento del paciente como un solo sistema.',
             'automation_title' => 'Automatizaciones externas para clinica dental',
+            'cadence_playbooks' => [
+                [
+                    'title' => 'Controles e higiene',
+                    'cadence' => 'Mensual',
+                    'trigger' => 'Paciente sin visita de control reciente',
+                    'channel' => 'WhatsApp + email',
+                    'copy' => 'Mueve controles, higienes y continuidad de tratamiento con una secuencia clara.',
+                    'route_key' => 'campaigns',
+                    'state' => 'appointments_ready',
+                ],
+                [
+                    'title' => 'Valoracion a tratamiento',
+                    'cadence' => 'Cada 3 dias',
+                    'trigger' => 'Lead clinico sin cierre de plan',
+                    'channel' => 'WhatsApp',
+                    'copy' => 'Protege conversion de valoraciones hacia tratamientos de mayor ticket.',
+                    'route_key' => 'campaigns',
+                    'state' => 'whatsapp_and_leads',
+                ],
+            ],
             'journeys' => [
                 [
                     'eyebrow' => 'Valoracion',
@@ -204,18 +304,71 @@ return [
         'corporate_law_firm' => [
             'headline' => 'CRM para bufete corporativo',
             'copy' => 'Haz que intake, discovery y propuestas se muevan como cartera seria y no como seguimiento improvisado.',
+            'cadence_playbooks' => [
+                [
+                    'title' => 'Discovery ejecutivo',
+                    'cadence' => 'Semanal',
+                    'trigger' => 'Lead B2B sin reunion o siguiente paso',
+                    'channel' => 'Email + WhatsApp',
+                    'copy' => 'Sostiene discovery y propuesta sin perder tono ejecutivo ni seguimiento serio.',
+                    'route_key' => 'campaigns',
+                    'state' => 'whatsapp_and_leads',
+                ],
+            ],
         ],
         'financial_consultancy' => [
             'headline' => 'CRM y nurturing para consultoria financiera',
             'copy' => 'Ordena discovery, seguimiento y contenido educativo para cerrar mejor oportunidades ejecutivas.',
+            'cadence_playbooks' => [
+                [
+                    'title' => 'Nurturing de decision financiera',
+                    'cadence' => 'Cada 14 dias',
+                    'trigger' => 'Lead calificado en etapa de evaluacion',
+                    'channel' => 'Email',
+                    'copy' => 'Combina confianza, contenido y seguimiento para mover cierres de mayor reflexion.',
+                    'route_key' => 'campaigns',
+                    'state' => 'audience_ready',
+                ],
+            ],
         ],
         'premium_phone_store' => [
             'headline' => 'CRM y upsell para celulares premium',
             'copy' => 'Sube conversion, bundle y posventa sin perder contexto en oportunidades de alto ticket.',
+            'cadence_playbooks' => [
+                [
+                    'title' => 'Bundle flagship',
+                    'cadence' => 'Cada 7 dias',
+                    'trigger' => 'Compra reciente o lead premium activo',
+                    'channel' => 'WhatsApp',
+                    'copy' => 'Empuja accesorios, garantia y financiamiento sobre clientes de alto valor.',
+                    'route_key' => 'campaigns',
+                    'state' => 'audience_ready',
+                ],
+                [
+                    'title' => 'Posventa premium',
+                    'cadence' => 'Mensual',
+                    'trigger' => 'Cliente con equipo activo y base loyalty',
+                    'channel' => 'Email + WhatsApp',
+                    'copy' => 'Cuida experiencia y recompra en una categoria donde la relacion importa mucho.',
+                    'route_key' => 'campaigns',
+                    'state' => 'loyalty_growth',
+                ],
+            ],
         ],
         'hardware_store' => [
             'headline' => 'CRM y recompra para ferreteria',
             'copy' => 'Sostiene cotizaciones, clientes frecuentes y promos utiles sin perder orden comercial.',
+            'cadence_playbooks' => [
+                [
+                    'title' => 'Reposicion de obra y taller',
+                    'cadence' => 'Cada 14 dias',
+                    'trigger' => 'Cliente frecuente sin recompra en ventana esperada',
+                    'channel' => 'WhatsApp + email',
+                    'copy' => 'Mueve reposicion util sin caer en promociones desordenadas ni poco rentables.',
+                    'route_key' => 'campaigns',
+                    'state' => 'audience_ready',
+                ],
+            ],
         ],
     ],
 ];
