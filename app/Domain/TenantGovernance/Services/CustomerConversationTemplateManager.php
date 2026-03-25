@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Models\CustomerConversation;
 use App\Models\CustomerMessageTemplate;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
@@ -20,7 +21,9 @@ class CustomerConversationTemplateManager
     /**
      * @return array{
      *     segment_key:string,
-     *     journey:list<array{title:string,copy:string}>,
+     *     journey:list<array<string, mixed>>,
+     *     current_step:?array<string, mixed>,
+     *     next_step:?array<string, mixed>,
      *     templates:list<array{
      *         key:string,
      *         label:string,
@@ -37,8 +40,12 @@ class CustomerConversationTemplateManager
     public function forConversation(CustomerProfile $profile, ?CustomerNote $note = null): array
     {
         $segmentKey = (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new');
-        $segmentDefinition = $this->segmentDefinition($profile, $segmentKey);
-        $templates = $this->templateKeysForConversation($profile, $segmentKey)
+        $journey = $this->journeyDefinition($profile, $segmentKey);
+        $conversation = $this->resolveConversation($profile, $note);
+        $currentStep = $this->currentStepFromConversation($conversation, $journey);
+        $nextStep = $this->nextStepFromConversation($conversation);
+        $recommendedTemplateKey = $this->recommendedTemplateKey($currentStep, $nextStep, $conversation);
+        $templates = $this->templateKeysForConversation($profile, $segmentKey, $recommendedTemplateKey)
             ->map(fn (mixed $templateKey): array => $this->templateDefinition(
                 $profile,
                 is_string($templateKey) ? $templateKey : 'fast_follow_up',
@@ -49,9 +56,36 @@ class CustomerConversationTemplateManager
 
         return [
             'segment_key' => $segmentKey,
-            'journey' => array_values((array) ($segmentDefinition['journey'] ?? [])),
+            'journey' => $journey,
+            'current_step' => $currentStep,
+            'next_step' => $nextStep,
             'templates' => $templates,
         ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function journeyDefinition(CustomerProfile $profile, ?string $segmentKey = null): array
+    {
+        $segmentKey ??= (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new');
+        $segmentDefinition = $this->segmentDefinition($profile, $segmentKey);
+
+        return collect((array) ($segmentDefinition['journey'] ?? []))
+            ->map(function (mixed $step, int $index): array {
+                $definition = is_array($step) ? $step : [];
+
+                return [
+                    'key' => (string) ($definition['key'] ?? "step_{$index}"),
+                    'title' => (string) ($definition['title'] ?? 'Paso del journey'),
+                    'copy' => (string) ($definition['copy'] ?? 'Siguiente movimiento sugerido para esta conversacion.'),
+                    'template_key' => isset($definition['template_key']) ? (string) $definition['template_key'] : null,
+                    'lane' => (string) ($definition['lane'] ?? 'follow_up'),
+                    'wait_hours' => max(0, (int) ($definition['wait_hours'] ?? 0)),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     public function send(CustomerProfile $profile, string $templateKey, ?CustomerNote $note = null, ?string $actorUserId = null): CustomerTouchpoint
@@ -231,7 +265,7 @@ class CustomerConversationTemplateManager
     /**
      * @return Collection<int, string>
      */
-    private function templateKeysForConversation(CustomerProfile $profile, string $segmentKey): Collection
+    private function templateKeysForConversation(CustomerProfile $profile, string $segmentKey, ?string $preferredKey = null): Collection
     {
         $segmentDefinition = $this->segmentDefinition($profile, $segmentKey);
         $configKeys = collect((array) ($segmentDefinition['templates'] ?? []))
@@ -247,9 +281,20 @@ class CustomerConversationTemplateManager
             ->pluck('template_key')
             ->filter(static fn (mixed $key): bool => is_string($key) && $key !== '');
 
-        return $configKeys
+        $keys = $configKeys
             ->reject(fn (string $key): bool => $disabledKeys->contains($key))
             ->concat($customKeys)
+            ->unique()
+            ->values();
+
+        if (! filled($preferredKey)) {
+            return $keys;
+        }
+
+        return collect([(string) $preferredKey])
+            ->concat($keys)
+            ->filter(static fn (mixed $key): bool => is_string($key) && $key !== '')
+            ->reject(fn (string $key): bool => $disabledKeys->contains($key))
             ->unique()
             ->values();
     }
@@ -398,5 +443,85 @@ class CustomerConversationTemplateManager
         }
 
         return (array) config("customer-conversations.verticals.{$businessSegmentKey}.templates.{$templateKey}", []);
+    }
+
+    private function resolveConversation(CustomerProfile $profile, ?CustomerNote $note = null): ?CustomerConversation
+    {
+        $conversation = $note?->conversation()
+            ->withoutGlobalScopes()
+            ->with('journeyRun')
+            ->first();
+
+        if ($conversation instanceof CustomerConversation) {
+            return $conversation;
+        }
+
+        return CustomerConversation::query()
+            ->withoutGlobalScopes()
+            ->with('journeyRun')
+            ->where('tenant_id', (string) $profile->tenant_id)
+            ->where('customer_profile_id', (int) $profile->getKey())
+            ->whereIn('status', ['open', 'in_progress', 'waiting_customer'])
+            ->latest('updated_at')
+            ->first();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $journey
+     * @return array<string, mixed>|null
+     */
+    private function currentStepFromConversation(?CustomerConversation $conversation, array $journey): ?array
+    {
+        if ($conversation?->journeyRun !== null) {
+            $currentStep = data_get($conversation->journeyRun->metadata, 'current_step');
+
+            if (is_array($currentStep)) {
+                return $currentStep;
+            }
+
+            $currentStepKey = (string) ($conversation->journeyRun->current_step_key ?? '');
+
+            if ($currentStepKey !== '') {
+                return collect($journey)
+                    ->first(fn (array $step): bool => (string) ($step['key'] ?? '') === $currentStepKey);
+            }
+        }
+
+        return $journey[0] ?? null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function nextStepFromConversation(?CustomerConversation $conversation): ?array
+    {
+        $nextStep = data_get($conversation?->journeyRun?->metadata, 'next_step');
+
+        return is_array($nextStep) ? $nextStep : null;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $currentStep
+     * @param  array<string, mixed>|null  $nextStep
+     */
+    private function recommendedTemplateKey(?array $currentStep, ?array $nextStep, ?CustomerConversation $conversation): ?string
+    {
+        $templateKey = $conversation?->journeyRun?->next_template_key;
+
+        if (filled($templateKey)) {
+            return (string) $templateKey;
+        }
+
+        $currentTemplate = $currentStep['template_key'] ?? null;
+
+        if (is_string($currentTemplate) && $currentTemplate !== '') {
+            return $currentTemplate;
+        }
+
+        $nextTemplate = $nextStep['template_key'] ?? null;
+
+        return is_string($nextTemplate) && $nextTemplate !== ''
+            ? $nextTemplate
+            : null;
     }
 }

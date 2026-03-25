@@ -181,6 +181,122 @@
 
         <div class="biz-card">
             <div class="biz-stack">
+                <div>
+                    <p class="biz-kicker">Analitica por plantilla</p>
+                    <h2 class="biz-heading">Que mensajes realmente estan moviendo reply y cierre</h2>
+                    <p class="biz-muted">Sirve para dejar de enviar por intuicion y empezar a repetir las secuencias que si convierten.</p>
+                </div>
+
+                <div class="biz-actions">
+                    @forelse ($templatePerformance as $item)
+                        <div class="biz-action">
+                            <div class="biz-split">
+                                <div>
+                                    <p class="biz-action-title">{{ $item['label'] }}</p>
+                                    <p class="biz-action-copy">Canal dominante: {{ $item['channel'] }}</p>
+                                </div>
+
+                                <x-filament::badge color="{{ $item['closed'] > 0 ? 'success' : ($item['replied'] > 0 ? 'info' : 'gray') }}">
+                                    {{ $item['closeRate'] }} cierre
+                                </x-filament::badge>
+                            </div>
+
+                            <p class="biz-muted">
+                                <strong>Envios:</strong> {{ $item['sent'] }}
+                                | <strong>Replies:</strong> {{ $item['replied'] }} ({{ $item['replyRate'] }})
+                                | <strong>Cierres:</strong> {{ $item['closed'] }}
+                            </p>
+                        </div>
+                    @empty
+                        <div class="biz-action">
+                            <p class="biz-action-title">Todavia no hay lectura por plantilla</p>
+                            <p class="biz-action-copy">Hace falta mas volumen reciente de mensajes para detectar copy ganador.</p>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
+        <div class="biz-grid-two">
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div>
+                        <p class="biz-kicker">Analitica conversacional por owner</p>
+                        <h2 class="biz-heading">Quien esta cerrando mejor la conversacion</h2>
+                        <p class="biz-muted">Cruza volumen, cierres, conversaciones esperando reply y velocidad inicial por responsable.</p>
+                    </div>
+
+                    <div class="biz-actions">
+                        @forelse ($ownerConversationPerformance as $item)
+                            <div class="biz-action">
+                                <div class="biz-split">
+                                    <div>
+                                        <p class="biz-action-title">{{ $item['name'] }}</p>
+                                        <p class="biz-action-copy">Primera respuesta: {{ $item['avgFirstResponse'] }}</p>
+                                    </div>
+
+                                    <x-filament::badge color="{{ $item['breached'] > 0 ? 'danger' : 'success' }}">
+                                        {{ $item['breached'] > 0 ? $item['breached'].' vencidas' : 'SLA sano' }}
+                                    </x-filament::badge>
+                                </div>
+
+                                <p class="biz-muted">
+                                    <strong>Total:</strong> {{ $item['total'] }}
+                                    | <strong>Cerradas:</strong> {{ $item['closed'] }}
+                                    | <strong>Esperando:</strong> {{ $item['waiting'] }}
+                                </p>
+                            </div>
+                        @empty
+                            <div class="biz-action">
+                                <p class="biz-action-title">Todavia no hay lectura conversacional por owner</p>
+                                <p class="biz-action-copy">Asigna ownership y trabaja mas replies desde la bandeja para abrir esta vista.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div>
+                        <p class="biz-kicker">Analitica conversacional por sede</p>
+                        <h2 class="biz-heading">Donde se esta quedando o cerrando la conversacion</h2>
+                        <p class="biz-muted">Compara rapidez, cierres y carga operativa entre sucursales o puntos de atencion.</p>
+                    </div>
+
+                    <div class="biz-actions">
+                        @forelse ($locationConversationPerformance as $item)
+                            <div class="biz-action">
+                                <div class="biz-split">
+                                    <div>
+                                        <p class="biz-action-title">{{ $item['name'] }}</p>
+                                        <p class="biz-action-copy">Primera respuesta: {{ $item['avgFirstResponse'] }}</p>
+                                    </div>
+
+                                    <x-filament::badge color="{{ $item['breached'] > 0 ? 'warning' : 'info' }}">
+                                        {{ $item['waiting'] }} esperando
+                                    </x-filament::badge>
+                                </div>
+
+                                <p class="biz-muted">
+                                    <strong>Total:</strong> {{ $item['total'] }}
+                                    | <strong>Cerradas:</strong> {{ $item['closed'] }}
+                                    | <strong>Vencidas:</strong> {{ $item['breached'] }}
+                                </p>
+                            </div>
+                        @empty
+                            <div class="biz-action">
+                                <p class="biz-action-title">Todavia no hay lectura conversacional por sede</p>
+                                <p class="biz-action-copy">Etiqueta mas clientes y conversaciones por sede para comparar operacion distribuida.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="biz-card">
+            <div class="biz-stack">
                 <div class="biz-split">
                     <div>
                         <p class="biz-kicker">Cohortes y LTV</p>

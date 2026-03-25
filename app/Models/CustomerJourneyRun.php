@@ -20,8 +20,13 @@ class CustomerJourneyRun extends Model
         'segment_key',
         'business_segment_key',
         'status',
+        'current_step_key',
+        'next_template_key',
+        'sequence_state',
+        'due_state',
         'current_step_index',
         'next_action_at',
+        'step_due_at',
         'last_transition_at',
         'completed_at',
         'metadata',
@@ -30,6 +35,7 @@ class CustomerJourneyRun extends Model
     protected $casts = [
         'current_step_index' => 'integer',
         'next_action_at' => 'datetime',
+        'step_due_at' => 'datetime',
         'last_transition_at' => 'datetime',
         'completed_at' => 'datetime',
         'metadata' => 'array',
@@ -51,6 +57,26 @@ class CustomerJourneyRun extends Model
             'completed' => 'Completado',
             'paused' => 'Pausado',
             default => 'Activo',
+        };
+    }
+
+    public function getSequenceStateLabelAttribute(): string
+    {
+        return match ($this->sequence_state) {
+            'waiting_customer' => 'Esperando reply',
+            'stalled' => 'Requiere rescate',
+            'completed' => 'Completado',
+            default => 'Listo para mover',
+        };
+    }
+
+    public function getDueStateLabelAttribute(): string
+    {
+        return match ($this->due_state) {
+            'breached' => 'Paso vencido',
+            'scheduled' => 'Programado',
+            'completed' => 'Cerrado',
+            default => 'En tiempo',
         };
     }
 }

@@ -8,6 +8,7 @@ use App\Domain\TenantGovernance\Services\CustomerConversationOpsManager;
 use App\Domain\TenantGovernance\Services\CustomerConversationTemplateManager;
 use App\Domain\TenantGovernance\Services\CustomerConversationThreadBuilder;
 use App\Domain\TenantGovernance\Services\CustomerSegmentPlaybook;
+use App\Models\CustomerConversation;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Models\CustomerJourneyRun;
 use App\Models\CustomerNote;
@@ -43,6 +44,8 @@ class CustomerInbox extends Page
 
     public int $inProgressCount = 0;
 
+    public int $waitingCustomerCount = 0;
+
     public int $resolvedTodayCount = 0;
 
     public int $urgentCount = 0;
@@ -56,6 +59,10 @@ class CustomerInbox extends Page
     public int $unassignedCount = 0;
 
     public string $selectedScope = 'all';
+
+    public string $selectedQueueLane = 'all';
+
+    public string $selectedChannel = 'all';
 
     public ?string $selectedOwnerId = null;
 
@@ -72,6 +79,15 @@ class CustomerInbox extends Page
 
     /** @var array<string, string> */
     public array $locationOptions = [];
+
+    /** @var list<array{label:string,total:int,waiting:int,breached:int}> */
+    public array $channelOverview = [];
+
+    /** @var list<array{name:string,total:int,waiting:int,breached:int}> */
+    public array $ownerOverview = [];
+
+    /** @var list<array{name:string,total:int,waiting:int,breached:int}> */
+    public array $locationOverview = [];
 
     /** @var list<array{id:int,conversationId:?int,title:string,body:string,status:string,statusLabel:string,priority:string,priorityLabel:string,channel:string,channelLabel:string,customerName:string,segmentLabel:string,loyaltyTier:string,nextTouch:string,loyaltyMove:string,handledBy:?string,assignedTo:?string,assignedUserId:?string,locationName:string,locationId:?string,nextActionAt:?string,profileUrl:string,slaLabel:string,slaColor:string,replyCount:int,responseDueAt:?string}> */
     public array $queue = [];
@@ -122,6 +138,16 @@ class CustomerInbox extends Page
     }
 
     public function updatedSelectedScope(): void
+    {
+        $this->refreshQueue();
+    }
+
+    public function updatedSelectedQueueLane(): void
+    {
+        $this->refreshQueue();
+    }
+
+    public function updatedSelectedChannel(): void
     {
         $this->refreshQueue();
     }
@@ -323,47 +349,80 @@ class CustomerInbox extends Page
             $this->queue = [];
             $this->selectedConversation = [];
             $this->selectedConversationId = null;
+            $this->channelOverview = [];
+            $this->ownerOverview = [];
+            $this->locationOverview = [];
 
             return;
         }
 
         $tenantId = (string) $tenant->getKey();
+        $conversationBase = CustomerConversation::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId);
+
+        $activeConversations = (clone $conversationBase)
+            ->with([
+                'owner' => fn ($query) => $query->withoutGlobalScopes(),
+                'location' => fn ($query) => $query->withoutGlobalScopes(),
+                'journeyRun',
+            ])
+            ->whereIn('status', ['open', 'in_progress', 'waiting_customer'])
+            ->get();
+
+        $this->openCount = (clone $conversationBase)->where('status', 'open')->count();
+        $this->inProgressCount = (clone $conversationBase)->where('status', 'in_progress')->count();
+        $this->waitingCustomerCount = (clone $conversationBase)->where('status', 'waiting_customer')->count();
+        $this->resolvedTodayCount = (clone $conversationBase)
+            ->where('status', 'closed')
+            ->where('closed_at', '>=', now()->startOfDay())
+            ->count();
+        $this->urgentCount = (clone $conversationBase)
+            ->whereIn('status', ['open', 'in_progress', 'waiting_customer'])
+            ->where('priority', 'urgent')
+            ->count();
+        $this->breachedCount = (clone $conversationBase)
+            ->whereIn('status', ['open', 'in_progress', 'waiting_customer'])
+            ->where(function ($query): void {
+                $query->whereNotNull('response_due_at')->where('response_due_at', '<', now());
+            })
+            ->count();
+        $this->myQueueCount = auth()->check()
+            ? (clone $conversationBase)
+                ->whereIn('status', ['open', 'in_progress', 'waiting_customer'])
+                ->where('owner_user_id', (string) auth()->id())
+                ->count()
+            : 0;
+        $this->dueTodayCount = (clone $conversationBase)
+            ->whereIn('status', ['open', 'in_progress', 'waiting_customer'])
+            ->whereNotNull('response_due_at')
+            ->whereBetween('response_due_at', [now(), now()->endOfDay()])
+            ->count();
+        $this->unassignedCount = (clone $conversationBase)
+            ->whereIn('status', ['open', 'in_progress', 'waiting_customer'])
+            ->whereNull('owner_user_id')
+            ->count();
+
+        $this->channelOverview = $this->buildConversationOverviewRows($activeConversations, 'source_channel', [
+            'whatsapp' => 'WhatsApp',
+            'email' => 'Email',
+            'crm' => 'CRM',
+        ]);
+        $this->ownerOverview = $this->buildConversationOverviewRows($activeConversations, 'owner_user_id');
+        $this->locationOverview = $this->buildConversationOverviewRows($activeConversations, 'location_id');
 
         $baseQuery = CustomerNote::query()
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
-            ->where('requires_follow_up', true);
-
-        $this->openCount = (clone $baseQuery)->where('status', 'open')->count();
-        $this->inProgressCount = (clone $baseQuery)->where('status', 'in_progress')->count();
-        $this->resolvedTodayCount = CustomerNote::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->where('status', 'resolved')
-            ->where('handled_at', '>=', now()->startOfDay())
-            ->count();
-        $this->urgentCount = (clone $baseQuery)->where('priority', 'urgent')->count();
-        $this->breachedCount = CustomerNote::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->whereIn('status', ['open', 'in_progress'])
-            ->whereNotNull('response_due_at')
-            ->where('response_due_at', '<', now())
-            ->count();
-        $this->myQueueCount = auth()->check()
-            ? (clone $baseQuery)->where('assigned_user_id', (string) auth()->id())->whereIn('status', ['open', 'in_progress'])->count()
-            : 0;
-        $this->dueTodayCount = CustomerNote::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->whereIn('status', ['open', 'in_progress'])
-            ->whereNotNull('response_due_at')
-            ->whereBetween('response_due_at', [now(), now()->endOfDay()])
-            ->count();
-        $this->unassignedCount = (clone $baseQuery)
-            ->whereIn('status', ['open', 'in_progress'])
-            ->whereNull('assigned_user_id')
-            ->count();
+            ->where(function ($query): void {
+                $query->where(function ($legacy): void {
+                    $legacy->where('requires_follow_up', true)
+                        ->whereIn('status', ['open', 'in_progress']);
+                })->orWhereHas('conversation', function ($conversation): void {
+                    $conversation->withoutGlobalScopes()
+                        ->whereIn('status', ['open', 'in_progress', 'waiting_customer']);
+                });
+            });
 
         $playbooks = app(CustomerSegmentPlaybook::class);
         $queueQuery = $this->applyQueueFilters(clone $baseQuery);
@@ -377,9 +436,9 @@ class CustomerInbox extends Page
                 'conversation' => fn ($query) => $query->withoutGlobalScopes()->with([
                     'owner' => fn ($owner) => $owner->withoutGlobalScopes(),
                     'location' => fn ($location) => $location->withoutGlobalScopes(),
+                    'journeyRun',
                 ]),
             ])
-            ->whereIn('status', ['open', 'in_progress'])
             ->orderByRaw("field(priority, 'urgent', 'high', 'normal', 'low')")
             ->orderBy('response_due_at')
             ->orderBy('next_action_at')
@@ -390,6 +449,8 @@ class CustomerInbox extends Page
                 $profile = $note->customerProfile()->withoutGlobalScopes()->with(['assignedUser', 'location'])->first();
                 $conversation = $note->conversation;
                 $playbook = $profile !== null ? $playbooks->forProfile($profile) : null;
+                $journeyRun = $conversation?->journeyRun;
+                $recommendedTemplateKey = data_get($journeyRun?->metadata, 'recommended_template_key');
 
                 return [
                     'id' => (int) $note->getKey(),
@@ -400,8 +461,8 @@ class CustomerInbox extends Page
                     'statusLabel' => $conversation?->status_label ?? $note->status_label,
                     'priority' => (string) ($conversation?->priority ?? $note->priority),
                     'priorityLabel' => $conversation?->priority_label ?? $note->priority_label,
-                    'channel' => (string) ($note->source_channel ?? 'system'),
-                    'channelLabel' => $note->source_channel_label,
+                    'channel' => (string) ($conversation?->source_channel ?? $note->source_channel ?? 'system'),
+                    'channelLabel' => $this->formatChannelLabel((string) ($conversation?->source_channel ?? $note->source_channel ?? 'system')),
                     'customerName' => (string) ($profile?->name ?? 'Cliente sin nombre'),
                     'segmentLabel' => (string) ($playbook['label'] ?? 'Sin segmentar'),
                     'loyaltyTier' => (string) ($profile?->loyalty_tier_label ?? 'Base'),
@@ -421,6 +482,13 @@ class CustomerInbox extends Page
                     'slaColor' => $conversation?->sla_color ?? $note->sla_color,
                     'replyCount' => max(1, (int) ($conversation?->reply_count ?? $note->reply_count)),
                     'responseDueAt' => ($conversation?->response_due_at ?? $note->response_due_at)?->diffForHumans(),
+                    'queueLane' => (string) data_get($journeyRun?->metadata, 'lane', 'follow_up'),
+                    'sequenceStateLabel' => $journeyRun?->sequence_state_label ?? 'Listo para mover',
+                    'dueStateLabel' => $journeyRun?->due_state_label ?? $conversation?->sla_label ?? $note->sla_label,
+                    'recommendedTemplateLabel' => filled($recommendedTemplateKey)
+                        ? str((string) $recommendedTemplateKey)->replace('_', ' ')->replace('-', ' ')->title()->value()
+                        : 'Sin recomendacion',
+                    'journeyStep' => data_get($journeyRun?->metadata, 'current_step.title'),
                     'profileUrl' => $profile !== null
                         ? CustomerProfileResource::getUrl('edit', [
                             'record' => $profile,
@@ -504,7 +572,7 @@ class CustomerInbox extends Page
             'status' => (string) ($conversation?->status ?? $note->status),
             'statusLabel' => $conversation?->status_label ?? $note->status_label,
             'priorityLabel' => $conversation?->priority_label ?? $note->priority_label,
-            'channelLabel' => $note->source_channel_label,
+            'channelLabel' => $this->formatChannelLabel((string) ($conversation?->source_channel ?? $note->source_channel ?? 'crm')),
             'customerName' => (string) ($profile->name ?? 'Cliente sin nombre'),
             'segmentLabel' => (string) ($playbook['label'] ?? $profile->segment_display_label),
             'segmentPromise' => (string) ($playbook['promise'] ?? 'Cliente en seguimiento.'),
@@ -528,10 +596,20 @@ class CustomerInbox extends Page
             'journey' => $journey['journey'],
             'journeyRun' => $journeyRun instanceof CustomerJourneyRun ? [
                 'statusLabel' => $journeyRun->status_label,
+                'sequenceStateLabel' => $journeyRun->sequence_state_label,
+                'dueStateLabel' => $journeyRun->due_state_label,
                 'currentStepIndex' => (int) $journeyRun->current_step_index,
                 'nextActionAt' => $journeyRun->next_action_at?->diffForHumans(),
+                'stepDueAt' => $journeyRun->step_due_at?->diffForHumans(),
                 'currentStep' => data_get($journeyRun->metadata, 'current_step.title'),
+                'currentStepCopy' => data_get($journeyRun->metadata, 'current_step.copy'),
+                'currentLane' => data_get($journeyRun->metadata, 'lane'),
+                'nextStep' => data_get($journeyRun->metadata, 'next_step.title'),
+                'nextTemplateKey' => $journeyRun->next_template_key,
+                'recommendedTemplateKey' => data_get($journeyRun->metadata, 'recommended_template_key'),
             ] : null,
+            'currentStep' => $journey['current_step'],
+            'nextStep' => $journey['next_step'],
             'templates' => $journey['templates'],
             'task' => $task instanceof CustomerTask ? [
                 'title' => (string) $task->title,
@@ -549,30 +627,153 @@ class CustomerInbox extends Page
     private function applyQueueFilters($query)
     {
         if ($this->selectedScope === 'mine' && auth()->check()) {
-            $query->where('assigned_user_id', (string) auth()->id());
+            $query->where(function ($mine): void {
+                $mine->where('assigned_user_id', (string) auth()->id())
+                    ->orWhereHas('conversation', function ($conversation): void {
+                        $conversation->withoutGlobalScopes()
+                            ->where('owner_user_id', (string) auth()->id());
+                    });
+            });
         } elseif ($this->selectedScope === 'unassigned') {
-            $query->whereNull('assigned_user_id');
+            $query->where(function ($unassigned): void {
+                $unassigned->whereNull('assigned_user_id')
+                    ->orWhereHas('conversation', function ($conversation): void {
+                        $conversation->withoutGlobalScopes()
+                            ->whereNull('owner_user_id');
+                    });
+            });
         }
 
         if (filled($this->selectedOwnerId)) {
-            $query->where('assigned_user_id', (string) $this->selectedOwnerId);
+            $query->where(function ($owner): void {
+                $owner->where('assigned_user_id', (string) $this->selectedOwnerId)
+                    ->orWhereHas('conversation', function ($conversation): void {
+                        $conversation->withoutGlobalScopes()
+                            ->where('owner_user_id', (string) $this->selectedOwnerId);
+                    });
+            });
         }
 
         if (filled($this->selectedLocationId)) {
-            $query->where('location_id', (string) $this->selectedLocationId);
+            $query->where(function ($location): void {
+                $location->where('location_id', (string) $this->selectedLocationId)
+                    ->orWhereHas('conversation', function ($conversation): void {
+                        $conversation->withoutGlobalScopes()
+                            ->where('location_id', (string) $this->selectedLocationId);
+                    });
+            });
+        }
+
+        if ($this->selectedChannel !== 'all') {
+            $query->where(function ($channel): void {
+                $channel->where('source_channel', $this->selectedChannel)
+                    ->orWhereHas('conversation', function ($conversation): void {
+                        $conversation->withoutGlobalScopes()
+                            ->where('source_channel', $this->selectedChannel);
+                    });
+            });
+        }
+
+        if ($this->selectedQueueLane === 'waiting_customer') {
+            $query->whereHas('conversation', function ($conversation): void {
+                $conversation->withoutGlobalScopes()->where('status', 'waiting_customer');
+            });
+        } elseif ($this->selectedQueueLane === 'stalled') {
+            $query->whereHas('conversation', function ($conversation): void {
+                $conversation->withoutGlobalScopes()->whereHas('journeyRun', function ($journey): void {
+                    $journey->withoutGlobalScopes()->where('sequence_state', 'stalled');
+                });
+            });
+        } elseif ($this->selectedQueueLane === 'closing') {
+            $query->whereHas('conversation', function ($conversation): void {
+                $conversation->withoutGlobalScopes()->whereHas('journeyRun', function ($journey): void {
+                    $journey->withoutGlobalScopes()->where('current_step_key', 'like', '%close%');
+                });
+            });
+        } elseif ($this->selectedQueueLane === 'active') {
+            $query->where(function ($active): void {
+                $active->whereIn('status', ['open', 'in_progress'])
+                    ->orWhereHas('conversation', function ($conversation): void {
+                        $conversation->withoutGlobalScopes()->whereIn('status', ['open', 'in_progress']);
+                    });
+            });
         }
 
         if ($this->selectedSlaState === 'breached') {
-            $query->whereNotNull('response_due_at')->where('response_due_at', '<', now());
+            $query->where(function ($breached): void {
+                $breached->where(function ($noteBreached): void {
+                    $noteBreached->whereNotNull('response_due_at')->where('response_due_at', '<', now());
+                })->orWhereHas('conversation', function ($conversation): void {
+                    $conversation->withoutGlobalScopes()
+                        ->whereNotNull('response_due_at')
+                        ->where('response_due_at', '<', now());
+                });
+            });
         } elseif ($this->selectedSlaState === 'today') {
-            $query->whereNotNull('response_due_at')->whereBetween('response_due_at', [now(), now()->endOfDay()]);
+            $query->where(function ($today): void {
+                $today->where(function ($noteToday): void {
+                    $noteToday->whereNotNull('response_due_at')->whereBetween('response_due_at', [now(), now()->endOfDay()]);
+                })->orWhereHas('conversation', function ($conversation): void {
+                    $conversation->withoutGlobalScopes()
+                        ->whereNotNull('response_due_at')
+                        ->whereBetween('response_due_at', [now(), now()->endOfDay()]);
+                });
+            });
         } elseif ($this->selectedSlaState === 'healthy') {
             $query->where(function ($healthy): void {
-                $healthy->whereNull('response_due_at')->orWhere('response_due_at', '>=', now());
+                $healthy->where(function ($noteHealthy): void {
+                    $noteHealthy->whereNull('response_due_at')->orWhere('response_due_at', '>=', now());
+                })->orWhereHas('conversation', function ($conversation): void {
+                    $conversation->withoutGlobalScopes()->where(function ($conversationHealthy): void {
+                        $conversationHealthy->whereNull('response_due_at')->orWhere('response_due_at', '>=', now());
+                    });
+                });
             });
         }
 
         return $query;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, CustomerConversation>  $conversations
+     * @param  array<string, string>  $labels
+     * @return list<array{name:string,label:string,total:int,waiting:int,breached:int}>
+     */
+    private function buildConversationOverviewRows($conversations, string $groupBy, array $labels = []): array
+    {
+        return $conversations
+            ->groupBy(fn (CustomerConversation $conversation): string => (string) ($conversation->{$groupBy} ?? ''))
+            ->map(function ($items, string $key) use ($groupBy, $labels): array {
+                /** @var \Illuminate\Support\Collection<int, CustomerConversation> $items */
+                $name = match ($groupBy) {
+                    'source_channel' => $labels[$key] ?? $this->formatChannelLabel($key),
+                    'owner_user_id' => $items->first()?->owner?->name ?? 'Sin owner',
+                    'location_id' => $items->first()?->location?->name ?? 'Sin sede',
+                    default => $labels[$key] ?? ($key !== '' ? $key : 'Sin contexto'),
+                };
+
+                return [
+                    'name' => $name,
+                    'label' => $name,
+                    'total' => $items->count(),
+                    'waiting' => $items->where('status', 'waiting_customer')->count(),
+                    'breached' => $items->filter(static fn (CustomerConversation $conversation): bool => $conversation->response_due_at !== null && $conversation->response_due_at->isPast())->count(),
+                ];
+            })
+            ->sortByDesc('total')
+            ->take(4)
+            ->values()
+            ->all();
+    }
+
+    private function formatChannelLabel(string $channel): string
+    {
+        return match ($channel) {
+            'whatsapp' => 'WhatsApp',
+            'email' => 'Email',
+            'crm' => 'CRM',
+            default => str($channel)->replace('_', ' ')->replace('-', ' ')->title()->value(),
+        };
     }
 
     private function findTenantNote(int $noteId): ?CustomerNote

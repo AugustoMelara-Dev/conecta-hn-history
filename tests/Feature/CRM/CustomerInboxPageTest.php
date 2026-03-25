@@ -99,10 +99,15 @@ final class CustomerInboxPageTest extends TestCase
             ->assertSee('Journey activo')
             ->assertSee('Plantillas productizadas')
             ->assertSee('Notas internas')
+            ->assertSee('Carga por canal')
+            ->assertSee('Carga por owner')
+            ->assertSee('Carga por ubicacion')
             ->assertSee('Sin owner', false);
 
         Livewire::test(CustomerInbox::class)
             ->set('selectedScope', 'mine')
+            ->set('selectedQueueLane', 'active')
+            ->set('selectedChannel', 'whatsapp')
             ->set('selectedSlaState', 'today')
             ->call('moveLocation', $note->getKey(), (string) $secondLocation->getKey())
             ->call('reassignOwner', $note->getKey(), (string) $teammate->getKey())

@@ -60,7 +60,7 @@ final class CustomerConversationTemplateManagerTest extends TestCase
 
         $this->assertSame('repeat', $playbook['segment_key']);
         $this->assertCount(3, $playbook['journey']);
-        $this->assertSame('close_sale', $playbook['templates'][0]['key']);
+        $this->assertSame('fast_follow_up', $playbook['templates'][0]['key']);
         $this->assertTrue($playbook['templates'][0]['available']);
 
         $touchpoint = $manager->send($profile, 'close_sale', $note, (string) $user->getKey());

@@ -21,6 +21,7 @@ use App\Filament\App\Resources\OrderResource;
 use App\Models\Appointment;
 use App\Models\Campaign;
 use App\Models\CustomerConversation;
+use App\Models\CustomerJourneyRun;
 use App\Models\CustomerLoyaltyLedger;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
@@ -224,6 +225,10 @@ class GrowthCenter extends Page
 
     public int $overdueCustomerTasksCount = 0;
 
+    public int $journeysReadyCount = 0;
+
+    public int $stalledJourneysCount = 0;
+
     public string $growthUrl = '#';
 
     public string $leadsUrl = '#';
@@ -270,6 +275,15 @@ class GrowthCenter extends Page
 
     /** @var list<array{name: string, revenue: string, customers: int, openTasks: int, overdueTasks: int, repeatRate: string, context: string}> */
     public array $locationComparisons = [];
+
+    /** @var list<array{label:string,channel:string,sent:int,replied:int,closed:int,replyRate:string,closeRate:string}> */
+    public array $templatePerformance = [];
+
+    /** @var list<array{name:string,total:int,closed:int,waiting:int,breached:int,avgFirstResponse:string}> */
+    public array $ownerConversationPerformance = [];
+
+    /** @var list<array{name:string,total:int,closed:int,waiting:int,breached:int,avgFirstResponse:string}> */
+    public array $locationConversationPerformance = [];
 
     /** @var list<array{title: string, copy: string, href: string}> */
     public array $growthActions = [];
@@ -346,6 +360,7 @@ class GrowthCenter extends Page
         $this->buildAutomationJourneys();
         $this->buildCadencePlaybooks();
         $this->buildOperationalComparisons();
+        $this->buildConversationPerformanceTables();
     }
 
     private function loadSignals(Tenant $tenant): void
@@ -774,6 +789,17 @@ class GrowthCenter extends Page
                 ->whereNotNull('sla_due_at')
                 ->where('sla_due_at', '<', now())
                 ->count();
+            $this->journeysReadyCount = CustomerJourneyRun::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->whereIn('sequence_state', ['active', 'waiting_customer'])
+                ->count();
+            $this->stalledJourneysCount = CustomerJourneyRun::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('sequence_state', 'stalled')
+                ->count();
 
             $this->averageFirstResponseMinutes = round((float) $respondedConversations30d
                 ->get(['first_response_at', 'last_customer_message_at'])
@@ -788,6 +814,8 @@ class GrowthCenter extends Page
             $this->resolvedReplies30d = 0;
             $this->openCustomerTasksCount = 0;
             $this->overdueCustomerTasksCount = 0;
+            $this->journeysReadyCount = 0;
+            $this->stalledJourneysCount = 0;
             $this->averageFirstResponseMinutes = 0.0;
             $this->responseRate30d = 0.0;
             $this->topClosingChannel = 'Sin datos';
@@ -884,6 +912,8 @@ class GrowthCenter extends Page
             $this->metric('Contactos enviados', (string) $this->touchpoints30d, $this->touchpoints30d > 0 ? 'Tu CRM ya esta ejecutando seguimiento auditable.' : 'Todavia no has movido seguimientos desde el CRM.'),
             $this->metric('Retries pendientes', (string) $this->dueTouchpointRetriesCount, $this->dueTouchpointRetriesCount > 0 ? 'Hay contactos listos para reintento automatico o manual.' : 'La cola de retries esta sana en este momento.'),
             $this->metric('Bandeja abierta', (string) $this->openRepliesCount, $this->openRepliesCount > 0 ? 'Conversaciones esperando respuesta o cierre humano.' : 'No hay replies pendientes en la cola activa.'),
+            $this->metric('Journeys activos', (string) $this->journeysReadyCount, $this->journeysReadyCount > 0 ? 'Secuencias de retencion ya vivas dentro del CRM.' : 'Todavia no hay secuencias activas listas para operar.'),
+            $this->metric('Journeys en rescate', (string) $this->stalledJourneysCount, $this->stalledJourneysCount > 0 ? 'Secuencias esperando un rescate humano para no perder continuidad.' : 'No hay secuencias trabadas en este momento.'),
             $this->metric('Canjeables hoy', (string) $this->redeemableCustomersCount, $this->redeemableCustomersCount > 0 ? 'Clientes que ya pueden canjear una recompensa visible.' : 'Todavia no hay clientes listos para un canje inmediato.'),
             $this->metric('Listos para campaÃ±a', (string) $this->campaignReadyCustomersCount, $this->campaignReadyCustomersCount > 0 ? 'Base con opt-in y canal util para una campaÃ±a segmentada.' : 'Todavia falta base con permiso claro para campaÃ±as CRM.'),
             $this->metric('Con owner', (string) $this->assignedCustomersCount, $this->assignedCustomersCount > 0 ? 'Clientes ya asignados a alguien del equipo para continuidad.' : 'Todavia no has repartido cartera entre el equipo.'),
@@ -980,6 +1010,84 @@ class GrowthCenter extends Page
 
         $this->ownerComparisons = $this->buildPortfolioComparisonRows($profiles, $tasks, 'assigned_user_id', $userLabels, 'Sin owner');
         $this->locationComparisons = $this->buildPortfolioComparisonRows($profiles, $tasks, 'location_id', $locationLabels, 'Sin sede');
+    }
+
+    private function buildConversationPerformanceTables(): void
+    {
+        $tenant = $this->getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            $this->templatePerformance = [];
+            $this->ownerConversationPerformance = [];
+            $this->locationConversationPerformance = [];
+
+            return;
+        }
+
+        $tenantId = (string) $tenant->getKey();
+        $window = now()->subDays(30)->startOfDay();
+
+        $touchpoints = CustomerTouchpoint::query()
+            ->withoutGlobalScopes()
+            ->with('conversation')
+            ->where('tenant_id', $tenantId)
+            ->where('created_at', '>=', $window)
+            ->whereNotNull('template_key')
+            ->get([
+                'template_key',
+                'channel',
+                'replied_at',
+                'customer_conversation_id',
+            ]);
+
+        $this->templatePerformance = $touchpoints
+            ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->template_key ?: 'manual'))
+            ->map(function (Collection $items, string $templateKey): array {
+                $sent = $items->count();
+                $replied = $items->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->replied_at !== null)->count();
+                $closed = $items->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->conversation?->status === 'closed')->count();
+                $topChannel = (string) ($items->pluck('channel')->filter()->countBy()->sortDesc()->keys()->first() ?? 'crm');
+
+                return [
+                    'label' => $this->formatSourceLabel($templateKey),
+                    'channel' => $this->formatSourceLabel($topChannel),
+                    'sent' => $sent,
+                    'replied' => $replied,
+                    'closed' => $closed,
+                    'replyRate' => $sent > 0 ? number_format(($replied / $sent) * 100, 1).'%' : '0.0%',
+                    'closeRate' => $sent > 0 ? number_format(($closed / $sent) * 100, 1).'%' : '0.0%',
+                ];
+            })
+            ->sortByDesc(fn (array $row): array => [(int) $row['closed'], (int) $row['replied'], (int) $row['sent']])
+            ->take(4)
+            ->values()
+            ->all();
+
+        $conversations = CustomerConversation::query()
+            ->withoutGlobalScopes()
+            ->with([
+                'owner' => fn ($query) => $query->withoutGlobalScopes(),
+                'location' => fn ($query) => $query->withoutGlobalScopes(),
+            ])
+            ->where('tenant_id', $tenantId)
+            ->where(function ($query) use ($window): void {
+                $query->where('updated_at', '>=', $window)
+                    ->orWhere('closed_at', '>=', $window)
+                    ->orWhere('last_customer_message_at', '>=', $window);
+            })
+            ->get([
+                'id',
+                'owner_user_id',
+                'location_id',
+                'status',
+                'response_due_at',
+                'last_customer_message_at',
+                'first_response_at',
+                'closed_at',
+            ]);
+
+        $this->ownerConversationPerformance = $this->buildConversationPerformanceRows($conversations, 'owner_user_id', 'ownerLabel', 'Sin owner');
+        $this->locationConversationPerformance = $this->buildConversationPerformanceRows($conversations, 'location_id', 'locationLabel', 'Sin sede');
     }
 
     private function buildGrowthActions(): void
@@ -1152,6 +1260,46 @@ class GrowthCenter extends Page
                 ];
             })
             ->sortByDesc(fn (array $row): float => ($row['overdueTasks'] * 1000) + ($row['openTasks'] * 100) + (float) str_replace(['L. ', ','], '', $row['revenue']))
+            ->take(4)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, CustomerConversation>  $conversations
+     * @return list<array{name:string,total:int,closed:int,waiting:int,breached:int,avgFirstResponse:string}>
+     */
+    private function buildConversationPerformanceRows(
+        Collection $conversations,
+        string $dimensionKey,
+        string $labelAccessor,
+        string $emptyLabel,
+    ): array {
+        return $conversations->pluck($dimensionKey)
+            ->map(fn (mixed $value): string => (string) ($value ?: 'none'))
+            ->unique()
+            ->values()
+            ->map(function (string $key) use ($conversations, $dimensionKey, $labelAccessor, $emptyLabel): array {
+                $slice = $conversations->filter(fn (CustomerConversation $conversation): bool => (string) ($conversation->{$dimensionKey} ?: 'none') === $key);
+                $responded = $slice->filter(fn (CustomerConversation $conversation): bool => $conversation->first_response_at !== null && $conversation->last_customer_message_at !== null);
+                $avgResponse = $responded->count() > 0
+                    ? round((float) $responded->map(function (CustomerConversation $conversation): int {
+                        return max(0, (int) $conversation->last_customer_message_at?->diffInMinutes($conversation->first_response_at));
+                    })->avg(), 1)
+                    : 0.0;
+
+                return [
+                    'name' => $key === 'none'
+                        ? $emptyLabel
+                        : (string) data_get($slice->first(), $labelAccessor, $emptyLabel),
+                    'total' => $slice->count(),
+                    'closed' => $slice->where('status', 'closed')->count(),
+                    'waiting' => $slice->where('status', 'waiting_customer')->count(),
+                    'breached' => $slice->filter(fn (CustomerConversation $conversation): bool => $conversation->response_due_at !== null && $conversation->response_due_at->isPast())->count(),
+                    'avgFirstResponse' => $avgResponse > 0 ? $avgResponse.' min' : 'Sin datos',
+                ];
+            })
+            ->sortByDesc(fn (array $row): int => ($row['breached'] * 1000) + ($row['waiting'] * 100) + $row['total'])
             ->take(4)
             ->values()
             ->all();

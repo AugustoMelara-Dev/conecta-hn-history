@@ -24,6 +24,11 @@
                             <p class="biz-stat-copy">Casos ya tomados por alguien del equipo.</p>
                         </div>
                         <div class="biz-stat">
+                            <p class="biz-stat-label">Esperando cliente</p>
+                            <p class="biz-stat-value">{{ $waitingCustomerCount }}</p>
+                            <p class="biz-stat-copy">Conversaciones en follow-up que ya requieren nuevo rescate o cierre.</p>
+                        </div>
+                        <div class="biz-stat">
                             <p class="biz-stat-label">Mi cola</p>
                             <p class="biz-stat-value">{{ $myQueueCount }}</p>
                             <p class="biz-stat-copy">Conversaciones que ya tienen owner asignado a tu usuario.</p>
@@ -80,19 +85,40 @@
                 <div class="biz-split" style="align-items: flex-end; gap: 1rem; flex-wrap: wrap;">
                     <div>
                         <p class="biz-kicker">Mesa operativa</p>
-                        <h2 class="biz-heading">Cola, hilo y respuesta sugerida</h2>
+                        <h2 class="biz-heading">Cola, hilo y secuencia activa</h2>
                         <p class="biz-muted">
-                            Filtra por owner, sede y SLA; luego trabaja la conversacion desde el hilo, no solo desde la tarjeta.
+                            Filtra por owner, sede, canal y lane del journey; luego trabaja la conversacion desde el hilo, no solo desde la tarjeta.
                         </p>
                     </div>
 
-                    <div class="biz-grid-two" style="grid-template-columns: repeat(2, minmax(12rem, 1fr)); gap: 0.75rem; width: min(100%, 34rem);">
+                    <div class="biz-grid-two" style="grid-template-columns: repeat(3, minmax(10rem, 1fr)); gap: 0.75rem; width: min(100%, 54rem);">
                         <label class="biz-stack" style="gap: 0.35rem;">
                             <span class="biz-muted">Vista</span>
                             <select wire:model.live="selectedScope" class="fi-input">
                                 <option value="all">Toda la cola</option>
                                 <option value="mine">Solo mi cola</option>
                                 <option value="unassigned">Sin owner</option>
+                            </select>
+                        </label>
+
+                        <label class="biz-stack" style="gap: 0.35rem;">
+                            <span class="biz-muted">Lane</span>
+                            <select wire:model.live="selectedQueueLane" class="fi-input">
+                                <option value="all">Todo el journey</option>
+                                <option value="active">Primer toque</option>
+                                <option value="waiting_customer">Esperando cliente</option>
+                                <option value="stalled">Requiere rescate</option>
+                                <option value="closing">Cierre</option>
+                            </select>
+                        </label>
+
+                        <label class="biz-stack" style="gap: 0.35rem;">
+                            <span class="biz-muted">Canal</span>
+                            <select wire:model.live="selectedChannel" class="fi-input">
+                                <option value="all">Todos</option>
+                                <option value="whatsapp">WhatsApp</option>
+                                <option value="email">Email</option>
+                                <option value="crm">CRM</option>
                             </select>
                         </label>
 
@@ -128,6 +154,80 @@
                     </div>
                 </div>
 
+                <div class="biz-grid-two" style="grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem;">
+                    <div class="biz-card">
+                        <div class="biz-stack">
+                            <div>
+                                <p class="biz-kicker">Omnicanal</p>
+                                <h3 class="biz-heading">Carga por canal</h3>
+                            </div>
+
+                            <div class="biz-actions">
+                                @forelse ($channelOverview as $item)
+                                    <div class="biz-action">
+                                        <p class="biz-action-title">{{ $item['label'] }}</p>
+                                        <p class="biz-muted">
+                                            <strong>Total:</strong> {{ $item['total'] }}
+                                            | <strong>Esperando:</strong> {{ $item['waiting'] }}
+                                            | <strong>Vencidas:</strong> {{ $item['breached'] }}
+                                        </p>
+                                    </div>
+                                @empty
+                                    <p class="biz-muted">Todavia no hay conversaciones activas con lectura por canal.</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="biz-card">
+                        <div class="biz-stack">
+                            <div>
+                                <p class="biz-kicker">Ownership</p>
+                                <h3 class="biz-heading">Carga por owner</h3>
+                            </div>
+
+                            <div class="biz-actions">
+                                @forelse ($ownerOverview as $item)
+                                    <div class="biz-action">
+                                        <p class="biz-action-title">{{ $item['name'] }}</p>
+                                        <p class="biz-muted">
+                                            <strong>Total:</strong> {{ $item['total'] }}
+                                            | <strong>Esperando:</strong> {{ $item['waiting'] }}
+                                            | <strong>Vencidas:</strong> {{ $item['breached'] }}
+                                        </p>
+                                    </div>
+                                @empty
+                                    <p class="biz-muted">Todavia no hay cartera suficiente para leer carga por owner.</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="biz-card">
+                        <div class="biz-stack">
+                            <div>
+                                <p class="biz-kicker">Operacion por sede</p>
+                                <h3 class="biz-heading">Carga por ubicacion</h3>
+                            </div>
+
+                            <div class="biz-actions">
+                                @forelse ($locationOverview as $item)
+                                    <div class="biz-action">
+                                        <p class="biz-action-title">{{ $item['name'] }}</p>
+                                        <p class="biz-muted">
+                                            <strong>Total:</strong> {{ $item['total'] }}
+                                            | <strong>Esperando:</strong> {{ $item['waiting'] }}
+                                            | <strong>Vencidas:</strong> {{ $item['breached'] }}
+                                        </p>
+                                    </div>
+                                @empty
+                                    <p class="biz-muted">Todavia no hay base suficiente por sede para leer operacion distribuida.</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="biz-grid-two" style="align-items: flex-start; gap: 1.25rem;">
                     <div class="biz-stack">
                         @if ($queue === [])
@@ -159,6 +259,8 @@
                                                         <p class="biz-muted"><strong>Siguiente toque:</strong> {{ $item['nextTouch'] }}</p>
                                                         <p class="biz-muted"><strong>Movimiento loyalty:</strong> {{ $item['loyaltyMove'] }}</p>
                                                         <p class="biz-muted"><strong>Owner:</strong> {{ $item['assignedTo'] ?? 'Sin asignar' }} | <strong>Sede:</strong> {{ $item['locationName'] }}</p>
+                                                        <p class="biz-muted"><strong>Journey:</strong> {{ $item['journeyStep'] ?? 'Sin paso activo' }} | <strong>Lane:</strong> {{ str($item['queueLane'])->replace('_', ' ')->title() }} | <strong>Estado secuencia:</strong> {{ $item['sequenceStateLabel'] }}</p>
+                                                        <p class="biz-muted"><strong>Plantilla recomendada:</strong> {{ $item['recommendedTemplateLabel'] }} | <strong>Lectura de due:</strong> {{ $item['dueStateLabel'] }}</p>
                                                         <p class="biz-muted">
                                                             <strong>Operador actual:</strong> {{ $item['handledBy'] ?? 'Sin tomar' }}
                                                             @if ($item['nextActionAt'])
@@ -293,12 +395,29 @@
 
                                     @if ($selectedConversation['journeyRun'])
                                         <div class="biz-action">
-                                            <p class="biz-action-title">{{ $selectedConversation['journeyRun']['statusLabel'] }}</p>
+                                            <div class="biz-button-row">
+                                                <span class="biz-badge biz-badge-neutral">{{ $selectedConversation['journeyRun']['statusLabel'] }}</span>
+                                                <span class="biz-badge {{ str_contains(strtolower($selectedConversation['journeyRun']['sequenceStateLabel']), 'rescate') ? 'biz-badge-danger' : 'biz-badge-info' }}">{{ $selectedConversation['journeyRun']['sequenceStateLabel'] }}</span>
+                                                <span class="biz-badge {{ str_contains(strtolower($selectedConversation['journeyRun']['dueStateLabel']), 'vencido') ? 'biz-badge-danger' : 'biz-badge-neutral' }}">{{ $selectedConversation['journeyRun']['dueStateLabel'] }}</span>
+                                            </div>
+                                            <p class="biz-action-title">{{ $selectedConversation['journeyRun']['currentStep'] ?? 'Sin paso activo' }}</p>
                                             <p class="biz-action-copy">
-                                                Paso actual: {{ $selectedConversation['journeyRun']['currentStep'] ?? 'Sin paso activo' }}
+                                                {{ $selectedConversation['journeyRun']['currentStepCopy'] ?? 'La secuencia ya esta sincronizada con el mejor siguiente paso para esta conversacion.' }}
                                             </p>
+                                            @if ($selectedConversation['journeyRun']['currentLane'])
+                                                <p class="biz-muted"><strong>Lane:</strong> {{ str($selectedConversation['journeyRun']['currentLane'])->replace('_', ' ')->title() }}</p>
+                                            @endif
                                             @if ($selectedConversation['journeyRun']['nextActionAt'])
                                                 <p class="biz-muted"><strong>Siguiente accion:</strong> {{ $selectedConversation['journeyRun']['nextActionAt'] }}</p>
+                                            @endif
+                                            @if ($selectedConversation['journeyRun']['stepDueAt'])
+                                                <p class="biz-muted"><strong>Paso vence:</strong> {{ $selectedConversation['journeyRun']['stepDueAt'] }}</p>
+                                            @endif
+                                            @if ($selectedConversation['journeyRun']['nextStep'])
+                                                <p class="biz-muted"><strong>Paso siguiente:</strong> {{ $selectedConversation['journeyRun']['nextStep'] }}</p>
+                                            @endif
+                                            @if ($selectedConversation['journeyRun']['recommendedTemplateKey'])
+                                                <p class="biz-muted"><strong>Plantilla guia:</strong> {{ str($selectedConversation['journeyRun']['recommendedTemplateKey'])->replace('_', ' ')->replace('-', ' ')->title() }}</p>
                                             @endif
                                         </div>
                                     @endif
