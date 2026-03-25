@@ -15,6 +15,7 @@ class CustomerTouchpointEventRecorder
 {
     public function __construct(
         private readonly CustomerConversationOpsManager $conversationOpsManager,
+        private readonly CustomerTouchpointGovernance $governance,
     ) {}
 
     /**
@@ -199,14 +200,24 @@ class CustomerTouchpointEventRecorder
         ]);
 
         match ($eventType) {
-            'email.sent' => $touchpoint->sent_at ??= $occurredAt,
-            'email.delivered' => $touchpoint->delivered_at = $occurredAt,
-            'email.opened' => $touchpoint->opened_at = $occurredAt,
-            'email.clicked' => $touchpoint->clicked_at = $occurredAt,
-            'email.delivery_delayed' => $touchpoint->last_error = 'La entrega del correo se retraso en el proveedor.',
+            'email.sent' => $this->markDeliveryHealthy($touchpoint, function () use ($touchpoint, $occurredAt): void {
+                $touchpoint->sent_at ??= $occurredAt;
+            }),
+            'email.delivered' => $this->markDeliveryHealthy($touchpoint, function () use ($touchpoint, $occurredAt): void {
+                $touchpoint->delivered_at = $occurredAt;
+            }),
+            'email.opened' => $this->markDeliveryHealthy($touchpoint, function () use ($touchpoint, $occurredAt): void {
+                $touchpoint->opened_at = $occurredAt;
+            }),
+            'email.clicked' => $this->markDeliveryHealthy($touchpoint, function () use ($touchpoint, $occurredAt): void {
+                $touchpoint->clicked_at = $occurredAt;
+            }),
+            'email.delivery_delayed' => $this->markDeliveryDelayed($touchpoint, $occurredAt),
             'email.bounced' => $this->markFailed($touchpoint, $occurredAt, $payload, 'Rebote del proveedor de correo.'),
-            'email.complained' => $this->markFailed($touchpoint, $occurredAt, $payload, 'El destinatario reporto una queja del correo.'),
-            'email.received', 'email.replied' => $touchpoint->replied_at = $occurredAt,
+            'email.complained' => $this->markFailed($touchpoint, $occurredAt, $payload, 'El destinatario reporto una queja del correo.', scheduleRetry: false),
+            'email.received', 'email.replied' => $this->markDeliveryHealthy($touchpoint, function () use ($touchpoint, $occurredAt): void {
+                $touchpoint->replied_at = $occurredAt;
+            }),
             default => null,
         };
 
@@ -220,17 +231,34 @@ class CustomerTouchpointEventRecorder
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function markFailed(CustomerTouchpoint $touchpoint, Carbon $occurredAt, array $payload, string $fallbackMessage): void
+    private function markFailed(CustomerTouchpoint $touchpoint, Carbon $occurredAt, array $payload, string $fallbackMessage, bool $scheduleRetry = true): void
     {
         $touchpoint->status = CustomerTouchpoint::STATUS_FAILED;
         $touchpoint->failed_at = $occurredAt;
         $touchpoint->last_error = (string) data_get($payload, 'data.reason', $fallbackMessage);
+        $touchpoint->next_retry_at = $scheduleRetry ? $this->governance->nextRetryAt($touchpoint, $occurredAt) : null;
 
         if (str_contains((string) ($payload['type'] ?? ''), 'bounce')) {
             $touchpoint->bounced_at = $occurredAt;
         } else {
             $touchpoint->complained_at = $occurredAt;
         }
+    }
+
+    private function markDeliveryHealthy(CustomerTouchpoint $touchpoint, \Closure $mutate): void
+    {
+        $mutate();
+        $touchpoint->next_retry_at = null;
+
+        if ($touchpoint->status === CustomerTouchpoint::STATUS_FAILED) {
+            $touchpoint->status = CustomerTouchpoint::STATUS_SENT;
+        }
+    }
+
+    private function markDeliveryDelayed(CustomerTouchpoint $touchpoint, Carbon $occurredAt): void
+    {
+        $touchpoint->last_error = 'La entrega del correo se retrasó en el proveedor.';
+        $touchpoint->next_retry_at = $this->governance->nextRetryAt($touchpoint, $occurredAt);
     }
 
     /**
@@ -364,6 +392,7 @@ class CustomerTouchpointEventRecorder
             'delivered_at' => $status === 'delivered' ? $occurredAt : $touchpoint->delivered_at,
             'opened_at' => $status === 'read' ? $occurredAt : $touchpoint->opened_at,
             'failed_at' => $status === 'failed' ? $occurredAt : $touchpoint->failed_at,
+            'next_retry_at' => $status === 'failed' ? $this->governance->nextRetryAt($touchpoint, $occurredAt) : null,
             'last_error' => $status === 'failed'
                 ? (string) data_get($statusPayload, 'errors.0.title', data_get($statusPayload, 'errors.0.details', 'WhatsApp delivery failed.'))
                 : $touchpoint->last_error,
@@ -439,6 +468,7 @@ class CustomerTouchpointEventRecorder
             'replied_at' => $occurredAt,
             'provider' => 'whatsapp_cloud',
             'provider_payload' => ['value' => $value, 'message' => $messagePayload],
+            'next_retry_at' => null,
             'status' => CustomerTouchpoint::STATUS_SENT,
         ])->save();
 

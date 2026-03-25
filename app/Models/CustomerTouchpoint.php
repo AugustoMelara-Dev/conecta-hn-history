@@ -8,6 +8,7 @@ use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class CustomerTouchpoint extends Model
 {
@@ -50,6 +51,7 @@ class CustomerTouchpoint extends Model
         'channel',
         'direction',
         'automation_key',
+        'template_key',
         'subject',
         'message',
         'recipient_address',
@@ -57,8 +59,12 @@ class CustomerTouchpoint extends Model
         'provider',
         'provider_message_id',
         'delivery_status',
+        'attempt_count',
+        'retry_limit',
         'opt_in_snapshot',
         'sent_at',
+        'last_attempt_at',
+        'next_retry_at',
         'delivered_at',
         'opened_at',
         'clicked_at',
@@ -73,7 +79,11 @@ class CustomerTouchpoint extends Model
 
     protected $casts = [
         'opt_in_snapshot' => 'boolean',
+        'attempt_count' => 'integer',
+        'retry_limit' => 'integer',
         'sent_at' => 'datetime',
+        'last_attempt_at' => 'datetime',
+        'next_retry_at' => 'datetime',
         'delivered_at' => 'datetime',
         'opened_at' => 'datetime',
         'clicked_at' => 'datetime',
@@ -106,7 +116,7 @@ class CustomerTouchpoint extends Model
             self::DELIVERY_DELIVERED => 'Entregado',
             self::DELIVERY_OPENED => 'Abierto',
             self::DELIVERY_CLICKED => 'Con clic',
-            self::DELIVERY_READ => 'Leido',
+            self::DELIVERY_READ => 'Leído',
             self::DELIVERY_BOUNCED => 'Rebotado',
             self::DELIVERY_COMPLAINED => 'Queja',
             self::DELIVERY_REPLIED => 'Respondido',
@@ -114,5 +124,54 @@ class CustomerTouchpoint extends Model
             self::DELIVERY_FAILED => 'Fallido',
             default => 'Enviado',
         };
+    }
+
+    public function getTemplateLabelAttribute(): string
+    {
+        $value = $this->template_key ?: $this->automation_key;
+
+        return filled($value)
+            ? str((string) $value)->replace('_', ' ')->replace('-', ' ')->title()->value()
+            : 'Manual';
+    }
+
+    public function getAttemptsSummaryAttribute(): string
+    {
+        $maxAttempts = max(1, ((int) $this->retry_limit) + 1);
+        $attempts = max(0, (int) $this->attempt_count);
+
+        return "{$attempts}/{$maxAttempts}";
+    }
+
+    public function getRemainingRetriesAttribute(): int
+    {
+        $retriesUsed = max(0, ((int) $this->attempt_count) - 1);
+
+        return max(0, ((int) $this->retry_limit) - $retriesUsed);
+    }
+
+    public function isRetryable(?Carbon $moment = null): bool
+    {
+        $moment ??= now();
+
+        if ($this->remaining_retries <= 0) {
+            return false;
+        }
+
+        $retryableDelivery = in_array($this->delivery_status, [
+            self::DELIVERY_FAILED,
+            self::DELIVERY_BOUNCED,
+            self::DELIVERY_DELAYED,
+        ], true);
+
+        if (! $retryableDelivery && ! ($this->status === self::STATUS_FAILED && blank($this->delivery_status))) {
+            return false;
+        }
+
+        if ($this->next_retry_at instanceof Carbon) {
+            return $this->next_retry_at->lessThanOrEqualTo($moment);
+        }
+
+        return $retryableDelivery || $this->status === self::STATUS_FAILED;
     }
 }

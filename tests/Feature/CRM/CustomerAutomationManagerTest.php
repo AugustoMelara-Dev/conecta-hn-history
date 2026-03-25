@@ -110,6 +110,48 @@ final class CustomerAutomationManagerTest extends TestCase
         Mail::assertSent(CustomerLifecycleMail::class, 1);
     }
 
+    public function test_daily_template_limit_skips_duplicate_send_for_same_customer(): void
+    {
+        Mail::fake();
+
+        [$user, $tenant] = $this->makeTenantOwner('crm-automation-limit');
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Ana Castillo',
+            'email' => 'ana-limit@example.com',
+            'preferred_channel' => 'email',
+            'customer_segment' => 'active',
+            'lifecycle_stage' => 'active',
+            'email_opt_in' => true,
+            'marketing_opt_in' => true,
+        ]);
+
+        $first = app(CustomerAutomationManager::class)->sendEmailTouchpoint(
+            profile: $profile,
+            subject: 'Seguimiento inicial',
+            body: 'Primer toque.',
+            automationKey: 'manual_follow_up',
+            actorUserId: (string) $user->getKey(),
+        );
+
+        $second = app(CustomerAutomationManager::class)->sendEmailTouchpoint(
+            profile: $profile,
+            subject: 'Seguimiento duplicado',
+            body: 'Segundo toque.',
+            automationKey: 'manual_follow_up',
+            actorUserId: (string) $user->getKey(),
+        );
+
+        $this->assertSame(CustomerTouchpoint::STATUS_SENT, $first->status);
+        $this->assertSame(CustomerTouchpoint::STATUS_SKIPPED, $second->status);
+        $this->assertSame('manual_follow_up', $first->template_key);
+        $this->assertSame('manual_follow_up', $second->template_key);
+        $this->assertStringContainsString('template hoy', (string) $second->last_error);
+
+        Mail::assertSent(CustomerLifecycleMail::class, 1);
+    }
+
     public function test_gateway_metadata_is_persisted_when_external_provider_returns_message_id(): void
     {
         [$user, $tenant] = $this->makeTenantOwner('crm-automation-provider');
@@ -194,6 +236,68 @@ final class CustomerAutomationManagerTest extends TestCase
         $this->assertSame('sent', $touchpoint->delivery_status);
         $this->assertSame('manual_follow_up_whatsapp', $touchpoint->automation_key);
         $this->assertSame('whatsapp', $profile->fresh()->last_engaged_channel);
+    }
+
+    public function test_retry_failed_email_touchpoint_reuses_same_record_and_clears_retry_queue(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner('crm-automation-retry');
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Maria Gomez',
+            'email' => 'maria-retry@example.com',
+            'preferred_channel' => 'email',
+            'customer_segment' => 'active',
+            'lifecycle_stage' => 'active',
+            'email_opt_in' => true,
+            'marketing_opt_in' => true,
+        ]);
+
+        $touchpoint = CustomerTouchpoint::query()->withoutGlobalScopes()->create([
+            'tenant_id' => (string) $tenant->getKey(),
+            'customer_profile_id' => (int) $profile->getKey(),
+            'created_by_user_id' => (string) $user->getKey(),
+            'channel' => 'email',
+            'direction' => 'outbound',
+            'automation_key' => 'manual_follow_up',
+            'template_key' => 'manual_follow_up',
+            'subject' => 'Seguimiento premium',
+            'message' => 'Queremos ayudarte a cerrar tu siguiente compra.',
+            'recipient_address' => 'maria-retry@example.com',
+            'status' => CustomerTouchpoint::STATUS_FAILED,
+            'delivery_status' => CustomerTouchpoint::DELIVERY_FAILED,
+            'attempt_count' => 1,
+            'retry_limit' => 2,
+            'opt_in_snapshot' => true,
+            'last_attempt_at' => now()->subMinutes(30),
+            'failed_at' => now()->subMinutes(30),
+            'next_retry_at' => now()->subMinute(),
+            'metadata' => [
+                'daily_limit' => 1,
+                'retry_backoff_minutes' => 30,
+            ],
+        ]);
+
+        $gateway = \Mockery::mock(CustomerMessagingGateway::class);
+        $gateway->shouldReceive('sendLifecycleEmail')
+            ->once()
+            ->andReturn([
+                'provider' => 'resend',
+                'provider_message_id' => 'retry_email_123',
+                'delivery_status' => 'sent',
+                'payload' => ['last_event' => 'sent'],
+            ]);
+
+        $this->app->instance(CustomerMessagingGateway::class, $gateway);
+
+        $retried = app(CustomerAutomationManager::class)->retryTouchpoint($touchpoint, (string) $user->getKey());
+
+        $this->assertSame((int) $touchpoint->getKey(), (int) $retried->getKey());
+        $this->assertSame(CustomerTouchpoint::STATUS_SENT, $retried->status);
+        $this->assertSame(2, $retried->attempt_count);
+        $this->assertNull($retried->next_retry_at);
+        $this->assertSame('retry_email_123', $retried->provider_message_id);
+        $this->assertNotNull($retried->sent_at);
     }
 
     /**

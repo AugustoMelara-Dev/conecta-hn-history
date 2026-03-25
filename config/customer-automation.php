@@ -6,6 +6,46 @@ return [
     'email_provider' => env('CUSTOMER_AUTOMATION_EMAIL_PROVIDER', 'mail'),
     'whatsapp_provider' => env('CUSTOMER_AUTOMATION_WHATSAPP_PROVIDER', 'whatsapp_cloud'),
 
+    'governance' => [
+        'defaults' => [
+            'daily_limit' => 2,
+            'retry_limit' => 1,
+            'retry_backoff_minutes' => 30,
+        ],
+        'channels' => [
+            'email' => [
+                'daily_limit' => 2,
+                'retry_limit' => 2,
+                'retry_backoff_minutes' => 30,
+            ],
+            'whatsapp' => [
+                'daily_limit' => 1,
+                'retry_limit' => 1,
+                'retry_backoff_minutes' => 20,
+            ],
+        ],
+        'templates' => [
+            'manual_follow_up' => [
+                'daily_limit' => 1,
+                'retry_limit' => 1,
+            ],
+            'manual_follow_up_whatsapp' => [
+                'daily_limit' => 1,
+                'retry_limit' => 1,
+            ],
+            'reactivation_email' => [
+                'daily_limit' => 1,
+                'retry_limit' => 2,
+                'retry_backoff_minutes' => 45,
+            ],
+            'reactivation_whatsapp' => [
+                'daily_limit' => 1,
+                'retry_limit' => 1,
+                'retry_backoff_minutes' => 30,
+            ],
+        ],
+    ],
+
     'opt_in_keywords' => [
         'accept' => ['ALTA', 'START', 'SI', 'ACEPTO', 'QUIERO'],
         'stop' => ['STOP', 'BAJA', 'SALIR', 'NO'],

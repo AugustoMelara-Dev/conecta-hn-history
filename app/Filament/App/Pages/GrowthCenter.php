@@ -131,6 +131,10 @@ class GrowthCenter extends Page
 
     public int $touchpointsBounced30d = 0;
 
+    public int $dueTouchpointRetriesCount = 0;
+
+    public int $scheduledTouchpointRetriesCount = 0;
+
     public int $whatsAppTouchpoints30d = 0;
 
     public int $whatsAppReplies30d = 0;
@@ -190,6 +194,8 @@ class GrowthCenter extends Page
     public string $topLtvChannel = 'Sin datos';
 
     public string $topLoyaltyChannel = 'Sin datos';
+
+    public string $topTemplateLabel = 'Sin datos';
 
     public int $scheduledCampaignsCount = 0;
 
@@ -622,12 +628,36 @@ class GrowthCenter extends Page
         }
 
         try {
-            $this->touchpoints30d = CustomerTouchpoint::query()
+            $touchpointsBase = CustomerTouchpoint::query()
                 ->withoutGlobalScopes()
                 ->where('tenant_id', $tenantId)
-                ->where('created_at', '>=', $thirtyDaysAgo)
+                ->where('created_at', '>=', $thirtyDaysAgo);
+
+            $this->touchpoints30d = (clone $touchpointsBase)
                 ->where('status', CustomerTouchpoint::STATUS_SENT)
                 ->count();
+
+            $this->scheduledTouchpointRetriesCount = CustomerTouchpoint::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereNotNull('next_retry_at')
+                ->count();
+            $this->dueTouchpointRetriesCount = CustomerTouchpoint::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereNotNull('next_retry_at')
+                ->where('next_retry_at', '<=', now())
+                ->count();
+
+            $topTemplate = (clone $touchpointsBase)
+                ->selectRaw("coalesce(template_key, automation_key, 'manual') as template_key, count(*) as total")
+                ->groupBy('template_key')
+                ->orderByDesc('total')
+                ->first();
+
+            if ($topTemplate !== null) {
+                $this->topTemplateLabel = $this->formatSourceLabel((string) $topTemplate->template_key);
+            }
 
             $emailTouchpoints = CustomerTouchpoint::query()
                 ->withoutGlobalScopes()
@@ -807,6 +837,7 @@ class GrowthCenter extends Page
             $this->metric('Waitlist activa', (string) $this->waitlistCount, $this->waitlistCount > 0 ? 'Hay demanda esperando huecos u oferta.' : 'No hay espera activa en este momento.'),
             $this->metric('Campanas 30 dias', (string) $this->campaignsSent30d, $this->campaignsSent30d > 0 ? 'Ya tienes empuje comercial reciente.' : 'Aun no has activado una campana reciente.'),
             $this->metric('Contactos enviados', (string) $this->touchpoints30d, $this->touchpoints30d > 0 ? 'Tu CRM ya esta ejecutando seguimiento auditable.' : 'Todavia no has movido seguimientos desde el CRM.'),
+            $this->metric('Retries pendientes', (string) $this->dueTouchpointRetriesCount, $this->dueTouchpointRetriesCount > 0 ? 'Hay contactos listos para reintento automatico o manual.' : 'La cola de retries esta sana en este momento.'),
             $this->metric('Bandeja abierta', (string) $this->openRepliesCount, $this->openRepliesCount > 0 ? 'Conversaciones esperando respuesta o cierre humano.' : 'No hay replies pendientes en la cola activa.'),
             $this->metric('Canjeables hoy', (string) $this->redeemableCustomersCount, $this->redeemableCustomersCount > 0 ? 'Clientes que ya pueden canjear una recompensa visible.' : 'Todavia no hay clientes listos para un canje inmediato.'),
             $this->metric('Listos para campaÃ±a', (string) $this->campaignReadyCustomersCount, $this->campaignReadyCustomersCount > 0 ? 'Base con opt-in y canal util para una campaÃ±a segmentada.' : 'Todavia falta base con permiso claro para campaÃ±as CRM.'),
@@ -833,6 +864,8 @@ class GrowthCenter extends Page
             $this->metric('Entrega de email', $this->deliveryRate30d.'%', $this->touchpoints30d > 0 ? "{$this->touchpointsDelivered30d} contactos llegaron a bandeja de entrada." : 'Aun no hay seguimiento suficiente para medir entrega.'),
             $this->metric('Apertura de email', $this->openRate30d.'%', $this->touchpointsOpened30d > 0 ? "{$this->touchpointsOpened30d} contactos ya abrieron tus mensajes." : 'Todavia no hay aperturas registradas por proveedor.'),
             $this->metric('Respuestas por WhatsApp', (string) $this->whatsAppReplies30d, $this->whatsAppTouchpoints30d > 0 ? "{$this->whatsAppReplies30d} conversaciones devolvieron respuesta reciente." : 'Todavia no hay conversaciones de WhatsApp suficientes para medir respuesta.'),
+            $this->metric('Plantilla dominante', $this->topTemplateLabel, $this->touchpoints30d > 0 ? 'Es la plantilla que mas esta moviendo salidas recientes del CRM.' : 'Todavia no hay suficiente volumen para detectar una plantilla dominante.'),
+            $this->metric('Retries programados', (string) $this->scheduledTouchpointRetriesCount, $this->scheduledTouchpointRetriesCount > 0 ? 'La cola ya tiene reintentos futuros listos para ejecutar.' : 'No hay reintentos en espera ahora mismo.'),
         ];
     }
 
@@ -960,6 +993,10 @@ class GrowthCenter extends Page
 
         if ($this->touchpoints30d > 0 && $this->deliveryRate30d < 70) {
             $queue[] = $this->priority('Limpia la entregabilidad', 'Tus correos recientes no estan llegando con la fuerza esperada. Ajusta opt-in, copy o reputacion.', $this->contactsUrl, 'warning');
+        }
+
+        if ($this->dueTouchpointRetriesCount > 0) {
+            $queue[] = $this->priority('Rescata retries CRM', 'Ya tienes contactos listos para reintento. Conviene revisar plantilla, destinatario y causa raiz antes de dejar que la cola se acumule.', $this->contactsUrl, 'warning');
         }
 
         if ($this->breachedRepliesCount > 0) {

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Filament\App\Resources\CustomerTouchpointResource\Pages;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
 use App\Models\Tenant;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
@@ -92,8 +94,22 @@ class CustomerTouchpointResource extends Resource
         $count = CustomerTouchpoint::query()
             ->withoutGlobalScopes()
             ->where('tenant_id', (string) $tenant->getKey())
-            ->whereIn('status', [CustomerTouchpoint::STATUS_FAILED, CustomerTouchpoint::STATUS_SKIPPED])
-            ->where('created_at', '>=', now()->subDays(7))
+            ->where(function ($query): void {
+                $query
+                    ->where(function ($errors): void {
+                        $errors
+                            ->whereIn('status', [
+                                CustomerTouchpoint::STATUS_FAILED,
+                                CustomerTouchpoint::STATUS_SKIPPED,
+                            ])
+                            ->where('created_at', '>=', now()->subDays(7));
+                    })
+                    ->orWhere(function ($retries): void {
+                        $retries
+                            ->whereNotNull('next_retry_at')
+                            ->where('next_retry_at', '<=', now());
+                    });
+            })
             ->count();
 
         return $count > 0 ? (string) $count : null;
@@ -172,12 +188,17 @@ class CustomerTouchpointResource extends Resource
                         CustomerTouchpoint::DELIVERY_DELAYED => 'warning',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('automation_key')
-                    ->label('Playbook')
+                Tables\Columns\TextColumn::make('template_label')
+                    ->label('Plantilla')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => filled($state)
-                        ? str($state)->replace('_', ' ')->title()->value()
-                        : 'Manual'),
+                    ->description(fn (CustomerTouchpoint $record): string => filled($record->automation_key)
+                        ? 'Playbook '.str((string) $record->automation_key)->replace('_', ' ')->title()->value()
+                        : 'Contacto manual'),
+                Tables\Columns\TextColumn::make('attempts_summary')
+                    ->label('Intentos')
+                    ->badge()
+                    ->color(fn (CustomerTouchpoint $record): string => $record->isRetryable() ? 'warning' : 'gray')
+                    ->description(fn (CustomerTouchpoint $record): ?string => $record->next_retry_at?->diffForHumans()),
                 Tables\Columns\TextColumn::make('subject')
                     ->label('Asunto')
                     ->limit(40)
@@ -217,8 +238,60 @@ class CustomerTouchpointResource extends Resource
                         CustomerTouchpoint::STATUS_FAILED => 'Fallido',
                         CustomerTouchpoint::STATUS_MANUAL => 'Manual',
                     ]),
+                Tables\Filters\SelectFilter::make('delivery_status')
+                    ->label('Entrega')
+                    ->options([
+                        CustomerTouchpoint::DELIVERY_SENT => 'Enviado',
+                        CustomerTouchpoint::DELIVERY_DELIVERED => 'Entregado',
+                        CustomerTouchpoint::DELIVERY_OPENED => 'Abierto',
+                        CustomerTouchpoint::DELIVERY_CLICKED => 'Con clic',
+                        CustomerTouchpoint::DELIVERY_READ => 'Leido',
+                        CustomerTouchpoint::DELIVERY_REPLIED => 'Respondido',
+                        CustomerTouchpoint::DELIVERY_DELAYED => 'Retrasado',
+                        CustomerTouchpoint::DELIVERY_BOUNCED => 'Rebotado',
+                        CustomerTouchpoint::DELIVERY_COMPLAINED => 'Queja',
+                        CustomerTouchpoint::DELIVERY_FAILED => 'Fallido',
+                    ]),
+                Tables\Filters\Filter::make('retry_queue')
+                    ->label('Listos para retry')
+                    ->query(fn ($query) => $query
+                        ->whereNotNull('next_retry_at')
+                        ->where('next_retry_at', '<=', now())),
             ])
             ->actions([
+                Action::make('retry')
+                    ->label('Reintentar')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->visible(fn (CustomerTouchpoint $record): bool => $record->isRetryable())
+                    ->action(function (CustomerTouchpoint $record): void {
+                        $updated = app(CustomerAutomationManager::class)->retryTouchpoint(
+                            $record,
+                            auth()->id() !== null ? (string) auth()->id() : null,
+                        );
+
+                        $success = $updated->status === CustomerTouchpoint::STATUS_SENT;
+                        $hasNextRetry = $updated->next_retry_at !== null;
+
+                        $notification = Notification::make()
+                            ->title($success ? 'Reintento enviado' : ($hasNextRetry ? 'Reintento reprogramado' : 'No se pudo reintentar'))
+                            ->body($success
+                                ? 'El contacto volvio a salir por el canal configurado.'
+                                : ($hasNextRetry
+                                    ? 'Sigue en cola y volvera a intentarse automaticamente.'
+                                    : ((string) ($updated->last_error ?? 'Revisa opt-in, destinatario o plantilla.'))));
+
+                        if ($success) {
+                            $notification->success();
+                        } elseif ($hasNextRetry) {
+                            $notification->warning();
+                        } else {
+                            $notification->danger();
+                        }
+
+                        $notification->send();
+                    }),
                 Action::make('customer')
                     ->label('Abrir cliente')
                     ->icon('heroicon-o-arrow-top-right-on-square')
@@ -235,7 +308,7 @@ class CustomerTouchpointResource extends Resource
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => 'Automatizacion',
                 'heading' => 'Todavia no hay contactos registrados',
-                'description' => 'Aqui apareceran los correos, WhatsApp y seguimientos que ejecutes desde el CRM del negocio.',
+                'description' => 'Aqui apareceran emails, WhatsApp, plantillas, intentos y retries del CRM del negocio.',
             ]));
     }
 

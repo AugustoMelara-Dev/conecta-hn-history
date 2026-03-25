@@ -379,6 +379,8 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertSee('Comparativa por sede')
             ->assertSee('Oferta top')
             ->assertSee('Recurrencia')
+            ->assertSee('Retries pendientes')
+            ->assertSee('Plantilla dominante')
             ->assertSee('Entrega de email')
             ->assertSee('Bundle flagship')
             ->assertSee('Posventa premium')
@@ -394,7 +396,9 @@ final class BusinessPageWorkflowTest extends TestCase
 
         $this->get(CustomerTouchpointResource::getUrl('index', ['tenant' => $tenant->slug]))
             ->assertOk()
-            ->assertSee('Historial de contactos');
+            ->assertSee('Historial de contactos')
+            ->assertSee('Plantilla')
+            ->assertSee('Intentos');
 
         $this->get(route('filament.app.pages.customer-inbox', ['tenant' => $tenant->slug], false))
             ->assertOk()

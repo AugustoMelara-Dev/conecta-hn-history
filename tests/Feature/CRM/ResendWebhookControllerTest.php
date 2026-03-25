@@ -149,6 +149,72 @@ final class ResendWebhookControllerTest extends TestCase
         );
     }
 
+    public function test_resend_bounced_webhook_schedules_retry_for_failed_touchpoint(): void
+    {
+        [, $tenant] = $this->makeTenantOwner('crm-resend-bounce');
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Luisa Ponce',
+            'email' => 'luisa@example.com',
+            'preferred_channel' => 'email',
+            'customer_segment' => 'active',
+            'lifecycle_stage' => 'active',
+            'email_opt_in' => true,
+        ]);
+
+        $touchpoint = CustomerTouchpoint::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $profile->getKey(),
+            'channel' => 'email',
+            'direction' => 'outbound',
+            'automation_key' => 'manual_follow_up',
+            'template_key' => 'manual_follow_up',
+            'subject' => 'Seguimiento',
+            'recipient_address' => 'luisa@example.com',
+            'status' => CustomerTouchpoint::STATUS_SENT,
+            'provider' => 'resend',
+            'provider_message_id' => 'email_bounce_1',
+            'delivery_status' => 'sent',
+            'attempt_count' => 1,
+            'retry_limit' => 2,
+            'opt_in_snapshot' => true,
+            'sent_at' => now()->subMinute(),
+            'metadata' => [
+                'retry_backoff_minutes' => 30,
+            ],
+        ]);
+
+        config()->set('services.resend.webhook_secret', $secret = 'whsec_'.base64_encode('top-secret'));
+
+        $payload = [
+            'type' => 'email.bounced',
+            'created_at' => now()->toIso8601String(),
+            'data' => [
+                'email_id' => 'email_bounce_1',
+                'reason' => 'Mailbox unavailable',
+                'tags' => [
+                    ['name' => 'tenant_id', 'value' => (string) $tenant->getKey()],
+                    ['name' => 'touchpoint_id', 'value' => (string) $touchpoint->getKey()],
+                ],
+            ],
+        ];
+
+        $jsonPayload = json_encode($payload, JSON_THROW_ON_ERROR);
+
+        $this->postJson(
+            route('webhooks.resend.email', [], false),
+            $payload,
+            $this->signedResendHeaders($jsonPayload, $secret, 'msg_bounce_1'),
+        )->assertOk();
+
+        $touchpoint->refresh();
+
+        $this->assertSame(CustomerTouchpoint::STATUS_FAILED, $touchpoint->status);
+        $this->assertSame(CustomerTouchpoint::DELIVERY_BOUNCED, $touchpoint->delivery_status);
+        $this->assertNotNull($touchpoint->next_retry_at);
+    }
+
     /**
      * @return array<string, string>
      */

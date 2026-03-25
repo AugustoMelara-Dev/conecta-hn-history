@@ -8,12 +8,14 @@ use App\Mail\CustomerLifecycleMail;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
 use App\Models\Tenant;
+use Illuminate\Support\Carbon;
 
 class CustomerAutomationManager
 {
     public function __construct(
         private readonly CustomerMessagingGateway $messagingGateway,
         private readonly CustomerConversationOpsManager $conversationOpsManager,
+        private readonly CustomerTouchpointGovernance $governance,
     ) {}
 
     public function sendEmailTouchpoint(
@@ -26,15 +28,7 @@ class CustomerAutomationManager
     ): CustomerTouchpoint {
         $profile->loadMissing('tenant');
 
-        $requiresMarketingOptIn = (bool) ($options['requires_marketing_opt_in'] ?? false);
-        $ctaLabel = $options['cta_label'] ?? null;
-        $ctaUrl = $options['cta_url'] ?? $this->defaultCtaUrl($profile);
-        $campaignId = $options['campaign_id'] ?? null;
-        $campaignSubject = $options['campaign_subject'] ?? null;
-        $rewardName = $options['reward_name'] ?? null;
-        $rewardPointsCost = $options['reward_points_cost'] ?? null;
-        $cadenceIntervalDays = $options['cadence_interval_days'] ?? null;
-
+        $governance = $this->governance->definition($automationKey, 'email', $options);
         $touchpoint = CustomerTouchpoint::query()
             ->withoutGlobalScopes()
             ->create([
@@ -44,6 +38,7 @@ class CustomerAutomationManager
                 'channel' => 'email',
                 'direction' => 'outbound',
                 'automation_key' => $automationKey,
+                'template_key' => $governance['template_key'],
                 'subject' => $subject,
                 'message' => $body,
                 'recipient_address' => $profile->email,
@@ -51,82 +46,13 @@ class CustomerAutomationManager
                 'provider' => null,
                 'provider_message_id' => null,
                 'delivery_status' => CustomerTouchpoint::DELIVERY_SENT,
+                'attempt_count' => 0,
+                'retry_limit' => $governance['retry_limit'],
                 'opt_in_snapshot' => (bool) $profile->email_opt_in,
-                'metadata' => [
-                    'cta_label' => $ctaLabel,
-                    'cta_url' => $ctaUrl,
-                    'requires_marketing_opt_in' => $requiresMarketingOptIn,
-                    'segment' => $this->segmentKey($profile),
-                    'campaign_id' => $campaignId,
-                    'campaign_subject' => $campaignSubject,
-                    'reward_name' => $rewardName,
-                    'reward_points_cost' => $rewardPointsCost,
-                    'cadence_interval_days' => $cadenceIntervalDays,
-                ],
+                'metadata' => $this->touchpointMetadata($profile, $options, $governance),
             ]);
 
-        if (! filled($profile->email)) {
-            return $this->markSkipped($touchpoint, 'El cliente no tiene email.');
-        }
-
-        if (! $profile->email_opt_in) {
-            return $this->markSkipped($touchpoint, 'El cliente no tiene opt-in de email.');
-        }
-
-        if ($requiresMarketingOptIn && ! $profile->marketing_opt_in) {
-            return $this->markSkipped($touchpoint, 'El cliente no tiene opt-in de marketing.');
-        }
-
-        try {
-            $mail = new CustomerLifecycleMail($subject, [
-                'tenant_name' => (string) ($profile->tenant?->name ?? 'Conecta HN'),
-                'customer_name' => (string) ($profile->name ?? 'cliente'),
-                'intro' => (string) ($profile->tenant?->name ?? 'Conecta HN'),
-                'body' => $body,
-                'cta_label' => $ctaLabel,
-                'cta_url' => $ctaUrl,
-            ]);
-
-            $dispatch = $this->messagingGateway->sendLifecycleEmail($profile, $mail, [
-                'automation_key' => $automationKey,
-                'touchpoint_id' => (string) $touchpoint->getKey(),
-                'segment' => $this->segmentKey($profile),
-                'campaign_id' => $campaignId,
-                'campaign_subject' => $campaignSubject,
-                'reward_name' => $rewardName,
-                'reward_points_cost' => $rewardPointsCost,
-                'cadence_interval_days' => $cadenceIntervalDays,
-            ]);
-
-            $touchpoint->forceFill([
-                'status' => CustomerTouchpoint::STATUS_SENT,
-                'provider' => $dispatch['provider'] ?? null,
-                'provider_message_id' => $dispatch['provider_message_id'] ?: null,
-                'delivery_status' => $dispatch['delivery_status'] ?: CustomerTouchpoint::DELIVERY_SENT,
-                'sent_at' => now(),
-                'last_error' => null,
-                'provider_payload' => $dispatch['payload'] ?? null,
-                'metadata' => array_merge($touchpoint->metadata ?? [], [
-                    'transport' => $dispatch['payload'] ?? [],
-                ]),
-            ])->save();
-
-            $profile->forceFill([
-                'last_contacted_at' => now(),
-            ])->save();
-
-            $this->conversationOpsManager->markOutboundResponse($profile, $touchpoint, $actorUserId);
-        } catch (\Throwable $exception) {
-            report($exception);
-
-            $touchpoint->forceFill([
-                'status' => CustomerTouchpoint::STATUS_FAILED,
-                'failed_at' => now(),
-                'last_error' => $exception->getMessage(),
-            ])->save();
-        }
-
-        return $touchpoint->fresh();
+        return $this->dispatchEmailTouchpoint($touchpoint, $profile, $subject, $body, $actorUserId, $options);
     }
 
     public function sendWhatsAppTouchpoint(
@@ -138,18 +64,7 @@ class CustomerAutomationManager
     ): CustomerTouchpoint {
         $profile->loadMissing('tenant');
 
-        $requiresMarketingOptIn = (bool) ($options['requires_marketing_opt_in'] ?? false);
-        $templateName = $options['template_name'] ?? null;
-        $templateLanguage = $options['template_language'] ?? 'es_HN';
-        $templateVariables = array_values((array) ($options['template_variables'] ?? []));
-        $ctaUrl = $options['cta_url'] ?? $this->defaultCtaUrl($profile);
-        $ctaLabel = $options['cta_label'] ?? null;
-        $campaignId = $options['campaign_id'] ?? null;
-        $campaignSubject = $options['campaign_subject'] ?? null;
-        $rewardName = $options['reward_name'] ?? null;
-        $rewardPointsCost = $options['reward_points_cost'] ?? null;
-        $cadenceIntervalDays = $options['cadence_interval_days'] ?? null;
-
+        $governance = $this->governance->definition($automationKey, 'whatsapp', $options);
         $touchpoint = CustomerTouchpoint::query()
             ->withoutGlobalScopes()
             ->create([
@@ -159,6 +74,7 @@ class CustomerAutomationManager
                 'channel' => 'whatsapp',
                 'direction' => 'outbound',
                 'automation_key' => $automationKey,
+                'template_key' => $governance['template_key'],
                 'subject' => null,
                 'message' => $body,
                 'recipient_address' => $profile->phone,
@@ -166,83 +82,74 @@ class CustomerAutomationManager
                 'provider' => null,
                 'provider_message_id' => null,
                 'delivery_status' => CustomerTouchpoint::DELIVERY_SENT,
+                'attempt_count' => 0,
+                'retry_limit' => $governance['retry_limit'],
                 'opt_in_snapshot' => (bool) $profile->whatsapp_opt_in,
-                'metadata' => [
-                    'cta_url' => $ctaUrl,
-                    'requires_marketing_opt_in' => $requiresMarketingOptIn,
-                    'segment' => $this->segmentKey($profile),
-                    'template_name' => $templateName,
-                    'template_language' => $templateLanguage,
-                    'template_variables' => $templateVariables,
-                    'cta_label' => $ctaLabel,
-                    'campaign_id' => $campaignId,
-                    'campaign_subject' => $campaignSubject,
-                    'reward_name' => $rewardName,
-                    'reward_points_cost' => $rewardPointsCost,
-                    'cadence_interval_days' => $cadenceIntervalDays,
-                ],
+                'metadata' => $this->touchpointMetadata($profile, $options, $governance),
             ]);
 
-        if (! filled($profile->phone)) {
-            return $this->markSkipped($touchpoint, 'El cliente no tiene telefono para WhatsApp.');
+        return $this->dispatchWhatsAppTouchpoint($touchpoint, $profile, $body, $actorUserId, $options);
+    }
+
+    public function retryTouchpoint(CustomerTouchpoint $touchpoint, ?string $actorUserId = null): CustomerTouchpoint
+    {
+        /** @var CustomerTouchpoint|null $record */
+        $record = CustomerTouchpoint::query()
+            ->withoutGlobalScopes()
+            ->with(['customerProfile' => fn ($query) => $query->withoutGlobalScopes()->with('tenant')])
+            ->find($touchpoint->getKey());
+
+        if (! $record instanceof CustomerTouchpoint) {
+            return $touchpoint;
         }
 
-        if (! $profile->whatsapp_opt_in) {
-            return $this->markSkipped($touchpoint, 'El cliente no tiene opt-in de WhatsApp.');
+        $profile = $record->customerProfile;
+
+        if (! $profile instanceof CustomerProfile || ! $this->governance->canRetry($record)) {
+            return $record->fresh() ?? $record;
         }
 
-        if ($requiresMarketingOptIn && ! $profile->marketing_opt_in) {
-            return $this->markSkipped($touchpoint, 'El cliente no tiene opt-in de marketing.');
+        $options = $this->retryOptionsFromTouchpoint($record);
+        $actorUserId ??= $record->created_by_user_id !== null ? (string) $record->created_by_user_id : null;
+
+        if ($record->channel === 'whatsapp') {
+            return $this->dispatchWhatsAppTouchpoint(
+                $record,
+                $profile,
+                (string) $record->message,
+                $actorUserId,
+                $options,
+                enforceDailyLimit: false,
+            );
         }
 
-        try {
-            $dispatch = $this->messagingGateway->sendLifecycleWhatsApp($profile, [
-                'body' => $body,
-                'template_name' => $templateName,
-                'template_language' => $templateLanguage,
-                'template_variables' => $templateVariables,
-            ], [
-                'automation_key' => $automationKey,
-                'touchpoint_id' => (string) $touchpoint->getKey(),
-                'segment' => $this->segmentKey($profile),
-                'cta_url' => $ctaUrl,
-                'cta_label' => $ctaLabel,
-                'campaign_id' => $campaignId,
-                'campaign_subject' => $campaignSubject,
-                'reward_name' => $rewardName,
-                'reward_points_cost' => $rewardPointsCost,
-                'cadence_interval_days' => $cadenceIntervalDays,
-            ]);
+        return $this->dispatchEmailTouchpoint(
+            $record,
+            $profile,
+            (string) ($record->subject ?: 'Seguimiento de '.($profile->tenant?->name ?? 'Conecta HN')),
+            (string) $record->message,
+            $actorUserId,
+            $options,
+            enforceDailyLimit: false,
+        );
+    }
 
-            $touchpoint->forceFill([
-                'status' => CustomerTouchpoint::STATUS_SENT,
-                'provider' => $dispatch['provider'] ?? null,
-                'provider_message_id' => $dispatch['provider_message_id'] ?: null,
-                'delivery_status' => $dispatch['delivery_status'] ?: CustomerTouchpoint::DELIVERY_SENT,
-                'sent_at' => now(),
-                'last_error' => null,
-                'provider_payload' => $dispatch['payload'] ?? null,
-                'metadata' => array_merge($touchpoint->metadata ?? [], [
-                    'transport' => $dispatch['payload'] ?? [],
-                ]),
-            ])->save();
+    public function scheduleRetry(CustomerTouchpoint $touchpoint, ?Carbon $baseTime = null): CustomerTouchpoint
+    {
+        $nextRetryAt = $this->governance->nextRetryAt($touchpoint, $baseTime);
 
-            $profile->forceFill([
-                'last_contacted_at' => now(),
-                'last_engaged_channel' => 'whatsapp',
-            ])->save();
+        $touchpoint->forceFill([
+            'next_retry_at' => $nextRetryAt,
+        ])->save();
 
-            $this->conversationOpsManager->markOutboundResponse($profile, $touchpoint, $actorUserId);
-        } catch (\Throwable $exception) {
-            report($exception);
+        return $touchpoint->fresh();
+    }
 
-            $touchpoint->forceFill([
-                'status' => CustomerTouchpoint::STATUS_FAILED,
-                'delivery_status' => CustomerTouchpoint::DELIVERY_FAILED,
-                'failed_at' => now(),
-                'last_error' => $exception->getMessage(),
-            ])->save();
-        }
+    public function clearRetry(CustomerTouchpoint $touchpoint): CustomerTouchpoint
+    {
+        $touchpoint->forceFill([
+            'next_retry_at' => null,
+        ])->save();
 
         return $touchpoint->fresh();
     }
@@ -266,6 +173,10 @@ class CustomerAutomationManager
                     'template_name' => $template['template_name'],
                     'template_language' => $template['template_language'],
                     'template_variables' => $template['template_variables'],
+                    'template_key' => $template['template_key'],
+                    'daily_limit' => $template['daily_limit'],
+                    'retry_limit' => $template['retry_limit'],
+                    'retry_backoff_minutes' => $template['retry_backoff_minutes'],
                     'requires_marketing_opt_in' => $template['requires_marketing_opt_in'],
                 ],
             );
@@ -280,6 +191,10 @@ class CustomerAutomationManager
             options: [
                 'cta_label' => $template['cta_label'],
                 'cta_url' => $template['cta_url'],
+                'template_key' => $template['template_key'],
+                'daily_limit' => $template['daily_limit'],
+                'retry_limit' => $template['retry_limit'],
+                'retry_backoff_minutes' => $template['retry_backoff_minutes'],
                 'requires_marketing_opt_in' => $template['requires_marketing_opt_in'],
             ],
         );
@@ -326,7 +241,7 @@ class CustomerAutomationManager
     }
 
     /**
-     * @return array{subject: string, body: string, cta_label: string|null, cta_url: string|null, requires_marketing_opt_in: bool, channel: string, template_name: string|null, template_language: string|null, template_variables: array<int, string>}
+     * @return array{subject: string, body: string, cta_label: string|null, cta_url: string|null, requires_marketing_opt_in: bool, channel: string, template_name: string|null, template_language: string|null, template_variables: array<int, string>, template_key: string, daily_limit: int, retry_limit: int, retry_backoff_minutes: int}
      */
     public function preview(CustomerProfile $profile, string $automationKey = 'reactivation_email', ?string $channel = null): array
     {
@@ -336,6 +251,8 @@ class CustomerAutomationManager
         $overrides = (array) config("customer-automation.profiles.{$segmentKey}.{$automationKey}", []);
         $definition = array_replace($defaults, $overrides);
 
+        $resolvedChannel = $channel ?? (string) ($definition['channel'] ?? 'email');
+        $governance = $this->governance->definition($automationKey, $resolvedChannel, $definition);
         $ctaUrl = $this->defaultCtaUrl($profile, $tenant);
         $replace = [
             '{business_name}' => (string) ($tenant?->name ?? 'Conecta HN'),
@@ -349,21 +266,328 @@ class CustomerAutomationManager
             'cta_label' => isset($definition['cta_label']) ? (string) $definition['cta_label'] : null,
             'cta_url' => $ctaUrl,
             'requires_marketing_opt_in' => (bool) ($definition['requires_marketing_opt_in'] ?? false),
-            'channel' => $channel ?? (string) ($definition['channel'] ?? 'email'),
+            'channel' => $resolvedChannel,
             'template_name' => isset($definition['template_name']) ? (string) $definition['template_name'] : null,
             'template_language' => isset($definition['template_language']) ? (string) $definition['template_language'] : null,
             'template_variables' => array_values((array) ($definition['template_variables'] ?? [])),
+            'template_key' => $governance['template_key'],
+            'daily_limit' => $governance['daily_limit'],
+            'retry_limit' => $governance['retry_limit'],
+            'retry_backoff_minutes' => $governance['retry_backoff_minutes'],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function dispatchEmailTouchpoint(
+        CustomerTouchpoint $touchpoint,
+        CustomerProfile $profile,
+        string $subject,
+        string $body,
+        ?string $actorUserId,
+        array $options,
+        bool $enforceDailyLimit = true,
+    ): CustomerTouchpoint {
+        $governance = $this->governance->definition((string) ($touchpoint->automation_key ?? 'manual_follow_up'), 'email', array_merge([
+            'template_key' => $touchpoint->template_key,
+            'retry_limit' => $touchpoint->retry_limit,
+        ], $options, [
+            'daily_limit' => data_get($touchpoint->metadata, 'daily_limit'),
+            'retry_backoff_minutes' => data_get($touchpoint->metadata, 'retry_backoff_minutes'),
+        ]));
+
+        if (! filled($profile->email)) {
+            return $this->markSkipped($touchpoint, 'El cliente no tiene email.');
+        }
+
+        if (! $profile->email_opt_in) {
+            return $this->markSkipped($touchpoint, 'El cliente no tiene opt-in de email.');
+        }
+
+        if ((bool) ($options['requires_marketing_opt_in'] ?? data_get($touchpoint->metadata, 'requires_marketing_opt_in', false))
+            && ! $profile->marketing_opt_in) {
+            return $this->markSkipped($touchpoint, 'El cliente no tiene opt-in de marketing.');
+        }
+
+        if ($enforceDailyLimit && $this->governance->hasReachedDailyLimit(
+            $profile,
+            'email',
+            $governance['template_key'],
+            $governance['daily_limit'],
+            (int) $touchpoint->getKey(),
+        )) {
+            return $this->markSkipped($touchpoint, 'El cliente ya recibio este template hoy.');
+        }
+
+        $touchpoint->forceFill([
+            'created_by_user_id' => $actorUserId ?? $touchpoint->created_by_user_id,
+            'subject' => $subject,
+            'message' => $body,
+            'recipient_address' => $profile->email,
+            'template_key' => $governance['template_key'],
+            'retry_limit' => $governance['retry_limit'],
+            'metadata' => array_merge($touchpoint->metadata ?? [], [
+                'template_key' => $governance['template_key'],
+                'daily_limit' => $governance['daily_limit'],
+                'retry_limit' => $governance['retry_limit'],
+                'retry_backoff_minutes' => $governance['retry_backoff_minutes'],
+            ]),
+        ])->save();
+
+        $this->prepareAttempt($touchpoint);
+
+        try {
+            $mail = new CustomerLifecycleMail($subject, [
+                'tenant_name' => (string) ($profile->tenant?->name ?? 'Conecta HN'),
+                'customer_name' => (string) ($profile->name ?? 'cliente'),
+                'intro' => (string) ($profile->tenant?->name ?? 'Conecta HN'),
+                'body' => $body,
+                'cta_label' => $options['cta_label'] ?? data_get($touchpoint->metadata, 'cta_label'),
+                'cta_url' => $options['cta_url'] ?? $this->defaultCtaUrl($profile),
+            ]);
+
+            $dispatch = $this->messagingGateway->sendLifecycleEmail($profile, $mail, [
+                'automation_key' => $touchpoint->automation_key,
+                'touchpoint_id' => (string) $touchpoint->getKey(),
+                'segment' => $this->segmentKey($profile),
+                'campaign_id' => $options['campaign_id'] ?? data_get($touchpoint->metadata, 'campaign_id'),
+                'campaign_subject' => $options['campaign_subject'] ?? data_get($touchpoint->metadata, 'campaign_subject'),
+                'reward_name' => $options['reward_name'] ?? data_get($touchpoint->metadata, 'reward_name'),
+                'reward_points_cost' => $options['reward_points_cost'] ?? data_get($touchpoint->metadata, 'reward_points_cost'),
+                'cadence_interval_days' => $options['cadence_interval_days'] ?? data_get($touchpoint->metadata, 'cadence_interval_days'),
+            ]);
+
+            $touchpoint->forceFill([
+                'status' => CustomerTouchpoint::STATUS_SENT,
+                'provider' => $dispatch['provider'] ?? null,
+                'provider_message_id' => $dispatch['provider_message_id'] ?: null,
+                'delivery_status' => $dispatch['delivery_status'] ?: CustomerTouchpoint::DELIVERY_SENT,
+                'sent_at' => now(),
+                'failed_at' => null,
+                'next_retry_at' => null,
+                'last_error' => null,
+                'provider_payload' => $dispatch['payload'] ?? null,
+                'metadata' => array_merge($touchpoint->metadata ?? [], [
+                    'transport' => $dispatch['payload'] ?? [],
+                ]),
+            ])->save();
+
+            $profile->forceFill([
+                'last_contacted_at' => now(),
+                'last_engaged_channel' => 'email',
+            ])->save();
+
+            $this->conversationOpsManager->markOutboundResponse($profile, $touchpoint, $actorUserId);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return $this->markFailed($touchpoint, $exception->getMessage(), CustomerTouchpoint::DELIVERY_FAILED);
+        }
+
+        return $touchpoint->fresh();
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function dispatchWhatsAppTouchpoint(
+        CustomerTouchpoint $touchpoint,
+        CustomerProfile $profile,
+        string $body,
+        ?string $actorUserId,
+        array $options,
+        bool $enforceDailyLimit = true,
+    ): CustomerTouchpoint {
+        $governance = $this->governance->definition((string) ($touchpoint->automation_key ?? 'manual_follow_up_whatsapp'), 'whatsapp', array_merge([
+            'template_key' => $touchpoint->template_key,
+            'retry_limit' => $touchpoint->retry_limit,
+        ], $options, [
+            'daily_limit' => data_get($touchpoint->metadata, 'daily_limit'),
+            'retry_backoff_minutes' => data_get($touchpoint->metadata, 'retry_backoff_minutes'),
+        ]));
+
+        if (! filled($profile->phone)) {
+            return $this->markSkipped($touchpoint, 'El cliente no tiene teléfono para WhatsApp.');
+        }
+
+        if (! $profile->whatsapp_opt_in) {
+            return $this->markSkipped($touchpoint, 'El cliente no tiene opt-in de WhatsApp.');
+        }
+
+        if ((bool) ($options['requires_marketing_opt_in'] ?? data_get($touchpoint->metadata, 'requires_marketing_opt_in', false))
+            && ! $profile->marketing_opt_in) {
+            return $this->markSkipped($touchpoint, 'El cliente no tiene opt-in de marketing.');
+        }
+
+        if ($enforceDailyLimit && $this->governance->hasReachedDailyLimit(
+            $profile,
+            'whatsapp',
+            $governance['template_key'],
+            $governance['daily_limit'],
+            (int) $touchpoint->getKey(),
+        )) {
+            return $this->markSkipped($touchpoint, 'El cliente ya recibio este template hoy.');
+        }
+
+        $touchpoint->forceFill([
+            'created_by_user_id' => $actorUserId ?? $touchpoint->created_by_user_id,
+            'message' => $body,
+            'recipient_address' => $profile->phone,
+            'template_key' => $governance['template_key'],
+            'retry_limit' => $governance['retry_limit'],
+            'metadata' => array_merge($touchpoint->metadata ?? [], [
+                'template_name' => $options['template_name'] ?? data_get($touchpoint->metadata, 'template_name'),
+                'template_language' => $options['template_language'] ?? data_get($touchpoint->metadata, 'template_language', 'es_HN'),
+                'template_variables' => array_values((array) ($options['template_variables'] ?? data_get($touchpoint->metadata, 'template_variables', []))),
+                'template_key' => $governance['template_key'],
+                'daily_limit' => $governance['daily_limit'],
+                'retry_limit' => $governance['retry_limit'],
+                'retry_backoff_minutes' => $governance['retry_backoff_minutes'],
+            ]),
+        ])->save();
+
+        $this->prepareAttempt($touchpoint);
+
+        try {
+            $dispatch = $this->messagingGateway->sendLifecycleWhatsApp($profile, [
+                'body' => $body,
+                'template_name' => $options['template_name'] ?? data_get($touchpoint->metadata, 'template_name'),
+                'template_language' => $options['template_language'] ?? data_get($touchpoint->metadata, 'template_language', 'es_HN'),
+                'template_variables' => array_values((array) ($options['template_variables'] ?? data_get($touchpoint->metadata, 'template_variables', []))),
+            ], [
+                'automation_key' => $touchpoint->automation_key,
+                'touchpoint_id' => (string) $touchpoint->getKey(),
+                'segment' => $this->segmentKey($profile),
+                'cta_url' => $options['cta_url'] ?? data_get($touchpoint->metadata, 'cta_url'),
+                'cta_label' => $options['cta_label'] ?? data_get($touchpoint->metadata, 'cta_label'),
+                'campaign_id' => $options['campaign_id'] ?? data_get($touchpoint->metadata, 'campaign_id'),
+                'campaign_subject' => $options['campaign_subject'] ?? data_get($touchpoint->metadata, 'campaign_subject'),
+                'reward_name' => $options['reward_name'] ?? data_get($touchpoint->metadata, 'reward_name'),
+                'reward_points_cost' => $options['reward_points_cost'] ?? data_get($touchpoint->metadata, 'reward_points_cost'),
+                'cadence_interval_days' => $options['cadence_interval_days'] ?? data_get($touchpoint->metadata, 'cadence_interval_days'),
+            ]);
+
+            $touchpoint->forceFill([
+                'status' => CustomerTouchpoint::STATUS_SENT,
+                'provider' => $dispatch['provider'] ?? null,
+                'provider_message_id' => $dispatch['provider_message_id'] ?: null,
+                'delivery_status' => $dispatch['delivery_status'] ?: CustomerTouchpoint::DELIVERY_SENT,
+                'sent_at' => now(),
+                'failed_at' => null,
+                'next_retry_at' => null,
+                'last_error' => null,
+                'provider_payload' => $dispatch['payload'] ?? null,
+                'metadata' => array_merge($touchpoint->metadata ?? [], [
+                    'transport' => $dispatch['payload'] ?? [],
+                ]),
+            ])->save();
+
+            $profile->forceFill([
+                'last_contacted_at' => now(),
+                'last_engaged_channel' => 'whatsapp',
+            ])->save();
+
+            $this->conversationOpsManager->markOutboundResponse($profile, $touchpoint, $actorUserId);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return $this->markFailed($touchpoint, $exception->getMessage(), CustomerTouchpoint::DELIVERY_FAILED);
+        }
+
+        return $touchpoint->fresh();
+    }
+
+    private function prepareAttempt(CustomerTouchpoint $touchpoint): void
+    {
+        $touchpoint->forceFill([
+            'status' => CustomerTouchpoint::STATUS_QUEUED,
+            'last_attempt_at' => now(),
+            'attempt_count' => ((int) $touchpoint->attempt_count) + 1,
+            'next_retry_at' => null,
+        ])->save();
     }
 
     private function markSkipped(CustomerTouchpoint $touchpoint, string $reason): CustomerTouchpoint
     {
         $touchpoint->forceFill([
             'status' => CustomerTouchpoint::STATUS_SKIPPED,
+            'next_retry_at' => null,
             'last_error' => $reason,
         ])->save();
 
         return $touchpoint->fresh();
+    }
+
+    private function markFailed(
+        CustomerTouchpoint $touchpoint,
+        string $reason,
+        ?string $deliveryStatus = null,
+        ?Carbon $failedAt = null,
+        bool $scheduleRetry = true,
+    ): CustomerTouchpoint {
+        $failedAt ??= now();
+
+        $touchpoint->forceFill([
+            'status' => CustomerTouchpoint::STATUS_FAILED,
+            'delivery_status' => $deliveryStatus ?? CustomerTouchpoint::DELIVERY_FAILED,
+            'failed_at' => $failedAt,
+            'last_error' => $reason,
+            'next_retry_at' => $scheduleRetry ? $this->governance->nextRetryAt($touchpoint, $failedAt) : null,
+        ])->save();
+
+        return $touchpoint->fresh();
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     * @param  array{template_key: string, daily_limit: int, retry_limit: int, retry_backoff_minutes: int}  $governance
+     * @return array<string, mixed>
+     */
+    private function touchpointMetadata(CustomerProfile $profile, array $options, array $governance): array
+    {
+        return [
+            'cta_label' => $options['cta_label'] ?? null,
+            'cta_url' => $options['cta_url'] ?? $this->defaultCtaUrl($profile),
+            'requires_marketing_opt_in' => (bool) ($options['requires_marketing_opt_in'] ?? false),
+            'segment' => $this->segmentKey($profile),
+            'campaign_id' => $options['campaign_id'] ?? null,
+            'campaign_subject' => $options['campaign_subject'] ?? null,
+            'reward_name' => $options['reward_name'] ?? null,
+            'reward_points_cost' => $options['reward_points_cost'] ?? null,
+            'cadence_interval_days' => $options['cadence_interval_days'] ?? null,
+            'template_name' => $options['template_name'] ?? null,
+            'template_language' => $options['template_language'] ?? null,
+            'template_variables' => array_values((array) ($options['template_variables'] ?? [])),
+            'template_key' => $governance['template_key'],
+            'daily_limit' => $governance['daily_limit'],
+            'retry_limit' => $governance['retry_limit'],
+            'retry_backoff_minutes' => $governance['retry_backoff_minutes'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function retryOptionsFromTouchpoint(CustomerTouchpoint $touchpoint): array
+    {
+        return [
+            'cta_label' => data_get($touchpoint->metadata, 'cta_label'),
+            'cta_url' => data_get($touchpoint->metadata, 'cta_url'),
+            'requires_marketing_opt_in' => (bool) data_get($touchpoint->metadata, 'requires_marketing_opt_in', false),
+            'campaign_id' => data_get($touchpoint->metadata, 'campaign_id'),
+            'campaign_subject' => data_get($touchpoint->metadata, 'campaign_subject'),
+            'reward_name' => data_get($touchpoint->metadata, 'reward_name'),
+            'reward_points_cost' => data_get($touchpoint->metadata, 'reward_points_cost'),
+            'cadence_interval_days' => data_get($touchpoint->metadata, 'cadence_interval_days'),
+            'template_name' => data_get($touchpoint->metadata, 'template_name'),
+            'template_language' => data_get($touchpoint->metadata, 'template_language', 'es_HN'),
+            'template_variables' => array_values((array) data_get($touchpoint->metadata, 'template_variables', [])),
+            'template_key' => $touchpoint->template_key ?: data_get($touchpoint->metadata, 'template_key'),
+            'daily_limit' => data_get($touchpoint->metadata, 'daily_limit'),
+            'retry_limit' => $touchpoint->retry_limit,
+            'retry_backoff_minutes' => data_get($touchpoint->metadata, 'retry_backoff_minutes'),
+        ];
     }
 
     private function defaultCtaUrl(CustomerProfile $profile, ?Tenant $tenant = null): ?string
@@ -392,4 +616,3 @@ class CustomerAutomationManager
         return (string) ($tenant->business_segment_key ?: app(BusinessSegmentResolver::class)->resolveForTenant($tenant));
     }
 }
-

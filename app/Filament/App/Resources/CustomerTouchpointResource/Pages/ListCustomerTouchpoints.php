@@ -38,6 +38,6 @@ class ListCustomerTouchpoints extends ListTenantRecords
 
     public function getSubheading(): string
     {
-        return 'Bitacora de emails y seguimientos comerciales ejecutados desde el CRM.';
+        return 'Bitacora de emails, WhatsApp, plantillas, intentos y retries ejecutados desde el CRM.';
     }
 }
