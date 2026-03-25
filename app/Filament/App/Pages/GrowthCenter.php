@@ -20,6 +20,7 @@ use App\Filament\App\Resources\OperationalPlaybookTaskResource;
 use App\Filament\App\Resources\OrderResource;
 use App\Models\Appointment;
 use App\Models\Campaign;
+use App\Models\CustomerConversation;
 use App\Models\CustomerLoyaltyLedger;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
@@ -183,6 +184,8 @@ class GrowthCenter extends Page
 
     public float $averageFirstResponseMinutes = 0.0;
 
+    public float $responseRate30d = 0.0;
+
     public float $repeatRevenue30d = 0.0;
 
     public string $topAcquisitionChannel = 'Sin datos';
@@ -196,6 +199,10 @@ class GrowthCenter extends Page
     public string $topLoyaltyChannel = 'Sin datos';
 
     public string $topTemplateLabel = 'Sin datos';
+
+    public string $topClosingChannel = 'Sin datos';
+
+    public string $topReactivationSegment = 'Sin datos';
 
     public int $scheduledCampaignsCount = 0;
 
@@ -469,6 +476,17 @@ class GrowthCenter extends Page
                 ->whereNotNull('last_reactivated_at')
                 ->where('last_reactivated_at', '>=', $thirtyDaysAgo)
                 ->count();
+            $topReactivationSegment = (clone $profilesBase)
+                ->whereNotNull('last_reactivated_at')
+                ->where('last_reactivated_at', '>=', $thirtyDaysAgo)
+                ->selectRaw('coalesce(manual_segment, customer_segment, "new") as segment_key, count(*) as total')
+                ->groupBy('segment_key')
+                ->orderByDesc('total')
+                ->first();
+
+            if ($topReactivationSegment !== null) {
+                $this->topReactivationSegment = ucfirst(str_replace('_', ' ', (string) $topReactivationSegment->segment_key));
+            }
             $this->loyaltyReadyCustomersCount = (clone $profilesBase)
                 ->whereIn('loyalty_tier', ['silver', 'gold', 'vip'])
                 ->count();
@@ -650,8 +668,9 @@ class GrowthCenter extends Page
                 ->count();
 
             $topTemplate = (clone $touchpointsBase)
-                ->selectRaw("coalesce(template_key, automation_key, 'manual') as template_key, count(*) as total")
+                ->selectRaw("coalesce(template_key, automation_key, 'manual') as template_key, count(*) as total, sum(case when delivery_status = 'replied' then 1 else 0 end) as replied_total")
                 ->groupBy('template_key')
+                ->orderByDesc('replied_total')
                 ->orderByDesc('total')
                 ->first();
 
@@ -694,25 +713,54 @@ class GrowthCenter extends Page
         }
 
         try {
+            $conversationBase = CustomerConversation::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId);
+
+            $customerConversations30d = (clone $conversationBase)
+                ->whereNotNull('last_customer_message_at')
+                ->where('last_customer_message_at', '>=', $thirtyDaysAgo);
+
+            $respondedConversations30d = (clone $customerConversations30d)
+                ->whereNotNull('first_response_at');
+
+            $conversationsCount30d = (clone $customerConversations30d)->count();
+            $this->responseRate30d = $conversationsCount30d > 0
+                ? round(((clone $respondedConversations30d)->count() / $conversationsCount30d) * 100, 1)
+                : 0.0;
+            $this->openRepliesCount = (clone $conversationBase)
+                ->whereIn('status', ['open', 'in_progress'])
+                ->count();
+            $this->breachedRepliesCount = (clone $conversationBase)
+                ->whereIn('status', ['open', 'in_progress'])
+                ->whereNotNull('response_due_at')
+                ->where('response_due_at', '<', now())
+                ->count();
+            $this->resolvedReplies30d = (clone $conversationBase)
+                ->where('status', 'closed')
+                ->whereNotNull('closed_at')
+                ->where('closed_at', '>=', $thirtyDaysAgo)
+                ->count();
+
+            $topClosingChannel = (clone $conversationBase)
+                ->where('status', 'closed')
+                ->whereNotNull('closed_at')
+                ->where('closed_at', '>=', $thirtyDaysAgo)
+                ->selectRaw('coalesce(source_channel, "crm") as channel_key, count(*) as total')
+                ->groupBy('channel_key')
+                ->orderByDesc('total')
+                ->first();
+
+            if ($topClosingChannel !== null) {
+                $this->topClosingChannel = $this->formatSourceLabel((string) $topClosingChannel->channel_key);
+            }
+
             $notesBase = CustomerNote::query()
                 ->withoutGlobalScopes()
                 ->where('tenant_id', $tenantId);
 
             $this->notes7dCount = (clone $notesBase)
                 ->where('created_at', '>=', now()->subDays(7))
-                ->count();
-            $this->openRepliesCount = (clone $notesBase)
-                ->where('requires_follow_up', true)
-                ->whereIn('status', ['open', 'in_progress'])
-                ->count();
-            $this->breachedRepliesCount = (clone $notesBase)
-                ->whereIn('status', ['open', 'in_progress'])
-                ->whereNotNull('response_due_at')
-                ->where('response_due_at', '<', now())
-                ->count();
-            $this->resolvedReplies30d = (clone $notesBase)
-                ->where('status', 'resolved')
-                ->where('handled_at', '>=', $thirtyDaysAgo)
                 ->count();
             $this->openCustomerTasksCount = CustomerTask::query()
                 ->withoutGlobalScopes()
@@ -727,15 +775,10 @@ class GrowthCenter extends Page
                 ->where('sla_due_at', '<', now())
                 ->count();
 
-            $respondedNotes = (clone $notesBase)
-                ->whereNotNull('first_response_at')
-                ->whereNotNull('last_customer_message_at')
-                ->where('created_at', '>=', $thirtyDaysAgo)
-                ->get(['first_response_at', 'last_customer_message_at']);
-
-            $this->averageFirstResponseMinutes = round((float) $respondedNotes
-                ->map(function (CustomerNote $note): int {
-                    return max(0, (int) $note->last_customer_message_at?->diffInMinutes($note->first_response_at));
+            $this->averageFirstResponseMinutes = round((float) $respondedConversations30d
+                ->get(['first_response_at', 'last_customer_message_at'])
+                ->map(function (CustomerConversation $conversation): int {
+                    return max(0, (int) $conversation->last_customer_message_at?->diffInMinutes($conversation->first_response_at));
                 })
                 ->avg(), 1);
         } catch (\Throwable) {
@@ -746,6 +789,8 @@ class GrowthCenter extends Page
             $this->openCustomerTasksCount = 0;
             $this->overdueCustomerTasksCount = 0;
             $this->averageFirstResponseMinutes = 0.0;
+            $this->responseRate30d = 0.0;
+            $this->topClosingChannel = 'Sin datos';
         }
 
         try {
@@ -845,6 +890,7 @@ class GrowthCenter extends Page
             $this->metric('Con sede', (string) $this->locatedCustomersCount, $this->locatedCustomersCount > 0 ? 'Clientes ya conectados a una sucursal o punto de atencion.' : 'Todavia no hay base suficiente etiquetada por sede.'),
             $this->metric('Reactivar', (string) $this->reactivationPoolCount, $this->reactivationPoolCount > 0 ? 'Clientes con senales para volver a tocar.' : 'La base reciente no muestra fuga grande todavia.'),
             $this->metric('Reactivados 30 dias', (string) $this->reactivatedCustomers30d, $this->reactivatedCustomers30d > 0 ? 'Clientes que ya respondieron a una nueva activacion reciente.' : 'Aun no tienes reactivaciones recientes registradas.'),
+            $this->metric('Segmento que reactiva', $this->topReactivationSegment, $this->reactivatedCustomers30d > 0 ? 'El segmento que mas esta volviendo despues de tus journeys y follow-up.' : 'Todavia no hay suficiente reactivacion para detectar un segmento ganador.'),
             $this->metric('Tier con fidelidad', (string) $this->loyaltyReadyCustomersCount, $this->loyaltyReadyCustomersCount > 0 ? 'Clientes listos para beneficios, bundles o continuidad.' : 'Todavia no hay base suficiente para fidelidad segmentada.'),
         ];
     }
@@ -860,11 +906,13 @@ class GrowthCenter extends Page
             $this->metric('Segmento con mejor LTV', $this->topLtvSegment, 'El cluster que hoy deja mas valor acumulado por cliente.'),
             $this->metric('Canal con mejor LTV', $this->topLtvChannel, 'La entrada que esta trayendo clientes con mejor vida util.'),
             $this->metric('Primer respuesta', $this->averageFirstResponseMinutes > 0 ? $this->averageFirstResponseMinutes.' min' : 'Sin datos', $this->averageFirstResponseMinutes > 0 ? 'Tiempo medio entre reply del cliente y primer movimiento del equipo.' : 'Todavia no hay conversaciones respondidas para medir velocidad.'),
+            $this->metric('Tasa de respuesta', $this->responseRate30d.'%', $this->responseRate30d > 0 ? 'Porcentaje de conversaciones recientes donde el equipo alcanzo primera respuesta.' : 'Todavia no hay suficiente volumen conversacional para medir respuesta.'),
             $this->metric('SLA vencido', (string) $this->breachedRepliesCount, $this->breachedRepliesCount > 0 ? 'Casos de conversacion ya fuera de tiempo comercial.' : 'No hay replies vencidos en este momento.'),
             $this->metric('Entrega de email', $this->deliveryRate30d.'%', $this->touchpoints30d > 0 ? "{$this->touchpointsDelivered30d} contactos llegaron a bandeja de entrada." : 'Aun no hay seguimiento suficiente para medir entrega.'),
             $this->metric('Apertura de email', $this->openRate30d.'%', $this->touchpointsOpened30d > 0 ? "{$this->touchpointsOpened30d} contactos ya abrieron tus mensajes." : 'Todavia no hay aperturas registradas por proveedor.'),
             $this->metric('Respuestas por WhatsApp', (string) $this->whatsAppReplies30d, $this->whatsAppTouchpoints30d > 0 ? "{$this->whatsAppReplies30d} conversaciones devolvieron respuesta reciente." : 'Todavia no hay conversaciones de WhatsApp suficientes para medir respuesta.'),
-            $this->metric('Plantilla dominante', $this->topTemplateLabel, $this->touchpoints30d > 0 ? 'Es la plantilla que mas esta moviendo salidas recientes del CRM.' : 'Todavia no hay suficiente volumen para detectar una plantilla dominante.'),
+            $this->metric('Plantilla que mas convierte', $this->topTemplateLabel, $this->touchpoints30d > 0 ? 'Es la plantilla con mejor senal reciente de respuesta o cierre dentro del CRM.' : 'Todavia no hay suficiente volumen para detectar una plantilla ganadora.'),
+            $this->metric('Canal que mas cierra', $this->topClosingChannel, $this->resolvedReplies30d > 0 ? 'Es el canal que mas conversaciones esta cerrando en el periodo reciente.' : 'Aun no hay suficientes cierres recientes para detectar un canal dominante.'),
             $this->metric('Retries programados', (string) $this->scheduledTouchpointRetriesCount, $this->scheduledTouchpointRetriesCount > 0 ? 'La cola ya tiene reintentos futuros listos para ejecutar.' : 'No hay reintentos en espera ahora mismo.'),
         ];
     }

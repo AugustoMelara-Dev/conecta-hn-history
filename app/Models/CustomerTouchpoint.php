@@ -47,6 +47,7 @@ class CustomerTouchpoint extends Model
     protected $fillable = [
         'tenant_id',
         'customer_profile_id',
+        'customer_conversation_id',
         'created_by_user_id',
         'channel',
         'direction',
@@ -98,6 +99,11 @@ class CustomerTouchpoint extends Model
     public function customerProfile(): BelongsTo
     {
         return $this->belongsTo(CustomerProfile::class);
+    }
+
+    public function conversation(): BelongsTo
+    {
+        return $this->belongsTo(CustomerConversation::class, 'customer_conversation_id');
     }
 
     public function author(): BelongsTo

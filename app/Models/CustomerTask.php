@@ -15,6 +15,7 @@ class CustomerTask extends Model
     protected $fillable = [
         'tenant_id',
         'customer_profile_id',
+        'customer_conversation_id',
         'customer_note_id',
         'created_by_user_id',
         'assigned_user_id',
@@ -41,6 +42,11 @@ class CustomerTask extends Model
     public function customerProfile(): BelongsTo
     {
         return $this->belongsTo(CustomerProfile::class);
+    }
+
+    public function conversation(): BelongsTo
+    {
+        return $this->belongsTo(CustomerConversation::class, 'customer_conversation_id');
     }
 
     public function note(): BelongsTo

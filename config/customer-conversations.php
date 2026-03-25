@@ -144,4 +144,145 @@ return [
             'templates' => ['fast_follow_up', 'close_sale', 'service_rebook'],
         ],
     ],
+
+    'verticals' => [
+        'dental_clinic' => [
+            'templates' => [
+                'service_rebook' => [
+                    'label' => 'Confirmar valoracion dental',
+                    'description' => 'Mover diagnostico, control o tratamiento sin dejar ansiedad en el paciente.',
+                    'subject' => 'Podemos dejar tu valoracion lista en {business_name}',
+                    'body' => "Hola {customer_name},\n\nPodemos ayudarte a dejar tu valoracion, control o tratamiento agendado sin complicarte el proceso.\n\nRevisa aqui el siguiente paso: {cta_url}\n\nSi prefieres, responde este mensaje y lo vemos contigo.",
+                    'cta_label' => 'Confirmar valoracion',
+                    'template_name' => 'dental_rebook',
+                ],
+                'vip_priority' => [
+                    'label' => 'Atencion prioritaria dental',
+                    'description' => 'Respuesta premium para tratamientos o pacientes de alto valor.',
+                    'subject' => 'Seguimiento prioritario de tu caso dental',
+                    'body' => "Hola {customer_name},\n\nEstamos dando seguimiento prioritario a tu caso para que avances con tranquilidad y claridad.\n\nPuedes retomarlo aqui: {cta_url}\n\nSi deseas apoyo directo, responde este mensaje y te acompanamos.",
+                ],
+            ],
+            'segments' => [
+                'booked_service' => [
+                    'journey' => [
+                        ['title' => 'Confirmar valoracion o control', 'copy' => 'Responde con tono clinico claro y deja la siguiente cita definida.'],
+                        ['title' => 'Reducir ansiedad del paciente', 'copy' => 'Aclara procedimiento, tiempo o siguiente paso para evitar abandono.'],
+                        ['title' => 'Cerrar continuidad', 'copy' => 'Busca que el paciente salga con control, tratamiento o recordatorio ya planteado.'],
+                    ],
+                    'templates' => ['service_rebook', 'vip_priority', 'fast_follow_up'],
+                ],
+            ],
+        ],
+        'corporate_law_firm' => [
+            'templates' => [
+                'close_sale' => [
+                    'label' => 'Cerrar discovery legal',
+                    'description' => 'Convertir consulta inicial en reunion ejecutiva o siguiente accion formal.',
+                    'subject' => 'Podemos avanzar con tu siguiente paso legal',
+                    'body' => "Hola {customer_name},\n\nPodemos ordenar el siguiente paso para revisar tu caso o necesidad legal con el contexto correcto.\n\nRetomalo aqui: {cta_url}\n\nSi prefieres, responde este mensaje y coordinamos contigo.",
+                    'cta_label' => 'Agendar discovery',
+                    'template_name' => 'legal_close_discovery',
+                ],
+            ],
+            'segments' => [
+                'prospect' => [
+                    'journey' => [
+                        ['title' => 'Responder con criterio', 'copy' => 'Aclara si conviene discovery, llamada breve o filtro inicial.'],
+                        ['title' => 'Definir siguiente accion formal', 'copy' => 'No dejes la conversacion abierta sin reunion o envio de contexto.'],
+                        ['title' => 'Empujar continuidad ejecutiva', 'copy' => 'Busca que el lead salga con fecha o responsable asignado.'],
+                    ],
+                    'templates' => ['close_sale', 'fast_follow_up', 'reactivation_recovery'],
+                ],
+            ],
+        ],
+        'premium_barbershop' => [
+            'templates' => [
+                'service_rebook' => [
+                    'label' => 'Reagendar slot premium',
+                    'description' => 'Mover continuidad de grooming con tono premium y sin friccion.',
+                    'subject' => 'Podemos dejar tu siguiente slot premium listo',
+                    'body' => "Hola {customer_name},\n\nPodemos dejar tu siguiente corte o grooming premium ya reservado.\n\nRetomalo aqui: {cta_url}\n\nSi quieres, responde este mensaje y te ayudamos personalmente.",
+                    'cta_label' => 'Reservar slot',
+                    'template_name' => 'barber_rebook_premium',
+                ],
+            ],
+            'segments' => [
+                'repeat' => [
+                    'journey' => [
+                        ['title' => 'No dejes caer la recurrencia', 'copy' => 'Empuja la siguiente reserva antes de que se enfrie la rutina.'],
+                        ['title' => 'Usa membership o combo', 'copy' => 'Si aplica, mueve continuidad con paquete o beneficio visible.'],
+                        ['title' => 'Cierra la proxima visita', 'copy' => 'Busca que el cliente salga con nuevo slot o seguimiento claro.'],
+                    ],
+                    'templates' => ['service_rebook', 'vip_priority', 'fast_follow_up'],
+                ],
+            ],
+        ],
+        'hardware_store' => [
+            'templates' => [
+                'fast_follow_up' => [
+                    'label' => 'Seguimiento de cotizacion rapida',
+                    'description' => 'Bajar friccion y mover cotizacion o consulta de materiales.',
+                    'subject' => 'Tu cotizacion con {business_name} sigue abierta',
+                    'body' => "Hola {customer_name},\n\nSeguimos pendientes de tu cotizacion o consulta para que avances sin perder tiempo.\n\nPuedes retomarla aqui: {cta_url}\n\nSi necesitas apoyo, responde este mensaje.",
+                    'cta_label' => 'Retomar cotizacion',
+                    'template_name' => 'hardware_fast_quote',
+                ],
+            ],
+            'segments' => [
+                'prospect' => [
+                    'journey' => [
+                        ['title' => 'Responder hoy', 'copy' => 'En ferreteria la velocidad pesa mucho cuando el cliente tiene una urgencia.'],
+                        ['title' => 'Traducir necesidad a solucion', 'copy' => 'Aterriza la consulta en productos, cantidad o cobertura.'],
+                        ['title' => 'Cerrar pedido o cotizacion', 'copy' => 'No dejes la conversacion sin salida concreta.'],
+                    ],
+                    'templates' => ['fast_follow_up', 'close_sale', 'reactivation_recovery'],
+                ],
+            ],
+        ],
+        'premium_phone_store' => [
+            'templates' => [
+                'close_sale' => [
+                    'label' => 'Cerrar flagship o bundle',
+                    'description' => 'Empujar cierre de equipo premium con confianza y bundle.',
+                    'subject' => 'Tu siguiente equipo ya puede quedar listo',
+                    'body' => "Hola {customer_name},\n\nPodemos ayudarte a cerrar tu equipo o bundle con la mejor configuracion para ti.\n\nRetomalo aqui: {cta_url}\n\nSi prefieres, responde este mensaje y lo revisamos contigo.",
+                    'cta_label' => 'Cerrar equipo',
+                    'template_name' => 'phone_close_flagship',
+                ],
+            ],
+            'segments' => [
+                'repeat' => [
+                    'journey' => [
+                        ['title' => 'Responder con confianza', 'copy' => 'Ticket alto necesita rapidez y respaldo, no solo precio.'],
+                        ['title' => 'Subir bundle o garantia', 'copy' => 'Usa accesorios, cobertura o soporte como parte del cierre.'],
+                        ['title' => 'Dejar salida clara', 'copy' => 'Busca cotizacion cerrada, reserva o visita a tienda.'],
+                    ],
+                    'templates' => ['close_sale', 'vip_priority', 'fast_follow_up'],
+                ],
+            ],
+        ],
+        'casual_restaurant' => [
+            'templates' => [
+                'close_sale' => [
+                    'label' => 'Cerrar pedido de menu',
+                    'description' => 'Mover pedido rapido con combos o extras como siguiente paso.',
+                    'subject' => 'Tu pedido en {business_name} sigue listo para cerrar',
+                    'body' => "Hola {customer_name},\n\nTu siguiente pedido sigue listo y podemos ayudarte a cerrarlo en pocos pasos.\n\nRetomalo aqui: {cta_url}\n\nSi quieres, responde este mensaje y te apoyamos.",
+                    'cta_label' => 'Pedir ahora',
+                    'template_name' => 'restaurant_close_order',
+                ],
+            ],
+            'segments' => [
+                'repeat' => [
+                    'journey' => [
+                        ['title' => 'Responder con hambre', 'copy' => 'No dejes que una recompra se enfrie por minutos.'],
+                        ['title' => 'Usar combo o extra', 'copy' => 'Empuja ticket promedio desde la conversacion.'],
+                        ['title' => 'Cerrar pedido hoy', 'copy' => 'Busca compra inmediata o pedido programado.'],
+                    ],
+                    'templates' => ['close_sale', 'fast_follow_up', 'reactivation_recovery'],
+                ],
+            ],
+        ],
+    ],
 ];

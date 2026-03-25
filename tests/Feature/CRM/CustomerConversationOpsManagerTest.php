@@ -10,6 +10,9 @@ use App\Domain\TenantGovernance\Services\CustomerConversationOpsManager;
 use App\Mail\CustomerLifecycleMail;
 use App\Models\Category;
 use App\Models\City;
+use App\Models\CustomerConversation;
+use App\Models\CustomerConversationMessage;
+use App\Models\CustomerJourneyRun;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTask;
 use App\Models\CustomerTouchpoint;
@@ -82,12 +85,43 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertSame(1, $note->reply_count);
         $this->assertSame((string) $user->getKey(), (string) $note->assigned_user_id);
         $this->assertSame((string) $location->getKey(), (string) $note->location_id);
+        $this->assertNotNull($note->customer_conversation_id);
+
+        $conversation = CustomerConversation::query()
+            ->withoutGlobalScopes()
+            ->find($note->customer_conversation_id);
+
+        $this->assertInstanceOf(CustomerConversation::class, $conversation);
+        $this->assertSame('open', $conversation->status);
+        $this->assertSame((string) $user->getKey(), (string) $conversation->owner_user_id);
+        $this->assertSame((string) $location->getKey(), (string) $conversation->location_id);
+
+        $inboundMessage = CustomerConversationMessage::query()
+            ->withoutGlobalScopes()
+            ->where('customer_conversation_id', $conversation->getKey())
+            ->where('direction', 'customer')
+            ->where('message_kind', 'inbound_message')
+            ->latest('id')
+            ->first();
+
+        $this->assertInstanceOf(CustomerConversationMessage::class, $inboundMessage);
+        $this->assertSame('customer', $inboundMessage->direction);
+        $this->assertSame('Quiero confirmar la compra esta tarde.', $inboundMessage->body);
+
+        $journeyRun = CustomerJourneyRun::query()
+            ->withoutGlobalScopes()
+            ->where('customer_conversation_id', $conversation->getKey())
+            ->first();
+
+        $this->assertInstanceOf(CustomerJourneyRun::class, $journeyRun);
+        $this->assertSame('active', $journeyRun->status);
 
         $task = CustomerTask::query()->withoutGlobalScopes()->where('customer_note_id', $note->getKey())->first();
         $this->assertInstanceOf(CustomerTask::class, $task);
         $this->assertSame('open', $task->status);
         $this->assertSame((string) $user->getKey(), (string) $task->assigned_user_id);
         $this->assertSame((string) $location->getKey(), (string) $task->location_id);
+        $this->assertSame((int) $conversation->getKey(), (int) $task->customer_conversation_id);
 
         app(CustomerAutomationManager::class)->sendEmailTouchpoint(
             profile: $profile,
@@ -106,6 +140,18 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertNotNull($note->first_response_at);
         $this->assertNotNull($note->last_team_message_at);
         $this->assertSame('waiting_customer', (string) $task->fresh()?->status);
+        $this->assertSame('waiting_customer', (string) $conversation->fresh()?->status);
+
+        $outboundMessage = CustomerConversationMessage::query()
+            ->withoutGlobalScopes()
+            ->where('customer_conversation_id', $conversation->getKey())
+            ->where('direction', 'team')
+            ->where('message_kind', 'outbound_message')
+            ->latest('id')
+            ->first();
+
+        $this->assertInstanceOf(CustomerConversationMessage::class, $outboundMessage);
+        $this->assertSame('team', $outboundMessage->direction);
 
         $reopened = $ops->recordInboundReply(
             $touchpoint->fresh(),
@@ -122,6 +168,11 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertNotNull($reopened->response_due_at);
         $this->assertSame((string) $location->getKey(), (string) $reopened->location_id);
         $this->assertSame('open', (string) $task->fresh()?->status);
+        $this->assertSame('open', (string) $conversation->fresh()?->status);
+        $this->assertCount(3, CustomerConversationMessage::query()
+            ->withoutGlobalScopes()
+            ->where('customer_conversation_id', $conversation->getKey())
+            ->get());
 
         Mail::assertSent(CustomerLifecycleMail::class, 1);
     }

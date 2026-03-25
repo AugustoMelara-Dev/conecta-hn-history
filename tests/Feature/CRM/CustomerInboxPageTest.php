@@ -9,6 +9,7 @@ use App\Enums\TenantRole;
 use App\Filament\App\Pages\CustomerInbox;
 use App\Models\Category;
 use App\Models\City;
+use App\Models\CustomerConversationMessage;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
@@ -96,14 +97,17 @@ final class CustomerInboxPageTest extends TestCase
             ->assertSee($user->name)
             ->assertSee('Hilo conversacional')
             ->assertSee('Journey activo')
-            ->assertSee('Respuestas sugeridas')
+            ->assertSee('Plantillas productizadas')
+            ->assertSee('Notas internas')
             ->assertSee('Sin owner', false);
 
         Livewire::test(CustomerInbox::class)
             ->set('selectedScope', 'mine')
             ->set('selectedSlaState', 'today')
             ->call('moveLocation', $note->getKey(), (string) $secondLocation->getKey())
-            ->call('reassignOwner', $note->getKey(), (string) $teammate->getKey());
+            ->call('reassignOwner', $note->getKey(), (string) $teammate->getKey())
+            ->set('draftInternalNote', 'Cliente listo para cierre si confirmamos disponibilidad en sucursal sur.')
+            ->call('addInternalNote', $note->getKey());
 
         $note->refresh();
 
@@ -112,6 +116,19 @@ final class CustomerInboxPageTest extends TestCase
         $this->assertSame((string) $secondLocation->getKey(), (string) $note->location_id);
         $this->assertSame((string) $teammate->getKey(), (string) data_get($note->metadata, 'last_owner_id'));
         $this->assertSame((string) $secondLocation->getKey(), (string) data_get($note->metadata, 'last_location_id'));
+        $this->assertNotNull($note->customer_conversation_id);
+
+        $internalNote = CustomerConversationMessage::query()
+            ->withoutGlobalScopes()
+            ->where('customer_conversation_id', $note->customer_conversation_id)
+            ->where('direction', 'internal')
+            ->where('message_kind', 'internal_note')
+            ->latest('id')
+            ->first();
+
+        $this->assertInstanceOf(CustomerConversationMessage::class, $internalNote);
+        $this->assertSame('internal', $internalNote->direction);
+        $this->assertStringContainsString('disponibilidad en sucursal sur', $internalNote->body);
 
         Livewire::test(CustomerInbox::class)
             ->call('take', $note->getKey())

@@ -153,6 +153,21 @@ class CustomerProfile extends Model
         return $this->hasMany(CustomerNote::class)->latest('pinned_at')->latest('created_at');
     }
 
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(CustomerConversation::class)->latest('updated_at')->latest('id');
+    }
+
+    public function conversationMessages(): HasMany
+    {
+        return $this->hasMany(CustomerConversationMessage::class)->latest('occurred_at')->latest('id');
+    }
+
+    public function journeyRuns(): HasMany
+    {
+        return $this->hasMany(CustomerJourneyRun::class)->latest('updated_at')->latest('id');
+    }
+
     public function tasks(): HasMany
     {
         return $this->hasMany(CustomerTask::class)->latest('sla_due_at')->latest('created_at');

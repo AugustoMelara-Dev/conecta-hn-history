@@ -37,7 +37,7 @@ class CustomerConversationTemplateManager
     public function forConversation(CustomerProfile $profile, ?CustomerNote $note = null): array
     {
         $segmentKey = (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new');
-        $segmentDefinition = (array) config("customer-conversations.segments.{$segmentKey}", []);
+        $segmentDefinition = $this->segmentDefinition($profile, $segmentKey);
         $templates = $this->templateKeysForConversation($profile, $segmentKey)
             ->map(fn (mixed $templateKey): array => $this->templateDefinition(
                 $profile,
@@ -233,7 +233,7 @@ class CustomerConversationTemplateManager
      */
     private function templateKeysForConversation(CustomerProfile $profile, string $segmentKey): Collection
     {
-        $segmentDefinition = (array) config("customer-conversations.segments.{$segmentKey}", []);
+        $segmentDefinition = $this->segmentDefinition($profile, $segmentKey);
         $configKeys = collect((array) ($segmentDefinition['templates'] ?? []))
             ->filter(static fn (mixed $key): bool => is_string($key) && $key !== '');
 
@@ -260,7 +260,12 @@ class CustomerConversationTemplateManager
     private function resolvedTemplateDefinition(CustomerProfile $profile, string $templateKey): array
     {
         $definition = (array) config("customer-conversations.templates.{$templateKey}", []);
+        $verticalDefinition = $this->verticalTemplateDefinition($profile, $templateKey);
         $customTemplate = $this->matchingCustomTemplate($profile, $templateKey);
+
+        if ($verticalDefinition !== []) {
+            $definition = array_replace($definition, $verticalDefinition);
+        }
 
         if (! $customTemplate instanceof CustomerMessageTemplate) {
             return $definition;
@@ -368,5 +373,30 @@ class CustomerConversationTemplateManager
         }
 
         return filled($tenant->business_segment_key) ? (string) $tenant->business_segment_key : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function segmentDefinition(CustomerProfile $profile, string $segmentKey): array
+    {
+        $base = (array) config("customer-conversations.segments.{$segmentKey}", []);
+        $vertical = (array) config('customer-conversations.verticals.'.$this->businessSegmentKey($profile).".segments.{$segmentKey}", []);
+
+        return array_replace_recursive($base, $vertical);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function verticalTemplateDefinition(CustomerProfile $profile, string $templateKey): array
+    {
+        $businessSegmentKey = $this->businessSegmentKey($profile);
+
+        if ($businessSegmentKey === null) {
+            return [];
+        }
+
+        return (array) config("customer-conversations.verticals.{$businessSegmentKey}.templates.{$templateKey}", []);
     }
 }

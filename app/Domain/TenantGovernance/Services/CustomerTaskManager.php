@@ -25,6 +25,7 @@ class CustomerTaskManager
 
         $task->forceFill([
             'customer_profile_id' => (int) $note->customer_profile_id,
+            'customer_conversation_id' => $note->customer_conversation_id,
             'assigned_user_id' => $note->assigned_user_id,
             'location_id' => $note->location_id,
             'task_type' => $note->note_type === 'inbound_reply' ? 'reply_follow_up' : ($note->note_type ?: 'follow_up'),

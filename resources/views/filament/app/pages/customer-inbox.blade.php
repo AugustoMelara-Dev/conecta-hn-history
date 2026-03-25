@@ -286,14 +286,26 @@
                             <div class="biz-grid-two" style="align-items: flex-start; gap: 1rem;">
                                 <div class="biz-card">
                                     <div class="biz-stack">
-                                        <div>
-                                            <p class="biz-kicker">Journey activo</p>
-                                            <h3 class="biz-heading">Que deberia pasar ahora</h3>
-                                        </div>
+                                    <div>
+                                        <p class="biz-kicker">Journey activo</p>
+                                        <h3 class="biz-heading">Que deberia pasar ahora</h3>
+                                    </div>
 
-                                        @if ($selectedConversation['journey'] === [])
-                                            <p class="biz-muted">Este segmento no tiene un journey cargado todavia.</p>
-                                        @else
+                                    @if ($selectedConversation['journeyRun'])
+                                        <div class="biz-action">
+                                            <p class="biz-action-title">{{ $selectedConversation['journeyRun']['statusLabel'] }}</p>
+                                            <p class="biz-action-copy">
+                                                Paso actual: {{ $selectedConversation['journeyRun']['currentStep'] ?? 'Sin paso activo' }}
+                                            </p>
+                                            @if ($selectedConversation['journeyRun']['nextActionAt'])
+                                                <p class="biz-muted"><strong>Siguiente accion:</strong> {{ $selectedConversation['journeyRun']['nextActionAt'] }}</p>
+                                            @endif
+                                        </div>
+                                    @endif
+
+                                    @if ($selectedConversation['journey'] === [])
+                                        <p class="biz-muted">Este segmento no tiene un journey cargado todavia.</p>
+                                    @else
                                             <div class="biz-actions">
                                                 @foreach ($selectedConversation['journey'] as $step)
                                                     <div class="biz-action">
@@ -309,9 +321,9 @@
                                 <div class="biz-card">
                                     <div class="biz-stack">
                                         <div>
-                                            <p class="biz-kicker">Respuestas sugeridas</p>
-                                            <h3 class="biz-heading">Plantillas productizadas</h3>
-                                            <p class="biz-muted">Usa la mejor salida para este segmento sin perder ownership ni contexto del hilo.</p>
+                                            <p class="biz-kicker">Plantillas productizadas</p>
+                                            <h3 class="biz-heading">Respuestas y siguiente paso</h3>
+                                            <p class="biz-muted">Usa la mejor salida para este segmento sin perder ownership, journey ni contexto del hilo.</p>
                                         </div>
 
                                         <div class="biz-actions">
@@ -377,6 +389,41 @@
                                         </div>
                                     @else
                                         <p class="biz-muted">Esta conversacion todavia no tiene una tarea ligada aparte del seguimiento base.</p>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="biz-card">
+                                <div class="biz-stack">
+                                    <div>
+                                        <p class="biz-kicker">Notas internas</p>
+                                        <h3 class="biz-heading">Coordinacion del equipo</h3>
+                                        <p class="biz-muted">Estas notas no se envian al cliente. Sirven para pasar contexto, decision y siguiente paso entre owner y sede.</p>
+                                    </div>
+
+                                    <label class="biz-stack" style="gap: 0.5rem;">
+                                        <span class="biz-muted">Nueva nota interna</span>
+                                        <textarea wire:model.defer="draftInternalNote" rows="4" class="fi-input" placeholder="Ejemplo: cliente listo para cierre si confirmamos stock en sucursal sur."></textarea>
+                                    </label>
+
+                                    <div class="biz-button-row" style="justify-content: flex-end;">
+                                        <x-filament::button color="gray" wire:click="addInternalNote({{ $selectedConversation['id'] }})">
+                                            Guardar nota interna
+                                        </x-filament::button>
+                                    </div>
+
+                                    @if ($selectedConversation['internalNotes'] === [])
+                                        <p class="biz-muted">Todavia no hay notas internas separadas para esta conversacion.</p>
+                                    @else
+                                        <div class="biz-actions">
+                                            @foreach ($selectedConversation['internalNotes'] as $item)
+                                                <div class="biz-action">
+                                                    <p class="biz-action-title">{{ $item['title'] }}</p>
+                                                    <p class="biz-action-copy">{{ $item['body'] }}</p>
+                                                    <p class="biz-muted"><strong>{{ $item['author'] }}</strong> | {{ $item['when'] }}</p>
+                                                </div>
+                                            @endforeach
+                                        </div>
                                     @endif
                                 </div>
                             </div>

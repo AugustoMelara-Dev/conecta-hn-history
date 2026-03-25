@@ -9,6 +9,7 @@ use App\Domain\TenantGovernance\Services\CustomerConversationTemplateManager;
 use App\Domain\TenantGovernance\Services\CustomerConversationThreadBuilder;
 use App\Domain\TenantGovernance\Services\CustomerSegmentPlaybook;
 use App\Filament\App\Resources\CustomerProfileResource;
+use App\Models\CustomerJourneyRun;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTask;
@@ -64,13 +65,15 @@ class CustomerInbox extends Page
 
     public ?int $selectedConversationId = null;
 
+    public string $draftInternalNote = '';
+
     /** @var array<string, string> */
     public array $teamOptions = [];
 
     /** @var array<string, string> */
     public array $locationOptions = [];
 
-    /** @var list<array{id:int,title:string,body:string,status:string,statusLabel:string,priority:string,priorityLabel:string,channel:string,channelLabel:string,customerName:string,segmentLabel:string,loyaltyTier:string,nextTouch:string,loyaltyMove:string,handledBy:?string,assignedTo:?string,assignedUserId:?string,locationName:string,locationId:?string,nextActionAt:?string,profileUrl:string,slaLabel:string,slaColor:string,replyCount:int,responseDueAt:?string}> */
+    /** @var list<array{id:int,conversationId:?int,title:string,body:string,status:string,statusLabel:string,priority:string,priorityLabel:string,channel:string,channelLabel:string,customerName:string,segmentLabel:string,loyaltyTier:string,nextTouch:string,loyaltyMove:string,handledBy:?string,assignedTo:?string,assignedUserId:?string,locationName:string,locationId:?string,nextActionAt:?string,profileUrl:string,slaLabel:string,slaColor:string,replyCount:int,responseDueAt:?string}> */
     public array $queue = [];
 
     /** @var array<string, mixed> */
@@ -277,6 +280,41 @@ class CustomerInbox extends Page
             ->send();
     }
 
+    public function addInternalNote(int $noteId): void
+    {
+        $note = $this->findTenantNote($noteId);
+
+        if (! $note instanceof CustomerNote) {
+            return;
+        }
+
+        $entry = app(CustomerConversationOpsManager::class)->addInternalNote(
+            $note,
+            $this->draftInternalNote,
+            auth()->id() !== null ? (string) auth()->id() : null,
+        );
+
+        if ($entry === null) {
+            Notification::make()
+                ->title('No se pudo guardar')
+                ->warning()
+                ->body('Escribe una nota interna antes de guardarla.')
+                ->send();
+
+            return;
+        }
+
+        $this->draftInternalNote = '';
+        $this->selectedConversationId = $noteId;
+        $this->refreshQueue();
+
+        Notification::make()
+            ->title('Nota interna guardada')
+            ->success()
+            ->body('La nota ya quedo separada del hilo del cliente y visible para el equipo.')
+            ->send();
+    }
+
     private function refreshQueue(): void
     {
         $tenant = Filament::getTenant();
@@ -336,6 +374,10 @@ class CustomerInbox extends Page
                 'handledBy' => fn ($query) => $query->withoutGlobalScopes(),
                 'assignedUser' => fn ($query) => $query->withoutGlobalScopes(),
                 'location' => fn ($query) => $query->withoutGlobalScopes(),
+                'conversation' => fn ($query) => $query->withoutGlobalScopes()->with([
+                    'owner' => fn ($owner) => $owner->withoutGlobalScopes(),
+                    'location' => fn ($location) => $location->withoutGlobalScopes(),
+                ]),
             ])
             ->whereIn('status', ['open', 'in_progress'])
             ->orderByRaw("field(priority, 'urgent', 'high', 'normal', 'low')")
@@ -346,16 +388,18 @@ class CustomerInbox extends Page
             ->get()
             ->map(function (CustomerNote $note) use ($playbooks, $tenant): array {
                 $profile = $note->customerProfile()->withoutGlobalScopes()->with(['assignedUser', 'location'])->first();
+                $conversation = $note->conversation;
                 $playbook = $profile !== null ? $playbooks->forProfile($profile) : null;
 
                 return [
                     'id' => (int) $note->getKey(),
+                    'conversationId' => $conversation?->getKey(),
                     'title' => $note->note_type_label,
                     'body' => (string) $note->body,
-                    'status' => (string) $note->status,
-                    'statusLabel' => $note->status_label,
-                    'priority' => (string) $note->priority,
-                    'priorityLabel' => $note->priority_label,
+                    'status' => (string) ($conversation?->status ?? $note->status),
+                    'statusLabel' => $conversation?->status_label ?? $note->status_label,
+                    'priority' => (string) ($conversation?->priority ?? $note->priority),
+                    'priorityLabel' => $conversation?->priority_label ?? $note->priority_label,
                     'channel' => (string) ($note->source_channel ?? 'system'),
                     'channelLabel' => $note->source_channel_label,
                     'customerName' => (string) ($profile?->name ?? 'Cliente sin nombre'),
@@ -364,15 +408,19 @@ class CustomerInbox extends Page
                     'nextTouch' => (string) ($playbook['next_touch'] ?? 'Conviene responder en este turno.'),
                     'loyaltyMove' => (string) ($playbook['loyalty_move'] ?? 'Mantener seguimiento simple.'),
                     'handledBy' => $note->handledBy?->name,
-                    'assignedTo' => $note->assignedUser?->name ?? $profile?->assigned_owner_label,
-                    'assignedUserId' => $note->assigned_user_id !== null ? (string) $note->assigned_user_id : ($profile?->assigned_user_id !== null ? (string) $profile->assigned_user_id : null),
-                    'locationName' => $note->location?->name ?? $profile?->location_label ?? 'Sin sede',
-                    'locationId' => $note->location_id !== null ? (string) $note->location_id : ($profile?->location_id !== null ? (string) $profile->location_id : null),
-                    'nextActionAt' => $note->next_action_at?->diffForHumans(),
-                    'slaLabel' => $note->sla_label,
-                    'slaColor' => $note->sla_color,
-                    'replyCount' => max(1, (int) $note->reply_count),
-                    'responseDueAt' => $note->response_due_at?->diffForHumans(),
+                    'assignedTo' => $conversation?->owner?->name ?? $note->assignedUser?->name ?? $profile?->assigned_owner_label,
+                    'assignedUserId' => $conversation?->owner_user_id !== null
+                        ? (string) $conversation->owner_user_id
+                        : ($note->assigned_user_id !== null ? (string) $note->assigned_user_id : ($profile?->assigned_user_id !== null ? (string) $profile->assigned_user_id : null)),
+                    'locationName' => $conversation?->location?->name ?? $note->location?->name ?? $profile?->location_label ?? 'Sin sede',
+                    'locationId' => $conversation?->location_id !== null
+                        ? (string) $conversation->location_id
+                        : ($note->location_id !== null ? (string) $note->location_id : ($profile?->location_id !== null ? (string) $profile->location_id : null)),
+                    'nextActionAt' => ($conversation?->next_action_at ?? $note->next_action_at)?->diffForHumans(),
+                    'slaLabel' => $conversation?->sla_label ?? $note->sla_label,
+                    'slaColor' => $conversation?->sla_color ?? $note->sla_color,
+                    'replyCount' => max(1, (int) ($conversation?->reply_count ?? $note->reply_count)),
+                    'responseDueAt' => ($conversation?->response_due_at ?? $note->response_due_at)?->diffForHumans(),
                     'profileUrl' => $profile !== null
                         ? CustomerProfileResource::getUrl('edit', [
                             'record' => $profile,
@@ -425,6 +473,14 @@ class CustomerInbox extends Page
             ->withoutGlobalScopes()
             ->with(['assignedUser', 'location', 'tenant'])
             ->first();
+        $conversation = $note->conversation()
+            ->withoutGlobalScopes()
+            ->with([
+                'owner' => fn ($query) => $query->withoutGlobalScopes(),
+                'location' => fn ($query) => $query->withoutGlobalScopes(),
+                'journeyRun',
+            ])
+            ->first();
 
         if (! $tenant instanceof Tenant || ! $profile instanceof CustomerProfile) {
             return [];
@@ -438,14 +494,16 @@ class CustomerInbox extends Page
         );
         $journey = app(CustomerConversationTemplateManager::class)->forConversation($profile, $note);
         $task = $note->task()->withoutGlobalScopes()->with(['assignedUser', 'location'])->first();
+        $journeyRun = $conversation?->journeyRun;
 
         return [
             'id' => (int) $note->getKey(),
+            'conversationId' => $conversation?->getKey(),
             'title' => $note->note_type_label,
             'body' => (string) $note->body,
-            'status' => (string) $note->status,
-            'statusLabel' => $note->status_label,
-            'priorityLabel' => $note->priority_label,
+            'status' => (string) ($conversation?->status ?? $note->status),
+            'statusLabel' => $conversation?->status_label ?? $note->status_label,
+            'priorityLabel' => $conversation?->priority_label ?? $note->priority_label,
             'channelLabel' => $note->source_channel_label,
             'customerName' => (string) ($profile->name ?? 'Cliente sin nombre'),
             'segmentLabel' => (string) ($playbook['label'] ?? $profile->segment_display_label),
@@ -453,20 +511,27 @@ class CustomerInbox extends Page
             'nextTouch' => (string) ($playbook['next_touch'] ?? 'Conviene responder en este turno.'),
             'loyaltyMove' => (string) ($playbook['loyalty_move'] ?? 'Conviene mover continuidad.'),
             'loyaltyTier' => (string) $profile->loyalty_tier_label,
-            'slaLabel' => $note->sla_label,
-            'slaColor' => $note->sla_color,
-            'ownerLabel' => $note->assignedUser?->name ?? $profile->assigned_owner_label,
-            'locationLabel' => $note->location?->name ?? $profile->location_label,
-            'lastActionAt' => $note->next_action_at?->diffForHumans(),
-            'responseDueAt' => $note->response_due_at?->diffForHumans(),
-            'replyCount' => max(1, (int) $note->reply_count),
+            'slaLabel' => $conversation?->sla_label ?? $note->sla_label,
+            'slaColor' => $conversation?->sla_color ?? $note->sla_color,
+            'ownerLabel' => $conversation?->owner?->name ?? $note->assignedUser?->name ?? $profile->assigned_owner_label,
+            'locationLabel' => $conversation?->location?->name ?? $note->location?->name ?? $profile->location_label,
+            'lastActionAt' => ($conversation?->next_action_at ?? $note->next_action_at)?->diffForHumans(),
+            'responseDueAt' => ($conversation?->response_due_at ?? $note->response_due_at)?->diffForHumans(),
+            'replyCount' => max(1, (int) ($conversation?->reply_count ?? $note->reply_count)),
             'profileUrl' => CustomerProfileResource::getUrl('edit', [
                 'record' => $profile,
                 'tenant' => $tenant->slug,
             ]),
             'threadSummary' => $thread['summary'],
             'threadItems' => $thread['items'],
+            'internalNotes' => $thread['internal_notes'],
             'journey' => $journey['journey'],
+            'journeyRun' => $journeyRun instanceof CustomerJourneyRun ? [
+                'statusLabel' => $journeyRun->status_label,
+                'currentStepIndex' => (int) $journeyRun->current_step_index,
+                'nextActionAt' => $journeyRun->next_action_at?->diffForHumans(),
+                'currentStep' => data_get($journeyRun->metadata, 'current_step.title'),
+            ] : null,
             'templates' => $journey['templates'],
             'task' => $task instanceof CustomerTask ? [
                 'title' => (string) $task->title,
@@ -525,6 +590,11 @@ class CustomerInbox extends Page
                 'assignedUser' => fn ($query) => $query->withoutGlobalScopes(),
                 'handledBy' => fn ($query) => $query->withoutGlobalScopes(),
                 'location' => fn ($query) => $query->withoutGlobalScopes(),
+                'conversation' => fn ($query) => $query->withoutGlobalScopes()->with([
+                    'owner' => fn ($owner) => $owner->withoutGlobalScopes(),
+                    'location' => fn ($location) => $location->withoutGlobalScopes(),
+                    'journeyRun',
+                ]),
             ])
             ->find($noteId);
     }
