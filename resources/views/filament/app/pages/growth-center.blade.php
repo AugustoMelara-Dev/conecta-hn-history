@@ -298,6 +298,122 @@
             <div class="biz-card">
                 <div class="biz-stack">
                     <div>
+                        <p class="biz-kicker">Revenue atribuido por owner</p>
+                        <h2 class="biz-heading">Quien esta empujando las secuencias que si convierten</h2>
+                        <p class="biz-muted">Cruza revenue multi-touch con ownership para detectar quien mueve mejor cada ruta del CRM.</p>
+                    </div>
+
+                    <div class="biz-actions">
+                        @forelse ($ownerSequenceAttribution as $item)
+                            <div class="biz-action">
+                                <div class="biz-split">
+                                    <div>
+                                        <p class="biz-action-title">{{ $item['name'] }}</p>
+                                        <p class="biz-action-copy">{{ $item['context'] }}</p>
+                                    </div>
+
+                                    <x-filament::badge color="{{ (float) $item['conversions'] >= 1 ? 'success' : 'info' }}">
+                                        {{ $item['conversions'] }} conv.
+                                    </x-filament::badge>
+                                </div>
+
+                                <p class="biz-muted">
+                                    <strong>Revenue:</strong> {{ $item['revenue'] }}
+                                    | <strong>Replies:</strong> {{ $item['replies'] }}
+                                    | <strong>Clicks/reads:</strong> {{ $item['clicks'] }}
+                                </p>
+                            </div>
+                        @empty
+                            <div class="biz-action">
+                                <p class="biz-action-title">Todavia no hay lectura por owner y secuencia</p>
+                                <p class="biz-action-copy">Hace falta mas cierre multi-touch con ownership claro para comparar responsables.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div>
+                        <p class="biz-kicker">Revenue atribuido por sede</p>
+                        <h2 class="biz-heading">Donde estan ganando mejor las secuencias</h2>
+                        <p class="biz-muted">Compara impacto real por ubicacion para operar CRM distribuido con mas criterio.</p>
+                    </div>
+
+                    <div class="biz-actions">
+                        @forelse ($locationSequenceAttribution as $item)
+                            <div class="biz-action">
+                                <div class="biz-split">
+                                    <div>
+                                        <p class="biz-action-title">{{ $item['name'] }}</p>
+                                        <p class="biz-action-copy">{{ $item['context'] }}</p>
+                                    </div>
+
+                                    <x-filament::badge color="{{ (float) $item['conversions'] >= 1 ? 'success' : 'info' }}">
+                                        {{ $item['conversions'] }} conv.
+                                    </x-filament::badge>
+                                </div>
+
+                                <p class="biz-muted">
+                                    <strong>Revenue:</strong> {{ $item['revenue'] }}
+                                    | <strong>Replies:</strong> {{ $item['replies'] }}
+                                    | <strong>Clicks/reads:</strong> {{ $item['clicks'] }}
+                                </p>
+                            </div>
+                        @empty
+                            <div class="biz-action">
+                                <p class="biz-action-title">Todavia no hay lectura por sede y secuencia</p>
+                                <p class="biz-action-copy">Etiqueta mas cartera y conversacion por sede para comparar impacto real.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="biz-card">
+            <div class="biz-stack">
+                <div>
+                    <p class="biz-kicker">Revenue atribuido por canal</p>
+                    <h2 class="biz-heading">Que canal esta moviendo mejor cada secuencia</h2>
+                    <p class="biz-muted">Sirve para decidir donde empujar journeys, rescates y cierres con mas retorno real.</p>
+                </div>
+
+                <div class="biz-actions">
+                    @forelse ($channelSequenceAttribution as $item)
+                        <div class="biz-action">
+                            <div class="biz-split">
+                                <div>
+                                    <p class="biz-action-title">{{ $item['name'] }}</p>
+                                    <p class="biz-action-copy">{{ $item['context'] }}</p>
+                                </div>
+
+                                <x-filament::badge color="{{ (float) $item['conversions'] >= 1 ? 'success' : 'info' }}">
+                                    {{ $item['conversions'] }} conv.
+                                </x-filament::badge>
+                            </div>
+
+                            <p class="biz-muted">
+                                <strong>Revenue:</strong> {{ $item['revenue'] }}
+                                | <strong>Replies:</strong> {{ $item['replies'] }}
+                                | <strong>Clicks/reads:</strong> {{ $item['clicks'] }}
+                            </p>
+                        </div>
+                    @empty
+                        <div class="biz-action">
+                            <p class="biz-action-title">Todavia no hay lectura por canal y secuencia</p>
+                            <p class="biz-action-copy">Hace falta mas volumen multi-touch para comparar WhatsApp, email y CRM con criterio.</p>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
+        <div class="biz-grid-two">
+            <div class="biz-card">
+                <div class="biz-stack">
+                    <div>
                         <p class="biz-kicker">Analitica conversacional por owner</p>
                         <h2 class="biz-heading">Quien esta cerrando mejor la conversacion</h2>
                         <p class="biz-muted">Cruza volumen, conversiones, revenue, conversaciones esperando reply y velocidad inicial por responsable.</p>

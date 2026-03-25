@@ -167,6 +167,16 @@ class CustomerLoyaltyManager
         $rewardModel->decrementStock();
         $this->logProfileNote($profileModel, 'Se canjeo la recompensa "'.$rewardModel->name.'".', $actorUserId);
         $this->refreshProfileSummary($profileModel);
+        app(CustomerJourneySignalRecorder::class)->recordForProfile(
+            $profileModel->fresh(),
+            'reward_redemption',
+            [
+                'reward_id' => (int) $rewardModel->getKey(),
+                'reward_name' => (string) $rewardModel->name,
+                'points_cost' => (int) $rewardModel->points_cost,
+            ],
+            'crm',
+        );
 
         return $entry->fresh();
     }

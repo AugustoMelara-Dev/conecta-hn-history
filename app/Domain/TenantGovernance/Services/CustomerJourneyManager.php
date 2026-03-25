@@ -14,6 +14,7 @@ class CustomerJourneyManager
 {
     public function __construct(
         private readonly CustomerJourneyBranchResolver $branchResolver,
+        private readonly CustomerTaskManager $customerTaskManager,
     ) {}
 
     public function sync(CustomerConversation $conversation, CustomerProfile $profile): CustomerJourneyRun
@@ -79,6 +80,9 @@ class CustomerJourneyManager
                 'current_step' => $currentStep,
                 'next_step' => $nextStep,
                 'conversation_status' => $conversation->status,
+                'business_signals' => data_get($conversation->metadata, 'business_signals', []),
+                'last_business_signal' => data_get($conversation->metadata, 'last_business_signal'),
+                'last_business_signal_at' => data_get($conversation->metadata, 'last_business_signal_at'),
                 'recommended_template_key' => $currentStep['template_key'] ?? $nextStep['template_key'] ?? null,
                 'lane' => $currentStep['lane'] ?? null,
                 'current_branch_key' => $currentStep['branch_key'] ?? 'base',
@@ -96,6 +100,13 @@ class CustomerJourneyManager
                 'current_step_executed_at' => $currentStepExecutedAt?->toIso8601String(),
             ],
         ])->save();
+
+        if ($sequenceState === 'stalled') {
+            $this->customerTaskManager->createJourneyRescueTask(
+                $run,
+                'La secuencia se degrado y requiere intervencion humana para rescatar continuidad o cierre.'
+            );
+        }
 
         return $run->fresh();
     }
@@ -158,6 +169,9 @@ class CustomerJourneyManager
             'metadata' => array_merge((array) $run->metadata, [
                 'current_step' => $currentStep,
                 'next_step' => $nextStep,
+                'business_signals' => data_get($conversation->metadata, 'business_signals', []),
+                'last_business_signal' => data_get($conversation->metadata, 'last_business_signal'),
+                'last_business_signal_at' => data_get($conversation->metadata, 'last_business_signal_at'),
                 'recommended_template_key' => $currentStep['template_key'] ?? $nextStep['template_key'] ?? null,
                 'lane' => $currentStep['lane'] ?? data_get($run->metadata, 'lane'),
                 'current_branch_key' => $currentStep['branch_key'] ?? 'base',
@@ -176,6 +190,13 @@ class CustomerJourneyManager
                 'last_auto_touchpoint_id' => (int) $touchpoint->getKey(),
             ]),
         ])->save();
+
+        if ($sequenceState === 'stalled') {
+            $this->customerTaskManager->createJourneyRescueTask(
+                $run,
+                'La automatizacion no pudo sostener la secuencia y conviene mover rescate humano.'
+            );
+        }
 
         return $run->fresh();
     }

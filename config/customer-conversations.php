@@ -145,6 +145,7 @@ return [
                 ['key' => 'repeat_fast_follow_up', 'title' => 'Responder rapido', 'copy' => 'No dejes que una recompra se enfrie por falta de seguimiento humano.', 'template_key' => 'fast_follow_up', 'lane' => 'intake', 'wait_hours' => 0],
                 ['key' => 'repeat_bundle_offer', 'title' => 'Conectar bundle o reward', 'copy' => 'Usa fidelidad o continuidad como palanca del siguiente paso.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 18, 'branches' => [
                     ['key' => 'reward_ready', 'label' => 'Canje listo', 'title' => 'Conectar recompensa lista', 'copy' => 'Ya hay una recompensa disponible: usa ese momento para mover recompra o continuidad.', 'template_key' => 'close_sale', 'lane' => 'loyalty_follow_up', 'when' => 'reward_ready'],
+                    ['key' => 'reward_redeemed', 'label' => 'Canje reciente', 'title' => 'Activar continuidad despues del canje', 'copy' => 'El cliente acaba de canjear una recompensa: aprovecha ese momento para mover recompra o continuidad.', 'template_key' => 'close_sale', 'lane' => 'post_redeem_close', 'when' => 'recent_reward_redemption'],
                     ['key' => 'vip_priority', 'label' => 'Ruta VIP', 'title' => 'Mover continuidad premium', 'copy' => 'Usa tono premium, beneficio visible y prioridad real para no enfriar un cliente de alto valor.', 'template_key' => 'vip_priority', 'lane' => 'premium_follow_up', 'when' => 'vip_customer'],
                 ]],
                 ['key' => 'repeat_close_continuity', 'title' => 'Cerrar continuidad', 'copy' => 'Busca salida a recompra, paquete o nueva cita.', 'template_key' => 'close_sale', 'lane' => 'closing', 'wait_hours' => 30, 'branches' => [
@@ -159,6 +160,7 @@ return [
                 ['key' => 'reactivation_reopen_interest', 'title' => 'Volver a abrir interes', 'copy' => 'Recupera contexto y baja friccion en el siguiente paso.', 'template_key' => 'reactivation_recovery', 'lane' => 'reactivation', 'wait_hours' => 0],
                 ['key' => 'reactivation_reason_to_return', 'title' => 'Ofrecer motivo de regreso', 'copy' => 'Usa incentivo claro, control, bundle o regreso asistido.', 'template_key' => 'follow_up_reminder', 'lane' => 'reminder', 'wait_hours' => 24, 'branches' => [
                     ['key' => 'high_risk_reactivation', 'label' => 'Riesgo alto', 'title' => 'Mover regreso con urgencia sana', 'copy' => 'El cliente muestra riesgo alto de fuga: deja una salida clara y acompaniada.', 'template_key' => 'reactivation_last_call', 'lane' => 'urgent_reactivation', 'when' => ['high_reactivation_risk', 'stalled_sequence']],
+                    ['key' => 'post_purchase_return', 'label' => 'Compra reciente', 'title' => 'Reactivar despues de compra reciente', 'copy' => 'Hay compra reciente pero la conversacion se enfrio: conviene mover continuidad en vez de un rescate generico.', 'template_key' => 'close_sale', 'lane' => 'post_purchase_return', 'when' => 'recent_purchase'],
                     ['key' => 'email_recovery', 'label' => 'Recuperacion por email', 'title' => 'Recuperar con recordatorio formal', 'copy' => 'Usa email como carril principal cuando el cliente responde mejor ahi.', 'template_key' => 'follow_up_reminder', 'lane' => 'email_reactivation', 'when' => 'email_preferred'],
                 ]],
                 ['key' => 'reactivation_close_week', 'title' => 'Cerrar en esta semana', 'copy' => 'No dejes la reactivacion sin fecha o CTA concreto.', 'template_key' => 'reactivation_last_call', 'lane' => 'last_call', 'wait_hours' => 48, 'branches' => [
@@ -171,8 +173,12 @@ return [
         'booked_service' => [
             'journey' => [
                 ['key' => 'service_confirm_continuity', 'title' => 'Confirmar continuidad', 'copy' => 'Conecta la respuesta del cliente con la siguiente cita o control.', 'template_key' => 'service_rebook', 'lane' => 'continuity', 'wait_hours' => 0],
-                ['key' => 'service_reduce_no_show', 'title' => 'Reducir no-show', 'copy' => 'Reagenda rapido y deja siguiente accion visible.', 'template_key' => 'follow_up_reminder', 'lane' => 'reminder', 'wait_hours' => 16],
-                ['key' => 'service_open_next_package', 'title' => 'Abrir siguiente paquete', 'copy' => 'Si hay buena experiencia, propone continuidad o plan.', 'template_key' => 'vip_priority', 'lane' => 'expansion', 'wait_hours' => 32],
+                ['key' => 'service_reduce_no_show', 'title' => 'Reducir no-show', 'copy' => 'Reagenda rapido y deja siguiente accion visible.', 'template_key' => 'follow_up_reminder', 'lane' => 'reminder', 'wait_hours' => 16, 'branches' => [
+                    ['key' => 'no_show_rescue', 'label' => 'No-show reciente', 'title' => 'Rescatar despues del no-show', 'copy' => 'El cliente no asistio: conviene reagendar con friccion baja y ownership claro.', 'template_key' => 'service_rebook', 'lane' => 'no_show_rescue', 'when' => 'recent_no_show'],
+                ]],
+                ['key' => 'service_open_next_package', 'title' => 'Abrir siguiente paquete', 'copy' => 'Si hay buena experiencia, propone continuidad o plan.', 'template_key' => 'vip_priority', 'lane' => 'expansion', 'wait_hours' => 32, 'branches' => [
+                    ['key' => 'service_completed', 'label' => 'Servicio completado', 'title' => 'Abrir continuidad despues del servicio', 'copy' => 'Ya hubo servicio completado: usa ese momento para mover control, paquete o plan.', 'template_key' => 'vip_priority', 'lane' => 'post_service_expansion', 'when' => 'recent_service_completion'],
+                ]],
             ],
             'templates' => ['service_rebook', 'fast_follow_up', 'vip_priority'],
         ],
@@ -243,8 +249,10 @@ return [
                 'booked_service' => [
                     'journey' => [
                         ['key' => 'dental_confirm_visit', 'title' => 'Confirmar valoracion o control', 'copy' => 'Responde con tono clinico claro y deja la siguiente cita definida.', 'template_key' => 'service_rebook', 'lane' => 'continuity', 'wait_hours' => 0],
-                        ['key' => 'dental_reduce_anxiety', 'title' => 'Reducir ansiedad del paciente', 'copy' => 'Aclara procedimiento, tiempo o siguiente paso para evitar abandono.', 'template_key' => 'follow_up_reminder', 'lane' => 'reminder', 'wait_hours' => 12],
-                        ['key' => 'dental_close_continuity', 'title' => 'Cerrar continuidad', 'copy' => 'Busca que el paciente salga con control, tratamiento o recordatorio ya planteado.', 'template_key' => 'final_close_push', 'lane' => 'closing', 'wait_hours' => 24],
+                        ['key' => 'dental_reduce_anxiety', 'title' => 'Reducir ansiedad del paciente', 'copy' => 'Aclara procedimiento, tiempo o siguiente paso para evitar abandono.', 'template_key' => 'follow_up_reminder', 'lane' => 'reminder', 'wait_hours' => 10, 'branches' => [
+                            ['key' => 'dental_no_show', 'label' => 'No asistio', 'title' => 'Rescatar control despues del no-show', 'copy' => 'Cuando el paciente no asiste, baja ansiedad y reagenda rapido con ownership visible.', 'template_key' => 'service_rebook', 'lane' => 'no_show_rescue', 'when' => 'recent_no_show'],
+                        ]],
+                        ['key' => 'dental_close_continuity', 'title' => 'Cerrar continuidad', 'copy' => 'Busca que el paciente salga con control, tratamiento o recordatorio ya planteado.', 'template_key' => 'final_close_push', 'lane' => 'closing', 'wait_hours' => 20],
                     ],
                     'templates' => ['service_rebook', 'vip_priority', 'fast_follow_up'],
                 ],
@@ -277,8 +285,10 @@ return [
                 'prospect' => [
                     'journey' => [
                         ['key' => 'legal_first_criteria', 'title' => 'Responder con criterio', 'copy' => 'Aclara si conviene discovery, llamada breve o filtro inicial.', 'template_key' => 'close_sale', 'lane' => 'intake', 'wait_hours' => 0],
-                        ['key' => 'legal_formal_next_step', 'title' => 'Definir siguiente accion formal', 'copy' => 'No dejes la conversacion abierta sin reunion o envio de contexto.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 18],
-                        ['key' => 'legal_executive_close', 'title' => 'Empujar continuidad ejecutiva', 'copy' => 'Busca que el lead salga con fecha o responsable asignado.', 'template_key' => 'final_close_push', 'lane' => 'closing', 'wait_hours' => 36],
+                        ['key' => 'legal_formal_next_step', 'title' => 'Definir siguiente accion formal', 'copy' => 'No dejes la conversacion abierta sin reunion o envio de contexto.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 24, 'branches' => [
+                            ['key' => 'post_upgrade_authority', 'label' => 'Negocio ya es PRO', 'title' => 'Subir propuesta con mas autoridad', 'copy' => 'Si el negocio ya se profesionalizo con upgrade reciente, usa ese momento para reforzar confianza y cierre ejecutivo.', 'template_key' => 'final_close_push', 'lane' => 'executive_follow_up', 'when' => 'recent_upgrade'],
+                        ]],
+                        ['key' => 'legal_executive_close', 'title' => 'Empujar continuidad ejecutiva', 'copy' => 'Busca que el lead salga con fecha o responsable asignado.', 'template_key' => 'final_close_push', 'lane' => 'closing', 'wait_hours' => 42],
                     ],
                     'templates' => ['close_sale', 'fast_follow_up', 'reactivation_recovery'],
                 ],
@@ -305,7 +315,9 @@ return [
                 'repeat' => [
                     'journey' => [
                         ['key' => 'barber_keep_recurring', 'title' => 'No dejes caer la recurrencia', 'copy' => 'Empuja la siguiente reserva antes de que se enfrie la rutina.', 'template_key' => 'service_rebook', 'lane' => 'continuity', 'wait_hours' => 0],
-                        ['key' => 'barber_membership_offer', 'title' => 'Usa membership o combo', 'copy' => 'Si aplica, mueve continuidad con paquete o beneficio visible.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 14],
+                        ['key' => 'barber_membership_offer', 'title' => 'Usa membership o combo', 'copy' => 'Si aplica, mueve continuidad con paquete o beneficio visible.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 12, 'branches' => [
+                            ['key' => 'barber_reward_redeemed', 'label' => 'Canje hecho', 'title' => 'Empujar continuidad despues del reward', 'copy' => 'Cuando el cliente ya canjeo, toca mover la siguiente visita antes de que se enfrie la rutina.', 'template_key' => 'vip_priority', 'lane' => 'reward_continuity', 'when' => 'recent_reward_redemption'],
+                        ]],
                         ['key' => 'barber_close_next_visit', 'title' => 'Cierra la proxima visita', 'copy' => 'Busca que el cliente salga con nuevo slot o seguimiento claro.', 'template_key' => 'vip_priority', 'lane' => 'closing', 'wait_hours' => 28],
                     ],
                     'templates' => ['service_rebook', 'vip_priority', 'fast_follow_up'],
@@ -333,7 +345,7 @@ return [
                 'prospect' => [
                     'journey' => [
                         ['key' => 'hardware_speed_first', 'title' => 'Responder hoy', 'copy' => 'En ferreteria la velocidad pesa mucho cuando el cliente tiene una urgencia.', 'template_key' => 'fast_follow_up', 'lane' => 'intake', 'wait_hours' => 0],
-                        ['key' => 'hardware_translate_need', 'title' => 'Traducir necesidad a solucion', 'copy' => 'Aterriza la consulta en productos, cantidad o cobertura.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 8],
+                        ['key' => 'hardware_translate_need', 'title' => 'Traducir necesidad a solucion', 'copy' => 'Aterriza la consulta en productos, cantidad o cobertura.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 6],
                         ['key' => 'hardware_close_quote', 'title' => 'Cerrar pedido o cotizacion', 'copy' => 'No dejes la conversacion sin salida concreta.', 'template_key' => 'final_close_push', 'lane' => 'closing', 'wait_hours' => 20],
                     ],
                     'templates' => ['fast_follow_up', 'close_sale', 'reactivation_recovery'],
@@ -361,7 +373,9 @@ return [
                 'repeat' => [
                     'journey' => [
                         ['key' => 'phone_confident_reply', 'title' => 'Responder con confianza', 'copy' => 'Ticket alto necesita rapidez y respaldo, no solo precio.', 'template_key' => 'close_sale', 'lane' => 'intake', 'wait_hours' => 0],
-                        ['key' => 'phone_bundle_offer', 'title' => 'Subir bundle o garantia', 'copy' => 'Usa accesorios, cobertura o soporte como parte del cierre.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 16],
+                        ['key' => 'phone_bundle_offer', 'title' => 'Subir bundle o garantia', 'copy' => 'Usa accesorios, cobertura o soporte como parte del cierre.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 14, 'branches' => [
+                            ['key' => 'phone_purchase_aftercare', 'label' => 'Compra reciente', 'title' => 'Abrir aftercare premium', 'copy' => 'Si hubo compra reciente, cambia de venta inicial a continuidad premium con bundle o garantia.', 'template_key' => 'final_close_push', 'lane' => 'aftercare_bundle', 'when' => 'recent_purchase'],
+                        ]],
                         ['key' => 'phone_clear_exit', 'title' => 'Dejar salida clara', 'copy' => 'Busca cotizacion cerrada, reserva o visita a tienda.', 'template_key' => 'final_close_push', 'lane' => 'closing', 'wait_hours' => 30],
                     ],
                     'templates' => ['close_sale', 'vip_priority', 'fast_follow_up'],
@@ -389,7 +403,9 @@ return [
                 'repeat' => [
                     'journey' => [
                         ['key' => 'restaurant_fast_hunger', 'title' => 'Responder con hambre', 'copy' => 'No dejes que una recompra se enfrie por minutos.', 'template_key' => 'close_sale', 'lane' => 'intake', 'wait_hours' => 0],
-                        ['key' => 'restaurant_combo_offer', 'title' => 'Usar combo o extra', 'copy' => 'Empuja ticket promedio desde la conversacion.', 'template_key' => 'follow_up_reminder', 'lane' => 'upsell', 'wait_hours' => 6],
+                        ['key' => 'restaurant_combo_offer', 'title' => 'Usar combo o extra', 'copy' => 'Empuja ticket promedio desde la conversacion.', 'template_key' => 'follow_up_reminder', 'lane' => 'upsell', 'wait_hours' => 4, 'branches' => [
+                            ['key' => 'restaurant_recent_purchase', 'label' => 'Pedido reciente', 'title' => 'Mover recompra caliente', 'copy' => 'Si ya hubo compra reciente, usa una ventana mas corta para mover extra o recompra del mismo dia.', 'template_key' => 'close_sale', 'lane' => 'hot_reorder', 'when' => 'recent_purchase'],
+                        ]],
                         ['key' => 'restaurant_close_today', 'title' => 'Cerrar pedido hoy', 'copy' => 'Busca compra inmediata o pedido programado.', 'template_key' => 'final_close_push', 'lane' => 'closing', 'wait_hours' => 12],
                     ],
                     'templates' => ['close_sale', 'fast_follow_up', 'reactivation_recovery'],

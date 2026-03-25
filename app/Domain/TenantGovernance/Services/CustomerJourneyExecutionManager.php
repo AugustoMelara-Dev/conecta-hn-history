@@ -15,6 +15,7 @@ class CustomerJourneyExecutionManager
     public function __construct(
         private readonly CustomerConversationTemplateManager $templateManager,
         private readonly CustomerJourneyManager $journeyManager,
+        private readonly CustomerTaskManager $customerTaskManager,
     ) {}
 
     /**
@@ -126,5 +127,10 @@ class CustomerJourneyExecutionManager
                 'last_auto_checked_at' => now()->toIso8601String(),
             ]),
         ])->save();
+
+        $this->customerTaskManager->createJourneyRescueTask(
+            $run,
+            'La secuencia automatica fallo: '.$reason
+        );
     }
 }

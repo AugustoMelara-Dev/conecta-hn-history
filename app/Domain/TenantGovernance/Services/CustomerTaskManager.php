@@ -6,6 +6,7 @@ namespace App\Domain\TenantGovernance\Services;
 
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
+use App\Models\CustomerJourneyRun;
 use App\Models\CustomerTask;
 
 class CustomerTaskManager
@@ -64,6 +65,54 @@ class CustomerTaskManager
             'completed_at' => now(),
             'assigned_user_id' => $actorUserId ?? $task->assigned_user_id,
         ])->save();
+
+        return $task->fresh();
+    }
+
+    public function createJourneyRescueTask(CustomerJourneyRun $run, string $reason): ?CustomerTask
+    {
+        $conversation = $run->conversation()->withoutGlobalScopes()->first();
+        $profile = $run->customerProfile()->withoutGlobalScopes()->first();
+
+        if (! $profile instanceof CustomerProfile) {
+            return null;
+        }
+
+        $task = CustomerTask::query()
+            ->withoutGlobalScopes()
+            ->firstOrNew([
+                'tenant_id' => (string) $run->tenant_id,
+                'customer_conversation_id' => (int) $run->customer_conversation_id,
+                'task_type' => 'journey_rescue',
+                'status' => 'open',
+            ]);
+
+        $task->forceFill([
+            'customer_profile_id' => (int) $profile->getKey(),
+            'assigned_user_id' => $conversation?->owner_user_id ?? $profile->assigned_user_id,
+            'location_id' => $conversation?->location_id ?? $profile->location_id,
+            'assignment_group' => $conversation?->assignment_group ?? 'retention',
+            'title' => 'Rescatar secuencia de '.$profile->name,
+            'body' => $reason,
+            'priority' => 'high',
+            'response_sla_minutes' => $conversation?->response_sla_minutes ?? 120,
+            'source_channel' => $conversation?->source_channel ?? $profile->preferred_channel,
+            'due_at' => $run->step_due_at ?? $conversation?->next_action_at ?? now()->addHours(4),
+            'sla_due_at' => $conversation?->response_due_at ?? now()->addHours(2),
+            'metadata' => array_merge((array) $task->metadata, [
+                'journey_key' => $run->journey_key,
+                'sequence_key' => data_get($run->metadata, 'current_sequence_key'),
+                'branch_key' => data_get($run->metadata, 'current_branch_key'),
+                'lane' => data_get($run->metadata, 'lane'),
+                'rescue_reason' => $reason,
+            ]),
+        ]);
+
+        if (! $task->exists) {
+            $task->created_by_user_id = $conversation?->owner_user_id;
+        }
+
+        $task->save();
 
         return $task->fresh();
     }

@@ -659,12 +659,15 @@ class CustomerInbox extends Page
                 'nextTemplateKey' => $journeyRun->next_template_key,
                 'recommendedTemplateKey' => data_get($journeyRun->metadata, 'recommended_template_key'),
                 'nextTriggerAt' => $journeyRun->step_due_at?->diffForHumans(),
+                'lastBusinessSignal' => $this->formatJourneySignalLabel((string) data_get($journeyRun->metadata, 'last_business_signal', '')),
+                'lastBusinessSignalAt' => $this->formatJourneySignalAt(data_get($journeyRun->metadata, 'last_business_signal_at')),
             ] : null,
             'currentStep' => $journey['current_step'],
             'nextStep' => $journey['next_step'],
             'templates' => $journey['templates'],
             'task' => $task instanceof CustomerTask ? [
                 'title' => (string) $task->title,
+                'body' => (string) $task->body,
                 'statusLabel' => $task->status_label,
                 'priorityLabel' => $task->priority_label,
                 'slaLabel' => $task->sla_label,
@@ -673,8 +676,31 @@ class CustomerInbox extends Page
                 'locationLabel' => $task->location?->name ?? $profile->location_label,
                 'dueAt' => $task->due_at?->diffForHumans(),
                 'slaDueAt' => $task->sla_due_at?->diffForHumans(),
+                'rescueReason' => (string) data_get($task->metadata, 'rescue_reason', ''),
             ] : null,
         ];
+    }
+
+    private function formatJourneySignalLabel(string $signal): ?string
+    {
+        if ($signal === '') {
+            return null;
+        }
+
+        return str($signal)->replace('_', ' ')->title()->value();
+    }
+
+    private function formatJourneySignalAt(mixed $value): ?string
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse($value)->diffForHumans();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function applyQueueFilters($query)

@@ -285,6 +285,15 @@ class GrowthCenter extends Page
     /** @var list<array{label:string,revenue:string,replies:int,clicks:int,conversions:string}> */
     public array $sequenceAttribution = [];
 
+    /** @var list<array{name:string,revenue:string,replies:int,clicks:int,conversions:string,context:string}> */
+    public array $ownerSequenceAttribution = [];
+
+    /** @var list<array{name:string,revenue:string,replies:int,clicks:int,conversions:string,context:string}> */
+    public array $locationSequenceAttribution = [];
+
+    /** @var list<array{name:string,revenue:string,replies:int,clicks:int,conversions:string,context:string}> */
+    public array $channelSequenceAttribution = [];
+
     /** @var list<array{name:string,total:int,closed:int,conversions:int,revenue:string,waiting:int,breached:int,avgFirstResponse:string,conversionRate:string}> */
     public array $ownerConversationPerformance = [];
 
@@ -1026,6 +1035,9 @@ class GrowthCenter extends Page
             $this->templatePerformance = [];
             $this->sequencePerformance = [];
             $this->sequenceAttribution = [];
+            $this->ownerSequenceAttribution = [];
+            $this->locationSequenceAttribution = [];
+            $this->channelSequenceAttribution = [];
             $this->ownerConversationPerformance = [];
             $this->locationConversationPerformance = [];
 
@@ -1140,6 +1152,16 @@ class GrowthCenter extends Page
             ->values()
             ->all();
 
+        $this->ownerSequenceAttribution = $this->buildAttributedDimensionRows(
+            $this->buildAttributedSequenceShares($touchpoints, 'owner')
+        );
+        $this->locationSequenceAttribution = $this->buildAttributedDimensionRows(
+            $this->buildAttributedSequenceShares($touchpoints, 'location')
+        );
+        $this->channelSequenceAttribution = $this->buildAttributedDimensionRows(
+            $this->buildAttributedSequenceShares($touchpoints, 'channel')
+        );
+
         $conversations = CustomerConversation::query()
             ->withoutGlobalScopes()
             ->with([
@@ -1173,7 +1195,7 @@ class GrowthCenter extends Page
      * @param  Collection<int, CustomerTouchpoint>  $touchpoints
      * @return array<string, array{label:string,revenue:float,replies:int,clicks:int,conversions:float}>
      */
-    private function buildAttributedSequenceShares(Collection $touchpoints): array
+    private function buildAttributedSequenceShares(Collection $touchpoints, ?string $dimension = null): array
     {
         $shares = [];
 
@@ -1198,26 +1220,72 @@ class GrowthCenter extends Page
                 $conversionShare = 1 / max(1, $sequenceGroups->count());
                 $revenueShare = $revenue / max(1, $sequenceGroups->count());
 
-                $sequenceGroups->each(function (Collection $slice, string $sequenceKey) use (&$shares, $conversionShare, $revenueShare): void {
-                    $shares[$sequenceKey] ??= [
-                        'label' => (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey)),
+                $sequenceGroups->each(function (Collection $slice, string $sequenceKey) use (&$shares, $conversionShare, $revenueShare, $conversation, $dimension): void {
+                    $dimensionKey = $sequenceKey;
+                    $context = '';
+                    $label = (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey));
+
+                    if ($dimension === 'owner') {
+                        $ownerName = $conversation->ownerLabel;
+                        $dimensionKey = "{$ownerName}|{$sequenceKey}";
+                        $context = $label;
+                        $label = $ownerName;
+                    } elseif ($dimension === 'location') {
+                        $locationName = $conversation->locationLabel;
+                        $dimensionKey = "{$locationName}|{$sequenceKey}";
+                        $context = $label;
+                        $label = $locationName;
+                    } elseif ($dimension === 'channel') {
+                        $channel = $this->formatSourceLabel((string) ($conversation->source_channel ?: 'crm'));
+                        $dimensionKey = "{$channel}|{$sequenceKey}";
+                        $context = $label;
+                        $label = $channel;
+                    }
+
+                    $shares[$dimensionKey] ??= [
+                        'label' => $label,
                         'revenue' => 0.0,
                         'replies' => 0,
                         'clicks' => 0,
                         'conversions' => 0.0,
+                        'context' => $context,
                     ];
 
-                    $shares[$sequenceKey]['revenue'] += $revenueShare;
-                    $shares[$sequenceKey]['replies'] += $slice->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->replied_at !== null)->count();
-                    $shares[$sequenceKey]['clicks'] += $slice->filter(fn (CustomerTouchpoint $touchpoint): bool => in_array($touchpoint->delivery_status, [
+                    $shares[$dimensionKey]['revenue'] += $revenueShare;
+                    $shares[$dimensionKey]['replies'] += $slice->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->replied_at !== null)->count();
+                    $shares[$dimensionKey]['clicks'] += $slice->filter(fn (CustomerTouchpoint $touchpoint): bool => in_array($touchpoint->delivery_status, [
                         CustomerTouchpoint::DELIVERY_CLICKED,
                         CustomerTouchpoint::DELIVERY_READ,
                     ], true))->count();
-                    $shares[$sequenceKey]['conversions'] += $conversionShare;
+                    $shares[$dimensionKey]['conversions'] += $conversionShare;
                 });
             });
 
         return $shares;
+    }
+
+    /**
+     * @param  array<string, array{label:string,revenue:float,replies:int,clicks:int,conversions:float,context?:string}>  $shares
+     * @return list<array{name:string,revenue:string,replies:int,clicks:int,conversions:string,context:string}>
+     */
+    private function buildAttributedDimensionRows(array $shares): array
+    {
+        return collect($shares)
+            ->map(function (array $share): array {
+                return [
+                    'name' => (string) ($share['label'] ?? 'Sin dato'),
+                    'revenue' => $this->formatCurrency((float) ($share['revenue'] ?? 0.0)),
+                    'replies' => (int) ($share['replies'] ?? 0),
+                    'clicks' => (int) ($share['clicks'] ?? 0),
+                    'conversions' => number_format((float) ($share['conversions'] ?? 0.0), 2),
+                    'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
+                    'context' => (string) ($share['context'] ?? 'Secuencia CRM'),
+                ];
+            })
+            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['clicks'] ?? 0) * 10) + (int) ($row['replies'] ?? 0))
+            ->take(4)
+            ->values()
+            ->all();
     }
 
     private function buildGrowthActions(): void
@@ -1289,6 +1357,10 @@ class GrowthCenter extends Page
             $queue[] = $this->priority('Rescata conversaciones vencidas', 'Ya tienes replies fuera de SLA. Conviene responder antes de empujar mas campanas o follow-up.', $this->inboxUrl, 'danger');
         } elseif ($this->openRepliesCount > 0) {
             $queue[] = $this->priority('Responde tu bandeja', 'Hay conversaciones abiertas en CRM que conviene cerrar antes de lanzar mas automatizaciones.', $this->inboxUrl, 'danger');
+        }
+
+        if ($this->stalledJourneysCount > 0) {
+            $queue[] = $this->priority('Interviene secuencias degradadas', 'Ya tienes journeys trabados por outcome, no-show o falta de respuesta. Conviene rescatar esos casos con ownership humano.', $this->inboxUrl, 'danger');
         }
 
         if ($this->redeemableCustomersCount > 0 && $this->hasLoyaltyProgram) {

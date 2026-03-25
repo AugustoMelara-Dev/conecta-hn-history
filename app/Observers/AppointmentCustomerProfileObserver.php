@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
+use App\Domain\TenantGovernance\Services\CustomerJourneySignalRecorder;
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Models\Appointment;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
@@ -13,10 +14,27 @@ class AppointmentCustomerProfileObserver implements ShouldHandleEventsAfterCommi
 {
     public function saved(Appointment $appointment): void
     {
-        app(CustomerProfileManager::class)->syncAppointment(
+        $profile = app(CustomerProfileManager::class)->syncAppointment(
             $appointment,
             $this->originalProfileId($appointment),
         );
+
+        if ($profile !== null && ($appointment->wasRecentlyCreated || $appointment->wasChanged('status'))) {
+            $signalKey = $appointment->status === Appointment::STATUS_NO_SHOW
+                ? 'appointment_no_show'
+                : ($appointment->status === Appointment::STATUS_COMPLETED ? 'appointment_completed' : 'appointment_booked');
+
+            app(CustomerJourneySignalRecorder::class)->recordForProfile(
+                $profile,
+                $signalKey,
+                [
+                    'appointment_id' => (int) $appointment->getKey(),
+                    'appointment_status' => (string) $appointment->status,
+                    'scheduled_for' => optional($appointment->start_time)->toIso8601String(),
+                ],
+                'crm',
+            );
+        }
 
         if (
             $appointment->wasRecentlyCreated

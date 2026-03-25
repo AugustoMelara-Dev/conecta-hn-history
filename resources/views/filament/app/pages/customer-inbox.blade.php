@@ -468,6 +468,9 @@
                                             @if ($selectedConversation['journeyRun']['nextTriggerAt'])
                                                 <p class="biz-muted"><strong>Disparo automatico estimado:</strong> {{ $selectedConversation['journeyRun']['nextTriggerAt'] }}</p>
                                             @endif
+                                            @if ($selectedConversation['journeyRun']['lastBusinessSignal'])
+                                                <p class="biz-muted"><strong>Ultima senal de negocio:</strong> {{ $selectedConversation['journeyRun']['lastBusinessSignal'] }}@if($selectedConversation['journeyRun']['lastBusinessSignalAt']) | {{ $selectedConversation['journeyRun']['lastBusinessSignalAt'] }}@endif</p>
+                                            @endif
                                             @if ($selectedConversation['journeyRun']['recommendedTemplateKey'])
                                                 <p class="biz-muted"><strong>Plantilla guia:</strong> {{ str($selectedConversation['journeyRun']['recommendedTemplateKey'])->replace('_', ' ')->replace('-', ' ')->title() }}</p>
                                             @endif
@@ -547,6 +550,11 @@
                                             <p class="biz-action-copy">
                                                 Estado {{ $selectedConversation['task']['statusLabel'] }} | Prioridad {{ $selectedConversation['task']['priorityLabel'] }} | SLA {{ $selectedConversation['task']['slaLabel'] }}
                                             </p>
+                                            @if ($selectedConversation['task']['rescueReason'])
+                                                <p class="biz-muted"><strong>Motivo de intervencion:</strong> {{ $selectedConversation['task']['rescueReason'] }}</p>
+                                            @elseif ($selectedConversation['task']['body'])
+                                                <p class="biz-muted">{{ $selectedConversation['task']['body'] }}</p>
+                                            @endif
                                             <p class="biz-muted">
                                                 <strong>Equipo:</strong> {{ $selectedConversation['task']['assignmentGroupLabel'] }}
                                                 | <strong>Owner:</strong> {{ $selectedConversation['task']['ownerLabel'] }}

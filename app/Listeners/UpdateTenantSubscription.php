@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Events\PaymentApproved;
+use App\Domain\TenantGovernance\Services\CustomerJourneySignalRecorder;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
@@ -140,6 +141,17 @@ class UpdateTenantSubscription
                 'new_end_date' => $newEndDate->toDateString(),
                 'reviewer_id' => $event->reviewerId,
             ]);
+
+            app(CustomerJourneySignalRecorder::class)->recordForTenantActiveConversations(
+                $tenant->fresh(),
+                'tenant_upgrade',
+                [
+                    'payment_id' => (int) $payment->getKey(),
+                    'plan_before_upgrade' => $planBeforeUpgrade,
+                    'plan_after_upgrade' => 'pro',
+                    'days_added' => (int) $event->daysToAdd,
+                ],
+            );
         }, 3); // 3 retry attempts for deadlock recovery
     }
 }

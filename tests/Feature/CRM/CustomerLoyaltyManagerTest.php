@@ -9,6 +9,7 @@ use App\Domain\TenantGovernance\Services\CustomerLoyaltyManager;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\CustomerLoyaltyLedger;
+use App\Models\CustomerConversation;
 use App\Models\CustomerProfile;
 use App\Models\LoyaltyProgram;
 use App\Models\LoyaltyReward;
@@ -125,6 +126,60 @@ final class CustomerLoyaltyManagerTest extends TestCase
         $this->assertSame(2, $rewardPremium->stock);
         $this->assertSame(3, CustomerLoyaltyLedger::query()->withoutGlobalScopes()->count());
         $this->assertSame([], $manager->rewardOptionsForProfile($profile));
+    }
+
+    public function test_reward_redemption_records_customer_journey_signal_on_active_conversation(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner('crm-loyalty-signal');
+
+        $reward = LoyaltyReward::query()->withoutGlobalScopes()->forceCreate([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Upgrade de cuidado',
+            'description' => 'Beneficio para continuidad',
+            'points_cost' => 100,
+            'stock' => -1,
+            'is_active' => true,
+        ]);
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Nora Diaz',
+            'email' => 'nora@example.com',
+            'preferred_channel' => 'whatsapp',
+            'loyalty_points_balance' => 120,
+            'lifetime_points_earned' => 120,
+        ]);
+
+        CustomerLoyaltyLedger::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $profile->getKey(),
+            'created_by_user_id' => $user->getKey(),
+            'type' => CustomerLoyaltyLedger::TYPE_BONUS,
+            'points_delta' => 120,
+            'monetary_value' => 0,
+            'description' => 'Puntos base',
+            'metadata' => ['source' => 'seed'],
+            'awarded_at' => now()->subDay(),
+        ]);
+
+        $conversation = CustomerConversation::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $profile->getKey(),
+            'owner_user_id' => $user->getKey(),
+            'conversation_key' => 'loyalty-redeem-001',
+            'source_channel' => 'whatsapp',
+            'status' => 'open',
+            'priority' => 'normal',
+            'opened_at' => now(),
+            'metadata' => [],
+        ]);
+
+        app(CustomerLoyaltyManager::class)->redeemReward($profile, $reward, (string) $user->getKey());
+
+        $conversation->refresh();
+
+        $this->assertSame('reward_redemption', data_get($conversation->metadata, 'last_business_signal'));
+        $this->assertSame('Upgrade de cuidado', data_get($conversation->metadata, 'business_signals.reward_redemption.payload.reward_name'));
     }
 
     /**

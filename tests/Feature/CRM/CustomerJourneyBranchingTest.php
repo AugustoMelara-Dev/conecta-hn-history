@@ -86,6 +86,111 @@ final class CustomerJourneyBranchingTest extends TestCase
         $this->assertSame('prospect:prospect_clarify_offer:clicked_offer', data_get($run->metadata, 'current_sequence_key'));
     }
 
+    public function test_booked_service_journey_branches_when_recent_no_show_signal_exists(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner('crm-journey-branch-no-show');
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'name' => 'Marina Paz',
+            'email' => 'marina@example.com',
+            'preferred_channel' => 'email',
+            'customer_segment' => 'booked_service',
+            'email_opt_in' => true,
+            'marketing_opt_in' => true,
+        ]);
+
+        $conversation = CustomerConversation::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $profile->getKey(),
+            'owner_user_id' => $user->getKey(),
+            'conversation_key' => 'service-no-show-001',
+            'source_channel' => 'email',
+            'status' => 'waiting_customer',
+            'priority' => 'high',
+            'response_sla_minutes' => 90,
+            'opened_at' => now()->subDay(),
+            'last_team_message_at' => now()->subHours(18),
+            'next_action_at' => now()->subHour(),
+            'response_due_at' => now()->subHour(),
+            'metadata' => [
+                'business_signals' => [
+                    'appointment_no_show' => [
+                        'at' => now()->subHours(2)->toIso8601String(),
+                        'payload' => [
+                            'appointment_status' => 'no_show',
+                        ],
+                    ],
+                ],
+                'last_business_signal' => 'appointment_no_show',
+                'last_business_signal_at' => now()->subHours(2)->toIso8601String(),
+            ],
+        ]);
+
+        $run = app(CustomerJourneyManager::class)->sync($conversation, $profile);
+
+        $this->assertSame('service_reduce_no_show', $run->current_step_key);
+        $this->assertSame('service_rebook', $run->next_template_key);
+        $this->assertSame('no_show_rescue', data_get($run->metadata, 'current_branch_key'));
+        $this->assertSame('booked_service:service_reduce_no_show:no_show_rescue', data_get($run->metadata, 'current_sequence_key'));
+    }
+
+    public function test_legal_journey_branches_on_recent_tenant_upgrade_signal(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner('crm-journey-branch-upgrade');
+
+        $tenant->forceFill([
+            'business_type' => 'service',
+            'business_segment_key' => 'corporate_law_firm',
+        ])->save();
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'name' => 'Gabriel Mejia',
+            'email' => 'gabriel@example.com',
+            'preferred_channel' => 'email',
+            'customer_segment' => 'prospect',
+            'email_opt_in' => true,
+            'marketing_opt_in' => true,
+        ]);
+
+        $conversation = CustomerConversation::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $profile->getKey(),
+            'owner_user_id' => $user->getKey(),
+            'conversation_key' => 'legal-upgrade-001',
+            'source_channel' => 'email',
+            'status' => 'waiting_customer',
+            'priority' => 'normal',
+            'response_sla_minutes' => 120,
+            'opened_at' => now()->subDay(),
+            'last_team_message_at' => now()->subHours(30),
+            'next_action_at' => now()->subHours(2),
+            'response_due_at' => now()->subHours(2),
+            'metadata' => [
+                'business_signals' => [
+                    'tenant_upgrade' => [
+                        'at' => now()->subHours(4)->toIso8601String(),
+                        'payload' => [
+                            'plan_after_upgrade' => 'pro',
+                        ],
+                    ],
+                ],
+                'last_business_signal' => 'tenant_upgrade',
+                'last_business_signal_at' => now()->subHours(4)->toIso8601String(),
+            ],
+        ]);
+
+        $run = app(CustomerJourneyManager::class)->sync($conversation, $profile);
+
+        $this->assertSame('legal_formal_next_step', $run->current_step_key);
+        $this->assertSame('final_close_push', $run->next_template_key);
+        $this->assertSame('post_upgrade_authority', data_get($run->metadata, 'current_branch_key'));
+        $this->assertSame('corporate_law_firm:prospect:legal_formal_next_step:post_upgrade_authority', data_get($run->metadata, 'current_sequence_key'));
+    }
+
     /**
      * @return array{0: User, 1: Tenant}
      */

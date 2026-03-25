@@ -105,6 +105,13 @@ class CustomerJourneyBranchResolver
             'stalled_sequence' => $this->isStalled($conversation),
             'multiple_replies' => (int) ($conversation?->reply_count ?? 0) >= 2,
             'high_reactivation_risk' => (int) ($profile->reactivation_score ?? 0) >= 70,
+            'recent_purchase' => $this->hasRecentSignal($conversation, 'purchase'),
+            'recent_appointment' => $this->hasRecentSignal($conversation, 'appointment_booked')
+                || $this->hasRecentSignal($conversation, 'appointment_completed'),
+            'recent_service_completion' => $this->hasRecentSignal($conversation, 'appointment_completed'),
+            'recent_no_show' => $this->hasRecentSignal($conversation, 'appointment_no_show'),
+            'recent_reward_redemption' => $this->hasRecentSignal($conversation, 'reward_redemption'),
+            'recent_upgrade' => $this->hasRecentSignal($conversation, 'tenant_upgrade'),
             'closing_ready' => (int) ($profile->orders_count ?? 0) > 0
                 || (int) ($profile->appointments_count ?? 0) > 0
                 || (float) ($profile->total_spent ?? 0) > 0,
@@ -120,6 +127,26 @@ class CustomerJourneyBranchResolver
             'last_step_unengaged' => $this->latestOutcome($conversation) === CustomerTouchpoint::DELIVERY_SENT,
             default => false,
         };
+    }
+
+    private function hasRecentSignal(?CustomerConversation $conversation, string $signalKey, int $hours = 336): bool
+    {
+        if (! $conversation instanceof CustomerConversation) {
+            return false;
+        }
+
+        $signal = data_get($conversation->metadata, "business_signals.{$signalKey}");
+        $at = data_get($signal, 'at');
+
+        if (! is_string($at) || $at === '') {
+            return false;
+        }
+
+        try {
+            return Carbon::parse($at)->greaterThanOrEqualTo(now()->subHours(max(1, $hours)));
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function isStalled(?CustomerConversation $conversation): bool
