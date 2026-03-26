@@ -11,6 +11,7 @@ final class CustomerProfileWorkspaceReader
 {
     public function __construct(
         private readonly CustomerProfileRepositoryInterface $customerProfiles,
+        private readonly CustomerProfileWorkspaceMetricsReader $metricsReader,
     ) {}
 
     /**
@@ -18,23 +19,7 @@ final class CustomerProfileWorkspaceReader
      */
     public function workspaceCards(CustomerProfile $profile): array
     {
-        $openTasks = $profile->tasks()
-            ->withoutGlobalScopes()
-            ->whereNotIn('status', ['completed', 'cancelled'])
-            ->count();
-        $breachedTasks = $profile->tasks()
-            ->withoutGlobalScopes()
-            ->whereNotIn('status', ['completed', 'cancelled'])
-            ->whereNotNull('sla_due_at')
-            ->where('sla_due_at', '<', now())
-            ->count();
-        $openReplies = $profile->notes()
-            ->withoutGlobalScopes()
-            ->where('requires_follow_up', true)
-            ->whereIn('status', ['open', 'in_progress', 'pending_customer'])
-            ->count();
-        $lastOrder = $profile->last_order_at?->diffForHumans() ?? 'Sin pedidos';
-        $lastAppointment = $profile->last_appointment_at?->diffForHumans() ?? 'Sin citas';
+        $metrics = $this->metricsReader->summarize($profile);
 
         return [
             [
@@ -44,18 +29,18 @@ final class CustomerProfileWorkspaceReader
             ],
             [
                 'label' => 'Tareas activas',
-                'value' => (string) $openTasks,
-                'copy' => $breachedTasks > 0 ? $breachedTasks.' vencidas por SLA.' : 'Sin vencimientos ahora.',
+                'value' => (string) $metrics['openTasks'],
+                'copy' => $metrics['breachedTasks'] > 0 ? $metrics['breachedTasks'].' vencidas por SLA.' : 'Sin vencimientos ahora.',
             ],
             [
                 'label' => 'Conversaciones',
-                'value' => (string) $openReplies,
+                'value' => (string) $metrics['openReplies'],
                 'copy' => 'Canal preferido: '.$profile->preferred_channel_label,
             ],
             [
                 'label' => 'Continuidad',
                 'value' => $profile->segment_display_label,
-                'copy' => 'Ultimo pedido: '.$lastOrder.' / Ultima cita: '.$lastAppointment,
+                'copy' => 'Ultimo pedido: '.$metrics['lastOrder'].' / Ultima cita: '.$metrics['lastAppointment'],
             ],
         ];
     }

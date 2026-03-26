@@ -6,6 +6,7 @@ namespace App\Filament\App\Resources;
 
 use App\Application\Marketing\Jobs\DispatchCampaignSegment;
 use App\Domain\Marketing\Enums\AudienceType;
+use App\Domain\TenantGovernance\Services\TenantCampaignActionCoordinator;
 use App\Domain\TenantGovernance\Services\TenantCampaignDispatchPlanner;
 use App\Domain\TenantGovernance\Services\TenantCampaignWorkspaceReader;
 use App\Models\Campaign;
@@ -317,29 +318,12 @@ class CampaignResource extends Resource
                             return;
                         }
 
-                        $dispatch = app(TenantCampaignDispatchPlanner::class)->planDispatch($tenant, $record);
-                        $audienceCount = $dispatch['audience_count'];
-
-                        if ($audienceCount === 0) {
-                            Notification::make()
-                                ->title('Audiencia vacia')
-                                ->warning()
-                                ->body('No hay contactos elegibles con estos filtros y opt-in.')
-                                ->send();
-
-                            return;
-                        }
-
-                        app(TenantCampaignDispatchPlanner::class)->queueCampaign($record, $dispatch['next_run_at']);
-
-                        DispatchCampaignSegment::dispatch($record->id, (string) $tenant->getKey());
+                        $result = app(TenantCampaignActionCoordinator::class)->dispatch($tenant, $record);
 
                         Notification::make()
-                            ->title($dispatch['uses_cadence'] ? 'Cadencia activada' : 'Campana en cola')
-                            ->success()
-                            ->body($dispatch['uses_cadence']
-                                ? "La campana se lanzo ahora y seguira viva para {$audienceCount} destinatarios elegibles."
-                                : "Se procesara el envio a {$audienceCount} destinatarios en breve.")
+                            ->title($result['title'])
+                            ->{$result['status']}()
+                            ->body($result['body'])
                             ->send();
                     }),
                 EditAction::make(),

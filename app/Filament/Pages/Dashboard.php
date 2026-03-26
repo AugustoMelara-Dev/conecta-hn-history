@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
-use App\Domain\TenantGovernance\Services\SuperAdminPortfolioReader;
-use App\Domain\TenantGovernance\Services\SuperAdminDashboardAssembler;
+use App\Domain\TenantGovernance\Services\SuperAdminDashboardStateReader;
 use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
 use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
 use App\Models\OperationalPlaybookTask;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use Filament\Panel;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -190,12 +188,7 @@ class Dashboard extends \Filament\Pages\Page
             // Evita que la lectura de journeys CRM tumbe el dashboard.
         }
 
-        $this->loadGlobalPlaybookState();
-        $this->loadPortfolioTenants();
-        $this->loadMonthlyProConversions();
-        $this->loadMetrics();
-        $this->loadDashboardSnapshot();
-        $this->loadRecentPayments();
+        $this->loadDashboardState();
     }
 
     public static function getRoutePath(Panel $panel): string
@@ -203,30 +196,59 @@ class Dashboard extends \Filament\Pages\Page
         return static::$routePath;
     }
 
-    private function loadMetrics(): void
+    private function loadDashboardState(): void
     {
         try {
-            $reader = app(SuperAdminPortfolioReader::class);
-            $metrics = $reader->metrics($this->portfolioCollection(), $this->monthlyProConversionCollection());
+            $state = app(SuperAdminDashboardStateReader::class)->read([
+                'payments' => $this->paymentsUrl,
+                'tenants' => $this->tenantsUrl,
+                'operations' => $this->operationsUrl,
+                'billing' => $this->billingUrl,
+            ], $this->safeRoute(...));
 
-            $this->tenantsCount = $metrics['tenantsCount'];
-            $this->proTenantsCount = $metrics['proTenantsCount'];
-            $this->proConversionsThisMonthCount = $metrics['proConversionsThisMonthCount'];
-            $this->pendingTenantsCount = $metrics['pendingTenantsCount'];
-            $this->suspendedTenantsCount = $metrics['suspendedTenantsCount'];
-            $this->catalogGapCount = $metrics['catalogGapCount'];
-            $this->expiringProCount = $metrics['expiringProCount'];
-            $this->crmWatchlistCount = $metrics['crmWatchlistCount'];
-            $this->atRiskTenantsCount = $metrics['atRiskTenantsCount'];
-            $this->crmOverdueAccountsCount = $metrics['crmOverdueAccountsCount'];
-            $this->crmFollowupsTodayCount = $metrics['crmFollowupsTodayCount'];
-            $this->crmOwnedAccountsCount = $metrics['crmOwnedAccountsCount'];
+            $this->activePlaybookTasks = (array) ($state['activePlaybookTasks'] ?? []);
+            $this->portfolioTenants = (array) ($state['portfolioTenants'] ?? []);
+            $this->monthlyProConversions = (array) ($state['monthlyProConversions'] ?? []);
+            $this->usersCount = (int) ($state['usersCount'] ?? 0);
+            $this->pendingPaymentsCount = (int) ($state['pendingPaymentsCount'] ?? 0);
+            $this->recentPayments = (array) ($state['recentPayments'] ?? []);
+            $this->activePlaybookCount = (int) ($state['activePlaybookCount'] ?? 0);
+            $this->overduePlaybookCount = (int) ($state['overduePlaybookCount'] ?? 0);
+            $this->unassignedPlaybookCount = (int) ($state['unassignedPlaybookCount'] ?? 0);
+            $this->commercialFollowupCount = (int) ($state['commercialFollowupCount'] ?? 0);
+            $this->renewalPlaybookCount = (int) ($state['renewalPlaybookCount'] ?? 0);
+            $this->activationPlaybookCount = (int) ($state['activationPlaybookCount'] ?? 0);
+            $this->growthPlaybookCount = (int) ($state['growthPlaybookCount'] ?? 0);
+            $this->tenantsCount = (int) ($state['tenantsCount'] ?? 0);
+            $this->proTenantsCount = (int) ($state['proTenantsCount'] ?? 0);
+            $this->proConversionsThisMonthCount = (int) ($state['proConversionsThisMonthCount'] ?? 0);
+            $this->pendingTenantsCount = (int) ($state['pendingTenantsCount'] ?? 0);
+            $this->suspendedTenantsCount = (int) ($state['suspendedTenantsCount'] ?? 0);
+            $this->atRiskTenantsCount = (int) ($state['atRiskTenantsCount'] ?? 0);
+            $this->catalogGapCount = (int) ($state['catalogGapCount'] ?? 0);
+            $this->expiringProCount = (int) ($state['expiringProCount'] ?? 0);
+            $this->crmWatchlistCount = (int) ($state['crmWatchlistCount'] ?? 0);
+            $this->crmOverdueAccountsCount = (int) ($state['crmOverdueAccountsCount'] ?? 0);
+            $this->crmOwnedAccountsCount = (int) ($state['crmOwnedAccountsCount'] ?? 0);
+            $this->crmFollowupsTodayCount = (int) ($state['crmFollowupsTodayCount'] ?? 0);
+            $snapshot = (array) ($state['snapshot'] ?? []);
         } catch (\Throwable) {
+            $this->activePlaybookTasks = [];
+            $this->portfolioTenants = [];
+            $this->monthlyProConversions = [];
+            $this->usersCount = 0;
+            $this->pendingPaymentsCount = 0;
+            $this->recentPayments = [];
+            $this->activePlaybookCount = 0;
+            $this->overduePlaybookCount = 0;
+            $this->unassignedPlaybookCount = 0;
+            $this->commercialFollowupCount = 0;
+            $this->renewalPlaybookCount = 0;
+            $this->activationPlaybookCount = 0;
+            $this->growthPlaybookCount = 0;
             $this->tenantsCount = 0;
             $this->proTenantsCount = 0;
-            $this->usersCount = 0;
             $this->proConversionsThisMonthCount = 0;
-            $this->pendingPaymentsCount = 0;
             $this->pendingTenantsCount = 0;
             $this->suspendedTenantsCount = 0;
             $this->atRiskTenantsCount = 0;
@@ -236,87 +258,8 @@ class Dashboard extends \Filament\Pages\Page
             $this->crmOverdueAccountsCount = 0;
             $this->crmOwnedAccountsCount = 0;
             $this->crmFollowupsTodayCount = 0;
+            $snapshot = [];
         }
-    }
-
-    private function loadPortfolioTenants(): void
-    {
-        try {
-            $reader = app(SuperAdminPortfolioReader::class);
-            $this->portfolioTenants = $reader->portfolioTenants();
-            $this->usersCount = $reader->usersCount();
-            $this->pendingPaymentsCount = $reader->pendingPaymentsCount();
-        } catch (\Throwable $exception) {
-            report($exception);
-            $this->portfolioTenants = [];
-        }
-    }
-
-    private function loadMonthlyProConversions(): void
-    {
-        try {
-            $this->monthlyProConversions = app(SuperAdminPortfolioReader::class)->monthlyProConversions();
-        } catch (\Throwable $exception) {
-            report($exception);
-            $this->monthlyProConversions = [];
-        }
-    }
-
-    private function loadGlobalPlaybookState(): void
-    {
-        try {
-            $reader = app(SuperAdminPortfolioReader::class);
-            $this->activePlaybookTasks = $reader->activePlaybookTasks();
-            $tasks = collect($this->activePlaybookTasks);
-            $counts = $reader->playbookCounts($tasks);
-
-            $this->activePlaybookCount = $counts['activePlaybookCount'];
-            $this->overduePlaybookCount = $counts['overduePlaybookCount'];
-            $this->unassignedPlaybookCount = $counts['unassignedPlaybookCount'];
-            $this->commercialFollowupCount = $counts['commercialFollowupCount'];
-            $this->renewalPlaybookCount = $counts['renewalPlaybookCount'];
-            $this->activationPlaybookCount = $counts['activationPlaybookCount'];
-            $this->growthPlaybookCount = $counts['growthPlaybookCount'];
-        } catch (\Throwable $exception) {
-            report($exception);
-            $this->activePlaybookTasks = [];
-            $this->activePlaybookCount = 0;
-            $this->overduePlaybookCount = 0;
-            $this->unassignedPlaybookCount = 0;
-            $this->commercialFollowupCount = 0;
-            $this->renewalPlaybookCount = 0;
-            $this->activationPlaybookCount = 0;
-            $this->growthPlaybookCount = 0;
-        }
-    }
-
-    private function loadDashboardSnapshot(): void
-    {
-        $snapshot = app(SuperAdminDashboardAssembler::class)->build(
-            [
-                'tenantsCount' => $this->tenantsCount,
-                'pendingPaymentsCount' => $this->pendingPaymentsCount,
-                'pendingTenantsCount' => $this->pendingTenantsCount,
-                'overduePlaybookCount' => $this->overduePlaybookCount,
-                'unassignedPlaybookCount' => $this->unassignedPlaybookCount,
-                'crmOverdueAccountsCount' => $this->crmOverdueAccountsCount,
-                'commercialFollowupCount' => $this->commercialFollowupCount,
-                'activationPlaybookCount' => $this->activationPlaybookCount,
-                'growthPlaybookCount' => $this->growthPlaybookCount,
-                'expiringProCount' => $this->expiringProCount,
-                'crmWatchlistCount' => $this->crmWatchlistCount,
-            ],
-            $this->activePlaybookCollection(),
-            $this->portfolioCollection(),
-            $this->monthlyProConversionCollection(),
-            [
-                'payments' => $this->paymentsUrl,
-                'tenants' => $this->tenantsUrl,
-                'operations' => $this->operationsUrl,
-                'billing' => $this->billingUrl,
-            ],
-            $this->safeRoute(...),
-        );
 
         $this->openAttentionCount = (int) ($snapshot['openAttentionCount'] ?? 0);
         $this->attentionQueues = (array) ($snapshot['attentionQueues'] ?? []);
@@ -342,15 +285,6 @@ class Dashboard extends \Filament\Pages\Page
         $this->networkJourneyPaths = (array) ($snapshot['networkJourneyPaths'] ?? []);
         $this->churnWatchlist = (array) ($snapshot['churnWatchlist'] ?? []);
         $this->commercialFollowups = (array) ($snapshot['commercialFollowups'] ?? []);
-    }
-
-    private function loadRecentPayments(): void
-    {
-        try {
-            $this->recentPayments = app(SuperAdminPortfolioReader::class)->recentPayments();
-        } catch (\Throwable) {
-            $this->recentPayments = [];
-        }
     }
 
     /**

@@ -16,6 +16,10 @@ use Illuminate\Support\Collection;
 
 class CustomerProfileTimelineBuilder
 {
+    public function __construct(
+        private readonly CustomerProfileActivityReader $activityReader,
+    ) {}
+
     /**
      * @return list<array{type:string,title:string,copy:string,channel:?string,when:string,color:string}>
      */
@@ -49,13 +53,7 @@ class CustomerProfileTimelineBuilder
 
     private function orders(string $tenantId, int $profileId): Collection
     {
-        return Order::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->where('customer_profile_id', $profileId)
-            ->latest('created_at')
-            ->limit(8)
-            ->get()
+        return $this->activityReader->orders($tenantId, $profileId)
             ->map(fn (Order $order): array => [
                 'type' => 'order',
                 'title' => 'Pedido '.$order->order_number,
@@ -68,13 +66,7 @@ class CustomerProfileTimelineBuilder
 
     private function appointments(string $tenantId, int $profileId): Collection
     {
-        return Appointment::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->where('customer_profile_id', $profileId)
-            ->latest('scheduled_at')
-            ->limit(8)
-            ->get()
+        return $this->activityReader->appointments($tenantId, $profileId)
             ->map(fn (Appointment $appointment): array => [
                 'type' => 'appointment',
                 'title' => 'Cita '.mb_strtolower($appointment->status_label),
@@ -87,13 +79,7 @@ class CustomerProfileTimelineBuilder
 
     private function leads(string $tenantId, int $profileId): Collection
     {
-        return Lead::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->where('customer_profile_id', $profileId)
-            ->latest('created_at')
-            ->limit(8)
-            ->get()
+        return $this->activityReader->leads($tenantId, $profileId)
             ->map(fn (Lead $lead): array => [
                 'type' => 'lead',
                 'title' => 'Lead '.mb_strtolower((string) $lead->status),
@@ -106,13 +92,7 @@ class CustomerProfileTimelineBuilder
 
     private function touchpoints(string $tenantId, int $profileId): Collection
     {
-        return CustomerTouchpoint::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->where('customer_profile_id', $profileId)
-            ->latest('created_at')
-            ->limit(8)
-            ->get()
+        return $this->activityReader->touchpoints($tenantId, $profileId)
             ->map(fn (CustomerTouchpoint $touchpoint): array => [
                 'type' => 'touchpoint',
                 'title' => ucfirst((string) $touchpoint->channel).' '.mb_strtolower($touchpoint->delivery_status_label),
@@ -130,13 +110,7 @@ class CustomerProfileTimelineBuilder
 
     private function notes(string $tenantId, int $profileId): Collection
     {
-        return CustomerNote::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->where('customer_profile_id', $profileId)
-            ->latest('created_at')
-            ->limit(8)
-            ->get()
+        return $this->activityReader->notes($tenantId, $profileId)
             ->map(fn (CustomerNote $note): array => [
                 'type' => 'note',
                 'title' => $note->note_type_label.' '.mb_strtolower($note->status_label),
@@ -152,13 +126,7 @@ class CustomerProfileTimelineBuilder
 
     private function tasks(string $tenantId, int $profileId): Collection
     {
-        return CustomerTask::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->where('customer_profile_id', $profileId)
-            ->latest('created_at')
-            ->limit(8)
-            ->get()
+        return $this->activityReader->tasks($tenantId, $profileId)
             ->map(fn (CustomerTask $task): array => [
                 'type' => 'task',
                 'title' => $task->task_type_label.' '.mb_strtolower($task->status_label),
@@ -171,13 +139,7 @@ class CustomerProfileTimelineBuilder
 
     private function loyalty(string $tenantId, int $profileId): Collection
     {
-        return CustomerLoyaltyLedger::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->where('customer_profile_id', $profileId)
-            ->latest('awarded_at')
-            ->limit(8)
-            ->get()
+        return $this->activityReader->loyalty($tenantId, $profileId)
             ->map(fn (CustomerLoyaltyLedger $entry): array => [
                 'type' => 'loyalty',
                 'title' => $entry->type_label,

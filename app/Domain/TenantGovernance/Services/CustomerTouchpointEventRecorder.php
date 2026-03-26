@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
-use App\Domain\TenantGovernance\Repositories\CustomerNoteRepositoryInterface;
-use App\Domain\TenantGovernance\Repositories\CustomerConversationRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\CustomerTouchpointEventRepositoryInterface;
-use App\Domain\TenantGovernance\Repositories\CustomerProfileRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\CustomerTouchpointRepositoryInterface;
 use App\Models\CustomerTouchpoint;
 use App\Models\CustomerTouchpointEvent;
@@ -18,15 +15,12 @@ use Illuminate\Support\Str;
 class CustomerTouchpointEventRecorder
 {
     public function __construct(
-        private readonly CustomerConversationOpsManager $conversationOpsManager,
         private readonly CustomerTouchpointGovernance $governance,
-        private readonly CustomerJourneyManager $journeyManager,
         private readonly CustomerTouchpointRepositoryInterface $touchpoints,
         private readonly CustomerTouchpointEventRepositoryInterface $events,
         private readonly InboundWebhookRepositoryInterface $webhooks,
-        private readonly CustomerNoteRepositoryInterface $notes,
-        private readonly CustomerProfileRepositoryInterface $profiles,
-        private readonly CustomerConversationRepositoryInterface $conversations,
+        private readonly CustomerTouchpointInboundReplyRecorder $inboundReplies,
+        private readonly WhatsAppTouchpointEventProcessor $whatsAppProcessor,
     ) {}
 
     /**
@@ -97,7 +91,7 @@ class CustomerTouchpointEventRecorder
             $this->syncJourneyAfterOutcome($touchpoint);
 
             if (in_array($eventType, ['email.received', 'email.replied'], true)) {
-                $this->logInboundReply(
+                $this->inboundReplies->record(
                     $touchpoint,
                     (string) data_get($payload, 'data.text', data_get($payload, 'data.subject', 'Respuesta recibida por email.')),
                     $occurredAt,
@@ -144,11 +138,11 @@ class CustomerTouchpointEventRecorder
                 $value = (array) ($change['value'] ?? []);
 
                 foreach ((array) ($value['statuses'] ?? []) as $statusPayload) {
-                    $tracked += $this->recordWhatsAppStatus($value, (array) $statusPayload, $headers) ? 1 : 0;
+                    $tracked += $this->whatsAppProcessor->recordStatus($value, (array) $statusPayload, $headers) ? 1 : 0;
                 }
 
                 foreach ((array) ($value['messages'] ?? []) as $messagePayload) {
-                    $tracked += $this->recordWhatsAppInboundMessage($value, (array) $messagePayload, $headers) ? 1 : 0;
+                    $tracked += $this->whatsAppProcessor->recordInboundMessage($value, (array) $messagePayload, $headers) ? 1 : 0;
                 }
             }
         }
@@ -271,44 +265,6 @@ class CustomerTouchpointEventRecorder
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function logInboundReply(
-        CustomerTouchpoint $touchpoint,
-        string $body,
-        Carbon $occurredAt,
-        string $provider,
-        string $channel,
-        array $metadata = [],
-    ): void
-    {
-        $message = trim($body);
-
-        $this->conversationOpsManager->recordInboundReply(
-            $touchpoint,
-            $message !== '' ? $message : 'Respuesta recibida del cliente.',
-            $occurredAt,
-            $channel,
-            [
-                'provider' => $provider,
-                ...$metadata,
-            ],
-        );
-
-        $profile = $this->profiles->findWithoutScopes((int) $touchpoint->customer_profile_id);
-
-        if ($profile !== null) {
-            $profile->forceFill([
-                'last_inbound_reply_at' => $occurredAt,
-                'last_engaged_channel' => $channel,
-            ]);
-
-            $this->profiles->save($profile);
-        }
-
-        if ($channel === 'whatsapp') {
-            $this->applyOptInKeywords($touchpoint, $message);
-        }
-    }
-
     /**
      * @param  array<string, mixed>  $payload
      */
@@ -333,239 +289,8 @@ class CustomerTouchpointEventRecorder
         };
     }
 
-    /**
-     * @param  array<string, mixed>  $value
-     * @param  array<string, mixed>  $statusPayload
-     * @param  array<string, string>  $headers
-     */
-    private function recordWhatsAppStatus(array $value, array $statusPayload, array $headers): bool
-    {
-        $providerMessageId = (string) ($statusPayload['id'] ?? '');
-        $status = (string) ($statusPayload['status'] ?? 'sent');
-        $occurredAt = $this->parseUnixTimestamp((string) ($statusPayload['timestamp'] ?? now()->timestamp));
-        $touchpoint = $providerMessageId !== '' ? $this->touchpoints->findByProviderMessage('whatsapp_cloud', $providerMessageId) : null;
-        $tenantId = (string) ($touchpoint?->tenant_id ?? 'system');
-        $providerTransactionId = $providerMessageId !== ''
-            ? "{$providerMessageId}:{$status}:{$occurredAt->timestamp}"
-            : (string) ($headers['x-hub-signature-256'] ?? uniqid('whatsapp_', true));
-
-        $webhook = $this->webhooks->firstOrCreate(
-            [
-                'provider' => 'whatsapp_cloud',
-                'provider_transaction_id' => $providerTransactionId,
-            ],
-            [
-                'tenant_id' => $tenantId,
-                'event_type' => "whatsapp.{$status}",
-                'payload' => ['value' => $value, 'status' => $statusPayload],
-                'status' => 'pending',
-            ],
-        );
-
-        if (! $touchpoint instanceof CustomerTouchpoint) {
-            $webhook->forceFill(['status' => 'completed']);
-            $this->webhooks->save($webhook);
-
-            return false;
-        }
-
-        $this->events->firstOrCreate(
-            [
-                'customer_touchpoint_id' => (int) $touchpoint->getKey(),
-                'provider' => 'whatsapp_cloud',
-                'event_type' => "whatsapp.{$status}",
-                'occurred_at' => $occurredAt,
-            ],
-            [
-                'tenant_id' => (string) $touchpoint->tenant_id,
-                'status' => $status,
-                'payload' => ['value' => $value, 'status' => $statusPayload],
-            ],
-        );
-
-        $touchpoint->forceFill([
-            'provider' => 'whatsapp_cloud',
-            'provider_payload' => ['value' => $value, 'status' => $statusPayload],
-            'delivery_status' => match ($status) {
-                'delivered' => CustomerTouchpoint::DELIVERY_DELIVERED,
-                'read' => CustomerTouchpoint::DELIVERY_READ,
-                'failed' => CustomerTouchpoint::DELIVERY_FAILED,
-                default => CustomerTouchpoint::DELIVERY_SENT,
-            },
-            'sent_at' => $status === 'sent' ? ($touchpoint->sent_at ?? $occurredAt) : $touchpoint->sent_at,
-            'delivered_at' => $status === 'delivered' ? $occurredAt : $touchpoint->delivered_at,
-            'opened_at' => $status === 'read' ? $occurredAt : $touchpoint->opened_at,
-            'failed_at' => $status === 'failed' ? $occurredAt : $touchpoint->failed_at,
-            'next_retry_at' => $status === 'failed' ? $this->governance->nextRetryAt($touchpoint, $occurredAt) : null,
-            'last_error' => $status === 'failed'
-                ? (string) data_get($statusPayload, 'errors.0.title', data_get($statusPayload, 'errors.0.details', 'WhatsApp delivery failed.'))
-                : $touchpoint->last_error,
-            'status' => $status === 'failed'
-                ? CustomerTouchpoint::STATUS_FAILED
-                : CustomerTouchpoint::STATUS_SENT,
-        ]);
-        $this->touchpoints->save($touchpoint);
-
-        $this->syncJourneyAfterOutcome($touchpoint);
-
-        $webhook->forceFill(['tenant_id' => (string) $touchpoint->tenant_id, 'status' => 'completed']);
-        $this->webhooks->save($webhook);
-
-        return true;
-    }
-
-    /**
-     * @param  array<string, mixed>  $value
-     * @param  array<string, mixed>  $messagePayload
-     * @param  array<string, string>  $headers
-     */
-    private function recordWhatsAppInboundMessage(array $value, array $messagePayload, array $headers): bool
-    {
-        $contextMessageId = (string) data_get($messagePayload, 'context.id', '');
-        $occurredAt = $this->parseUnixTimestamp((string) ($messagePayload['timestamp'] ?? now()->timestamp));
-        $touchpoint = $contextMessageId !== ''
-            ? $this->touchpoints->findByProviderMessage('whatsapp_cloud', $contextMessageId)
-            : null;
-        $tenantId = (string) ($touchpoint?->tenant_id ?? 'system');
-        $providerTransactionId = (string) ($messagePayload['id'] ?? uniqid('whatsapp_inbound_', true));
-        $body = trim((string) data_get($messagePayload, 'text.body', data_get($messagePayload, 'button.text', 'Respuesta recibida por WhatsApp.')));
-
-        $webhook = $this->webhooks->firstOrCreate(
-            [
-                'provider' => 'whatsapp_cloud',
-                'provider_transaction_id' => $providerTransactionId,
-            ],
-            [
-                'tenant_id' => $tenantId,
-                'event_type' => 'whatsapp.inbound',
-                'payload' => ['value' => $value, 'message' => $messagePayload],
-                'status' => 'pending',
-            ],
-        );
-
-        if (! $touchpoint instanceof CustomerTouchpoint) {
-            $webhook->forceFill(['status' => 'completed']);
-            $this->webhooks->save($webhook);
-
-            return false;
-        }
-
-        $this->events->firstOrCreate(
-            [
-                'customer_touchpoint_id' => (int) $touchpoint->getKey(),
-                'provider' => 'whatsapp_cloud',
-                'event_type' => 'whatsapp.inbound',
-                'occurred_at' => $occurredAt,
-            ],
-            [
-                'tenant_id' => (string) $touchpoint->tenant_id,
-                'status' => 'replied',
-                'payload' => ['value' => $value, 'message' => $messagePayload],
-            ],
-        );
-
-        $touchpoint->forceFill([
-            'delivery_status' => CustomerTouchpoint::DELIVERY_REPLIED,
-            'replied_at' => $occurredAt,
-            'provider' => 'whatsapp_cloud',
-            'provider_payload' => ['value' => $value, 'message' => $messagePayload],
-            'next_retry_at' => null,
-            'status' => CustomerTouchpoint::STATUS_SENT,
-        ]);
-        $this->touchpoints->save($touchpoint);
-
-        $this->logInboundReply(
-            $touchpoint,
-            $body !== '' ? $body : 'Respuesta recibida por WhatsApp.',
-            $occurredAt,
-            'whatsapp_cloud',
-            'whatsapp',
-            [
-                'source_touchpoint_id' => (int) $touchpoint->getKey(),
-                'from' => (string) ($messagePayload['from'] ?? ''),
-                'provider_message_id' => (string) ($messagePayload['id'] ?? ''),
-                'provider_thread_key' => (string) (data_get($touchpoint->metadata, 'provider_thread_key')
-                    ?? data_get($touchpoint->metadata, 'conversation_key')
-                    ?? $contextMessageId
-                    ?? ''),
-                'provider_reply_to' => $contextMessageId !== '' ? $contextMessageId : null,
-            ],
-        );
-
-        $this->syncJourneyAfterOutcome($touchpoint);
-
-        $webhook->forceFill(['tenant_id' => (string) $touchpoint->tenant_id, 'status' => 'completed']);
-        $this->webhooks->save($webhook);
-
-        return true;
-    }
-
-    private function parseUnixTimestamp(string $timestamp): Carbon
-    {
-        if (is_numeric($timestamp)) {
-            return Carbon::createFromTimestamp((int) $timestamp);
-        }
-
-        return Carbon::parse($timestamp);
-    }
-
-    private function applyOptInKeywords(CustomerTouchpoint $touchpoint, string $body): void
-    {
-        $keyword = strtoupper(trim($body));
-        $accept = collect((array) config('customer-automation.opt_in_keywords.accept', []))
-            ->map(static fn (mixed $value): string => strtoupper((string) $value))
-            ->all();
-        $stop = collect((array) config('customer-automation.opt_in_keywords.stop', []))
-            ->map(static fn (mixed $value): string => strtoupper((string) $value))
-            ->all();
-
-        if (! in_array($keyword, [...$accept, ...$stop], true)) {
-            return;
-        }
-
-        $accepting = in_array($keyword, $accept, true);
-        $profile = $this->profiles->findWithoutScopes((int) $touchpoint->customer_profile_id);
-
-        if (! $profile instanceof \App\Models\CustomerProfile) {
-            return;
-        }
-
-        $profile->forceFill([
-            'whatsapp_opt_in' => $accepting,
-            'marketing_opt_in' => $accepting ? true : $profile->marketing_opt_in,
-            'last_engaged_channel' => 'whatsapp',
-            'last_inbound_reply_at' => now(),
-        ])->save();
-
-        $this->notes->create([
-                'tenant_id' => (string) $touchpoint->tenant_id,
-                'customer_profile_id' => (int) $touchpoint->customer_profile_id,
-                'note_type' => 'opt_in_update',
-                'status' => 'resolved',
-                'priority' => 'low',
-                'source_channel' => 'whatsapp',
-                'requires_follow_up' => false,
-                'handled_at' => now(),
-                'body' => $accepting
-                    ? 'El cliente confirmo opt-in por WhatsApp.'
-                    : 'El cliente solicito baja de WhatsApp.',
-                'metadata' => [
-                    'provider' => 'whatsapp_cloud',
-                    'keyword' => $keyword,
-                    'accepted' => $accepting,
-                ],
-            ]);
-    }
-
     private function syncJourneyAfterOutcome(CustomerTouchpoint $touchpoint): void
     {
-        $conversation = $touchpoint->customer_conversation_id !== null
-            ? $this->conversations->findWithoutScopes((int) $touchpoint->customer_conversation_id)
-            : null;
-        $profile = $this->profiles->findWithoutScopes((int) $touchpoint->customer_profile_id)?->loadMissing('tenant');
-
-        if ($conversation instanceof \App\Models\CustomerConversation && $profile instanceof \App\Models\CustomerProfile) {
-            $this->journeyManager->sync($conversation, $profile);
-        }
+        $this->inboundReplies->syncTouchpoint($touchpoint);
     }
 }
