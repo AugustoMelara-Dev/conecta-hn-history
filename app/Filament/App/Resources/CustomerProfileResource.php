@@ -258,13 +258,13 @@ class CustomerProfileResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('assigned_user_id')
                                     ->label('Owner de cartera')
-                                    ->options(fn (): array => static::teamOptions())
+                                    ->options(static::teamOptions())
                                     ->searchable()
                                     ->placeholder('Sin owner')
                                     ->native(false),
                                 Forms\Components\Select::make('location_id')
                                     ->label('Sede')
-                                    ->options(fn (): array => static::locationOptions())
+                                    ->options(static::locationOptions())
                                     ->searchable()
                                     ->placeholder('Sin sede')
                                     ->native(false),
@@ -403,10 +403,10 @@ class CustomerProfileResource extends Resource
                     ]),
                 Tables\Filters\SelectFilter::make('assigned_user_id')
                     ->label('Owner')
-                    ->options(fn (): array => static::teamOptions()),
+                    ->options(static::teamOptions()),
                 Tables\Filters\SelectFilter::make('location_id')
                     ->label('Sede')
-                    ->options(fn (): array => static::locationOptions()),
+                    ->options(static::locationOptions()),
                 Tables\Filters\Filter::make('reactivation')
                     ->label('Solo reactivacion')
                     ->query(fn ($query) => $query->where('reactivation_score', '>=', 65)),

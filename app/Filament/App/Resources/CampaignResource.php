@@ -98,9 +98,7 @@ class CampaignResource extends Resource
                                     ->native(false),
                                 Forms\Components\Select::make('audience_type')
                                     ->label('Audiencia base')
-                                    ->options(fn (): array => collect(AudienceType::cases())
-                                        ->mapWithKeys(fn (AudienceType $type) => [$type->value => $type->label()])
-                                        ->all())
+                                    ->options(static::audienceTypeOptions())
                                     ->required()
                                     ->default(AudienceType::CRM_CUSTOMERS->value)
                                     ->native(false),
@@ -158,7 +156,7 @@ class CampaignResource extends Resource
                                     ->native(false),
                                 Forms\Components\Select::make('loyalty_reward_id')
                                     ->label('Reward destacado')
-                                    ->options(fn (): array => static::rewardOptions())
+                                    ->options(static::rewardOptions())
                                     ->searchable()
                                     ->placeholder('Sin reward especial')
                                     ->helperText('Si eliges uno, la campana puede empujar un canje o una meta clara de puntos.')
@@ -168,13 +166,13 @@ class CampaignResource extends Resource
                                     ->helperText('Cuando hay reward destacado, usa el costo real del reward para filtrar.'),
                                 Forms\Components\Select::make('location_id')
                                     ->label('Sede')
-                                    ->options(fn (): array => static::locationOptions())
+                                    ->options(static::locationOptions())
                                     ->searchable()
                                     ->placeholder('Todas las sedes')
                                     ->native(false),
                                 Forms\Components\Select::make('owner_user_id')
                                     ->label('Responsable')
-                                    ->options(fn (): array => static::teamOptions())
+                                    ->options(static::teamOptions())
                                     ->searchable()
                                     ->placeholder('Toda la cartera')
                                     ->native(false),
@@ -348,6 +346,16 @@ class CampaignResource extends Resource
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function audienceTypeOptions(): array
+    {
+        return collect(AudienceType::cases())
+            ->mapWithKeys(fn (AudienceType $type) => [$type->value => $type->label()])
+            ->all();
     }
 
     /**

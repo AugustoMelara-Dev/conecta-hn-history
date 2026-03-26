@@ -10,19 +10,16 @@ use Illuminate\Support\HtmlString;
 final class CustomerProfileTimelineHtmlReader
 {
     public function __construct(
-        private readonly CustomerProfileTimelineSectionReader $timelineReader,
+        private readonly CustomerProfileTimelineStateReader $timelineStateReader,
     ) {}
 
     public function render(?CustomerProfile $profile): HtmlString|string
     {
-        if (! $profile instanceof CustomerProfile) {
-            return 'Todavia no hay timeline disponible.';
-        }
-
-        $items = $this->timelineReader->items($profile);
+        $state = $this->timelineStateReader->read($profile);
+        $items = $state['items'];
 
         if ($items === []) {
-            return 'Aun no hay eventos suficientes para armar la historia operativa de este cliente.';
+            return $state['empty'];
         }
 
         $html = collect($items)
