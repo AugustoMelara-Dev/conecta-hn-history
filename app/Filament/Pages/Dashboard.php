@@ -7,6 +7,7 @@ namespace App\Filament\Pages;
 use App\Domain\TenantGovernance\Services\SuperAdminPortfolioReader;
 use App\Domain\TenantGovernance\Services\SuperAdminJourneyAnalyticsReader;
 use App\Domain\TenantGovernance\Services\SuperAdminOperationsReadModel;
+use App\Domain\TenantGovernance\Services\SuperAdminRevenueInsightsReader;
 use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
 use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
 use App\Models\CustomerConversation;
@@ -543,293 +544,50 @@ class Dashboard extends \Filament\Pages\Page
 
     private function loadVerticalMonthlyGoals(): void
     {
-        /** @var array<string, array{label?: string, target?: int, focus?: string}> $targets */
-        $targets = config('revenue-ops.monthly_vertical_goals', []);
-
-        $configuredSegments = collect(array_keys($targets))
-            ->reject(fn (string $segmentKey): bool => $segmentKey === 'default');
-
-        $activeSegments = $this->portfolioCollection()
-            ->map(fn (Tenant $tenant): string => $this->segmentKeyForTenant($tenant))
-            ->merge($this->monthlyProConversionCollection()->map(fn (SubscriptionPayment $payment): string => $this->segmentKeyForPayment($payment)))
-            ->filter()
-            ->unique();
-
-        $this->verticalMonthlyGoals = $configuredSegments
-            ->merge($activeSegments)
-            ->unique()
-            ->map(function (string $segmentKey) use ($targets): array {
-                $verticalTenants = $this->portfolioCollection()
-                    ->filter(fn (Tenant $tenant): bool => $this->segmentKeyForTenant($tenant) === $segmentKey);
-                $count = $verticalTenants->count();
-                $converted = $this->convertedTenantCount(
-                    fn (SubscriptionPayment $payment): bool => $this->segmentKeyForPayment($payment) === $segmentKey
-                );
-                $pipeline = $verticalTenants->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count();
-                $pro = $verticalTenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
-
-                /** @var array{label?: string, target?: int, focus?: string} $defaultTarget */
-                $defaultTarget = $targets['default'] ?? [];
-                /** @var array{label?: string, target?: int, focus?: string} $targetConfig */
-                $targetConfig = $targets[$segmentKey] ?? [];
-                $target = max(1, (int) ($targetConfig['target'] ?? $defaultTarget['target'] ?? max(1, $pipeline)));
-                $attainment = number_format(($converted / max(1, $target)) * 100, 1).'%';
-
-                return [
-                    'vertical' => (string) ($targetConfig['label'] ?? $this->segmentLabel($segmentKey)),
-                    'target' => $target,
-                    'converted' => $converted,
-                    'pipeline' => $pipeline,
-                    'pro' => $pro,
-                    'attainment' => $attainment,
-                    'focus' => (string) ($targetConfig['focus'] ?? $defaultTarget['focus'] ?? 'Sin foco comercial configurado para este vertical.'),
-                    'tone' => $converted >= $target ? 'success' : (($converted + $pipeline) >= $target ? 'warning' : 'info'),
-                    'href' => $this->billingUrl,
-                ];
-            })
-            ->filter(fn (array $item): bool => $item['target'] > 0 || $item['converted'] > 0 || $item['pipeline'] > 0 || $item['pro'] > 0)
-            ->sortByDesc(fn (array $item): int => ($item['converted'] * 100) + ($item['pipeline'] * 50) + ($item['target'] * 10) + $item['pro'])
-            ->take(6)
-            ->values()
-            ->all();
+        $this->verticalMonthlyGoals = app(SuperAdminRevenueInsightsReader::class)
+            ->verticalMonthlyGoals($this->portfolioCollection(), $this->monthlyProConversionCollection(), $this->billingUrl);
     }
 
     private function loadActivationCohorts(): void
     {
-        $cohorts = collect(range(5, 0))
-            ->map(function (int $monthsAgo): Carbon {
-                return now()->startOfMonth()->subMonths($monthsAgo);
-            });
-
-        $this->activationCohorts = $cohorts
-            ->map(function (Carbon $month): array {
-                $cohortTenants = $this->portfolioCollection()->filter(function (Tenant $tenant) use ($month): bool {
-                    return $tenant->created_at instanceof Carbon
-                        && $tenant->created_at->isSameMonth($month);
-                });
-
-                $count = $cohortTenants->count();
-                $onboarding = $cohortTenants->filter(function (Tenant $tenant): bool {
-                    return in_array((string) ($tenant->getRawOriginal('crm_status') ?? Tenant::CRM_STATUS_NEW), [
-                        Tenant::CRM_STATUS_NEW,
-                        Tenant::CRM_STATUS_ONBOARDING,
-                    ], true);
-                })->count();
-                $active = $cohortTenants->filter(function (Tenant $tenant): bool {
-                    return in_array((string) ($tenant->getRawOriginal('crm_status') ?? Tenant::CRM_STATUS_NEW), [
-                        Tenant::CRM_STATUS_ACTIVE,
-                        Tenant::CRM_STATUS_UPSELL,
-                        Tenant::CRM_STATUS_RENEWAL,
-                    ], true);
-                })->count();
-                $pro = $cohortTenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
-
-                return [
-                    'label' => $month->translatedFormat('M Y'),
-                    'count' => $count,
-                    'activation_rate' => $count > 0 ? number_format(($active / $count) * 100, 1).'%' : '0.0%',
-                    'onboarding' => $onboarding,
-                    'active' => $active,
-                    'pro' => $pro,
-                    'href' => $this->tenantsUrl,
-                ];
-            })
-            ->values()
-            ->all();
+        $this->activationCohorts = app(SuperAdminRevenueInsightsReader::class)
+            ->activationCohorts($this->portfolioCollection(), $this->tenantsUrl);
     }
 
     private function loadPlanCohorts(): void
     {
-        $planKeys = $this->portfolioCollection()
-            ->map(fn (Tenant $tenant): string => $this->planKeyForTenant($tenant))
-            ->merge($this->monthlyProConversionCollection()->map(fn (SubscriptionPayment $payment): string => $this->planKeyForPayment($payment)))
-            ->filter()
-            ->unique();
-
-        $this->planCohorts = $planKeys
-            ->map(function (string $planKey): array {
-                $tenants = $this->portfolioCollection()
-                    ->filter(fn (Tenant $tenant): bool => $this->planKeyForTenant($tenant) === $planKey);
-                $count = $tenants->count();
-                $converted = $this->convertedTenantCount(
-                    fn (SubscriptionPayment $payment): bool => $this->planKeyForPayment($payment) === $planKey
-                );
-                $expansion = $tenants->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count();
-                $watch = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
-                $pro = $tenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
-
-                return [
-                    'plan' => $this->planLabel($planKey),
-                    'count' => $count,
-                    'converted' => $converted,
-                    'expansion' => $expansion,
-                    'watch' => $watch,
-                    'pro' => $pro,
-                    'tone' => $converted > 0 ? 'success' : ($watch > 0 ? 'warning' : 'info'),
-                    'href' => $this->billingUrl,
-                ];
-            })
-            ->filter(fn (array $item): bool => $item['count'] > 0 || $item['converted'] > 0 || $item['pro'] > 0)
-            ->sortByDesc(fn (array $item): int => ($item['converted'] * 100) + ($item['expansion'] * 50) + ($item['count'] * 10))
-            ->values()
-            ->all();
+        $this->planCohorts = app(SuperAdminRevenueInsightsReader::class)
+            ->planCohorts($this->portfolioCollection(), $this->monthlyProConversionCollection(), $this->billingUrl);
     }
 
     private function loadCityCohorts(): void
     {
-        $this->cityCohorts = $this->portfolioCollection()
-            ->groupBy(fn (Tenant $tenant): string => (string) ($tenant->city?->name ?: 'Sin ciudad'))
-            ->map(function (Collection $tenants, string $city): array {
-                $count = $tenants->count();
-                $activated = $tenants->filter(fn (Tenant $tenant): bool => $this->isActivatedTenant($tenant))->count();
-                $expansion = $tenants->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count();
-                $watch = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
-                $pro = $tenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
-                $converted = $this->convertedTenantCount(
-                    fn (SubscriptionPayment $payment): bool => $this->cityLabelForPayment($payment) === $city
-                );
-
-                return [
-                    'city' => $city,
-                    'count' => $count,
-                    'activation_rate' => $count > 0 ? number_format(($activated / $count) * 100, 1).'%' : '0.0%',
-                    'expansion' => $expansion,
-                    'watch' => $watch,
-                    'pro' => $pro,
-                    'converted' => $converted,
-                    'tone' => $converted > 0 ? 'success' : ($watch > 0 ? 'warning' : ($expansion > 0 ? 'info' : 'gray')),
-                    'href' => $this->tenantsUrl,
-                ];
-            })
-            ->sortByDesc(fn (array $item): int => ($item['converted'] * 100) + ($item['count'] * 50) + ($item['watch'] * 25) + ($item['expansion'] * 10))
-            ->take(6)
-            ->values()
-            ->all();
+        $this->cityCohorts = app(SuperAdminRevenueInsightsReader::class)
+            ->cityCohorts($this->portfolioCollection(), $this->monthlyProConversionCollection(), $this->tenantsUrl);
     }
 
     private function loadChannelCohorts(): void
     {
-        $this->channelCohorts = $this->portfolioCollection()
-            ->groupBy(fn (Tenant $tenant): string => $this->closingChannelKey($tenant))
-            ->map(function (Collection $tenants, string $channelKey): array {
-                $count = $tenants->count();
-                $activated = $tenants->filter(fn (Tenant $tenant): bool => $this->isActivatedTenant($tenant))->count();
-                $expansion = $tenants->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count();
-                $watch = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
-                $pro = $tenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
-
-                return [
-                    'channel' => $this->closingChannelLabel($channelKey),
-                    'count' => $count,
-                    'activation_rate' => $count > 0 ? number_format(($activated / $count) * 100, 1).'%' : '0.0%',
-                    'expansion' => $expansion,
-                    'watch' => $watch,
-                    'pro' => $pro,
-                    'copy' => $this->closingChannelCopy($channelKey),
-                    'tone' => $channelKey === 'none' ? 'warning' : ($expansion > 0 ? 'success' : 'info'),
-                    'href' => $this->tenantsUrl,
-                ];
-            })
-            ->sortByDesc(fn (array $item): int => ($item['count'] * 100) + ($item['expansion'] * 50) + ($item['watch'] * 25))
-            ->values()
-            ->all();
+        $this->channelCohorts = app(SuperAdminRevenueInsightsReader::class)
+            ->channelCohorts($this->portfolioCollection(), $this->tenantsUrl);
     }
 
     private function loadSegmentExpansion(): void
     {
-        $this->segmentExpansion = $this->portfolioCollection()
-            ->groupBy(fn (Tenant $tenant): string => $this->segmentKeyForTenant($tenant))
-            ->map(function (Collection $tenants, string $segmentKey): array {
-                $count = $tenants->count();
-                $expansion = $tenants->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count();
-                $activation = $tenants->filter(fn (Tenant $tenant): bool => $this->needsActivationPush($tenant))->count();
-                $pro = $tenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
-                $converted = $this->convertedTenantCount(
-                    fn (SubscriptionPayment $payment): bool => $this->segmentKeyForPayment($payment) === $segmentKey
-                );
-                $watch = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
-                $ownerCoverage = $tenants->filter(fn (Tenant $tenant): bool => filled($tenant->crm_owner_id))->count();
-
-                return [
-                    'segment' => $this->segmentLabel($segmentKey),
-                    'count' => $count,
-                    'expansion' => $expansion,
-                    'activation' => $activation,
-                    'pro' => $pro,
-                    'converted' => $converted,
-                    'watch' => $watch,
-                    'coverage' => $count > 0 ? number_format(($ownerCoverage / $count) * 100, 1).'%' : '0.0%',
-                    'tone' => $converted > 0 ? 'success' : ($expansion > 0 ? 'warning' : ($watch > 0 ? 'danger' : 'info')),
-                    'href' => $this->tenantsUrl,
-                ];
-            })
-            ->sortByDesc(fn (array $item): int => ($item['converted'] * 120) + ($item['expansion'] * 100) + ($item['watch'] * 50) + $item['count'])
-            ->take(6)
-            ->values()
-            ->all();
+        $this->segmentExpansion = app(SuperAdminRevenueInsightsReader::class)
+            ->segmentExpansion($this->portfolioCollection(), $this->monthlyProConversionCollection(), $this->tenantsUrl);
     }
 
     private function loadOwnerCohorts(): void
     {
-        $this->ownerCohorts = $this->portfolioCollection()
-            ->groupBy(fn (Tenant $tenant): string => (string) ($tenant->crm_owner_id ?: 'unassigned'))
-            ->map(function (Collection $tenants, string $ownerKey): array {
-                /** @var Tenant|null $firstTenant */
-                $firstTenant = $tenants->first();
-                $converted = $this->convertedTenantCount(
-                    fn (SubscriptionPayment $payment): bool => $this->ownerKeyForPayment($payment) === $ownerKey
-                );
-                $expansion = $tenants->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count();
-                $watch = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
-                $pro = $tenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
-
-                return [
-                    'owner' => $ownerKey === 'unassigned'
-                        ? 'Sin owner interno'
-                        : (string) (($firstTenant?->crmOwner?->name ?: $firstTenant?->crmOwner?->email) ?? 'Owner interno'),
-                    'count' => $tenants->count(),
-                    'converted' => $converted,
-                    'expansion' => $expansion,
-                    'watch' => $watch,
-                    'pro' => $pro,
-                    'tone' => $converted > 0 ? 'success' : ($watch > 0 ? 'warning' : ($ownerKey === 'unassigned' ? 'gray' : 'info')),
-                    'href' => $this->operationsUrl,
-                ];
-            })
-            ->sortByDesc(fn (array $item): int => ($item['converted'] * 100) + ($item['watch'] * 50) + ($item['expansion'] * 25) + $item['count'])
-            ->take(6)
-            ->values()
-            ->all();
+        $this->ownerCohorts = app(SuperAdminRevenueInsightsReader::class)
+            ->ownerCohorts($this->portfolioCollection(), $this->monthlyProConversionCollection(), $this->operationsUrl);
     }
 
     private function loadVerticalChurn(): void
     {
-        $this->verticalChurn = $this->portfolioCollection()
-            ->groupBy(fn (Tenant $tenant): string => $this->segmentKeyForTenant($tenant))
-            ->map(function (Collection $tenants, string $segmentKey): array {
-                $watch = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
-                $critical = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) >= 90)->count();
-                $suspended = $tenants->filter(fn (Tenant $tenant): bool => ! (bool) $tenant->getAttribute('is_active'))->count();
-                $renewal = $tenants->filter(function (Tenant $tenant): bool {
-                    return (string) ($tenant->getRawOriginal('crm_status') ?? Tenant::CRM_STATUS_NEW) === Tenant::CRM_STATUS_RENEWAL
-                        || ($tenant->is_pro && $tenant->subscription_ends_at instanceof Carbon && $tenant->subscription_ends_at->lte(now()->addDays(7)));
-                })->count();
-
-                return [
-                    'vertical' => $this->segmentLabel($segmentKey),
-                    'count' => $tenants->count(),
-                    'watch' => $watch,
-                    'critical' => $critical,
-                    'suspended' => $suspended,
-                    'renewal' => $renewal,
-                    'tone' => $critical > 0 ? 'danger' : ($watch > 0 || $renewal > 0 ? 'warning' : 'info'),
-                    'href' => $this->tenantsUrl,
-                ];
-            })
-            ->sortByDesc(fn (array $item): int => ($item['critical'] * 100) + ($item['watch'] * 50) + $item['renewal'])
-            ->take(6)
-            ->values()
-            ->all();
+        $this->verticalChurn = app(SuperAdminRevenueInsightsReader::class)
+            ->verticalChurn($this->portfolioCollection(), $this->tenantsUrl);
     }
 
     private function loadVerticalJourneyUplift(): void

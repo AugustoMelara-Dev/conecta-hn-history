@@ -178,6 +178,16 @@ final class CustomerInboxReadModel
             ->all();
     }
 
+    public function badgeCount(Tenant $tenant): int
+    {
+        return CustomerNote::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->where('requires_follow_up', true)
+            ->whereIn('status', ['open', 'in_progress'])
+            ->count();
+    }
+
     private function mapQueueNote(CustomerNote $note, Tenant $tenant): array
     {
         $profile = $note->customerProfile;
@@ -236,7 +246,7 @@ final class CustomerInboxReadModel
         ];
     }
 
-    private function buildConversationWorkspace(Tenant $tenant, CustomerNote $note): array
+    public function buildConversationWorkspace(Tenant $tenant, CustomerNote $note): array
     {
         $profile = $note->customerProfile;
         $conversation = $note->conversation;
@@ -250,6 +260,47 @@ final class CustomerInboxReadModel
         $journey = $this->templateManager->forConversation($profile, $note);
         $task = $note->task()->withoutGlobalScopes()->with(['assignedUser', 'location'])->first();
         $journeyRun = $conversation?->journeyRun;
+        $journeyRunSummary = $journeyRun instanceof CustomerJourneyRun ? [
+            'statusLabel' => $journeyRun->status_label,
+            'sequenceStateLabel' => $journeyRun->sequence_state_label,
+            'dueStateLabel' => $journeyRun->due_state_label,
+            'currentStepIndex' => (int) $journeyRun->current_step_index,
+            'nextActionAt' => $journeyRun->next_action_at?->diffForHumans(),
+            'stepDueAt' => $journeyRun->step_due_at?->diffForHumans(),
+            'currentStep' => data_get($journeyRun->metadata, 'current_step.title'),
+            'currentStepCopy' => data_get($journeyRun->metadata, 'current_step.copy'),
+            'currentLane' => data_get($journeyRun->metadata, 'lane'),
+            'currentBranchLabel' => data_get($journeyRun->metadata, 'current_branch_label', 'Ruta base'),
+            'currentSequenceLabel' => data_get($journeyRun->metadata, 'current_sequence_label', 'Secuencia principal'),
+            'nextStep' => data_get($journeyRun->metadata, 'next_step.title'),
+            'nextBranchLabel' => data_get($journeyRun->metadata, 'next_branch_label'),
+            'nextSequenceLabel' => data_get($journeyRun->metadata, 'next_sequence_label'),
+            'nextTemplateKey' => $journeyRun->next_template_key,
+            'recommendedTemplateKey' => data_get($journeyRun->metadata, 'recommended_template_key'),
+            'nextTriggerAt' => $journeyRun->step_due_at?->diffForHumans(),
+            'lastBusinessSignal' => $this->formatJourneySignalLabel((string) data_get($journeyRun->metadata, 'last_business_signal', '')),
+            'lastBusinessSignalAt' => $this->formatJourneySignalAt(data_get($journeyRun->metadata, 'last_business_signal_at')),
+        ] : (($journey['journey'] !== [] || $journey['templates'] !== []) ? [
+            'statusLabel' => 'Listo',
+            'sequenceStateLabel' => 'Sincronizando',
+            'dueStateLabel' => $conversation?->sla_label ?? $note->sla_label,
+            'currentStepIndex' => 1,
+            'nextActionAt' => ($conversation?->next_action_at ?? $note->next_action_at)?->diffForHumans(),
+            'stepDueAt' => ($conversation?->response_due_at ?? $note->response_due_at)?->diffForHumans(),
+            'currentStep' => $journey['current_step']['title'] ?? 'Sin paso activo',
+            'currentStepCopy' => $journey['current_step']['copy'] ?? 'La ruta comercial ya esta lista para moverse desde este hilo.',
+            'currentLane' => 'follow_up',
+            'currentBranchLabel' => 'Ruta base',
+            'currentSequenceLabel' => 'Secuencia principal',
+            'nextStep' => $journey['next_step']['title'] ?? null,
+            'nextBranchLabel' => 'Ruta base',
+            'nextSequenceLabel' => 'Secuencia principal',
+            'nextTemplateKey' => null,
+            'recommendedTemplateKey' => $journey['templates'][0]['key'] ?? null,
+            'nextTriggerAt' => ($conversation?->next_action_at ?? $note->next_action_at)?->diffForHumans(),
+            'lastBusinessSignal' => null,
+            'lastBusinessSignalAt' => null,
+        ] : null);
 
         return [
             'id' => (int) $note->getKey(),
@@ -281,27 +332,7 @@ final class CustomerInboxReadModel
             'threadItems' => $thread['items'],
             'internalNotes' => $thread['internal_notes'],
             'journey' => $journey['journey'],
-            'journeyRun' => $journeyRun instanceof CustomerJourneyRun ? [
-                'statusLabel' => $journeyRun->status_label,
-                'sequenceStateLabel' => $journeyRun->sequence_state_label,
-                'dueStateLabel' => $journeyRun->due_state_label,
-                'currentStepIndex' => (int) $journeyRun->current_step_index,
-                'nextActionAt' => $journeyRun->next_action_at?->diffForHumans(),
-                'stepDueAt' => $journeyRun->step_due_at?->diffForHumans(),
-                'currentStep' => data_get($journeyRun->metadata, 'current_step.title'),
-                'currentStepCopy' => data_get($journeyRun->metadata, 'current_step.copy'),
-                'currentLane' => data_get($journeyRun->metadata, 'lane'),
-                'currentBranchLabel' => data_get($journeyRun->metadata, 'current_branch_label', 'Ruta base'),
-                'currentSequenceLabel' => data_get($journeyRun->metadata, 'current_sequence_label', 'Secuencia principal'),
-                'nextStep' => data_get($journeyRun->metadata, 'next_step.title'),
-                'nextBranchLabel' => data_get($journeyRun->metadata, 'next_branch_label'),
-                'nextSequenceLabel' => data_get($journeyRun->metadata, 'next_sequence_label'),
-                'nextTemplateKey' => $journeyRun->next_template_key,
-                'recommendedTemplateKey' => data_get($journeyRun->metadata, 'recommended_template_key'),
-                'nextTriggerAt' => $journeyRun->step_due_at?->diffForHumans(),
-                'lastBusinessSignal' => $this->formatJourneySignalLabel((string) data_get($journeyRun->metadata, 'last_business_signal', '')),
-                'lastBusinessSignalAt' => $this->formatJourneySignalAt(data_get($journeyRun->metadata, 'last_business_signal_at')),
-            ] : null,
+            'journeyRun' => $journeyRunSummary,
             'currentStep' => $journey['current_step'],
             'nextStep' => $journey['next_step'],
             'templates' => $journey['templates'],
@@ -348,7 +379,7 @@ final class CustomerInboxReadModel
             ->all();
     }
 
-    private function findTenantNote(Tenant $tenant, int $noteId): ?CustomerNote
+    public function findTenantNote(Tenant $tenant, int $noteId): ?CustomerNote
     {
         return CustomerNote::query()
             ->withoutGlobalScopes()
