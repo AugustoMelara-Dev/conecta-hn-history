@@ -10,17 +10,17 @@ use Illuminate\Support\HtmlString;
 final class CustomerProfileSectionViewReader
 {
     public function __construct(
-        private readonly CustomerProfileWorkspaceHtmlReader $workspaceHtmlReader,
-        private readonly CustomerProfileTimelineHtmlReader $timelineHtmlReader,
+        private readonly CustomerProfileWorkspaceSectionReader $workspaceSectionReader,
+        private readonly CustomerProfileTimelineSectionViewReader $timelineSectionReader,
     ) {}
 
     public function workspaceHtml(?CustomerProfile $profile): HtmlString|string
     {
-        return $this->workspaceHtmlReader->render($profile);
+        return $this->workspaceSectionReader->render($profile);
     }
 
     public function timelineHtml(?CustomerProfile $profile): HtmlString|string
     {
-        return $this->timelineHtmlReader->render($profile);
+        return $this->timelineSectionReader->render($profile);
     }
 }

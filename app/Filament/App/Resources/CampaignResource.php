@@ -313,6 +313,7 @@ class CampaignResource extends Resource
                         ? 'Se lanzara ahora y, como tiene cadencia activa, seguira corriendo con la repeticion configurada.'
                         : 'Se enviara esta campana a la audiencia filtrada. ¿Continuamos?')
                     ->visible(fn (Campaign $record) => $record->status !== 'sending')
+                    ->modalDescription(fn (Campaign $record): string => static::presentationReader()->dispatchDescription($record))
                     ->action(function (Campaign $record): void {
                         self::runDispatch($record);
                     }),

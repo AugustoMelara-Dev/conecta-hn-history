@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
-use App\Domain\TenantGovernance\Repositories\CustomerTouchpointEventRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\CustomerTouchpointRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\InboundWebhookRepositoryInterface;
 use App\Models\CustomerTouchpoint;
@@ -14,8 +13,7 @@ final class WhatsAppInboundMessageProcessor
 {
     public function __construct(
         private readonly CustomerTouchpointRepositoryInterface $touchpoints,
-        private readonly CustomerTouchpointEventRepositoryInterface $events,
-        private readonly InboundWebhookRepositoryInterface $webhooks,
+        private readonly WhatsAppWebhookTrackingRecorder $trackingRecorder,
         private readonly WhatsAppInboundReplyHandler $inboundReplyHandler,
     ) {}
 
@@ -31,41 +29,13 @@ final class WhatsAppInboundMessageProcessor
         $touchpoint = $contextMessageId !== ''
             ? $this->touchpoints->findByProviderMessage('whatsapp_cloud', $contextMessageId)
             : null;
-        $tenantId = (string) ($touchpoint?->tenant_id ?? 'system');
         $providerTransactionId = (string) ($messagePayload['id'] ?? uniqid('whatsapp_inbound_', true));
-        $webhook = $this->webhooks->firstOrCreate(
-            [
-                'provider' => 'whatsapp_cloud',
-                'provider_transaction_id' => $providerTransactionId,
-            ],
-            [
-                'tenant_id' => $tenantId,
-                'event_type' => 'whatsapp.inbound',
-                'payload' => ['value' => $value, 'message' => $messagePayload],
-                'status' => 'pending',
-            ],
-        );
 
         if (! $touchpoint instanceof CustomerTouchpoint) {
-            $webhook->forceFill(['status' => 'completed']);
-            $this->webhooks->save($webhook);
-
             return false;
         }
 
-        $this->events->firstOrCreate(
-            [
-                'customer_touchpoint_id' => (int) $touchpoint->getKey(),
-                'provider' => 'whatsapp_cloud',
-                'event_type' => 'whatsapp.inbound',
-                'occurred_at' => $occurredAt,
-            ],
-            [
-                'tenant_id' => (string) $touchpoint->tenant_id,
-                'status' => 'replied',
-                'payload' => ['value' => $value, 'message' => $messagePayload],
-            ],
-        );
+        $webhook = $this->trackingRecorder->recordInbound($touchpoint, $value, $messagePayload, $occurredAt, $providerTransactionId);
 
         $touchpoint->forceFill([
             'delivery_status' => CustomerTouchpoint::DELIVERY_REPLIED,
@@ -80,7 +50,7 @@ final class WhatsAppInboundMessageProcessor
         $this->inboundReplyHandler->handle($touchpoint, $messagePayload, $occurredAt, $contextMessageId);
 
         $webhook->forceFill(['tenant_id' => (string) $touchpoint->tenant_id, 'status' => 'completed']);
-        $this->webhooks->save($webhook);
+        app(InboundWebhookRepositoryInterface::class)->save($webhook);
 
         return true;
     }
