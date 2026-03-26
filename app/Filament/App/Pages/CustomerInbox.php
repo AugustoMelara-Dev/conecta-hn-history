@@ -6,6 +6,7 @@ namespace App\Filament\App\Pages;
 
 use App\Domain\TenantGovernance\Services\CustomerConversationOpsManager;
 use App\Domain\TenantGovernance\Services\CustomerConversationRouting;
+use App\Domain\TenantGovernance\Services\CustomerConversationThreadBuilder;
 use App\Domain\TenantGovernance\Services\CustomerConversationTemplateManager;
 use App\Domain\TenantGovernance\Services\CustomerInboxReadModel;
 use App\Domain\TenantGovernance\Services\CustomerSegmentPlaybook;

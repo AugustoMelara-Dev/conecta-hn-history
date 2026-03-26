@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Repositories\CustomerTouchpointRepositoryInterface;
 use App\Models\CustomerNote;
 use App\Models\CustomerTouchpoint;
 use App\Models\CustomerTouchpointEvent;
@@ -17,6 +18,7 @@ class CustomerTouchpointEventRecorder
         private readonly CustomerConversationOpsManager $conversationOpsManager,
         private readonly CustomerTouchpointGovernance $governance,
         private readonly CustomerJourneyManager $journeyManager,
+        private readonly CustomerTouchpointRepositoryInterface $touchpoints,
     ) {}
 
     /**
@@ -160,20 +162,14 @@ class CustomerTouchpointEventRecorder
         $touchpointId = $tags['touchpoint_id'] ?? null;
 
         if (filled($touchpointId) && is_numeric($touchpointId)) {
-            return CustomerTouchpoint::query()
-                ->withoutGlobalScopes()
-                ->find((int) $touchpointId);
+            return $this->touchpoints->findById((int) $touchpointId);
         }
 
         if ($providerMessageId === '') {
             return null;
         }
 
-        return CustomerTouchpoint::query()
-            ->withoutGlobalScopes()
-            ->where('provider', 'resend')
-            ->where('provider_message_id', $providerMessageId)
-            ->first();
+        return $this->touchpoints->findByProviderMessage('resend', $providerMessageId);
     }
 
     /**
@@ -234,7 +230,7 @@ class CustomerTouchpointEventRecorder
             $touchpoint->status = CustomerTouchpoint::STATUS_SENT;
         }
 
-        $touchpoint->save();
+        $this->touchpoints->save($touchpoint);
     }
 
     /**

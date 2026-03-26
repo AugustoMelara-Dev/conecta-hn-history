@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Repositories\CustomerConversationRepositoryInterface;
 use App\Models\CustomerConversation;
 use App\Models\CustomerConversationMessage;
 use App\Models\CustomerNote;
@@ -14,6 +15,10 @@ use Illuminate\Support\Str;
 
 class CustomerConversationManager
 {
+    public function __construct(
+        private readonly CustomerConversationRepositoryInterface $conversations,
+    ) {}
+
     public function ensure(
         CustomerProfile $profile,
         string $channel,
@@ -24,41 +29,35 @@ class CustomerConversationManager
         $normalizedKey = filled($conversationKey) ? (string) $conversationKey : null;
 
         if ($normalizedKey !== null) {
-            $conversation = CustomerConversation::query()
-                ->withoutGlobalScopes()
-                ->where('tenant_id', (string) $profile->tenant_id)
-                ->where('customer_profile_id', (int) $profile->getKey())
-                ->where('conversation_key', $normalizedKey)
-                ->first();
+            $conversation = $this->conversations->findByConversationKey(
+                (string) $profile->tenant_id,
+                (int) $profile->getKey(),
+                $normalizedKey,
+            );
         }
 
         if (! $conversation instanceof CustomerConversation) {
-            $conversation = CustomerConversation::query()
-                ->withoutGlobalScopes()
-                ->where('tenant_id', (string) $profile->tenant_id)
-                ->where('customer_profile_id', (int) $profile->getKey())
-                ->where('source_channel', $channel)
-                ->whereIn('status', ['open', 'in_progress', 'waiting_customer'])
-                ->where('updated_at', '>=', now()->subHours($this->windowHours()))
-                ->latest('updated_at')
-                ->first();
+            $conversation = $this->conversations->findRecentOpen(
+                (string) $profile->tenant_id,
+                (int) $profile->getKey(),
+                $channel,
+                now()->subHours($this->windowHours()),
+            );
         }
 
         if (! $conversation instanceof CustomerConversation) {
-            $conversation = CustomerConversation::query()
-                ->withoutGlobalScopes()
-                ->create([
-                    'tenant_id' => (string) $profile->tenant_id,
-                    'customer_profile_id' => (int) $profile->getKey(),
-                    'owner_user_id' => $profile->assigned_user_id,
-                    'location_id' => $profile->location_id,
-                    'conversation_key' => $normalizedKey ?? Str::uuid()->toString(),
-                    'source_channel' => $channel,
-                    'status' => 'open',
-                    'priority' => 'normal',
-                    'opened_at' => now(),
-                    'metadata' => [],
-                ]);
+            $conversation = $this->conversations->create([
+                'tenant_id' => (string) $profile->tenant_id,
+                'customer_profile_id' => (int) $profile->getKey(),
+                'owner_user_id' => $profile->assigned_user_id,
+                'location_id' => $profile->location_id,
+                'conversation_key' => $normalizedKey ?? Str::uuid()->toString(),
+                'source_channel' => $channel,
+                'status' => 'open',
+                'priority' => 'normal',
+                'opened_at' => now(),
+                'metadata' => [],
+            ]);
         }
 
         $payload = array_filter([
@@ -79,7 +78,8 @@ class CustomerConversationManager
         ], static fn (mixed $value): bool => $value !== null);
 
         if ($payload !== []) {
-            $conversation->forceFill($payload)->save();
+            $conversation->forceFill($payload);
+            $this->conversations->save($conversation);
         }
 
         return $conversation->fresh();
@@ -105,61 +105,48 @@ class CustomerConversationManager
             ?? data_get($touchpoint?->metadata, 'conversation_key')
             ?? $conversation->conversation_key;
 
-        $message = CustomerConversationMessage::query()
-            ->withoutGlobalScopes()
-            ->create([
-                'tenant_id' => (string) $conversation->tenant_id,
-                'customer_conversation_id' => (int) $conversation->getKey(),
-                'customer_profile_id' => (int) $conversation->customer_profile_id,
-                'created_by_user_id' => $actorUserId,
-                'customer_touchpoint_id' => $touchpoint?->getKey(),
-                'customer_note_id' => $note?->getKey(),
-                'direction' => $direction,
-                'message_kind' => $messageKind,
-                'channel' => $channel,
-                'body' => $body,
-                'status' => $status,
-                'provider_message_id' => is_string($providerMessageId) && $providerMessageId !== '' ? $providerMessageId : null,
-                'provider_thread_key' => is_string($providerThreadKey) && $providerThreadKey !== '' ? $providerThreadKey : null,
-                'provider_reply_to' => is_string($providerReplyTo) && $providerReplyTo !== '' ? $providerReplyTo : null,
-                'occurred_at' => $occurredAt ?? now(),
-                'metadata' => $metadata,
-            ]);
+        $message = $this->conversations->createMessage([
+            'tenant_id' => (string) $conversation->tenant_id,
+            'customer_conversation_id' => (int) $conversation->getKey(),
+            'customer_profile_id' => (int) $conversation->customer_profile_id,
+            'created_by_user_id' => $actorUserId,
+            'customer_touchpoint_id' => $touchpoint?->getKey(),
+            'customer_note_id' => $note?->getKey(),
+            'direction' => $direction,
+            'message_kind' => $messageKind,
+            'channel' => $channel,
+            'body' => $body,
+            'status' => $status,
+            'provider_message_id' => is_string($providerMessageId) && $providerMessageId !== '' ? $providerMessageId : null,
+            'provider_thread_key' => is_string($providerThreadKey) && $providerThreadKey !== '' ? $providerThreadKey : null,
+            'provider_reply_to' => is_string($providerReplyTo) && $providerReplyTo !== '' ? $providerReplyTo : null,
+            'occurred_at' => $occurredAt ?? now(),
+            'metadata' => $metadata,
+        ]);
 
         $conversation->forceFill([
             'message_count' => $this->messageCount($conversation),
             'internal_note_count' => $this->internalNoteCount($conversation),
             'reply_count' => $this->replyCount($conversation),
-        ])->save();
+        ]);
+        $this->conversations->save($conversation);
 
         return $message;
     }
 
     private function messageCount(CustomerConversation $conversation): int
     {
-        return CustomerConversationMessage::query()
-            ->withoutGlobalScopes()
-            ->where('customer_conversation_id', (int) $conversation->getKey())
-            ->whereIn('direction', ['customer', 'team'])
-            ->count();
+        return $this->conversations->countMessagesByDirections((int) $conversation->getKey(), ['customer', 'team']);
     }
 
     private function internalNoteCount(CustomerConversation $conversation): int
     {
-        return CustomerConversationMessage::query()
-            ->withoutGlobalScopes()
-            ->where('customer_conversation_id', (int) $conversation->getKey())
-            ->where('direction', 'internal')
-            ->count();
+        return $this->conversations->countMessagesByDirections((int) $conversation->getKey(), ['internal']);
     }
 
     private function replyCount(CustomerConversation $conversation): int
     {
-        return CustomerConversationMessage::query()
-            ->withoutGlobalScopes()
-            ->where('customer_conversation_id', (int) $conversation->getKey())
-            ->where('direction', 'customer')
-            ->count();
+        return $this->conversations->countMessagesByDirections((int) $conversation->getKey(), ['customer']);
     }
 
     private function windowHours(): int

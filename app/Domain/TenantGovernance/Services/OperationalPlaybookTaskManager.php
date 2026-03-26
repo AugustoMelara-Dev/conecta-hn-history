@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Services;
 
 use App\Domain\Access\Enums\Role;
+use App\Domain\TenantGovernance\Repositories\OperationalPlaybookTaskRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope;
 use App\Models\OperationalPlaybookTask;
 use App\Models\Tenant;
@@ -18,6 +19,7 @@ final class OperationalPlaybookTaskManager
 {
     public function __construct(
         private readonly BusinessSegmentResolver $segmentResolver,
+        private readonly OperationalPlaybookTaskRepositoryInterface $tasks,
     ) {}
 
     /**
@@ -32,7 +34,7 @@ final class OperationalPlaybookTaskManager
         }
 
         [$relatedType, $relatedId] = $this->resolveRelatedContext($context);
-        $existingTask = $this->findOpenTask((string) $tenant->getKey(), $triggerKey, $relatedType, $relatedId);
+        $existingTask = $this->tasks->findOpenTask((string) $tenant->getKey(), $triggerKey, $relatedType, $relatedId);
         $isNewTask = ! $existingTask instanceof OperationalPlaybookTask;
 
         $task = $existingTask ?? new OperationalPlaybookTask;
@@ -79,7 +81,7 @@ final class OperationalPlaybookTaskManager
             $task->completed_at = null;
         }
 
-        $task->save();
+        $this->tasks->save($task);
 
         if ($isNewTask) {
             $tenant->logOperationalEvent(
@@ -173,34 +175,6 @@ final class OperationalPlaybookTaskManager
         }
 
         return array_replace_recursive($base, is_array($segmentOverride) ? $segmentOverride : []);
-    }
-
-    private function findOpenTask(
-        string $tenantId,
-        string $triggerKey,
-        ?string $relatedType,
-        ?string $relatedId,
-    ): ?OperationalPlaybookTask {
-        $query = OperationalPlaybookTask::query()
-            ->withoutGlobalScope(TenantScope::class)
-            ->where('tenant_id', $tenantId)
-            ->where('trigger_key', $triggerKey)
-            ->whereIn('status', [
-                OperationalPlaybookTask::STATUS_OPEN,
-                OperationalPlaybookTask::STATUS_IN_PROGRESS,
-            ]);
-
-        if ($relatedType !== null && $relatedId !== null) {
-            $query
-                ->where('related_type', $relatedType)
-                ->where('related_id', $relatedId);
-        } else {
-            $query
-                ->whereNull('related_type')
-                ->whereNull('related_id');
-        }
-
-        return $query->latest('created_at')->first();
     }
 
     /**

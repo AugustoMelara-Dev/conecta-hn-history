@@ -17,6 +17,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Str;
 
 class OperationalPlaybookTaskResource extends Resource
@@ -124,7 +125,7 @@ class OperationalPlaybookTaskResource extends Resource
                 ->orderByRaw("
                     case
                         when due_at is null then 2
-                        when due_at < now() then 0
+                        when due_at < ".static::currentTimestampSql($query)." then 0
                         else 1
                     end
                 ")
@@ -402,6 +403,16 @@ class OperationalPlaybookTaskResource extends Resource
         return [
             'index' => Pages\ListOperationalPlaybookTasks::route('/'),
         ];
+    }
+
+    private static function currentTimestampSql(Builder $query): string
+    {
+        $driver = $query->getConnection()->getDriverName();
+
+        return match ($driver) {
+            'sqlite' => 'CURRENT_TIMESTAMP',
+            default => 'now()',
+        };
     }
 
     /**

@@ -58,20 +58,32 @@ return new class extends Migration
             }
         });
 
+        $driver = DB::getDriverName();
+
         if (Schema::hasColumn('interactions', 'session_id')) {
+            $sessionExpression = match ($driver) {
+                'sqlite' => "json_extract(metadata, '$.session_id')",
+                default => "JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.session_id'))",
+            };
+
             DB::statement("
                 UPDATE interactions
-                SET session_id = JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.session_id'))
+                SET session_id = {$sessionExpression}
                 WHERE session_id IS NULL
                   AND metadata IS NOT NULL
-                  AND JSON_EXTRACT(metadata, '$.session_id') IS NOT NULL
+                  AND json_extract(metadata, '$.session_id') IS NOT NULL
             ");
         }
 
         if (Schema::hasColumn('interactions', 'visitor_id')) {
+            $visitorExpression = match ($driver) {
+                'sqlite' => "json_extract(metadata, '$.session_id')",
+                default => "JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.session_id'))",
+            };
+
             DB::statement("
                 UPDATE interactions
-                SET visitor_id = COALESCE(visitor_id, session_id, JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.session_id')))
+                SET visitor_id = COALESCE(visitor_id, session_id, {$visitorExpression})
                 WHERE visitor_id IS NULL
             ");
         }

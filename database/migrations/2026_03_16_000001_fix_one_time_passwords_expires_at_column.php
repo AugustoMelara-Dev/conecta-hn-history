@@ -12,12 +12,20 @@ return new class extends Migration
             return;
         }
 
+        if (! in_array(DB::getDriverName(), ['mysql', 'mariadb', 'pgsql'], true)) {
+            return;
+        }
+
         DB::statement('ALTER TABLE one_time_passwords MODIFY expires_at DATETIME NOT NULL');
     }
 
     public function down(): void
     {
         if (! Schema::hasTable('one_time_passwords')) {
+            return;
+        }
+
+        if (! in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
             return;
         }
 

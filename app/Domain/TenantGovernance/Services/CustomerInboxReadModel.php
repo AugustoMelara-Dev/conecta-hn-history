@@ -74,7 +74,7 @@ final class CustomerInboxReadModel
                     'journeyRun',
                 ]),
             ])
-            ->orderByRaw("field(priority, 'urgent', 'high', 'normal', 'low')")
+            ->orderByRaw($this->priorityOrderSql())
             ->orderBy('response_due_at')
             ->orderBy('next_action_at')
             ->latest('created_at')
@@ -129,6 +129,14 @@ final class CustomerInboxReadModel
             'selectedConversationId' => $selectedId,
             'selectedConversation' => $selectedConversation,
         ];
+    }
+
+    private function priorityOrderSql(): string
+    {
+        return match (CustomerNote::query()->withoutGlobalScopes()->getConnection()->getDriverName()) {
+            'sqlite' => "case priority when 'urgent' then 1 when 'high' then 2 when 'normal' then 3 when 'low' then 4 else 5 end",
+            default => "field(priority, 'urgent', 'high', 'normal', 'low')",
+        };
     }
 
     /**

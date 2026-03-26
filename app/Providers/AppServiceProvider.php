@@ -257,6 +257,18 @@ class AppServiceProvider extends ServiceProvider
             \App\Domain\Tenant\Contracts\CouponRepository::class,
             \App\Infrastructure\Tenant\EloquentCouponRepository::class
         );
+        $this->app->bind(
+            \App\Domain\TenantGovernance\Repositories\CustomerConversationRepositoryInterface::class,
+            \App\Infrastructure\Repositories\TenantGovernance\EloquentCustomerConversationRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\TenantGovernance\Repositories\CustomerTouchpointRepositoryInterface::class,
+            \App\Infrastructure\Repositories\TenantGovernance\EloquentCustomerTouchpointRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\TenantGovernance\Repositories\OperationalPlaybookTaskRepositoryInterface::class,
+            \App\Infrastructure\Repositories\TenantGovernance\EloquentOperationalPlaybookTaskRepository::class
+        );
 
         // API Domains
         $this->app->bind(

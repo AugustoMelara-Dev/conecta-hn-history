@@ -6,6 +6,7 @@ namespace App\Filament\Pages;
 
 use App\Domain\TenantGovernance\Services\SuperAdminPortfolioReader;
 use App\Domain\TenantGovernance\Services\SuperAdminJourneyAnalyticsReader;
+use App\Domain\TenantGovernance\Services\SuperAdminOperationsReadModel;
 use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
 use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
 use App\Models\CustomerConversation;
@@ -267,11 +268,12 @@ class Dashboard extends \Filament\Pages\Page
     private function loadPortfolioTenants(): void
     {
         try {
-            $state = app(SuperAdminPortfolioReader::class)->baseState();
-            $this->portfolioTenants = $state['portfolioTenants'];
-            $this->usersCount = $state['usersCount'];
-            $this->pendingPaymentsCount = $state['pendingPaymentsCount'];
-        } catch (\Throwable) {
+            $reader = app(SuperAdminPortfolioReader::class);
+            $this->portfolioTenants = $reader->portfolioTenants();
+            $this->usersCount = $reader->usersCount();
+            $this->pendingPaymentsCount = $reader->pendingPaymentsCount();
+        } catch (\Throwable $exception) {
+            report($exception);
             $this->portfolioTenants = [];
         }
     }
@@ -279,8 +281,9 @@ class Dashboard extends \Filament\Pages\Page
     private function loadMonthlyProConversions(): void
     {
         try {
-            $this->monthlyProConversions = app(SuperAdminPortfolioReader::class)->baseState()['monthlyProConversions'];
-        } catch (\Throwable) {
+            $this->monthlyProConversions = app(SuperAdminPortfolioReader::class)->monthlyProConversions();
+        } catch (\Throwable $exception) {
+            report($exception);
             $this->monthlyProConversions = [];
         }
     }
@@ -288,17 +291,18 @@ class Dashboard extends \Filament\Pages\Page
     private function loadGlobalPlaybookState(): void
     {
         try {
-            $state = app(SuperAdminPortfolioReader::class)->baseState();
-            $tasks = collect($state['activePlaybookTasks']);
+            $reader = app(SuperAdminPortfolioReader::class);
+            $this->activePlaybookTasks = $reader->activePlaybookTasks();
+            $tasks = collect($this->activePlaybookTasks);
+            $counts = $reader->playbookCounts($tasks);
 
-            $this->activePlaybookTasks = $state['activePlaybookTasks'];
-            $this->activePlaybookCount = $state['activePlaybookCount'];
-            $this->overduePlaybookCount = $state['overduePlaybookCount'];
-            $this->unassignedPlaybookCount = $state['unassignedPlaybookCount'];
-            $this->commercialFollowupCount = $state['commercialFollowupCount'];
-            $this->renewalPlaybookCount = $state['renewalPlaybookCount'];
-            $this->activationPlaybookCount = $state['activationPlaybookCount'];
-            $this->growthPlaybookCount = $state['growthPlaybookCount'];
+            $this->activePlaybookCount = $counts['activePlaybookCount'];
+            $this->overduePlaybookCount = $counts['overduePlaybookCount'];
+            $this->unassignedPlaybookCount = $counts['unassignedPlaybookCount'];
+            $this->commercialFollowupCount = $counts['commercialFollowupCount'];
+            $this->renewalPlaybookCount = $counts['renewalPlaybookCount'];
+            $this->activationPlaybookCount = $counts['activationPlaybookCount'];
+            $this->growthPlaybookCount = $counts['growthPlaybookCount'];
 
             $this->operationalLanes = [
                 $this->buildLaneCard($tasks, 'activation', 'Activacion', 'Onboarding comercial, oferta visible y primer valor entregado.', $this->operationsUrl),
@@ -308,7 +312,8 @@ class Dashboard extends \Filament\Pages\Page
                 $this->buildLaneCard($tasks, 'retention', 'Retencion', 'Abandono, recompra y continuidad de clientes.', $this->operationsUrl),
                 $this->buildLaneCard($tasks, 'billing', 'Renovacion', 'Cobro, continuidad de plan y churn prevention.', $this->operationsUrl),
             ];
-        } catch (\Throwable) {
+        } catch (\Throwable $exception) {
+            report($exception);
             $this->activePlaybookTasks = [];
             $this->activePlaybookCount = 0;
             $this->overduePlaybookCount = 0;
@@ -410,220 +415,44 @@ class Dashboard extends \Filament\Pages\Page
 
     private function loadGlobalWorkboard(): void
     {
-        $this->globalWorkboard = $this->activePlaybookCollection()
-            ->take(6)
-            ->map(fn (OperationalPlaybookTask $task): array => $this->mapWorkboardTask($task))
-            ->values()
-            ->all();
+        /** @var SuperAdminOperationsReadModel $reader */
+        $reader = app(SuperAdminOperationsReadModel::class);
+        $this->globalWorkboard = $reader->globalWorkboard(
+            $this->activePlaybookCollection(),
+            $this->operationsUrl,
+            $this->tenantsUrl,
+            $this->safeRoute(...),
+        );
     }
 
     private function loadAssigneeLoadBoard(): void
     {
-        $this->assigneeLoad = $this->activePlaybookCollection()
-            ->groupBy(function (OperationalPlaybookTask $task): string {
-                if (filled($task->admin_owner_id)) {
-                    return 'user:'.(string) $task->admin_owner_id;
-                }
-
-                return 'unassigned';
-            })
-            ->map(function (Collection $tasks): array {
-                /** @var OperationalPlaybookTask $first */
-                $first = $tasks->first();
-                $ownerName = $first->adminOwner?->name ?? 'Sin owner interno';
-                $queueSummary = $tasks
-                    ->map(fn (OperationalPlaybookTask $task): string => (string) $task->queue_label)
-                    ->unique()
-                    ->take(3)
-                    ->implode(', ');
-                $tenantCount = $tasks
-                    ->map(fn (OperationalPlaybookTask $task): string => (string) $task->tenant_id)
-                    ->unique()
-                    ->count();
-                $overdueCount = $tasks->filter(fn (OperationalPlaybookTask $task): bool => $task->isOverdue())->count();
-                $taskCount = $tasks->count();
-                $nextTouchCount = $tasks->filter(function (OperationalPlaybookTask $task): bool {
-                    return $task->next_follow_up_at instanceof Carbon
-                        && $task->next_follow_up_at->lte(now()->endOfDay());
-                })->count();
-
-                return [
-                    'name' => $ownerName,
-                    'context' => collect([
-                        $tenantCount.' negocios',
-                        $queueSummary !== '' ? $queueSummary : null,
-                    ])->filter()->implode(' / '),
-                    'task_count' => $taskCount,
-                    'overdue_count' => $overdueCount,
-                    'next_touch_count' => $nextTouchCount,
-                    'tone' => $overdueCount > 0 ? 'danger' : ($ownerName === 'Sin owner interno' ? 'warning' : 'info'),
-                    'href' => $this->operationsUrl,
-                ];
-            })
-            ->sortByDesc(fn (array $item): int => ($item['overdue_count'] * 100) + $item['task_count'])
-            ->take(6)
-            ->values()
-            ->all();
+        $this->assigneeLoad = app(SuperAdminOperationsReadModel::class)
+            ->assigneeLoad($this->activePlaybookCollection(), $this->operationsUrl);
     }
 
     private function loadOwnerPortfolio(): void
     {
-        $tasksByTenant = $this->activePlaybookCollection()
-            ->groupBy(fn (OperationalPlaybookTask $task): string => (string) $task->tenant_id);
-
-        $this->ownerPortfolio = $this->portfolioCollection()
-            ->groupBy(function (Tenant $tenant): string {
-                if (filled($tenant->crm_owner_id)) {
-                    return 'owner:'.(string) $tenant->crm_owner_id;
-                }
-
-                return 'owner:none';
-            })
-            ->map(function (Collection $tenants): array {
-                /** @var Tenant $first */
-                $first = $tenants->first();
-                $overdueCount = $tenants->filter(fn (Tenant $tenant): bool => $tenant->crm_next_follow_up_at instanceof Carbon && $tenant->crm_next_follow_up_at->isPast())->count();
-                $watchCount = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
-                $renewalCount = $tenants->filter(function (Tenant $tenant): bool {
-                    return (string) ($tenant->getRawOriginal('crm_status') ?? Tenant::CRM_STATUS_NEW) === Tenant::CRM_STATUS_RENEWAL
-                        || ($tenant->is_pro && $tenant->subscription_ends_at instanceof Carbon && $tenant->subscription_ends_at->lte(now()->addDays(7)));
-                })->count();
-                $teamSummary = $tenants
-                    ->map(fn (Tenant $tenant): string => (string) $tenant->crm_team_label)
-                    ->unique()
-                    ->take(3)
-                    ->implode(', ');
-
-                return [
-                    'name' => $first->crmOwner?->name ?? 'Sin owner interno',
-                    'context' => collect([
-                        $teamSummary !== '' ? $teamSummary : null,
-                        $tenants->count().' cuentas',
-                    ])->filter()->implode(' / '),
-                    'account_count' => $tenants->count(),
-                    'overdue_count' => $overdueCount,
-                    'watch_count' => $watchCount,
-                    'renewal_count' => $renewalCount,
-                    'tone' => $overdueCount > 0 ? 'danger' : ($watchCount > 0 ? 'warning' : (($first->crmOwner?->name ?? '') === '' ? 'gray' : 'info')),
-                    'href' => $this->operationsUrl,
-                ];
-            })
-            ->sortByDesc(fn (array $item): int => ($item['watch_count'] * 100) + ($item['overdue_count'] * 50) + $item['account_count'])
-            ->take(6)
-            ->values()
-            ->all();
+        $this->ownerPortfolio = app(SuperAdminOperationsReadModel::class)
+            ->ownerPortfolio($this->portfolioCollection(), $this->operationsUrl);
     }
 
     private function loadTeamPortfolio(): void
     {
-        $this->teamPortfolio = $this->portfolioCollection()
-            ->groupBy(fn (Tenant $tenant): string => (string) ($tenant->getRawOriginal('crm_team') ?? Tenant::CRM_TEAM_ACTIVATION))
-            ->map(function (Collection $tenants, string $team): array {
-                $overdueCount = $tenants->filter(fn (Tenant $tenant): bool => $tenant->crm_next_follow_up_at instanceof Carbon && $tenant->crm_next_follow_up_at->isPast())->count();
-                $watchCount = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
-                $nextTouchCount = $tenants->filter(function (Tenant $tenant): bool {
-                    return $tenant->crm_next_follow_up_at instanceof Carbon
-                        && $tenant->crm_next_follow_up_at->between(now()->startOfDay(), now()->endOfDay());
-                })->count();
-                $statusSummary = $tenants
-                    ->map(fn (Tenant $tenant): string => (string) $tenant->crm_status_label)
-                    ->unique()
-                    ->take(3)
-                    ->implode(', ');
-
-                return [
-                    'team' => match ($team) {
-                        Tenant::CRM_TEAM_GROWTH => 'Growth',
-                        Tenant::CRM_TEAM_RETENTION => 'Retencion',
-                        Tenant::CRM_TEAM_BILLING => 'Cobros',
-                        Tenant::CRM_TEAM_SUPPORT => 'Soporte',
-                        default => 'Activacion',
-                    },
-                    'context' => $statusSummary !== '' ? $statusSummary : 'Sin contexto adicional',
-                    'account_count' => $tenants->count(),
-                    'overdue_count' => $overdueCount,
-                    'watch_count' => $watchCount,
-                    'next_touch_count' => $nextTouchCount,
-                    'tone' => $overdueCount > 0 ? 'danger' : ($watchCount > 0 ? 'warning' : 'info'),
-                    'href' => $this->operationsUrl,
-                ];
-            })
-            ->sortByDesc(fn (array $item): int => ($item['watch_count'] * 100) + ($item['overdue_count'] * 50) + $item['account_count'])
-            ->take(5)
-            ->values()
-            ->all();
+        $this->teamPortfolio = app(SuperAdminOperationsReadModel::class)
+            ->teamPortfolio($this->portfolioCollection(), $this->operationsUrl);
     }
 
     private function loadSlaBacklog(): void
     {
-        $this->slaBacklog = $this->portfolioCollection()
-            ->filter(function (Tenant $tenant): bool {
-                if ($tenant->crm_next_follow_up_at instanceof Carbon && $tenant->crm_next_follow_up_at->isPast()) {
-                    return true;
-                }
-
-                return (int) ($tenant->crm_watch_score ?? 0) >= 80;
-            })
-            ->sortByDesc(function (Tenant $tenant): int {
-                $overdueWeight = $tenant->crm_next_follow_up_at instanceof Carbon && $tenant->crm_next_follow_up_at->isPast()
-                    ? abs($tenant->crm_next_follow_up_at->diffInMinutes(now(), false))
-                    : 0;
-
-                return ((int) ($tenant->crm_watch_score ?? 0) * 1000) + $overdueWeight;
-            })
-            ->take(6)
-            ->map(function (Tenant $tenant): array {
-                $nextTouch = $tenant->crm_next_follow_up_at;
-
-                return [
-                    'business' => (string) $tenant->name,
-                    'owner' => $tenant->crmOwner?->name ?? 'Sin owner interno',
-                    'team' => (string) $tenant->crm_team_label,
-                    'status' => (string) $tenant->crm_status_label,
-                    'backlog' => $nextTouch instanceof Carbon && $nextTouch->isPast()
-                        ? 'Atrasado '.$nextTouch->diffForHumans()
-                        : 'Alerta alta sin toque cerrado',
-                    'next_touch' => $nextTouch instanceof Carbon ? $nextTouch->format('d/m H:i') : 'Sin fecha agendada',
-                    'watch' => $tenant->crm_watch_label,
-                    'tone' => (string) ($tenant->crm_watch_tone ?? 'warning'),
-                    'href' => $this->safeRoute('filament.admin.resources.tenants.edit', ['record' => $tenant]),
-                ];
-            })
-            ->values()
-            ->all();
+        $this->slaBacklog = app(SuperAdminOperationsReadModel::class)
+            ->slaBacklog($this->portfolioCollection(), $this->safeRoute(...));
     }
 
     private function loadCommercialFunnel(): void
     {
-        $total = max(1, $this->tenantsCount);
-        $counts = $this->portfolioCollection()
-            ->countBy(fn (Tenant $tenant): string => (string) ($tenant->getRawOriginal('crm_status') ?? Tenant::CRM_STATUS_NEW));
-
-        $stages = [
-            Tenant::CRM_STATUS_NEW => ['label' => 'Nuevo', 'copy' => 'Alta sin activacion comercial cerrada.', 'tone' => 'gray'],
-            Tenant::CRM_STATUS_ONBOARDING => ['label' => 'Onboarding', 'copy' => 'Activando oferta, canales y equipo inicial.', 'tone' => 'info'],
-            Tenant::CRM_STATUS_ACTIVE => ['label' => 'Operando', 'copy' => 'Cuenta en marcha y lista para profundizar valor.', 'tone' => 'success'],
-            Tenant::CRM_STATUS_UPSELL => ['label' => 'Upsell', 'copy' => 'Cuenta lista para crecer ticket, modulos o plan.', 'tone' => 'warning'],
-            Tenant::CRM_STATUS_RENEWAL => ['label' => 'Renovacion', 'copy' => 'Continuidad de plan en foco comercial.', 'tone' => 'danger'],
-            Tenant::CRM_STATUS_AT_RISK => ['label' => 'En riesgo', 'copy' => 'Cuenta que exige recovery plan o soporte ejecutivo.', 'tone' => 'danger'],
-            Tenant::CRM_STATUS_PAUSED => ['label' => 'Pausado', 'copy' => 'Cuenta frenada que necesita decision o rescate.', 'tone' => 'gray'],
-        ];
-
-        $this->commercialFunnel = collect($stages)
-            ->map(function (array $stage, string $status) use ($counts, $total): array {
-                $count = (int) ($counts[$status] ?? 0);
-
-                return [
-                    'stage' => $stage['label'],
-                    'count' => $count,
-                    'share' => number_format(($count / $total) * 100, 1).'%',
-                    'copy' => $stage['copy'],
-                    'tone' => $stage['tone'],
-                    'href' => $this->tenantsUrl,
-                ];
-            })
-            ->values()
-            ->all();
+        $this->commercialFunnel = app(SuperAdminOperationsReadModel::class)
+            ->commercialFunnel($this->portfolioCollection(), $this->tenantsCount, $this->tenantsUrl);
     }
 
     private function loadOwnerGoals(): void
@@ -1012,37 +841,13 @@ class Dashboard extends \Filament\Pages\Page
 
     private function loadRevenuePlaybooks(): void
     {
-        $this->revenuePlaybooks = $this->activePlaybookCollection()
-            ->filter(fn (OperationalPlaybookTask $task): bool => in_array((string) $task->queue, ['activation', 'growth', 'billing'], true))
-            ->sortByDesc(function (OperationalPlaybookTask $task): int {
-                $conversionWeight = (string) $task->queue === 'growth'
-                    ? $this->convertedTenantCount(
-                        fn (SubscriptionPayment $payment): bool => $this->segmentKeyForPayment($payment) === (string) ($task->segment_key ?? '')
-                    ) * 100
-                    : 0;
-
-                return $conversionWeight + ($task->isOverdue() ? 1000 : 0);
-            })
-            ->take(8)
-            ->map(function (OperationalPlaybookTask $task): array {
-                $conversionSignal = $this->revenuePlaybookConversionSignal($task);
-
-                return [
-                    'playbook' => (string) $task->title,
-                    'business' => (string) ($task->tenant?->name ?? 'Negocio sin nombre'),
-                    'queue' => (string) $task->queue_label,
-                    'segment' => $this->segmentLabel((string) ($task->segment_key ?? '')),
-                    'owner' => $this->internalOwnerLabel($task),
-                    'follow_up' => (string) $task->follow_up_status_label,
-                    'next_touch' => $this->nextTouchLabel($task),
-                    'sla' => $this->formatSla($task),
-                    'conversion_signal' => $conversionSignal,
-                    'tone' => (string) $this->revenuePlaybookTone($task, $conversionSignal),
-                    'href' => $this->taskAdminHref($task),
-                ];
-            })
-            ->values()
-            ->all();
+        $this->revenuePlaybooks = app(SuperAdminOperationsReadModel::class)->revenuePlaybooks(
+            $this->activePlaybookCollection(),
+            $this->monthlyProConversionCollection(),
+            $this->operationsUrl,
+            $this->tenantsUrl,
+            $this->safeRoute(...),
+        );
     }
 
     private function loadNetworkJourneyPaths(): void
@@ -1055,26 +860,8 @@ class Dashboard extends \Filament\Pages\Page
     private function loadChurnWatchlist(): void
     {
         try {
-            $this->churnWatchlist = $this->portfolioCollection()
-                ->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)
-                ->sortByDesc(fn (Tenant $tenant): int => (int) ($tenant->crm_watch_score ?? 0))
-                ->take(6)
-                ->map(function (Tenant $tenant): array {
-                    return [
-                        'business' => (string) $tenant->name,
-                        'owner' => $this->tenantOwnerLabel($tenant->user),
-                        'internal_owner' => $tenant->crmOwner?->name ?? 'Sin owner interno',
-                        'reason' => (string) ($tenant->crm_watch_reason ?? 'Cuenta en observacion.'),
-                        'metric' => (string) ($tenant->crm_watch_metric ?? 'Watchlist activa'),
-                        'flagged_at' => $tenant->crm_watch_flagged_at instanceof Carbon
-                            ? 'Abierto '.$tenant->crm_watch_flagged_at->diffForHumans()
-                            : 'Sin fecha',
-                        'tone' => (string) ($tenant->crm_watch_tone ?? 'warning'),
-                        'href' => $this->safeRoute('filament.admin.resources.tenants.edit', ['record' => $tenant]),
-                    ];
-                })
-                ->values()
-                ->all();
+            $this->churnWatchlist = app(SuperAdminOperationsReadModel::class)
+                ->churnWatchlist($this->portfolioCollection(), $this->safeRoute(...));
         } catch (\Throwable) {
             $this->churnWatchlist = [];
         }
@@ -1082,35 +869,12 @@ class Dashboard extends \Filament\Pages\Page
 
     private function loadCommercialFollowups(): void
     {
-        $this->commercialFollowups = $this->activePlaybookCollection()
-            ->filter(
-                fn (OperationalPlaybookTask $task): bool => in_array((string) $task->queue, ['leads', 'retention'], true)
-            )
-            ->take(6)
-            ->map(function (OperationalPlaybookTask $task): array {
-                $tenant = $task->tenant;
-                $assignee = $task->assignee?->name;
-
-                if ($assignee === null || $assignee === '') {
-                    $presetLabel = $this->presetLabel((string) ($task->suggested_preset_key ?? ''));
-                    $assignee = $presetLabel !== '' ? 'Sin sugerencia fija / '.$presetLabel : 'Sin sugerencia fija';
-                }
-
-                return [
-                    'business' => (string) ($tenant?->name ?? 'Negocio sin nombre'),
-                    'playbook' => (string) $task->title,
-                    'queue' => (string) $task->queue_label,
-                    'owner' => $this->internalOwnerLabel($task),
-                    'assignee' => $assignee,
-                    'follow_up' => (string) $task->follow_up_status_label,
-                    'next_touch' => $this->nextTouchLabel($task),
-                    'sla' => $this->formatSla($task),
-                    'tone' => $this->playbookTone($task),
-                    'href' => $this->taskAdminHref($task),
-                ];
-            })
-            ->values()
-            ->all();
+        $this->commercialFollowups = app(SuperAdminOperationsReadModel::class)->commercialFollowups(
+            $this->activePlaybookCollection(),
+            $this->operationsUrl,
+            $this->tenantsUrl,
+            $this->safeRoute(...),
+        );
     }
 
     private function loadRecentPayments(): void

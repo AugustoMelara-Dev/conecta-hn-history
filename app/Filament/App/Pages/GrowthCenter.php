@@ -8,6 +8,7 @@ use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Services\BusinessGrowthBlueprint;
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
+use App\Domain\TenantGovernance\Services\TenantOperationalComparisonReader;
 use App\Domain\TenantGovernance\Services\TenantJourneyAnalyticsReader;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\CampaignResource;
@@ -996,45 +997,12 @@ class GrowthCenter extends Page
 
             return;
         }
+        /** @var TenantOperationalComparisonReader $reader */
+        $reader = app(TenantOperationalComparisonReader::class);
+        $summary = $reader->summarize($tenant, fn (float $value): string => $this->formatCurrency($value));
 
-        $tenantId = (string) $tenant->getKey();
-        $profiles = CustomerProfile::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->get([
-                'id',
-                'assigned_user_id',
-                'location_id',
-                'customer_segment',
-                'total_spent',
-                'repeat_purchase_count',
-            ]);
-        $tasks = CustomerTask::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->whereNotIn('status', ['completed', 'cancelled'])
-            ->get([
-                'assigned_user_id',
-                'location_id',
-                'status',
-                'sla_due_at',
-            ]);
-
-        $userLabels = User::query()
-            ->withoutGlobalScopes()
-            ->whereIn('id', $profiles->pluck('assigned_user_id')->merge($tasks->pluck('assigned_user_id'))->filter()->unique()->all())
-            ->pluck('name', 'id')
-            ->mapWithKeys(fn (mixed $name, mixed $id): array => [(string) $id => (string) $name])
-            ->all();
-        $locationLabels = Location::query()
-            ->withoutGlobalScopes()
-            ->whereIn('id', $profiles->pluck('location_id')->merge($tasks->pluck('location_id'))->filter()->unique()->all())
-            ->pluck('name', 'id')
-            ->mapWithKeys(fn (mixed $name, mixed $id): array => [(string) $id => (string) $name])
-            ->all();
-
-        $this->ownerComparisons = $this->buildPortfolioComparisonRows($profiles, $tasks, 'assigned_user_id', $userLabels, 'Sin owner');
-        $this->locationComparisons = $this->buildPortfolioComparisonRows($profiles, $tasks, 'location_id', $locationLabels, 'Sin sede');
+        $this->ownerComparisons = $summary['ownerComparisons'];
+        $this->locationComparisons = $summary['locationComparisons'];
     }
 
     private function buildConversationPerformanceTables(): void

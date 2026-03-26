@@ -15,50 +15,58 @@ use Illuminate\Support\Collection;
 final class SuperAdminPortfolioReader
 {
     /**
-     * @return array{
-     *   portfolioTenants:list<Tenant>,
-     *   monthlyProConversions:list<SubscriptionPayment>,
-     *   activePlaybookTasks:list<OperationalPlaybookTask>,
-     *   activePlaybookCount:int,
-     *   overduePlaybookCount:int,
-     *   unassignedPlaybookCount:int,
-     *   commercialFollowupCount:int,
-     *   renewalPlaybookCount:int,
-     *   activationPlaybookCount:int,
-     *   growthPlaybookCount:int,
-     *   pendingPaymentsCount:int,
-     *   usersCount:int
-     * }
+     * @return list<Tenant>
      */
-    public function baseState(): array
+    public function portfolioTenants(): array
     {
-        $portfolioTenants = Tenant::query()
+        return Tenant::query()
+            ->withoutGlobalScopes()
             ->with(['user:id,name,email', 'crmOwner:id,name,email', 'city:id,name,slug'])
             ->withCount([
                 'products as products_total' => fn (Builder $query): Builder => $query->withoutGlobalScopes(),
                 'services as services_total' => fn (Builder $query): Builder => $query->withoutGlobalScopes(),
             ])
-            ->get();
+            ->get()
+            ->all();
+    }
 
+    /**
+     * @return list<SubscriptionPayment>
+     */
+    public function monthlyProConversions(): array
+    {
         $start = now()->startOfMonth();
         $end = now()->endOfMonth();
 
-        $monthlyProConversions = SubscriptionPayment::query()
+        return SubscriptionPayment::query()
             ->withoutGlobalScopes()
             ->where('status', SubscriptionPayment::STATUS_APPROVED)
             ->whereNotNull('subscription_extended_at')
             ->whereBetween('subscription_extended_at', [$start, $end])
             ->with([
-                'tenant' => fn (Builder $query): Builder => $query
+                'tenant' => fn ($query) => $query
                     ->withoutGlobalScopes()
                     ->with(['crmOwner:id,name,email', 'city:id,name,slug', 'user:id,name,email']),
             ])
             ->orderByDesc('subscription_extended_at')
-            ->get();
+            ->get()
+            ->all();
+    }
 
-        $tasks = OperationalPlaybookTask::query()
+    /**
+     * @return list<OperationalPlaybookTask>
+     */
+    public function activePlaybookTasks(): array
+    {
+        return OperationalPlaybookTask::query()
             ->withoutGlobalScopes()
-            ->with(['tenant.user:id,name,email', 'tenant.crmOwner:id,name,email', 'assignee:id,name,email', 'adminOwner:id,name,email'])
+            ->with([
+                'tenant' => fn ($query) => $query
+                    ->withoutGlobalScopes()
+                    ->with(['user:id,name,email', 'crmOwner:id,name,email']),
+                'assignee:id,name,email',
+                'adminOwner:id,name,email',
+            ])
             ->whereIn('status', [
                 OperationalPlaybookTask::STATUS_OPEN,
                 OperationalPlaybookTask::STATUS_IN_PROGRESS,
@@ -78,17 +86,30 @@ final class SuperAdminPortfolioReader
             ->orderByRaw("
                 case
                     when due_at is null then 2
-                    when due_at < now() then 0
+                    when due_at < {$this->currentTimestampSql()} then 0
                     else 1
                 end
             ")
             ->orderBy('due_at')
-            ->get();
+            ->get()
+            ->all();
+    }
 
+    /**
+     * @param  Collection<int, OperationalPlaybookTask>  $tasks
+     * @return array{
+     *   activePlaybookCount:int,
+     *   overduePlaybookCount:int,
+     *   unassignedPlaybookCount:int,
+     *   commercialFollowupCount:int,
+     *   renewalPlaybookCount:int,
+     *   activationPlaybookCount:int,
+     *   growthPlaybookCount:int
+     * }
+     */
+    public function playbookCounts(Collection $tasks): array
+    {
         return [
-            'portfolioTenants' => $portfolioTenants->all(),
-            'monthlyProConversions' => $monthlyProConversions->all(),
-            'activePlaybookTasks' => $tasks->all(),
             'activePlaybookCount' => $tasks->count(),
             'overduePlaybookCount' => $tasks->filter(fn (OperationalPlaybookTask $task): bool => $task->isOverdue())->count(),
             'unassignedPlaybookCount' => $tasks->filter(fn (OperationalPlaybookTask $task): bool => blank($task->admin_owner_id))->count(),
@@ -96,11 +117,60 @@ final class SuperAdminPortfolioReader
             'renewalPlaybookCount' => $tasks->filter(fn (OperationalPlaybookTask $task): bool => (string) $task->queue === 'billing')->count(),
             'activationPlaybookCount' => $tasks->filter(fn (OperationalPlaybookTask $task): bool => (string) $task->queue === 'activation')->count(),
             'growthPlaybookCount' => $tasks->filter(fn (OperationalPlaybookTask $task): bool => (string) $task->queue === 'growth')->count(),
-            'pendingPaymentsCount' => SubscriptionPayment::query()
-                ->withoutGlobalScopes()
-                ->where('status', SubscriptionPayment::STATUS_PENDING)
-                ->count(),
-            'usersCount' => User::query()->count(),
+        ];
+    }
+
+    public function pendingPaymentsCount(): int
+    {
+        return SubscriptionPayment::query()
+            ->withoutGlobalScopes()
+            ->where('status', SubscriptionPayment::STATUS_PENDING)
+            ->count();
+    }
+
+    public function usersCount(): int
+    {
+        return User::query()
+            ->withoutGlobalScopes()
+            ->count();
+    }
+
+    /**
+     * @return array{
+     *   portfolioTenants:list<Tenant>,
+     *   monthlyProConversions:list<SubscriptionPayment>,
+     *   activePlaybookTasks:list<OperationalPlaybookTask>,
+     *   activePlaybookCount:int,
+     *   overduePlaybookCount:int,
+     *   unassignedPlaybookCount:int,
+     *   commercialFollowupCount:int,
+     *   renewalPlaybookCount:int,
+     *   activationPlaybookCount:int,
+     *   growthPlaybookCount:int,
+     *   pendingPaymentsCount:int,
+     *   usersCount:int
+     * }
+     */
+    public function baseState(): array
+    {
+        $portfolioTenants = collect($this->portfolioTenants());
+        $monthlyProConversions = collect($this->monthlyProConversions());
+        $tasks = collect($this->activePlaybookTasks());
+        $counts = $this->playbookCounts($tasks);
+
+        return [
+            'portfolioTenants' => $portfolioTenants->all(),
+            'monthlyProConversions' => $monthlyProConversions->all(),
+            'activePlaybookTasks' => $tasks->all(),
+            'activePlaybookCount' => $counts['activePlaybookCount'],
+            'overduePlaybookCount' => $counts['overduePlaybookCount'],
+            'unassignedPlaybookCount' => $counts['unassignedPlaybookCount'],
+            'commercialFollowupCount' => $counts['commercialFollowupCount'],
+            'renewalPlaybookCount' => $counts['renewalPlaybookCount'],
+            'activationPlaybookCount' => $counts['activationPlaybookCount'],
+            'growthPlaybookCount' => $counts['growthPlaybookCount'],
+            'pendingPaymentsCount' => $this->pendingPaymentsCount(),
+            'usersCount' => $this->usersCount(),
         ];
     }
 
@@ -171,5 +241,13 @@ final class SuperAdminPortfolioReader
                 ];
             })
             ->all();
+    }
+
+    private function currentTimestampSql(): string
+    {
+        return match (OperationalPlaybookTask::query()->withoutGlobalScopes()->getConnection()->getDriverName()) {
+            'sqlite' => 'CURRENT_TIMESTAMP',
+            default => 'now()',
+        };
     }
 }
