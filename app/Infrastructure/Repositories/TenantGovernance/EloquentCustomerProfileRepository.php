@@ -28,6 +28,16 @@ final class EloquentCustomerProfileRepository implements CustomerProfileReposito
             ->forceCreate($attributes);
     }
 
+    public function save(CustomerProfile $profile): CustomerProfile
+    {
+        $profile->save();
+
+        /** @var CustomerProfile $fresh */
+        $fresh = $profile->fresh();
+
+        return $fresh;
+    }
+
     public function deleteWithoutScopes(int|string $id): void
     {
         CustomerProfile::query()

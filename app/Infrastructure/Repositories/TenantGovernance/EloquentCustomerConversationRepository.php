@@ -11,6 +11,13 @@ use Illuminate\Support\Carbon;
 
 final class EloquentCustomerConversationRepository implements CustomerConversationRepositoryInterface
 {
+    public function findWithoutScopes(int|string $id): ?CustomerConversation
+    {
+        return CustomerConversation::query()
+            ->withoutGlobalScopes()
+            ->find($id);
+    }
+
     public function findByConversationKey(string $tenantId, int $profileId, string $conversationKey): ?CustomerConversation
     {
         return CustomerConversation::query()

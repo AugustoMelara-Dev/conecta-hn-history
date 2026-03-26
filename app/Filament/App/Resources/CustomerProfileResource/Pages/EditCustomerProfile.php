@@ -6,7 +6,7 @@ namespace App\Filament\App\Resources\CustomerProfileResource\Pages;
 
 use App\Domain\TenantGovernance\Repositories\CustomerProfileRepositoryInterface;
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
-use App\Domain\TenantGovernance\Services\CustomerProfileWorkspaceReader;
+use App\Domain\TenantGovernance\Services\TenantCustomerProfileEditReader;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\Pages\EditTenantRecord;
 use App\Models\Tenant;
@@ -21,7 +21,7 @@ class EditCustomerProfile extends EditTenantRecord
 
     public function getSubheading(): string
     {
-        return 'Ajusta notas, opt-ins, etiquetas, tareas y continuidad con una lectura 360 del cliente.';
+        return $this->editReader()->subheading();
     }
 
     protected function getHeaderActions(): array
@@ -82,12 +82,12 @@ class EditCustomerProfile extends EditTenantRecord
      */
     private function duplicateOptions(string $search): array
     {
-        return $this->workspaceReader()->duplicateOptions($this->getRecord(), $search);
+        return $this->editReader()->duplicateOptions($this->getRecord(), $search);
     }
 
     private function duplicateLabel(mixed $value): ?string
     {
-        return $this->workspaceReader()->duplicateLabel($this->getRecord(), $value);
+        return $this->editReader()->duplicateLabel($this->getRecord(), $value);
     }
 
     private function profileRepository(): CustomerProfileRepositoryInterface
@@ -95,8 +95,8 @@ class EditCustomerProfile extends EditTenantRecord
         return app(CustomerProfileRepositoryInterface::class);
     }
 
-    private function workspaceReader(): CustomerProfileWorkspaceReader
+    private function editReader(): TenantCustomerProfileEditReader
     {
-        return app(CustomerProfileWorkspaceReader::class);
+        return app(TenantCustomerProfileEditReader::class);
     }
 }

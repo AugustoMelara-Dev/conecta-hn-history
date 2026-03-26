@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Services;
 
 use App\Domain\TenantGovernance\Repositories\CustomerNoteRepositoryInterface;
+use App\Domain\TenantGovernance\Repositories\CustomerConversationRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\CustomerTouchpointEventRepositoryInterface;
+use App\Domain\TenantGovernance\Repositories\CustomerProfileRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\CustomerTouchpointRepositoryInterface;
 use App\Models\CustomerTouchpoint;
 use App\Models\CustomerTouchpointEvent;
@@ -23,6 +25,8 @@ class CustomerTouchpointEventRecorder
         private readonly CustomerTouchpointEventRepositoryInterface $events,
         private readonly InboundWebhookRepositoryInterface $webhooks,
         private readonly CustomerNoteRepositoryInterface $notes,
+        private readonly CustomerProfileRepositoryInterface $profiles,
+        private readonly CustomerConversationRepositoryInterface $conversations,
     ) {}
 
     /**
@@ -289,12 +293,16 @@ class CustomerTouchpointEventRecorder
             ],
         );
 
-        $touchpoint->customerProfile()
-            ->withoutGlobalScopes()
-            ->update([
+        $profile = $this->profiles->findWithoutScopes((int) $touchpoint->customer_profile_id);
+
+        if ($profile !== null) {
+            $profile->forceFill([
                 'last_inbound_reply_at' => $occurredAt,
                 'last_engaged_channel' => $channel,
             ]);
+
+            $this->profiles->save($profile);
+        }
 
         if ($channel === 'whatsapp') {
             $this->applyOptInKeywords($touchpoint, $message);
@@ -516,7 +524,7 @@ class CustomerTouchpointEventRecorder
         }
 
         $accepting = in_array($keyword, $accept, true);
-        $profile = $touchpoint->customerProfile()->withoutGlobalScopes()->first();
+        $profile = $this->profiles->findWithoutScopes((int) $touchpoint->customer_profile_id);
 
         if (! $profile instanceof \App\Models\CustomerProfile) {
             return;
@@ -551,8 +559,10 @@ class CustomerTouchpointEventRecorder
 
     private function syncJourneyAfterOutcome(CustomerTouchpoint $touchpoint): void
     {
-        $conversation = $touchpoint->conversation()->withoutGlobalScopes()->first();
-        $profile = $touchpoint->customerProfile()->withoutGlobalScopes()->with('tenant')->first();
+        $conversation = $touchpoint->customer_conversation_id !== null
+            ? $this->conversations->findWithoutScopes((int) $touchpoint->customer_conversation_id)
+            : null;
+        $profile = $this->profiles->findWithoutScopes((int) $touchpoint->customer_profile_id)?->loadMissing('tenant');
 
         if ($conversation instanceof \App\Models\CustomerConversation && $profile instanceof \App\Models\CustomerProfile) {
             $this->journeyManager->sync($conversation, $profile);

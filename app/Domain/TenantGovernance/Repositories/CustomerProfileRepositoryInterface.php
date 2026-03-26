@@ -13,6 +13,8 @@ interface CustomerProfileRepositoryInterface
 
     public function create(array $attributes): CustomerProfile;
 
+    public function save(CustomerProfile $profile): CustomerProfile;
+
     public function deleteWithoutScopes(int|string $id): void;
 
     /**

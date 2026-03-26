@@ -10,6 +10,8 @@ use Illuminate\Support\Carbon;
 
 interface CustomerConversationRepositoryInterface
 {
+    public function findWithoutScopes(int|string $id): ?CustomerConversation;
+
     public function findByConversationKey(string $tenantId, int $profileId, string $conversationKey): ?CustomerConversation;
 
     public function findRecentOpen(string $tenantId, int $profileId, string $channel, Carbon $since): ?CustomerConversation;
