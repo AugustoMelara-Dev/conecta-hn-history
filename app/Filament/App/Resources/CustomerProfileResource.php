@@ -7,6 +7,7 @@ namespace App\Filament\App\Resources;
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
 use App\Domain\TenantGovernance\Services\CustomerLoyaltyManager;
+use App\Domain\TenantGovernance\Services\TenantCustomerProfileActionCoordinator;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfilePresentationReader;
 use App\Domain\TenantGovernance\Services\TenantCustomerWorkspaceReader;
 use App\Filament\App\Resources\CustomerProfileResource\Pages;
@@ -460,17 +461,12 @@ class CustomerProfileResource extends Resource
                             ->rows(3),
                     ])
                     ->action(function (CustomerProfile $record, array $data): void {
-                        app(CustomerLoyaltyManager::class)->awardBonus(
-                            profile: $record,
-                            points: (int) $data['points'],
-                            description: (string) $data['description'],
-                            actorUserId: auth()->id(),
-                        );
+                        $feedback = app(TenantCustomerProfileActionCoordinator::class)->awardBonus($record, $data, auth()->id());
 
                         Notification::make()
-                            ->title('Bonificacion aplicada')
-                            ->success()
-                            ->body('El cliente ya tiene puntos nuevos y el CRM lo reflejo en su ficha.')
+                            ->title($feedback['title'])
+                            ->color($feedback['color'])
+                            ->body($feedback['body'])
                             ->send();
                     }),
                 Action::make('redeem_reward')
@@ -486,16 +482,12 @@ class CustomerProfileResource extends Resource
                             ->options(fn (CustomerProfile $record): array => app(CustomerLoyaltyManager::class)->rewardOptionsForProfile($record)),
                     ])
                     ->action(function (CustomerProfile $record, array $data): void {
-                        app(CustomerLoyaltyManager::class)->redeemReward(
-                            profile: $record,
-                            reward: (int) $data['reward_id'],
-                            actorUserId: auth()->id(),
-                        );
+                        $feedback = app(TenantCustomerProfileActionCoordinator::class)->redeemReward($record, $data, auth()->id());
 
                         Notification::make()
-                            ->title('Canje registrado')
-                            ->success()
-                            ->body('La recompensa y el balance del cliente ya quedaron actualizados.')
+                            ->title($feedback['title'])
+                            ->color($feedback['color'])
+                            ->body($feedback['body'])
                             ->send();
                     }),
                 Action::make('email_follow_up')
@@ -521,28 +513,12 @@ class CustomerProfileResource extends Resource
                     ])
                     ->visible(fn (CustomerProfile $record): bool => filled($record->email))
                     ->action(function (CustomerProfile $record, array $data): void {
-                        $touchpoint = app(CustomerAutomationManager::class)->sendEmailTouchpoint(
-                            profile: $record,
-                            subject: (string) $data['subject'],
-                            body: (string) $data['body'],
-                            automationKey: (string) ($data['automation_key'] ?? 'manual_follow_up'),
-                            actorUserId: auth()->id(),
-                        );
+                        $feedback = app(TenantCustomerProfileActionCoordinator::class)->sendEmailFollowUp($record, $data, auth()->id());
 
                         Notification::make()
-                            ->title(match ($touchpoint->status) {
-                                CustomerTouchpoint::STATUS_SENT => 'Seguimiento enviado',
-                                CustomerTouchpoint::STATUS_SKIPPED => 'Contacto omitido',
-                                CustomerTouchpoint::STATUS_FAILED => 'No se pudo enviar',
-                                default => 'Contacto registrado',
-                            })
-                            ->color(match ($touchpoint->status) {
-                                CustomerTouchpoint::STATUS_SENT => 'success',
-                                CustomerTouchpoint::STATUS_SKIPPED => 'warning',
-                                CustomerTouchpoint::STATUS_FAILED => 'danger',
-                                default => 'info',
-                            })
-                            ->body((string) ($touchpoint->last_error ?: 'El CRM ya guardo este movimiento en el historial del cliente.'))
+                            ->title($feedback['title'])
+                            ->color($feedback['color'])
+                            ->body($feedback['body'])
                             ->send();
                     }),
                 Action::make('whatsapp_follow_up')
@@ -554,27 +530,12 @@ class CustomerProfileResource extends Resource
                     ->modalDescription('Esto usa una plantilla auditable de WhatsApp Cloud API y deja trazabilidad en el CRM.')
                     ->visible(fn (CustomerProfile $record): bool => filled($record->phone))
                     ->action(function (CustomerProfile $record): void {
-                        $touchpoint = app(CustomerAutomationManager::class)->sendSuggestedAutomation(
-                            profile: $record,
-                            automationKey: 'manual_follow_up_whatsapp',
-                            actorUserId: auth()->id(),
-                            channel: 'whatsapp',
-                        );
+                        $feedback = app(TenantCustomerProfileActionCoordinator::class)->sendWhatsappFollowUp($record, auth()->id());
 
                         Notification::make()
-                            ->title(match ($touchpoint->status) {
-                                CustomerTouchpoint::STATUS_SENT => 'Seguimiento enviado',
-                                CustomerTouchpoint::STATUS_SKIPPED => 'Contacto omitido',
-                                CustomerTouchpoint::STATUS_FAILED => 'No se pudo enviar',
-                                default => 'Contacto registrado',
-                            })
-                            ->color(match ($touchpoint->status) {
-                                CustomerTouchpoint::STATUS_SENT => 'success',
-                                CustomerTouchpoint::STATUS_SKIPPED => 'warning',
-                                CustomerTouchpoint::STATUS_FAILED => 'danger',
-                                default => 'info',
-                            })
-                            ->body((string) ($touchpoint->last_error ?: 'El seguimiento por WhatsApp ya quedo auditado en el CRM.'))
+                            ->title($feedback['title'])
+                            ->color($feedback['color'])
+                            ->body($feedback['body'])
                             ->send();
                     }),
                 Action::make('reactivation_email')
@@ -586,26 +547,12 @@ class CustomerProfileResource extends Resource
                     ->modalDescription('Usa el mejor canal segun el cliente y respeta opt-in antes de enviar.')
                     ->visible(fn (CustomerProfile $record): bool => (int) $record->reactivation_score >= 65 && filled($record->email))
                     ->action(function (CustomerProfile $record): void {
-                        $touchpoint = app(CustomerLifecycleTriggerManager::class)->triggerJourney(
-                            profile: $record,
-                            journeyKey: 'reactivation',
-                            actorUserId: auth()->id(),
-                        );
+                        $feedback = app(TenantCustomerProfileActionCoordinator::class)->triggerReactivation($record, auth()->id());
 
                         Notification::make()
-                            ->title(match ($touchpoint?->status) {
-                                CustomerTouchpoint::STATUS_SENT => 'Reactivacion enviada',
-                                CustomerTouchpoint::STATUS_SKIPPED => 'Reactivacion omitida',
-                                CustomerTouchpoint::STATUS_FAILED => 'No se pudo enviar',
-                                default => 'Reactivacion procesada',
-                            })
-                            ->color(match ($touchpoint?->status) {
-                                CustomerTouchpoint::STATUS_SENT => 'success',
-                                CustomerTouchpoint::STATUS_SKIPPED => 'warning',
-                                CustomerTouchpoint::STATUS_FAILED => 'danger',
-                                default => 'info',
-                            })
-                            ->body((string) ($touchpoint?->last_error ?: 'El CRM ya registro la accion de reactivacion para este cliente.'))
+                            ->title($feedback['title'])
+                            ->color($feedback['color'])
+                            ->body($feedback['body'])
                             ->send();
                     }),
                 EditAction::make()

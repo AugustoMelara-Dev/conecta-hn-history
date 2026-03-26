@@ -7,12 +7,8 @@ namespace App\Filament\Pages;
 use App\Domain\TenantGovernance\Services\SuperAdminDashboardStateReader;
 use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
 use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
-use App\Models\OperationalPlaybookTask;
-use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use Filament\Panel;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 
 class Dashboard extends \Filament\Pages\Page
 {
@@ -158,15 +154,6 @@ class Dashboard extends \Filament\Pages\Page
     /** @var list<array{business: string, reference: string, amount: string, status: string, tone: string, reported_at: string}> */
     public array $recentPayments = [];
 
-    /** @var list<OperationalPlaybookTask> */
-    private array $activePlaybookTasks = [];
-
-    /** @var list<Tenant> */
-    private array $portfolioTenants = [];
-
-    /** @var list<SubscriptionPayment> */
-    private array $monthlyProConversions = [];
-
     public function mount(TenantCrmPortfolioManager $portfolioManager, TenantJourneyOpsMonitor $journeyOpsMonitor): void
     {
         $this->tenantsUrl = $this->safeRoute('filament.admin.resources.tenants.index');
@@ -206,9 +193,6 @@ class Dashboard extends \Filament\Pages\Page
                 'billing' => $this->billingUrl,
             ], $this->safeRoute(...));
 
-            $this->activePlaybookTasks = (array) ($state['activePlaybookTasks'] ?? []);
-            $this->portfolioTenants = (array) ($state['portfolioTenants'] ?? []);
-            $this->monthlyProConversions = (array) ($state['monthlyProConversions'] ?? []);
             $this->usersCount = (int) ($state['usersCount'] ?? 0);
             $this->pendingPaymentsCount = (int) ($state['pendingPaymentsCount'] ?? 0);
             $this->recentPayments = (array) ($state['recentPayments'] ?? []);
@@ -233,9 +217,6 @@ class Dashboard extends \Filament\Pages\Page
             $this->crmFollowupsTodayCount = (int) ($state['crmFollowupsTodayCount'] ?? 0);
             $snapshot = (array) ($state['snapshot'] ?? []);
         } catch (\Throwable) {
-            $this->activePlaybookTasks = [];
-            $this->portfolioTenants = [];
-            $this->monthlyProConversions = [];
             $this->usersCount = 0;
             $this->pendingPaymentsCount = 0;
             $this->recentPayments = [];
@@ -285,97 +266,6 @@ class Dashboard extends \Filament\Pages\Page
         $this->networkJourneyPaths = (array) ($snapshot['networkJourneyPaths'] ?? []);
         $this->churnWatchlist = (array) ($snapshot['churnWatchlist'] ?? []);
         $this->commercialFollowups = (array) ($snapshot['commercialFollowups'] ?? []);
-    }
-
-    /**
-     * @return Collection<int, OperationalPlaybookTask>
-     */
-    private function activePlaybookCollection(): Collection
-    {
-        return collect($this->activePlaybookTasks);
-    }
-
-    /**
-     * @return Collection<int, Tenant>
-     */
-    private function portfolioCollection(): Collection
-    {
-        return collect($this->portfolioTenants);
-    }
-
-    /**
-     * @return Collection<int, SubscriptionPayment>
-     */
-    private function monthlyProConversionCollection(): Collection
-    {
-        return collect($this->monthlyProConversions);
-    }
-
-    private function ownerNeedsRevenueMotion(Tenant $tenant): bool
-    {
-        return $this->needsActivationPush($tenant)
-            || $this->isExpansionReady($tenant)
-            || $this->isRenewalMotionCandidate($tenant)
-            || (int) ($tenant->crm_watch_score ?? 0) > 0;
-    }
-
-    private function hasPublishedOffer(Tenant $tenant): bool
-    {
-        return (int) ($tenant->products_total ?? 0) > 0 || (int) ($tenant->services_total ?? 0) > 0;
-    }
-
-    private function hasDirectChannel(Tenant $tenant): bool
-    {
-        return filled($tenant->whatsapp_number) || filled($tenant->phone) || filled($tenant->website_url);
-    }
-
-    private function needsActivationPush(Tenant $tenant): bool
-    {
-        $crmStatus = (string) ($tenant->getRawOriginal('crm_status') ?? Tenant::CRM_STATUS_NEW);
-        $daysSinceCreated = $tenant->created_at instanceof Carbon ? (int) $tenant->created_at->diffInDays(now()) : 999;
-
-        return in_array($crmStatus, [Tenant::CRM_STATUS_NEW, Tenant::CRM_STATUS_ONBOARDING], true)
-            || (! $this->hasPublishedOffer($tenant) && $daysSinceCreated <= 30);
-    }
-
-    private function isExpansionReady(Tenant $tenant): bool
-    {
-        $crmStatus = (string) ($tenant->getRawOriginal('crm_status') ?? Tenant::CRM_STATUS_NEW);
-        $daysSinceCreated = $tenant->created_at instanceof Carbon ? (int) $tenant->created_at->diffInDays(now()) : 0;
-
-        return in_array($crmStatus, [Tenant::CRM_STATUS_ACTIVE, Tenant::CRM_STATUS_UPSELL], true)
-            && ! $tenant->is_pro
-            && $this->hasPublishedOffer($tenant)
-            && $this->hasDirectChannel($tenant)
-            && $daysSinceCreated >= 7;
-    }
-
-    private function isRenewalMotionCandidate(Tenant $tenant): bool
-    {
-        $crmStatus = (string) ($tenant->getRawOriginal('crm_status') ?? Tenant::CRM_STATUS_NEW);
-
-        return $crmStatus === Tenant::CRM_STATUS_RENEWAL
-            || ($tenant->is_pro && $tenant->subscription_ends_at instanceof Carbon && $tenant->subscription_ends_at->lte(now()->addDays(7)));
-    }
-
-    private function isActivatedTenant(Tenant $tenant): bool
-    {
-        return in_array((string) ($tenant->getRawOriginal('crm_status') ?? Tenant::CRM_STATUS_NEW), [
-            Tenant::CRM_STATUS_ACTIVE,
-            Tenant::CRM_STATUS_UPSELL,
-            Tenant::CRM_STATUS_RENEWAL,
-        ], true);
-    }
-
-    private function revenueGoalForTeam(string $team): int
-    {
-        return match ($team) {
-            Tenant::CRM_TEAM_ACTIVATION => $this->portfolioCollection()->filter(fn (Tenant $tenant): bool => $this->needsActivationPush($tenant))->count(),
-            Tenant::CRM_TEAM_GROWTH => $this->portfolioCollection()->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count(),
-            Tenant::CRM_TEAM_BILLING => $this->portfolioCollection()->filter(fn (Tenant $tenant): bool => $this->isRenewalMotionCandidate($tenant))->count() + $this->pendingPaymentsCount,
-            Tenant::CRM_TEAM_RETENTION => $this->portfolioCollection()->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count(),
-            default => 0,
-        };
     }
 
     private function safeRoute(string $name, array $parameters = []): string
