@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
-use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
 use App\Domain\TenantGovernance\Services\CustomerLoyaltyManager;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfileActionCoordinator;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfilePresentationReader;
@@ -14,7 +13,6 @@ use App\Filament\App\Resources\CustomerProfileResource\Pages;
 use App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
 use App\Filament\App\Pages\CustomerInbox;
 use App\Models\CustomerProfile;
-use App\Models\CustomerTouchpoint;
 use App\Models\Tenant;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -474,12 +472,13 @@ class CustomerProfileResource extends Resource
                     ->icon('heroicon-o-gift')
                     ->color('success')
                     ->visible(fn (CustomerProfile $record): bool => app(CustomerLoyaltyManager::class)->hasRedeemableReward($record))
+                    ->visible(fn (CustomerProfile $record): bool => static::loyaltyManager()->hasRedeemableReward($record))
                     ->form([
                         Forms\Components\Select::make('reward_id')
                             ->label('Recompensa')
                             ->native(false)
                             ->required()
-                            ->options(fn (CustomerProfile $record): array => app(CustomerLoyaltyManager::class)->rewardOptionsForProfile($record)),
+                            ->options(fn (CustomerProfile $record): array => static::loyaltyManager()->rewardOptionsForProfile($record)),
                     ])
                     ->action(function (CustomerProfile $record, array $data): void {
                         $feedback = app(TenantCustomerProfileActionCoordinator::class)->redeemReward($record, $data, auth()->id());
@@ -498,7 +497,7 @@ class CustomerProfileResource extends Resource
                     ->modalDescription('Esto crea una entrega auditada en el CRM y actualiza el ultimo contacto del cliente.')
                     ->fillForm(fn (CustomerProfile $record): array => [
                         'automation_key' => 'manual_follow_up',
-                        ...app(CustomerAutomationManager::class)->preview($record, 'manual_follow_up'),
+                        ...static::automationManager()->preview($record, 'manual_follow_up'),
                     ])
                     ->form([
                         Forms\Components\Hidden::make('automation_key'),
@@ -663,6 +662,16 @@ class CustomerProfileResource extends Resource
     protected static function presentationReader(): TenantCustomerProfilePresentationReader
     {
         return app(TenantCustomerProfilePresentationReader::class);
+    }
+
+    protected static function loyaltyManager(): CustomerLoyaltyManager
+    {
+        return app(CustomerLoyaltyManager::class);
+    }
+
+    protected static function automationManager(): CustomerAutomationManager
+    {
+        return app(CustomerAutomationManager::class);
     }
 }
 

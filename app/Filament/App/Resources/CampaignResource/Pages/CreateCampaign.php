@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\CampaignResource\Pages;
 
-use App\Domain\TenantGovernance\Services\CampaignFormNormalizer;
+use App\Domain\TenantGovernance\Services\CampaignFormDataCoordinator;
 use App\Filament\App\Resources\CampaignResource;
 use App\Filament\App\Resources\Pages\CreateTenantRecord;
 
@@ -23,7 +23,7 @@ class CreateCampaign extends CreateTenantRecord
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        return app(CampaignFormNormalizer::class)->normalize($data);
+        return $this->formDataCoordinator()->normalize($data);
     }
 
     protected function getRedirectUrl(): string
@@ -37,6 +37,11 @@ class CreateCampaign extends CreateTenantRecord
             return;
         }
 
-        $this->data = app(CampaignFormNormalizer::class)->normalize($this->data);
+        $this->data = $this->formDataCoordinator()->normalize($this->data);
+    }
+
+    private function formDataCoordinator(): CampaignFormDataCoordinator
+    {
+        return app(CampaignFormDataCoordinator::class);
     }
 }

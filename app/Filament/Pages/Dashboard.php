@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
-use App\Domain\TenantGovernance\Services\SuperAdminDashboardStateReader;
+use App\Domain\TenantGovernance\Services\SuperAdminDashboardViewStateReader;
 use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
 use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
 use App\Models\Tenant;
@@ -186,86 +186,70 @@ class Dashboard extends \Filament\Pages\Page
     private function loadDashboardState(): void
     {
         try {
-            $state = app(SuperAdminDashboardStateReader::class)->read([
+            $state = app(SuperAdminDashboardViewStateReader::class)->read([
                 'payments' => $this->paymentsUrl,
                 'tenants' => $this->tenantsUrl,
                 'operations' => $this->operationsUrl,
                 'billing' => $this->billingUrl,
             ], $this->safeRoute(...));
 
-            $this->usersCount = (int) ($state['usersCount'] ?? 0);
-            $this->pendingPaymentsCount = (int) ($state['pendingPaymentsCount'] ?? 0);
-            $this->recentPayments = (array) ($state['recentPayments'] ?? []);
-            $this->activePlaybookCount = (int) ($state['activePlaybookCount'] ?? 0);
-            $this->overduePlaybookCount = (int) ($state['overduePlaybookCount'] ?? 0);
-            $this->unassignedPlaybookCount = (int) ($state['unassignedPlaybookCount'] ?? 0);
-            $this->commercialFollowupCount = (int) ($state['commercialFollowupCount'] ?? 0);
-            $this->renewalPlaybookCount = (int) ($state['renewalPlaybookCount'] ?? 0);
-            $this->activationPlaybookCount = (int) ($state['activationPlaybookCount'] ?? 0);
-            $this->growthPlaybookCount = (int) ($state['growthPlaybookCount'] ?? 0);
-            $this->tenantsCount = (int) ($state['tenantsCount'] ?? 0);
-            $this->proTenantsCount = (int) ($state['proTenantsCount'] ?? 0);
-            $this->proConversionsThisMonthCount = (int) ($state['proConversionsThisMonthCount'] ?? 0);
-            $this->pendingTenantsCount = (int) ($state['pendingTenantsCount'] ?? 0);
-            $this->suspendedTenantsCount = (int) ($state['suspendedTenantsCount'] ?? 0);
-            $this->atRiskTenantsCount = (int) ($state['atRiskTenantsCount'] ?? 0);
-            $this->catalogGapCount = (int) ($state['catalogGapCount'] ?? 0);
-            $this->expiringProCount = (int) ($state['expiringProCount'] ?? 0);
-            $this->crmWatchlistCount = (int) ($state['crmWatchlistCount'] ?? 0);
-            $this->crmOverdueAccountsCount = (int) ($state['crmOverdueAccountsCount'] ?? 0);
-            $this->crmOwnedAccountsCount = (int) ($state['crmOwnedAccountsCount'] ?? 0);
-            $this->crmFollowupsTodayCount = (int) ($state['crmFollowupsTodayCount'] ?? 0);
-            $snapshot = (array) ($state['snapshot'] ?? []);
+            $this->hydrateFromViewState($state);
         } catch (\Throwable) {
-            $this->usersCount = 0;
-            $this->pendingPaymentsCount = 0;
-            $this->recentPayments = [];
-            $this->activePlaybookCount = 0;
-            $this->overduePlaybookCount = 0;
-            $this->unassignedPlaybookCount = 0;
-            $this->commercialFollowupCount = 0;
-            $this->renewalPlaybookCount = 0;
-            $this->activationPlaybookCount = 0;
-            $this->growthPlaybookCount = 0;
-            $this->tenantsCount = 0;
-            $this->proTenantsCount = 0;
-            $this->proConversionsThisMonthCount = 0;
-            $this->pendingTenantsCount = 0;
-            $this->suspendedTenantsCount = 0;
-            $this->atRiskTenantsCount = 0;
-            $this->catalogGapCount = 0;
-            $this->expiringProCount = 0;
-            $this->crmWatchlistCount = 0;
-            $this->crmOverdueAccountsCount = 0;
-            $this->crmOwnedAccountsCount = 0;
-            $this->crmFollowupsTodayCount = 0;
-            $snapshot = [];
+            $this->hydrateFromViewState([]);
         }
+    }
 
-        $this->openAttentionCount = (int) ($snapshot['openAttentionCount'] ?? 0);
-        $this->attentionQueues = (array) ($snapshot['attentionQueues'] ?? []);
-        $this->operationalLanes = (array) ($snapshot['operationalLanes'] ?? []);
-        $this->globalWorkboard = (array) ($snapshot['globalWorkboard'] ?? []);
-        $this->assigneeLoad = (array) ($snapshot['assigneeLoad'] ?? []);
-        $this->ownerPortfolio = (array) ($snapshot['ownerPortfolio'] ?? []);
-        $this->teamPortfolio = (array) ($snapshot['teamPortfolio'] ?? []);
-        $this->slaBacklog = (array) ($snapshot['slaBacklog'] ?? []);
-        $this->commercialFunnel = (array) ($snapshot['commercialFunnel'] ?? []);
-        $this->ownerGoals = (array) ($snapshot['ownerGoals'] ?? []);
-        $this->teamGoals = (array) ($snapshot['teamGoals'] ?? []);
-        $this->verticalMonthlyGoals = (array) ($snapshot['verticalMonthlyGoals'] ?? []);
-        $this->activationCohorts = (array) ($snapshot['activationCohorts'] ?? []);
-        $this->planCohorts = (array) ($snapshot['planCohorts'] ?? []);
-        $this->cityCohorts = (array) ($snapshot['cityCohorts'] ?? []);
-        $this->channelCohorts = (array) ($snapshot['channelCohorts'] ?? []);
-        $this->ownerCohorts = (array) ($snapshot['ownerCohorts'] ?? []);
-        $this->segmentExpansion = (array) ($snapshot['segmentExpansion'] ?? []);
-        $this->verticalChurn = (array) ($snapshot['verticalChurn'] ?? []);
-        $this->verticalJourneyUplift = (array) ($snapshot['verticalJourneyUplift'] ?? []);
-        $this->revenuePlaybooks = (array) ($snapshot['revenuePlaybooks'] ?? []);
-        $this->networkJourneyPaths = (array) ($snapshot['networkJourneyPaths'] ?? []);
-        $this->churnWatchlist = (array) ($snapshot['churnWatchlist'] ?? []);
-        $this->commercialFollowups = (array) ($snapshot['commercialFollowups'] ?? []);
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private function hydrateFromViewState(array $state): void
+    {
+        $this->usersCount = (int) ($state['usersCount'] ?? 0);
+        $this->pendingPaymentsCount = (int) ($state['pendingPaymentsCount'] ?? 0);
+        $this->recentPayments = (array) ($state['recentPayments'] ?? []);
+        $this->activePlaybookCount = (int) ($state['activePlaybookCount'] ?? 0);
+        $this->overduePlaybookCount = (int) ($state['overduePlaybookCount'] ?? 0);
+        $this->unassignedPlaybookCount = (int) ($state['unassignedPlaybookCount'] ?? 0);
+        $this->commercialFollowupCount = (int) ($state['commercialFollowupCount'] ?? 0);
+        $this->renewalPlaybookCount = (int) ($state['renewalPlaybookCount'] ?? 0);
+        $this->activationPlaybookCount = (int) ($state['activationPlaybookCount'] ?? 0);
+        $this->growthPlaybookCount = (int) ($state['growthPlaybookCount'] ?? 0);
+        $this->tenantsCount = (int) ($state['tenantsCount'] ?? 0);
+        $this->proTenantsCount = (int) ($state['proTenantsCount'] ?? 0);
+        $this->proConversionsThisMonthCount = (int) ($state['proConversionsThisMonthCount'] ?? 0);
+        $this->pendingTenantsCount = (int) ($state['pendingTenantsCount'] ?? 0);
+        $this->suspendedTenantsCount = (int) ($state['suspendedTenantsCount'] ?? 0);
+        $this->atRiskTenantsCount = (int) ($state['atRiskTenantsCount'] ?? 0);
+        $this->catalogGapCount = (int) ($state['catalogGapCount'] ?? 0);
+        $this->expiringProCount = (int) ($state['expiringProCount'] ?? 0);
+        $this->crmWatchlistCount = (int) ($state['crmWatchlistCount'] ?? 0);
+        $this->crmOverdueAccountsCount = (int) ($state['crmOverdueAccountsCount'] ?? 0);
+        $this->crmOwnedAccountsCount = (int) ($state['crmOwnedAccountsCount'] ?? 0);
+        $this->crmFollowupsTodayCount = (int) ($state['crmFollowupsTodayCount'] ?? 0);
+        $this->openAttentionCount = (int) ($state['openAttentionCount'] ?? 0);
+        $this->attentionQueues = (array) ($state['attentionQueues'] ?? []);
+        $this->operationalLanes = (array) ($state['operationalLanes'] ?? []);
+        $this->globalWorkboard = (array) ($state['globalWorkboard'] ?? []);
+        $this->assigneeLoad = (array) ($state['assigneeLoad'] ?? []);
+        $this->ownerPortfolio = (array) ($state['ownerPortfolio'] ?? []);
+        $this->teamPortfolio = (array) ($state['teamPortfolio'] ?? []);
+        $this->slaBacklog = (array) ($state['slaBacklog'] ?? []);
+        $this->commercialFunnel = (array) ($state['commercialFunnel'] ?? []);
+        $this->ownerGoals = (array) ($state['ownerGoals'] ?? []);
+        $this->teamGoals = (array) ($state['teamGoals'] ?? []);
+        $this->verticalMonthlyGoals = (array) ($state['verticalMonthlyGoals'] ?? []);
+        $this->activationCohorts = (array) ($state['activationCohorts'] ?? []);
+        $this->planCohorts = (array) ($state['planCohorts'] ?? []);
+        $this->cityCohorts = (array) ($state['cityCohorts'] ?? []);
+        $this->channelCohorts = (array) ($state['channelCohorts'] ?? []);
+        $this->ownerCohorts = (array) ($state['ownerCohorts'] ?? []);
+        $this->segmentExpansion = (array) ($state['segmentExpansion'] ?? []);
+        $this->verticalChurn = (array) ($state['verticalChurn'] ?? []);
+        $this->verticalJourneyUplift = (array) ($state['verticalJourneyUplift'] ?? []);
+        $this->revenuePlaybooks = (array) ($state['revenuePlaybooks'] ?? []);
+        $this->networkJourneyPaths = (array) ($state['networkJourneyPaths'] ?? []);
+        $this->churnWatchlist = (array) ($state['churnWatchlist'] ?? []);
+        $this->commercialFollowups = (array) ($state['commercialFollowups'] ?? []);
     }
 
     private function safeRoute(string $name, array $parameters = []): string

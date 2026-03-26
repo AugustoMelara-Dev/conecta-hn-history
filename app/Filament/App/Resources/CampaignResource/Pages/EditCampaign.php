@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\CampaignResource\Pages;
 
-use App\Domain\TenantGovernance\Services\CampaignFormNormalizer;
+use App\Domain\TenantGovernance\Services\CampaignFormDataCoordinator;
 use App\Filament\App\Resources\CampaignResource;
 use App\Filament\App\Resources\Pages\EditTenantRecord;
 
@@ -23,7 +23,7 @@ class EditCampaign extends EditTenantRecord
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        return app(CampaignFormNormalizer::class)->normalize($data, $this->record);
+        return $this->formDataCoordinator()->normalize($data, $this->record);
     }
 
     protected function getHeaderActions(): array
@@ -44,6 +44,11 @@ class EditCampaign extends EditTenantRecord
             return;
         }
 
-        $this->data = app(CampaignFormNormalizer::class)->normalize($this->data, $this->record);
+        $this->data = $this->formDataCoordinator()->normalize($this->data, $this->record);
+    }
+
+    private function formDataCoordinator(): CampaignFormDataCoordinator
+    {
+        return app(CampaignFormDataCoordinator::class);
     }
 }

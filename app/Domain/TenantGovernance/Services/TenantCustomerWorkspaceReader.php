@@ -14,7 +14,6 @@ use Illuminate\Support\HtmlString;
 final class TenantCustomerWorkspaceReader
 {
     public function __construct(
-        private readonly CustomerProfileWorkspaceReader $workspaceReader,
         private readonly CustomerProfileWorkspaceHtmlReader $workspaceHtmlReader,
         private readonly CustomerProfileTimelineHtmlReader $timelineHtmlReader,
     ) {}
