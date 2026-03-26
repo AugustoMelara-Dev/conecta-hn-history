@@ -11,6 +11,7 @@ final class CustomerProfileSectionReader
     public function __construct(
         private readonly CustomerProfileSummaryStateReader $summaryReader,
         private readonly CustomerProfileLoyaltyStateReader $loyaltyReader,
+        private readonly CustomerProfileOperationalStateReader $operationalStateReader,
     ) {}
 
     /**
@@ -27,5 +28,13 @@ final class CustomerProfileSectionReader
     public function loyaltySummary(CustomerProfile $profile): array
     {
         return $this->loyaltyReader->read($profile);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function operationalState(CustomerProfile $profile): array
+    {
+        return $this->operationalStateReader->read($profile);
     }
 }

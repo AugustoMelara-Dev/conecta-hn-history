@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
-use App\Application\Marketing\Jobs\DispatchCampaignSegment;
 use App\Domain\TenantGovernance\Services\TenantCampaignActionCoordinator;
-use App\Domain\TenantGovernance\Services\TenantCampaignDispatchPlanner;
 use App\Domain\TenantGovernance\Services\TenantCampaignPresentationReader;
 use App\Domain\TenantGovernance\Services\TenantCampaignWorkspaceReader;
 use App\Models\Campaign;
@@ -88,10 +86,7 @@ class CampaignResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('type')
                                     ->label('Canal')
-                                    ->options([
-                                        'email' => 'Email',
-                                        'whatsapp' => 'WhatsApp',
-                                    ])
+                                    ->options(static::presentationReader()->channelOptions())
                                     ->required()
                                     ->default('email')
                                     ->native(false),
@@ -132,25 +127,12 @@ class CampaignResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('customer_segment')
                                     ->label('Segmento')
-                                    ->options([
-                                        'vip' => 'VIP',
-                                        'repeat' => 'Recurrente',
-                                        'reactivation' => 'Reactivacion',
-                                        'booked_service' => 'Con citas',
-                                        'active' => 'Activo',
-                                        'prospect' => 'Prospecto',
-                                        'new' => 'Nuevo',
-                                    ])
+                                    ->options(static::presentationReader()->customerSegmentOptions())
                                     ->placeholder('Toda la base elegible')
                                     ->native(false),
                                 Forms\Components\Select::make('loyalty_tier')
                                     ->label('Tier de fidelidad')
-                                    ->options([
-                                        'vip' => 'VIP',
-                                        'gold' => 'Gold',
-                                        'silver' => 'Silver',
-                                        'base' => 'Base',
-                                    ])
+                                    ->options(static::presentationReader()->loyaltyTierOptions())
                                     ->placeholder('Cualquier tier')
                                     ->native(false),
                                 Forms\Components\Select::make('loyalty_reward_id')
@@ -194,13 +176,7 @@ class CampaignResource extends Resource
                                     ->inline(false),
                                 Forms\Components\Select::make('cadence_interval_days')
                                     ->label('Repeticion')
-                                    ->options([
-                                        1 => 'Diaria',
-                                        3 => 'Cada 3 dias',
-                                        7 => 'Semanal',
-                                        14 => 'Quincenal',
-                                        30 => 'Mensual',
-                                    ])
+                                    ->options(static::presentationReader()->cadenceIntervalOptions())
                                     ->placeholder('Sin repeticion')
                                     ->required(fn ($get): bool => (bool) $get('is_recurring'))
                                     ->visible(fn ($get): bool => (bool) $get('is_recurring'))
@@ -208,11 +184,11 @@ class CampaignResource extends Resource
                             ]),
                     ]),
                 Section::make('Playbooks sugeridos por tu vertical')
-                    ->description('Usa estas cadencias como punto de partida para campañas de recompra, reactivacion o upsell.')
+                    ->description(static::presentationReader()->cadencePlaybookDescription())
                     ->schema([
                         Forms\Components\Placeholder::make('cadence_playbooks_hint')
                             ->hiddenLabel()
-                            ->content(fn () => static::cadencePlaybooksHint()),
+                            ->content(static::cadencePlaybooksHint()),
                     ]),
                 Section::make('Despacho')
                     ->schema([
@@ -306,9 +282,6 @@ class CampaignResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Despachar campana')
-                    ->modalDescription(fn (Campaign $record) => $record->usesCadence()
-                        ? 'Se lanzara ahora y, como tiene cadencia activa, seguira corriendo con la repeticion configurada.'
-                        : 'Se enviara esta campana a la audiencia filtrada. ¿Continuamos?')
                     ->visible(fn (Campaign $record) => $record->status !== 'sending')
                     ->modalDescription(fn (Campaign $record): string => static::presentationReader()->dispatchDescription($record))
                     ->action(function (Campaign $record): void {

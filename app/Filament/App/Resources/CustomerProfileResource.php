@@ -229,26 +229,13 @@ class CustomerProfileResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('preferred_channel')
                                     ->label('Canal preferido')
-                                    ->options([
-                                        'whatsapp' => 'WhatsApp',
-                                        'email' => 'Email',
-                                        'phone' => 'Llamada',
-                                        'in_person' => 'Presencial',
-                                    ])
+                                    ->options(static::presentationReader()->preferredChannelOptions())
                                     ->native(false)
                                     ->required(),
                                 Forms\Components\Select::make('manual_segment')
                                     ->label('Segmento manual')
                                     ->placeholder('Usar segmento calculado')
-                                    ->options([
-                                        'vip' => 'VIP',
-                                        'repeat' => 'Recurrente',
-                                        'reactivation' => 'Reactivacion',
-                                        'booked_service' => 'Con citas',
-                                        'active' => 'Activo',
-                                        'prospect' => 'Prospecto',
-                                        'new' => 'Nuevo',
-                                    ])
+                                    ->options(static::presentationReader()->manualSegmentOptions())
                                     ->native(false),
                                 Forms\Components\DateTimePicker::make('last_contacted_at')
                                     ->label('Ultimo contacto')
@@ -368,39 +355,16 @@ class CustomerProfileResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('lifecycle_stage')
                     ->label('Ciclo')
-                    ->options([
-                        'prospect' => 'Prospecto',
-                        'active' => 'Activo',
-                        'loyal' => 'Leal',
-                        'dormant' => 'Dormido',
-                    ]),
+                    ->options(static::presentationReader()->lifecycleStageOptions()),
                 Tables\Filters\SelectFilter::make('customer_segment')
                     ->label('Segmento')
-                    ->options([
-                        'vip' => 'VIP',
-                        'repeat' => 'Recurrente',
-                        'reactivation' => 'Reactivacion',
-                        'booked_service' => 'Con citas',
-                        'active' => 'Activo',
-                        'prospect' => 'Prospecto',
-                        'new' => 'Nuevo',
-                    ]),
+                    ->options(static::presentationReader()->manualSegmentOptions()),
                 Tables\Filters\SelectFilter::make('preferred_channel')
                     ->label('Canal')
-                    ->options([
-                        'whatsapp' => 'WhatsApp',
-                        'email' => 'Email',
-                        'phone' => 'Llamada',
-                        'in_person' => 'Presencial',
-                    ]),
+                    ->options(static::presentationReader()->preferredChannelOptions()),
                 Tables\Filters\SelectFilter::make('loyalty_tier')
                     ->label('Fidelidad')
-                    ->options([
-                        'vip' => 'VIP',
-                        'gold' => 'Gold',
-                        'silver' => 'Silver',
-                        'base' => 'Base',
-                    ]),
+                    ->options(static::presentationReader()->loyaltyTierOptions()),
                 Tables\Filters\SelectFilter::make('assigned_user_id')
                     ->label('Owner')
                     ->options(static::teamOptions()),
@@ -440,13 +404,13 @@ class CustomerProfileResource extends Resource
                     ->label('Canjear')
                     ->icon('heroicon-o-gift')
                     ->color('success')
-                    ->visible(fn (CustomerProfile $record): bool => static::actionFormReader()->canRedeemReward($record))
+                    ->visible(fn (CustomerProfile $record): bool => static::canRedeemReward($record))
                     ->form([
                         Forms\Components\Select::make('reward_id')
                             ->label('Recompensa')
                             ->native(false)
                             ->required()
-                            ->options(fn (CustomerProfile $record): array => static::actionFormReader()->rewardOptions($record)),
+                            ->options(fn (CustomerProfile $record): array => static::rewardOptionsFor($record)),
                     ])
                     ->action(function (CustomerProfile $record, array $data): void {
                         static::runRedeemReward($record, $data);
@@ -469,7 +433,7 @@ class CustomerProfileResource extends Resource
                             ->rows(8)
                             ->required(),
                     ])
-                    ->visible(fn (CustomerProfile $record): bool => filled($record->email))
+                    ->visible(fn (CustomerProfile $record): bool => static::canEmailFollowUp($record))
                     ->action(function (CustomerProfile $record, array $data): void {
                         static::runEmailFollowUp($record, $data);
                     }),
@@ -480,7 +444,7 @@ class CustomerProfileResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Enviar seguimiento por WhatsApp')
                     ->modalDescription('Esto usa una plantilla auditable de WhatsApp Cloud API y deja trazabilidad en el CRM.')
-                    ->visible(fn (CustomerProfile $record): bool => filled($record->phone))
+                    ->visible(fn (CustomerProfile $record): bool => static::canWhatsappFollowUp($record))
                     ->action(function (CustomerProfile $record): void {
                         static::runWhatsappFollowUp($record);
                     }),
@@ -491,7 +455,7 @@ class CustomerProfileResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Lanzar reactivacion')
                     ->modalDescription('Usa el mejor canal segun el cliente y respeta opt-in antes de enviar.')
-                    ->visible(fn (CustomerProfile $record): bool => (int) $record->reactivation_score >= 65 && filled($record->email))
+                    ->visible(fn (CustomerProfile $record): bool => static::canTriggerReactivation($record))
                     ->action(function (CustomerProfile $record): void {
                         static::runReactivation($record);
                     }),
@@ -504,11 +468,11 @@ class CustomerProfileResource extends Resource
                 Action::make('customerInbox')
                     ->label('Bandeja de respuestas')
                     ->icon('heroicon-o-inbox-stack')
-                    ->url(fn (): string => static::customerInboxUrl()),
+                    ->url(static::customerInboxUrl()),
                 Action::make('campaigns')
                     ->label('Campanas CRM')
                     ->icon('heroicon-o-megaphone')
-                    ->url(fn (): string => static::campaignsUrl()),
+                    ->url(static::campaignsUrl()),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => 'CRM',
@@ -581,6 +545,34 @@ class CustomerProfileResource extends Resource
     protected static function buildCustomerTimelineHtml(?CustomerProfile $record): HtmlString|string
     {
         return static::sectionViewReader()->timelineHtml($record);
+    }
+
+    protected static function canRedeemReward(CustomerProfile $record): bool
+    {
+        return static::actionFormReader()->canRedeemReward($record);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected static function rewardOptionsFor(CustomerProfile $record): array
+    {
+        return static::actionFormReader()->rewardOptions($record);
+    }
+
+    protected static function canEmailFollowUp(CustomerProfile $record): bool
+    {
+        return static::actionFormReader()->canEmailFollowUp($record);
+    }
+
+    protected static function canWhatsappFollowUp(CustomerProfile $record): bool
+    {
+        return static::actionFormReader()->canWhatsappFollowUp($record);
+    }
+
+    protected static function canTriggerReactivation(CustomerProfile $record): bool
+    {
+        return static::actionFormReader()->canTriggerReactivation($record);
     }
 
     protected static function workspaceReader(): TenantCustomerWorkspaceReader

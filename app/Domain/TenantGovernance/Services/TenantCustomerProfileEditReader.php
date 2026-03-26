@@ -39,6 +39,7 @@ final class TenantCustomerProfileEditReader
         return [
             ...$this->sectionReader->profileSummary($profile),
             ...$this->sectionReader->loyaltySummary($profile),
+            ...$this->sectionReader->operationalState($profile),
         ];
     }
 }

@@ -18,6 +18,21 @@ final class CustomerProfileActionFormReader
         return $this->loyaltyManager->hasRedeemableReward($profile);
     }
 
+    public function canEmailFollowUp(CustomerProfile $profile): bool
+    {
+        return filled($profile->email);
+    }
+
+    public function canWhatsappFollowUp(CustomerProfile $profile): bool
+    {
+        return filled($profile->phone);
+    }
+
+    public function canTriggerReactivation(CustomerProfile $profile): bool
+    {
+        return (int) $profile->reactivation_score >= 65 && filled($profile->email);
+    }
+
     /**
      * @return array<string, string>
      */

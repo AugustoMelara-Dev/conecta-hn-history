@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Domain\TenantGovernance\Services\SuperAdminDashboardBootstrapper;
-use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
-use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
-use App\Models\Tenant;
 use Filament\Panel;
 
 class Dashboard extends \Filament\Pages\Page
@@ -154,21 +151,9 @@ class Dashboard extends \Filament\Pages\Page
     /** @var list<array{business: string, reference: string, amount: string, status: string, tone: string, reported_at: string}> */
     public array $recentPayments = [];
 
-    public function mount(TenantCrmPortfolioManager $portfolioManager, TenantJourneyOpsMonitor $journeyOpsMonitor): void
+    public function mount(SuperAdminDashboardBootstrapper $bootstrapper): void
     {
-        $this->tenantsUrl = $this->safeRoute('filament.admin.resources.tenants.index');
-        $this->usersUrl = $this->safeRoute('filament.admin.resources.users.index');
-        $this->paymentsUrl = $this->safeRoute('filament.admin.resources.payments.index');
-        $this->settingsUrl = $this->safeRoute('filament.admin.pages.manage-general-settings');
-        $this->billingUrl = $this->safeRoute('filament.admin.pages.billing');
-        $this->operationsUrl = $this->safeRoute('filament.admin.resources.operational-playbook-tasks.index');
-
-        $this->bootstrapper()->boot($this, [
-            'payments' => $this->paymentsUrl,
-            'tenants' => $this->tenantsUrl,
-            'operations' => $this->operationsUrl,
-            'billing' => $this->billingUrl,
-        ], $this->safeRoute(...));
+        $bootstrapper->boot($this, $this->safeRoute(...));
     }
 
     public static function getRoutePath(Panel $panel): string
@@ -183,10 +168,5 @@ class Dashboard extends \Filament\Pages\Page
         } catch (\Throwable) {
             return '#';
         }
-    }
-
-    private function bootstrapper(): SuperAdminDashboardBootstrapper
-    {
-        return app(SuperAdminDashboardBootstrapper::class);
     }
 }

@@ -12,11 +12,70 @@ final class TenantCampaignPresentationReader
     /**
      * @return array<string, string>
      */
+    public function channelOptions(): array
+    {
+        return [
+            'email' => 'Email',
+            'whatsapp' => 'WhatsApp',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
     public function audienceTypeOptions(): array
     {
         return collect(AudienceType::cases())
             ->mapWithKeys(fn (AudienceType $type) => [$type->value => $type->label()])
             ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function customerSegmentOptions(): array
+    {
+        return [
+            'vip' => 'VIP',
+            'repeat' => 'Recurrente',
+            'reactivation' => 'Reactivacion',
+            'booked_service' => 'Con citas',
+            'active' => 'Activo',
+            'prospect' => 'Prospecto',
+            'new' => 'Nuevo',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function loyaltyTierOptions(): array
+    {
+        return [
+            'vip' => 'VIP',
+            'gold' => 'Gold',
+            'silver' => 'Silver',
+            'base' => 'Base',
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function cadenceIntervalOptions(): array
+    {
+        return [
+            1 => 'Diaria',
+            3 => 'Cada 3 dias',
+            7 => 'Semanal',
+            14 => 'Quincenal',
+            30 => 'Mensual',
+        ];
+    }
+
+    public function cadencePlaybookDescription(): string
+    {
+        return 'Usa estas cadencias como punto de partida para campanas de recompra, reactivacion o upsell.';
     }
 
     public function dispatchLabel(Campaign $campaign): string
