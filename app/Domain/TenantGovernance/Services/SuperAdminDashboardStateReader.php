@@ -14,6 +14,7 @@ final class SuperAdminDashboardStateReader
     public function __construct(
         private readonly SuperAdminPortfolioReader $portfolioReader,
         private readonly SuperAdminDashboardAssembler $assembler,
+        private readonly SuperAdminDashboardCountsReader $countsReader,
     ) {}
 
     /**
@@ -33,21 +34,16 @@ final class SuperAdminDashboardStateReader
         $portfolio = collect($portfolioTenants);
         $conversions = collect($monthlyProConversions);
         $playbookCounts = $this->portfolioReader->playbookCounts($tasks);
-        $metrics = $this->portfolioReader->metrics($portfolio, $conversions);
+        $metrics = $this->countsReader->read($portfolio, $conversions, $playbookCounts);
 
         return [
             'activePlaybookTasks' => $activePlaybookTasks,
             'portfolioTenants' => $portfolioTenants,
             'monthlyProConversions' => $monthlyProConversions,
-            'usersCount' => $this->portfolioReader->usersCount(),
-            'pendingPaymentsCount' => $this->portfolioReader->pendingPaymentsCount(),
-            'recentPayments' => $this->portfolioReader->recentPayments(),
-            ...$playbookCounts,
             ...$metrics,
             'snapshot' => $this->assembler->build(
                 [
                     ...$metrics,
-                    ...$playbookCounts,
                 ],
                 $tasks,
                 $portfolio,

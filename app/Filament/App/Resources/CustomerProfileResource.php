@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
-use App\Domain\TenantGovernance\Services\CustomerLoyaltyManager;
 use App\Domain\TenantGovernance\Services\CustomerProfileActionFormReader;
+use App\Domain\TenantGovernance\Services\CustomerProfileTablePresentationReader;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfileActionCoordinator;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfilePresentationReader;
 use App\Domain\TenantGovernance\Services\TenantCustomerWorkspaceReader;
@@ -298,32 +298,18 @@ class CustomerProfileResource extends Resource
                     ->label('Cliente')
                     ->searchable(['name', 'email', 'phone'])
                     ->weight('bold')
-                    ->description(fn (CustomerProfile $record): string => collect([
-                        $record->email,
-                        $record->phone,
-                    ])->filter()->implode(' | ')),
+                    ->description(fn (CustomerProfile $record): string => static::tablePresentationReader()->customerIdentity($record)),
                 Tables\Columns\TextColumn::make('segment_display')
                     ->label('Segmento')
                     ->badge()
-                    ->state(fn (CustomerProfile $record): string => $record->segment_display_label)
-                    ->description(fn (CustomerProfile $record): string => static::presentationReader()->nextTouchCopy($record))
-                    ->color(fn (CustomerProfile $record): string => match ($record->segment_display) {
-                        'vip' => 'success',
-                        'repeat' => 'info',
-                        'reactivation' => 'warning',
-                        'prospect' => 'gray',
-                        default => 'primary',
-                    }),
+                    ->state(fn (CustomerProfile $record): string => static::tablePresentationReader()->segmentLabel($record))
+                    ->description(fn (CustomerProfile $record): string => static::tablePresentationReader()->segmentCopy($record))
+                    ->color(fn (CustomerProfile $record): string => static::tablePresentationReader()->segmentTone($record)),
                 Tables\Columns\TextColumn::make('lifecycle_stage')
                     ->label('Ciclo')
                     ->badge()
-                    ->state(fn (CustomerProfile $record): string => $record->lifecycle_stage_label)
-                    ->color(fn (CustomerProfile $record): string => match ($record->lifecycle_stage) {
-                        'loyal' => 'success',
-                        'active' => 'info',
-                        'dormant' => 'warning',
-                        default => 'gray',
-                    }),
+                    ->state(fn (CustomerProfile $record): string => static::tablePresentationReader()->lifecycleLabel($record))
+                    ->color(fn (CustomerProfile $record): string => static::tablePresentationReader()->lifecycleTone($record)),
                 Tables\Columns\TextColumn::make('total_spent')
                     ->label('Valor')
                     ->money('HNL')
@@ -332,26 +318,21 @@ class CustomerProfileResource extends Resource
                 Tables\Columns\TextColumn::make('loyalty_tier')
                     ->label('Fidelidad')
                     ->badge()
-                    ->state(fn (CustomerProfile $record): string => $record->loyalty_tier_label)
-                    ->description(fn (CustomerProfile $record): string => static::presentationReader()->loyaltyTierCopy($record))
-                    ->color(fn (CustomerProfile $record): string => match ($record->loyalty_tier) {
-                        'vip' => 'success',
-                        'gold' => 'warning',
-                        'silver' => 'info',
-                        default => 'gray',
-                    }),
+                    ->state(fn (CustomerProfile $record): string => static::tablePresentationReader()->loyaltyLabel($record))
+                    ->description(fn (CustomerProfile $record): string => static::tablePresentationReader()->loyaltyCopy($record))
+                    ->color(fn (CustomerProfile $record): string => static::tablePresentationReader()->loyaltyTone($record)),
                 Tables\Columns\TextColumn::make('assignedUser.name')
                     ->label('Owner')
-                    ->state(fn (CustomerProfile $record): string => $record->assigned_owner_label)
+                    ->state(fn (CustomerProfile $record): string => static::tablePresentationReader()->ownerLabel($record))
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('location.name')
                     ->label('Sede')
-                    ->state(fn (CustomerProfile $record): string => $record->location_label)
+                    ->state(fn (CustomerProfile $record): string => static::tablePresentationReader()->locationLabel($record))
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('loyalty_points_balance')
                     ->label('Puntos')
                     ->badge()
-                    ->description(fn (CustomerProfile $record): string => $record->next_reward_copy)
+                    ->description(fn (CustomerProfile $record): string => static::tablePresentationReader()->loyaltyPointsCopy($record))
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('orders_count')
                     ->label('Pedidos')
@@ -371,18 +352,13 @@ class CustomerProfileResource extends Resource
                 Tables\Columns\TextColumn::make('reactivation_score')
                     ->label('Reactivacion')
                     ->badge()
-                    ->state(fn (CustomerProfile $record): string => $record->reactivation_label)
-                    ->color(fn (CustomerProfile $record): string => match (true) {
-                        $record->reactivation_score >= 85 => 'danger',
-                        $record->reactivation_score >= 65 => 'warning',
-                        $record->reactivation_score >= 45 => 'info',
-                        default => 'gray',
-                    }),
+                    ->state(fn (CustomerProfile $record): string => static::tablePresentationReader()->reactivationLabel($record))
+                    ->color(fn (CustomerProfile $record): string => static::tablePresentationReader()->reactivationTone($record)),
                 Tables\Columns\TextColumn::make('last_seen_at')
                     ->label('Ultima actividad')
                     ->since()
                     ->sortable()
-                    ->description(fn (CustomerProfile $record): string => $record->preferred_channel_label),
+                    ->description(fn (CustomerProfile $record): string => static::tablePresentationReader()->lastActivityCopy($record)),
                 Tables\Columns\TextColumn::make('last_contacted_at')
                     ->label('Ultimo contacto')
                     ->since()
@@ -628,11 +604,6 @@ class CustomerProfileResource extends Resource
         return app(TenantCustomerProfilePresentationReader::class);
     }
 
-    protected static function loyaltyManager(): CustomerLoyaltyManager
-    {
-        return app(CustomerLoyaltyManager::class);
-    }
-
     protected static function automationManager(): CustomerAutomationManager
     {
         return app(CustomerAutomationManager::class);
@@ -646,6 +617,11 @@ class CustomerProfileResource extends Resource
     protected static function actionFormReader(): CustomerProfileActionFormReader
     {
         return app(CustomerProfileActionFormReader::class);
+    }
+
+    protected static function tablePresentationReader(): CustomerProfileTablePresentationReader
+    {
+        return app(CustomerProfileTablePresentationReader::class);
     }
 
     /**
