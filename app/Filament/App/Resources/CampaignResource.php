@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Domain\TenantGovernance\Services\CampaignFormBehaviorReader;
+use App\Domain\TenantGovernance\Services\CampaignPlaceholderReader;
 use App\Domain\TenantGovernance\Services\CampaignTableStateReader;
 use App\Domain\TenantGovernance\Services\TenantCampaignActionCoordinator;
 use App\Domain\TenantGovernance\Services\TenantCampaignPresentationReader;
@@ -196,13 +197,13 @@ class CampaignResource extends Resource
                     ->schema([
                         Forms\Components\Placeholder::make('recipients_count')
                             ->label('Destinatarios')
-                            ->content(fn (?Campaign $record) => static::presentationReader()->recipientsCopy($record)),
+                            ->content(fn (?Campaign $record) => static::placeholderReader()->recipientsCopy($record)),
                         Forms\Components\Placeholder::make('sent_at')
                             ->label('Ultimo envio')
-                            ->content(fn (?Campaign $record) => static::presentationReader()->sentAtCopy($record)),
+                            ->content(fn (?Campaign $record) => static::placeholderReader()->sentAtCopy($record)),
                         Forms\Components\Placeholder::make('next_run_at')
                             ->label('Proxima corrida')
-                            ->content(fn (?Campaign $record) => static::presentationReader()->nextRunCopy($record)),
+                            ->content(fn (?Campaign $record) => static::placeholderReader()->nextRunCopy($record)),
                     ])
                     ->columns(3)
                     ->hidden(fn (string $operation) => static::formBehaviorReader()->hidesDispatchSection($operation)),
@@ -352,13 +353,7 @@ class CampaignResource extends Resource
 
     private static function cadencePlaybooksHint(): HtmlString|string
     {
-        $tenant = self::getTenantRecord();
-
-        if (! $tenant instanceof Tenant) {
-            return 'Selecciona un tenant valido para cargar recomendaciones de cadence.';
-        }
-
-        return self::workspaceReader()->cadencePlaybooksHint($tenant);
+        return self::placeholderReader()->cadencePlaybooksHint(self::getTenantRecord());
     }
 
     private static function workspaceReader(): TenantCampaignWorkspaceReader
@@ -384,6 +379,11 @@ class CampaignResource extends Resource
     private static function tableStateReader(): CampaignTableStateReader
     {
         return app(CampaignTableStateReader::class);
+    }
+
+    private static function placeholderReader(): CampaignPlaceholderReader
+    {
+        return app(CampaignPlaceholderReader::class);
     }
 
     private static function runDispatch(Campaign $record): void

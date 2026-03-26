@@ -7,7 +7,7 @@ namespace App\Domain\TenantGovernance\Services;
 final class SuperAdminDashboardPageLoader
 {
     public function __construct(
-        private readonly SuperAdminDashboardViewStateReader $viewStateReader,
+        private readonly SuperAdminDashboardBoundStateReader $boundStateReader,
         private readonly SuperAdminDashboardPropsBinder $propsBinder,
     ) {}
 
@@ -17,12 +17,6 @@ final class SuperAdminDashboardPageLoader
      */
     public function load(object $target, array $urls): void
     {
-        try {
-            $state = $this->viewStateReader->read($urls);
-        } catch (\Throwable) {
-            $state = $this->viewStateReader->defaults();
-        }
-
-        $this->propsBinder->bind($target, $state, $this->viewStateReader->defaults());
+        $this->propsBinder->bind($target, $this->boundStateReader->read($urls));
     }
 }

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
+use App\Domain\TenantGovernance\Services\CustomerProfileActionCopyReader;
 use App\Domain\TenantGovernance\Services\CustomerProfileActionFormReader;
 use App\Domain\TenantGovernance\Services\CustomerProfileSectionViewReader;
 use App\Domain\TenantGovernance\Services\CustomerProfileTableFilterOptionsReader;
 use App\Domain\TenantGovernance\Services\CustomerProfileTablePresentationReader;
+use App\Domain\TenantGovernance\Services\CustomerProfileWorkspacePlaceholderReader;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfileActionCoordinator;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfilePresentationReader;
 use App\Domain\TenantGovernance\Services\TenantCustomerWorkspaceReader;
@@ -216,11 +218,11 @@ class CustomerProfileResource extends Resource
                     ->description('Aqui se juntan operaciones, conversaciones, valor y continuidad en una sola lectura.')
                     ->schema([
                         Forms\Components\Placeholder::make('customer_workspace_summary')
-                            ->label('Workspace operativo')
-                            ->content(fn (?CustomerProfile $record): HtmlString|string => static::buildCustomerWorkspaceHtml($record)),
+                            ->label(static::workspacePlaceholderReader()->workspaceLabel())
+                            ->content(fn (?CustomerProfile $record): HtmlString|string => static::workspaceContent($record)),
                         Forms\Components\Placeholder::make('customer_timeline')
-                            ->label('Timeline 360')
-                            ->content(fn (?CustomerProfile $record): HtmlString|string => static::buildCustomerTimelineHtml($record)),
+                            ->label(static::workspacePlaceholderReader()->timelineLabel())
+                            ->content(fn (?CustomerProfile $record): HtmlString|string => static::timelineContent($record)),
                     ]),
 
                 Section::make('Operacion comercial')
@@ -421,7 +423,7 @@ class CustomerProfileResource extends Resource
                     ->icon('heroicon-o-envelope')
                     ->color('info')
                     ->modalHeading('Enviar seguimiento por email')
-                    ->modalDescription('Esto crea una entrega auditada en el CRM y actualiza el ultimo contacto del cliente.')
+                    ->modalDescription(static::actionCopyReader()->emailFollowUpDescription())
                     ->fillForm(fn (CustomerProfile $record): array => static::emailFollowUpForm($record))
                     ->form([
                         Forms\Components\Hidden::make('automation_key'),
@@ -444,7 +446,7 @@ class CustomerProfileResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Enviar seguimiento por WhatsApp')
-                    ->modalDescription('Esto usa una plantilla auditable de WhatsApp Cloud API y deja trazabilidad en el CRM.')
+                    ->modalDescription(static::actionCopyReader()->whatsappFollowUpDescription())
                     ->visible(fn (CustomerProfile $record): bool => static::canWhatsappFollowUp($record))
                     ->action(function (CustomerProfile $record): void {
                         static::runWhatsappFollowUp($record);
@@ -455,7 +457,7 @@ class CustomerProfileResource extends Resource
                     ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading('Lanzar reactivacion')
-                    ->modalDescription('Usa el mejor canal segun el cliente y respeta opt-in antes de enviar.')
+                    ->modalDescription(static::actionCopyReader()->reactivationDescription())
                     ->visible(fn (CustomerProfile $record): bool => static::canTriggerReactivation($record))
                     ->action(function (CustomerProfile $record): void {
                         static::runReactivation($record);
@@ -538,14 +540,14 @@ class CustomerProfileResource extends Resource
         return static::workspaceReader()->locationOptions($tenant);
     }
 
-    protected static function buildCustomerWorkspaceHtml(?CustomerProfile $record): HtmlString|string
+    protected static function workspaceContent(?CustomerProfile $record): HtmlString|string
     {
-        return static::sectionViewReader()->workspaceHtml($record);
+        return static::workspacePlaceholderReader()->workspaceContent($record);
     }
 
-    protected static function buildCustomerTimelineHtml(?CustomerProfile $record): HtmlString|string
+    protected static function timelineContent(?CustomerProfile $record): HtmlString|string
     {
-        return static::sectionViewReader()->timelineHtml($record);
+        return static::workspacePlaceholderReader()->timelineContent($record);
     }
 
     protected static function canRedeemReward(CustomerProfile $record): bool
@@ -640,6 +642,16 @@ class CustomerProfileResource extends Resource
     protected static function sectionViewReader(): CustomerProfileSectionViewReader
     {
         return app(CustomerProfileSectionViewReader::class);
+    }
+
+    protected static function workspacePlaceholderReader(): CustomerProfileWorkspacePlaceholderReader
+    {
+        return app(CustomerProfileWorkspacePlaceholderReader::class);
+    }
+
+    protected static function actionCopyReader(): CustomerProfileActionCopyReader
+    {
+        return app(CustomerProfileActionCopyReader::class);
     }
 
     /**

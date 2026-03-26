@@ -9,12 +9,11 @@ final class SuperAdminDashboardPropsBinder
     /**
      * @param  object  $target
      * @param  array<string, mixed>  $state
-     * @param  array<string, mixed>  $defaults
      */
-    public function bind(object $target, array $state, array $defaults): void
+    public function bind(object $target, array $state): void
     {
-        foreach ($defaults as $property => $default) {
-            $target->{$property} = $state[$property] ?? $default;
+        foreach ($state as $property => $value) {
+            $target->{$property} = $value;
         }
     }
 }
