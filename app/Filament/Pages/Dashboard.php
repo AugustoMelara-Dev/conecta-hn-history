@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Domain\TenantGovernance\Services\SuperAdminDashboardViewStateReader;
+use App\Domain\TenantGovernance\Services\SuperAdminDashboardPropsBinder;
 use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
 use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
 use App\Models\Tenant;
@@ -204,9 +205,7 @@ class Dashboard extends \Filament\Pages\Page
      */
     private function hydrateFromViewState(array $state): void
     {
-        foreach ($this->viewStateReader()->defaults() as $property => $default) {
-            $this->{$property} = $state[$property] ?? $default;
-        }
+        $this->propsBinder()->bind($this, $state, $this->viewStateReader()->defaults());
     }
 
     private function safeRoute(string $name, array $parameters = []): string
@@ -221,5 +220,10 @@ class Dashboard extends \Filament\Pages\Page
     private function viewStateReader(): SuperAdminDashboardViewStateReader
     {
         return app(SuperAdminDashboardViewStateReader::class);
+    }
+
+    private function propsBinder(): SuperAdminDashboardPropsBinder
+    {
+        return app(SuperAdminDashboardPropsBinder::class);
     }
 }

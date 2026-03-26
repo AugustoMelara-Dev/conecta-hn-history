@@ -16,7 +16,7 @@ final class WhatsAppInboundMessageProcessor
         private readonly CustomerTouchpointRepositoryInterface $touchpoints,
         private readonly CustomerTouchpointEventRepositoryInterface $events,
         private readonly InboundWebhookRepositoryInterface $webhooks,
-        private readonly CustomerTouchpointInboundReplyRecorder $inboundReplies,
+        private readonly WhatsAppInboundReplyHandler $inboundReplyHandler,
     ) {}
 
     /**
@@ -33,8 +33,6 @@ final class WhatsAppInboundMessageProcessor
             : null;
         $tenantId = (string) ($touchpoint?->tenant_id ?? 'system');
         $providerTransactionId = (string) ($messagePayload['id'] ?? uniqid('whatsapp_inbound_', true));
-        $body = trim((string) data_get($messagePayload, 'text.body', data_get($messagePayload, 'button.text', 'Respuesta recibida por WhatsApp.')));
-
         $webhook = $this->webhooks->firstOrCreate(
             [
                 'provider' => 'whatsapp_cloud',
@@ -79,23 +77,7 @@ final class WhatsAppInboundMessageProcessor
         ]);
         $this->touchpoints->save($touchpoint);
 
-        $this->inboundReplies->record(
-            $touchpoint,
-            $body !== '' ? $body : 'Respuesta recibida por WhatsApp.',
-            $occurredAt,
-            'whatsapp_cloud',
-            'whatsapp',
-            [
-                'source_touchpoint_id' => (int) $touchpoint->getKey(),
-                'from' => (string) ($messagePayload['from'] ?? ''),
-                'provider_message_id' => (string) ($messagePayload['id'] ?? ''),
-                'provider_thread_key' => (string) (data_get($touchpoint->metadata, 'provider_thread_key')
-                    ?? data_get($touchpoint->metadata, 'conversation_key')
-                    ?? $contextMessageId
-                    ?? ''),
-                'provider_reply_to' => $contextMessageId !== '' ? $contextMessageId : null,
-            ],
-        );
+        $this->inboundReplyHandler->handle($touchpoint, $messagePayload, $occurredAt, $contextMessageId);
 
         $webhook->forceFill(['tenant_id' => (string) $touchpoint->tenant_id, 'status' => 'completed']);
         $this->webhooks->save($webhook);

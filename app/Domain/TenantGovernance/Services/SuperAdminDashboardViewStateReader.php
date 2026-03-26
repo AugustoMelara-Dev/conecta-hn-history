@@ -8,6 +8,7 @@ final class SuperAdminDashboardViewStateReader
 {
     public function __construct(
         private readonly SuperAdminDashboardStateReader $stateReader,
+        private readonly SuperAdminDashboardSnapshotReader $snapshotReader,
     ) {}
 
     /**
@@ -17,7 +18,6 @@ final class SuperAdminDashboardViewStateReader
     public function read(array $urls, callable $safeRoute): array
     {
         $state = $this->stateReader->read($urls, $safeRoute);
-        $snapshot = (array) ($state['snapshot'] ?? []);
 
         return array_replace($this->defaults(), [
             'usersCount' => (int) ($state['usersCount'] ?? 0),
@@ -42,30 +42,7 @@ final class SuperAdminDashboardViewStateReader
             'crmOverdueAccountsCount' => (int) ($state['crmOverdueAccountsCount'] ?? 0),
             'crmOwnedAccountsCount' => (int) ($state['crmOwnedAccountsCount'] ?? 0),
             'crmFollowupsTodayCount' => (int) ($state['crmFollowupsTodayCount'] ?? 0),
-            'openAttentionCount' => (int) ($snapshot['openAttentionCount'] ?? 0),
-            'attentionQueues' => (array) ($snapshot['attentionQueues'] ?? []),
-            'operationalLanes' => (array) ($snapshot['operationalLanes'] ?? []),
-            'globalWorkboard' => (array) ($snapshot['globalWorkboard'] ?? []),
-            'assigneeLoad' => (array) ($snapshot['assigneeLoad'] ?? []),
-            'ownerPortfolio' => (array) ($snapshot['ownerPortfolio'] ?? []),
-            'teamPortfolio' => (array) ($snapshot['teamPortfolio'] ?? []),
-            'slaBacklog' => (array) ($snapshot['slaBacklog'] ?? []),
-            'commercialFunnel' => (array) ($snapshot['commercialFunnel'] ?? []),
-            'ownerGoals' => (array) ($snapshot['ownerGoals'] ?? []),
-            'teamGoals' => (array) ($snapshot['teamGoals'] ?? []),
-            'verticalMonthlyGoals' => (array) ($snapshot['verticalMonthlyGoals'] ?? []),
-            'activationCohorts' => (array) ($snapshot['activationCohorts'] ?? []),
-            'planCohorts' => (array) ($snapshot['planCohorts'] ?? []),
-            'cityCohorts' => (array) ($snapshot['cityCohorts'] ?? []),
-            'channelCohorts' => (array) ($snapshot['channelCohorts'] ?? []),
-            'ownerCohorts' => (array) ($snapshot['ownerCohorts'] ?? []),
-            'segmentExpansion' => (array) ($snapshot['segmentExpansion'] ?? []),
-            'verticalChurn' => (array) ($snapshot['verticalChurn'] ?? []),
-            'verticalJourneyUplift' => (array) ($snapshot['verticalJourneyUplift'] ?? []),
-            'revenuePlaybooks' => (array) ($snapshot['revenuePlaybooks'] ?? []),
-            'networkJourneyPaths' => (array) ($snapshot['networkJourneyPaths'] ?? []),
-            'churnWatchlist' => (array) ($snapshot['churnWatchlist'] ?? []),
-            'commercialFollowups' => (array) ($snapshot['commercialFollowups'] ?? []),
+            ...$this->snapshotReader->read($state),
         ]);
     }
 

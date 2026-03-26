@@ -6,6 +6,7 @@ namespace App\Filament\App\Resources;
 
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Domain\TenantGovernance\Services\CustomerProfileActionFormReader;
+use App\Domain\TenantGovernance\Services\CustomerProfileSectionViewReader;
 use App\Domain\TenantGovernance\Services\CustomerProfileTablePresentationReader;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfileActionCoordinator;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfilePresentationReader;
@@ -586,12 +587,12 @@ class CustomerProfileResource extends Resource
 
     protected static function buildCustomerWorkspaceHtml(?CustomerProfile $record): HtmlString|string
     {
-        return static::workspaceReader()->workspaceHtml($record);
+        return static::sectionViewReader()->workspaceHtml($record);
     }
 
     protected static function buildCustomerTimelineHtml(?CustomerProfile $record): HtmlString|string
     {
-        return static::workspaceReader()->timelineHtml($record);
+        return static::sectionViewReader()->timelineHtml($record);
     }
 
     protected static function workspaceReader(): TenantCustomerWorkspaceReader
@@ -622,6 +623,11 @@ class CustomerProfileResource extends Resource
     protected static function tablePresentationReader(): CustomerProfileTablePresentationReader
     {
         return app(CustomerProfileTablePresentationReader::class);
+    }
+
+    protected static function sectionViewReader(): CustomerProfileSectionViewReader
+    {
+        return app(CustomerProfileSectionViewReader::class);
     }
 
     /**
