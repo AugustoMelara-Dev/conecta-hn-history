@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Services\CampaignFormBehaviorReader;
+use App\Domain\TenantGovernance\Services\CampaignTableStateReader;
 use App\Domain\TenantGovernance\Services\TenantCampaignActionCoordinator;
 use App\Domain\TenantGovernance\Services\TenantCampaignPresentationReader;
 use App\Domain\TenantGovernance\Services\TenantCampaignWorkspaceReader;
@@ -113,11 +115,11 @@ class CampaignResource extends Resource
                                 Forms\Components\TextInput::make('whatsapp_template_name')
                                     ->label('Template de WhatsApp')
                                     ->placeholder('promo_reactivation_es')
-                                    ->visible(fn ($get): bool => $get('type') === 'whatsapp'),
+                                    ->visible(fn ($get): bool => static::formBehaviorReader()->showsWhatsappFields($get('type'))),
                                 Forms\Components\TextInput::make('whatsapp_template_language')
                                     ->label('Idioma template')
                                     ->default('es_HN')
-                                    ->visible(fn ($get): bool => $get('type') === 'whatsapp'),
+                                    ->visible(fn ($get): bool => static::formBehaviorReader()->showsWhatsappFields($get('type'))),
                             ]),
                     ]),
                 Section::make('Segmentacion CRM')
@@ -178,8 +180,8 @@ class CampaignResource extends Resource
                                     ->label('Repeticion')
                                     ->options(static::presentationReader()->cadenceIntervalOptions())
                                     ->placeholder('Sin repeticion')
-                                    ->required(fn ($get): bool => (bool) $get('is_recurring'))
-                                    ->visible(fn ($get): bool => (bool) $get('is_recurring'))
+                                    ->required(fn ($get): bool => static::formBehaviorReader()->requiresCadenceInterval($get('is_recurring')))
+                                    ->visible(fn ($get): bool => static::formBehaviorReader()->requiresCadenceInterval($get('is_recurring')))
                                     ->native(false),
                             ]),
                     ]),
@@ -203,7 +205,7 @@ class CampaignResource extends Resource
                             ->content(fn (?Campaign $record) => static::presentationReader()->nextRunCopy($record)),
                     ])
                     ->columns(3)
-                    ->hidden(fn (string $operation) => $operation === 'create'),
+                    ->hidden(fn (string $operation) => static::formBehaviorReader()->hidesDispatchSection($operation)),
             ]);
     }
 
@@ -238,14 +240,7 @@ class CampaignResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'sending' => 'info',
-                        'queued' => 'warning',
-                        'scheduled' => 'warning',
-                        'failed' => 'danger',
-                        'sent' => 'success',
-                        default => 'gray',
-                    }),
+                    ->color(fn (string $state): string => static::tableStateReader()->statusTone($state)),
                 Tables\Columns\TextColumn::make('sent_at')
                     ->label('Ultimo envio')
                     ->dateTime('d/m/Y H:i')
@@ -260,14 +255,7 @@ class CampaignResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'draft' => 'Borrador',
-                        'scheduled' => 'Programada',
-                        'queued' => 'En cola',
-                        'sending' => 'Enviando',
-                        'sent' => 'Enviada',
-                        'failed' => 'Fallida',
-                    ]),
+                    ->options(static::tableStateReader()->statusFilterOptions()),
                 Tables\Filters\Filter::make('recurring')
                     ->label('Con cadencia')
                     ->query(fn ($query) => $query->where('is_recurring', true)),
@@ -386,6 +374,16 @@ class CampaignResource extends Resource
     private static function presentationReader(): TenantCampaignPresentationReader
     {
         return app(TenantCampaignPresentationReader::class);
+    }
+
+    private static function formBehaviorReader(): CampaignFormBehaviorReader
+    {
+        return app(CampaignFormBehaviorReader::class);
+    }
+
+    private static function tableStateReader(): CampaignTableStateReader
+    {
+        return app(CampaignTableStateReader::class);
     }
 
     private static function runDispatch(Campaign $record): void

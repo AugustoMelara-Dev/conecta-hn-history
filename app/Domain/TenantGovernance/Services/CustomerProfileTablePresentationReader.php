@@ -9,102 +9,82 @@ use App\Models\CustomerProfile;
 final class CustomerProfileTablePresentationReader
 {
     public function __construct(
-        private readonly TenantCustomerProfilePresentationReader $presentationReader,
+        private readonly CustomerProfileTableIdentityReader $identityReader,
+        private readonly CustomerProfileTableLifecycleReader $lifecycleReader,
     ) {}
 
     public function customerIdentity(CustomerProfile $profile): string
     {
-        return collect([$profile->email, $profile->phone])->filter()->implode(' | ');
+        return $this->identityReader->customerIdentity($profile);
     }
 
     public function segmentLabel(CustomerProfile $profile): string
     {
-        return $profile->segment_display_label;
+        return $this->lifecycleReader->segmentLabel($profile);
     }
 
     public function segmentCopy(CustomerProfile $profile): string
     {
-        return $this->presentationReader->nextTouchCopy($profile);
+        return $this->lifecycleReader->segmentCopy($profile);
     }
 
     public function segmentTone(CustomerProfile $profile): string
     {
-        return match ($profile->segment_display) {
-            'vip' => 'success',
-            'repeat' => 'info',
-            'reactivation' => 'warning',
-            'prospect' => 'gray',
-            default => 'primary',
-        };
+        return $this->lifecycleReader->segmentTone($profile);
     }
 
     public function lifecycleLabel(CustomerProfile $profile): string
     {
-        return $profile->lifecycle_stage_label;
+        return $this->lifecycleReader->lifecycleLabel($profile);
     }
 
     public function lifecycleTone(CustomerProfile $profile): string
     {
-        return match ($profile->lifecycle_stage) {
-            'loyal' => 'success',
-            'active' => 'info',
-            'dormant' => 'warning',
-            default => 'gray',
-        };
+        return $this->lifecycleReader->lifecycleTone($profile);
     }
 
     public function loyaltyLabel(CustomerProfile $profile): string
     {
-        return $profile->loyalty_tier_label;
+        return $this->lifecycleReader->loyaltyLabel($profile);
     }
 
     public function loyaltyCopy(CustomerProfile $profile): string
     {
-        return $this->presentationReader->loyaltyTierCopy($profile);
+        return $this->lifecycleReader->loyaltyCopy($profile);
     }
 
     public function loyaltyTone(CustomerProfile $profile): string
     {
-        return match ($profile->loyalty_tier) {
-            'vip' => 'success',
-            'gold' => 'warning',
-            'silver' => 'info',
-            default => 'gray',
-        };
+        return $this->lifecycleReader->loyaltyTone($profile);
     }
 
     public function ownerLabel(CustomerProfile $profile): string
     {
-        return $profile->assigned_owner_label;
+        return $this->identityReader->ownerLabel($profile);
     }
 
     public function locationLabel(CustomerProfile $profile): string
     {
-        return $profile->location_label;
+        return $this->identityReader->locationLabel($profile);
     }
 
     public function loyaltyPointsCopy(CustomerProfile $profile): string
     {
-        return $profile->next_reward_copy;
+        return $this->lifecycleReader->loyaltyPointsCopy($profile);
     }
 
     public function reactivationLabel(CustomerProfile $profile): string
     {
-        return $profile->reactivation_label;
+        return $this->lifecycleReader->reactivationLabel($profile);
     }
 
     public function reactivationTone(CustomerProfile $profile): string
     {
-        return match (true) {
-            $profile->reactivation_score >= 85 => 'danger',
-            $profile->reactivation_score >= 65 => 'warning',
-            $profile->reactivation_score >= 45 => 'info',
-            default => 'gray',
-        };
+        return $this->lifecycleReader->reactivationTone($profile);
     }
 
     public function lastActivityCopy(CustomerProfile $profile): string
     {
-        return $profile->preferred_channel_label;
+        return $this->identityReader->lastActivityCopy($profile);
     }
 }
