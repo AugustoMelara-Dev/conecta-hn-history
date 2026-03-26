@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Domain\TenantGovernance\Services\CampaignFormBehaviorReader;
+use App\Domain\TenantGovernance\Services\CampaignActionReader;
+use App\Domain\TenantGovernance\Services\CampaignEmptyStateReader;
 use App\Domain\TenantGovernance\Services\CampaignPlaceholderReader;
 use App\Domain\TenantGovernance\Services\CampaignTableStateReader;
 use App\Domain\TenantGovernance\Services\TenantCampaignActionCoordinator;
@@ -266,13 +268,13 @@ class CampaignResource extends Resource
             ])
             ->actions([
                 Action::make('send')
-                    ->label(fn (Campaign $record): string => static::presentationReader()->dispatchLabel($record))
+                    ->label(fn (Campaign $record): string => static::actionReader()->dispatchLabel($record))
                     ->icon('heroicon-o-paper-airplane')
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Despachar campana')
-                    ->visible(fn (Campaign $record): bool => static::presentationReader()->canDispatch($record))
-                    ->modalDescription(fn (Campaign $record): string => static::presentationReader()->dispatchDescription($record))
+                    ->visible(fn (Campaign $record): bool => static::actionReader()->canDispatch($record))
+                    ->modalDescription(fn (Campaign $record): string => static::actionReader()->dispatchDescription($record))
                     ->action(function (Campaign $record): void {
                         self::runDispatch($record);
                     }),
@@ -285,10 +287,7 @@ class CampaignResource extends Resource
                 ]),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'badge' => 'Marketing PRO',
-                'heading' => 'Todavia no has creado campanas',
-                'description' => 'Crea campanas por segmento, tier, reward, sede y owner usando la base real de tu CRM.',
-                'buttonLabel' => 'Crear campana',
+                ...static::emptyStateReader()->read(),
                 'buttonUrl' => static::getUrl('create'),
             ]));
     }
@@ -366,6 +365,11 @@ class CampaignResource extends Resource
         return app(TenantCampaignActionCoordinator::class);
     }
 
+    private static function actionReader(): CampaignActionReader
+    {
+        return app(CampaignActionReader::class);
+    }
+
     private static function presentationReader(): TenantCampaignPresentationReader
     {
         return app(TenantCampaignPresentationReader::class);
@@ -386,15 +390,18 @@ class CampaignResource extends Resource
         return app(CampaignPlaceholderReader::class);
     }
 
+    private static function emptyStateReader(): CampaignEmptyStateReader
+    {
+        return app(CampaignEmptyStateReader::class);
+    }
+
     private static function runDispatch(Campaign $record): void
     {
-        $tenant = self::getTenantRecord();
+        $result = self::actionReader()->dispatch(self::getTenantRecord(), $record);
 
-        if (! $tenant instanceof Tenant) {
+        if ($result === null) {
             return;
         }
-
-        $result = self::actionCoordinator()->dispatch($tenant, $record);
 
         Notification::make()
             ->title($result['title'])

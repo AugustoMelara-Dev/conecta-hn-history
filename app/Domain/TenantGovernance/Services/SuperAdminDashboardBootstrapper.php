@@ -18,6 +18,6 @@ final class SuperAdminDashboardBootstrapper
     public function boot(object $target): void
     {
         $this->signalSynchronizer->sync();
-        $this->pageLoader->load($target, $this->urlMapReader->read());
+        $this->pageLoader->load($target);
     }
 }

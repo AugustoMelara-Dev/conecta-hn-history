@@ -7,7 +7,9 @@ namespace App\Filament\App\Resources;
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Domain\TenantGovernance\Services\CustomerProfileActionCopyReader;
 use App\Domain\TenantGovernance\Services\CustomerProfileActionFormReader;
+use App\Domain\TenantGovernance\Services\CustomerProfileEmptyStateReader;
 use App\Domain\TenantGovernance\Services\CustomerProfileSectionViewReader;
+use App\Domain\TenantGovernance\Services\CustomerProfileTableActionReader;
 use App\Domain\TenantGovernance\Services\CustomerProfileTableFilterOptionsReader;
 use App\Domain\TenantGovernance\Services\CustomerProfileTablePresentationReader;
 use App\Domain\TenantGovernance\Services\CustomerProfileWorkspacePlaceholderReader;
@@ -407,13 +409,13 @@ class CustomerProfileResource extends Resource
                     ->label('Canjear')
                     ->icon('heroicon-o-gift')
                     ->color('success')
-                    ->visible(fn (CustomerProfile $record): bool => static::canRedeemReward($record))
+                    ->visible(fn (CustomerProfile $record): bool => static::tableActionReader()->canRedeemReward($record))
                     ->form([
                         Forms\Components\Select::make('reward_id')
                             ->label('Recompensa')
                             ->native(false)
                             ->required()
-                            ->options(fn (CustomerProfile $record): array => static::rewardOptionsFor($record)),
+                            ->options(fn (CustomerProfile $record): array => static::tableActionReader()->rewardOptions($record)),
                     ])
                     ->action(function (CustomerProfile $record, array $data): void {
                         static::runRedeemReward($record, $data);
@@ -423,8 +425,8 @@ class CustomerProfileResource extends Resource
                     ->icon('heroicon-o-envelope')
                     ->color('info')
                     ->modalHeading('Enviar seguimiento por email')
-                    ->modalDescription(static::actionCopyReader()->emailFollowUpDescription())
-                    ->fillForm(fn (CustomerProfile $record): array => static::emailFollowUpForm($record))
+                    ->modalDescription(static::tableActionReader()->emailFollowUpDescription())
+                    ->fillForm(fn (CustomerProfile $record): array => static::tableActionReader()->emailFollowUpForm($record))
                     ->form([
                         Forms\Components\Hidden::make('automation_key'),
                         Forms\Components\TextInput::make('subject')
@@ -436,7 +438,7 @@ class CustomerProfileResource extends Resource
                             ->rows(8)
                             ->required(),
                     ])
-                    ->visible(fn (CustomerProfile $record): bool => static::canEmailFollowUp($record))
+                    ->visible(fn (CustomerProfile $record): bool => static::tableActionReader()->canEmailFollowUp($record))
                     ->action(function (CustomerProfile $record, array $data): void {
                         static::runEmailFollowUp($record, $data);
                     }),
@@ -446,8 +448,8 @@ class CustomerProfileResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Enviar seguimiento por WhatsApp')
-                    ->modalDescription(static::actionCopyReader()->whatsappFollowUpDescription())
-                    ->visible(fn (CustomerProfile $record): bool => static::canWhatsappFollowUp($record))
+                    ->modalDescription(static::tableActionReader()->whatsappFollowUpDescription())
+                    ->visible(fn (CustomerProfile $record): bool => static::tableActionReader()->canWhatsappFollowUp($record))
                     ->action(function (CustomerProfile $record): void {
                         static::runWhatsappFollowUp($record);
                     }),
@@ -457,8 +459,8 @@ class CustomerProfileResource extends Resource
                     ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading('Lanzar reactivacion')
-                    ->modalDescription(static::actionCopyReader()->reactivationDescription())
-                    ->visible(fn (CustomerProfile $record): bool => static::canTriggerReactivation($record))
+                    ->modalDescription(static::tableActionReader()->reactivationDescription())
+                    ->visible(fn (CustomerProfile $record): bool => static::tableActionReader()->canTriggerReactivation($record))
                     ->action(function (CustomerProfile $record): void {
                         static::runReactivation($record);
                     }),
@@ -477,11 +479,7 @@ class CustomerProfileResource extends Resource
                     ->icon('heroicon-o-megaphone')
                     ->url(static::campaignsUrl()),
             ])
-            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'badge' => 'CRM',
-                'heading' => 'Todavia no hay clientes consolidados',
-                'description' => 'Cuando entren pedidos, citas o prospectos con contacto, el CRM armara la ficha automaticamente.',
-            ]));
+            ->emptyState(fn () => view('filament.app.components.table-empty-state', static::emptyStateReader()->read()));
     }
 
     public static function getRelations(): array
@@ -550,42 +548,6 @@ class CustomerProfileResource extends Resource
         return static::workspacePlaceholderReader()->timelineContent($record);
     }
 
-    protected static function canRedeemReward(CustomerProfile $record): bool
-    {
-        return static::actionFormReader()->canRedeemReward($record);
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    protected static function rewardOptionsFor(CustomerProfile $record): array
-    {
-        return static::actionFormReader()->rewardOptions($record);
-    }
-
-    protected static function canEmailFollowUp(CustomerProfile $record): bool
-    {
-        return static::actionFormReader()->canEmailFollowUp($record);
-    }
-
-    protected static function canWhatsappFollowUp(CustomerProfile $record): bool
-    {
-        return static::actionFormReader()->canWhatsappFollowUp($record);
-    }
-
-    protected static function canTriggerReactivation(CustomerProfile $record): bool
-    {
-        return static::actionFormReader()->canTriggerReactivation($record);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected static function emailFollowUpForm(CustomerProfile $record): array
-    {
-        return static::actionFormReader()->emailFollowUpForm($record);
-    }
-
     protected static function workspaceReader(): TenantCustomerWorkspaceReader
     {
         return app(TenantCustomerWorkspaceReader::class);
@@ -652,6 +614,16 @@ class CustomerProfileResource extends Resource
     protected static function actionCopyReader(): CustomerProfileActionCopyReader
     {
         return app(CustomerProfileActionCopyReader::class);
+    }
+
+    protected static function tableActionReader(): CustomerProfileTableActionReader
+    {
+        return app(CustomerProfileTableActionReader::class);
+    }
+
+    protected static function emptyStateReader(): CustomerProfileEmptyStateReader
+    {
+        return app(CustomerProfileEmptyStateReader::class);
     }
 
     /**
