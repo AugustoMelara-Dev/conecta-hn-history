@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Domain\TenantGovernance\Services\SuperAdminJourneyAnalyticsReader;
 use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
 use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
 use App\Models\CustomerConversation;
@@ -1083,59 +1084,9 @@ class Dashboard extends \Filament\Pages\Page
 
     private function loadVerticalJourneyUplift(): void
     {
-        $window = now()->subDays(30)->startOfDay();
-        $conversations = CustomerConversation::query()
-            ->withoutGlobalScopes()
-            ->with([
-                'customerProfile' => fn ($query) => $query->withoutGlobalScopes()->with('tenant'),
-                'owner' => fn ($query) => $query->withoutGlobalScopes(),
-            ])
-            ->where('status', 'closed')
-            ->where('closed_at', '>=', $window)
-            ->get(['id', 'tenant_id', 'customer_profile_id', 'owner_user_id', 'status', 'source_channel', 'metadata', 'closed_at']);
-
-        $touchpoints = CustomerTouchpoint::query()
-            ->withoutGlobalScopes()
-            ->where('created_at', '>=', $window)
-            ->whereNotNull('customer_conversation_id')
-            ->get(['id', 'customer_conversation_id', 'channel', 'metadata', 'replied_at', 'delivery_status']);
-
-        $byVertical = $conversations
-            ->groupBy(function (CustomerConversation $conversation): string {
-                $tenant = $conversation->customerProfile?->tenant;
-
-                return $tenant instanceof Tenant ? $this->segmentKeyForTenant($tenant) : 'retail_general';
-            })
-            ->map(function (Collection $items, string $segmentKey) use ($touchpoints): array {
-                $conversationIds = $items->map(fn (CustomerConversation $conversation): string => (string) $conversation->getKey())->all();
-                $verticalTouchpoints = $touchpoints->filter(
-                    fn (CustomerTouchpoint $touchpoint): bool => in_array((string) $touchpoint->customer_conversation_id, $conversationIds, true)
-                );
-                $assisted = $items->filter(fn (CustomerConversation $conversation): bool => $this->conversationHasJourneyAssistance($conversation));
-                $assistedRevenue = $assisted->sum(fn (CustomerConversation $conversation): float => $this->conversationRevenueValue($conversation));
-                $totalRevenue = $items->sum(fn (CustomerConversation $conversation): float => $this->conversationRevenueValue($conversation));
-                $topPath = $this->topConversationPathLabel($verticalTouchpoints);
-                $uplift = $totalRevenue > 0 ? number_format(($assistedRevenue / $totalRevenue) * 100, 1).'%' : '0.0%';
-
-                return [
-                    'vertical' => $this->segmentLabel($segmentKey),
-                    'assisted_revenue' => 'L. '.number_format($assistedRevenue, 2),
-                    'assisted_revenue_raw' => $assistedRevenue,
-                    'total_revenue' => 'L. '.number_format($totalRevenue, 2),
-                    'uplift' => $uplift,
-                    'conversations' => $items->count(),
-                    'assisted' => $assisted->count(),
-                    'top_path' => $topPath,
-                    'tone' => $assistedRevenue > 0 ? 'success' : ($items->count() > 0 ? 'warning' : 'gray'),
-                    'href' => $this->operationsUrl,
-                ];
-            })
-            ->sortByDesc(fn (array $item): float => ((float) ($item['assisted_revenue_raw'] ?? 0.0) * 1000) + ((int) ($item['assisted'] ?? 0) * 100) + (int) ($item['conversations'] ?? 0))
-            ->take(6)
-            ->values()
-            ->all();
-
-        $this->verticalJourneyUplift = $byVertical;
+        /** @var SuperAdminJourneyAnalyticsReader $reader */
+        $reader = app(SuperAdminJourneyAnalyticsReader::class);
+        $this->verticalJourneyUplift = $reader->verticalJourneyUplift($this->operationsUrl);
     }
 
     private function loadRevenuePlaybooks(): void
@@ -1175,37 +1126,9 @@ class Dashboard extends \Filament\Pages\Page
 
     private function loadNetworkJourneyPaths(): void
     {
-        $window = now()->subDays(30)->startOfDay();
-        $touchpoints = CustomerTouchpoint::query()
-            ->withoutGlobalScopes()
-            ->with([
-                'conversation' => fn ($query) => $query->withoutGlobalScopes()->with([
-                    'customerProfile' => fn ($profileQuery) => $profileQuery->withoutGlobalScopes()->with('tenant'),
-                    'owner' => fn ($ownerQuery) => $ownerQuery->withoutGlobalScopes(),
-                ]),
-            ])
-            ->where('created_at', '>=', $window)
-            ->whereNotNull('customer_conversation_id')
-            ->get(['id', 'customer_conversation_id', 'channel', 'metadata']);
-
-        $this->networkJourneyPaths = collect($this->buildConversationPathShares($touchpoints))
-            ->map(function (array $share): array {
-                return [
-                    'path' => (string) ($share['label'] ?? 'Ruta CRM'),
-                    'revenue' => 'L. '.number_format((float) ($share['revenue'] ?? 0.0), 2),
-                    'vertical' => (string) ($share['vertical'] ?? 'General'),
-                    'owners' => (string) ($share['owners'] ?? 'Sin owner'),
-                    'channels' => (string) ($share['channels'] ?? 'CRM'),
-                    'conversations' => (int) ($share['conversations'] ?? 0),
-                    'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
-                    'tone' => (float) ($share['revenue'] ?? 0.0) > 0 ? 'success' : 'info',
-                    'href' => $this->operationsUrl,
-                ];
-            })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['conversations'] ?? 0) * 100))
-            ->take(6)
-            ->values()
-            ->all();
+        /** @var SuperAdminJourneyAnalyticsReader $reader */
+        $reader = app(SuperAdminJourneyAnalyticsReader::class);
+        $this->networkJourneyPaths = $reader->networkJourneyPaths($this->operationsUrl);
     }
 
     private function loadChurnWatchlist(): void

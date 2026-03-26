@@ -8,6 +8,7 @@ use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Services\BusinessGrowthBlueprint;
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
+use App\Domain\TenantGovernance\Services\TenantJourneyAnalyticsReader;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\CampaignResource;
 use App\Filament\App\Resources\CustomerProfileResource;
@@ -1054,187 +1055,21 @@ class GrowthCenter extends Page
 
             return;
         }
+        /** @var TenantJourneyAnalyticsReader $reader */
+        $reader = app(TenantJourneyAnalyticsReader::class);
+        $summary = $reader->summarize($tenant);
 
-        $tenantId = (string) $tenant->getKey();
-        $window = now()->subDays(30)->startOfDay();
-
-        $touchpoints = CustomerTouchpoint::query()
-            ->withoutGlobalScopes()
-            ->with([
-                'conversation' => fn ($query) => $query->withoutGlobalScopes()->with('customerProfile'),
-                'customerProfile' => fn ($query) => $query->withoutGlobalScopes(),
-            ])
-            ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', $window)
-            ->whereNotNull('template_key')
-            ->get([
-                'id',
-                'template_key',
-                'channel',
-                'replied_at',
-                'customer_conversation_id',
-                'customer_profile_id',
-                'metadata',
-            ]);
-
-        $sequenceRevenueShares = $this->buildAttributedSequenceShares($touchpoints);
-
-        $this->templatePerformance = $touchpoints
-            ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->template_key ?: 'manual'))
-            ->map(function (Collection $items, string $templateKey): array {
-                $sent = $items->count();
-                $replied = $items->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->replied_at !== null)->count();
-                $closedConversations = $items
-                    ->map(fn (CustomerTouchpoint $touchpoint): ?CustomerConversation => $touchpoint->conversation)
-                    ->filter(fn (?CustomerConversation $conversation): bool => $conversation instanceof CustomerConversation && $conversation->status === 'closed')
-                    ->unique(fn (CustomerConversation $conversation): int => (int) $conversation->getKey())
-                    ->values();
-                $conversions = $closedConversations->count();
-                $revenue = $closedConversations
-                    ->sum(fn (CustomerConversation $conversation): float => $this->conversationRevenueValue($conversation));
-                $topChannel = (string) ($items->pluck('channel')->filter()->countBy()->sortDesc()->keys()->first() ?? 'crm');
-
-                return [
-                    'label' => $this->formatSourceLabel($templateKey),
-                    'channel' => $this->formatSourceLabel($topChannel),
-                    'sent' => $sent,
-                    'replied' => $replied,
-                    'conversions' => $conversions,
-                    'revenue' => $this->formatCurrency($revenue),
-                    'revenue_raw' => $revenue,
-                    'replyRate' => $sent > 0 ? number_format(($replied / $sent) * 100, 1).'%' : '0.0%',
-                    'closeRate' => $sent > 0 ? number_format(($conversions / $sent) * 100, 1).'%' : '0.0%',
-                ];
-            })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['conversions'] ?? 0) * 100) + ((int) ($row['replied'] ?? 0) * 10) + (int) ($row['sent'] ?? 0))
-            ->take(4)
-            ->values()
-            ->all();
-
-        $this->sequencePerformance = $touchpoints
-            ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_key', $touchpoint->template_key ?: 'manual'))
-            ->map(function (Collection $items, string $sequenceKey): array {
-                $sent = $items->count();
-                $replied = $items->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->replied_at !== null)->count();
-                $closedConversations = $items
-                    ->map(fn (CustomerTouchpoint $touchpoint): ?CustomerConversation => $touchpoint->conversation)
-                    ->filter(fn (?CustomerConversation $conversation): bool => $conversation instanceof CustomerConversation && $conversation->status === 'closed')
-                    ->unique(fn (CustomerConversation $conversation): int => (int) $conversation->getKey())
-                    ->values();
-                $conversions = $closedConversations->count();
-                $revenue = $closedConversations
-                    ->sum(fn (CustomerConversation $conversation): float => $this->conversationRevenueValue($conversation));
-                $first = $items->first();
-                $label = (string) data_get($first?->metadata, 'journey_sequence_label', data_get($first?->metadata, 'journey_step_title', $this->formatSourceLabel($sequenceKey)));
-                $branch = (string) data_get($first?->metadata, 'journey_branch_label', 'Ruta base');
-                $lane = (string) data_get($first?->metadata, 'journey_lane', 'follow_up');
-
-                return [
-                    'label' => $label,
-                    'branch' => $branch,
-                    'lane' => $this->formatSourceLabel($lane),
-                    'sent' => $sent,
-                    'replied' => $replied,
-                    'conversions' => $conversions,
-                    'revenue' => $this->formatCurrency($revenue),
-                    'revenue_raw' => $revenue,
-                    'replyRate' => $sent > 0 ? number_format(($replied / $sent) * 100, 1).'%' : '0.0%',
-                    'closeRate' => $sent > 0 ? number_format(($conversions / $sent) * 100, 1).'%' : '0.0%',
-                ];
-            })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['conversions'] ?? 0) * 100) + ((int) ($row['replied'] ?? 0) * 10) + (int) ($row['sent'] ?? 0))
-            ->take(4)
-            ->values()
-            ->all();
-
-        $this->sequenceAttribution = collect($sequenceRevenueShares)
-            ->map(function (array $share, string $sequenceKey): array {
-                return [
-                    'label' => (string) ($share['label'] ?? $this->formatSourceLabel($sequenceKey)),
-                    'revenue' => $this->formatCurrency((float) ($share['revenue'] ?? 0.0)),
-                    'replies' => (int) ($share['replies'] ?? 0),
-                    'clicks' => (int) ($share['clicks'] ?? 0),
-                    'conversions' => number_format((float) ($share['conversions'] ?? 0.0), 2),
-                    'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
-                ];
-            })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['clicks'] ?? 0) * 10) + (int) ($row['replies'] ?? 0))
-            ->take(4)
-            ->values()
-            ->all();
-
-        $this->conversationPathAttribution = collect($this->buildConversationPathShares($touchpoints))
-            ->map(function (array $share): array {
-                return [
-                    'label' => (string) ($share['label'] ?? 'Ruta CRM'),
-                    'revenue' => $this->formatCurrency((float) ($share['revenue'] ?? 0.0)),
-                    'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
-                    'conversations' => (int) ($share['conversations'] ?? 0),
-                    'owners' => (string) ($share['owners'] ?? 'Sin owner'),
-                    'channels' => (string) ($share['channels'] ?? 'CRM'),
-                ];
-            })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['conversations'] ?? 0) * 100))
-            ->take(4)
-            ->values()
-            ->all();
-
-        $this->ownerSequenceAttribution = $this->buildAttributedDimensionRows(
-            $this->buildAttributedSequenceShares($touchpoints, 'owner')
-        );
-        $this->locationSequenceAttribution = $this->buildAttributedDimensionRows(
-            $this->buildAttributedSequenceShares($touchpoints, 'location')
-        );
-        $this->channelSequenceAttribution = $this->buildAttributedDimensionRows(
-            $this->buildAttributedSequenceShares($touchpoints, 'channel')
-        );
-        $outcomeShares = $this->buildOutcomeAttributedSequenceShares($touchpoints);
-        $this->sequenceOutcomeAttribution = collect($outcomeShares)
-            ->map(function (array $share): array {
-                return [
-                    'label' => (string) ($share['label'] ?? 'Secuencia CRM'),
-                    'revenue' => $this->formatCurrency((float) ($share['revenue'] ?? 0.0)),
-                    'purchaseClosures' => (int) ($share['purchase_closures'] ?? 0),
-                    'noShowRecovered' => (int) ($share['no_show_recovered'] ?? 0),
-                    'rewardRepurchases' => (int) ($share['reward_repurchases'] ?? 0),
-                    'upgradeAssists' => (int) ($share['upgrade_assists'] ?? 0),
-                    'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
-                ];
-            })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['purchaseClosures'] ?? 0) * 100) + ((int) ($row['upgradeAssists'] ?? 0) * 10))
-            ->take(4)
-            ->values()
-            ->all();
-        $this->upgradeAssistedRevenue30d = collect($outcomeShares)
-            ->sum(fn (array $share): float => (int) ($share['upgrade_assists'] ?? 0) > 0 ? (float) ($share['revenue'] ?? 0.0) : 0.0);
-
-        $conversations = CustomerConversation::query()
-            ->withoutGlobalScopes()
-            ->with([
-                'owner' => fn ($query) => $query->withoutGlobalScopes(),
-                'location' => fn ($query) => $query->withoutGlobalScopes(),
-                'customerProfile' => fn ($query) => $query->withoutGlobalScopes(),
-            ])
-            ->where('tenant_id', $tenantId)
-            ->where(function ($query) use ($window): void {
-                $query->where('updated_at', '>=', $window)
-                    ->orWhere('closed_at', '>=', $window)
-                    ->orWhere('last_customer_message_at', '>=', $window);
-            })
-            ->get([
-                'id',
-                'customer_profile_id',
-                'owner_user_id',
-                'location_id',
-                'status',
-                'response_due_at',
-                'last_customer_message_at',
-                'first_response_at',
-                'closed_at',
-            ]);
-
-        $this->ownerConversationPerformance = $this->buildConversationPerformanceRows($conversations, 'owner_user_id', 'ownerLabel', 'Sin owner');
-        $this->locationConversationPerformance = $this->buildConversationPerformanceRows($conversations, 'location_id', 'locationLabel', 'Sin sede');
+        $this->templatePerformance = $summary['templatePerformance'];
+        $this->sequencePerformance = $summary['sequencePerformance'];
+        $this->sequenceAttribution = $summary['sequenceAttribution'];
+        $this->conversationPathAttribution = $summary['conversationPathAttribution'];
+        $this->ownerSequenceAttribution = $summary['ownerSequenceAttribution'];
+        $this->locationSequenceAttribution = $summary['locationSequenceAttribution'];
+        $this->channelSequenceAttribution = $summary['channelSequenceAttribution'];
+        $this->sequenceOutcomeAttribution = $summary['sequenceOutcomeAttribution'];
+        $this->upgradeAssistedRevenue30d = $summary['upgradeAssistedRevenue30d'];
+        $this->ownerConversationPerformance = $summary['ownerConversationPerformance'];
+        $this->locationConversationPerformance = $summary['locationConversationPerformance'];
     }
 
     /**
