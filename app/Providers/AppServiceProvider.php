@@ -269,6 +269,10 @@ class AppServiceProvider extends ServiceProvider
             \App\Domain\TenantGovernance\Repositories\OperationalPlaybookTaskRepositoryInterface::class,
             \App\Infrastructure\Repositories\TenantGovernance\EloquentOperationalPlaybookTaskRepository::class
         );
+        $this->app->bind(
+            \App\Domain\TenantGovernance\Repositories\CampaignRepositoryInterface::class,
+            \App\Infrastructure\Repositories\TenantGovernance\EloquentCampaignRepository::class
+        );
 
         // API Domains
         $this->app->bind(

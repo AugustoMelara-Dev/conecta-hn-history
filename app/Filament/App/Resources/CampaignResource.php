@@ -6,15 +6,10 @@ namespace App\Filament\App\Resources;
 
 use App\Application\Marketing\Jobs\DispatchCampaignSegment;
 use App\Domain\Marketing\Enums\AudienceType;
-use App\Domain\TenantGovernance\Services\BusinessGrowthBlueprint;
-use App\Domain\TenantGovernance\Services\CustomerCampaignAudienceResolver;
-use App\Domain\TenantGovernance\Services\CustomerLoyaltyManager;
+use App\Domain\TenantGovernance\Repositories\CampaignRepositoryInterface;
+use App\Domain\TenantGovernance\Services\TenantCampaignWorkspaceReader;
 use App\Models\Campaign;
-use App\Models\Location;
-use App\Models\LoyaltyReward;
 use App\Models\Tenant;
-use App\Models\TenantUser;
-use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -29,8 +24,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 
 class CampaignResource extends Resource
@@ -324,7 +317,7 @@ class CampaignResource extends Resource
                             return;
                         }
 
-                        $audienceCount = self::calculateAudienceCount($tenant, $record);
+                        $audienceCount = self::workspaceReader()->calculateAudienceCount($tenant, $record);
 
                         if ($audienceCount === 0) {
                             Notification::make()
@@ -336,14 +329,13 @@ class CampaignResource extends Resource
                             return;
                         }
 
-                        $record->update([
-                            'status' => 'queued',
-                            'next_run_at' => $record->usesCadence()
-                                ? (($record->next_run_at instanceof Carbon && $record->next_run_at->isFuture())
-                                    ? $record->next_run_at
-                                    : now()->addDays((int) $record->cadence_interval_days))
-                                : null,
-                        ]);
+                        $nextRunAt = $record->usesCadence()
+                            ? ($record->next_run_at !== null && $record->next_run_at->isFuture()
+                                ? $record->next_run_at
+                                : now()->addDays((int) $record->cadence_interval_days))
+                            : null;
+
+                        app(CampaignRepositoryInterface::class)->markQueued($record, $nextRunAt);
 
                         DispatchCampaignSegment::dispatch($record->id, (string) $tenant->getKey());
 
@@ -381,33 +373,6 @@ class CampaignResource extends Resource
         ];
     }
 
-    private static function calculateAudienceCount(Tenant $tenant, Campaign $campaign): int
-    {
-        if ($campaign->audience_type === AudienceType::CRM_CUSTOMERS) {
-            return app(CustomerCampaignAudienceResolver::class)->countForCampaign($tenant, $campaign);
-        }
-
-        return match ($campaign->audience_type) {
-            AudienceType::FOLLOWERS, null => $tenant->followers()->count(),
-            AudienceType::LEADS => DB::table('leads')
-                ->where('tenant_id', (string) $tenant->getKey())
-                ->join('users', 'leads.email', '=', 'users.email')
-                ->distinct()
-                ->count('users.id'),
-            AudienceType::ALL_CUSTOMERS => DB::table('appointments')
-                ->where('tenant_id', (string) $tenant->getKey())
-                ->whereNotNull('user_id')
-                ->distinct()
-                ->count('user_id'),
-            AudienceType::WAITLIST => DB::table('waitlists')
-                ->where('tenant_id', (string) $tenant->getKey())
-                ->whereNotNull('user_id')
-                ->distinct()
-                ->count('user_id'),
-            AudienceType::CRM_CUSTOMERS => 0,
-        };
-    }
-
     private static function getTenantRecord(): ?Tenant
     {
         $tenant = Filament::getTenant();
@@ -426,22 +391,7 @@ class CampaignResource extends Resource
             return [];
         }
 
-        $userIds = TenantUser::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $tenant->getKey())
-            ->pluck('user_id')
-            ->push((string) $tenant->user_id)
-            ->filter()
-            ->unique()
-            ->values();
-
-        return User::query()
-            ->withoutGlobalScopes()
-            ->whereIn('id', $userIds->all())
-            ->orderBy('name')
-            ->pluck('name', 'id')
-            ->map(static fn (mixed $value): string => (string) $value)
-            ->all();
+        return self::workspaceReader()->teamOptions($tenant);
     }
 
     /**
@@ -455,15 +405,7 @@ class CampaignResource extends Resource
             return [];
         }
 
-        return Location::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $tenant->getKey())
-            ->where('is_active', true)
-            ->orderByDesc('is_primary')
-            ->orderBy('name')
-            ->pluck('name', 'id')
-            ->map(static fn (mixed $value): string => (string) $value)
-            ->all();
+        return self::workspaceReader()->locationOptions($tenant);
     }
 
     /**
@@ -477,7 +419,7 @@ class CampaignResource extends Resource
             return [];
         }
 
-        return app(CustomerLoyaltyManager::class)->rewardCampaignOptionsForTenant($tenant);
+        return self::workspaceReader()->rewardOptions($tenant);
     }
 
     private static function cadencePlaybooksHint(): HtmlString|string
@@ -488,24 +430,11 @@ class CampaignResource extends Resource
             return 'Selecciona un tenant valido para cargar recomendaciones de cadence.';
         }
 
-        /** @var array<int, array<string, mixed>> $playbooks */
-        $playbooks = collect((array) (app(BusinessGrowthBlueprint::class)->forTenant($tenant)['cadence_playbooks'] ?? []))
-            ->take(3)
-            ->all();
+        return self::workspaceReader()->cadencePlaybooksHint($tenant);
+    }
 
-        if ($playbooks === []) {
-            return 'Todavia no hay playbooks de cadence sugeridos para este rubro.';
-        }
-
-        $items = collect($playbooks)->map(function (array $playbook): string {
-            $title = (string) ($playbook['title'] ?? 'Cadencia sugerida');
-            $cadence = (string) ($playbook['cadence'] ?? 'Manual');
-            $copy = (string) ($playbook['copy'] ?? '');
-            $trigger = (string) ($playbook['trigger'] ?? '');
-
-            return '<li><strong>'.$title.'</strong> · '.$cadence.'<br><span>'.$copy.'</span><br><small>Disparo: '.$trigger.'</small></li>';
-        })->implode('');
-
-        return new HtmlString('<ul style="margin:0; padding-left:1rem; display:grid; gap:0.75rem;">'.$items.'</ul>');
+    private static function workspaceReader(): TenantCampaignWorkspaceReader
+    {
+        return app(TenantCampaignWorkspaceReader::class);
     }
 }
