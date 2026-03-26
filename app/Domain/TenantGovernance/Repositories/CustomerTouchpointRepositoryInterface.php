@@ -8,7 +8,14 @@ use App\Models\CustomerTouchpoint;
 
 interface CustomerTouchpointRepositoryInterface
 {
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function create(array $attributes): CustomerTouchpoint;
+
     public function findById(int $touchpointId): ?CustomerTouchpoint;
+
+    public function findWithProfile(int $touchpointId): ?CustomerTouchpoint;
 
     public function findByProviderMessage(string $provider, string $providerMessageId): ?CustomerTouchpoint;
 

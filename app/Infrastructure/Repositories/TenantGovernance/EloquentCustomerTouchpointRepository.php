@@ -9,10 +9,25 @@ use App\Models\CustomerTouchpoint;
 
 final class EloquentCustomerTouchpointRepository implements CustomerTouchpointRepositoryInterface
 {
+    public function create(array $attributes): CustomerTouchpoint
+    {
+        return CustomerTouchpoint::query()
+            ->withoutGlobalScopes()
+            ->create($attributes);
+    }
+
     public function findById(int $touchpointId): ?CustomerTouchpoint
     {
         return CustomerTouchpoint::query()
             ->withoutGlobalScopes()
+            ->find($touchpointId);
+    }
+
+    public function findWithProfile(int $touchpointId): ?CustomerTouchpoint
+    {
+        return CustomerTouchpoint::query()
+            ->withoutGlobalScopes()
+            ->with(['customerProfile' => fn ($query) => $query->withoutGlobalScopes()->with('tenant')])
             ->find($touchpointId);
     }
 

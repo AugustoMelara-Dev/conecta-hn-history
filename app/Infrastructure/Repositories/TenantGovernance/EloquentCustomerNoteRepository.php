@@ -49,4 +49,14 @@ final class EloquentCustomerNoteRepository implements CustomerNoteRepositoryInte
             ->orderByDesc('created_at')
             ->first();
     }
+
+    public function latestByConversation(int|string $conversationId): ?CustomerNote
+    {
+        return CustomerNote::query()
+            ->withoutGlobalScopes()
+            ->where('customer_conversation_id', (int) $conversationId)
+            ->latest('updated_at')
+            ->latest('id')
+            ->first();
+    }
 }

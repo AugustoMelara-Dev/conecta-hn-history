@@ -15,4 +15,6 @@ interface CustomerNoteRepositoryInterface
     public function latestOpenConversationNote(int|string $tenantId, int|string $profileId, string $channel): ?CustomerNote;
 
     public function latestRecentConversationNote(int|string $tenantId, int|string $profileId, string $channel, int $windowHours): ?CustomerNote;
+
+    public function latestByConversation(int|string $conversationId): ?CustomerNote;
 }

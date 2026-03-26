@@ -7,14 +7,13 @@ namespace App\Filament\App\Resources;
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
 use App\Domain\TenantGovernance\Services\CustomerLoyaltyManager;
-use App\Domain\TenantGovernance\Services\CustomerSegmentPlaybook;
+use App\Domain\TenantGovernance\Services\TenantCustomerProfilePresentationReader;
 use App\Domain\TenantGovernance\Services\TenantCustomerWorkspaceReader;
 use App\Filament\App\Resources\CustomerProfileResource\Pages;
 use App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
 use App\Filament\App\Pages\CustomerInbox;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
-use App\Models\LoyaltyReward;
 use App\Models\Tenant;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -99,11 +98,7 @@ class CustomerProfileResource extends Resource
             return null;
         }
 
-        $count = CustomerProfile::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $tenant->getKey())
-            ->where('reactivation_score', '>=', 65)
-            ->count();
+        $count = static::presentationReader()->navigationBadgeCount($tenant);
 
         return $count > 0 ? (string) $count : null;
     }
@@ -115,7 +110,7 @@ class CustomerProfileResource extends Resource
 
     public static function getNavigationBadgeTooltip(): ?string
     {
-        return 'Clientes con senal fuerte de reactivacion';
+        return static::presentationReader()->navigationBadgeTooltip();
     }
 
     public static function form(Schema $schema): Schema
@@ -314,7 +309,7 @@ class CustomerProfileResource extends Resource
                     ->label('Segmento')
                     ->badge()
                     ->state(fn (CustomerProfile $record): string => $record->segment_display_label)
-                    ->description(fn (CustomerProfile $record): string => app(CustomerSegmentPlaybook::class)->forProfile($record)['next_touch'])
+                    ->description(fn (CustomerProfile $record): string => static::presentationReader()->nextTouchCopy($record))
                     ->color(fn (CustomerProfile $record): string => match ($record->segment_display) {
                         'vip' => 'success',
                         'repeat' => 'info',
@@ -341,7 +336,7 @@ class CustomerProfileResource extends Resource
                     ->label('Fidelidad')
                     ->badge()
                     ->state(fn (CustomerProfile $record): string => $record->loyalty_tier_label)
-                    ->description(fn (CustomerProfile $record): string => app(CustomerSegmentPlaybook::class)->forProfile($record)['loyalty_tier_copy'])
+                    ->description(fn (CustomerProfile $record): string => static::presentationReader()->loyaltyTierCopy($record))
                     ->color(fn (CustomerProfile $record): string => match ($record->loyalty_tier) {
                         'vip' => 'success',
                         'gold' => 'warning',
@@ -491,13 +486,9 @@ class CustomerProfileResource extends Resource
                             ->options(fn (CustomerProfile $record): array => app(CustomerLoyaltyManager::class)->rewardOptionsForProfile($record)),
                     ])
                     ->action(function (CustomerProfile $record, array $data): void {
-                        $reward = LoyaltyReward::query()
-                            ->withoutGlobalScopes()
-                            ->findOrFail((int) $data['reward_id']);
-
                         app(CustomerLoyaltyManager::class)->redeemReward(
                             profile: $record,
-                            reward: $reward,
+                            reward: (int) $data['reward_id'],
                             actorUserId: auth()->id(),
                         );
 
@@ -720,6 +711,11 @@ class CustomerProfileResource extends Resource
     protected static function workspaceReader(): TenantCustomerWorkspaceReader
     {
         return app(TenantCustomerWorkspaceReader::class);
+    }
+
+    protected static function presentationReader(): TenantCustomerProfilePresentationReader
+    {
+        return app(TenantCustomerProfilePresentationReader::class);
     }
 }
 

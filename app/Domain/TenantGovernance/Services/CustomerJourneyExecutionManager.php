@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
-use App\Models\CustomerJourneyRun;
-use App\Models\CustomerNote;
+use App\Domain\TenantGovernance\Repositories\CustomerJourneyRunRepositoryInterface;
+use App\Domain\TenantGovernance\Repositories\CustomerNoteRepositoryInterface;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
 use App\Models\Tenant;
@@ -16,6 +16,8 @@ class CustomerJourneyExecutionManager
         private readonly CustomerConversationTemplateManager $templateManager,
         private readonly CustomerJourneyManager $journeyManager,
         private readonly CustomerTaskManager $customerTaskManager,
+        private readonly CustomerJourneyRunRepositoryInterface $journeyRuns,
+        private readonly CustomerNoteRepositoryInterface $customerNotes,
     ) {}
 
     /**
@@ -31,29 +33,12 @@ class CustomerJourneyExecutionManager
             $tenantId = $tenant;
         }
 
-        $query = CustomerJourneyRun::query()
-            ->withoutGlobalScopes()
-            ->with([
-                'conversation' => fn ($builder) => $builder->withoutGlobalScopes(),
-                'customerProfile' => fn ($builder) => $builder->withoutGlobalScopes()->with('tenant'),
-            ])
-            ->where('status', 'active')
-            ->whereIn('sequence_state', ['waiting_customer', 'stalled'])
-            ->whereNotNull('step_due_at')
-            ->where('step_due_at', '<=', now())
-            ->orderBy('step_due_at')
-            ->limit(max(1, $limit));
-
-        if ($tenantId !== null) {
-            $query->where('tenant_id', $tenantId);
-        }
-
         $processed = 0;
         $sent = 0;
         $skipped = 0;
         $failed = 0;
 
-        $query->get()->each(function (CustomerJourneyRun $run) use (&$processed, &$sent, &$skipped, &$failed): void {
+        $this->journeyRuns->dueRuns($tenantId, $limit)->each(function (\App\Models\CustomerJourneyRun $run) use (&$processed, &$sent, &$skipped, &$failed): void {
             $processed++;
 
             $profile = $run->customerProfile;
@@ -73,12 +58,7 @@ class CustomerJourneyExecutionManager
                 return;
             }
 
-            $note = CustomerNote::query()
-                ->withoutGlobalScopes()
-                ->where('customer_conversation_id', (int) $run->customer_conversation_id)
-                ->latest('updated_at')
-                ->latest('id')
-                ->first();
+            $note = $this->customerNotes->latestByConversation((int) $run->customer_conversation_id);
 
             try {
                 $touchpoint = $this->templateManager->send(
@@ -106,7 +86,7 @@ class CustomerJourneyExecutionManager
         return compact('processed', 'sent', 'skipped', 'failed');
     }
 
-    private function markSkipped(CustomerJourneyRun $run, string $reason): void
+    private function markSkipped(\App\Models\CustomerJourneyRun $run, string $reason): void
     {
         $run->forceFill([
             'metadata' => array_merge((array) $run->metadata, [
@@ -114,10 +94,12 @@ class CustomerJourneyExecutionManager
                 'last_auto_reason' => $reason,
                 'last_auto_checked_at' => now()->toIso8601String(),
             ]),
-        ])->save();
+        ]);
+
+        $this->journeyRuns->save($run);
     }
 
-    private function markFailed(CustomerJourneyRun $run, string $reason): void
+    private function markFailed(\App\Models\CustomerJourneyRun $run, string $reason): void
     {
         $run->forceFill([
             'sequence_state' => 'stalled',
@@ -126,7 +108,9 @@ class CustomerJourneyExecutionManager
                 'last_auto_reason' => $reason,
                 'last_auto_checked_at' => now()->toIso8601String(),
             ]),
-        ])->save();
+        ]);
+
+        $run = $this->journeyRuns->save($run);
 
         $this->customerTaskManager->createJourneyRescueTask(
             $run,

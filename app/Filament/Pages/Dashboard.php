@@ -10,8 +10,6 @@ use App\Domain\TenantGovernance\Services\SuperAdminOperationsReadModel;
 use App\Domain\TenantGovernance\Services\SuperAdminRevenueInsightsReader;
 use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
 use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
-use App\Models\CustomerConversation;
-use App\Models\CustomerTouchpoint;
 use App\Models\OperationalPlaybookTask;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
@@ -723,116 +721,6 @@ class Dashboard extends \Filament\Pages\Page
         return collect($this->monthlyProConversions);
     }
 
-    /**
-     * @param  callable(SubscriptionPayment): bool  $filter
-     */
-    private function convertedTenantCount(callable $filter): int
-    {
-        return $this->monthlyProConversionCollection()
-            ->filter($filter)
-            ->map(fn (SubscriptionPayment $payment): string => (string) $payment->tenant_id)
-            ->filter()
-            ->unique()
-            ->count();
-    }
-
-    private function conversationRevenueValue(CustomerConversation $conversation): float
-    {
-        $profile = $conversation->customerProfile;
-
-        if (! $profile instanceof \App\Models\CustomerProfile) {
-            return 0.0;
-        }
-
-        $firstConversion = (float) ($profile->first_conversion_value ?? 0);
-
-        if ($firstConversion > 0) {
-            return $firstConversion;
-        }
-
-        $initialLtv = (float) ($profile->initial_ltv ?? 0);
-
-        if ($initialLtv > 0) {
-            return $initialLtv;
-        }
-
-        return (float) ($profile->total_spent ?? 0);
-    }
-
-    private function conversationHasJourneyAssistance(CustomerConversation $conversation): bool
-    {
-        $signals = (array) data_get($conversation->metadata, 'business_signals', []);
-
-        if ($signals !== []) {
-            return true;
-        }
-
-        return $conversation->source_channel !== null && $conversation->source_channel !== '';
-    }
-
-    /**
-     * @param  Collection<int, CustomerTouchpoint>  $touchpoints
-     * @return array<string, array{label:string,revenue:float,vertical:string,owners:string,channels:string,conversations:int}>
-     */
-    private function buildConversationPathShares(Collection $touchpoints): array
-    {
-        $shares = [];
-
-        $touchpoints
-            ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->customer_conversation_id ?? ''))
-            ->each(function (Collection $items) use (&$shares): void {
-                $conversation = $items->first()?->conversation;
-
-                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') {
-                    return;
-                }
-
-                $path = $items
-                    ->sortBy('id')
-                    ->map(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_label', data_get($touchpoint->metadata, 'journey_step_title', $touchpoint->template_label)))
-                    ->filter()
-                    ->unique()
-                    ->values();
-
-                if ($path->isEmpty()) {
-                    return;
-                }
-
-                $tenant = $conversation->customerProfile?->tenant;
-                $label = $path->implode(' -> ');
-                $channels = $items->pluck('channel')->filter()->unique()->map(fn (string $channel): string => Str::of($channel)->replace('_', ' ')->title()->value())->implode(', ');
-                $owner = $conversation->owner?->name ?? 'Sin owner';
-                $segmentLabel = $tenant instanceof Tenant ? $this->segmentLabel($this->segmentKeyForTenant($tenant)) : 'General';
-
-                $shares[$label] ??= [
-                    'label' => $label,
-                    'revenue' => 0.0,
-                    'vertical' => $segmentLabel,
-                    'owners' => $owner,
-                    'channels' => $channels !== '' ? $channels : 'CRM',
-                    'conversations' => 0,
-                ];
-
-                $shares[$label]['revenue'] += $this->conversationRevenueValue($conversation);
-                $shares[$label]['conversations']++;
-            });
-
-        return $shares;
-    }
-
-    private function topConversationPathLabel(Collection $touchpoints): string
-    {
-        $shares = collect($this->buildConversationPathShares($touchpoints));
-
-        if ($shares->isEmpty()) {
-            return 'Sin ruta dominante';
-        }
-
-        $top = $shares->sortByDesc(fn (array $share): float => ((float) ($share['revenue'] ?? 0.0) * 1000) + (int) ($share['conversations'] ?? 0))->first();
-
-        return is_array($top) ? (string) ($top['label'] ?? 'Sin ruta dominante') : 'Sin ruta dominante';
-    }
-
     private function playbookTone(OperationalPlaybookTask $task): string
     {
         if ($task->isOverdue()) {
@@ -937,73 +825,6 @@ class Dashboard extends \Filament\Pages\Page
             || (int) ($tenant->crm_watch_score ?? 0) > 0;
     }
 
-    private function segmentKeyForPayment(SubscriptionPayment $payment): string
-    {
-        return $payment->tenant instanceof Tenant
-            ? $this->segmentKeyForTenant($payment->tenant)
-            : 'retail_general';
-    }
-
-    private function segmentKeyForTenant(Tenant $tenant): string
-    {
-        $segmentKey = (string) ($tenant->getRawOriginal('business_segment_key') ?? '');
-
-        return $segmentKey !== '' ? $segmentKey : 'retail_general';
-    }
-
-    private function segmentLabel(string $segmentKey): string
-    {
-        $label = config("business-segments.profiles.{$segmentKey}.label");
-
-        return is_string($label) && $label !== ''
-            ? $label
-            : Str::of($segmentKey === '' ? 'general' : $segmentKey)->replace('_', ' ')->title()->value();
-    }
-
-    private function planKeyForTenant(Tenant $tenant): string
-    {
-        $planKey = (string) ($tenant->getRawOriginal('plan_type') ?? '');
-
-        if ($planKey !== '') {
-            return $planKey;
-        }
-
-        return $tenant->is_pro ? 'pro' : Tenant::PLAN_SEMILLA;
-    }
-
-    private function planKeyForPayment(SubscriptionPayment $payment): string
-    {
-        $originPlan = (string) ($payment->plan_before_upgrade ?? '');
-
-        if ($originPlan !== '') {
-            return $originPlan;
-        }
-
-        return $payment->tenant instanceof Tenant
-            ? $this->planKeyForTenant($payment->tenant)
-            : 'pro';
-    }
-
-    private function planLabel(string $planKey): string
-    {
-        return match ($planKey) {
-            'pro' => 'PRO',
-            Tenant::PLAN_CRECIMIENTO => 'Crecimiento',
-            Tenant::PLAN_COSECHA => 'Cosecha',
-            default => 'Semilla',
-        };
-    }
-
-    private function cityLabelForPayment(SubscriptionPayment $payment): string
-    {
-        return (string) ($payment->tenant?->city?->name ?: 'Sin ciudad');
-    }
-
-    private function ownerKeyForPayment(SubscriptionPayment $payment): string
-    {
-        return (string) ($payment->tenant?->crm_owner_id ?: 'unassigned');
-    }
-
     private function hasPublishedOffer(Tenant $tenant): bool
     {
         return (int) ($tenant->products_total ?? 0) > 0 || (int) ($tenant->services_total ?? 0) > 0;
@@ -1061,70 +882,6 @@ class Dashboard extends \Filament\Pages\Page
             Tenant::CRM_TEAM_RETENTION => $this->portfolioCollection()->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count(),
             default => 0,
         };
-    }
-
-    private function closingChannelKey(Tenant $tenant): string
-    {
-        $signals = collect([
-            filled($tenant->whatsapp_number) ? 'whatsapp' : null,
-            filled($tenant->website_url) ? 'website' : null,
-            filled($tenant->phone) ? 'phone' : null,
-        ])->filter()->values();
-
-        if ($signals->count() >= 2) {
-            return 'multi';
-        }
-
-        return (string) ($signals->first() ?? 'none');
-    }
-
-    private function closingChannelLabel(string $channelKey): string
-    {
-        $label = config("revenue-ops.channels.{$channelKey}.label");
-
-        return is_string($label) && $label !== ''
-            ? $label
-            : Str::of($channelKey === '' ? 'none' : $channelKey)->replace('_', ' ')->title()->value();
-    }
-
-    private function closingChannelCopy(string $channelKey): string
-    {
-        $copy = config("revenue-ops.channels.{$channelKey}.copy");
-
-        return is_string($copy) && $copy !== ''
-            ? $copy
-            : 'Sin lectura adicional para este canal.';
-    }
-
-    private function revenuePlaybookConversionSignal(OperationalPlaybookTask $task): string
-    {
-        if ((string) $task->queue !== 'growth') {
-            return 'Playbook operativo para mover ingresos, continuidad o activacion.';
-        }
-
-        $segmentKey = (string) ($task->segment_key ?? '');
-        $segmentLabel = $this->segmentLabel($segmentKey);
-        $segmentConversions = $this->convertedTenantCount(
-            fn (SubscriptionPayment $payment): bool => $this->segmentKeyForPayment($payment) === $segmentKey
-        );
-        $ownerKey = (string) ($task->admin_owner_id ?? $task->tenant?->crm_owner_id ?? 'unassigned');
-        $ownerConversions = $this->convertedTenantCount(
-            fn (SubscriptionPayment $payment): bool => $this->ownerKeyForPayment($payment) === $ownerKey
-        );
-
-        if ($segmentConversions > 0 && $ownerConversions > 0) {
-            return $segmentConversions.' PRO este mes en '.$segmentLabel.' / owner con '.$ownerConversions.' cierres.';
-        }
-
-        if ($segmentConversions > 0) {
-            return $segmentConversions.' PRO este mes en '.$segmentLabel.'. Usa esa senal para priorizar el upsell.';
-        }
-
-        if ($ownerConversions > 0) {
-            return 'Owner con '.$ownerConversions.' conversiones PRO este mes. Conviene acelerar este playbook.';
-        }
-
-        return 'Sin conversiones PRO este mes en este vertical. Valida propuesta antes de empujar expansion.';
     }
 
     private function taskAdminHref(OperationalPlaybookTask $task): string

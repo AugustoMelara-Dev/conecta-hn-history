@@ -281,6 +281,10 @@ class AppServiceProvider extends ServiceProvider
             \App\Domain\TenantGovernance\Repositories\CustomerTaskRepositoryInterface::class,
             \App\Infrastructure\Repositories\TenantGovernance\EloquentCustomerTaskRepository::class
         );
+        $this->app->bind(
+            \App\Domain\TenantGovernance\Repositories\CustomerJourneyRunRepositoryInterface::class,
+            \App\Infrastructure\Repositories\TenantGovernance\EloquentCustomerJourneyRunRepository::class
+        );
 
         // API Domains
         $this->app->bind(

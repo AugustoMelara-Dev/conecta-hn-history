@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Repositories\CustomerTouchpointRepositoryInterface;
 use App\Mail\CustomerLifecycleMail;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
@@ -16,6 +17,7 @@ class CustomerAutomationManager
         private readonly CustomerMessagingGateway $messagingGateway,
         private readonly CustomerConversationOpsManager $conversationOpsManager,
         private readonly CustomerTouchpointGovernance $governance,
+        private readonly CustomerTouchpointRepositoryInterface $touchpoints,
     ) {}
 
     public function sendEmailTouchpoint(
@@ -38,9 +40,7 @@ class CustomerAutomationManager
             : null;
 
         $governance = $this->governance->definition($automationKey, 'email', $options);
-        $touchpoint = CustomerTouchpoint::query()
-            ->withoutGlobalScopes()
-            ->create([
+        $touchpoint = $this->touchpoints->create([
                 'tenant_id' => (string) $profile->tenant_id,
                 'customer_profile_id' => (int) $profile->getKey(),
                 'created_by_user_id' => $actorUserId,
@@ -87,9 +87,7 @@ class CustomerAutomationManager
             : null;
 
         $governance = $this->governance->definition($automationKey, 'whatsapp', $options);
-        $touchpoint = CustomerTouchpoint::query()
-            ->withoutGlobalScopes()
-            ->create([
+        $touchpoint = $this->touchpoints->create([
                 'tenant_id' => (string) $profile->tenant_id,
                 'customer_profile_id' => (int) $profile->getKey(),
                 'created_by_user_id' => $actorUserId,
@@ -120,10 +118,7 @@ class CustomerAutomationManager
     public function retryTouchpoint(CustomerTouchpoint $touchpoint, ?string $actorUserId = null): CustomerTouchpoint
     {
         /** @var CustomerTouchpoint|null $record */
-        $record = CustomerTouchpoint::query()
-            ->withoutGlobalScopes()
-            ->with(['customerProfile' => fn ($query) => $query->withoutGlobalScopes()->with('tenant')])
-            ->find($touchpoint->getKey());
+        $record = $this->touchpoints->findWithProfile((int) $touchpoint->getKey());
 
         if (! $record instanceof CustomerTouchpoint) {
             return $touchpoint;
@@ -166,7 +161,9 @@ class CustomerAutomationManager
 
         $touchpoint->forceFill([
             'next_retry_at' => $nextRetryAt,
-        ])->save();
+        ]);
+
+        $this->touchpoints->save($touchpoint);
 
         return $touchpoint->fresh();
     }
@@ -175,7 +172,9 @@ class CustomerAutomationManager
     {
         $touchpoint->forceFill([
             'next_retry_at' => null,
-        ])->save();
+        ]);
+
+        $this->touchpoints->save($touchpoint);
 
         return $touchpoint->fresh();
     }

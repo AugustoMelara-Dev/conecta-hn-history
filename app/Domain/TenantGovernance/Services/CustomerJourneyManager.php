@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Repositories\CustomerJourneyRunRepositoryInterface;
 use App\Models\CustomerConversation;
-use App\Models\CustomerJourneyRun;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
 use Illuminate\Support\Carbon;
@@ -15,9 +15,10 @@ class CustomerJourneyManager
     public function __construct(
         private readonly CustomerJourneyBranchResolver $branchResolver,
         private readonly CustomerTaskManager $customerTaskManager,
+        private readonly CustomerJourneyRunRepositoryInterface $journeyRuns,
     ) {}
 
-    public function sync(CustomerConversation $conversation, CustomerProfile $profile): CustomerJourneyRun
+    public function sync(CustomerConversation $conversation, CustomerProfile $profile): \App\Models\CustomerJourneyRun
     {
         /** @var CustomerConversationTemplateManager $templateManager */
         $templateManager = app(CustomerConversationTemplateManager::class);
@@ -26,11 +27,7 @@ class CustomerJourneyManager
         $businessSegmentKey = filled($profile->tenant?->business_segment_key)
             ? (string) $profile->tenant->business_segment_key
             : null;
-        $run = CustomerJourneyRun::query()
-            ->withoutGlobalScopes()
-            ->firstOrNew([
-                'customer_conversation_id' => (int) $conversation->getKey(),
-            ]);
+        $run = $this->journeyRuns->firstOrNewByConversation((int) $conversation->getKey());
         $resolved = $this->resolveStepState($conversation, $steps, $segmentKey, $run->exists ? (int) $run->current_step_index : null);
         $journeyKey = $this->journeyKey($segmentKey, $businessSegmentKey);
         $currentStep = $this->branchResolver->resolve(
@@ -99,7 +96,9 @@ class CustomerJourneyManager
                 'auto_send' => (bool) ($currentStep['auto_send'] ?? false),
                 'current_step_executed_at' => $currentStepExecutedAt?->toIso8601String(),
             ],
-        ])->save();
+        ]);
+
+        $run = $this->journeyRuns->save($run);
 
         if ($sequenceState === 'stalled') {
             $this->customerTaskManager->createJourneyRescueTask(
@@ -108,10 +107,10 @@ class CustomerJourneyManager
             );
         }
 
-        return $run->fresh();
+        return $run;
     }
 
-    public function advanceAfterAutomation(CustomerJourneyRun $run, CustomerTouchpoint $touchpoint): CustomerJourneyRun
+    public function advanceAfterAutomation(\App\Models\CustomerJourneyRun $run, CustomerTouchpoint $touchpoint): \App\Models\CustomerJourneyRun
     {
         $run = $run->fresh();
 
@@ -149,7 +148,9 @@ class CustomerJourneyManager
             'last_team_message_at' => $executedAt,
             'next_action_at' => $stepDueAt,
             'escalation_due_at' => $stepDueAt,
-        ])->save();
+        ]);
+
+        $conversation->save();
 
         $currentStepExecutedAt = $hasAdvanced ? null : $executedAt;
         $sequenceState = 'waiting_customer';
@@ -189,7 +190,9 @@ class CustomerJourneyManager
                 'current_step_executed_at' => $currentStepExecutedAt?->toIso8601String(),
                 'last_auto_touchpoint_id' => (int) $touchpoint->getKey(),
             ]),
-        ])->save();
+        ]);
+
+        $run = $this->journeyRuns->save($run);
 
         if ($sequenceState === 'stalled') {
             $this->customerTaskManager->createJourneyRescueTask(
@@ -198,7 +201,7 @@ class CustomerJourneyManager
             );
         }
 
-        return $run->fresh();
+        return $run;
     }
 
     /**
