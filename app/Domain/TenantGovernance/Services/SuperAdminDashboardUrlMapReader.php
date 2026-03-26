@@ -6,6 +6,10 @@ namespace App\Domain\TenantGovernance\Services;
 
 final class SuperAdminDashboardUrlMapReader
 {
+    public function __construct(
+        private readonly SuperAdminDashboardRouteResolver $routeResolver,
+    ) {}
+
     /**
      * @return array<string, string>
      */
@@ -23,10 +27,6 @@ final class SuperAdminDashboardUrlMapReader
 
     private function safeRoute(string $name, array $parameters = []): string
     {
-        try {
-            return route($name, $parameters, false);
-        } catch (\Throwable) {
-            return '#';
-        }
+        return $this->routeResolver->resolve($name, $parameters);
     }
 }

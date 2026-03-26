@@ -216,11 +216,11 @@ class CampaignResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold')
-                    ->description(fn (Campaign $record): string => $record->audience_summary),
+                    ->description(fn (Campaign $record): string => static::presentationReader()->audienceSummary($record)),
                 Tables\Columns\TextColumn::make('type')
                     ->label('Canal')
                     ->badge()
-                    ->state(fn (Campaign $record): string => $record->type_label)
+                    ->state(fn (Campaign $record): string => static::presentationReader()->typeLabel($record))
                     ->color(fn (Campaign $record): string => static::presentationReader()->typeTone($record)),
                 Tables\Columns\TextColumn::make('cadence_label')
                     ->label('Cadencia')
@@ -282,7 +282,7 @@ class CampaignResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Despachar campana')
-                    ->visible(fn (Campaign $record) => $record->status !== 'sending')
+                    ->visible(fn (Campaign $record): bool => static::presentationReader()->canDispatch($record))
                     ->modalDescription(fn (Campaign $record): string => static::presentationReader()->dispatchDescription($record))
                     ->action(function (Campaign $record): void {
                         self::runDispatch($record);

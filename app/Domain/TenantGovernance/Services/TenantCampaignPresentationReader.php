@@ -78,6 +78,21 @@ final class TenantCampaignPresentationReader
         return 'Usa estas cadencias como punto de partida para campanas de recompra, reactivacion o upsell.';
     }
 
+    public function audienceSummary(Campaign $campaign): string
+    {
+        return $campaign->audience_summary;
+    }
+
+    public function typeLabel(Campaign $campaign): string
+    {
+        return $campaign->type_label;
+    }
+
+    public function canDispatch(Campaign $campaign): bool
+    {
+        return $campaign->status !== 'sending';
+    }
+
     public function dispatchLabel(Campaign $campaign): string
     {
         return $campaign->status === 'scheduled' ? 'Lanzar ahora' : 'Enviar';

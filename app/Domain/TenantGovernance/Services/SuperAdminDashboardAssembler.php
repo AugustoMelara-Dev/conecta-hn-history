@@ -7,7 +7,6 @@ namespace App\Domain\TenantGovernance\Services;
 use App\Models\OperationalPlaybookTask;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
 final class SuperAdminDashboardAssembler
@@ -16,7 +15,6 @@ final class SuperAdminDashboardAssembler
         private readonly SuperAdminOperationsReadModel $operations,
         private readonly SuperAdminJourneyAnalyticsReader $journeyAnalytics,
         private readonly SuperAdminRevenueInsightsReader $revenueInsights,
-        private readonly SuperAdminDashboardUrlMapReader $urlMapReader,
     ) {}
 
     /**
@@ -25,19 +23,17 @@ final class SuperAdminDashboardAssembler
      * @param  Collection<int, SubscriptionPayment>  $monthlyProConversions
      * @return array<string, mixed>
      */
-    public function build(array $counts, Collection $tasks, Collection $portfolio, Collection $monthlyProConversions, array $urls): array
+    public function build(array $counts, Collection $tasks, Collection $portfolio, Collection $monthlyProConversions, array $urls, callable $safeRoute): array
     {
-        $route = fn (string $name, array $parameters = []): string => $this->safeRouteFromMap($name, $parameters, $urls);
-
         return [
             'openAttentionCount' => $this->openAttentionCount($counts),
             'attentionQueues' => $this->attentionQueues($counts, $urls),
             'operationalLanes' => $this->operationalLanes($tasks, (string) ($urls['operations'] ?? '#')),
-            'globalWorkboard' => $this->operations->globalWorkboard($tasks, (string) ($urls['operations'] ?? '#'), (string) ($urls['tenants'] ?? '#'), $route),
+            'globalWorkboard' => $this->operations->globalWorkboard($tasks, (string) ($urls['operations'] ?? '#'), (string) ($urls['tenants'] ?? '#'), $safeRoute),
             'assigneeLoad' => $this->operations->assigneeLoad($tasks, (string) ($urls['operations'] ?? '#')),
             'ownerPortfolio' => $this->operations->ownerPortfolio($portfolio, (string) ($urls['operations'] ?? '#')),
             'teamPortfolio' => $this->operations->teamPortfolio($portfolio, (string) ($urls['operations'] ?? '#')),
-            'slaBacklog' => $this->operations->slaBacklog($portfolio, $route),
+            'slaBacklog' => $this->operations->slaBacklog($portfolio, $safeRoute),
             'commercialFunnel' => $this->operations->commercialFunnel($portfolio, (int) ($counts['tenantsCount'] ?? 0), (string) ($urls['tenants'] ?? '#')),
             'ownerGoals' => $this->ownerGoals($portfolio, $tasks, (string) ($urls['operations'] ?? '#')),
             'teamGoals' => $this->teamGoals($portfolio, $tasks, (string) ($urls['operations'] ?? '#')),
@@ -50,43 +46,11 @@ final class SuperAdminDashboardAssembler
             'segmentExpansion' => $this->revenueInsights->segmentExpansion($portfolio, $monthlyProConversions, (string) ($urls['tenants'] ?? '#')),
             'verticalChurn' => $this->revenueInsights->verticalChurn($portfolio, (string) ($urls['tenants'] ?? '#')),
             'verticalJourneyUplift' => $this->journeyAnalytics->verticalJourneyUplift((string) ($urls['operations'] ?? '#')),
-            'revenuePlaybooks' => $this->operations->revenuePlaybooks($tasks, $monthlyProConversions, (string) ($urls['operations'] ?? '#'), (string) ($urls['tenants'] ?? '#'), $route),
+            'revenuePlaybooks' => $this->operations->revenuePlaybooks($tasks, $monthlyProConversions, (string) ($urls['operations'] ?? '#'), (string) ($urls['tenants'] ?? '#'), $safeRoute),
             'networkJourneyPaths' => $this->journeyAnalytics->networkJourneyPaths((string) ($urls['operations'] ?? '#')),
-            'churnWatchlist' => $this->operations->churnWatchlist($portfolio, $route),
-            'commercialFollowups' => $this->operations->commercialFollowups($tasks, (string) ($urls['operations'] ?? '#'), (string) ($urls['tenants'] ?? '#'), $route),
+            'churnWatchlist' => $this->operations->churnWatchlist($portfolio, $safeRoute),
+            'commercialFollowups' => $this->operations->commercialFollowups($tasks, (string) ($urls['operations'] ?? '#'), (string) ($urls['tenants'] ?? '#'), $safeRoute),
         ];
-    }
-
-    /**
-     * @param  array<string, string>  $urls
-     */
-    private function safeRouteFromMap(string $name, array $parameters, array $urls): string
-    {
-        $known = [
-            'filament.admin.resources.tenants.index' => 'tenants',
-            'filament.admin.resources.users.index' => 'users',
-            'filament.admin.resources.payments.index' => 'payments',
-            'filament.admin.pages.manage-general-settings' => 'settings',
-            'filament.admin.pages.billing' => 'billing',
-            'filament.admin.resources.operational-playbook-tasks.index' => 'operations',
-        ];
-
-        $key = $known[$name] ?? null;
-
-        if ($key !== null && $parameters === []) {
-            return (string) Arr::get($urls, $key, '#');
-        }
-
-        return $this->urlMapReader->read()[$key] ?? $this->fallbackRoute($name, $parameters);
-    }
-
-    private function fallbackRoute(string $name, array $parameters = []): string
-    {
-        try {
-            return route($name, $parameters, false);
-        } catch (\Throwable) {
-            return '#';
-        }
     }
 
     /**

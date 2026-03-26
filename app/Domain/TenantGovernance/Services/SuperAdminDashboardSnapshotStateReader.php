@@ -29,7 +29,8 @@ final class SuperAdminDashboardSnapshotStateReader
         Collection $portfolio,
         Collection $monthlyProConversions,
         array $urls,
+        callable $safeRoute,
     ): array {
-        return $this->assembler->build($metrics, $tasks, $portfolio, $monthlyProConversions, $urls);
+        return $this->assembler->build($metrics, $tasks, $portfolio, $monthlyProConversions, $urls, $safeRoute);
     }
 }

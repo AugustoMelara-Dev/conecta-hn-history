@@ -7,6 +7,7 @@ namespace App\Filament\App\Resources;
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Domain\TenantGovernance\Services\CustomerProfileActionFormReader;
 use App\Domain\TenantGovernance\Services\CustomerProfileSectionViewReader;
+use App\Domain\TenantGovernance\Services\CustomerProfileTableFilterOptionsReader;
 use App\Domain\TenantGovernance\Services\CustomerProfileTablePresentationReader;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfileActionCoordinator;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfilePresentationReader;
@@ -355,16 +356,16 @@ class CustomerProfileResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('lifecycle_stage')
                     ->label('Ciclo')
-                    ->options(static::presentationReader()->lifecycleStageOptions()),
+                    ->options(static::tableFilterOptionsReader()->lifecycleStageOptions()),
                 Tables\Filters\SelectFilter::make('customer_segment')
                     ->label('Segmento')
-                    ->options(static::presentationReader()->manualSegmentOptions()),
+                    ->options(static::tableFilterOptionsReader()->segmentOptions()),
                 Tables\Filters\SelectFilter::make('preferred_channel')
                     ->label('Canal')
-                    ->options(static::presentationReader()->preferredChannelOptions()),
+                    ->options(static::tableFilterOptionsReader()->preferredChannelOptions()),
                 Tables\Filters\SelectFilter::make('loyalty_tier')
                     ->label('Fidelidad')
-                    ->options(static::presentationReader()->loyaltyTierOptions()),
+                    ->options(static::tableFilterOptionsReader()->loyaltyTierOptions()),
                 Tables\Filters\SelectFilter::make('assigned_user_id')
                     ->label('Owner')
                     ->options(static::teamOptions()),
@@ -629,6 +630,11 @@ class CustomerProfileResource extends Resource
     protected static function tablePresentationReader(): CustomerProfileTablePresentationReader
     {
         return app(CustomerProfileTablePresentationReader::class);
+    }
+
+    protected static function tableFilterOptionsReader(): CustomerProfileTableFilterOptionsReader
+    {
+        return app(CustomerProfileTableFilterOptionsReader::class);
     }
 
     protected static function sectionViewReader(): CustomerProfileSectionViewReader

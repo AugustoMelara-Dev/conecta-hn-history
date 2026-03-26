@@ -15,6 +15,7 @@ final class SuperAdminDashboardStateReader
         private readonly SuperAdminPortfolioReader $portfolioReader,
         private readonly SuperAdminDashboardCountsReader $countsReader,
         private readonly SuperAdminDashboardSnapshotStateReader $snapshotReader,
+        private readonly SuperAdminDashboardRouteResolver $routeResolver,
     ) {}
 
     /**
@@ -41,7 +42,7 @@ final class SuperAdminDashboardStateReader
             'portfolioTenants' => $portfolioTenants,
             'monthlyProConversions' => $monthlyProConversions,
             ...$metrics,
-            'snapshot' => $this->snapshotReader->read($metrics, $tasks, $portfolio, $conversions, $urls),
+            'snapshot' => $this->snapshotReader->read($metrics, $tasks, $portfolio, $conversions, $urls, $this->routeResolver->callback()),
         ];
     }
 }
