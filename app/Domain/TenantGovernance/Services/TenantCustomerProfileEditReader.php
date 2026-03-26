@@ -10,6 +10,7 @@ final class TenantCustomerProfileEditReader
 {
     public function __construct(
         private readonly CustomerProfileWorkspaceReader $workspaceReader,
+        private readonly CustomerProfileSectionReader $sectionReader,
     ) {}
 
     public function subheading(): string
@@ -28,5 +29,16 @@ final class TenantCustomerProfileEditReader
     public function duplicateLabel(CustomerProfile $profile, mixed $value): ?string
     {
         return $this->workspaceReader->duplicateLabel($profile, $value);
+    }
+
+    /**
+     * @return array<string, string|int|float|null>
+     */
+    public function formState(CustomerProfile $profile): array
+    {
+        return [
+            ...$this->sectionReader->profileSummary($profile),
+            ...$this->sectionReader->loyaltySummary($profile),
+        ];
     }
 }

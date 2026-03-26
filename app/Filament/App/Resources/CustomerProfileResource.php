@@ -167,12 +167,10 @@ class CustomerProfileResource extends Resource
                             ->schema([
                                 Forms\Components\TextInput::make('acquisition_channel')
                                     ->label('Canal de entrada')
-                                    ->formatStateUsing(fn (CustomerProfile $record): string => $record->acquisition_channel_label)
                                     ->disabled()
                                     ->dehydrated(false),
                                 Forms\Components\TextInput::make('loyalty_tier')
                                     ->label('Tier')
-                                    ->formatStateUsing(fn (CustomerProfile $record): string => $record->loyalty_tier_label)
                                     ->disabled()
                                     ->dehydrated(false),
                                 Forms\Components\TextInput::make('loyalty_points_balance')
@@ -206,7 +204,6 @@ class CustomerProfileResource extends Resource
                             ]),
                         Forms\Components\Textarea::make('next_reward_copy')
                             ->label('Lectura de fidelidad')
-                            ->formatStateUsing(fn (CustomerProfile $record): string => $record->next_reward_copy)
                             ->disabled()
                             ->dehydrated(false)
                             ->rows(2),
@@ -459,19 +456,12 @@ class CustomerProfileResource extends Resource
                             ->rows(3),
                     ])
                     ->action(function (CustomerProfile $record, array $data): void {
-                        $feedback = app(TenantCustomerProfileActionCoordinator::class)->awardBonus($record, $data, auth()->id());
-
-                        Notification::make()
-                            ->title($feedback['title'])
-                            ->color($feedback['color'])
-                            ->body($feedback['body'])
-                            ->send();
+                        static::notifyActionFeedback(static::actionCoordinator()->awardBonus($record, $data, auth()->id()));
                     }),
                 Action::make('redeem_reward')
                     ->label('Canjear')
                     ->icon('heroicon-o-gift')
                     ->color('success')
-                    ->visible(fn (CustomerProfile $record): bool => app(CustomerLoyaltyManager::class)->hasRedeemableReward($record))
                     ->visible(fn (CustomerProfile $record): bool => static::loyaltyManager()->hasRedeemableReward($record))
                     ->form([
                         Forms\Components\Select::make('reward_id')
@@ -481,13 +471,7 @@ class CustomerProfileResource extends Resource
                             ->options(fn (CustomerProfile $record): array => static::loyaltyManager()->rewardOptionsForProfile($record)),
                     ])
                     ->action(function (CustomerProfile $record, array $data): void {
-                        $feedback = app(TenantCustomerProfileActionCoordinator::class)->redeemReward($record, $data, auth()->id());
-
-                        Notification::make()
-                            ->title($feedback['title'])
-                            ->color($feedback['color'])
-                            ->body($feedback['body'])
-                            ->send();
+                        static::notifyActionFeedback(static::actionCoordinator()->redeemReward($record, $data, auth()->id()));
                     }),
                 Action::make('email_follow_up')
                     ->label('Email')
@@ -512,13 +496,7 @@ class CustomerProfileResource extends Resource
                     ])
                     ->visible(fn (CustomerProfile $record): bool => filled($record->email))
                     ->action(function (CustomerProfile $record, array $data): void {
-                        $feedback = app(TenantCustomerProfileActionCoordinator::class)->sendEmailFollowUp($record, $data, auth()->id());
-
-                        Notification::make()
-                            ->title($feedback['title'])
-                            ->color($feedback['color'])
-                            ->body($feedback['body'])
-                            ->send();
+                        static::notifyActionFeedback(static::actionCoordinator()->sendEmailFollowUp($record, $data, auth()->id()));
                     }),
                 Action::make('whatsapp_follow_up')
                     ->label('WhatsApp')
@@ -529,13 +507,7 @@ class CustomerProfileResource extends Resource
                     ->modalDescription('Esto usa una plantilla auditable de WhatsApp Cloud API y deja trazabilidad en el CRM.')
                     ->visible(fn (CustomerProfile $record): bool => filled($record->phone))
                     ->action(function (CustomerProfile $record): void {
-                        $feedback = app(TenantCustomerProfileActionCoordinator::class)->sendWhatsappFollowUp($record, auth()->id());
-
-                        Notification::make()
-                            ->title($feedback['title'])
-                            ->color($feedback['color'])
-                            ->body($feedback['body'])
-                            ->send();
+                        static::notifyActionFeedback(static::actionCoordinator()->sendWhatsappFollowUp($record, auth()->id()));
                     }),
                 Action::make('reactivation_email')
                     ->label('Reactivar')
@@ -546,13 +518,7 @@ class CustomerProfileResource extends Resource
                     ->modalDescription('Usa el mejor canal segun el cliente y respeta opt-in antes de enviar.')
                     ->visible(fn (CustomerProfile $record): bool => (int) $record->reactivation_score >= 65 && filled($record->email))
                     ->action(function (CustomerProfile $record): void {
-                        $feedback = app(TenantCustomerProfileActionCoordinator::class)->triggerReactivation($record, auth()->id());
-
-                        Notification::make()
-                            ->title($feedback['title'])
-                            ->color($feedback['color'])
-                            ->body($feedback['body'])
-                            ->send();
+                        static::notifyActionFeedback(static::actionCoordinator()->triggerReactivation($record, auth()->id()));
                     }),
                 EditAction::make()
                     ->label('Abrir ficha')
@@ -672,6 +638,23 @@ class CustomerProfileResource extends Resource
     protected static function automationManager(): CustomerAutomationManager
     {
         return app(CustomerAutomationManager::class);
+    }
+
+    protected static function actionCoordinator(): TenantCustomerProfileActionCoordinator
+    {
+        return app(TenantCustomerProfileActionCoordinator::class);
+    }
+
+    /**
+     * @param  array{title:string,color:string,body:string}  $feedback
+     */
+    protected static function notifyActionFeedback(array $feedback): void
+    {
+        Notification::make()
+            ->title($feedback['title'])
+            ->color($feedback['color'])
+            ->body($feedback['body'])
+            ->send();
     }
 }
 

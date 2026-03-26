@@ -24,6 +24,18 @@ class EditCustomerProfile extends EditTenantRecord
         return $this->editReader()->subheading();
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        return [
+            ...$data,
+            ...$this->editReader()->formState($this->getRecord()),
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -55,7 +67,7 @@ class EditCustomerProfile extends EditTenantRecord
                         return;
                     }
 
-                    $merged = app(CustomerProfileManager::class)->mergeProfiles(
+                    $merged = $this->profileManager()->mergeProfiles(
                         primary: $this->getRecord(),
                         duplicate: $duplicate,
                         actorUserId: auth()->id(),
@@ -98,5 +110,10 @@ class EditCustomerProfile extends EditTenantRecord
     private function editReader(): TenantCustomerProfileEditReader
     {
         return app(TenantCustomerProfileEditReader::class);
+    }
+
+    private function profileManager(): CustomerProfileManager
+    {
+        return app(CustomerProfileManager::class);
     }
 }

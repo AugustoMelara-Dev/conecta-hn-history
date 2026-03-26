@@ -318,7 +318,7 @@ class CampaignResource extends Resource
                             return;
                         }
 
-                        $result = app(TenantCampaignActionCoordinator::class)->dispatch($tenant, $record);
+                        $result = self::actionCoordinator()->dispatch($tenant, $record);
 
                         Notification::make()
                             ->title($result['title'])
@@ -415,5 +415,10 @@ class CampaignResource extends Resource
     private static function workspaceReader(): TenantCampaignWorkspaceReader
     {
         return app(TenantCampaignWorkspaceReader::class);
+    }
+
+    private static function actionCoordinator(): TenantCampaignActionCoordinator
+    {
+        return app(TenantCampaignActionCoordinator::class);
     }
 }
