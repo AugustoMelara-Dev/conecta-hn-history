@@ -1,0 +1,47 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\TenantGovernance\Services;
+
+use App\Models\Campaign;
+
+final class TenantCampaignPresentationReader
+{
+    public function dispatchLabel(Campaign $campaign): string
+    {
+        return $campaign->status === 'scheduled' ? 'Lanzar ahora' : 'Enviar';
+    }
+
+    public function dispatchDescription(Campaign $campaign): string
+    {
+        return $campaign->usesCadence()
+            ? 'Se lanzara ahora y, como tiene cadencia activa, seguira corriendo con la repeticion configurada.'
+            : 'Se enviara esta campana a la audiencia filtrada. Continuamos?';
+    }
+
+    public function typeTone(Campaign $campaign): string
+    {
+        return $campaign->type === 'whatsapp' ? 'success' : 'info';
+    }
+
+    public function cadenceTone(Campaign $campaign): string
+    {
+        return $campaign->usesCadence() ? 'warning' : ($campaign->scheduled_at ? 'info' : 'gray');
+    }
+
+    public function recipientsCopy(?Campaign $campaign): string
+    {
+        return $campaign ? $campaign->recipients_count.' contactos' : 'Se calculara al enviar';
+    }
+
+    public function sentAtCopy(?Campaign $campaign): string
+    {
+        return $campaign && $campaign->sent_at ? $campaign->sent_at->format('d/m/Y H:i') : 'Aun no enviada';
+    }
+
+    public function nextRunCopy(?Campaign $campaign): string
+    {
+        return $campaign && $campaign->next_run_at ? $campaign->next_run_at->format('d/m/Y H:i') : 'Sin agenda activa';
+    }
+}

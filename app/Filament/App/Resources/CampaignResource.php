@@ -8,6 +8,7 @@ use App\Application\Marketing\Jobs\DispatchCampaignSegment;
 use App\Domain\Marketing\Enums\AudienceType;
 use App\Domain\TenantGovernance\Services\TenantCampaignActionCoordinator;
 use App\Domain\TenantGovernance\Services\TenantCampaignDispatchPlanner;
+use App\Domain\TenantGovernance\Services\TenantCampaignPresentationReader;
 use App\Domain\TenantGovernance\Services\TenantCampaignWorkspaceReader;
 use App\Models\Campaign;
 use App\Models\Tenant;
@@ -220,13 +221,13 @@ class CampaignResource extends Resource
                     ->schema([
                         Forms\Components\Placeholder::make('recipients_count')
                             ->label('Destinatarios')
-                            ->content(fn (?Campaign $record) => $record ? $record->recipients_count.' contactos' : 'Se calculara al enviar'),
+                            ->content(fn (?Campaign $record) => static::presentationReader()->recipientsCopy($record)),
                         Forms\Components\Placeholder::make('sent_at')
                             ->label('Ultimo envio')
-                            ->content(fn (?Campaign $record) => $record && $record->sent_at ? $record->sent_at->format('d/m/Y H:i') : 'Aun no enviada'),
+                            ->content(fn (?Campaign $record) => static::presentationReader()->sentAtCopy($record)),
                         Forms\Components\Placeholder::make('next_run_at')
                             ->label('Proxima corrida')
-                            ->content(fn (?Campaign $record) => $record && $record->next_run_at ? $record->next_run_at->format('d/m/Y H:i') : 'Sin agenda activa'),
+                            ->content(fn (?Campaign $record) => static::presentationReader()->nextRunCopy($record)),
                     ])
                     ->columns(3)
                     ->hidden(fn (string $operation) => $operation === 'create'),
@@ -247,11 +248,11 @@ class CampaignResource extends Resource
                     ->label('Canal')
                     ->badge()
                     ->state(fn (Campaign $record): string => $record->type_label)
-                    ->color(fn (Campaign $record): string => $record->type === 'whatsapp' ? 'success' : 'info'),
+                    ->color(fn (Campaign $record): string => static::presentationReader()->typeTone($record)),
                 Tables\Columns\TextColumn::make('cadence_label')
                     ->label('Cadencia')
                     ->badge()
-                    ->color(fn (Campaign $record): string => $record->usesCadence() ? 'warning' : ($record->scheduled_at ? 'info' : 'gray')),
+                    ->color(fn (Campaign $record): string => static::presentationReader()->cadenceTone($record)),
                 Tables\Columns\TextColumn::make('loyaltyReward.name')
                     ->label('Reward')
                     ->default('Sin reward')
@@ -303,7 +304,7 @@ class CampaignResource extends Resource
             ])
             ->actions([
                 Action::make('send')
-                    ->label(fn (Campaign $record): string => $record->status === 'scheduled' ? 'Lanzar ahora' : 'Enviar')
+                    ->label(fn (Campaign $record): string => static::presentationReader()->dispatchLabel($record))
                     ->icon('heroicon-o-paper-airplane')
                     ->color('success')
                     ->requiresConfirmation()
@@ -420,5 +421,10 @@ class CampaignResource extends Resource
     private static function actionCoordinator(): TenantCampaignActionCoordinator
     {
         return app(TenantCampaignActionCoordinator::class);
+    }
+
+    private static function presentationReader(): TenantCampaignPresentationReader
+    {
+        return app(TenantCampaignPresentationReader::class);
     }
 }

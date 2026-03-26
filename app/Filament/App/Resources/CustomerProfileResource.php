@@ -6,6 +6,7 @@ namespace App\Filament\App\Resources;
 
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Domain\TenantGovernance\Services\CustomerLoyaltyManager;
+use App\Domain\TenantGovernance\Services\CustomerProfileActionFormReader;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfileActionCoordinator;
 use App\Domain\TenantGovernance\Services\TenantCustomerProfilePresentationReader;
 use App\Domain\TenantGovernance\Services\TenantCustomerWorkspaceReader;
@@ -462,13 +463,13 @@ class CustomerProfileResource extends Resource
                     ->label('Canjear')
                     ->icon('heroicon-o-gift')
                     ->color('success')
-                    ->visible(fn (CustomerProfile $record): bool => static::loyaltyManager()->hasRedeemableReward($record))
+                    ->visible(fn (CustomerProfile $record): bool => static::actionFormReader()->canRedeemReward($record))
                     ->form([
                         Forms\Components\Select::make('reward_id')
                             ->label('Recompensa')
                             ->native(false)
                             ->required()
-                            ->options(fn (CustomerProfile $record): array => static::loyaltyManager()->rewardOptionsForProfile($record)),
+                            ->options(fn (CustomerProfile $record): array => static::actionFormReader()->rewardOptions($record)),
                     ])
                     ->action(function (CustomerProfile $record, array $data): void {
                         static::notifyActionFeedback(static::actionCoordinator()->redeemReward($record, $data, auth()->id()));
@@ -479,10 +480,7 @@ class CustomerProfileResource extends Resource
                     ->color('info')
                     ->modalHeading('Enviar seguimiento por email')
                     ->modalDescription('Esto crea una entrega auditada en el CRM y actualiza el ultimo contacto del cliente.')
-                    ->fillForm(fn (CustomerProfile $record): array => [
-                        'automation_key' => 'manual_follow_up',
-                        ...static::automationManager()->preview($record, 'manual_follow_up'),
-                    ])
+                    ->fillForm(fn (CustomerProfile $record): array => static::actionFormReader()->emailFollowUpForm($record))
                     ->form([
                         Forms\Components\Hidden::make('automation_key'),
                         Forms\Components\TextInput::make('subject')
@@ -643,6 +641,11 @@ class CustomerProfileResource extends Resource
     protected static function actionCoordinator(): TenantCustomerProfileActionCoordinator
     {
         return app(TenantCustomerProfileActionCoordinator::class);
+    }
+
+    protected static function actionFormReader(): CustomerProfileActionFormReader
+    {
+        return app(CustomerProfileActionFormReader::class);
     }
 
     /**
