@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Domain\TenantGovernance\Services\SuperAdminPortfolioReader;
 use App\Domain\TenantGovernance\Services\SuperAdminJourneyAnalyticsReader;
 use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
 use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
@@ -230,48 +231,21 @@ class Dashboard extends \Filament\Pages\Page
     private function loadMetrics(): void
     {
         try {
-            $portfolio = $this->portfolioCollection();
+            $reader = app(SuperAdminPortfolioReader::class);
+            $metrics = $reader->metrics($this->portfolioCollection(), $this->monthlyProConversionCollection());
 
-            $this->tenantsCount = $portfolio->count();
-            $this->proTenantsCount = $portfolio->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
-            $this->usersCount = User::query()->count();
-            $this->proConversionsThisMonthCount = $this->monthlyProConversionCollection()
-                ->map(fn (SubscriptionPayment $payment): string => (string) $payment->tenant_id)
-                ->filter()
-                ->unique()
-                ->count();
-            $this->pendingPaymentsCount = SubscriptionPayment::query()
-                ->withoutGlobalScopes()
-                ->where('status', SubscriptionPayment::STATUS_PENDING)
-                ->count();
-            $this->pendingTenantsCount = $portfolio->filter(fn (Tenant $tenant): bool => (string) $tenant->getRawOriginal('status') === 'pending')->count();
-            $this->suspendedTenantsCount = $portfolio->filter(fn (Tenant $tenant): bool => ! (bool) $tenant->getAttribute('is_active'))->count();
-            $this->catalogGapCount = $portfolio
-                ->filter(fn (Tenant $tenant): bool => (int) ($tenant->products_total ?? 0) === 0 && (int) ($tenant->services_total ?? 0) === 0)
-                ->count();
-            $this->expiringProCount = $portfolio
-                ->filter(function (Tenant $tenant): bool {
-                    return $tenant->is_pro
-                        && $tenant->subscription_ends_at instanceof Carbon
-                        && $tenant->subscription_ends_at->between(now(), now()->addDays(7));
-                })
-                ->count();
-            $this->crmWatchlistCount = $portfolio
-                ->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)
-                ->count();
-            $this->atRiskTenantsCount = $this->crmWatchlistCount;
-            $this->crmOverdueAccountsCount = $portfolio
-                ->filter(fn (Tenant $tenant): bool => $tenant->crm_next_follow_up_at instanceof Carbon && $tenant->crm_next_follow_up_at->isPast())
-                ->count();
-            $this->crmFollowupsTodayCount = $portfolio
-                ->filter(function (Tenant $tenant): bool {
-                    return $tenant->crm_next_follow_up_at instanceof Carbon
-                        && $tenant->crm_next_follow_up_at->between(now()->startOfDay(), now()->endOfDay());
-                })
-                ->count();
-            $this->crmOwnedAccountsCount = $portfolio
-                ->filter(fn (Tenant $tenant): bool => filled($tenant->crm_owner_id))
-                ->count();
+            $this->tenantsCount = $metrics['tenantsCount'];
+            $this->proTenantsCount = $metrics['proTenantsCount'];
+            $this->proConversionsThisMonthCount = $metrics['proConversionsThisMonthCount'];
+            $this->pendingTenantsCount = $metrics['pendingTenantsCount'];
+            $this->suspendedTenantsCount = $metrics['suspendedTenantsCount'];
+            $this->catalogGapCount = $metrics['catalogGapCount'];
+            $this->expiringProCount = $metrics['expiringProCount'];
+            $this->crmWatchlistCount = $metrics['crmWatchlistCount'];
+            $this->atRiskTenantsCount = $metrics['atRiskTenantsCount'];
+            $this->crmOverdueAccountsCount = $metrics['crmOverdueAccountsCount'];
+            $this->crmFollowupsTodayCount = $metrics['crmFollowupsTodayCount'];
+            $this->crmOwnedAccountsCount = $metrics['crmOwnedAccountsCount'];
         } catch (\Throwable) {
             $this->tenantsCount = 0;
             $this->proTenantsCount = 0;
@@ -293,14 +267,10 @@ class Dashboard extends \Filament\Pages\Page
     private function loadPortfolioTenants(): void
     {
         try {
-            $this->portfolioTenants = Tenant::query()
-                ->with(['user:id,name,email', 'crmOwner:id,name,email', 'city:id,name,slug'])
-                ->withCount([
-                    'products as products_total' => fn (Builder $query): Builder => $query->withoutGlobalScopes(),
-                    'services as services_total' => fn (Builder $query): Builder => $query->withoutGlobalScopes(),
-                ])
-                ->get()
-                ->all();
+            $state = app(SuperAdminPortfolioReader::class)->baseState();
+            $this->portfolioTenants = $state['portfolioTenants'];
+            $this->usersCount = $state['usersCount'];
+            $this->pendingPaymentsCount = $state['pendingPaymentsCount'];
         } catch (\Throwable) {
             $this->portfolioTenants = [];
         }
@@ -309,22 +279,7 @@ class Dashboard extends \Filament\Pages\Page
     private function loadMonthlyProConversions(): void
     {
         try {
-            $start = now()->startOfMonth();
-            $end = now()->endOfMonth();
-
-            $this->monthlyProConversions = SubscriptionPayment::query()
-                ->withoutGlobalScopes()
-                ->where('status', SubscriptionPayment::STATUS_APPROVED)
-                ->whereNotNull('subscription_extended_at')
-                ->whereBetween('subscription_extended_at', [$start, $end])
-                ->with([
-                    'tenant' => fn (Builder $query): Builder => $query
-                        ->withoutGlobalScopes()
-                        ->with(['crmOwner:id,name,email', 'city:id,name,slug', 'user:id,name,email']),
-                ])
-                ->orderByDesc('subscription_extended_at')
-                ->get()
-                ->all();
+            $this->monthlyProConversions = app(SuperAdminPortfolioReader::class)->baseState()['monthlyProConversions'];
         } catch (\Throwable) {
             $this->monthlyProConversions = [];
         }
@@ -333,51 +288,17 @@ class Dashboard extends \Filament\Pages\Page
     private function loadGlobalPlaybookState(): void
     {
         try {
-            $tasks = OperationalPlaybookTask::query()
-                ->withoutGlobalScopes()
-                ->with(['tenant.user:id,name,email', 'tenant.crmOwner:id,name,email', 'assignee:id,name,email', 'adminOwner:id,name,email'])
-                ->whereIn('status', [
-                    OperationalPlaybookTask::STATUS_OPEN,
-                    OperationalPlaybookTask::STATUS_IN_PROGRESS,
-                ])
-                ->where(function (Builder $query): void {
-                    $query
-                        ->whereNull('follow_up_status')
-                        ->orWhere('follow_up_status', '!=', OperationalPlaybookTask::FOLLOW_UP_CLOSED);
-                })
-                ->orderByRaw("
-                    case priority
-                        when 'critical' then 1
-                        when 'high' then 2
-                        else 3
-                    end
-                ")
-                ->orderByRaw("
-                    case
-                        when due_at is null then 2
-                        when due_at < now() then 0
-                        else 1
-                    end
-                ")
-                ->orderBy('due_at')
-                ->get();
+            $state = app(SuperAdminPortfolioReader::class)->baseState();
+            $tasks = collect($state['activePlaybookTasks']);
 
-            $this->activePlaybookTasks = $tasks->all();
-            $this->activePlaybookCount = $tasks->count();
-            $this->overduePlaybookCount = $tasks->filter(fn (OperationalPlaybookTask $task): bool => $task->isOverdue())->count();
-            $this->unassignedPlaybookCount = $tasks->filter(fn (OperationalPlaybookTask $task): bool => blank($task->admin_owner_id))->count();
-            $this->commercialFollowupCount = $tasks->filter(
-                fn (OperationalPlaybookTask $task): bool => in_array((string) $task->queue, ['leads', 'retention'], true)
-            )->count();
-            $this->renewalPlaybookCount = $tasks->filter(
-                fn (OperationalPlaybookTask $task): bool => (string) $task->queue === 'billing'
-            )->count();
-            $this->activationPlaybookCount = $tasks->filter(
-                fn (OperationalPlaybookTask $task): bool => (string) $task->queue === 'activation'
-            )->count();
-            $this->growthPlaybookCount = $tasks->filter(
-                fn (OperationalPlaybookTask $task): bool => (string) $task->queue === 'growth'
-            )->count();
+            $this->activePlaybookTasks = $state['activePlaybookTasks'];
+            $this->activePlaybookCount = $state['activePlaybookCount'];
+            $this->overduePlaybookCount = $state['overduePlaybookCount'];
+            $this->unassignedPlaybookCount = $state['unassignedPlaybookCount'];
+            $this->commercialFollowupCount = $state['commercialFollowupCount'];
+            $this->renewalPlaybookCount = $state['renewalPlaybookCount'];
+            $this->activationPlaybookCount = $state['activationPlaybookCount'];
+            $this->growthPlaybookCount = $state['growthPlaybookCount'];
 
             $this->operationalLanes = [
                 $this->buildLaneCard($tasks, 'activation', 'Activacion', 'Onboarding comercial, oferta visible y primer valor entregado.', $this->operationsUrl),
@@ -1195,37 +1116,7 @@ class Dashboard extends \Filament\Pages\Page
     private function loadRecentPayments(): void
     {
         try {
-            $this->recentPayments = SubscriptionPayment::query()
-                ->withoutGlobalScopes()
-                ->with('tenant')
-                ->latest('created_at')
-                ->limit(5)
-                ->get()
-                ->map(function (SubscriptionPayment $payment): array {
-                    $status = match ((string) $payment->status) {
-                        SubscriptionPayment::STATUS_PENDING => 'Pendiente',
-                        SubscriptionPayment::STATUS_APPROVED => 'Aprobado',
-                        SubscriptionPayment::STATUS_REJECTED => 'Rechazado',
-                        default => 'Desconocido',
-                    };
-
-                    $tone = match ((string) $payment->status) {
-                        SubscriptionPayment::STATUS_PENDING => 'warning',
-                        SubscriptionPayment::STATUS_APPROVED => 'success',
-                        SubscriptionPayment::STATUS_REJECTED => 'danger',
-                        default => 'gray',
-                    };
-
-                    return [
-                        'business' => (string) ($payment->tenant?->name ?? 'Negocio sin registro'),
-                        'reference' => (string) ($payment->reference_number ?? 'Sin referencia'),
-                        'amount' => 'L. '.number_format((float) $payment->amount, 2),
-                        'status' => $status,
-                        'tone' => $tone,
-                        'reported_at' => optional($payment->created_at)?->format('d/m/Y H:i') ?? 'Sin fecha',
-                    ];
-                })
-                ->all();
+            $this->recentPayments = app(SuperAdminPortfolioReader::class)->recentPayments();
         } catch (\Throwable) {
             $this->recentPayments = [];
         }

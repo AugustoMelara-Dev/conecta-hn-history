@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Repositories\CustomerProfileRepositoryInterface;
 use App\Models\CustomerProfile;
 
 final class CustomerProfileWorkspaceReader
 {
+    public function __construct(
+        private readonly CustomerProfileRepositoryInterface $customerProfiles,
+    ) {}
+
     /**
      * @return list<array{label:string,value:string,copy:string}>
      */
@@ -60,24 +65,8 @@ final class CustomerProfileWorkspaceReader
      */
     public function duplicateOptions(CustomerProfile $current, string $search): array
     {
-        $query = CustomerProfile::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $current->tenant_id)
-            ->where('id', '!=', $current->getKey())
-            ->orderByDesc('last_seen_at')
-            ->orderByDesc('updated_at')
-            ->limit(20);
-
-        if (trim($search) !== '') {
-            $query->where(function ($inner) use ($search): void {
-                $inner->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('email', 'like', '%'.$search.'%')
-                    ->orWhere('phone', 'like', '%'.$search.'%');
-            });
-        }
-
-        return $query
-            ->get()
+        return $this->customerProfiles
+            ->searchDuplicates((string) $current->tenant_id, (string) $current->getKey(), $search)
             ->mapWithKeys(fn (CustomerProfile $profile): array => [(int) $profile->getKey() => $this->formatDuplicateLabel($profile)])
             ->all();
     }
@@ -88,10 +77,7 @@ final class CustomerProfileWorkspaceReader
             return null;
         }
 
-        $profile = CustomerProfile::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $current->tenant_id)
-            ->find((int) $value);
+        $profile = $this->customerProfiles->findTenantRecord((string) $current->tenant_id, (int) $value);
 
         return $profile instanceof CustomerProfile ? $this->formatDuplicateLabel($profile) : null;
     }

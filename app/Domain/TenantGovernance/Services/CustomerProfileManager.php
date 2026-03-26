@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Repositories\CustomerProfileRepositoryInterface;
 use App\Models\Appointment;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTask;
@@ -23,6 +24,7 @@ class CustomerProfileManager
 
     public function __construct(
         private readonly CustomerLoyaltyManager $customerLoyaltyManager,
+        private readonly CustomerProfileRepositoryInterface $customerProfileRepository,
     ) {}
 
     public function syncTenant(Tenant|string $tenant): void
@@ -102,9 +104,7 @@ class CustomerProfileManager
             return;
         }
 
-        $profile = CustomerProfile::query()
-            ->withoutGlobalScopes()
-            ->find($profileId);
+        $profile = $this->customerProfileRepository->findWithoutScopes($profileId);
 
         if (! $profile instanceof CustomerProfile) {
             return;
@@ -121,8 +121,10 @@ class CustomerProfileManager
         }
 
         return DB::transaction(function () use ($primary, $duplicate, $actorUserId): CustomerProfile {
-            $primary = CustomerProfile::query()->withoutGlobalScopes()->findOrFail($primary->getKey());
-            $duplicate = CustomerProfile::query()->withoutGlobalScopes()->findOrFail($duplicate->getKey());
+            $primary = $this->customerProfileRepository->findWithoutScopes((string) $primary->getKey())
+                ?? CustomerProfile::query()->withoutGlobalScopes()->findOrFail($primary->getKey());
+            $duplicate = $this->customerProfileRepository->findWithoutScopes((string) $duplicate->getKey())
+                ?? CustomerProfile::query()->withoutGlobalScopes()->findOrFail($duplicate->getKey());
 
             $mergePayload = [
                 'normalized_email' => $primary->normalized_email ?? $duplicate->normalized_email,
@@ -154,10 +156,7 @@ class CustomerProfileManager
 
             $this->moveRelatedRecords($primary, $duplicate);
 
-            CustomerProfile::query()
-                ->withoutGlobalScopes()
-                ->whereKey($duplicate->getKey())
-                ->delete();
+            $this->customerProfileRepository->deleteWithoutScopes((string) $duplicate->getKey());
 
             $primary->forceFill($mergePayload)->save();
 
@@ -209,9 +208,7 @@ class CustomerProfileManager
         );
 
         if (! $profile instanceof CustomerProfile) {
-            $profile = CustomerProfile::query()
-                ->withoutGlobalScopes()
-                ->forceCreate([
+            $profile = $this->customerProfileRepository->create([
                     'tenant_id' => $tenantId,
                     'normalized_email' => $normalizedEmail,
                     'normalized_phone' => $normalizedPhone,
@@ -251,21 +248,10 @@ class CustomerProfileManager
         ?string $normalizedPhone,
         ?CustomerProfile $preferredProfile = null,
     ): ?CustomerProfile {
-        $matches = CustomerProfile::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->where(function ($query) use ($normalizedEmail, $normalizedPhone): void {
-                if ($normalizedEmail !== null) {
-                    $query->where('normalized_email', $normalizedEmail);
-                }
-
-                if ($normalizedPhone !== null) {
-                    $method = $normalizedEmail !== null ? 'orWhere' : 'where';
-                    $query->{$method}('normalized_phone', $normalizedPhone);
-                }
-            })
-            ->orderBy('id')
-            ->get();
+        $matches = $this->customerProfileRepository
+            ->findMatchingByContact($tenantId, $normalizedEmail, $normalizedPhone)
+            ->sortBy('id')
+            ->values();
 
         if ($preferredProfile instanceof CustomerProfile && ! $matches->contains(
             fn (CustomerProfile $match): bool => (int) $match->getKey() === (int) $preferredProfile->getKey()

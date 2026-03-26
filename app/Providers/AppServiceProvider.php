@@ -314,6 +314,10 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Repositories\TenantGovernance\EloquentTenantRepository::class
         );
         $this->app->bind(
+            \App\Domain\TenantGovernance\Repositories\CustomerProfileRepositoryInterface::class,
+            \App\Infrastructure\Repositories\TenantGovernance\EloquentCustomerProfileRepository::class
+        );
+        $this->app->bind(
             \App\Domain\Billing\Repositories\PaymentRepositoryInterface::class,
             \App\Infrastructure\Persistence\EloquentPaymentRepository::class
         );
