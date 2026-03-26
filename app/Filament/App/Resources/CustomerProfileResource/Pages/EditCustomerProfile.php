@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\CustomerProfileResource\Pages;
 
+use App\Domain\TenantGovernance\Repositories\CustomerProfileRepositoryInterface;
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Domain\TenantGovernance\Services\CustomerProfileWorkspaceReader;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\Pages\EditTenantRecord;
-use App\Models\CustomerProfile;
 use App\Models\Tenant;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -40,10 +40,20 @@ class EditCustomerProfile extends EditTenantRecord
                         ->getOptionLabelUsing(fn (mixed $value): ?string => $this->duplicateLabel($value)),
                 ])
                 ->action(function (array $data): void {
-                    $duplicate = CustomerProfile::query()
-                        ->withoutGlobalScopes()
-                        ->where('tenant_id', (string) $this->getRecord()->tenant_id)
-                        ->findOrFail((int) $data['duplicate_profile_id']);
+                    $duplicate = $this->profileRepository()->findTenantRecord(
+                        (string) $this->getRecord()->tenant_id,
+                        (int) $data['duplicate_profile_id'],
+                    );
+
+                    if ($duplicate === null) {
+                        Notification::make()
+                            ->title('No se encontró el duplicado')
+                            ->danger()
+                            ->body('El perfil seleccionado ya no está disponible dentro de este negocio.')
+                            ->send();
+
+                        return;
+                    }
 
                     $merged = app(CustomerProfileManager::class)->mergeProfiles(
                         primary: $this->getRecord(),
@@ -72,22 +82,21 @@ class EditCustomerProfile extends EditTenantRecord
      */
     private function duplicateOptions(string $search): array
     {
-        return app(CustomerProfileWorkspaceReader::class)->duplicateOptions($this->getRecord(), $search);
+        return $this->workspaceReader()->duplicateOptions($this->getRecord(), $search);
     }
 
     private function duplicateLabel(mixed $value): ?string
     {
-        return app(CustomerProfileWorkspaceReader::class)->duplicateLabel($this->getRecord(), $value);
+        return $this->workspaceReader()->duplicateLabel($this->getRecord(), $value);
     }
 
-    private function formatDuplicateLabel(CustomerProfile $profile): string
+    private function profileRepository(): CustomerProfileRepositoryInterface
     {
-        return trim(implode(' | ', array_filter([
-            '#'.$profile->getKey(),
-            $profile->name,
-            $profile->email,
-            $profile->phone,
-            $profile->last_seen_at?->diffForHumans(),
-        ])));
+        return app(CustomerProfileRepositoryInterface::class);
+    }
+
+    private function workspaceReader(): CustomerProfileWorkspaceReader
+    {
+        return app(CustomerProfileWorkspaceReader::class);
     }
 }

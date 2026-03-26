@@ -285,6 +285,14 @@ class AppServiceProvider extends ServiceProvider
             \App\Domain\TenantGovernance\Repositories\CustomerJourneyRunRepositoryInterface::class,
             \App\Infrastructure\Repositories\TenantGovernance\EloquentCustomerJourneyRunRepository::class
         );
+        $this->app->bind(
+            \App\Domain\TenantGovernance\Repositories\CustomerTouchpointEventRepositoryInterface::class,
+            \App\Infrastructure\Repositories\TenantGovernance\EloquentCustomerTouchpointEventRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\TenantGovernance\Repositories\InboundWebhookRepositoryInterface::class,
+            \App\Infrastructure\Repositories\TenantGovernance\EloquentInboundWebhookRepository::class
+        );
 
         // API Domains
         $this->app->bind(

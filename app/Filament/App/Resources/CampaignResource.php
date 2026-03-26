@@ -6,7 +6,7 @@ namespace App\Filament\App\Resources;
 
 use App\Application\Marketing\Jobs\DispatchCampaignSegment;
 use App\Domain\Marketing\Enums\AudienceType;
-use App\Domain\TenantGovernance\Repositories\CampaignRepositoryInterface;
+use App\Domain\TenantGovernance\Services\TenantCampaignDispatchPlanner;
 use App\Domain\TenantGovernance\Services\TenantCampaignWorkspaceReader;
 use App\Models\Campaign;
 use App\Models\Tenant;
@@ -317,7 +317,8 @@ class CampaignResource extends Resource
                             return;
                         }
 
-                        $audienceCount = self::workspaceReader()->calculateAudienceCount($tenant, $record);
+                        $dispatch = app(TenantCampaignDispatchPlanner::class)->planDispatch($tenant, $record);
+                        $audienceCount = $dispatch['audience_count'];
 
                         if ($audienceCount === 0) {
                             Notification::make()
@@ -329,20 +330,14 @@ class CampaignResource extends Resource
                             return;
                         }
 
-                        $nextRunAt = $record->usesCadence()
-                            ? ($record->next_run_at !== null && $record->next_run_at->isFuture()
-                                ? $record->next_run_at
-                                : now()->addDays((int) $record->cadence_interval_days))
-                            : null;
-
-                        app(CampaignRepositoryInterface::class)->markQueued($record, $nextRunAt);
+                        app(TenantCampaignDispatchPlanner::class)->queueCampaign($record, $dispatch['next_run_at']);
 
                         DispatchCampaignSegment::dispatch($record->id, (string) $tenant->getKey());
 
                         Notification::make()
-                            ->title($record->usesCadence() ? 'Cadencia activada' : 'Campana en cola')
+                            ->title($dispatch['uses_cadence'] ? 'Cadencia activada' : 'Campana en cola')
                             ->success()
-                            ->body($record->usesCadence()
+                            ->body($dispatch['uses_cadence']
                                 ? "La campana se lanzo ahora y seguira viva para {$audienceCount} destinatarios elegibles."
                                 : "Se procesara el envio a {$audienceCount} destinatarios en breve.")
                             ->send();

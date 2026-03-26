@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Repositories\CustomerNoteRepositoryInterface;
+use App\Domain\TenantGovernance\Repositories\CustomerTouchpointEventRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\CustomerTouchpointRepositoryInterface;
-use App\Models\CustomerNote;
 use App\Models\CustomerTouchpoint;
 use App\Models\CustomerTouchpointEvent;
-use App\Models\Payment\InboundWebhook;
+use App\Domain\TenantGovernance\Repositories\InboundWebhookRepositoryInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -19,6 +20,9 @@ class CustomerTouchpointEventRecorder
         private readonly CustomerTouchpointGovernance $governance,
         private readonly CustomerJourneyManager $journeyManager,
         private readonly CustomerTouchpointRepositoryInterface $touchpoints,
+        private readonly CustomerTouchpointEventRepositoryInterface $events,
+        private readonly InboundWebhookRepositoryInterface $webhooks,
+        private readonly CustomerNoteRepositoryInterface $notes,
     ) {}
 
     /**
@@ -37,29 +41,21 @@ class CustomerTouchpointEventRecorder
         $touchpoint = $this->resolveTouchpoint($tags, $providerMessageId);
         $tenantId = (string) ($touchpoint?->tenant_id ?? $tags['tenant_id'] ?? 'system');
 
-        $webhook = InboundWebhook::query()
-            ->withoutGlobalScopes()
-            ->firstOrCreate(
-                [
-                    'provider' => 'resend',
-                    'provider_transaction_id' => $webhookId,
-                ],
-                [
-                    'tenant_id' => $tenantId,
-                    'event_type' => $eventType,
-                    'payload' => $payload,
-                    'status' => 'pending',
-                ],
-            );
+        $webhook = $this->webhooks->firstOrCreate(
+            [
+                'provider' => 'resend',
+                'provider_transaction_id' => $webhookId,
+            ],
+            [
+                'tenant_id' => $tenantId,
+                'event_type' => $eventType,
+                'payload' => $payload,
+                'status' => 'pending',
+            ],
+        );
 
         if ($webhook->status === 'completed' && $touchpoint instanceof CustomerTouchpoint) {
-            return CustomerTouchpointEvent::query()
-                ->withoutGlobalScopes()
-                ->where('customer_touchpoint_id', $touchpoint->getKey())
-                ->where('provider', 'resend')
-                ->where('event_type', $eventType)
-                ->where('occurred_at', $occurredAt)
-                ->first();
+            return $this->events->findExisting((int) $touchpoint->getKey(), 'resend', $eventType, $occurredAt);
         }
 
         $webhook->forceFill([
@@ -68,30 +64,30 @@ class CustomerTouchpointEventRecorder
             'payload' => $payload,
             'status' => 'processing',
             'error_message' => null,
-        ])->save();
+        ]);
+        $webhook = $this->webhooks->save($webhook);
 
         try {
             if (! $touchpoint instanceof CustomerTouchpoint) {
-                $webhook->forceFill(['status' => 'completed'])->save();
+                $webhook->forceFill(['status' => 'completed']);
+                $this->webhooks->save($webhook);
 
                 return null;
             }
 
-            $event = CustomerTouchpointEvent::query()
-                ->withoutGlobalScopes()
-                ->firstOrCreate(
-                    [
-                        'customer_touchpoint_id' => (int) $touchpoint->getKey(),
-                        'provider' => 'resend',
-                        'event_type' => $eventType,
-                        'occurred_at' => $occurredAt,
-                    ],
-                    [
-                        'tenant_id' => (string) $touchpoint->tenant_id,
-                        'status' => $this->deliveryStatusForEvent($eventType),
-                        'payload' => $payload,
-                    ],
-                );
+            $event = $this->events->firstOrCreate(
+                [
+                    'customer_touchpoint_id' => (int) $touchpoint->getKey(),
+                    'provider' => 'resend',
+                    'event_type' => $eventType,
+                    'occurred_at' => $occurredAt,
+                ],
+                [
+                    'tenant_id' => (string) $touchpoint->tenant_id,
+                    'status' => $this->deliveryStatusForEvent($eventType),
+                    'payload' => $payload,
+                ],
+            );
 
             $this->applyTouchpointState($touchpoint, $eventType, $payload, $occurredAt);
             $this->syncJourneyAfterOutcome($touchpoint);
@@ -116,14 +112,16 @@ class CustomerTouchpointEventRecorder
                 );
             }
 
-            $webhook->forceFill(['status' => 'completed'])->save();
+            $webhook->forceFill(['status' => 'completed']);
+            $this->webhooks->save($webhook);
 
             return $event;
         } catch (\Throwable $exception) {
             $webhook->forceFill([
                 'status' => 'failed',
                 'error_message' => $exception->getMessage(),
-            ])->save();
+            ]);
+            $this->webhooks->save($webhook);
 
             throw $exception;
         }
@@ -337,52 +335,45 @@ class CustomerTouchpointEventRecorder
         $providerMessageId = (string) ($statusPayload['id'] ?? '');
         $status = (string) ($statusPayload['status'] ?? 'sent');
         $occurredAt = $this->parseUnixTimestamp((string) ($statusPayload['timestamp'] ?? now()->timestamp));
-        $touchpoint = CustomerTouchpoint::query()
-            ->withoutGlobalScopes()
-            ->where('provider', 'whatsapp_cloud')
-            ->where('provider_message_id', $providerMessageId)
-            ->first();
+        $touchpoint = $providerMessageId !== '' ? $this->touchpoints->findByProviderMessage('whatsapp_cloud', $providerMessageId) : null;
         $tenantId = (string) ($touchpoint?->tenant_id ?? 'system');
         $providerTransactionId = $providerMessageId !== ''
             ? "{$providerMessageId}:{$status}:{$occurredAt->timestamp}"
             : (string) ($headers['x-hub-signature-256'] ?? uniqid('whatsapp_', true));
 
-        $webhook = InboundWebhook::query()
-            ->withoutGlobalScopes()
-            ->firstOrCreate(
-                [
-                    'provider' => 'whatsapp_cloud',
-                    'provider_transaction_id' => $providerTransactionId,
-                ],
-                [
-                    'tenant_id' => $tenantId,
-                    'event_type' => "whatsapp.{$status}",
-                    'payload' => ['value' => $value, 'status' => $statusPayload],
-                    'status' => 'pending',
-                ],
-            );
+        $webhook = $this->webhooks->firstOrCreate(
+            [
+                'provider' => 'whatsapp_cloud',
+                'provider_transaction_id' => $providerTransactionId,
+            ],
+            [
+                'tenant_id' => $tenantId,
+                'event_type' => "whatsapp.{$status}",
+                'payload' => ['value' => $value, 'status' => $statusPayload],
+                'status' => 'pending',
+            ],
+        );
 
         if (! $touchpoint instanceof CustomerTouchpoint) {
-            $webhook->forceFill(['status' => 'completed'])->save();
+            $webhook->forceFill(['status' => 'completed']);
+            $this->webhooks->save($webhook);
 
             return false;
         }
 
-        CustomerTouchpointEvent::query()
-            ->withoutGlobalScopes()
-            ->firstOrCreate(
-                [
-                    'customer_touchpoint_id' => (int) $touchpoint->getKey(),
-                    'provider' => 'whatsapp_cloud',
-                    'event_type' => "whatsapp.{$status}",
-                    'occurred_at' => $occurredAt,
-                ],
-                [
-                    'tenant_id' => (string) $touchpoint->tenant_id,
-                    'status' => $status,
-                    'payload' => ['value' => $value, 'status' => $statusPayload],
-                ],
-            );
+        $this->events->firstOrCreate(
+            [
+                'customer_touchpoint_id' => (int) $touchpoint->getKey(),
+                'provider' => 'whatsapp_cloud',
+                'event_type' => "whatsapp.{$status}",
+                'occurred_at' => $occurredAt,
+            ],
+            [
+                'tenant_id' => (string) $touchpoint->tenant_id,
+                'status' => $status,
+                'payload' => ['value' => $value, 'status' => $statusPayload],
+            ],
+        );
 
         $touchpoint->forceFill([
             'provider' => 'whatsapp_cloud',
@@ -404,11 +395,13 @@ class CustomerTouchpointEventRecorder
             'status' => $status === 'failed'
                 ? CustomerTouchpoint::STATUS_FAILED
                 : CustomerTouchpoint::STATUS_SENT,
-        ])->save();
+        ]);
+        $this->touchpoints->save($touchpoint);
 
         $this->syncJourneyAfterOutcome($touchpoint);
 
-        $webhook->forceFill(['tenant_id' => (string) $touchpoint->tenant_id, 'status' => 'completed'])->save();
+        $webhook->forceFill(['tenant_id' => (string) $touchpoint->tenant_id, 'status' => 'completed']);
+        $this->webhooks->save($webhook);
 
         return true;
     }
@@ -423,52 +416,45 @@ class CustomerTouchpointEventRecorder
         $contextMessageId = (string) data_get($messagePayload, 'context.id', '');
         $occurredAt = $this->parseUnixTimestamp((string) ($messagePayload['timestamp'] ?? now()->timestamp));
         $touchpoint = $contextMessageId !== ''
-            ? CustomerTouchpoint::query()
-                ->withoutGlobalScopes()
-                ->where('provider', 'whatsapp_cloud')
-                ->where('provider_message_id', $contextMessageId)
-                ->first()
+            ? $this->touchpoints->findByProviderMessage('whatsapp_cloud', $contextMessageId)
             : null;
         $tenantId = (string) ($touchpoint?->tenant_id ?? 'system');
         $providerTransactionId = (string) ($messagePayload['id'] ?? uniqid('whatsapp_inbound_', true));
         $body = trim((string) data_get($messagePayload, 'text.body', data_get($messagePayload, 'button.text', 'Respuesta recibida por WhatsApp.')));
 
-        $webhook = InboundWebhook::query()
-            ->withoutGlobalScopes()
-            ->firstOrCreate(
-                [
-                    'provider' => 'whatsapp_cloud',
-                    'provider_transaction_id' => $providerTransactionId,
-                ],
-                [
-                    'tenant_id' => $tenantId,
-                    'event_type' => 'whatsapp.inbound',
-                    'payload' => ['value' => $value, 'message' => $messagePayload],
-                    'status' => 'pending',
-                ],
-            );
+        $webhook = $this->webhooks->firstOrCreate(
+            [
+                'provider' => 'whatsapp_cloud',
+                'provider_transaction_id' => $providerTransactionId,
+            ],
+            [
+                'tenant_id' => $tenantId,
+                'event_type' => 'whatsapp.inbound',
+                'payload' => ['value' => $value, 'message' => $messagePayload],
+                'status' => 'pending',
+            ],
+        );
 
         if (! $touchpoint instanceof CustomerTouchpoint) {
-            $webhook->forceFill(['status' => 'completed'])->save();
+            $webhook->forceFill(['status' => 'completed']);
+            $this->webhooks->save($webhook);
 
             return false;
         }
 
-        CustomerTouchpointEvent::query()
-            ->withoutGlobalScopes()
-            ->firstOrCreate(
-                [
-                    'customer_touchpoint_id' => (int) $touchpoint->getKey(),
-                    'provider' => 'whatsapp_cloud',
-                    'event_type' => 'whatsapp.inbound',
-                    'occurred_at' => $occurredAt,
-                ],
-                [
-                    'tenant_id' => (string) $touchpoint->tenant_id,
-                    'status' => 'replied',
-                    'payload' => ['value' => $value, 'message' => $messagePayload],
-                ],
-            );
+        $this->events->firstOrCreate(
+            [
+                'customer_touchpoint_id' => (int) $touchpoint->getKey(),
+                'provider' => 'whatsapp_cloud',
+                'event_type' => 'whatsapp.inbound',
+                'occurred_at' => $occurredAt,
+            ],
+            [
+                'tenant_id' => (string) $touchpoint->tenant_id,
+                'status' => 'replied',
+                'payload' => ['value' => $value, 'message' => $messagePayload],
+            ],
+        );
 
         $touchpoint->forceFill([
             'delivery_status' => CustomerTouchpoint::DELIVERY_REPLIED,
@@ -477,7 +463,8 @@ class CustomerTouchpointEventRecorder
             'provider_payload' => ['value' => $value, 'message' => $messagePayload],
             'next_retry_at' => null,
             'status' => CustomerTouchpoint::STATUS_SENT,
-        ])->save();
+        ]);
+        $this->touchpoints->save($touchpoint);
 
         $this->logInboundReply(
             $touchpoint,
@@ -499,7 +486,8 @@ class CustomerTouchpointEventRecorder
 
         $this->syncJourneyAfterOutcome($touchpoint);
 
-        $webhook->forceFill(['tenant_id' => (string) $touchpoint->tenant_id, 'status' => 'completed'])->save();
+        $webhook->forceFill(['tenant_id' => (string) $touchpoint->tenant_id, 'status' => 'completed']);
+        $this->webhooks->save($webhook);
 
         return true;
     }
@@ -541,9 +529,7 @@ class CustomerTouchpointEventRecorder
             'last_inbound_reply_at' => now(),
         ])->save();
 
-        CustomerNote::query()
-            ->withoutGlobalScopes()
-            ->create([
+        $this->notes->create([
                 'tenant_id' => (string) $touchpoint->tenant_id,
                 'customer_profile_id' => (int) $touchpoint->customer_profile_id,
                 'note_type' => 'opt_in_update',
