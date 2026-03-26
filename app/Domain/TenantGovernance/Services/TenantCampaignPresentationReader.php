@@ -4,10 +4,21 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\Marketing\Enums\AudienceType;
 use App\Models\Campaign;
 
 final class TenantCampaignPresentationReader
 {
+    /**
+     * @return array<string, string>
+     */
+    public function audienceTypeOptions(): array
+    {
+        return collect(AudienceType::cases())
+            ->mapWithKeys(fn (AudienceType $type) => [$type->value => $type->label()])
+            ->all();
+    }
+
     public function dispatchLabel(Campaign $campaign): string
     {
         return $campaign->status === 'scheduled' ? 'Lanzar ahora' : 'Enviar';

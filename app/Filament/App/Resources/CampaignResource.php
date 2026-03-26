@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Application\Marketing\Jobs\DispatchCampaignSegment;
-use App\Domain\Marketing\Enums\AudienceType;
 use App\Domain\TenantGovernance\Services\TenantCampaignActionCoordinator;
 use App\Domain\TenantGovernance\Services\TenantCampaignDispatchPlanner;
 use App\Domain\TenantGovernance\Services\TenantCampaignPresentationReader;
@@ -98,9 +97,9 @@ class CampaignResource extends Resource
                                     ->native(false),
                                 Forms\Components\Select::make('audience_type')
                                     ->label('Audiencia base')
-                                    ->options(static::audienceTypeOptions())
+                                    ->options(static::presentationReader()->audienceTypeOptions())
                                     ->required()
-                                    ->default(AudienceType::CRM_CUSTOMERS->value)
+                                    ->default('crm_customers')
                                     ->native(false),
                             ]),
                         Forms\Components\TextInput::make('subject')
@@ -346,16 +345,6 @@ class CampaignResource extends Resource
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private static function audienceTypeOptions(): array
-    {
-        return collect(AudienceType::cases())
-            ->mapWithKeys(fn (AudienceType $type) => [$type->value => $type->label()])
-            ->all();
     }
 
     /**

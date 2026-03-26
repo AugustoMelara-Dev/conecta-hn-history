@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
-use App\Domain\TenantGovernance\Services\SuperAdminDashboardPageLoader;
+use App\Domain\TenantGovernance\Services\SuperAdminDashboardBootstrapper;
 use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
 use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
 use App\Models\Tenant;
@@ -163,34 +163,17 @@ class Dashboard extends \Filament\Pages\Page
         $this->billingUrl = $this->safeRoute('filament.admin.pages.billing');
         $this->operationsUrl = $this->safeRoute('filament.admin.resources.operational-playbook-tasks.index');
 
-        try {
-            $portfolioManager->syncSignals();
-        } catch (\Throwable) {
-            // Evita que una sincronizacion CRM incompleta tumbe el dashboard del superadmin.
-        }
-
-        try {
-            $journeyOpsMonitor->syncSignals();
-        } catch (\Throwable) {
-            // Evita que la lectura de journeys CRM tumbe el dashboard.
-        }
-
-        $this->loadDashboardState();
-    }
-
-    public static function getRoutePath(Panel $panel): string
-    {
-        return static::$routePath;
-    }
-
-    private function loadDashboardState(): void
-    {
-        $this->pageLoader()->load($this, [
+        $this->bootstrapper()->boot($this, [
             'payments' => $this->paymentsUrl,
             'tenants' => $this->tenantsUrl,
             'operations' => $this->operationsUrl,
             'billing' => $this->billingUrl,
         ], $this->safeRoute(...));
+    }
+
+    public static function getRoutePath(Panel $panel): string
+    {
+        return static::$routePath;
     }
 
     private function safeRoute(string $name, array $parameters = []): string
@@ -202,8 +185,8 @@ class Dashboard extends \Filament\Pages\Page
         }
     }
 
-    private function pageLoader(): SuperAdminDashboardPageLoader
+    private function bootstrapper(): SuperAdminDashboardBootstrapper
     {
-        return app(SuperAdminDashboardPageLoader::class);
+        return app(SuperAdminDashboardBootstrapper::class);
     }
 }
