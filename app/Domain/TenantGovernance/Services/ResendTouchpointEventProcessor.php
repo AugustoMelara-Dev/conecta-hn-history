@@ -16,8 +16,7 @@ final class ResendTouchpointEventProcessor
 {
     public function __construct(
         private readonly CustomerTouchpointRepositoryInterface $touchpoints,
-        private readonly CustomerTouchpointEventRepositoryInterface $events,
-        private readonly InboundWebhookRepositoryInterface $webhooks,
+        private readonly ResendWebhookTrackingRecorder $trackingRecorder,
         private readonly ResendTouchpointOutcomeApplier $outcomeApplier,
         private readonly ResendInboundReplyHandler $inboundReplyHandler,
     ) {}
@@ -38,45 +37,20 @@ final class ResendTouchpointEventProcessor
         $touchpoint = $this->resolveTouchpoint($tags, $providerMessageId);
         $tenantId = (string) ($touchpoint?->tenant_id ?? $tags['tenant_id'] ?? 'system');
 
-        $webhook = $this->webhooks->firstOrCreate(
-            ['provider' => 'resend', 'provider_transaction_id' => $webhookId],
-            ['tenant_id' => $tenantId, 'event_type' => $eventType, 'payload' => $payload, 'status' => 'pending'],
-        );
+        $webhook = $this->trackingRecorder->begin($webhookId, $tenantId, $eventType, $payload);
 
         if ($webhook->status === 'completed' && $touchpoint instanceof CustomerTouchpoint) {
-            return $this->events->findExisting((int) $touchpoint->getKey(), 'resend', $eventType, $occurredAt);
+            return $this->trackingRecorder->existingEvent($touchpoint, $eventType, $occurredAt);
         }
-
-        $webhook->forceFill([
-            'tenant_id' => $tenantId,
-            'event_type' => $eventType,
-            'payload' => $payload,
-            'status' => 'processing',
-            'error_message' => null,
-        ]);
-        $webhook = $this->webhooks->save($webhook);
 
         try {
             if (! $touchpoint instanceof CustomerTouchpoint) {
-                $webhook->forceFill(['status' => 'completed']);
-                $this->webhooks->save($webhook);
+                $this->trackingRecorder->markCompleted($webhook);
 
                 return null;
             }
 
-            $event = $this->events->firstOrCreate(
-                [
-                    'customer_touchpoint_id' => (int) $touchpoint->getKey(),
-                    'provider' => 'resend',
-                    'event_type' => $eventType,
-                    'occurred_at' => $occurredAt,
-                ],
-                [
-                    'tenant_id' => (string) $touchpoint->tenant_id,
-                    'status' => $this->eventStatus($eventType),
-                    'payload' => $payload,
-                ],
-            );
+            $event = $this->trackingRecorder->recordEvent($touchpoint, $eventType, $occurredAt, $payload);
 
             $this->outcomeApplier->apply($touchpoint, $eventType, $payload, $occurredAt);
 
@@ -84,13 +58,11 @@ final class ResendTouchpointEventProcessor
                 $this->inboundReplyHandler->handle($touchpoint, $payload, $occurredAt, $providerMessageId, $tags);
             }
 
-            $webhook->forceFill(['status' => 'completed']);
-            $this->webhooks->save($webhook);
+            $this->trackingRecorder->markCompleted($webhook);
 
             return $event;
         } catch (\Throwable $exception) {
-            $webhook->forceFill(['status' => 'failed', 'error_message' => $exception->getMessage()]);
-            $this->webhooks->save($webhook);
+            $this->trackingRecorder->markFailed($webhook, $exception);
             throw $exception;
         }
     }
@@ -122,19 +94,4 @@ final class ResendTouchpointEventProcessor
         $value = $payload['created_at'] ?? $payload['createdAt'] ?? now()->toIso8601String();
         return Carbon::parse((string) $value);
     }
-
-    private function eventStatus(string $eventType): string
-    {
-        return match ($eventType) {
-            'email.delivered' => 'delivered',
-            'email.opened' => 'opened',
-            'email.clicked' => 'clicked',
-            'email.bounced' => 'bounced',
-            'email.complained' => 'complained',
-            'email.received', 'email.replied' => 'replied',
-            'email.delivery_delayed' => 'delayed',
-            default => 'sent',
-        };
-    }
-
 }

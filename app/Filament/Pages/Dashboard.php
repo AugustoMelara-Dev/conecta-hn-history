@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
-use App\Domain\TenantGovernance\Services\SuperAdminDashboardViewStateReader;
-use App\Domain\TenantGovernance\Services\SuperAdminDashboardPropsBinder;
+use App\Domain\TenantGovernance\Services\SuperAdminDashboardPageLoader;
 use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
 use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
 use App\Models\Tenant;
@@ -186,26 +185,12 @@ class Dashboard extends \Filament\Pages\Page
 
     private function loadDashboardState(): void
     {
-        try {
-            $state = $this->viewStateReader()->read([
-                'payments' => $this->paymentsUrl,
-                'tenants' => $this->tenantsUrl,
-                'operations' => $this->operationsUrl,
-                'billing' => $this->billingUrl,
-            ], $this->safeRoute(...));
-
-            $this->hydrateFromViewState($state);
-        } catch (\Throwable) {
-            $this->hydrateFromViewState($this->viewStateReader()->defaults());
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $state
-     */
-    private function hydrateFromViewState(array $state): void
-    {
-        $this->propsBinder()->bind($this, $state, $this->viewStateReader()->defaults());
+        $this->pageLoader()->load($this, [
+            'payments' => $this->paymentsUrl,
+            'tenants' => $this->tenantsUrl,
+            'operations' => $this->operationsUrl,
+            'billing' => $this->billingUrl,
+        ], $this->safeRoute(...));
     }
 
     private function safeRoute(string $name, array $parameters = []): string
@@ -217,13 +202,8 @@ class Dashboard extends \Filament\Pages\Page
         }
     }
 
-    private function viewStateReader(): SuperAdminDashboardViewStateReader
+    private function pageLoader(): SuperAdminDashboardPageLoader
     {
-        return app(SuperAdminDashboardViewStateReader::class);
-    }
-
-    private function propsBinder(): SuperAdminDashboardPropsBinder
-    {
-        return app(SuperAdminDashboardPropsBinder::class);
+        return app(SuperAdminDashboardPageLoader::class);
     }
 }
