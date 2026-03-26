@@ -434,7 +434,7 @@ class CustomerProfileResource extends Resource
                             ->rows(3),
                     ])
                     ->action(function (CustomerProfile $record, array $data): void {
-                        static::notifyActionFeedback(static::actionCoordinator()->awardBonus($record, $data, auth()->id()));
+                        static::runAwardBonus($record, $data);
                     }),
                 Action::make('redeem_reward')
                     ->label('Canjear')
@@ -449,7 +449,7 @@ class CustomerProfileResource extends Resource
                             ->options(fn (CustomerProfile $record): array => static::actionFormReader()->rewardOptions($record)),
                     ])
                     ->action(function (CustomerProfile $record, array $data): void {
-                        static::notifyActionFeedback(static::actionCoordinator()->redeemReward($record, $data, auth()->id()));
+                        static::runRedeemReward($record, $data);
                     }),
                 Action::make('email_follow_up')
                     ->label('Email')
@@ -471,7 +471,7 @@ class CustomerProfileResource extends Resource
                     ])
                     ->visible(fn (CustomerProfile $record): bool => filled($record->email))
                     ->action(function (CustomerProfile $record, array $data): void {
-                        static::notifyActionFeedback(static::actionCoordinator()->sendEmailFollowUp($record, $data, auth()->id()));
+                        static::runEmailFollowUp($record, $data);
                     }),
                 Action::make('whatsapp_follow_up')
                     ->label('WhatsApp')
@@ -482,7 +482,7 @@ class CustomerProfileResource extends Resource
                     ->modalDescription('Esto usa una plantilla auditable de WhatsApp Cloud API y deja trazabilidad en el CRM.')
                     ->visible(fn (CustomerProfile $record): bool => filled($record->phone))
                     ->action(function (CustomerProfile $record): void {
-                        static::notifyActionFeedback(static::actionCoordinator()->sendWhatsappFollowUp($record, auth()->id()));
+                        static::runWhatsappFollowUp($record);
                     }),
                 Action::make('reactivation_email')
                     ->label('Reactivar')
@@ -493,7 +493,7 @@ class CustomerProfileResource extends Resource
                     ->modalDescription('Usa el mejor canal segun el cliente y respeta opt-in antes de enviar.')
                     ->visible(fn (CustomerProfile $record): bool => (int) $record->reactivation_score >= 65 && filled($record->email))
                     ->action(function (CustomerProfile $record): void {
-                        static::notifyActionFeedback(static::actionCoordinator()->triggerReactivation($record, auth()->id()));
+                        static::runReactivation($record);
                     }),
                 EditAction::make()
                     ->label('Abrir ficha')
@@ -504,23 +504,11 @@ class CustomerProfileResource extends Resource
                 Action::make('customerInbox')
                     ->label('Bandeja de respuestas')
                     ->icon('heroicon-o-inbox-stack')
-                    ->url(function (): string {
-                        $tenant = static::getTenantRecord();
-
-                        return $tenant instanceof Tenant
-                            ? CustomerInbox::getUrl(['tenant' => $tenant->slug])
-                            : '#';
-                    }),
+                    ->url(fn (): string => static::customerInboxUrl()),
                 Action::make('campaigns')
                     ->label('Campanas CRM')
                     ->icon('heroicon-o-megaphone')
-                    ->url(function (): string {
-                        $tenant = static::getTenantRecord();
-
-                        return $tenant instanceof Tenant
-                            ? CampaignResource::getUrl('index', ['tenant' => $tenant->slug])
-                            : '#';
-                    }),
+                    ->url(fn (): string => static::campaignsUrl()),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => 'CRM',
@@ -600,6 +588,24 @@ class CustomerProfileResource extends Resource
         return app(TenantCustomerWorkspaceReader::class);
     }
 
+    protected static function customerInboxUrl(): string
+    {
+        $tenant = static::getTenantRecord();
+
+        return $tenant instanceof Tenant
+            ? CustomerInbox::getUrl(['tenant' => $tenant->slug])
+            : '#';
+    }
+
+    protected static function campaignsUrl(): string
+    {
+        $tenant = static::getTenantRecord();
+
+        return $tenant instanceof Tenant
+            ? CampaignResource::getUrl('index', ['tenant' => $tenant->slug])
+            : '#';
+    }
+
     protected static function presentationReader(): TenantCustomerProfilePresentationReader
     {
         return app(TenantCustomerProfilePresentationReader::class);
@@ -628,6 +634,40 @@ class CustomerProfileResource extends Resource
     protected static function sectionViewReader(): CustomerProfileSectionViewReader
     {
         return app(CustomerProfileSectionViewReader::class);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected static function runAwardBonus(CustomerProfile $record, array $data): void
+    {
+        static::notifyActionFeedback(static::actionCoordinator()->awardBonus($record, $data, auth()->id()));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected static function runRedeemReward(CustomerProfile $record, array $data): void
+    {
+        static::notifyActionFeedback(static::actionCoordinator()->redeemReward($record, $data, auth()->id()));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected static function runEmailFollowUp(CustomerProfile $record, array $data): void
+    {
+        static::notifyActionFeedback(static::actionCoordinator()->sendEmailFollowUp($record, $data, auth()->id()));
+    }
+
+    protected static function runWhatsappFollowUp(CustomerProfile $record): void
+    {
+        static::notifyActionFeedback(static::actionCoordinator()->sendWhatsappFollowUp($record, auth()->id()));
+    }
+
+    protected static function runReactivation(CustomerProfile $record): void
+    {
+        static::notifyActionFeedback(static::actionCoordinator()->triggerReactivation($record, auth()->id()));
     }
 
     /**

@@ -10,12 +10,11 @@ use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 
 final class CustomerInboundConversationRecorder
 {
     public function __construct(
-        private readonly CustomerConversationRouting $routing,
+        private readonly CustomerInboundConversationContextResolver $contextResolver,
         private readonly CustomerConversationManager $conversationManager,
         private readonly CustomerJourneyManager $journeyManager,
         private readonly CustomerTaskManager $customerTaskManager,
@@ -32,18 +31,19 @@ final class CustomerInboundConversationRecorder
         string $channel,
         array $metadata = [],
     ): CustomerNote {
-        $profile = $touchpoint->customerProfile()->withoutGlobalScopes()->with(['assignedUser', 'location', 'tenant'])->first();
-        $existingNote = $this->latestConversation($touchpoint, $channel);
-        $routing = $profile instanceof CustomerProfile
-            ? $this->routing->resolve($profile, $channel)
-            : $this->fallbackRouting($channel);
-        $message = trim($body) !== '' ? trim($body) : 'Respuesta recibida del cliente.';
-        $priority = $channel === 'whatsapp' ? 'high' : 'normal';
-        $conversationKey = (string) ($existingNote?->conversation_key ?: data_get($touchpoint->metadata, 'conversation_key') ?: Str::uuid()->toString());
-        $assignedUserId = $existingNote?->assigned_user_id ?? $profile?->assigned_user_id;
-        $locationId = $existingNote?->location_id ?? $profile?->location_id;
-        $responseDueAt = $occurredAt->copy()->addMinutes((int) $routing['response_sla_minutes']);
-        $escalationDueAt = $occurredAt->copy()->addMinutes((int) $routing['escalation_minutes']);
+        $context = $this->contextResolver->resolve($touchpoint, $body, $occurredAt, $channel);
+        /** @var CustomerProfile|null $profile */
+        $profile = $context['profile'];
+        /** @var CustomerNote|null $existingNote */
+        $existingNote = $context['existingNote'];
+        $routing = $context['routing'];
+        $message = $context['message'];
+        $priority = $context['priority'];
+        $conversationKey = $context['conversationKey'];
+        $assignedUserId = $context['assignedUserId'];
+        $locationId = $context['locationId'];
+        $responseDueAt = $context['responseDueAt'];
+        $escalationDueAt = $context['escalationDueAt'];
         $conversation = $profile instanceof CustomerProfile
             ? $this->conversationManager->ensure($profile, $channel, $conversationKey, [
                 'owner_user_id' => $assignedUserId,
@@ -174,36 +174,6 @@ final class CustomerInboundConversationRecorder
             'provider_message_id' => $metadata['provider_message_id'] ?? null,
             'provider_thread_key' => $metadata['provider_thread_key'] ?? data_get($touchpoint->metadata, 'provider_thread_key'),
             'provider_reply_to' => $metadata['provider_reply_to'] ?? $touchpoint->provider_message_id,
-        ];
-    }
-
-    private function latestConversation(CustomerTouchpoint $touchpoint, string $channel): ?CustomerNote
-    {
-        $window = max(1, (int) config('customer-loyalty.conversation.window_hours', 72));
-
-        return $this->customerNotes->latestRecentConversationNote(
-            (string) $touchpoint->tenant_id,
-            (int) $touchpoint->customer_profile_id,
-            $channel,
-            $window,
-        );
-    }
-
-    /**
-     * @return array{assignment_group:string,assignment_group_label:string,response_sla_minutes:int,escalation_minutes:int}
-     */
-    private function fallbackRouting(string $channel): array
-    {
-        $groups = (array) config('customer-operations.groups', []);
-        $group = 'sales';
-        $definition = (array) ($groups[$group] ?? []);
-        $channelDelta = (int) data_get(config('customer-operations.channels', []), "{$channel}.sla_delta_minutes", 0);
-
-        return [
-            'assignment_group' => $group,
-            'assignment_group_label' => (string) ($definition['label'] ?? 'Ventas'),
-            'response_sla_minutes' => max(15, ((int) ($definition['sla_minutes'] ?? 90)) + $channelDelta),
-            'escalation_minutes' => max(30, (int) ($definition['escalation_minutes'] ?? 120)),
         ];
     }
 }

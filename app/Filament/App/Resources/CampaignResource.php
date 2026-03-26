@@ -313,19 +313,8 @@ class CampaignResource extends Resource
                         ? 'Se lanzara ahora y, como tiene cadencia activa, seguira corriendo con la repeticion configurada.'
                         : 'Se enviara esta campana a la audiencia filtrada. ¿Continuamos?')
                     ->visible(fn (Campaign $record) => $record->status !== 'sending')
-                    ->action(function (Campaign $record) {
-                        $tenant = self::getTenantRecord();
-                        if (! $tenant instanceof Tenant) {
-                            return;
-                        }
-
-                        $result = self::actionCoordinator()->dispatch($tenant, $record);
-
-                        Notification::make()
-                            ->title($result['title'])
-                            ->{$result['status']}()
-                            ->body($result['body'])
-                            ->send();
+                    ->action(function (Campaign $record): void {
+                        self::runDispatch($record);
                     }),
                 EditAction::make(),
                 DeleteAction::make(),
@@ -426,5 +415,22 @@ class CampaignResource extends Resource
     private static function presentationReader(): TenantCampaignPresentationReader
     {
         return app(TenantCampaignPresentationReader::class);
+    }
+
+    private static function runDispatch(Campaign $record): void
+    {
+        $tenant = self::getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            return;
+        }
+
+        $result = self::actionCoordinator()->dispatch($tenant, $record);
+
+        Notification::make()
+            ->title($result['title'])
+            ->{$result['status']}()
+            ->body($result['body'])
+            ->send();
     }
 }

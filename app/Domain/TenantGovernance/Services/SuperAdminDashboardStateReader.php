@@ -13,8 +13,8 @@ final class SuperAdminDashboardStateReader
 {
     public function __construct(
         private readonly SuperAdminPortfolioReader $portfolioReader,
-        private readonly SuperAdminDashboardAssembler $assembler,
         private readonly SuperAdminDashboardCountsReader $countsReader,
+        private readonly SuperAdminDashboardSnapshotStateReader $snapshotReader,
     ) {}
 
     /**
@@ -41,16 +41,7 @@ final class SuperAdminDashboardStateReader
             'portfolioTenants' => $portfolioTenants,
             'monthlyProConversions' => $monthlyProConversions,
             ...$metrics,
-            'snapshot' => $this->assembler->build(
-                [
-                    ...$metrics,
-                ],
-                $tasks,
-                $portfolio,
-                $conversions,
-                $urls,
-                $safeRoute,
-            ),
+            'snapshot' => $this->snapshotReader->read($metrics, $tasks, $portfolio, $conversions, $urls, $safeRoute),
         ];
     }
 }

@@ -13,7 +13,7 @@ final class ResendTouchpointOutcomeApplier
     public function __construct(
         private readonly CustomerTouchpointGovernance $governance,
         private readonly CustomerTouchpointRepositoryInterface $touchpoints,
-        private readonly CustomerTouchpointInboundReplyRecorder $inboundReplies,
+        private readonly CustomerTouchpointConversationSynchronizer $conversationSynchronizer,
     ) {}
 
     /**
@@ -44,7 +44,7 @@ final class ResendTouchpointOutcomeApplier
         }
 
         $this->touchpoints->save($touchpoint);
-        $this->inboundReplies->syncTouchpoint($touchpoint);
+        $this->conversationSynchronizer->sync($touchpoint);
     }
 
     /**

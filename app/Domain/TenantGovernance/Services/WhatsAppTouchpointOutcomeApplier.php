@@ -13,7 +13,7 @@ final class WhatsAppTouchpointOutcomeApplier
     public function __construct(
         private readonly CustomerTouchpointGovernance $governance,
         private readonly CustomerTouchpointRepositoryInterface $touchpoints,
-        private readonly CustomerTouchpointInboundReplyRecorder $inboundReplies,
+        private readonly CustomerTouchpointConversationSynchronizer $conversationSynchronizer,
     ) {}
 
     /**
@@ -47,6 +47,6 @@ final class WhatsAppTouchpointOutcomeApplier
         ]);
 
         $this->touchpoints->save($touchpoint);
-        $this->inboundReplies->syncTouchpoint($touchpoint);
+        $this->conversationSynchronizer->sync($touchpoint);
     }
 }

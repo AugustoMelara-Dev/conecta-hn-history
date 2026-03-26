@@ -10,7 +10,7 @@ use Illuminate\Support\HtmlString;
 final class CustomerProfileTimelineHtmlReader
 {
     public function __construct(
-        private readonly CustomerProfileTimelineBuilder $timelineBuilder,
+        private readonly CustomerProfileTimelineSectionReader $timelineReader,
     ) {}
 
     public function render(?CustomerProfile $profile): HtmlString|string
@@ -19,7 +19,7 @@ final class CustomerProfileTimelineHtmlReader
             return 'Todavia no hay timeline disponible.';
         }
 
-        $items = $this->timelineBuilder->build($profile);
+        $items = $this->timelineReader->items($profile);
 
         if ($items === []) {
             return 'Aun no hay eventos suficientes para armar la historia operativa de este cliente.';

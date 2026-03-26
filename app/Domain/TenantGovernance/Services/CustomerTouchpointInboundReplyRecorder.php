@@ -13,7 +13,7 @@ final class CustomerTouchpointInboundReplyRecorder
         private readonly CustomerConversationOpsManager $conversationOpsManager,
         private readonly CustomerInboundProfileUpdater $profileUpdater,
         private readonly CustomerTouchpointOptInKeywordProcessor $optInKeywordProcessor,
-        private readonly CustomerTouchpointOutcomeSynchronizer $outcomeSynchronizer,
+        private readonly CustomerTouchpointConversationSynchronizer $conversationSynchronizer,
     ) {}
 
     /**
@@ -46,11 +46,6 @@ final class CustomerTouchpointInboundReplyRecorder
             $this->optInKeywordProcessor->process($touchpoint, $message);
         }
 
-        $this->outcomeSynchronizer->sync($touchpoint);
-    }
-
-    public function syncTouchpoint(CustomerTouchpoint $touchpoint): void
-    {
-        $this->outcomeSynchronizer->sync($touchpoint);
+        $this->conversationSynchronizer->sync($touchpoint);
     }
 }

@@ -9,7 +9,7 @@ use App\Models\CustomerProfile;
 final class TenantCustomerProfileEditReader
 {
     public function __construct(
-        private readonly CustomerProfileWorkspaceReader $workspaceReader,
+        private readonly CustomerProfileDuplicateReader $duplicateReader,
         private readonly CustomerProfileSectionReader $sectionReader,
     ) {}
 
@@ -23,12 +23,12 @@ final class TenantCustomerProfileEditReader
      */
     public function duplicateOptions(CustomerProfile $profile, string $search): array
     {
-        return $this->workspaceReader->duplicateOptions($profile, $search);
+        return $this->duplicateReader->options($profile, $search);
     }
 
     public function duplicateLabel(CustomerProfile $profile, mixed $value): ?string
     {
-        return $this->workspaceReader->duplicateLabel($profile, $value);
+        return $this->duplicateReader->selectedLabel($profile, $value);
     }
 
     /**
