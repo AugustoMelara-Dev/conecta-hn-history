@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\CustomerProfileResource\Pages;
 
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
+use App\Domain\TenantGovernance\Services\CustomerProfileWorkspaceReader;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\Pages\EditTenantRecord;
 use App\Models\CustomerProfile;
@@ -71,40 +72,12 @@ class EditCustomerProfile extends EditTenantRecord
      */
     private function duplicateOptions(string $search): array
     {
-        $query = CustomerProfile::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $this->getRecord()->tenant_id)
-            ->where('id', '!=', $this->getRecord()->getKey())
-            ->orderByDesc('last_seen_at')
-            ->orderByDesc('updated_at')
-            ->limit(20);
-
-        if (trim($search) !== '') {
-            $query->where(function ($inner) use ($search): void {
-                $inner->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('email', 'like', '%'.$search.'%')
-                    ->orWhere('phone', 'like', '%'.$search.'%');
-            });
-        }
-
-        return $query
-            ->get()
-            ->mapWithKeys(fn (CustomerProfile $profile): array => [(int) $profile->getKey() => $this->formatDuplicateLabel($profile)])
-            ->all();
+        return app(CustomerProfileWorkspaceReader::class)->duplicateOptions($this->getRecord(), $search);
     }
 
     private function duplicateLabel(mixed $value): ?string
     {
-        if (! is_numeric($value)) {
-            return null;
-        }
-
-        $profile = CustomerProfile::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $this->getRecord()->tenant_id)
-            ->find((int) $value);
-
-        return $profile instanceof CustomerProfile ? $this->formatDuplicateLabel($profile) : null;
+        return app(CustomerProfileWorkspaceReader::class)->duplicateLabel($this->getRecord(), $value);
     }
 
     private function formatDuplicateLabel(CustomerProfile $profile): string

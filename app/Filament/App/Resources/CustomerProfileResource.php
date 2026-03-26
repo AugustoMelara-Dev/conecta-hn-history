@@ -8,6 +8,7 @@ use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
 use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
 use App\Domain\TenantGovernance\Services\CustomerLoyaltyManager;
 use App\Domain\TenantGovernance\Services\CustomerProfileTimelineBuilder;
+use App\Domain\TenantGovernance\Services\CustomerProfileWorkspaceReader;
 use App\Domain\TenantGovernance\Services\CustomerSegmentPlaybook;
 use App\Filament\App\Resources\CustomerProfileResource\Pages;
 use App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
@@ -738,31 +739,7 @@ class CustomerProfileResource extends Resource
         if (! $record instanceof CustomerProfile) {
             return 'Abre una ficha real para ver el workspace consolidado del cliente.';
         }
-
-        $openTasks = $record->tasks()
-            ->withoutGlobalScopes()
-            ->whereNotIn('status', ['completed', 'cancelled'])
-            ->count();
-        $breachedTasks = $record->tasks()
-            ->withoutGlobalScopes()
-            ->whereNotIn('status', ['completed', 'cancelled'])
-            ->whereNotNull('sla_due_at')
-            ->where('sla_due_at', '<', now())
-            ->count();
-        $openReplies = $record->notes()
-            ->withoutGlobalScopes()
-            ->where('requires_follow_up', true)
-            ->whereIn('status', ['open', 'in_progress', 'pending_customer'])
-            ->count();
-        $lastOrder = $record->last_order_at?->diffForHumans() ?? 'Sin pedidos';
-        $lastAppointment = $record->last_appointment_at?->diffForHumans() ?? 'Sin citas';
-
-        $cards = [
-            ['label' => 'Valor acumulado', 'value' => 'L. '.number_format((float) $record->total_spent, 2), 'copy' => 'Ticket promedio: L. '.number_format((float) $record->average_ticket, 2)],
-            ['label' => 'Tareas activas', 'value' => (string) $openTasks, 'copy' => $breachedTasks > 0 ? $breachedTasks.' vencidas por SLA.' : 'Sin vencimientos ahora.'],
-            ['label' => 'Conversaciones', 'value' => (string) $openReplies, 'copy' => 'Canal preferido: '.$record->preferred_channel_label],
-            ['label' => 'Continuidad', 'value' => $record->segment_display_label, 'copy' => 'Ultimo pedido: '.$lastOrder.' / Ultima cita: '.$lastAppointment],
-        ];
+        $cards = app(CustomerProfileWorkspaceReader::class)->workspaceCards($record);
 
         $items = collect($cards)
             ->map(fn (array $card): string => '<div style="border:1px solid rgba(15,23,42,.08); border-radius:1rem; padding:1rem; background:#fff;">'
