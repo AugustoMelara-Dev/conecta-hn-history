@@ -21,7 +21,7 @@ final class SuperAdminDashboardStateReader
      * @param  array<string, string>  $urls
      * @return array<string, mixed>
      */
-    public function read(array $urls, callable $safeRoute): array
+    public function read(array $urls): array
     {
         /** @var list<OperationalPlaybookTask> $activePlaybookTasks */
         $activePlaybookTasks = $this->portfolioReader->activePlaybookTasks();
@@ -41,7 +41,7 @@ final class SuperAdminDashboardStateReader
             'portfolioTenants' => $portfolioTenants,
             'monthlyProConversions' => $monthlyProConversions,
             ...$metrics,
-            'snapshot' => $this->snapshotReader->read($metrics, $tasks, $portfolio, $conversions, $urls, $safeRoute),
+            'snapshot' => $this->snapshotReader->read($metrics, $tasks, $portfolio, $conversions, $urls),
         ];
     }
 }

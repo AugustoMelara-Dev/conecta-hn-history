@@ -15,10 +15,10 @@ final class SuperAdminDashboardPageLoader
      * @param  object  $target
      * @param  array<string, string>  $urls
      */
-    public function load(object $target, array $urls, callable $safeRoute): void
+    public function load(object $target, array $urls): void
     {
         try {
-            $state = $this->viewStateReader->read($urls, $safeRoute);
+            $state = $this->viewStateReader->read($urls);
         } catch (\Throwable) {
             $state = $this->viewStateReader->defaults();
         }

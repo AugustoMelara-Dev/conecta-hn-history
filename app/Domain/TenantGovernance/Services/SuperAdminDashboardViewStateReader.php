@@ -17,9 +17,9 @@ final class SuperAdminDashboardViewStateReader
      * @param  array<string, string>  $urls
      * @return array<string, mixed>
      */
-    public function read(array $urls, callable $safeRoute): array
+    public function read(array $urls): array
     {
-        $state = $this->stateReader->read($urls, $safeRoute);
+        $state = $this->stateReader->read($urls);
 
         return array_replace(
             $this->defaults(),

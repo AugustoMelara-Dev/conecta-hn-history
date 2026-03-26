@@ -11,26 +11,27 @@ final class CustomerProfileActionFormReader
     public function __construct(
         private readonly CustomerLoyaltyManager $loyaltyManager,
         private readonly CustomerAutomationManager $automationManager,
+        private readonly CustomerProfileActionVisibilityReader $visibilityReader,
     ) {}
 
     public function canRedeemReward(CustomerProfile $profile): bool
     {
-        return $this->loyaltyManager->hasRedeemableReward($profile);
+        return $this->visibilityReader->canRedeemReward($profile);
     }
 
     public function canEmailFollowUp(CustomerProfile $profile): bool
     {
-        return filled($profile->email);
+        return $this->visibilityReader->canEmailFollowUp($profile);
     }
 
     public function canWhatsappFollowUp(CustomerProfile $profile): bool
     {
-        return filled($profile->phone);
+        return $this->visibilityReader->canWhatsappFollowUp($profile);
     }
 
     public function canTriggerReactivation(CustomerProfile $profile): bool
     {
-        return (int) $profile->reactivation_score >= 65 && filled($profile->email);
+        return $this->visibilityReader->canTriggerReactivation($profile);
     }
 
     /**

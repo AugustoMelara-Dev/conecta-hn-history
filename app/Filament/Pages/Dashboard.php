@@ -153,7 +153,7 @@ class Dashboard extends \Filament\Pages\Page
 
     public function mount(SuperAdminDashboardBootstrapper $bootstrapper): void
     {
-        $bootstrapper->boot($this, $this->safeRoute(...));
+        $bootstrapper->boot($this);
     }
 
     public static function getRoutePath(Panel $panel): string
@@ -161,12 +161,4 @@ class Dashboard extends \Filament\Pages\Page
         return static::$routePath;
     }
 
-    private function safeRoute(string $name, array $parameters = []): string
-    {
-        try {
-            return route($name, $parameters, false);
-        } catch (\Throwable) {
-            return '#';
-        }
-    }
 }

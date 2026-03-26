@@ -16,7 +16,7 @@ final class SuperAdminDashboardBootstrapper
     /**
      * @param  object  $target
      */
-    public function boot(object $target, callable $safeRoute): void
+    public function boot(object $target): void
     {
         try {
             $this->portfolioManager->syncSignals();
@@ -30,6 +30,6 @@ final class SuperAdminDashboardBootstrapper
             // Evita que la lectura de journeys CRM tumbe el dashboard.
         }
 
-        $this->pageLoader->load($target, $this->urlMapReader->read($safeRoute), $safeRoute);
+        $this->pageLoader->load($target, $this->urlMapReader->read());
     }
 }

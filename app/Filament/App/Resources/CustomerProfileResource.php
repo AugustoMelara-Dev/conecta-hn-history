@@ -421,7 +421,7 @@ class CustomerProfileResource extends Resource
                     ->color('info')
                     ->modalHeading('Enviar seguimiento por email')
                     ->modalDescription('Esto crea una entrega auditada en el CRM y actualiza el ultimo contacto del cliente.')
-                    ->fillForm(fn (CustomerProfile $record): array => static::actionFormReader()->emailFollowUpForm($record))
+                    ->fillForm(fn (CustomerProfile $record): array => static::emailFollowUpForm($record))
                     ->form([
                         Forms\Components\Hidden::make('automation_key'),
                         Forms\Components\TextInput::make('subject')
@@ -573,6 +573,14 @@ class CustomerProfileResource extends Resource
     protected static function canTriggerReactivation(CustomerProfile $record): bool
     {
         return static::actionFormReader()->canTriggerReactivation($record);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected static function emailFollowUpForm(CustomerProfile $record): array
+    {
+        return static::actionFormReader()->emailFollowUpForm($record);
     }
 
     protected static function workspaceReader(): TenantCustomerWorkspaceReader
