@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Repositories\CustomerTaskRepositoryInterface;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
 use App\Models\CustomerJourneyRun;
@@ -11,6 +12,10 @@ use App\Models\CustomerTask;
 
 class CustomerTaskManager
 {
+    public function __construct(
+        private readonly CustomerTaskRepositoryInterface $customerTasks,
+    ) {}
+
     public function syncFromNote(CustomerNote $note): ?CustomerTask
     {
         if ($note->customer_profile_id === null) {
@@ -19,12 +24,7 @@ class CustomerTaskManager
 
         $conversation = $note->conversation()->withoutGlobalScopes()->first();
 
-        $task = CustomerTask::query()
-            ->withoutGlobalScopes()
-            ->firstOrNew([
-                'tenant_id' => (string) $note->tenant_id,
-                'customer_note_id' => (int) $note->getKey(),
-            ]);
+        $task = $this->customerTasks->firstOrNewByNote((string) $note->tenant_id, (int) $note->getKey());
 
         $task->forceFill([
             'customer_profile_id' => (int) $note->customer_profile_id,
@@ -53,9 +53,7 @@ class CustomerTaskManager
             $task->created_by_user_id = $note->created_by_user_id;
         }
 
-        $task->save();
-
-        return $task->fresh();
+        return $this->customerTasks->save($task);
     }
 
     public function complete(CustomerTask $task, ?string $actorUserId = null): CustomerTask
@@ -64,9 +62,9 @@ class CustomerTaskManager
             'status' => 'completed',
             'completed_at' => now(),
             'assigned_user_id' => $actorUserId ?? $task->assigned_user_id,
-        ])->save();
+        ]);
 
-        return $task->fresh();
+        return $this->customerTasks->save($task);
     }
 
     public function createJourneyRescueTask(CustomerJourneyRun $run, string $reason): ?CustomerTask
@@ -78,14 +76,7 @@ class CustomerTaskManager
             return null;
         }
 
-        $task = CustomerTask::query()
-            ->withoutGlobalScopes()
-            ->firstOrNew([
-                'tenant_id' => (string) $run->tenant_id,
-                'customer_conversation_id' => (int) $run->customer_conversation_id,
-                'task_type' => 'journey_rescue',
-                'status' => 'open',
-            ]);
+        $task = $this->customerTasks->firstOpenJourneyRescueTask((string) $run->tenant_id, (int) $run->customer_conversation_id);
 
         $task->forceFill([
             'customer_profile_id' => (int) $profile->getKey(),
@@ -112,9 +103,7 @@ class CustomerTaskManager
             $task->created_by_user_id = $conversation?->owner_user_id;
         }
 
-        $task->save();
-
-        return $task->fresh();
+        return $this->customerTasks->save($task);
     }
 
     private function resolveTitle(CustomerNote $note): string

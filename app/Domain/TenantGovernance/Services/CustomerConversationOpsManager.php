@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Repositories\CustomerNoteRepositoryInterface;
 use App\Models\CustomerConversation;
 use App\Models\CustomerConversationMessage;
 use App\Models\CustomerNote;
@@ -20,6 +21,7 @@ class CustomerConversationOpsManager
         private readonly CustomerConversationManager $conversationManager,
         private readonly CustomerJourneyManager $journeyManager,
         private readonly CustomerConversationRouting $routing,
+        private readonly CustomerNoteRepositoryInterface $customerNotes,
     ) {}
 
     public function recordInboundReply(
@@ -87,13 +89,11 @@ class CustomerConversationOpsManager
                     'provider_thread_key' => $metadata['provider_thread_key'] ?? data_get($touchpoint->metadata, 'provider_thread_key'),
                     'provider_reply_to' => $metadata['provider_reply_to'] ?? $touchpoint->provider_message_id,
                 ]),
-            ])->save();
+            ]);
 
-            $note = $existingNote->fresh();
+            $note = $this->customerNotes->save($existingNote);
         } else {
-            $note = CustomerNote::query()
-                ->withoutGlobalScopes()
-                ->create([
+            $note = $this->customerNotes->create([
                     'tenant_id' => (string) $touchpoint->tenant_id,
                     'customer_profile_id' => (int) $touchpoint->customer_profile_id,
                     'customer_conversation_id' => $conversation?->getKey(),
@@ -164,15 +164,11 @@ class CustomerConversationOpsManager
     public function markOutboundResponse(CustomerProfile $profile, CustomerTouchpoint $touchpoint, ?string $actorUserId = null): ?CustomerNote
     {
         $routing = $this->routing->resolve($profile, (string) $touchpoint->channel);
-        $note = CustomerNote::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $profile->tenant_id)
-            ->where('customer_profile_id', (int) $profile->getKey())
-            ->where('source_channel', $touchpoint->channel)
-            ->whereIn('status', ['open', 'in_progress'])
-            ->orderByDesc('last_customer_message_at')
-            ->orderByDesc('created_at')
-            ->first();
+        $note = $this->customerNotes->latestOpenConversationNote(
+            (string) $profile->tenant_id,
+            (int) $profile->getKey(),
+            (string) $touchpoint->channel,
+        );
 
         $respondedAt = $touchpoint->sent_at ?? now();
         $conversationKey = (string) data_get($touchpoint->metadata, 'conversation_key', $note?->conversation_key ?: Str::uuid()->toString());
@@ -213,9 +209,9 @@ class CustomerConversationOpsManager
                     'last_outbound_touchpoint_id' => (int) $touchpoint->getKey(),
                     'last_outbound_at' => $respondedAt->toIso8601String(),
                 ]),
-            ])->save();
+            ]);
 
-            $note = $note->fresh();
+            $note = $this->customerNotes->save($note);
             $this->customerTaskManager->syncFromNote($note);
         }
 
@@ -250,9 +246,9 @@ class CustomerConversationOpsManager
             'status' => 'in_progress',
             'handled_by_user_id' => $userId ?? $note->handled_by_user_id,
             'assigned_user_id' => $userId ?? $note->assigned_user_id,
-        ])->save();
+        ]);
 
-        $freshNote = $note->fresh();
+        $freshNote = $this->customerNotes->save($note);
         $this->syncConversationFromNote($freshNote);
         $this->customerTaskManager->syncFromNote($freshNote);
 
@@ -268,9 +264,9 @@ class CustomerConversationOpsManager
             'handled_at' => now(),
             'requires_follow_up' => false,
             'next_action_at' => null,
-        ])->save();
+        ]);
 
-        $freshNote = $note->fresh();
+        $freshNote = $this->customerNotes->save($note);
         $this->syncConversationFromNote($freshNote);
         $this->customerTaskManager->syncFromNote($freshNote);
 
@@ -292,9 +288,9 @@ class CustomerConversationOpsManager
                 'last_routed_by' => $actorUserId,
                 'last_owner_id' => $userId,
             ]),
-        ])->save();
+        ]);
 
-        $freshNote = $note->fresh();
+        $freshNote = $this->customerNotes->save($note);
         $this->syncConversationFromNote($freshNote);
         $this->customerTaskManager->syncFromNote($freshNote);
 
@@ -310,9 +306,9 @@ class CustomerConversationOpsManager
                 'last_location_routed_by' => $actorUserId,
                 'last_location_id' => $locationId,
             ]),
-        ])->save();
+        ]);
 
-        $freshNote = $note->fresh();
+        $freshNote = $this->customerNotes->save($note);
         $this->syncConversationFromNote($freshNote);
         $this->customerTaskManager->syncFromNote($freshNote);
 
@@ -330,9 +326,9 @@ class CustomerConversationOpsManager
                 'last_group_routed_at' => now()->toIso8601String(),
                 'last_group_routed_by' => $actorUserId,
             ]),
-        ])->save();
+        ]);
 
-        $freshNote = $note->fresh();
+        $freshNote = $this->customerNotes->save($note);
         $this->syncConversationFromNote($freshNote);
         $this->customerTaskManager->syncFromNote($freshNote);
 
@@ -384,16 +380,12 @@ class CustomerConversationOpsManager
     {
         $window = max(1, (int) config('customer-loyalty.conversation.window_hours', 72));
 
-        return CustomerNote::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $touchpoint->tenant_id)
-            ->where('customer_profile_id', (int) $touchpoint->customer_profile_id)
-            ->where('source_channel', $channel)
-            ->whereIn('status', ['open', 'in_progress', 'pending_customer'])
-            ->where('created_at', '>=', now()->subHours($window))
-            ->orderByDesc('last_customer_message_at')
-            ->orderByDesc('created_at')
-            ->first();
+        return $this->customerNotes->latestRecentConversationNote(
+            (string) $touchpoint->tenant_id,
+            (int) $touchpoint->customer_profile_id,
+            $channel,
+            $window,
+        );
     }
 
     private function followUpGraceHours(): int
@@ -428,7 +420,9 @@ class CustomerConversationOpsManager
         if ((int) $note->customer_conversation_id !== (int) $conversation->getKey()) {
             $note->forceFill([
                 'customer_conversation_id' => $conversation->getKey(),
-            ])->save();
+            ]);
+
+            $this->customerNotes->save($note);
         }
 
         $this->journeyManager->sync($conversation, $profile);
