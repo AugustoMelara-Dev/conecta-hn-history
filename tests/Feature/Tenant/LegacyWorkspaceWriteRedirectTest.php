@@ -60,6 +60,45 @@ final class LegacyWorkspaceWriteRedirectTest extends TestCase
         self::assertSame('Lunes a Viernes 8:00 AM - 5:00 PM', $tenant->fresh()?->simple_schedule);
     }
 
+    public function test_legacy_product_mutation_routes_redirect_without_mutating_existing_records(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner('workspace-productos-mutaciones');
+
+        $product = Product::factory()
+            ->forTenant($tenant)
+            ->create([
+                'name' => 'Producto estable',
+                'price' => 1500,
+                'is_visible' => true,
+            ]);
+
+        $this->actingAs($user)
+            ->get(route('tenant.products.edit', ['product' => $product->id], false))
+            ->assertRedirect(route('filament.app.resources.products.index', ['tenant' => $tenant->slug], false));
+
+        $this->actingAs($user)
+            ->put(route('tenant.products.update', ['product' => $product->id], false), [
+                'name' => 'Producto editado desde legacy',
+                'price' => 2000,
+            ])
+            ->assertRedirect(route('filament.app.resources.products.index', ['tenant' => $tenant->slug], false))
+            ->assertSessionHas('error', 'La gestion de productos ya se administra desde el panel oficial en /app.');
+
+        $this->actingAs($user)
+            ->delete(route('tenant.products.destroy', ['product' => $product->id], false))
+            ->assertRedirect(route('filament.app.resources.products.index', ['tenant' => $tenant->slug], false))
+            ->assertSessionHas('error', 'La gestion de productos ya se administra desde el panel oficial en /app.');
+
+        $this->actingAs($user)
+            ->put(route('tenant.products.toggle-visibility', ['product' => $product->id], false))
+            ->assertRedirect(route('filament.app.resources.products.index', ['tenant' => $tenant->slug], false))
+            ->assertSessionHas('error', 'La gestion de productos ya se administra desde el panel oficial en /app.');
+
+        self::assertSame('Producto estable', $product->fresh()?->name);
+        self::assertSame('1500.00', (string) $product->fresh()?->price);
+        self::assertTrue((bool) $product->fresh()?->is_visible);
+    }
+
     public function test_legacy_order_status_route_redirects_to_the_official_orders_panel_without_mutating(): void
     {
         [$user, $tenant] = $this->makeTenantOwner('workspace-orders');

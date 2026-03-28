@@ -4,19 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
-use App\Application\Products\Commands\CreateProductCommand;
-use App\Application\Products\Commands\DeleteProductCommand;
-use App\Application\Products\Commands\ToggleProductVisibilityCommand;
-use App\Application\Products\Commands\UpdateProductCommand;
-use App\Application\Products\Handlers\CreateProductHandler;
-use App\Application\Products\Handlers\DeleteProductHandler;
-use App\Application\Products\Handlers\ToggleProductVisibilityHandler;
-use App\Application\Products\Handlers\UpdateProductHandler;
 use App\Domain\Shared\Contracts\TenantContext;
 use App\Domain\Tenant\Contracts\TenantProductRepository;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Tenant\StoreProductRequest;
-use App\Http\Requests\Tenant\UpdateProductRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -41,132 +31,49 @@ final class ProductController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(): RedirectResponse
     {
-        return Inertia::render('Tenant/Products/Create');
+        return Inertia::location(route('filament.app.resources.products.index', [
+            'tenant' => $this->tenantSlug(),
+        ], false));
     }
 
-    public function store(StoreProductRequest $request, CreateProductHandler $handler): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validated();
-        $tenantUuid = $this->tenantContext->getTenantUuid();
-        $imagePath = $request->file('image')?->store("tenants/{$tenantUuid}/products", 'public');
-        $sku = $this->resolveSku($validated, $tenantUuid);
-
-        $handler->handle(new CreateProductCommand(
-            tenantId: $tenantUuid,
-            sku: $sku,
-            name: (string) $validated['name'],
-            description: (string) ($validated['description'] ?? ''),
-            price: (int) round((float) $validated['price'] * 100),
-            idempotencyKey: $this->resolveIdempotencyKey($request, [
-                'tenant_id' => $tenantUuid,
-                'sku' => $validated['sku'] ?? null,
-                'name' => $validated['name'],
-            ]),
-            stock: 0,
-            categoryId: null,
-            imagePath: $imagePath,
-            isVisible: (bool) ($validated['is_visible'] ?? true),
-        ));
-
-        return redirect()->route('tenant.products.index')->with('success', 'Producto creado.');
+        return $this->redirectToOfficialProducts('La gestion de productos ya se administra desde el panel oficial en /app.');
     }
 
-    public function edit(int $id): Response
+    public function edit(int $id): RedirectResponse
     {
-        return Inertia::render('Tenant/Products/Edit', [
-            'productId' => $id,
-        ]);
+        return Inertia::location(route('filament.app.resources.products.index', [
+            'tenant' => $this->tenantSlug(),
+        ], false));
     }
 
-    public function update(UpdateProductRequest $request, UpdateProductHandler $handler, int $id): RedirectResponse
+    public function update(Request $request, int $id): RedirectResponse
     {
-        $validated = $request->validated();
-        $tenantUuid = $this->tenantContext->getTenantUuid();
-        $imagePath = $request->file('image')?->store("tenants/{$tenantUuid}/products", 'public');
-
-        $handler->handle(new UpdateProductCommand(
-            tenantId: $tenantUuid,
-            productId: $id,
-            name: (string) $validated['name'],
-            description: (string) ($validated['description'] ?? ''),
-            price: (int) round((float) $validated['price'] * 100),
-            idempotencyKey: $this->resolveIdempotencyKey($request, [
-                'tenant_id' => $tenantUuid,
-                'product_id' => $id,
-                'name' => $validated['name'],
-            ]),
-            sku: isset($validated['sku']) ? (string) $validated['sku'] : null,
-            stock: 0,
-            categoryId: null,
-            imagePath: $imagePath,
-            isVisible: (bool) ($validated['is_visible'] ?? true),
-        ));
-
-        return back()->with('success', 'Producto actualizado.');
+        return $this->redirectToOfficialProducts('La gestion de productos ya se administra desde el panel oficial en /app.');
     }
 
-    public function destroy(Request $request, DeleteProductHandler $handler, int $id): RedirectResponse
+    public function destroy(Request $request, int $id): RedirectResponse
     {
-        $tenantUuid = $this->tenantContext->getTenantUuid();
-
-        $handler->handle(new DeleteProductCommand(
-            tenantId: $tenantUuid,
-            productId: $id,
-            idempotencyKey: $this->resolveIdempotencyKey($request, [
-                'tenant_id' => $tenantUuid,
-                'product_id' => $id,
-                'action' => 'delete',
-            ]),
-        ));
-
-        return back()->with('success', 'Producto eliminado.');
+        return $this->redirectToOfficialProducts('La gestion de productos ya se administra desde el panel oficial en /app.');
     }
 
-    public function toggleVisibility(Request $request, ToggleProductVisibilityHandler $handler, int $id): RedirectResponse
+    public function toggleVisibility(Request $request, int $id): RedirectResponse
     {
-        $tenantUuid = $this->tenantContext->getTenantUuid();
-
-        $handler->handle(new ToggleProductVisibilityCommand(
-            tenantId: $tenantUuid,
-            productId: $id,
-            idempotencyKey: $this->resolveIdempotencyKey($request, [
-                'tenant_id' => $tenantUuid,
-                'product_id' => $id,
-                'action' => 'toggle_visibility',
-            ]),
-        ));
-
-        return back()->with('success', 'Visibilidad actualizada.');
+        return $this->redirectToOfficialProducts('La gestion de productos ya se administra desde el panel oficial en /app.');
     }
 
-    private function resolveIdempotencyKey(Request $request, array $payload): string
+    private function redirectToOfficialProducts(string $message): RedirectResponse
     {
-        $headerKey = $request->header('Idempotency-Key');
-        if (! is_string($headerKey) || $headerKey === '') {
-            $headerKey = $request->header('X-Idempotency-Key');
-        }
-
-        if (is_string($headerKey) && $headerKey !== '') {
-            return $headerKey;
-        }
-
-        return hash('xxh128', json_encode($payload, JSON_THROW_ON_ERROR));
+        return redirect()
+            ->to(route('filament.app.resources.products.index', ['tenant' => $this->tenantSlug()], false))
+            ->with('error', $message);
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    private function resolveSku(array $validated, string $tenantUuid): string
+    private function tenantSlug(): string
     {
-        $sku = isset($validated['sku']) ? trim((string) $validated['sku']) : '';
-        if ($sku !== '') {
-            return $sku;
-        }
-
-        $slug = strtoupper((string) preg_replace('/[^a-zA-Z0-9]+/', '-', (string) $validated['name']));
-
-        return substr($slug, 0, 8).'-'.substr(hash('xxh128', $tenantUuid.(string) $validated['name']), 0, 12);
+        return (string) ($this->tenantContext->getTenantData(['slug'])['slug'] ?? '');
     }
 }

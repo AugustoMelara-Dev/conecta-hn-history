@@ -4,16 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
-use App\Application\Tenant\Commands\UpdateTenantBrandingCommand;
-use App\Application\Tenant\Commands\UpdateTenantScheduleCommand;
-use App\Application\Tenant\Handlers\UpdateTenantBrandingHandler;
-use App\Application\Tenant\Handlers\UpdateTenantScheduleHandler;
 use App\Domain\Shared\Contracts\TenantContext;
-use App\Domain\Shared\DTOs\FileTransferObject;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Tenant\UpdateScheduleRequest;
-use App\Http\Requests\Tenant\UpdateTenantProfileRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -42,42 +36,26 @@ final class SettingsController extends Controller
     }
 
     public function updateProfile(
-        UpdateTenantProfileRequest $request,
-        UpdateTenantBrandingHandler $handler
+        Request $request
     ): RedirectResponse {
-        $validated = $request->validated();
-
-        $handler->handle(new UpdateTenantBrandingCommand(
-            tenantId: $this->tenantContext->getTenantUuid(),
-            logo: $request->file('logo') ? FileTransferObject::fromUploadedFile($request->file('logo')) : null,
-            banner: $request->file('cover') ? FileTransferObject::fromUploadedFile($request->file('cover')) : null,
-            name: isset($validated['name']) ? (string) $validated['name'] : null,
-            description: isset($validated['description']) ? (string) $validated['description'] : null,
-            about: isset($validated['about']) ? (string) $validated['about'] : null,
-            phone: isset($validated['phone']) ? (string) $validated['phone'] : null,
-            whatsapp: isset($validated['whatsapp_number']) ? (string) $validated['whatsapp_number'] : null,
-            address: isset($validated['address']) ? (string) $validated['address'] : null,
-            website: isset($validated['website_url']) ? (string) $validated['website_url'] : null,
-            instagram: isset($validated['instagram_url']) ? (string) $validated['instagram_url'] : null,
-            facebook: isset($validated['facebook_url']) ? (string) $validated['facebook_url'] : null,
-            tiktok: isset($validated['tiktok_url']) ? (string) $validated['tiktok_url'] : null,
-            primaryColor: isset($validated['primary_color']) ? (string) $validated['primary_color'] : null,
-        ));
-
-        return back()->with('success', 'Perfil actualizado.');
+        return $this->redirectToOfficialSettings('La configuracion del negocio ya se administra desde el panel oficial en /app.');
     }
 
     public function updateSchedule(
-        UpdateScheduleRequest $request,
-        UpdateTenantScheduleHandler $handler
+        Request $request
     ): RedirectResponse {
-        $validated = $request->validated();
+        return $this->redirectToOfficialSettings('La configuracion del negocio ya se administra desde el panel oficial en /app.');
+    }
 
-        $handler->handle(new UpdateTenantScheduleCommand(
-            tenantId: $this->tenantContext->getTenantUuid(),
-            scheduleData: is_array($validated['schedule'] ?? null) ? $validated['schedule'] : [],
-        ));
+    private function redirectToOfficialSettings(string $message): RedirectResponse
+    {
+        return redirect()
+            ->to(route('filament.app.pages.settings', ['tenant' => $this->tenantSlug()], false))
+            ->with('error', $message);
+    }
 
-        return back()->with('success', 'Horarios actualizados.');
+    private function tenantSlug(): string
+    {
+        return (string) ($this->tenantContext->getTenantData(['slug'])['slug'] ?? '');
     }
 }
