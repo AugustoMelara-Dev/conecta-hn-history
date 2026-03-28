@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Application\Catalog\Commands\CreateMenuSectionCommand;
+use App\Application\Catalog\Commands\DeleteMenuSectionCommand;
+use App\Application\Catalog\Commands\ReorderMenuSectionsCommand;
+use App\Application\Catalog\Commands\UpdateMenuSectionCommand;
+use App\Application\Catalog\Handlers\CreateMenuSectionHandler;
+use App\Application\Catalog\Handlers\DeleteMenuSectionHandler;
+use App\Application\Catalog\Handlers\ReorderMenuSectionsHandler;
+use App\Application\Catalog\Handlers\UpdateMenuSectionHandler;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Filament\App\Resources\MenuSectionResource\Pages;
 use App\Models\MenuSection;
@@ -20,6 +28,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 
 class MenuSectionResource extends Resource
@@ -104,18 +113,6 @@ class MenuSectionResource extends Resource
                             ->placeholder('Ej: Platos fuertes, bebidas, postres')
                             ->autofocus()
                             ->columnSpanFull(),
-                        Forms\Components\Hidden::make('sort_order')
-                            ->default(function (): int {
-                                $tenant = static::getTenantRecord();
-
-                                if (! $tenant instanceof Tenant) {
-                                    return 1;
-                                }
-
-                                return ((int) MenuSection::query()
-                                    ->where('tenant_id', (string) $tenant->getKey())
-                                    ->max('sort_order')) + 1;
-                            }),
                         Forms\Components\Toggle::make('is_active')
                             ->label('Visible en mi menú')
                             ->default(true)
@@ -154,6 +151,13 @@ class MenuSectionResource extends Resource
                     ->label('Activa')
                     ->onColor('success')
                     ->offColor('danger')
+                    ->updateStateUsing(function (MenuSection $record, mixed $state): bool {
+                        $updatedRecord = static::updateOwnedMenuSection($record, [
+                            'is_active' => (bool) $state,
+                        ]);
+
+                        return (bool) $updatedRecord->is_active;
+                    })
                     ->tooltip('Activar o desactivar sección'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Creado')
@@ -171,11 +175,16 @@ class MenuSectionResource extends Resource
                     ->falseLabel('Inactivas'),
             ])
             ->actions([
-                EditAction::make()->iconButton(),
+                EditAction::make()
+                    ->iconButton()
+                    ->using(fn (MenuSection $record, array $data): MenuSection => static::updateOwnedMenuSection($record, $data)),
                 DeleteAction::make()
                     ->iconButton()
                     ->modalHeading('¿Eliminar esta sección?')
                     ->modalDescription('Los productos dentro de esta sección no se eliminarán.')
+                    ->action(function (MenuSection $record): void {
+                        static::deleteOwnedMenuSection($record);
+                    })
                     ->modalSubmitActionLabel('Sí, eliminar sección')
                     ->successNotificationTitle('Sección eliminada'),
             ])
@@ -183,7 +192,12 @@ class MenuSectionResource extends Resource
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->modalHeading('¿Eliminar secciones seleccionadas?')
-                        ->modalDescription('Los productos dentro de estas secciones no se eliminarán.'),
+                        ->modalDescription('Los productos dentro de estas secciones no se eliminarán.')
+                        ->action(function (Collection $records): void {
+                            $records
+                                ->filter(fn (mixed $record): bool => $record instanceof MenuSection)
+                                ->each(fn (MenuSection $record) => static::deleteOwnedMenuSection($record));
+                        }),
                 ]),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
@@ -213,5 +227,89 @@ class MenuSectionResource extends Resource
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public static function createOwnedMenuSection(array $data): MenuSection
+    {
+        return app(CreateMenuSectionHandler::class)->handle(
+            new CreateMenuSectionCommand(
+                tenantId: static::resolveTenantIdOrFail(),
+                name: (string) ($data['name'] ?? ''),
+                isActive: (bool) ($data['is_active'] ?? true),
+            )
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public static function updateOwnedMenuSection(MenuSection $record, array $data): MenuSection
+    {
+        return app(UpdateMenuSectionHandler::class)->handle(
+            new UpdateMenuSectionCommand(
+                tenantId: static::resolveTenantIdOrFail(),
+                menuSectionId: (int) $record->getKey(),
+                name: array_key_exists('name', $data) ? (string) $data['name'] : null,
+                isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
+            )
+        );
+    }
+
+    public static function deleteOwnedMenuSection(MenuSection $record): void
+    {
+        app(DeleteMenuSectionHandler::class)->handle(
+            new DeleteMenuSectionCommand(
+                tenantId: static::resolveTenantIdOrFail(),
+                menuSectionId: (int) $record->getKey(),
+            )
+        );
+    }
+
+    /**
+     * @param  array<int|string>  $order
+     */
+    public static function reorderOwnedMenuSections(array $order): void
+    {
+        app(ReorderMenuSectionsHandler::class)->handle(
+            new ReorderMenuSectionsCommand(
+                tenantId: static::resolveTenantIdOrFail(),
+                orderedMenuSectionIds: static::normalizeMenuSectionIds($order),
+            )
+        );
+    }
+
+    protected static function resolveTenantIdOrFail(): string
+    {
+        $tenant = static::getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            throw new \RuntimeException('Unable to resolve tenant context for menu section mutation.');
+        }
+
+        return (string) $tenant->getKey();
+    }
+
+    /**
+     * @param  array<int|string>  $order
+     * @return array<int, int>
+     */
+    protected static function normalizeMenuSectionIds(array $order): array
+    {
+        $normalized = [];
+
+        foreach ($order as $menuSectionId) {
+            $menuSectionId = (int) $menuSectionId;
+
+            if ($menuSectionId <= 0 || in_array($menuSectionId, $normalized, true)) {
+                continue;
+            }
+
+            $normalized[] = $menuSectionId;
+        }
+
+        return $normalized;
     }
 }

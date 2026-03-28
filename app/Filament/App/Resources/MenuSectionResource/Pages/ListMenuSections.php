@@ -16,7 +16,16 @@ class ListMenuSections extends ListRecords
         return [
             \Filament\Actions\CreateAction::make()
                 ->label('Nueva Sección')
-                ->icon('heroicon-o-plus'),
+                ->icon('heroicon-o-plus')
+                ->using(fn (array $data) => static::getResource()::createOwnedMenuSection($data)),
         ];
+    }
+
+    /**
+     * @param  array<int|string>  $order
+     */
+    public function reorderTable(array $order, int|string|null $draggedRecordKey = null): void
+    {
+        static::getResource()::reorderOwnedMenuSections($order);
     }
 }

@@ -130,6 +130,11 @@ class InfrastructureServiceProvider extends ServiceProvider
             \App\Infrastructure\Tenant\EloquentAppointmentRepository::class
         );
 
+        $this->app->bind(
+            \App\Application\Catalog\Contracts\MenuSectionWriterInterface::class,
+            \App\Infrastructure\Catalog\EloquentMenuSectionWriter::class
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
         // UPCASTING INFRASTRUCTURE (Resilient Read)
         // ═══════════════════════════════════════════════════════════════════════
