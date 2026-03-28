@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\TenantGovernance\Services;
+namespace App\Infrastructure\TenantGovernance\SuperAdmin;
+
+use App\Domain\TenantGovernance\Services\TenantCrmPortfolioManager;
+use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
 
 final class SuperAdminDashboardSignalSynchronizer
 {

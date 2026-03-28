@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\TenantGovernance\Services;
+namespace App\Infrastructure\TenantGovernance\SuperAdmin;
 
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
@@ -12,6 +12,10 @@ use Illuminate\Support\Str;
 
 final class SuperAdminRevenueInsightsReader
 {
+    public function __construct(
+        private readonly SuperAdminTenantPlanReader $planReader,
+    ) {}
+
     /**
      * @param  Collection<int, Tenant>  $portfolio
      * @param  Collection<int, SubscriptionPayment>  $monthlyProConversions
@@ -43,7 +47,7 @@ final class SuperAdminRevenueInsightsReader
                     fn (SubscriptionPayment $payment): bool => $this->segmentKeyForPayment($payment) === $segmentKey
                 );
                 $pipeline = $verticalTenants->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count();
-                $pro = $verticalTenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+                $pro = $verticalTenants->filter(fn (Tenant $tenant): bool => $this->planReader->isPaidPlan($tenant))->count();
 
                 /** @var array{label?: string, target?: int, focus?: string} $defaultTarget */
                 $defaultTarget = $targets['default'] ?? [];
@@ -93,7 +97,7 @@ final class SuperAdminRevenueInsightsReader
                     ], true);
                 })->count();
                 $active = $cohortTenants->filter(fn (Tenant $tenant): bool => $this->isActivatedTenant($tenant))->count();
-                $pro = $cohortTenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+                $pro = $cohortTenants->filter(fn (Tenant $tenant): bool => $this->planReader->isPaidPlan($tenant))->count();
 
                 return [
                     'label' => $month->translatedFormat('M Y'),
@@ -133,7 +137,7 @@ final class SuperAdminRevenueInsightsReader
                 );
                 $expansion = $tenants->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count();
                 $watch = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
-                $pro = $tenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+                $pro = $tenants->filter(fn (Tenant $tenant): bool => $this->planReader->isPaidPlan($tenant))->count();
 
                 return [
                     'plan' => $this->planLabel($planKey),
@@ -166,7 +170,7 @@ final class SuperAdminRevenueInsightsReader
                 $activated = $tenants->filter(fn (Tenant $tenant): bool => $this->isActivatedTenant($tenant))->count();
                 $expansion = $tenants->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count();
                 $watch = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
-                $pro = $tenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+                $pro = $tenants->filter(fn (Tenant $tenant): bool => $this->planReader->isPaidPlan($tenant))->count();
                 $converted = $this->convertedTenantCount(
                     $monthlyProConversions,
                     fn (SubscriptionPayment $payment): bool => $this->cityLabelForPayment($payment) === $city
@@ -203,7 +207,7 @@ final class SuperAdminRevenueInsightsReader
                 $activated = $tenants->filter(fn (Tenant $tenant): bool => $this->isActivatedTenant($tenant))->count();
                 $expansion = $tenants->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count();
                 $watch = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
-                $pro = $tenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+                $pro = $tenants->filter(fn (Tenant $tenant): bool => $this->planReader->isPaidPlan($tenant))->count();
 
                 return [
                     'channel' => $this->closingChannelLabel($channelKey),
@@ -235,7 +239,7 @@ final class SuperAdminRevenueInsightsReader
                 $count = $tenants->count();
                 $expansion = $tenants->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count();
                 $activation = $tenants->filter(fn (Tenant $tenant): bool => $this->needsActivationPush($tenant))->count();
-                $pro = $tenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+                $pro = $tenants->filter(fn (Tenant $tenant): bool => $this->planReader->isPaidPlan($tenant))->count();
                 $converted = $this->convertedTenantCount(
                     $monthlyProConversions,
                     fn (SubscriptionPayment $payment): bool => $this->segmentKeyForPayment($payment) === $segmentKey
@@ -280,7 +284,7 @@ final class SuperAdminRevenueInsightsReader
                 );
                 $expansion = $tenants->filter(fn (Tenant $tenant): bool => $this->isExpansionReady($tenant))->count();
                 $watch = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
-                $pro = $tenants->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+                $pro = $tenants->filter(fn (Tenant $tenant): bool => $this->planReader->isPaidPlan($tenant))->count();
 
                 return [
                     'owner' => $ownerKey === 'unassigned'
@@ -376,7 +380,7 @@ final class SuperAdminRevenueInsightsReader
             return $planKey;
         }
 
-        return $tenant->is_pro ? 'pro' : Tenant::PLAN_SEMILLA;
+        return $this->planReader->planKey($tenant);
     }
 
     public function planKeyForPayment(SubscriptionPayment $payment): string
@@ -394,12 +398,7 @@ final class SuperAdminRevenueInsightsReader
 
     public function planLabel(string $planKey): string
     {
-        return match ($planKey) {
-            'pro' => 'PRO',
-            Tenant::PLAN_CRECIMIENTO => 'Crecimiento',
-            Tenant::PLAN_COSECHA => 'Cosecha',
-            default => 'Semilla',
-        };
+        return $this->planReader->planLabel($planKey);
     }
 
     public function cityLabelForPayment(SubscriptionPayment $payment): string
@@ -470,7 +469,7 @@ final class SuperAdminRevenueInsightsReader
         $daysSinceCreated = $tenant->created_at instanceof Carbon ? (int) $tenant->created_at->diffInDays(now()) : 0;
 
         return in_array($crmStatus, [Tenant::CRM_STATUS_ACTIVE, Tenant::CRM_STATUS_UPSELL], true)
-            && ! $tenant->is_pro
+            && $this->planReader->isBasePlan($tenant)
             && $this->hasPublishedOffer($tenant)
             && $this->hasDirectChannel($tenant)
             && $daysSinceCreated >= 7;
@@ -481,7 +480,7 @@ final class SuperAdminRevenueInsightsReader
         $crmStatus = (string) ($tenant->getRawOriginal('crm_status') ?? Tenant::CRM_STATUS_NEW);
 
         return $crmStatus === Tenant::CRM_STATUS_RENEWAL
-            || ($tenant->is_pro && $tenant->subscription_ends_at instanceof Carbon && $tenant->subscription_ends_at->lte(now()->addDays(7)));
+            || $this->planReader->isRenewalWindow($tenant);
     }
 
     private function isActivatedTenant(Tenant $tenant): bool

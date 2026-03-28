@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\TenantGovernance\Services;
+namespace App\Infrastructure\TenantGovernance\SuperAdmin;
 
 use App\Models\OperationalPlaybookTask;
 use App\Models\SubscriptionPayment;
@@ -14,6 +14,10 @@ use Illuminate\Support\Str;
 
 final class SuperAdminOperationsReadModel
 {
+    public function __construct(
+        private readonly SuperAdminTenantPlanReader $planReader,
+    ) {}
+
     /**
      * @param  Collection<int, OperationalPlaybookTask>  $tasks
      * @return list<array{task: string, business: string, owner: string, internal_owner: string, assignee: string, follow_up: string, next_touch: string, queue: string, sla: string, reason: string, tone: string, href: string}>
@@ -399,7 +403,7 @@ final class SuperAdminOperationsReadModel
         $crmStatus = (string) ($tenant->getRawOriginal('crm_status') ?? Tenant::CRM_STATUS_NEW);
 
         return $crmStatus === Tenant::CRM_STATUS_RENEWAL
-            || ($tenant->is_pro && $tenant->subscription_ends_at instanceof Carbon && $tenant->subscription_ends_at->lte(now()->addDays(7)));
+            || $this->planReader->isRenewalWindow($tenant);
     }
 
     private function revenuePlaybookConversionSignal(OperationalPlaybookTask $task, Collection $monthlyProConversions): string

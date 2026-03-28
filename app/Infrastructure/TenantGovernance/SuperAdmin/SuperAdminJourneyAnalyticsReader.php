@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\TenantGovernance\Services;
+namespace App\Infrastructure\TenantGovernance\SuperAdmin;
 
+use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
 use App\Models\CustomerConversation;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;

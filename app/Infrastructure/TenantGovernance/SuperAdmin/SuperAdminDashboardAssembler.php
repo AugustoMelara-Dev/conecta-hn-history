@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\TenantGovernance\Services;
+namespace App\Infrastructure\TenantGovernance\SuperAdmin;
 
 use App\Models\OperationalPlaybookTask;
 use App\Models\SubscriptionPayment;
@@ -15,6 +15,7 @@ final class SuperAdminDashboardAssembler
         private readonly SuperAdminOperationsReadModel $operations,
         private readonly SuperAdminJourneyAnalyticsReader $journeyAnalytics,
         private readonly SuperAdminRevenueInsightsReader $revenueInsights,
+        private readonly SuperAdminTenantPlanReader $planReader,
     ) {}
 
     /**
@@ -317,7 +318,7 @@ final class SuperAdminDashboardAssembler
         $hasDirectChannel = filled($tenant->whatsapp_number) || filled($tenant->phone) || filled($tenant->website_url);
 
         return in_array($crmStatus, [Tenant::CRM_STATUS_ACTIVE, Tenant::CRM_STATUS_UPSELL], true)
-            && ! $tenant->is_pro
+            && $this->planReader->isBasePlan($tenant)
             && $hasOffer
             && $hasDirectChannel
             && $daysSinceCreated >= 7;
@@ -328,6 +329,6 @@ final class SuperAdminDashboardAssembler
         $crmStatus = (string) ($tenant->getRawOriginal('crm_status') ?? Tenant::CRM_STATUS_NEW);
 
         return $crmStatus === Tenant::CRM_STATUS_RENEWAL
-            || ($tenant->is_pro && $tenant->subscription_ends_at !== null && $tenant->subscription_ends_at->lte(now()->addDays(7)));
+            || $this->planReader->isRenewalWindow($tenant);
     }
 }

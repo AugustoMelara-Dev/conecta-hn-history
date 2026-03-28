@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\TenantGovernance\Services;
+namespace App\Infrastructure\TenantGovernance\SuperAdmin;
 
 use App\Models\OperationalPlaybookTask;
 use App\Models\SubscriptionPayment;

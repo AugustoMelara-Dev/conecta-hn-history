@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\TenantGovernance\Services;
+namespace App\Infrastructure\TenantGovernance\SuperAdmin;
 
 use App\Models\OperationalPlaybookTask;
 use App\Models\SubscriptionPayment;
@@ -14,6 +14,10 @@ use Illuminate\Support\Collection;
 
 final class SuperAdminPortfolioReader
 {
+    public function __construct(
+        private readonly SuperAdminTenantPlanReader $planReader,
+    ) {}
+
     /**
      * @return list<Tenant>
      */
@@ -187,7 +191,7 @@ final class SuperAdminPortfolioReader
 
         return [
             'tenantsCount' => $portfolio->count(),
-            'proTenantsCount' => $portfolio->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count(),
+            'proTenantsCount' => $portfolio->filter(fn (Tenant $tenant): bool => $this->planReader->isPaidPlan($tenant))->count(),
             'proConversionsThisMonthCount' => $monthlyProConversions
                 ->map(fn (SubscriptionPayment $payment): string => (string) $payment->tenant_id)
                 ->filter()
@@ -196,7 +200,7 @@ final class SuperAdminPortfolioReader
             'pendingTenantsCount' => $portfolio->filter(fn (Tenant $tenant): bool => (string) $tenant->getRawOriginal('status') === 'pending')->count(),
             'suspendedTenantsCount' => $portfolio->filter(fn (Tenant $tenant): bool => ! (bool) $tenant->getAttribute('is_active'))->count(),
             'catalogGapCount' => $portfolio->filter(fn (Tenant $tenant): bool => (int) ($tenant->products_total ?? 0) === 0 && (int) ($tenant->services_total ?? 0) === 0)->count(),
-            'expiringProCount' => $portfolio->filter(fn (Tenant $tenant): bool => $tenant->is_pro && $tenant->subscription_ends_at instanceof Carbon && $tenant->subscription_ends_at->between(now(), now()->addDays(7)))->count(),
+            'expiringProCount' => $portfolio->filter(fn (Tenant $tenant): bool => $this->planReader->isRenewalWindow($tenant))->count(),
             'crmWatchlistCount' => $crmWatchlistCount,
             'atRiskTenantsCount' => $crmWatchlistCount,
             'crmOverdueAccountsCount' => $portfolio->filter(fn (Tenant $tenant): bool => $tenant->crm_next_follow_up_at instanceof Carbon && $tenant->crm_next_follow_up_at->isPast())->count(),
