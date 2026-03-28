@@ -13,12 +13,12 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class DatabaseSnapshotRepository implements SnapshotRepositoryInterface
 {
-    public function save(string $aggregateId, int $version, array $state): void
+    public function save(string $aggregateType, string $aggregateId, int $version, array $state): void
     {
         DB::table('snapshots')->upsert(
             [
                 'aggregate_uuid' => $aggregateId,
-                'aggregate_type' => 'User', // Dynamic if needed, but usually fixed context
+                'aggregate_type' => $aggregateType,
                 'aggregate_version' => $version,
                 'state' => json_encode($state),
                 'created_at' => now(),

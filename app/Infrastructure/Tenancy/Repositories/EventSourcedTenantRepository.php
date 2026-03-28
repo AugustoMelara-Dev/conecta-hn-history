@@ -85,9 +85,28 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
                 'cover_path',
                 'brand_color',
                 'plan_type',
-                'is_pro',
             ])
-            ->toArray();
+            ->map(function (Tenant $tenant): array {
+                $planType = $tenant->getAttribute('plan_type');
+
+                return [
+                    'id' => (string) $tenant->getKey(),
+                    'name' => (string) $tenant->name,
+                    'slug' => (string) $tenant->slug,
+                    'description' => (string) ($tenant->description ?? ''),
+                    'hero_image' => $tenant->hero_image,
+                    'cover_path' => $tenant->cover_path,
+                    'brand_color' => $tenant->brand_color,
+                    'plan_type' => $planType instanceof TenantPlan
+                        ? $planType->value
+                        : (string) ($planType ?? TenantPlan::SEMILLA->value),
+                    'is_paid_plan' => (bool) (
+                        ($planType instanceof TenantPlan ? $planType->value : (string) ($planType ?? TenantPlan::SEMILLA->value))
+                        !== TenantPlan::SEMILLA->value
+                    ),
+                ];
+            })
+            ->all();
     }
 
     public function countActive(): int
@@ -151,6 +170,7 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
 
         if ($this->snapshotStrategy->shouldSnapshot($tenant)) {
             $this->snapshotRepo->save(
+                'Tenant',
                 $tenant->id(),
                 $tenant->version(),
                 $tenant->toStateArray()
@@ -190,7 +210,6 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
                 'landing_page_data' => $state['landing_page_data'] ?? null,
                 'simple_schedule' => $state['simple_schedule'] ?? null,
                 'is_ai_enhanced' => $state['is_ai_enhanced'] ?? false,
-                'is_pro' => $state['is_pro'] ?? false,
                 'product_limit' => $state['product_limit'] ?? 10,
                 'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
                 'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
@@ -236,7 +255,6 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
                 'landing_page_data' => $state['landing_page_data'] ?? null,
                 'simple_schedule' => $state['simple_schedule'] ?? null,
                 'is_ai_enhanced' => $state['is_ai_enhanced'] ?? false,
-                'is_pro' => $state['is_pro'] ?? false,
                 'product_limit' => $state['product_limit'] ?? 10,
                 'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
                 'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
@@ -268,7 +286,6 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
                 'landing_page_data',
                 'simple_schedule',
                 'is_ai_enhanced',
-                'is_pro',
                 'product_limit',
                 'plan_type',
                 'subscription_status',
