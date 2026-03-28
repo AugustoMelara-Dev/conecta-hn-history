@@ -8,11 +8,11 @@
 | Routes for the authenticated tenant dashboard using Inertia.js.
 | All routes require authentication and return Inertia responses.
 |
-| ARCHITECTURE: This file is a PURE ROUTING MAP.
-| - NO business logic
-| - NO closures
-| - NO database queries
-| All logic lives in dedicated Controllers.
+| This file is a routing map only:
+| - No business logic
+| - No closures
+| - No database queries
+| All logic lives in dedicated controllers.
 |
 */
 
@@ -25,25 +25,19 @@ use App\Http\Controllers\Tenant\ProductController;
 use App\Http\Controllers\Tenant\ReportController;
 use App\Http\Controllers\Tenant\SettingsController;
 use App\Http\Controllers\Tenant\UpgradeController;
+use App\Http\Middleware\RedirectLegacyWorkspaceToAppPanel;
 use Illuminate\Support\Facades\Route;
 
-// ═══════════════════════════════════════════════════════════════════════════
-// AUTHENTICATED TENANT ROUTES
-// PREFIX: /workspace (avoids collision with Filament /app panel)
-// ═══════════════════════════════════════════════════════════════════════════
+// Authenticated tenant routes under /workspace to avoid collisions with Filament /app.
 Route::middleware(['auth', 'verified'])->prefix('workspace')->group(function () {
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // DASHBOARD (Home)
-    // ─────────────────────────────────────────────────────────────────────────
+    // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware(RedirectLegacyWorkspaceToAppPanel::class)
         ->name('tenant.dashboard');
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // PRODUCTS CRUD
-    // ─────────────────────────────────────────────────────────────────────────
+    // Products compatibility redirects + legacy print/download support
     Route::controller(ProductController::class)->prefix('products')->group(function () {
-        Route::get('/', 'index')->name('tenant.products.index');
+        Route::get('/', 'index')->middleware(RedirectLegacyWorkspaceToAppPanel::class)->name('tenant.products.index');
         Route::get('/create', 'create')->name('tenant.products.create');
         Route::post('/', 'store')->name('tenant.products.store');
         Route::get('/{product}/edit', 'edit')->name('tenant.products.edit');
@@ -53,66 +47,50 @@ Route::middleware(['auth', 'verified'])->prefix('workspace')->group(function () 
             ->name('tenant.products.toggle-visibility');
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ORDERS MANAGEMENT
-    // ─────────────────────────────────────────────────────────────────────────
+    // Orders compatibility redirects + official print/receipt support
     Route::controller(OrderController::class)->prefix('orders')->group(function () {
-        Route::get('/', 'index')->name('tenant.orders.index');
+        Route::get('/', 'index')->middleware(RedirectLegacyWorkspaceToAppPanel::class)->name('tenant.orders.index');
         Route::put('/{order}/status', 'updateStatus')->name('tenant.orders.update-status');
         Route::get('/{order}/print-ticket', 'printTicket')->name('orders.print-ticket');
     });
 
-    // Receipt download (Order detail PDF)
     Route::get('/orders/{order}/receipt', [OrderController::class, 'downloadReceipt'])
         ->name('receipt.download');
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // BILLING & SUBSCRIPTION
-    // ─────────────────────────────────────────────────────────────────────────
+    // Billing compatibility redirects
     Route::controller(BillingController::class)->prefix('billing')->group(function () {
-        Route::get('/', 'index')->name('tenant.billing.index');
+        Route::get('/', 'index')->middleware(RedirectLegacyWorkspaceToAppPanel::class)->name('tenant.billing.index');
         Route::post('/report-payment', 'reportPayment')->name('tenant.billing.report-payment');
         Route::post('/upgrade', 'upgrade')->name('tenant.billing.upgrade');
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // SETTINGS (Unified Hub)
-    // ─────────────────────────────────────────────────────────────────────────
+    // Settings compatibility redirects
     Route::controller(SettingsController::class)->prefix('settings')->group(function () {
-        Route::get('/', 'index')->name('tenant.settings.index');
+        Route::get('/', 'index')->middleware(RedirectLegacyWorkspaceToAppPanel::class)->name('tenant.settings.index');
         Route::post('/profile', 'updateProfile')->name('tenant.settings.update-profile');
         Route::put('/schedule', 'updateSchedule')->name('tenant.settings.update-schedule');
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // REPORTS & PDF GENERATION
-    // ─────────────────────────────────────────────────────────────────────────
+    // Reports and PDF generation
     Route::controller(ReportController::class)->prefix('reports')->group(function () {
-        Route::get('/', 'index')->name('tenant.reports.index');
+        Route::get('/', 'index')->middleware(RedirectLegacyWorkspaceToAppPanel::class)->name('tenant.reports.index');
         Route::get('/sales-pdf', 'salesPdf')->name('reports.sales-pdf');
         Route::get('/inventory-pdf', 'inventoryPdf')->name('reports.inventory-pdf');
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // MARKETING & PROMOTIONS
-    // ─────────────────────────────────────────────────────────────────────────
+    // Marketing and promotions
     Route::controller(MarketingController::class)->prefix('marketing')->group(function () {
-        Route::get('/', 'index')->name('tenant.marketing.index');
-        Route::post('/coupons', 'store')->name('tenant.coupons.store');
-        Route::put('/coupons/{coupon}/toggle', 'toggle')->name('tenant.coupons.toggle');
+        Route::get('/', 'index')->middleware(RedirectLegacyWorkspaceToAppPanel::class)->name('tenant.marketing.index');
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // UPGRADE TO PRO
-    // ─────────────────────────────────────────────────────────────────────────
+    // Upgrade
     Route::get('/upgrade', [UpgradeController::class, 'index'])
+        ->middleware(RedirectLegacyWorkspaceToAppPanel::class)
         ->name('tenant.upgrade');
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // LANDING PAGE BUILDER (PRO)
-    // ─────────────────────────────────────────────────────────────────────────
+    // Landing page builder
     Route::controller(LandingPageController::class)->prefix('landing-page')->group(function () {
-        Route::get('/', 'index')->name('tenant.landing-page.index');
+        Route::get('/', 'index')->middleware(RedirectLegacyWorkspaceToAppPanel::class)->name('tenant.landing-page.index');
         Route::put('/', 'update')->name('tenant.landing-page.update');
     });
 });

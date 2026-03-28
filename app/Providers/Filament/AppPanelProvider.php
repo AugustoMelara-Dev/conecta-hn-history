@@ -48,6 +48,7 @@ class AppPanelProvider extends PanelProvider
             ->passwordReset()
             ->emailVerification()
             ->tenant(Tenant::class, slugAttribute: 'slug')
+            ->tenantProfile(\App\Filament\App\Pages\EditTenantProfile::class)
             ->topNavigation(false)
             ->sidebarWidth('18rem')
             ->sidebarCollapsibleOnDesktop(false)
@@ -94,6 +95,7 @@ class AppPanelProvider extends PanelProvider
                 \App\Filament\App\Resources\ProductResource::class,
                 \App\Filament\App\Resources\MenuSectionResource::class,
                 \App\Filament\App\Resources\OrderResource::class,
+                \App\Filament\App\Resources\ReviewResource::class,
                 \App\Filament\App\Resources\CustomerProfileResource::class,
                 \App\Filament\App\Resources\CustomerMessageTemplateResource::class,
                 \App\Filament\App\Resources\CustomerTouchpointResource::class,
@@ -106,6 +108,7 @@ class AppPanelProvider extends PanelProvider
                 \App\Filament\App\Resources\CouponResource::class,
                 \App\Filament\App\Resources\AnnouncementResource::class,
                 \App\Filament\App\Resources\LoyaltyProgramResource::class,
+                \App\Filament\App\Resources\LoyaltyRewardResource::class,
                 \App\Filament\App\Resources\InventoryLevelResource::class,
                 \App\Filament\App\Resources\InventoryMovementResource::class,
                 \App\Filament\App\Resources\LocationResource::class,
