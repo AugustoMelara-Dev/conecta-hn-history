@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Enums\TenantPlan;
+use App\Models\Tenant;
+
 // use App\Models\Tenant; // REMOVED
 
 /**
@@ -49,8 +52,8 @@ final class PlanFeatureFlagService
      * Determine the tenant's subscription plan.
      *
      * Business Logic:
-     * - is_pro = false → 'semilla' (Free tier, stateless WhatsApp)
-     * - is_pro = true  → 'pro' (Paid tier, stateful cart)
+     * - plan_type = semilla → Free tier, stateless WhatsApp
+     * - plan_type = pro/crecimiento/cosecha → Paid tier
      * - Future: enterprise based on subscription table
      *
      * @return self::PLAN_SEMILLA|self::PLAN_PRO|self::PLAN_ENTERPRISE
@@ -62,7 +65,23 @@ final class PlanFeatureFlagService
         //     return self::PLAN_ENTERPRISE;
         // }
 
-        return $tenant->is_pro ? self::PLAN_PRO : self::PLAN_SEMILLA;
+        $planKey = method_exists($tenant, 'getRawOriginal')
+            ? ($tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? null))
+            : ($tenant->plan_type ?? null);
+
+        $value = match (true) {
+            $planKey instanceof TenantPlan => $planKey->value,
+            is_string($planKey) && $planKey !== '' => $planKey,
+            default => self::PLAN_SEMILLA,
+        };
+
+        return match ($value) {
+            Tenant::PLAN_CRECIMIENTO,
+            Tenant::PLAN_COSECHA,
+            self::PLAN_PRO => self::PLAN_PRO,
+            self::PLAN_ENTERPRISE => self::PLAN_ENTERPRISE,
+            default => self::PLAN_SEMILLA,
+        };
     }
 
     /**
