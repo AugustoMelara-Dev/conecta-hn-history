@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Services;
 
 use App\Domain\TenantGovernance\Repositories\CampaignRepositoryInterface;
+use App\Infrastructure\TenantGovernance\Campaign\TenantCampaignWorkspaceReader;
 use App\Models\Campaign;
 use App\Models\Tenant;
 use Illuminate\Support\Carbon;

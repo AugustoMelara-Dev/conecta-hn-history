@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\TenantGovernance\Services;
+namespace App\Infrastructure\TenantGovernance\Campaign;
 
+use App\Domain\TenantGovernance\Services\TenantCampaignActionCoordinator;
 use App\Models\Campaign;
 use App\Models\Tenant;
 
