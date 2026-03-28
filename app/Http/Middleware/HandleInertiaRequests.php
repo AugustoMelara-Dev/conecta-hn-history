@@ -174,7 +174,10 @@ final class HandleInertiaRequests extends Middleware
             return null;
         }
 
+        $planType = (string) ($tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? Tenant::PLAN_SEMILLA));
+
         return [
+            'plan_type' => $planType,
             'id' => (string) $tenant->id,
             'name' => (string) $tenant->name,
             'slug' => (string) $tenant->slug,
@@ -182,7 +185,7 @@ final class HandleInertiaRequests extends Middleware
             'whatsapp' => $tenant->whatsapp_number ? (string) $tenant->whatsapp_number : null,
             'whatsapp_number' => $tenant->whatsapp_number ? (string) $tenant->whatsapp_number : null,
             'phone' => $tenant->phone ? (string) $tenant->phone : null,
-            'is_pro' => (bool) ($tenant->is_pro ?? false),
+            'is_paid_plan' => in_array($planType, ['pro', Tenant::PLAN_CRECIMIENTO, Tenant::PLAN_COSECHA, 'enterprise'], true),
             'primary_color' => $this->sanitizeHexColor($tenant->primary_color),
             'settings' => [
                 'delivery_enabled' => (bool) ($tenant->delivery_enabled ?? true),
