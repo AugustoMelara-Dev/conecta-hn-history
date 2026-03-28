@@ -7,6 +7,7 @@ namespace Tests\Feature\Filament;
 use App\Domain\Identity\Enums\UserRole;
 use App\Filament\App\Pages\GrowthCenter;
 use App\Filament\App\Pages\CustomerInbox;
+use App\Filament\App\Pages\EditTenantProfile;
 use App\Filament\App\Pages\ManageBilling;
 use App\Filament\App\Pages\ManageMarketing;
 use App\Filament\App\Pages\Settings;
@@ -23,8 +24,11 @@ use App\Models\City;
 use App\Models\Follow;
 use App\Models\Lead;
 use App\Models\LoyaltyProgram;
+use App\Models\MenuSection;
 use App\Models\OperationalPlaybookTask;
 use App\Models\Order;
+use App\Models\OpeningHour;
+use App\Models\Product;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\TenantAnalytic;
@@ -240,8 +244,8 @@ final class BusinessPageWorkflowTest extends TestCase
 
         $this->get(route('filament.app.pages.upgrade-to-pro', ['tenant' => $tenant->slug], false))
             ->assertOk()
-            ->assertSee('Desbloquea más herramientas para tu negocio')
-            ->assertSee('Ir a suscripción');
+            ->assertSee('Desbloquea mas herramientas para tu negocio')
+            ->assertSee('Activar PRO');
 
         $this->get(route('filament.app.resources.followers.index', ['tenant' => $tenant->slug], false))
             ->assertOk()
@@ -522,6 +526,153 @@ final class BusinessPageWorkflowTest extends TestCase
         $this->assertSame('Hola, me interesa {producto} por {precio}.', $tenant->whatsapp_message);
     }
 
+    public function test_pro_owner_can_manage_menu_sections_from_marketing_page(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner(
+            isPro: true,
+            slug: 'cafe-norte-menu-sections',
+            businessType: 'food',
+        );
+
+        $firstSection = $this->makeMenuSection($tenant, 'Entradas', sortOrder: 1);
+        $secondSection = $this->makeMenuSection($tenant, 'Bebidas', sortOrder: 2);
+
+        $product = Product::factory()
+            ->forTenant($tenant)
+            ->create([
+                'menu_section_id' => $secondSection->getKey(),
+                'name' => 'Limonada frozen',
+            ]);
+
+        $this->actingAs($user);
+        $this->setAppPanelTenantContext($tenant);
+
+        $component = Livewire::test(ManageMarketing::class);
+
+        $component
+            ->callTableAction('create', null, [
+                'name' => 'Promociones',
+                'is_active' => true,
+            ])
+            ->assertHasNoErrors();
+
+        $promotions = MenuSection::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenant->getKey())
+            ->where('name', 'Promociones')
+            ->firstOrFail();
+
+        self::assertSame(3, (int) $promotions->sort_order);
+
+        $component
+            ->callTableAction('edit', $promotions, [
+                'name' => 'Promociones activas',
+                'is_active' => false,
+            ])
+            ->assertHasNoErrors()
+            ->call('updateTableColumnState', 'name', (string) $firstSection->getKey(), 'Especialidades')
+            ->assertHasNoErrors()
+            ->call('updateTableColumnState', 'is_active', (string) $firstSection->getKey(), false)
+            ->assertHasNoErrors()
+            ->call('reorderTable', [
+                (string) $promotions->getKey(),
+                (string) $firstSection->getKey(),
+                (string) $secondSection->getKey(),
+            ])
+            ->callTableAction('delete', $secondSection->fresh())
+            ->assertHasNoErrors();
+
+        $firstSection->refresh();
+        $promotions->refresh();
+        $product->refresh();
+
+        self::assertSame('Especialidades', $firstSection->name);
+        self::assertFalse((bool) $firstSection->is_active);
+        self::assertSame('Promociones activas', $promotions->name);
+        self::assertFalse((bool) $promotions->is_active);
+        self::assertSame(1, (int) $promotions->sort_order);
+        self::assertSame(2, (int) $firstSection->sort_order);
+        self::assertNull($secondSection->fresh());
+        self::assertNull($product->menu_section_id);
+    }
+
+    public function test_pro_owner_can_save_public_business_profile_from_filament_page(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner(
+            isPro: true,
+            slug: 'cafe-norte-profile',
+            tenantState: [
+                'name' => 'Cafe Norte',
+            ],
+        );
+
+        $this->actingAs($user);
+        $this->setAppPanelTenantContext($tenant);
+
+        Livewire::test(EditTenantProfile::class)
+            ->set('data.name', 'Cafe Norte Signature')
+            ->set('data.slogan', 'Cafe y brunch todo el dia')
+            ->set('data.description', 'Brunch, cafe de especialidad y pan artesanal.')
+            ->set('data.about', 'Atendemos desayunos y reuniones casuales.')
+            ->set('data.email', 'hola@cafenorte.test')
+            ->set('data.phone', '2233-4455')
+            ->set('data.whatsapp_number', '9988-7766')
+            ->set('data.whatsapp_message', 'Hola, quiero reservar una mesa.')
+            ->set('data.address', 'Colonia Palmira, Tegucigalpa')
+            ->set('data.brand_color', '#1D4ED8')
+            ->set('data.primary_color', '#0F172A')
+            ->set('data.hours_data', [
+                [
+                    'day' => 'lunes',
+                    'open' => '08:00',
+                    'close' => '17:00',
+                    'is_closed' => false,
+                ],
+                [
+                    'day' => 'martes',
+                    'open' => '09:00',
+                    'close' => '18:00',
+                    'is_closed' => false,
+                ],
+            ])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $tenant->refresh();
+
+        $this->assertSame('Cafe Norte Signature', $tenant->name);
+        $this->assertSame('Cafe y brunch todo el dia', $tenant->slogan);
+        $this->assertSame('hola@cafenorte.test', $tenant->email);
+        $this->assertSame('9988-7766', $tenant->whatsapp_number);
+        $this->assertSame('#1D4ED8', $tenant->brand_color);
+        $this->assertNull($tenant->simple_schedule);
+
+        $hours = OpeningHour::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenant->getKey())
+            ->orderBy('day_of_week')
+            ->get(['day_of_week', 'opening_time', 'closing_time'])
+            ->map(static fn (OpeningHour $openingHour): array => [
+                'day_of_week' => $openingHour->day_of_week,
+                'opening_time' => $openingHour->getRawOpeningTime(),
+                'closing_time' => $openingHour->getRawClosingTime(),
+            ])
+            ->all();
+
+        $this->assertSame([
+            [
+                'day_of_week' => 1,
+                'opening_time' => '08:00:00',
+                'closing_time' => '17:00:00',
+            ],
+            [
+                'day_of_week' => 2,
+                'opening_time' => '09:00:00',
+                'closing_time' => '18:00:00',
+            ],
+        ], $hours);
+    }
+
     public function test_pro_owner_can_download_qr_poster_from_marketing_page(): void
     {
         [$user, $tenant] = $this->makeTenantOwner(isPro: true, slug: 'cafe-norte-poster');
@@ -632,6 +783,20 @@ final class BusinessPageWorkflowTest extends TestCase
         Filament::setCurrentPanel('app');
         Filament::setTenant($tenant, isQuiet: true);
         $this->actingAsTenant((string) $tenant->getKey());
+    }
+
+    private function makeMenuSection(Tenant $tenant, string $name, int $sortOrder, bool $isActive = true): MenuSection
+    {
+        $menuSection = new MenuSection;
+        $menuSection->forceFill([
+            'tenant_id' => (string) $tenant->getKey(),
+            'name' => $name,
+            'is_active' => $isActive,
+            'sort_order' => $sortOrder,
+        ]);
+        $menuSection->save();
+
+        return $menuSection->fresh() ?? $menuSection;
     }
 }
 

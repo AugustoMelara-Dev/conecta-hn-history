@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
+use App\Application\Tenant\Commands\UpdateTenantPanelSettingsCommand;
+use App\Application\Tenant\Handlers\UpdateTenantPanelSettingsHandler;
 use App\Models\Tenant;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -131,13 +133,16 @@ class Settings extends Page
             return;
         }
 
-        $tenant->update([
-            'name' => (string) ($data['name'] ?? ''),
-            'whatsapp_number' => (string) ($data['whatsapp_number'] ?? ''),
-            'description' => (string) ($data['description'] ?? ''),
-            'address' => (string) ($data['address'] ?? ''),
-            'whatsapp_message' => (string) ($data['whatsapp_message'] ?? ''),
-        ]);
+        app(UpdateTenantPanelSettingsHandler::class)->handle(
+            new UpdateTenantPanelSettingsCommand(
+                tenantId: (string) $tenant->getKey(),
+                name: (string) ($data['name'] ?? ''),
+                whatsappNumber: (string) ($data['whatsapp_number'] ?? ''),
+                description: isset($data['description']) ? (string) $data['description'] : null,
+                address: isset($data['address']) ? (string) $data['address'] : null,
+                whatsappMessage: (string) ($data['whatsapp_message'] ?? ''),
+            )
+        );
 
         Notification::make()
             ->success()

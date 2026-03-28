@@ -131,8 +131,28 @@ class InfrastructureServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Application\Tenant\Contracts\TenantProfileWriterInterface::class,
+            \App\Infrastructure\Tenant\EloquentTenantProfileWriter::class
+        );
+
+        $this->app->bind(
             \App\Application\Catalog\Contracts\MenuSectionWriterInterface::class,
             \App\Infrastructure\Catalog\EloquentMenuSectionWriter::class
+        );
+
+        $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantGrowthSignalsViewInterface::class,
+            \App\Infrastructure\TenantGovernance\TenantGrowthSignalsView::class
+        );
+
+        $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantOperationalComparisonsViewInterface::class,
+            \App\Infrastructure\TenantGovernance\TenantOperationalComparisonsView::class
+        );
+
+        $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantJourneyAnalyticsViewInterface::class,
+            \App\Infrastructure\TenantGovernance\TenantJourneyAnalyticsView::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
