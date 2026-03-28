@@ -78,7 +78,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         // 3. Determine Limits (Domain Service)
         $productLimit = $this->pricingService->getProductLimit($command->selectedPlan);
         $planType = $this->pricingService->getPlanType($command->selectedPlan);
-        $isPro = $command->selectedPlan === 'pro';
+        $hasPaidPlan = $command->selectedPlan === 'pro';
 
         // 4. Create Tenant via Factory (Domain Integrity)
         $tenantEntity = $this->tenantFactory->createCommercialTenant(
@@ -86,7 +86,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             slug: $command->slug,
             ownerId: $userEntity->id(),
             planType: $planType,
-            isPro: $isPro,
+            hasPaidPlan: $hasPaidPlan,
             productLimit: $productLimit,
             businessType: BusinessType::from($command->businessType),
             logoPath: $command->logoPath,

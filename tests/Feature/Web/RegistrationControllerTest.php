@@ -73,6 +73,8 @@ final class RegistrationControllerTest extends TestCase
 
         $this->assertInstanceOf(Tenant::class, $tenant);
         $this->assertSame('service', $tenant->getRawOriginal('business_type'));
+        $this->assertSame('semilla', $tenant->getRawOriginal('plan_type'));
+        $this->assertSame('inactive', $tenant->getRawOriginal('subscription_status'));
 
         /** @var CapabilityManagerInterface $capabilityManager */
         $capabilityManager = $this->app->make(CapabilityManagerInterface::class);

@@ -44,6 +44,8 @@ final class BusinessRegistrationTest extends TestCase
             'slug' => 'comercial-yoly',
             'city_id' => $city->id,
             'category_id' => $category->id,
+            'plan_type' => 'semilla',
+            'subscription_status' => 'inactive',
         ]);
         $this->assertDatabaseHas('tenant_memberships', [
             'user_id' => \App\Models\User::query()->where('email', 'melarajose83@example.com')->value('id'),
