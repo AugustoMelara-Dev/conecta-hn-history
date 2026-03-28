@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
+use App\Domain\TenantGovernance\Enums\TenantFeature;
+use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Settings\GeneralSettings;
@@ -59,6 +61,9 @@ class ManageBilling extends Page implements HasForms, HasTable
 
     public string $supportWhatsApp = '';
 
+    /** @var array<string, mixed> */
+    public array $planPresentation = [];
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
@@ -78,7 +83,7 @@ class ManageBilling extends Page implements HasForms, HasTable
 
     public static function getNavigationLabel(): string
     {
-        return 'Suscripción';
+        return 'Suscripcion';
     }
 
     public static function getNavigationGroup(): ?string
@@ -88,12 +93,14 @@ class ManageBilling extends Page implements HasForms, HasTable
 
     public function getTitle(): string
     {
-        return 'Suscripción y pagos';
+        return 'Suscripcion y pagos';
     }
 
     public function getSubheading(): ?string
     {
-        return 'Revisa la vigencia del plan, reporta transferencias y descarga recibos desde un flujo más claro.';
+        return $this->isPro
+            ? 'Revisa la vigencia del plan, pagos aprobados y renovacion desde un solo flujo.'
+            : 'Activa tu siguiente nivel comercial, reporta la transferencia y sigue la revision desde el mismo panel.';
     }
 
     public static function getNavigationSort(): ?int
@@ -110,6 +117,7 @@ class ManageBilling extends Page implements HasForms, HasTable
         }
 
         $this->loadSettings();
+        $this->planPresentation = app(TenantPlanPresentationReader::class)->forTenant($tenant);
 
         $this->pendingPayment = SubscriptionPayment::query()
             ->where('tenant_id', $tenant->getKey())
@@ -118,7 +126,7 @@ class ManageBilling extends Page implements HasForms, HasTable
             ->first();
 
         $this->isPending = $this->pendingPayment instanceof SubscriptionPayment;
-        $this->isPro = (bool) $tenant->is_pro && ! $this->isPending;
+        $this->isPro = ! $tenant->hasFeature(TenantFeature::UPGRADE_PROMPT) && ! $this->isPending;
         $this->isFree = ! $this->isPending && ! $this->isPro;
 
         $subscriptionEndsAt = $tenant->subscription_ends_at;
@@ -139,18 +147,18 @@ class ManageBilling extends Page implements HasForms, HasTable
         return $schema
             ->schema([
                 Section::make('Pago por transferencia')
-                    ->description('Transfiere el monto exacto, guarda tu comprobante y envíalo a revisión.')
+                    ->description('Transfiere el monto exacto, guarda tu comprobante y envialo a revision.')
                     ->schema([
                         Forms\Components\Placeholder::make('bank_info')
                             ->label('')
                             ->content(fn (): HtmlString => new HtmlString($this->getBankInstructionsHtml())),
 
                         Forms\Components\TextInput::make('bank_reference')
-                            ->label('Número de referencia')
+                            ->label('Numero de referencia')
                             ->placeholder('Ej: 12345678')
                             ->required()
                             ->maxLength(100)
-                            ->helperText('Usa el número que aparece en la banca en línea o en tu recibo.'),
+                            ->helperText('Usa el numero que aparece en la banca en linea o en tu recibo.'),
 
                         Forms\Components\FileUpload::make('proof_image_path')
                             ->label('Comprobante')
@@ -162,7 +170,7 @@ class ManageBilling extends Page implements HasForms, HasTable
                             ->maxSize(5120)
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                             ->imagePreviewHeight('180')
-                            ->helperText('Sube una captura clara de la transferencia. Máximo 5 MB.')
+                            ->helperText('Sube una captura clara de la transferencia. Maximo 5 MB.')
                             ->columnSpanFull(),
                     ])
                     ->columns(1),
@@ -183,8 +191,8 @@ class ManageBilling extends Page implements HasForms, HasTable
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">Transferencia bancaria</p>
-                        <h3 class="biz-heading">Plan PRO mensual</h3>
-                        <p class="biz-muted">Activa el plan y habilita funciones premium del panel.</p>
+                        <h3 class="biz-heading">'.e(($this->planPresentation['marketingLabel'] ?? 'Plan PRO').' mensual').'</h3>
+                        <p class="biz-muted">'.e($this->planPresentation['marketingCopy'] ?? 'Activa el plan y habilita funciones premium del panel.').'</p>
                     </div>
 
                     <div class="biz-list">
@@ -202,13 +210,13 @@ class ManageBilling extends Page implements HasForms, HasTable
                         </div>
                         <div class="biz-split-item">
                             <span class="biz-muted">Monto</span>
-                            <strong style="font-size: 1.4rem; color: #34d399;">' . $price . '</strong>
+                            <strong style="font-size: 1.4rem; color: #34d399;">'.$price.'</strong>
                         </div>
                     </div>
 
                     <div class="biz-empty-state" style="padding: 1rem; text-align: left;">
                         <p class="biz-action-copy">
-                            Guarda una captura clara del depósito. El equipo revisa el pago manualmente y activa tu negocio cuando la transferencia queda validada.
+                            Guarda una captura clara del deposito. El equipo revisa el pago manualmente y activa tu negocio cuando la transferencia queda validada.
                         </p>
                     </div>
                 </div>
@@ -257,7 +265,7 @@ class ManageBilling extends Page implements HasForms, HasTable
 
         Notification::make()
             ->success()
-            ->title('Pago enviado a revisión')
+            ->title('Pago enviado a revision')
             ->body('Ya recibimos tu comprobante y lo validaremos en breve.')
             ->send();
 
@@ -282,7 +290,7 @@ class ManageBilling extends Page implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('reference_number')
                     ->label('Referencia')
                     ->searchable()
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Monto')
                     ->money('HNL')
@@ -312,8 +320,8 @@ class ManageBilling extends Page implements HasForms, HasTable
                     ->action(fn (SubscriptionPayment $record) => $this->downloadReceipt($record)),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Todavía no tienes pagos registrados',
-                'description' => 'Cuando un pago sea aprobado o rechazado, aquí verás el historial y podrás descargar el recibo.',
+                'heading' => 'Todavia no tienes pagos registrados',
+                'description' => 'Cuando un pago sea aprobado o rechazado, aqui veras el historial y podras descargar el recibo.',
             ]));
     }
 
@@ -331,7 +339,7 @@ class ManageBilling extends Page implements HasForms, HasTable
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();
-        }, 'recibo-' . $payment->id . '.pdf', [
+        }, 'recibo-'.$payment->id.'.pdf', [
             'Content-Type' => 'application/pdf',
         ]);
     }
@@ -374,7 +382,7 @@ class ManageBilling extends Page implements HasForms, HasTable
         try {
             $settings = app(GeneralSettings::class);
             $this->subscriptionAmount = (float) ($settings->pro_plan_price ?? 99.00);
-            $this->formattedPrice = 'L. ' . number_format($this->subscriptionAmount, 2);
+            $this->formattedPrice = 'L. '.number_format($this->subscriptionAmount, 2);
             $this->bankInstructions = (string) ($settings->bank_transfer_instructions ?? '');
             $this->supportWhatsApp = (string) ($settings->support_whatsapp_number ?? '');
         } catch (\Throwable) {
@@ -383,6 +391,42 @@ class ManageBilling extends Page implements HasForms, HasTable
             $this->bankInstructions = '';
             $this->supportWhatsApp = '';
         }
+    }
+
+    public function billingBadge(): string
+    {
+        if ($this->isPending) {
+            return 'Pago en revision';
+        }
+
+        return (string) ($this->planPresentation['marketingLabel'] ?? ($this->isPro ? 'Plan PRO' : 'Plan Base'));
+    }
+
+    public function billingHeroTitle(): string
+    {
+        if ($this->isPending) {
+            return 'Tu pago está en revisión';
+        }
+
+        return $this->isPro ? 'Suscripción activa' : 'Activa tu plan PRO';
+    }
+
+    public function billingHeroCopy(): string
+    {
+        if ($this->isPending) {
+            return 'Ya recibimos tu comprobante. Cuando el equipo valide la transferencia, tu plan comercial quedara activo.';
+        }
+
+        if ($this->isPro) {
+            return (string) ($this->planPresentation['marketingCopy'] ?? 'Tu negocio ya tiene activadas las funciones premium.');
+        }
+
+        return (string) ($this->planPresentation['brandingCopy'] ?? 'Sigue el flujo para transferir, subir el comprobante y dejar tu negocio listo para revision.');
+    }
+
+    public function billingPlanHeading(): string
+    {
+        return $this->isPro ? 'Pagos registrados' : (($this->planPresentation['marketingLabel'] ?? 'Plan PRO').' para tu negocio');
     }
 
     private function getSupportWhatsAppUrl(): ?string
@@ -394,10 +438,10 @@ class ManageBilling extends Page implements HasForms, HasTable
         }
 
         if (strlen($digits) === 8) {
-            $digits = '504' . $digits;
+            $digits = '504'.$digits;
         }
 
-        $message = rawurlencode('Hola, necesito ayuda con la suscripción de mi negocio en Conecta HN.');
+        $message = rawurlencode('Hola, necesito ayuda con la suscripcion de mi negocio en Conecta HN.');
 
         return "https://wa.me/{$digits}?text={$message}";
     }

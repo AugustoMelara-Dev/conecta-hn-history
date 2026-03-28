@@ -128,6 +128,8 @@ function PaymentTimeline({ status }) {
 export default function PaymentPending({ payment, tenant, checkUrl }) {
     const [status, setStatus] = useState(payment?.status || 'pending');
     const [elapsedTime, setElapsedTime] = useState(0);
+    const appDashboardHref = tenant?.slug ? route('filament.app.pages.dashboard', { tenant: tenant.slug }) : route('dashboard');
+    const appBillingHref = tenant?.slug ? route('filament.app.pages.manage-billing', { tenant: tenant.slug }) : route('dashboard');
 
     // Poll for status updates
     useEffect(() => {
@@ -142,7 +144,7 @@ export default function PaymentPending({ payment, tenant, checkUrl }) {
                         if (data.status === 'completed') {
                             // Redirect to success page after delay
                             setTimeout(() => {
-                                router.visit(route('tenant.dashboard'));
+                                router.visit(appDashboardHref);
                             }, 2000);
                         }
                     }
@@ -233,7 +235,7 @@ export default function PaymentPending({ payment, tenant, checkUrl }) {
                         <div className="mt-8 space-y-3">
                             {status === 'completed' && (
                                 <Link
-                                    href={route('tenant.dashboard')}
+                                    href={appDashboardHref}
                                     className="block w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-colors"
                                 >
                                     Ir a mi Panel
@@ -243,7 +245,7 @@ export default function PaymentPending({ payment, tenant, checkUrl }) {
                             {status === 'failed' && (
                                 <>
                                     <Link
-                                        href={route('tenant.billing.index')}
+                                        href={appBillingHref}
                                         className="block w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors"
                                     >
                                         Intentar de Nuevo

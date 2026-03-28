@@ -7,12 +7,12 @@
         <div class="biz-card-warning">
             <div class="biz-grid-two">
                 <div class="biz-stack">
-                    <div class="biz-badge biz-badge-warning">Mejora a PRO</div>
+                    <div class="biz-badge biz-badge-warning">{{ $plan['marketingLabel'] }}</div>
 
                     <div>
-                        <h1 class="biz-title">Desbloquea más herramientas para tu negocio</h1>
+                        <h1 class="biz-title">Desbloquea mas herramientas para tu negocio</h1>
                         <p class="biz-copy">
-                            Si ya necesitas más alcance, mejor presencia pública y menos fricción operativa, este es el siguiente paso.
+                            {{ $plan['marketingCopy'] }} {{ $plan['brandingCopy'] }}
                         </p>
                     </div>
                 </div>
@@ -21,17 +21,17 @@
                     <div class="biz-stack">
                         <p class="biz-kicker">Precio</p>
                         <div>
-                            <p class="biz-title">{{ $price }}</p>
-                            <p class="biz-muted">por {{ $period }}</p>
+                            <p class="biz-title">{{ $plan['priceLabel'] }}</p>
+                            <p class="biz-muted">{{ $plan['billingCta'] }}</p>
                         </div>
 
                         <p class="biz-muted">
-                            La activación y el envío del comprobante se gestionan desde la sección de Suscripción.
+                            La activacion y el envio del comprobante se gestionan desde la seccion de Suscripcion.
                         </p>
 
                         <div class="biz-button-row">
                             <a href="{{ route('filament.app.pages.manage-billing', ['tenant' => $tenantSlug]) }}" class="biz-button">
-                                Ir a suscripción
+                                {{ $plan['billingCta'] }}
                             </a>
                         </div>
                     </div>

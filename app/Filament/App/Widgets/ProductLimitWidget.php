@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
+use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
 use App\Models\Tenant;
-use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Carbon;
@@ -32,6 +32,14 @@ class ProductLimitWidget extends Widget
 
     public ?string $planExpiresAt = null;
 
+    public string $planLabel = 'Plan Base';
+
+    public string $catalogCopy = '';
+
+    public string $catalogStatusCopy = '';
+
+    public string $billingCta = 'Activar PRO';
+
     public function getColumnSpan(): int|string|array
     {
         return 'full';
@@ -45,8 +53,14 @@ class ProductLimitWidget extends Widget
             return;
         }
 
+        $plan = app(TenantPlanPresentationReader::class)->forTenant($tenant);
         $tenantSlug = (string) ($tenant->getAttribute('slug') ?? '');
-        $this->isPro = $tenant->getIsProAttribute();
+
+        $this->isPro = (bool) ($plan['isCatalogUnlimited'] ?? false);
+        $this->planLabel = (string) ($plan['marketingLabel'] ?? 'Plan Base');
+        $this->catalogCopy = (string) ($plan['catalogCopy'] ?? '');
+        $this->catalogStatusCopy = (string) ($plan['catalogStatusCopy'] ?? '');
+        $this->billingCta = (string) ($plan['billingCta'] ?? 'Activar PRO');
 
         try {
             $this->upgradeUrl = route('filament.app.pages.manage-billing', ['tenant' => $tenantSlug]);
@@ -69,10 +83,7 @@ class ProductLimitWidget extends Widget
 
         if (! $this->isPro) {
             $this->currentCount = $tenant->products()->count();
-            $configuredLimit = $tenant->getAttribute('product_limit');
-            $this->limit = is_numeric($configuredLimit)
-                ? (int) $configuredLimit
-                : (int) (app(GeneralSettings::class)->free_plan_product_limit ?? 10);
+            $this->limit = (int) ($plan['productLimit'] ?? 10);
             $this->percentage = $this->limit > 0
                 ? (float) min(100, round(($this->currentCount / $this->limit) * 100, 1))
                 : 0.0;
@@ -99,19 +110,7 @@ class ProductLimitWidget extends Widget
 
     public function getStatusMessage(): string
     {
-        if ($this->percentage < 50) {
-            return 'Tienes espacio de sobra. Sigue agregando productos.';
-        }
-
-        if ($this->percentage < 80) {
-            return 'Estas aprovechando bien tu plan. Considera actualizar pronto.';
-        }
-
-        if ($this->percentage < 100) {
-            return 'Atención: estás a punto de quedarte sin espacio.';
-        }
-
-        return 'Has alcanzado el límite. Actualiza para seguir creciendo.';
+        return $this->catalogStatusCopy !== '' ? $this->catalogStatusCopy : 'Tienes espacio de sobra. Sigue agregando productos.';
     }
 
     private function getTenantRecord(): ?Tenant
