@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Settings\GeneralSettings;
@@ -12,6 +13,13 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class FinancialStatsOverview extends BaseWidget
 {
+    /** @var array<int, string> */
+    private const PAID_PLAN_KEYS = [
+        TenantPlan::PRO->value,
+        Tenant::PLAN_CRECIMIENTO,
+        Tenant::PLAN_COSECHA,
+    ];
+
     protected static ?int $sort = 1;
 
     protected int|string|array $columnSpan = 'full';
@@ -27,7 +35,7 @@ class FinancialStatsOverview extends BaseWidget
 
     protected function getStats(): array
     {
-        $proTenants = Tenant::where('is_pro', true)
+        $proTenants = Tenant::whereIn('plan_type', self::PAID_PLAN_KEYS)
             ->where(function ($query) {
                 $query->whereNull('subscription_ends_at')
                     ->orWhere('subscription_ends_at', '>', now());

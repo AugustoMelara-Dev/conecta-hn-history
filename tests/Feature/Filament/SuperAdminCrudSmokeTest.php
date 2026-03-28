@@ -67,7 +67,7 @@ final class SuperAdminCrudSmokeTest extends TestCase
             ->set('data.city_id', $city->getKey())
             ->set('data.product_limit', 10)
             ->set('data.is_active', true)
-            ->set('data.is_pro', false)
+            ->set('data.plan_type', 'semilla')
             ->call('create')
             ->assertHasNoErrors()
             ->assertRedirect(route('filament.admin.resources.tenants.index', [], false));
