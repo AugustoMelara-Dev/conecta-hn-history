@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\OperationalPlaybookTask;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Builder;
@@ -93,7 +94,7 @@ final class TenantCrmPortfolioManager
             $reason = 'La cartera ya tiene renovacion con SLA vencido y puede caer por cobro tardio.';
             $metric = $billingOverdueCount.' renovaciones vencidas';
             $trigger = 'renewal_attention';
-        } elseif ($tenant->is_pro && $daysUntilExpiry !== null && $daysUntilExpiry <= 3) {
+        } elseif ($this->isPaidPlan($tenant) && $daysUntilExpiry !== null && $daysUntilExpiry <= 3) {
             $score = 92;
             $tone = 'danger';
             $reason = 'El plan PRO esta a punto de vencer y conviene cerrar continuidad antes del corte.';
@@ -198,7 +199,7 @@ final class TenantCrmPortfolioManager
 
         if (
             in_array($crmStatus, [Tenant::CRM_STATUS_ACTIVE, Tenant::CRM_STATUS_UPSELL], true)
-            && ! $tenant->is_pro
+            && ! $this->isPaidPlan($tenant)
             && $hasOffer
             && $hasDirectChannel
             && $daysSinceCreated >= 7
@@ -455,5 +456,16 @@ final class TenantCrmPortfolioManager
         return is_string($label) && $label !== ''
             ? $label
             : str($segmentKey)->replace('_', ' ')->title()->value();
+    }
+
+    private function isPaidPlan(Tenant $tenant): bool
+    {
+        $planKey = $tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? null);
+
+        return match (true) {
+            $planKey instanceof TenantPlan => $planKey !== TenantPlan::SEMILLA,
+            is_string($planKey) => $planKey !== '' && $planKey !== Tenant::PLAN_SEMILLA,
+            default => false,
+        };
     }
 }

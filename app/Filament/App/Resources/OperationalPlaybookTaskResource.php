@@ -17,6 +17,7 @@ use App\Models\Service;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
@@ -126,24 +127,11 @@ class OperationalPlaybookTaskResource extends Resource
                     return $query->whereRaw('1 = 0');
                 }
 
-                return $query
+                return static::applyPriorityOrdering(
+                    $query
                     ->where('tenant_id', (string) $tenant->getKey())
                     ->with('assignee')
-                    ->orderByRaw("
-                        case priority
-                            when 'critical' then 1
-                            when 'high' then 2
-                            else 3
-                        end
-                    ")
-                    ->orderByRaw("
-                        case
-                            when due_at is null then 2
-                            when due_at < now() then 0
-                            else 1
-                        end
-                    ")
-                    ->orderBy('due_at');
+                );
             })
             ->columns([
                 Tables\Columns\TextColumn::make('title')
@@ -432,6 +420,34 @@ class OperationalPlaybookTaskResource extends Resource
             'billing' => route('filament.app.pages.manage-billing', ['tenant' => $tenantSlug], false),
             'profile' => route('filament.app.pages.settings', ['tenant' => $tenantSlug], false),
             default => route('filament.app.pages.dashboard', ['tenant' => $tenantSlug], false),
+        };
+    }
+
+    protected static function applyPriorityOrdering(Builder $query): Builder
+    {
+        return $query
+            ->orderByRaw("
+                case priority
+                    when 'critical' then 1
+                    when 'high' then 2
+                    else 3
+                end
+            ")
+            ->orderByRaw("
+                case
+                    when due_at is null then 2
+                    when due_at < ".static::currentTimestampSql()." then 0
+                    else 1
+                end
+            ")
+            ->orderBy('due_at');
+    }
+
+    protected static function currentTimestampSql(): string
+    {
+        return match (OperationalPlaybookTask::query()->withoutGlobalScopes()->getConnection()->getDriverName()) {
+            'sqlite' => 'CURRENT_TIMESTAMP',
+            default => 'now()',
         };
     }
 
