@@ -160,15 +160,17 @@ class CustomerProfileManager
             $freshPrimary = $primary->fresh();
 
             if ($actorUserId !== null) {
-                $freshPrimary?->forceFill([
+                $notesTarget = $freshPrimary instanceof CustomerProfile ? $freshPrimary : $primary;
+
+                $notesTarget->forceFill([
                     'crm_notes' => trim((string) collect([
-                        $freshPrimary?->crm_notes,
+                        $notesTarget->crm_notes,
                         'Merge manual ejecutado el '.now()->format('d/m/Y H:i').' por '.$actorUserId.'.',
                     ])->filter()->implode("\n\n")),
                 ])->save();
             }
 
-            return $freshPrimary?->fresh() ?? $primary->fresh();
+            return ($freshPrimary instanceof CustomerProfile ? $freshPrimary : $primary)->fresh();
         });
     }
 

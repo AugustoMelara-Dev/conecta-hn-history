@@ -117,7 +117,7 @@ final class CustomerInboundConversationRecorder
             ]);
         }
 
-        if ($conversation instanceof CustomerConversation && $profile instanceof CustomerProfile) {
+        if ($conversation instanceof CustomerConversation) {
             $touchpoint->forceFill([
                 'customer_conversation_id' => $conversation->getKey(),
             ])->save();

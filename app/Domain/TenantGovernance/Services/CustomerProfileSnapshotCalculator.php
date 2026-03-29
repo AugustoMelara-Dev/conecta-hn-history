@@ -95,6 +95,7 @@ class CustomerProfileSnapshotCalculator
         $initialLtv = $this->calculateInitialLtv($orders, $firstOrder);
         $reactivationScore = $this->calculateReactivationScore($lastSeenAt, $ordersCount, $appointmentsCount, $leadsCount, $totalSpent);
         $loyaltyTier = $this->resolveLoyaltyTier($ordersCount, $repeatPurchaseCount, $totalSpent);
+        /** @var CustomerTouchpoint|null $lastReplyTouchpoint */
         $lastReplyTouchpoint = CustomerTouchpoint::query()
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
@@ -102,6 +103,12 @@ class CustomerProfileSnapshotCalculator
             ->whereNotNull('replied_at')
             ->latest('replied_at')
             ->first(['channel', 'replied_at']);
+        $lastEngagedChannel = $lastReplyTouchpoint instanceof CustomerTouchpoint
+            ? $lastReplyTouchpoint->channel
+            : ($profile->last_engaged_channel ?? $profile->preferred_channel);
+        $lastInboundReplyAt = $lastReplyTouchpoint instanceof CustomerTouchpoint
+            ? $lastReplyTouchpoint->replied_at
+            : $profile->last_inbound_reply_at;
         $bestLocationId = $orders
             ->filter(static fn (Order $order): bool => filled($order->location_id))
             ->sortByDesc('created_at')
@@ -134,8 +141,8 @@ class CustomerProfileSnapshotCalculator
             'last_order_at' => $lastOrderAt,
             'last_appointment_at' => $lastAppointmentAt,
             'last_lead_at' => $lastLeadAt,
-            'last_engaged_channel' => $lastReplyTouchpoint?->channel ?? $profile->last_engaged_channel ?? $profile->preferred_channel,
-            'last_inbound_reply_at' => $lastReplyTouchpoint?->replied_at ?? $profile->last_inbound_reply_at,
+            'last_engaged_channel' => $lastEngagedChannel,
+            'last_inbound_reply_at' => $lastInboundReplyAt,
             'lifecycle_stage' => $this->resolveLifecycleStage($ordersCount, $appointmentsCount, $leadsCount, $lastSeenAt),
             'customer_segment' => $this->resolveCustomerSegment($ordersCount, $appointmentsCount, $leadsCount, $totalSpent, $reactivationScore, $lastSeenAt),
             'reactivation_score' => $reactivationScore,
