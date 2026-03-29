@@ -41,8 +41,12 @@ final class CustomerInboundConversationContextResolver
             : $this->fallbackRouting($channel);
         $message = trim($body) !== '' ? trim($body) : 'Respuesta recibida del cliente.';
         $conversationKey = (string) ($existingNote?->conversation_key ?: data_get($touchpoint->metadata, 'conversation_key') ?: Str::uuid()->toString());
-        $assignedUserId = $existingNote?->assigned_user_id ?? $profile?->assigned_user_id;
-        $locationId = $existingNote?->location_id ?? $profile?->location_id;
+        $assignedUserId = $existingNote instanceof CustomerNote
+            ? $existingNote->assigned_user_id
+            : ($profile instanceof CustomerProfile ? $profile->assigned_user_id : null);
+        $locationId = $existingNote instanceof CustomerNote
+            ? $existingNote->location_id
+            : ($profile instanceof CustomerProfile ? $profile->location_id : null);
         $responseDueAt = $occurredAt->copy()->addMinutes((int) $routing['response_sla_minutes']);
 
         return [

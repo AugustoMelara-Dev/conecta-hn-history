@@ -103,7 +103,7 @@ class CustomerJourneyBranchResolver
                 && filled($profile->email)
                 && (bool) $profile->email_opt_in,
             'stalled_sequence' => $this->isStalled($conversation),
-            'multiple_replies' => (int) ($conversation?->reply_count ?? 0) >= 2,
+            'multiple_replies' => $conversation instanceof CustomerConversation && (int) $conversation->reply_count >= 2,
             'high_reactivation_risk' => (int) ($profile->reactivation_score ?? 0) >= 70,
             'recent_purchase' => $this->hasRecentSignal($conversation, 'purchase'),
             'recent_appointment' => $this->hasRecentSignal($conversation, 'appointment_booked')

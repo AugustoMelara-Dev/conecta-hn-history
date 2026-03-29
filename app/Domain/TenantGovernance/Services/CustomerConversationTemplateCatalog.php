@@ -62,11 +62,12 @@ final class CustomerConversationTemplateCatalog
      */
     public function templateDefinition(CustomerProfile $profile, string $templateKey, ?CustomerNote $note = null): array
     {
-        $tenant = $profile->tenant()->withoutGlobalScopes()->first();
+        $tenantRecord = $profile->tenant()->withoutGlobalScopes()->first();
+        $tenant = $tenantRecord instanceof Tenant ? $tenantRecord : null;
         $definition = $this->resolvedTemplateDefinition($profile, $templateKey);
         $channel = $this->resolveChannel($profile, (string) ($definition['channel'] ?? 'preferred'));
         $replace = [
-            '{business_name}' => (string) ($tenant?->name ?? 'Conecta HN'),
+            '{business_name}' => (string) ($tenant->name ?? 'Conecta HN'),
             '{customer_name}' => (string) ($profile->name ?? 'cliente'),
             '{cta_url}' => (string) ($this->defaultCtaUrl($profile, $tenant) ?? ''),
         ];
@@ -108,17 +109,17 @@ final class CustomerConversationTemplateCatalog
     {
         $segmentDefinition = $this->segmentDefinition($profile, $segmentKey);
         $configKeys = collect((array) ($segmentDefinition['templates'] ?? []))
-            ->filter(static fn (mixed $key): bool => is_string($key) && $key !== '');
+            ->map(static fn (string $key): string => $key);
 
         $customTemplates = $this->eligibleCustomTemplates($profile);
         $disabledKeys = $customTemplates
             ->where('is_active', false)
             ->pluck('template_key')
-            ->filter(static fn (mixed $key): bool => is_string($key) && $key !== '');
+            ->map(static fn (string $key): string => $key);
         $customKeys = $customTemplates
             ->where('is_active', true)
             ->pluck('template_key')
-            ->filter(static fn (mixed $key): bool => is_string($key) && $key !== '');
+            ->map(static fn (string $key): string => $key);
 
         $keys = $configKeys
             ->reject(fn (string $key): bool => $disabledKeys->contains($key))
@@ -132,7 +133,7 @@ final class CustomerConversationTemplateCatalog
 
         return collect([(string) $preferredKey])
             ->concat($keys)
-            ->filter(static fn (mixed $key): bool => is_string($key) && $key !== '')
+            ->map(static fn (string $key): string => $key)
             ->reject(fn (string $key): bool => $disabledKeys->contains($key))
             ->unique()
             ->values();
@@ -192,9 +193,7 @@ final class CustomerConversationTemplateCatalog
             return null;
         }
 
-        $businessType = is_object($tenant->business_type)
-            ? (string) $tenant->business_type->value
-            : (string) $tenant->business_type;
+        $businessType = (string) $tenant->business_type->value;
 
         if ($businessType === 'service') {
             return route('public.booking.index', ['tenant' => $tenant->slug]);
@@ -315,7 +314,8 @@ final class CustomerConversationTemplateCatalog
 
     private function businessSegmentKey(CustomerProfile $profile): ?string
     {
-        $tenant = $profile->tenant()->withoutGlobalScopes()->first();
+        $tenantRecord = $profile->tenant()->withoutGlobalScopes()->first();
+        $tenant = $tenantRecord instanceof Tenant ? $tenantRecord : null;
 
         if (! $tenant instanceof Tenant) {
             return null;
