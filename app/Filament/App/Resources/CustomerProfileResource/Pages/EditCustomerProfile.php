@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\CustomerProfileResource\Pages;
 
+use App\Application\TenantGovernance\CustomerProfiles\Commands\MergeCustomerProfilesCommand;
+use App\Application\TenantGovernance\CustomerProfiles\Handlers\MergeCustomerProfilesHandler;
 use App\Domain\TenantGovernance\Repositories\CustomerProfileRepositoryInterface;
-use App\Domain\TenantGovernance\Services\CustomerProfileManager;
-use App\Domain\TenantGovernance\Services\TenantCustomerProfileEditReader;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\Pages\EditTenantRecord;
+use App\Infrastructure\TenantGovernance\CustomerProfile\TenantCustomerProfileEditReader;
 use App\Models\Tenant;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -67,11 +68,24 @@ class EditCustomerProfile extends EditTenantRecord
                         return;
                     }
 
-                    $merged = $this->profileManager()->mergeProfiles(
-                        primary: $this->getRecord(),
-                        duplicate: $duplicate,
-                        actorUserId: auth()->id(),
+                    $merged = app(MergeCustomerProfilesHandler::class)->handle(
+                        new MergeCustomerProfilesCommand(
+                            tenantId: (string) $this->getRecord()->tenant_id,
+                            primaryProfileId: (int) $this->getRecord()->getKey(),
+                            duplicateProfileId: (int) $duplicate->getKey(),
+                            actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+                        ),
                     );
+
+                    if ($merged === null) {
+                        Notification::make()
+                            ->title('No se pudo fusionar')
+                            ->danger()
+                            ->body('El perfil duplicado ya no esta disponible dentro de este negocio.')
+                            ->send();
+
+                        return;
+                    }
 
                     Notification::make()
                         ->title('Perfiles fusionados')
@@ -112,8 +126,4 @@ class EditCustomerProfile extends EditTenantRecord
         return app(TenantCustomerProfileEditReader::class);
     }
 
-    private function profileManager(): CustomerProfileManager
-    {
-        return app(CustomerProfileManager::class);
-    }
 }

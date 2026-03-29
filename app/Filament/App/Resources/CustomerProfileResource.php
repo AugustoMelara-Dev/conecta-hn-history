@@ -4,18 +4,26 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
-use App\Domain\TenantGovernance\Services\CustomerProfileActionCopyReader;
-use App\Domain\TenantGovernance\Services\CustomerProfileActionFormReader;
-use App\Domain\TenantGovernance\Services\CustomerProfileEmptyStateReader;
-use App\Domain\TenantGovernance\Services\CustomerProfileSectionViewReader;
-use App\Domain\TenantGovernance\Services\CustomerProfileTableActionReader;
-use App\Domain\TenantGovernance\Services\CustomerProfileTableFilterOptionsReader;
-use App\Domain\TenantGovernance\Services\CustomerProfileTablePresentationReader;
-use App\Domain\TenantGovernance\Services\CustomerProfileWorkspacePlaceholderReader;
-use App\Domain\TenantGovernance\Services\TenantCustomerProfileActionCoordinator;
-use App\Domain\TenantGovernance\Services\TenantCustomerProfilePresentationReader;
-use App\Domain\TenantGovernance\Services\TenantCustomerWorkspaceReader;
+use App\Application\TenantGovernance\CustomerProfiles\Commands\AwardCustomerProfileBonusCommand;
+use App\Application\TenantGovernance\CustomerProfiles\Commands\RedeemCustomerProfileRewardCommand;
+use App\Application\TenantGovernance\CustomerProfiles\Commands\SendCustomerProfileEmailFollowUpCommand;
+use App\Application\TenantGovernance\CustomerProfiles\Commands\SendCustomerProfileWhatsappFollowUpCommand;
+use App\Application\TenantGovernance\CustomerProfiles\Commands\TriggerCustomerProfileReactivationCommand;
+use App\Application\TenantGovernance\CustomerProfiles\Handlers\AwardCustomerProfileBonusHandler;
+use App\Application\TenantGovernance\CustomerProfiles\Handlers\RedeemCustomerProfileRewardHandler;
+use App\Application\TenantGovernance\CustomerProfiles\Handlers\SendCustomerProfileEmailFollowUpHandler;
+use App\Application\TenantGovernance\CustomerProfiles\Handlers\SendCustomerProfileWhatsappFollowUpHandler;
+use App\Application\TenantGovernance\CustomerProfiles\Handlers\TriggerCustomerProfileReactivationHandler;
+use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileActionCopyReader;
+use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileActionFormReader;
+use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileEmptyStateReader;
+use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileSectionViewReader;
+use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileTableActionReader;
+use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileTableFilterOptionsReader;
+use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileTablePresentationReader;
+use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileWorkspacePlaceholderReader;
+use App\Infrastructure\TenantGovernance\CustomerProfile\TenantCustomerProfilePresentationReader;
+use App\Infrastructure\TenantGovernance\CustomerProfile\TenantCustomerWorkspaceReader;
 use App\Filament\App\Resources\CustomerProfileResource\Pages;
 use App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
 use App\Filament\App\Pages\CustomerInbox;
@@ -576,16 +584,6 @@ class CustomerProfileResource extends Resource
         return app(TenantCustomerProfilePresentationReader::class);
     }
 
-    protected static function automationManager(): CustomerAutomationManager
-    {
-        return app(CustomerAutomationManager::class);
-    }
-
-    protected static function actionCoordinator(): TenantCustomerProfileActionCoordinator
-    {
-        return app(TenantCustomerProfileActionCoordinator::class);
-    }
-
     protected static function actionFormReader(): CustomerProfileActionFormReader
     {
         return app(CustomerProfileActionFormReader::class);
@@ -631,7 +629,19 @@ class CustomerProfileResource extends Resource
      */
     protected static function runAwardBonus(CustomerProfile $record, array $data): void
     {
-        static::notifyActionFeedback(static::actionCoordinator()->awardBonus($record, $data, auth()->id()));
+        $feedback = app(AwardCustomerProfileBonusHandler::class)->handle(
+            new AwardCustomerProfileBonusCommand(
+                tenantId: (string) $record->tenant_id,
+                profileId: (int) $record->getKey(),
+                points: (int) $data['points'],
+                description: (string) $data['description'],
+                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            ),
+        );
+
+        if ($feedback !== null) {
+            static::notifyActionFeedback($feedback);
+        }
     }
 
     /**
@@ -639,7 +649,18 @@ class CustomerProfileResource extends Resource
      */
     protected static function runRedeemReward(CustomerProfile $record, array $data): void
     {
-        static::notifyActionFeedback(static::actionCoordinator()->redeemReward($record, $data, auth()->id()));
+        $feedback = app(RedeemCustomerProfileRewardHandler::class)->handle(
+            new RedeemCustomerProfileRewardCommand(
+                tenantId: (string) $record->tenant_id,
+                profileId: (int) $record->getKey(),
+                rewardId: (int) $data['reward_id'],
+                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            ),
+        );
+
+        if ($feedback !== null) {
+            static::notifyActionFeedback($feedback);
+        }
     }
 
     /**
@@ -647,17 +668,50 @@ class CustomerProfileResource extends Resource
      */
     protected static function runEmailFollowUp(CustomerProfile $record, array $data): void
     {
-        static::notifyActionFeedback(static::actionCoordinator()->sendEmailFollowUp($record, $data, auth()->id()));
+        $feedback = app(SendCustomerProfileEmailFollowUpHandler::class)->handle(
+            new SendCustomerProfileEmailFollowUpCommand(
+                tenantId: (string) $record->tenant_id,
+                profileId: (int) $record->getKey(),
+                subject: (string) $data['subject'],
+                body: (string) $data['body'],
+                automationKey: (string) ($data['automation_key'] ?? 'manual_follow_up'),
+                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            ),
+        );
+
+        if ($feedback !== null) {
+            static::notifyActionFeedback($feedback);
+        }
     }
 
     protected static function runWhatsappFollowUp(CustomerProfile $record): void
     {
-        static::notifyActionFeedback(static::actionCoordinator()->sendWhatsappFollowUp($record, auth()->id()));
+        $feedback = app(SendCustomerProfileWhatsappFollowUpHandler::class)->handle(
+            new SendCustomerProfileWhatsappFollowUpCommand(
+                tenantId: (string) $record->tenant_id,
+                profileId: (int) $record->getKey(),
+                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            ),
+        );
+
+        if ($feedback !== null) {
+            static::notifyActionFeedback($feedback);
+        }
     }
 
     protected static function runReactivation(CustomerProfile $record): void
     {
-        static::notifyActionFeedback(static::actionCoordinator()->triggerReactivation($record, auth()->id()));
+        $feedback = app(TriggerCustomerProfileReactivationHandler::class)->handle(
+            new TriggerCustomerProfileReactivationCommand(
+                tenantId: (string) $record->tenant_id,
+                profileId: (int) $record->getKey(),
+                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            ),
+        );
+
+        if ($feedback !== null) {
+            static::notifyActionFeedback($feedback);
+        }
     }
 
     /**

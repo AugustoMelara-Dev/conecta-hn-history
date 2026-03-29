@@ -151,6 +151,16 @@ class InfrastructureServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantCustomerTaskFinderInterface::class,
+            \App\Infrastructure\TenantGovernance\CustomerProfile\EloquentTenantCustomerTaskFinder::class
+        );
+
+        $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantCustomerTouchpointFinderInterface::class,
+            \App\Infrastructure\TenantGovernance\CustomerProfile\EloquentTenantCustomerTouchpointFinder::class
+        );
+
+        $this->app->bind(
             \App\Application\TenantGovernance\Contracts\TenantGrowthSignalsViewInterface::class,
             \App\Infrastructure\TenantGovernance\TenantGrowthSignalsView::class
         );

@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
 
-use App\Domain\TenantGovernance\Services\CustomerTaskManager;
+use App\Application\TenantGovernance\CustomerProfiles\Commands\CompleteCustomerTaskCommand;
+use App\Application\TenantGovernance\CustomerProfiles\Handlers\CompleteCustomerTaskHandler;
 use App\Models\CustomerTask;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -172,7 +173,23 @@ class TasksRelationManager extends RelationManager
                     ->color('success')
                     ->visible(fn (CustomerTask $record): bool => ! in_array($record->status, ['completed', 'cancelled'], true))
                     ->action(function (CustomerTask $record): void {
-                        app(CustomerTaskManager::class)->complete($record, auth()->id());
+                        $updated = app(CompleteCustomerTaskHandler::class)->handle(
+                            new CompleteCustomerTaskCommand(
+                                tenantId: (string) $record->tenant_id,
+                                taskId: (int) $record->getKey(),
+                                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+                            ),
+                        );
+
+                        if (! $updated instanceof CustomerTask) {
+                            Notification::make()
+                                ->title('No se pudo completar')
+                                ->danger()
+                                ->body('La tarea ya no existe dentro de este negocio.')
+                                ->send();
+
+                            return;
+                        }
 
                         Notification::make()
                             ->title('Tarea completada')

@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
+use App\Application\TenantGovernance\CustomerProfiles\Commands\RetryCustomerTouchpointCommand;
+use App\Application\TenantGovernance\CustomerProfiles\Handlers\RetryCustomerTouchpointHandler;
 use App\Filament\App\Resources\CustomerTouchpointResource\Pages;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
@@ -266,10 +267,23 @@ class CustomerTouchpointResource extends Resource
                     ->requiresConfirmation()
                     ->visible(fn (CustomerTouchpoint $record): bool => $record->isRetryable())
                     ->action(function (CustomerTouchpoint $record): void {
-                        $updated = app(CustomerAutomationManager::class)->retryTouchpoint(
-                            $record,
-                            auth()->id() !== null ? (string) auth()->id() : null,
+                        $updated = app(RetryCustomerTouchpointHandler::class)->handle(
+                            new RetryCustomerTouchpointCommand(
+                                tenantId: (string) $record->tenant_id,
+                                touchpointId: (int) $record->getKey(),
+                                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+                            ),
                         );
+
+                        if (! $updated instanceof CustomerTouchpoint) {
+                            Notification::make()
+                                ->title('No se pudo reintentar')
+                                ->danger()
+                                ->body('El contacto ya no existe dentro de este negocio.')
+                                ->send();
+
+                            return;
+                        }
 
                         $success = $updated->status === CustomerTouchpoint::STATUS_SENT;
                         $hasNextRetry = $updated->next_retry_at !== null;
