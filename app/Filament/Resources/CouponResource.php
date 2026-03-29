@@ -39,6 +39,8 @@ class CouponResource extends Resource
 {
     protected static ?string $model = Coupon::class;
 
+    protected static bool $isScopedToTenant = false;
+
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-tag';
 
     protected static ?string $navigationLabel = 'Cupones';
@@ -312,6 +314,11 @@ class CouponResource extends Resource
 
     use \App\Filament\Traits\ScopesToTenant;
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->withoutGlobalScopes();
+    }
+
     public static function getRelations(): array
     {
         return [];
@@ -331,7 +338,8 @@ class CouponResource extends Resource
      */
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getEloquentQuery()
+        $count = Coupon::query()
+            ->withoutGlobalScopes()
             ->where('is_active', true)
             ->where(function (Builder $query): Builder {
                 return $query

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Domain\Identity\Enums\UserRole;
+use App\Infrastructure\TenantGovernance\SuperAdmin\SuperAdminTenantPlanReader;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\User;
@@ -119,14 +120,22 @@ final class Billing extends Page
                 ->where('status', SubscriptionPayment::STATUS_REJECTED)
                 ->count();
 
-            $this->proBusinesses = Tenant::query()
-                ->where('plan_type', 'pro')
+            $tenantSnapshot = Tenant::query()
+                ->with([
+                    'city:id,name',
+                    'category:id,name',
+                ])
+                ->withCount([
+                    'products as products_total' => fn (Builder $query): Builder => $query->withoutGlobalScopes(),
+                ])
+                ->get();
+
+            $this->proBusinesses = $tenantSnapshot
+                ->filter(fn (Tenant $tenant): bool => $this->planReader()->isPaidPlan($tenant))
                 ->count();
 
-            $this->baseBusinesses = Tenant::query()
-                ->where(function ($query): void {
-                    $query->whereNull('plan_type')->orWhere('plan_type', '!=', 'pro');
-                })
+            $this->baseBusinesses = $tenantSnapshot
+                ->filter(fn (Tenant $tenant): bool => $this->planReader()->isBasePlan($tenant))
                 ->count();
 
             $this->recentPayments = (clone $payments)
@@ -152,16 +161,6 @@ final class Billing extends Page
                 })
                 ->all();
 
-            $tenantSnapshot = Tenant::query()
-                ->with([
-                    'city:id,name',
-                    'category:id,name',
-                ])
-                ->withCount([
-                    'products as products_total' => fn (Builder $query): Builder => $query->withoutGlobalScopes(),
-                ])
-                ->get();
-
             $this->businessesWithCatalog = $tenantSnapshot
                 ->where('products_total', '>', 0)
                 ->count();
@@ -178,7 +177,7 @@ final class Billing extends Page
                 ->groupBy(fn (Tenant $tenant): string => (string) ($tenant->city?->name ?? 'Sin ciudad'))
                 ->map(function ($group, string $name): array {
                     $total = $group->count();
-                    $pro = $group->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+                    $pro = $group->filter(fn (Tenant $tenant): bool => $this->planReader()->isPaidPlan($tenant))->count();
 
                     return [
                         'name' => $name,
@@ -196,7 +195,7 @@ final class Billing extends Page
                 ->groupBy(fn (Tenant $tenant): string => (string) ($tenant->category?->name ?? 'Sin categoría'))
                 ->map(function ($group, string $name): array {
                     $total = $group->count();
-                    $pro = $group->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+                    $pro = $group->filter(fn (Tenant $tenant): bool => $this->planReader()->isPaidPlan($tenant))->count();
 
                     return [
                         'name' => $name,
@@ -217,5 +216,10 @@ final class Billing extends Page
             $this->cityFunnel = [];
             $this->categoryFunnel = [];
         }
+    }
+
+    private function planReader(): SuperAdminTenantPlanReader
+    {
+        return app(SuperAdminTenantPlanReader::class);
     }
 }
