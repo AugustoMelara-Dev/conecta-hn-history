@@ -21,7 +21,7 @@ export default defineConfig({
     webServer: {
         command: 'powershell -ExecutionPolicy Bypass -File scripts/e2e-server.ps1',
         url: 'http://127.0.0.1:8011',
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === '1',
         timeout: 180_000,
     },
     projects: [

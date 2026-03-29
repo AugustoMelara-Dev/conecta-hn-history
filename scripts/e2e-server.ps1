@@ -7,14 +7,14 @@ $env:APP_ENV = 'testing'
 $env:APP_URL = 'http://127.0.0.1:8011'
 $env:APP_KEY = 'base64:2fl+Ktvkfl+Fuz4Qk/NaWvy1Pt7EQqHMA2wc/ulkZyo='
 $env:CACHE_STORE = 'array'
-$env:QUEUE_CONNECTION = 'sync'
+$env:QUEUE_CONNECTION = 'database'
 $env:SESSION_DRIVER = 'file'
 $env:DB_CONNECTION = 'mysql'
-$env:DB_HOST = '127.0.0.1'
-$env:DB_PORT = '3306'
-$env:DB_DATABASE = 'conecta_hn_e2e_testing'
-$env:DB_USERNAME = 'root'
-$env:DB_PASSWORD = ''
+$env:DB_HOST = if ($env:E2E_DB_HOST) { $env:E2E_DB_HOST } else { '127.0.0.1' }
+$env:DB_PORT = if ($env:E2E_DB_PORT) { $env:E2E_DB_PORT } else { '3306' }
+$env:DB_DATABASE = if ($env:E2E_DB_DATABASE) { $env:E2E_DB_DATABASE } else { 'conecta_hn_e2e_testing' }
+$env:DB_USERNAME = if ($env:E2E_DB_USERNAME) { $env:E2E_DB_USERNAME } else { 'root' }
+$env:DB_PASSWORD = if ($env:E2E_DB_PASSWORD) { $env:E2E_DB_PASSWORD } else { '' }
 
 $databaseBootstrapPath = Join-Path $root '.tmp-e2e-db-bootstrap.php'
 

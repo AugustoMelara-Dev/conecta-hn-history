@@ -11,6 +11,7 @@ use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Cache;
 
 abstract class TestCase extends BaseTestCase
@@ -46,6 +47,7 @@ abstract class TestCase extends BaseTestCase
             new CommandValidatorRegistry
         );
 
+        $this->configureTestingRuntimePaths();
         $this->resetSharedTenantState();
         $this->primeSafeSystemSettings();
     }
@@ -108,6 +110,28 @@ abstract class TestCase extends BaseTestCase
                 // Skipping the reset in that scenario keeps the global cleanup safe.
             }
         }
+    }
+
+    private function configureTestingRuntimePaths(): void
+    {
+        $compiledViewPath = env('VIEW_COMPILED_PATH');
+
+        if (! is_string($compiledViewPath) || $compiledViewPath === '') {
+            return;
+        }
+
+        File::ensureDirectoryExists($compiledViewPath);
+        config(['view.compiled' => $compiledViewPath]);
+
+        if (! $this->app->resolved('blade.compiler')) {
+            return;
+        }
+
+        $compiler = $this->app['blade.compiler'];
+
+        (function () use ($compiledViewPath): void {
+            $this->cachePath = $compiledViewPath;
+        })->bindTo($compiler, $compiler)();
     }
 
     private function primeSafeSystemSettings(): void
