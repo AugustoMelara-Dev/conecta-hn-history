@@ -30,7 +30,8 @@ class ViewOrder extends ViewRecord
                 ->label('Imprimir Ticket')
                 ->icon('heroicon-o-printer')
                 ->color('gray')
-                ->action(fn () => null), // TODO: Implementar impresión
+                ->url(fn (): string => route('orders.print-ticket', ['order' => $this->record]))
+                ->openUrlInNewTab(),
         ];
     }
 
