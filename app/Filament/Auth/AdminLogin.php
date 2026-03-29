@@ -7,6 +7,8 @@ namespace App\Filament\Auth;
 use Filament\Actions\Action;
 use Filament\Auth\Pages\Login;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\TextInput;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Schemas\Components\Component;
 use Illuminate\Contracts\Support\Htmlable;
@@ -68,21 +70,30 @@ class AdminLogin extends Login
 
     protected function getEmailFormComponent(): Component
     {
-        return parent::getEmailFormComponent()
+        /** @var TextInput $component */
+        $component = parent::getEmailFormComponent();
+
+        return $component
             ->extraAttributes(['class' => 'biz-auth-input-wrap'])
             ->extraFieldWrapperAttributes(['class' => 'biz-auth-field']);
     }
 
     protected function getPasswordFormComponent(): Component
     {
-        return parent::getPasswordFormComponent()
+        /** @var TextInput $component */
+        $component = parent::getPasswordFormComponent();
+
+        return $component
             ->extraAttributes(['class' => 'biz-auth-input-wrap'])
             ->extraFieldWrapperAttributes(['class' => 'biz-auth-field']);
     }
 
     protected function getRememberFormComponent(): Component
     {
-        return parent::getRememberFormComponent()
+        /** @var Checkbox $component */
+        $component = parent::getRememberFormComponent();
+
+        return $component
             ->extraFieldWrapperAttributes(['class' => 'biz-auth-remember']);
     }
 

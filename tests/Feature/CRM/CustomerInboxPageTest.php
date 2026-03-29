@@ -130,8 +130,8 @@ final class CustomerInboxPageTest extends TestCase
         $conversation = $note->conversation()->withoutGlobalScopes()->first();
         $task = $note->task()->withoutGlobalScopes()->first();
 
-        $this->assertSame('appointments', (string) $conversation?->assignment_group);
-        $this->assertSame('appointments', (string) $task?->assignment_group);
+        $this->assertSame('appointments', (string) data_get($conversation, 'assignment_group'));
+        $this->assertSame('appointments', (string) data_get($task, 'assignment_group'));
 
         $internalNote = CustomerConversationMessage::query()
             ->withoutGlobalScopes()

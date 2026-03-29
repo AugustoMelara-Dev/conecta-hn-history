@@ -33,7 +33,7 @@ class WhatsAppCloudWebhookController
     {
         $payload = $request->getContent();
         $headers = collect($request->headers->all())
-            ->map(static fn (mixed $value): string => is_array($value) ? (string) ($value[0] ?? '') : (string) $value)
+            ->map(static fn (array $value): string => (string) ($value[0] ?? ''))
             ->mapWithKeys(static fn (string $value, string $key): array => [strtolower($key) => $value])
             ->all();
 

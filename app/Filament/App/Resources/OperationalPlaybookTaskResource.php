@@ -171,11 +171,13 @@ class OperationalPlaybookTaskResource extends Resource
                 Tables\Columns\TextColumn::make('due_at')
                     ->label('SLA')
                     ->state(function (OperationalPlaybookTask $record): string {
-                        if (! $record->due_at) {
+                        $dueAt = static::recordCarbon($record->due_at);
+
+                        if ($dueAt === null) {
                             return 'Sin SLA';
                         }
 
-                        return $record->due_at->format('d/m H:i');
+                        return $dueAt->format('d/m H:i');
                     })
                     ->badge()
                     ->color(function (OperationalPlaybookTask $record): string {
@@ -190,7 +192,9 @@ class OperationalPlaybookTaskResource extends Resource
                         return $record->isOverdue() ? 'danger' : 'info';
                     })
                     ->description(function (OperationalPlaybookTask $record): string {
-                        if (! $record->due_at) {
+                        $dueAt = static::recordCarbon($record->due_at);
+
+                        if ($dueAt === null) {
                             return 'Sin vencimiento';
                         }
 
@@ -200,7 +204,7 @@ class OperationalPlaybookTaskResource extends Resource
 
                         return $record->isOverdue()
                             ? 'SLA vencido'
-                            : $record->due_at->diffForHumans();
+                            : $dueAt->diffForHumans();
                     }),
             ])
             ->filters([
@@ -445,7 +449,7 @@ class OperationalPlaybookTaskResource extends Resource
 
     protected static function currentTimestampSql(): string
     {
-        return match (OperationalPlaybookTask::query()->withoutGlobalScopes()->getConnection()->getDriverName()) {
+        return match ((string) config('database.default', 'mysql')) {
             'sqlite' => 'CURRENT_TIMESTAMP',
             default => 'now()',
         };
@@ -481,6 +485,19 @@ class OperationalPlaybookTaskResource extends Resource
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    protected static function recordCarbon(mixed $value): ?\Illuminate\Support\Carbon
+    {
+        if ($value instanceof \Illuminate\Support\Carbon) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            return \Illuminate\Support\Carbon::parse($value);
+        }
+
+        return null;
     }
 
     /**

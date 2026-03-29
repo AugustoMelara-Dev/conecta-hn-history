@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 final class ProductController extends Controller
 {
@@ -31,7 +32,7 @@ final class ProductController extends Controller
         ]);
     }
 
-    public function create(): RedirectResponse
+    public function create(): HttpResponse
     {
         return Inertia::location(route('filament.app.resources.products.index', [
             'tenant' => $this->tenantSlug(),
@@ -43,7 +44,7 @@ final class ProductController extends Controller
         return $this->redirectToOfficialProducts('La gestion de productos ya se administra desde el panel oficial en /app.');
     }
 
-    public function edit(int $id): RedirectResponse
+    public function edit(int $id): HttpResponse
     {
         return Inertia::location(route('filament.app.resources.products.index', [
             'tenant' => $this->tenantSlug(),

@@ -30,7 +30,7 @@ final class TenantJourneyOpsMonitor
         $this->tenantCandidates($limit)->each(function (Tenant $tenant) use (&$created): void {
             $signals = $this->analyzeTenant($tenant);
 
-            if (($signals['conversion_watch'] ?? false) === true) {
+            if ($signals['conversion_watch'] === true) {
                 $task = $this->playbookTaskManager->syncForTrigger($tenant, 'journey_conversion_watch', [
                     'segment_label' => $this->segmentLabelForTenant($tenant),
                     'watch_metric' => (string) $signals['conversion_metric'],
@@ -42,7 +42,7 @@ final class TenantJourneyOpsMonitor
                 }
             }
 
-            if (($signals['no_show_watch'] ?? false) === true) {
+            if ($signals['no_show_watch'] === true) {
                 $task = $this->playbookTaskManager->syncForTrigger($tenant, 'journey_no_show_watch', [
                     'segment_label' => $this->segmentLabelForTenant($tenant),
                     'watch_metric' => (string) $signals['no_show_metric'],
@@ -54,7 +54,7 @@ final class TenantJourneyOpsMonitor
                 }
             }
 
-            if (($signals['reward_watch'] ?? false) === true) {
+            if ($signals['reward_watch'] === true) {
                 $task = $this->playbookTaskManager->syncForTrigger($tenant, 'journey_reward_watch', [
                     'segment_label' => $this->segmentLabelForTenant($tenant),
                     'watch_metric' => (string) $signals['reward_metric'],
@@ -139,7 +139,7 @@ final class TenantJourneyOpsMonitor
     private function segmentLabelForTenant(Tenant $tenant): string
     {
         $segmentKey = $this->segmentResolver->resolveForTenant($tenant);
-        $profile = $this->segmentResolver->internalProfile($segmentKey, $tenant->business_type?->value ?? 'retail');
+        $profile = $this->segmentResolver->internalProfile($segmentKey, $tenant->business_type->value);
         $label = $profile['label'] ?? null;
 
         return is_string($label) && $label !== '' ? $label : str($segmentKey)->replace('_', ' ')->title()->value();

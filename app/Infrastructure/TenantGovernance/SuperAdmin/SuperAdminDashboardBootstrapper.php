@@ -9,7 +9,6 @@ final class SuperAdminDashboardBootstrapper
     public function __construct(
         private readonly SuperAdminDashboardSignalSynchronizer $signalSynchronizer,
         private readonly SuperAdminDashboardPageLoader $pageLoader,
-        private readonly SuperAdminDashboardUrlMapReader $urlMapReader,
     ) {}
 
     public function boot(object $target): void

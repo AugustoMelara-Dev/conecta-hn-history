@@ -342,7 +342,7 @@ class GrowthCenter extends Page
         $this->hasLoyaltyFeature = $tenant->hasFeature(TenantFeature::LOYALTY_PROGRAM);
         $this->canUpgradeToPro = $tenant->hasFeature(TenantFeature::UPGRADE_PROMPT);
         $this->isPro = ! $this->canUpgradeToPro;
-        $this->businessType = $tenant->business_type?->value ?? BusinessType::RETAIL->value;
+        $this->businessType = $tenant->business_type->value;
         $this->businessTypeLabel = (string) (config("business-types.options.{$this->businessType}.label") ?? 'Negocio');
         $this->hasWhatsApp = filled($tenant->whatsapp_number);
 
@@ -795,26 +795,5 @@ class GrowthCenter extends Page
     private function formatCurrency(float $value): string
     {
         return 'L. '.number_format($value, 2);
-    }
-
-    private function formatSourceLabel(string $source): string
-    {
-        return match ($source) {
-            'whatsapp_click' => 'WhatsApp',
-            'catalog' => 'Catalogo',
-            'website' => 'Sitio web',
-            'manual' => 'Manual',
-            default => ucfirst(str_replace('_', ' ', $source)),
-        };
-    }
-
-    private function formatOrderSourceLabel(string $source): string
-    {
-        return match ($source) {
-            'web' => 'Web',
-            'whatsapp' => 'WhatsApp',
-            'direct' => 'Directo',
-            default => ucfirst(str_replace('_', ' ', $source)),
-        };
     }
 }

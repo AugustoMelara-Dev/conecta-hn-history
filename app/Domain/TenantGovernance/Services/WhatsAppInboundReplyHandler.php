@@ -32,8 +32,7 @@ final class WhatsAppInboundReplyHandler
                 'provider_message_id' => (string) ($messagePayload['id'] ?? ''),
                 'provider_thread_key' => (string) (data_get($touchpoint->metadata, 'provider_thread_key')
                     ?? data_get($touchpoint->metadata, 'conversation_key')
-                    ?? $contextMessageId
-                    ?? ''),
+                    ?? $contextMessageId),
                 'provider_reply_to' => $contextMessageId !== '' ? $contextMessageId : null,
             ],
         );

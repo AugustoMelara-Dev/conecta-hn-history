@@ -64,7 +64,7 @@ final class TenantGrowthSignalsReader
                 ->first();
 
             if ($topLeadSource !== null) {
-                $state['topLeadSource'] = $this->formatSourceLabel((string) $topLeadSource->source_key);
+                $state['topLeadSource'] = $this->formatSourceLabel((string) data_get($topLeadSource, 'source_key', 'manual'));
             }
         } catch (\Throwable) {
             // Leads can be optional for fresh tenants.
@@ -99,7 +99,7 @@ final class TenantGrowthSignalsReader
                 ->first();
 
             if ($topSalesChannel !== null) {
-                $state['topSalesChannel'] = $this->formatOrderSourceLabel((string) $topSalesChannel->source_key);
+                $state['topSalesChannel'] = $this->formatOrderSourceLabel((string) data_get($topSalesChannel, 'source_key', 'direct'));
             }
 
             $customerSnapshot = $this->customerSnapshotFromOrders($tenantId, $oneHundredEightyDaysAgo);
@@ -182,7 +182,7 @@ final class TenantGrowthSignalsReader
                 ->first();
 
             if ($topReactivationSegment !== null) {
-                $state['topReactivationSegment'] = ucfirst(str_replace('_', ' ', (string) $topReactivationSegment->segment_key));
+                $state['topReactivationSegment'] = ucfirst(str_replace('_', ' ', (string) data_get($topReactivationSegment, 'segment_key', 'new')));
             }
 
             $state['loyaltyReadyCustomersCount'] = (clone $profilesBase)
@@ -223,7 +223,7 @@ final class TenantGrowthSignalsReader
                 ->first();
 
             if ($topAcquisition !== null) {
-                $state['topAcquisitionChannel'] = $this->formatSourceLabel((string) $topAcquisition->channel_key);
+                $state['topAcquisitionChannel'] = $this->formatSourceLabel((string) data_get($topAcquisition, 'channel_key', 'manual'));
             }
 
             $topSegment = (clone $profilesBase)
@@ -233,7 +233,7 @@ final class TenantGrowthSignalsReader
                 ->first();
 
             if ($topSegment !== null) {
-                $state['topCustomerSegment'] = ucfirst(str_replace('_', ' ', (string) $topSegment->segment_key));
+                $state['topCustomerSegment'] = ucfirst(str_replace('_', ' ', (string) data_get($topSegment, 'segment_key', 'new')));
             }
 
             $repeatProfileIds = (clone $profilesBase)
@@ -277,7 +277,7 @@ final class TenantGrowthSignalsReader
                 ->first();
 
             if ($topLtvSegment !== null) {
-                $state['topLtvSegment'] = ucfirst(str_replace('_', ' ', (string) $topLtvSegment->segment_key));
+                $state['topLtvSegment'] = ucfirst(str_replace('_', ' ', (string) data_get($topLtvSegment, 'segment_key', 'new')));
             }
 
             $topLtvChannel = (clone $profilesBase)
@@ -288,7 +288,7 @@ final class TenantGrowthSignalsReader
                 ->first();
 
             if ($topLtvChannel !== null) {
-                $state['topLtvChannel'] = $this->formatSourceLabel((string) $topLtvChannel->channel_key);
+                $state['topLtvChannel'] = $this->formatSourceLabel((string) data_get($topLtvChannel, 'channel_key', 'manual'));
             }
         } catch (\Throwable) {
             // CRM can be empty on brand new tenants.
@@ -439,7 +439,7 @@ final class TenantGrowthSignalsReader
                 ->first();
 
             if ($topClosingChannel !== null) {
-                $state['topClosingChannel'] = $this->formatSourceLabel((string) $topClosingChannel->channel_key);
+                $state['topClosingChannel'] = $this->formatSourceLabel((string) data_get($topClosingChannel, 'channel_key', 'crm'));
             }
 
             $state['notes7dCount'] = CustomerNote::query()
@@ -503,7 +503,7 @@ final class TenantGrowthSignalsReader
                 ->first();
 
             if ($topLoyaltyChannel !== null) {
-                $state['topLoyaltyChannel'] = $this->formatSourceLabel((string) $topLoyaltyChannel->channel_key);
+                $state['topLoyaltyChannel'] = $this->formatSourceLabel((string) data_get($topLoyaltyChannel, 'channel_key', 'manual'));
             }
         } catch (\Throwable) {
             $state['hasLoyaltyProgram'] = false;
@@ -765,13 +765,16 @@ final class TenantGrowthSignalsReader
             ->first();
 
         if ($topProduct === null) {
-            return [];
+            return [
+                'topOfferLabel' => 'Sin datos',
+                'topOfferCopy' => 'Todavia no hay suficiente actividad reciente para destacar una oferta.',
+            ];
         }
 
         return [
-            'topOfferLabel' => (string) $topProduct->offer_name,
-            'topOfferCopy' => (int) ($topProduct->units ?? 0) > 0
-                ? ((int) $topProduct->units).' unidades movieron '.$this->formatCurrency((float) ($topProduct->revenue ?? 0)).' en los ultimos 30 dias.'
+            'topOfferLabel' => (string) data_get($topProduct, 'offer_name', 'Producto'),
+            'topOfferCopy' => (int) data_get($topProduct, 'units', 0) > 0
+                ? ((int) data_get($topProduct, 'units', 0)).' unidades movieron '.$this->formatCurrency((float) data_get($topProduct, 'revenue', 0)).' en los ultimos 30 dias.'
                 : 'Tu catalogo ya muestra una oferta dominante.',
         ];
     }
@@ -792,13 +795,16 @@ final class TenantGrowthSignalsReader
             ->orderByDesc('units')
             ->first();
 
-        if ($topService === null || (int) ($topService->units ?? 0) <= 0) {
-            return [];
+        if ($topService === null || (int) data_get($topService, 'units', 0) <= 0) {
+            return [
+                'topOfferLabel' => 'Sin datos',
+                'topOfferCopy' => 'Todavia no hay suficiente actividad reciente para destacar una oferta.',
+            ];
         }
 
         return [
-            'topOfferLabel' => (string) $topService->offer_name,
-            'topOfferCopy' => (int) $topService->units.' reservas recientes apuntan a esta oferta como la de mayor traccion.',
+            'topOfferLabel' => (string) data_get($topService, 'offer_name', 'Servicio'),
+            'topOfferCopy' => (int) data_get($topService, 'units', 0).' reservas recientes apuntan a esta oferta como la de mayor traccion.',
         ];
     }
 }

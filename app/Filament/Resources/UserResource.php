@@ -194,7 +194,7 @@ class UserResource extends Resource
         ];
     }
 
-    private static function normalizeRole(UserRole|string|null $state): ?string
+    protected static function normalizeRole(UserRole|string|null $state): ?string
     {
         if ($state instanceof UserRole) {
             return $state->value;
@@ -203,7 +203,7 @@ class UserResource extends Resource
         return is_string($state) && $state !== '' ? $state : null;
     }
 
-    private static function getRoleLabel(UserRole|string|null $state): string
+    protected static function getRoleLabel(UserRole|string|null $state): string
     {
         return match (static::normalizeRole($state)) {
             UserRole::TENANT_OWNER->value => 'Dueno de negocio',
@@ -214,7 +214,7 @@ class UserResource extends Resource
         };
     }
 
-    private static function getRoleColor(UserRole|string|null $state): string
+    protected static function getRoleColor(UserRole|string|null $state): string
     {
         return match (static::normalizeRole($state)) {
             UserRole::TENANT_OWNER->value => 'info',
@@ -228,12 +228,15 @@ class UserResource extends Resource
     /**
      * @param  array<string, mixed>  $properties
      */
-    private static function logTenantSideUserAction(User $user, string $description, array $properties = []): void
+    protected static function logTenantSideUserAction(User $user, string $description, array $properties = []): void
     {
         $actor = auth()->user();
 
-        $user->tenants()
-            ->get()
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Tenant> $tenants */
+        $tenants = $user->tenants()
+            ->get();
+
+        $tenants
             ->each(function (Tenant $tenant) use ($actor, $description, $properties, $user): void {
                 $tenant->logOperationalEvent(
                     $description,

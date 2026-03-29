@@ -121,7 +121,7 @@ class ReviewResource extends Resource
         ];
     }
 
-    private static function getTenantRecord(): ?Tenant
+    protected static function getTenantRecord(): ?Tenant
     {
         $tenant = Filament::getTenant();
 

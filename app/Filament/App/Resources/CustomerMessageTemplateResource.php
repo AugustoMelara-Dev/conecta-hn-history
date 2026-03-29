@@ -312,7 +312,7 @@ class CustomerMessageTemplateResource extends Resource
         return $tenant instanceof Tenant ? $tenant : null;
     }
 
-    private static function performanceSummary(CustomerMessageTemplate $record): string
+    protected static function performanceSummary(CustomerMessageTemplate $record): string
     {
         $query = CustomerTouchpoint::query()
             ->withoutGlobalScopes()

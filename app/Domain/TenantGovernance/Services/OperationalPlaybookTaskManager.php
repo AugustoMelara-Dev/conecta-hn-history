@@ -53,16 +53,21 @@ final class OperationalPlaybookTaskManager
         $task->forceFill([
             'tenant_id' => (string) $tenant->getKey(),
             'assigned_user_id' => $assigneeId,
-            'admin_owner_id' => $existingTask?->admin_owner_id ?? (filled($tenant->crm_owner_id) ? (string) $tenant->crm_owner_id : null),
+            'admin_owner_id' => $existingTask instanceof OperationalPlaybookTask
+                ? $existingTask->admin_owner_id
+                : (filled($tenant->crm_owner_id) ? (string) $tenant->crm_owner_id : null),
             'trigger_key' => $triggerKey,
             'queue' => (string) ($profile['queue'] ?? 'leads'),
             'route_key' => Arr::get($profile, 'route_key'),
             'segment_key' => $this->segmentResolver->resolveForTenant($tenant),
             'suggested_preset_key' => Arr::get($profile, 'preferred_presets.0'),
             'priority' => (string) ($profile['priority'] ?? OperationalPlaybookTask::PRIORITY_NORMAL),
-            'status' => $existingTask?->status ?? OperationalPlaybookTask::STATUS_OPEN,
-            'follow_up_status' => $existingTask?->follow_up_status
-                ?? (filled($tenant->crm_owner_id) ? OperationalPlaybookTask::FOLLOW_UP_ASSIGNED : OperationalPlaybookTask::FOLLOW_UP_NEW),
+            'status' => $existingTask instanceof OperationalPlaybookTask
+                ? $existingTask->status
+                : OperationalPlaybookTask::STATUS_OPEN,
+            'follow_up_status' => $existingTask instanceof OperationalPlaybookTask
+                ? $existingTask->follow_up_status
+                : (filled($tenant->crm_owner_id) ? OperationalPlaybookTask::FOLLOW_UP_ASSIGNED : OperationalPlaybookTask::FOLLOW_UP_NEW),
             'sla_minutes' => $crmSlaMinutes,
             'title' => $title,
             'summary' => $summary,
@@ -71,7 +76,9 @@ final class OperationalPlaybookTaskManager
             'related_id' => $relatedId,
             'meta' => $this->buildMeta($context),
             'due_at' => now()->addMinutes($crmSlaMinutes),
-            'next_follow_up_at' => $existingTask?->next_follow_up_at ?? $tenant->crm_next_follow_up_at,
+            'next_follow_up_at' => $existingTask instanceof OperationalPlaybookTask
+                ? $existingTask->next_follow_up_at
+                : $tenant->crm_next_follow_up_at,
         ]);
 
         if (! $existingTask instanceof OperationalPlaybookTask) {

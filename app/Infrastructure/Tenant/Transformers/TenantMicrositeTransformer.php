@@ -42,7 +42,7 @@ final readonly class TenantMicrositeTransformer
             'id' => $tenant->id,
             'name' => $tenant->name,
             'slug' => $tenant->slug,
-            'business_type' => $tenant->business_type?->value ?? BusinessType::RETAIL->value,
+            'business_type' => $tenant->business_type->value,
             'description' => $tenant->description ?? 'Bienvenido a nuestro negocio.',
             'about' => $tenant->about,
             'logo' => $this->resolveImageUrl($tenant->logo_path, 'logo'),
@@ -393,13 +393,16 @@ final readonly class TenantMicrositeTransformer
 
     private function resolveStorefrontVerticalKey(Tenant $tenant, BusinessType $businessType): string
     {
+        /** @var Category|null $category */
+        $category = $tenant->category;
+
         return $this->segmentResolver->resolve(
             businessType: $businessType->value,
             name: $tenant->name,
             description: $tenant->description,
             about: $tenant->about,
-            categorySlug: $tenant->category?->slug,
-            categoryName: $tenant->category?->name,
+            categorySlug: $category?->slug,
+            categoryName: $category?->name,
         );
     }
 

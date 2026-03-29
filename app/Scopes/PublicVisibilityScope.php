@@ -172,7 +172,7 @@ class PublicVisibilityScope implements Scope
             return $routeTenant;
         }
 
-        if (is_string($routeTenant) || is_int($routeTenant)) {
+        if (is_string($routeTenant)) {
             return Tenant::query()
                 ->whereKey($routeTenant)
                 ->orWhere('slug', (string) $routeTenant)

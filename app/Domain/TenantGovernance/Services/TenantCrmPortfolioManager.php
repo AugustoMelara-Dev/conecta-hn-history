@@ -140,7 +140,9 @@ final class TenantCrmPortfolioManager
             'reason' => $reason,
             'metric' => $metric,
             'source' => $score > 0 ? 'automation' : null,
-            'flagged_at' => $score > 0 ? ($tenant->crm_watch_flagged_at ?? now()) : null,
+            'flagged_at' => $score > 0
+                ? ($tenant->crm_watch_flagged_at !== null ? Carbon::instance($tenant->crm_watch_flagged_at) : now())
+                : null,
             'trigger' => $trigger,
             'auto_next_touch' => $score >= 80 && ! ($tenant->crm_next_follow_up_at instanceof Carbon)
                 ? now()->addHours(max(4, (int) ($tenant->crm_sla_hours ?? Tenant::DEFAULT_CRM_SLA_HOURS)))

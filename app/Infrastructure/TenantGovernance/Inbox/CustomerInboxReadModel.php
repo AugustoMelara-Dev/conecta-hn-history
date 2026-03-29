@@ -16,6 +16,8 @@ use App\Models\Location;
 use App\Models\Tenant;
 use App\Models\TenantUser;
 use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 final class CustomerInboxReadModel
 {
@@ -135,7 +137,7 @@ final class CustomerInboxReadModel
 
     private function priorityOrderSql(): string
     {
-        return match (CustomerNote::query()->withoutGlobalScopes()->getConnection()->getDriverName()) {
+        return match ((string) config('database.default', 'mysql')) {
             'sqlite' => "case priority when 'urgent' then 1 when 'high' then 2 when 'normal' then 3 when 'low' then 4 else 5 end",
             default => "field(priority, 'urgent', 'high', 'normal', 'low')",
         };
@@ -193,55 +195,102 @@ final class CustomerInboxReadModel
     private function mapQueueNote(CustomerNote $note, Tenant $tenant): array
     {
         $profile = $note->customerProfile;
+        $profile = $profile instanceof CustomerProfile ? $profile : null;
+
         $conversation = $note->conversation;
-        $playbook = $profile instanceof CustomerProfile ? $this->playbook->forProfile($profile) : null;
+        $conversation = $conversation instanceof CustomerConversation ? $conversation : null;
+
         $journeyRun = $conversation?->journeyRun;
-        $recommendedTemplateKey = data_get($journeyRun?->metadata, 'recommended_template_key');
+        $journeyRun = $journeyRun instanceof CustomerJourneyRun ? $journeyRun : null;
+
+        $handledBy = $note->handledBy;
+        $handledBy = $handledBy instanceof User ? $handledBy : null;
+
+        $assignedUser = $note->assignedUser;
+        $assignedUser = $assignedUser instanceof User ? $assignedUser : null;
+
+        $noteLocation = $note->location;
+        $noteLocation = $noteLocation instanceof Location ? $noteLocation : null;
+
+        $conversationOwner = $conversation?->owner;
+        $conversationOwner = $conversationOwner instanceof User ? $conversationOwner : null;
+
+        $conversationLocation = $conversation?->location;
+        $conversationLocation = $conversationLocation instanceof Location ? $conversationLocation : null;
+
+        $playbook = $profile instanceof CustomerProfile ? $this->playbook->forProfile($profile) : null;
+        $recommendedTemplateKey = data_get($journeyRun instanceof CustomerJourneyRun ? $journeyRun->metadata : null, 'recommended_template_key');
+
+        $conversationStatus = $conversation instanceof CustomerConversation ? (string) $conversation->status : (string) $note->status;
+        $conversationStatusLabel = $conversation instanceof CustomerConversation ? $conversation->status_label : $note->status_label;
+        $conversationPriority = $conversation instanceof CustomerConversation ? (string) $conversation->priority : (string) $note->priority;
+        $conversationPriorityLabel = $conversation instanceof CustomerConversation ? $conversation->priority_label : $note->priority_label;
+        $sourceChannel = $conversation instanceof CustomerConversation
+            ? (string) $conversation->source_channel
+            : (string) ($note->source_channel ?? 'system');
+        $assignedUserId = $conversation instanceof CustomerConversation && $conversation->owner_user_id !== null
+            ? (string) $conversation->owner_user_id
+            : ($note->assigned_user_id !== null ? (string) $note->assigned_user_id : ($profile?->assigned_user_id !== null ? (string) $profile->assigned_user_id : null));
+        $locationId = $conversation instanceof CustomerConversation && $conversation->location_id !== null
+            ? (string) $conversation->location_id
+            : ($note->location_id !== null ? (string) $note->location_id : ($profile?->location_id !== null ? (string) $profile->location_id : null));
+        $assignmentGroup = $conversation instanceof CustomerConversation
+            ? (string) $conversation->assignment_group
+            : (string) data_get($note->metadata, 'assignment_group', '');
+        $assignmentGroupLabel = $conversation instanceof CustomerConversation
+            ? $conversation->assignment_group_label
+            : (string) data_get($note->metadata, 'assignment_group_label', 'Sin equipo');
+        $nextActionAt = $conversation instanceof CustomerConversation ? $conversation->next_action_at : $note->next_action_at;
+        $slaLabel = $conversation instanceof CustomerConversation ? $conversation->sla_label : $note->sla_label;
+        $slaColor = $conversation instanceof CustomerConversation ? $conversation->sla_color : $note->sla_color;
+        $replyCount = $conversation instanceof CustomerConversation ? $conversation->reply_count : $note->reply_count;
+        $responseDueAt = $conversation instanceof CustomerConversation ? $conversation->response_due_at : $note->response_due_at;
 
         return [
             'id' => (int) $note->getKey(),
             'conversationId' => $conversation?->getKey(),
             'title' => $note->note_type_label,
             'body' => (string) $note->body,
-            'status' => (string) ($conversation?->status ?? $note->status),
-            'statusLabel' => $conversation?->status_label ?? $note->status_label,
-            'priority' => (string) ($conversation?->priority ?? $note->priority),
-            'priorityLabel' => $conversation?->priority_label ?? $note->priority_label,
-            'channel' => (string) ($conversation?->source_channel ?? $note->source_channel ?? 'system'),
-            'channelLabel' => $this->formatChannelLabel((string) ($conversation?->source_channel ?? $note->source_channel ?? 'system')),
-            'customerName' => (string) ($profile?->name ?? 'Cliente sin nombre'),
-            'segmentLabel' => (string) ($playbook['label'] ?? 'Sin segmentar'),
-            'loyaltyTier' => (string) ($profile?->loyalty_tier_label ?? 'Base'),
-            'nextTouch' => (string) ($playbook['next_touch'] ?? 'Conviene responder en este turno.'),
-            'loyaltyMove' => (string) ($playbook['loyalty_move'] ?? 'Mantener seguimiento simple.'),
-            'handledBy' => $note->handledBy?->name,
-            'assignedTo' => $conversation?->owner?->name ?? $note->assignedUser?->name ?? $profile?->assigned_owner_label,
-            'assignedUserId' => $conversation?->owner_user_id !== null
-                ? (string) $conversation->owner_user_id
-                : ($note->assigned_user_id !== null ? (string) $note->assigned_user_id : ($profile?->assigned_user_id !== null ? (string) $profile->assigned_user_id : null)),
-            'locationName' => $conversation?->location?->name ?? $note->location?->name ?? $profile?->location_label ?? 'Sin sede',
-            'locationId' => $conversation?->location_id !== null
-                ? (string) $conversation->location_id
-                : ($note->location_id !== null ? (string) $note->location_id : ($profile?->location_id !== null ? (string) $profile->location_id : null)),
-            'assignmentGroup' => (string) ($conversation?->assignment_group ?? data_get($note->metadata, 'assignment_group', '')),
-            'assignmentGroupLabel' => $conversation?->assignment_group_label
-                ?? (string) data_get($note->metadata, 'assignment_group_label', 'Sin equipo'),
-            'nextActionAt' => ($conversation?->next_action_at ?? $note->next_action_at)?->diffForHumans(),
-            'slaLabel' => $conversation?->sla_label ?? $note->sla_label,
-            'slaColor' => $conversation?->sla_color ?? $note->sla_color,
-            'replyCount' => max(1, (int) ($conversation?->reply_count ?? $note->reply_count)),
-            'responseDueAt' => ($conversation?->response_due_at ?? $note->response_due_at)?->diffForHumans(),
-            'queueLane' => (string) data_get($journeyRun?->metadata, 'lane', 'follow_up'),
-            'sequenceStateLabel' => $journeyRun?->sequence_state_label ?? 'Listo para mover',
-            'dueStateLabel' => $journeyRun?->due_state_label ?? $conversation?->sla_label ?? $note->sla_label,
+            'status' => $conversationStatus,
+            'statusLabel' => $conversationStatusLabel,
+            'priority' => $conversationPriority,
+            'priorityLabel' => $conversationPriorityLabel,
+            'channel' => $sourceChannel,
+            'channelLabel' => $this->formatChannelLabel($sourceChannel),
+            'customerName' => (string) $profile->name,
+            'segmentLabel' => is_array($playbook) ? (string) $playbook['label'] : 'Sin segmentar',
+            'loyaltyTier' => (string) $profile->loyalty_tier_label,
+            'nextTouch' => is_array($playbook) ? (string) $playbook['next_touch'] : 'Conviene responder en este turno.',
+            'loyaltyMove' => is_array($playbook) ? (string) $playbook['loyalty_move'] : 'Mantener seguimiento simple.',
+            'handledBy' => $handledBy?->name,
+            'assignedTo' => $conversationOwner instanceof User
+                ? $conversationOwner->name
+                : ($assignedUser instanceof User ? $assignedUser->name : $profile->assigned_owner_label),
+            'assignedUserId' => $assignedUserId,
+            'locationName' => $conversationLocation instanceof Location
+                ? $conversationLocation->name
+                : ($noteLocation instanceof Location ? $noteLocation->name : $profile->location_label),
+            'locationId' => $locationId,
+            'assignmentGroup' => $assignmentGroup,
+            'assignmentGroupLabel' => $assignmentGroupLabel,
+            'nextActionAt' => $nextActionAt instanceof Carbon ? $nextActionAt->diffForHumans() : null,
+            'slaLabel' => $slaLabel,
+            'slaColor' => $slaColor,
+            'replyCount' => max(1, (int) $replyCount),
+            'responseDueAt' => $responseDueAt instanceof Carbon ? $responseDueAt->diffForHumans() : null,
+            'queueLane' => (string) data_get($journeyRun instanceof CustomerJourneyRun ? $journeyRun->metadata : null, 'lane', 'follow_up'),
+            'sequenceStateLabel' => $journeyRun instanceof CustomerJourneyRun ? $journeyRun->sequence_state_label : 'Listo para mover',
+            'dueStateLabel' => $journeyRun instanceof CustomerJourneyRun ? $journeyRun->due_state_label : $slaLabel,
             'recommendedTemplateLabel' => filled($recommendedTemplateKey)
                 ? str((string) $recommendedTemplateKey)->replace('_', ' ')->replace('-', ' ')->title()->value()
                 : 'Sin recomendacion',
-            'journeyStep' => data_get($journeyRun?->metadata, 'current_step.title'),
-            'journeyBranchLabel' => (string) data_get($journeyRun?->metadata, 'current_branch_label', 'Ruta base'),
-            'journeySequenceLabel' => (string) data_get($journeyRun?->metadata, 'current_sequence_label', 'Secuencia principal'),
-            'nextSequenceLabel' => (string) data_get($journeyRun?->metadata, 'next_sequence_label', 'Sin siguiente secuencia'),
-            'nextTriggerLabel' => $journeyRun?->step_due_at?->diffForHumans(),
+            'journeyStep' => data_get($journeyRun instanceof CustomerJourneyRun ? $journeyRun->metadata : null, 'current_step.title'),
+            'journeyBranchLabel' => (string) data_get($journeyRun instanceof CustomerJourneyRun ? $journeyRun->metadata : null, 'current_branch_label', 'Ruta base'),
+            'journeySequenceLabel' => (string) data_get($journeyRun instanceof CustomerJourneyRun ? $journeyRun->metadata : null, 'current_sequence_label', 'Secuencia principal'),
+            'nextSequenceLabel' => (string) data_get($journeyRun instanceof CustomerJourneyRun ? $journeyRun->metadata : null, 'next_sequence_label', 'Sin siguiente secuencia'),
+            'nextTriggerLabel' => $journeyRun instanceof CustomerJourneyRun && $journeyRun->step_due_at instanceof Carbon
+                ? $journeyRun->step_due_at->diffForHumans()
+                : null,
             'profileUrl' => $profile instanceof CustomerProfile
                 ? CustomerProfileResource::getUrl('edit', ['record' => $profile, 'tenant' => $tenant->slug])
                 : '#',
@@ -252,6 +301,7 @@ final class CustomerInboxReadModel
     {
         $profile = $note->customerProfile;
         $conversation = $note->conversation;
+        $conversation = $conversation instanceof CustomerConversation ? $conversation : null;
 
         if (! $profile instanceof CustomerProfile) {
             return [];
@@ -262,6 +312,32 @@ final class CustomerInboxReadModel
         $journey = $this->templateManager->forConversation($profile, $note);
         $task = $note->task()->withoutGlobalScopes()->with(['assignedUser', 'location'])->first();
         $journeyRun = $conversation?->journeyRun;
+        $journeyRun = $journeyRun instanceof CustomerJourneyRun ? $journeyRun : null;
+        $conversationOwner = $conversation?->owner;
+        $conversationOwner = $conversationOwner instanceof User ? $conversationOwner : null;
+        $conversationLocation = $conversation?->location;
+        $conversationLocation = $conversationLocation instanceof Location ? $conversationLocation : null;
+        $noteAssignedUser = $note->assignedUser;
+        $noteAssignedUser = $noteAssignedUser instanceof User ? $noteAssignedUser : null;
+        $noteLocation = $note->location;
+        $noteLocation = $noteLocation instanceof Location ? $noteLocation : null;
+        $conversationStatus = $conversation instanceof CustomerConversation ? (string) $conversation->status : (string) $note->status;
+        $conversationStatusLabel = $conversation instanceof CustomerConversation ? $conversation->status_label : $note->status_label;
+        $conversationPriorityLabel = $conversation instanceof CustomerConversation ? $conversation->priority_label : $note->priority_label;
+        $channel = $conversation instanceof CustomerConversation
+            ? (string) $conversation->source_channel
+            : (string) ($note->source_channel ?? 'crm');
+        $slaLabel = $conversation instanceof CustomerConversation ? $conversation->sla_label : $note->sla_label;
+        $slaColor = $conversation instanceof CustomerConversation ? $conversation->sla_color : $note->sla_color;
+        $assignmentGroup = $conversation instanceof CustomerConversation
+            ? (string) $conversation->assignment_group
+            : (string) data_get($note->metadata, 'assignment_group', '');
+        $assignmentGroupLabel = $conversation instanceof CustomerConversation
+            ? $conversation->assignment_group_label
+            : (string) data_get($note->metadata, 'assignment_group_label', 'Sin equipo');
+        $lastActionAt = $conversation instanceof CustomerConversation ? $conversation->next_action_at : $note->next_action_at;
+        $responseDueAt = $conversation instanceof CustomerConversation ? $conversation->response_due_at : $note->response_due_at;
+        $replyCount = $conversation instanceof CustomerConversation ? $conversation->reply_count : $note->reply_count;
         $journeyRunSummary = $journeyRun instanceof CustomerJourneyRun ? [
             'statusLabel' => $journeyRun->status_label,
             'sequenceStateLabel' => $journeyRun->sequence_state_label,
@@ -285,10 +361,10 @@ final class CustomerInboxReadModel
         ] : (($journey['journey'] !== [] || $journey['templates'] !== []) ? [
             'statusLabel' => 'Listo',
             'sequenceStateLabel' => 'Sincronizando',
-            'dueStateLabel' => $conversation?->sla_label ?? $note->sla_label,
+            'dueStateLabel' => $slaLabel,
             'currentStepIndex' => 1,
-            'nextActionAt' => ($conversation?->next_action_at ?? $note->next_action_at)?->diffForHumans(),
-            'stepDueAt' => ($conversation?->response_due_at ?? $note->response_due_at)?->diffForHumans(),
+            'nextActionAt' => $lastActionAt instanceof Carbon ? $lastActionAt->diffForHumans() : null,
+            'stepDueAt' => $responseDueAt instanceof Carbon ? $responseDueAt->diffForHumans() : null,
             'currentStep' => $journey['current_step']['title'] ?? 'Sin paso activo',
             'currentStepCopy' => $journey['current_step']['copy'] ?? 'La ruta comercial ya esta lista para moverse desde este hilo.',
             'currentLane' => 'follow_up',
@@ -299,36 +375,44 @@ final class CustomerInboxReadModel
             'nextSequenceLabel' => 'Secuencia principal',
             'nextTemplateKey' => null,
             'recommendedTemplateKey' => $journey['templates'][0]['key'] ?? null,
-            'nextTriggerAt' => ($conversation?->next_action_at ?? $note->next_action_at)?->diffForHumans(),
+            'nextTriggerAt' => $lastActionAt instanceof Carbon ? $lastActionAt->diffForHumans() : null,
             'lastBusinessSignal' => null,
             'lastBusinessSignalAt' => null,
         ] : null);
+
+        $taskAssignedUser = $task instanceof CustomerTask ? $task->assignedUser : null;
+        $taskAssignedUser = $taskAssignedUser instanceof User ? $taskAssignedUser : null;
+        $taskLocation = $task instanceof CustomerTask ? $task->location : null;
+        $taskLocation = $taskLocation instanceof Location ? $taskLocation : null;
 
         return [
             'id' => (int) $note->getKey(),
             'conversationId' => $conversation?->getKey(),
             'title' => $note->note_type_label,
             'body' => (string) $note->body,
-            'status' => (string) ($conversation?->status ?? $note->status),
-            'statusLabel' => $conversation?->status_label ?? $note->status_label,
-            'priorityLabel' => $conversation?->priority_label ?? $note->priority_label,
-            'channelLabel' => $this->formatChannelLabel((string) ($conversation?->source_channel ?? $note->source_channel ?? 'crm')),
-            'customerName' => (string) ($profile->name ?? 'Cliente sin nombre'),
-            'segmentLabel' => (string) ($playbook['label'] ?? $profile->segment_display_label),
-            'segmentPromise' => (string) ($playbook['promise'] ?? 'Cliente en seguimiento.'),
-            'nextTouch' => (string) ($playbook['next_touch'] ?? 'Conviene responder en este turno.'),
-            'loyaltyMove' => (string) ($playbook['loyalty_move'] ?? 'Conviene mover continuidad.'),
+            'status' => $conversationStatus,
+            'statusLabel' => $conversationStatusLabel,
+            'priorityLabel' => $conversationPriorityLabel,
+            'channelLabel' => $this->formatChannelLabel($channel),
+            'customerName' => (string) $profile->name,
+            'segmentLabel' => (string) $playbook['label'],
+            'segmentPromise' => (string) $playbook['promise'],
+            'nextTouch' => (string) $playbook['next_touch'],
+            'loyaltyMove' => (string) $playbook['loyalty_move'],
             'loyaltyTier' => (string) $profile->loyalty_tier_label,
-            'slaLabel' => $conversation?->sla_label ?? $note->sla_label,
-            'slaColor' => $conversation?->sla_color ?? $note->sla_color,
-            'assignmentGroup' => (string) ($conversation?->assignment_group ?? data_get($note->metadata, 'assignment_group', '')),
-            'assignmentGroupLabel' => $conversation?->assignment_group_label
-                ?? (string) data_get($note->metadata, 'assignment_group_label', 'Sin equipo'),
-            'ownerLabel' => $conversation?->owner?->name ?? $note->assignedUser?->name ?? $profile->assigned_owner_label,
-            'locationLabel' => $conversation?->location?->name ?? $note->location?->name ?? $profile->location_label,
-            'lastActionAt' => ($conversation?->next_action_at ?? $note->next_action_at)?->diffForHumans(),
-            'responseDueAt' => ($conversation?->response_due_at ?? $note->response_due_at)?->diffForHumans(),
-            'replyCount' => max(1, (int) ($conversation?->reply_count ?? $note->reply_count)),
+            'slaLabel' => $slaLabel,
+            'slaColor' => $slaColor,
+            'assignmentGroup' => $assignmentGroup,
+            'assignmentGroupLabel' => $assignmentGroupLabel,
+            'ownerLabel' => $conversationOwner instanceof User
+                ? $conversationOwner->name
+                : ($noteAssignedUser instanceof User ? $noteAssignedUser->name : $profile->assigned_owner_label),
+            'locationLabel' => $conversationLocation instanceof Location
+                ? $conversationLocation->name
+                : ($noteLocation instanceof Location ? $noteLocation->name : $profile->location_label),
+            'lastActionAt' => $lastActionAt instanceof Carbon ? $lastActionAt->diffForHumans() : null,
+            'responseDueAt' => $responseDueAt instanceof Carbon ? $responseDueAt->diffForHumans() : null,
+            'replyCount' => max(1, (int) $replyCount),
             'profileUrl' => CustomerProfileResource::getUrl('edit', ['record' => $profile, 'tenant' => $tenant->slug]),
             'threadSummary' => $thread['summary'],
             'threadItems' => $thread['items'],
@@ -345,8 +429,8 @@ final class CustomerInboxReadModel
                 'priorityLabel' => $task->priority_label,
                 'slaLabel' => $task->sla_label,
                 'assignmentGroupLabel' => $task->assignment_group_label,
-                'ownerLabel' => $task->assignedUser?->name ?? $profile->assigned_owner_label,
-                'locationLabel' => $task->location?->name ?? $profile->location_label,
+                'ownerLabel' => $taskAssignedUser instanceof User ? $taskAssignedUser->name : $profile->assigned_owner_label,
+                'locationLabel' => $taskLocation instanceof Location ? $taskLocation->name : $profile->location_label,
                 'dueAt' => $task->due_at?->diffForHumans(),
                 'slaDueAt' => $task->sla_due_at?->diffForHumans(),
                 'rescueReason' => (string) data_get($task->metadata, 'rescue_reason', ''),
@@ -354,16 +438,28 @@ final class CustomerInboxReadModel
         ];
     }
 
+    /**
+     * @param  Collection<int, CustomerConversation>  $conversations
+     * @param  array<string, string>  $labels
+     * @return list<array{name: string, label: string, total: int, waiting: int, breached: int}>
+     */
     private function buildConversationOverviewRows($conversations, string $groupBy, array $labels = []): array
     {
         return $conversations
             ->groupBy(fn (CustomerConversation $conversation): string => (string) ($conversation->{$groupBy} ?? ''))
-            ->map(function ($items, string $key) use ($groupBy, $labels): array {
+            ->map(function (Collection $items, string $key) use ($groupBy, $labels): array {
+                $firstConversation = $items->first();
+                $firstConversation = $firstConversation instanceof CustomerConversation ? $firstConversation : null;
+                $owner = $firstConversation?->owner;
+                $owner = $owner instanceof User ? $owner : null;
+                $location = $firstConversation?->location;
+                $location = $location instanceof Location ? $location : null;
+
                 $name = match ($groupBy) {
                     'source_channel' => $labels[$key] ?? $this->formatChannelLabel($key),
                     'assignment_group' => $labels[$key] ?? ($key !== '' ? str($key)->replace('_', ' ')->title()->value() : 'Sin equipo'),
-                    'owner_user_id' => $items->first()?->owner?->name ?? 'Sin owner',
-                    'location_id' => $items->first()?->location?->name ?? 'Sin sede',
+                    'owner_user_id' => $owner instanceof User ? $owner->name : 'Sin owner',
+                    'location_id' => $location instanceof Location ? $location->name : 'Sin sede',
                     default => $labels[$key] ?? ($key !== '' ? $key : 'Sin contexto'),
                 };
 

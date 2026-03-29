@@ -85,11 +85,11 @@ final class TenantCustomerProfilePresentationReader
 
     public function nextTouchCopy(CustomerProfile $profile): string
     {
-        return (string) ($this->segmentPlaybook->forProfile($profile)['next_touch'] ?? 'Sin siguiente toque sugerido.');
+        return $this->segmentPlaybook->forProfile($profile)['next_touch'];
     }
 
     public function loyaltyTierCopy(CustomerProfile $profile): string
     {
-        return (string) ($this->segmentPlaybook->forProfile($profile)['loyalty_tier_copy'] ?? 'Sin lectura de fidelidad disponible.');
+        return $this->segmentPlaybook->forProfile($profile)['loyalty_tier_copy'];
     }
 }

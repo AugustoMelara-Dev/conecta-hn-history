@@ -141,7 +141,7 @@ class CustomerTouchpointResource extends Resource
                         });
                     })
                     ->weight('bold')
-                    ->description(fn (CustomerTouchpoint $record): string => (string) ($record->recipient_address ?? $record->customerProfile?->email ?? 'Sin destinatario')),
+                    ->description(fn (CustomerTouchpoint $record): string => static::recipientLabel($record)),
                 Tables\Columns\TextColumn::make('channel')
                     ->label('Canal')
                     ->badge()
@@ -338,5 +338,18 @@ class CustomerTouchpointResource extends Resource
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    protected static function recipientLabel(CustomerTouchpoint $record): string
+    {
+        if (filled($record->recipient_address)) {
+            return (string) $record->recipient_address;
+        }
+
+        $profile = $record->customerProfile;
+
+        return $profile instanceof CustomerProfile
+            ? (string) ($profile->email ?? 'Sin destinatario')
+            : 'Sin destinatario';
     }
 }

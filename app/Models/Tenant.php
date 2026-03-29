@@ -938,4 +938,3 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->getIsProAttribute();
     }
 }
-

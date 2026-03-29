@@ -56,11 +56,11 @@ class ProductLimitWidget extends Widget
         $plan = app(TenantPlanPresentationReader::class)->forTenant($tenant);
         $tenantSlug = (string) ($tenant->getAttribute('slug') ?? '');
 
-        $this->isPro = (bool) ($plan['isCatalogUnlimited'] ?? false);
-        $this->planLabel = (string) ($plan['marketingLabel'] ?? 'Plan Base');
-        $this->catalogCopy = (string) ($plan['catalogCopy'] ?? '');
-        $this->catalogStatusCopy = (string) ($plan['catalogStatusCopy'] ?? '');
-        $this->billingCta = (string) ($plan['billingCta'] ?? 'Activar PRO');
+        $this->isPro = $plan['isCatalogUnlimited'];
+        $this->planLabel = $plan['marketingLabel'];
+        $this->catalogCopy = $plan['catalogCopy'];
+        $this->catalogStatusCopy = $plan['catalogStatusCopy'];
+        $this->billingCta = $plan['billingCta'];
 
         try {
             $this->upgradeUrl = route('filament.app.pages.manage-billing', ['tenant' => $tenantSlug]);

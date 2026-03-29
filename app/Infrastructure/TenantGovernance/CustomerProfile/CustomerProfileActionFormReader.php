@@ -41,7 +41,9 @@ final class CustomerProfileActionFormReader
      */
     public function rewardOptions(CustomerProfile $profile): array
     {
-        return $this->loyaltyManager->rewardOptionsForProfile($profile);
+        return collect($this->loyaltyManager->rewardOptionsForProfile($profile))
+            ->mapWithKeys(static fn (string $label, int|string $key): array => [(string) $key => $label])
+            ->all();
     }
 
     /**

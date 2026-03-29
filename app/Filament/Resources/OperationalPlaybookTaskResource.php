@@ -134,7 +134,7 @@ class OperationalPlaybookTaskResource extends Resource
                     ->label('Playbook')
                     ->searchable()
                     ->weight('bold')
-                    ->description(fn (OperationalPlaybookTask $record): string => (string) ($record->tenant?->name ?? 'Negocio sin nombre')),
+                    ->description(fn (OperationalPlaybookTask $record): string => static::tenantName($record)),
                 Tables\Columns\TextColumn::make('queue_label')
                     ->label('Cola')
                     ->badge()
@@ -146,10 +146,7 @@ class OperationalPlaybookTaskResource extends Resource
                 Tables\Columns\TextColumn::make('adminOwner.name')
                     ->label('Owner interno')
                     ->state(fn (OperationalPlaybookTask $record): string => static::resolvedInternalOwnerLabel($record))
-                    ->description(fn (OperationalPlaybookTask $record): string => collect([
-                        'Equipo: '.($record->tenant?->crm_team_label ?? 'Sin equipo'),
-                        'Estado cartera: '.($record->tenant?->crm_status_label ?? 'Nuevo'),
-                    ])->implode(' | ')),
+                    ->description(fn (OperationalPlaybookTask $record): string => static::tenantCrmSummary($record)),
                 Tables\Columns\TextColumn::make('tenant.crm_priority_label')
                     ->label('Prioridad cartera')
                     ->badge()
@@ -174,7 +171,7 @@ class OperationalPlaybookTaskResource extends Resource
                 Tables\Columns\TextColumn::make('tenant.crm_notes')
                     ->label('Notas de cuenta')
                     ->limit(80)
-                    ->tooltip(fn (OperationalPlaybookTask $record): string => (string) ($record->tenant?->crm_notes ?? ''))
+                    ->tooltip(fn (OperationalPlaybookTask $record): string => static::tenantCrmNotes($record))
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
@@ -286,10 +283,10 @@ class OperationalPlaybookTaskResource extends Resource
                     ->icon('heroicon-o-pencil-square')
                     ->color('warning')
                     ->fillForm(fn (OperationalPlaybookTask $record): array => [
-                        'admin_owner_id' => $record->admin_owner_id ?: $record->tenant?->crm_owner_id,
+                        'admin_owner_id' => static::resolvedOwnerId($record),
                         'follow_up_status' => $record->follow_up_status ?: OperationalPlaybookTask::FOLLOW_UP_NEW,
-                        'next_follow_up_at' => optional($record->next_follow_up_at)?->format('Y-m-d\TH:i'),
-                        'due_at' => optional($record->due_at)?->format('Y-m-d\TH:i'),
+                        'next_follow_up_at' => static::dateTimeInputValue($record->next_follow_up_at),
+                        'due_at' => static::dateTimeInputValue($record->due_at),
                         'internal_note' => '',
                     ])
                     ->form([
@@ -347,7 +344,7 @@ class OperationalPlaybookTaskResource extends Resource
                         static::logInternalFollowUp($record, 'Seguimiento interno actualizado', [
                             'admin_owner_id' => $selectedOwner instanceof User ? (string) $selectedOwner->getKey() : null,
                             'follow_up_status' => (string) ($record->follow_up_status ?? OperationalPlaybookTask::FOLLOW_UP_NEW),
-                            'next_follow_up_at' => optional($record->next_follow_up_at)?->toIso8601String(),
+                            'next_follow_up_at' => static::carbonValue($record->next_follow_up_at)?->toIso8601String(),
                         ], $actor instanceof User ? $actor : null);
 
                         Notification::make()
@@ -404,9 +401,9 @@ class OperationalPlaybookTaskResource extends Resource
         ];
     }
 
-    private static function currentTimestampSql(Builder $query): string
+    protected static function currentTimestampSql(Builder $query): string
     {
-        $driver = $query->getConnection()->getDriverName();
+        $driver = (string) config('database.default', 'mysql');
 
         return match ($driver) {
             'sqlite' => 'CURRENT_TIMESTAMP',
@@ -523,27 +520,31 @@ class OperationalPlaybookTaskResource extends Resource
             return false;
         }
 
-        $resolvedOwnerId = $record->admin_owner_id ?: $record->tenant?->crm_owner_id;
+        $resolvedOwnerId = static::resolvedOwnerId($record);
 
         return (string) $resolvedOwnerId === (string) $user->getKey();
     }
 
     protected static function formatDateTime(mixed $value): string
     {
-        if (! $value instanceof \DateTimeInterface) {
+        $date = static::carbonValue($value);
+
+        if ($date === null) {
             return 'Sin fecha';
         }
 
-        return $value->format('d/m H:i');
+        return $date->format('d/m H:i');
     }
 
     protected static function relativeDateTime(mixed $value): string
     {
-        if (! $value instanceof \Illuminate\Support\Carbon) {
+        $date = static::carbonValue($value);
+
+        if ($date === null) {
             return 'Sin seguimiento agendado';
         }
 
-        return $value->diffForHumans();
+        return $date->diffForHumans();
     }
 
     protected static function presetLabel(string $presetKey): string
@@ -561,8 +562,11 @@ class OperationalPlaybookTaskResource extends Resource
             return (string) ($record->adminOwner->name ?: $record->adminOwner->email);
         }
 
-        if ($record->tenant?->crmOwner instanceof User) {
-            return (string) ($record->tenant->crmOwner->name ?: $record->tenant->crmOwner->email).' (cartera)';
+        $tenant = static::tenantRecord($record);
+        $crmOwner = $tenant?->crmOwner;
+
+        if ($crmOwner instanceof User) {
+            return (string) ($crmOwner->name ?: $crmOwner->email).' (cartera)';
         }
 
         return 'Sin owner interno';
@@ -586,7 +590,7 @@ class OperationalPlaybookTaskResource extends Resource
             return $existing;
         }
 
-        $prefix = now()->format('d/m/Y H:i').' - '.($actor?->name ?? 'Sistema');
+        $prefix = now()->format('d/m/Y H:i').' - '.($actor instanceof User ? $actor->name : 'Sistema');
         $entry = $prefix.': '.$incoming;
         $existing = trim($existing);
 
@@ -610,5 +614,61 @@ class OperationalPlaybookTaskResource extends Resource
             'admin_owner_id' => (string) ($task->admin_owner_id ?? ''),
             'follow_up_status' => (string) ($task->follow_up_status ?? OperationalPlaybookTask::FOLLOW_UP_NEW),
         ]));
+    }
+
+    protected static function tenantRecord(OperationalPlaybookTask $record): ?Tenant
+    {
+        $tenant = $record->tenant;
+
+        return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    protected static function tenantName(OperationalPlaybookTask $record): string
+    {
+        $tenant = static::tenantRecord($record);
+
+        return $tenant instanceof Tenant ? (string) $tenant->name : 'Negocio sin nombre';
+    }
+
+    protected static function tenantCrmSummary(OperationalPlaybookTask $record): string
+    {
+        $tenant = static::tenantRecord($record);
+
+        return collect([
+            'Equipo: '.($tenant instanceof Tenant ? $tenant->crm_team_label : 'Sin equipo'),
+            'Estado cartera: '.($tenant instanceof Tenant ? $tenant->crm_status_label : 'Nuevo'),
+        ])->implode(' | ');
+    }
+
+    protected static function tenantCrmNotes(OperationalPlaybookTask $record): string
+    {
+        $tenant = static::tenantRecord($record);
+
+        return $tenant instanceof Tenant ? (string) ($tenant->crm_notes ?? '') : '';
+    }
+
+    protected static function resolvedOwnerId(OperationalPlaybookTask $record): ?string
+    {
+        $tenant = static::tenantRecord($record);
+
+        return $record->admin_owner_id ?: ($tenant?->crm_owner_id ?: null);
+    }
+
+    protected static function carbonValue(mixed $value): ?\Illuminate\Support\Carbon
+    {
+        if ($value instanceof \Illuminate\Support\Carbon) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            return \Illuminate\Support\Carbon::parse($value);
+        }
+
+        return null;
+    }
+
+    protected static function dateTimeInputValue(mixed $value): ?string
+    {
+        return static::carbonValue($value)?->format('Y-m-d\TH:i');
     }
 }

@@ -808,7 +808,7 @@ class TenantResource extends Resource
     /**
      * @return array<string, string>
      */
-    private static function internalOwnerOptions(): array
+    protected static function internalOwnerOptions(): array
     {
         $superAdmins = collect(config('auth.super_admins', []))
             ->filter(static fn (mixed $email): bool => is_string($email) && $email !== '')
@@ -831,7 +831,7 @@ class TenantResource extends Resource
     /**
      * @return array<string, string>
      */
-    private static function crmStatusOptions(): array
+    protected static function crmStatusOptions(): array
     {
         return [
             Tenant::CRM_STATUS_NEW => 'Nuevo',
@@ -847,7 +847,7 @@ class TenantResource extends Resource
     /**
      * @return array<string, string>
      */
-    private static function crmTeamOptions(): array
+    protected static function crmTeamOptions(): array
     {
         return [
             Tenant::CRM_TEAM_ACTIVATION => 'Activacion',
@@ -861,7 +861,7 @@ class TenantResource extends Resource
     /**
      * @return array<string, string>
      */
-    private static function crmPriorityOptions(): array
+    protected static function crmPriorityOptions(): array
     {
         return [
             Tenant::CRM_PRIORITY_LOW => 'Baja',
@@ -871,7 +871,7 @@ class TenantResource extends Resource
         ];
     }
 
-    private static function crmStatusColor(string $status): string
+    protected static function crmStatusColor(string $status): string
     {
         return match ($status) {
             Tenant::CRM_STATUS_ACTIVE, Tenant::CRM_STATUS_UPSELL => 'success',
@@ -883,7 +883,7 @@ class TenantResource extends Resource
         };
     }
 
-    private static function crmPriorityColor(string $priority): string
+    protected static function crmPriorityColor(string $priority): string
     {
         return match ($priority) {
             Tenant::CRM_PRIORITY_CRITICAL => 'danger',
@@ -896,7 +896,7 @@ class TenantResource extends Resource
     /**
      * @return array<string, string>
      */
-    private static function planTypeOptions(): array
+    protected static function planTypeOptions(): array
     {
         return [
             \App\Domain\TenantGovernance\Enums\TenantPlan::SEMILLA->value => 'Semilla',
@@ -906,22 +906,22 @@ class TenantResource extends Resource
         ];
     }
 
-    private static function stateHasPaidPlan(Get $get): bool
+    protected static function stateHasPaidPlan(Get $get): bool
     {
         return in_array((string) ($get('plan_type') ?? ''), ['pro', 'crecimiento', 'cosecha'], true);
     }
 
-    private static function tenantHasPaidPlan(Tenant $tenant): bool
+    protected static function tenantHasPaidPlan(Tenant $tenant): bool
     {
         return static::planReader()->isPaidPlan($tenant);
     }
 
-    private static function planReader(): SuperAdminTenantPlanReader
+    protected static function planReader(): SuperAdminTenantPlanReader
     {
         return app(SuperAdminTenantPlanReader::class);
     }
 
-    private static function appendCrmNote(string $existing, string $incoming, ?User $actor = null): string
+    protected static function appendCrmNote(string $existing, string $incoming, ?User $actor = null): string
     {
         $incoming = trim($incoming);
 
@@ -929,7 +929,7 @@ class TenantResource extends Resource
             return $existing;
         }
 
-        $prefix = now()->format('d/m/Y H:i').' - '.($actor?->name ?? 'Sistema');
+        $prefix = now()->format('d/m/Y H:i').' - '.($actor instanceof User ? $actor->name : 'Sistema');
         $entry = $prefix.': '.$incoming;
         $existing = trim($existing);
 
@@ -939,7 +939,7 @@ class TenantResource extends Resource
     /**
      * @param  array<string, mixed>  $properties
      */
-    private static function logTenantEvent(Tenant $tenant, string $description, array $properties = [], ?User $actor = null): void
+    protected static function logTenantEvent(Tenant $tenant, string $description, array $properties = [], ?User $actor = null): void
     {
         $resolvedActor = $actor;
 

@@ -38,7 +38,10 @@ final class SuperAdminJourneyAnalyticsReader
 
         return $conversations
             ->groupBy(function (CustomerConversation $conversation): string {
-                $tenant = $conversation->customerProfile?->tenant;
+                $profile = $conversation->customerProfile;
+                $profile = $profile instanceof CustomerProfile ? $profile : null;
+                $tenant = $profile?->tenant;
+                $tenant = $tenant instanceof Tenant ? $tenant : null;
 
                 return $tenant instanceof Tenant ? $this->segmentResolver->resolveForTenant($tenant) : 'retail_general';
             })
@@ -65,7 +68,7 @@ final class SuperAdminJourneyAnalyticsReader
                     'href' => $href,
                 ];
             })
-            ->sortByDesc(fn (array $item): float => ((float) ($item['assisted_revenue_raw'] ?? 0.0) * 1000) + ((int) ($item['assisted'] ?? 0) * 100) + (int) ($item['conversations'] ?? 0))
+            ->sortByDesc(fn (array $item): float => ($item['assisted_revenue_raw'] * 1000) + ($item['assisted'] * 100) + $item['conversations'])
             ->take(6)
             ->values()
             ->all();
@@ -100,7 +103,7 @@ final class SuperAdminJourneyAnalyticsReader
                     'href' => $href,
                 ];
             })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['conversations'] ?? 0) * 100))
+            ->sortByDesc(fn (array $row): float => ($row['revenue_raw'] * 1000) + ($row['conversations'] * 100))
             ->take(6)
             ->values()
             ->all();
@@ -136,7 +139,7 @@ final class SuperAdminJourneyAnalyticsReader
     {
         $signals = (array) data_get($conversation->metadata, 'business_signals', []);
 
-        return $signals !== [] || ($conversation->source_channel !== null && $conversation->source_channel !== '');
+        return $signals !== [] || $conversation->source_channel !== '';
     }
 
     private function buildConversationPathShares(Collection $touchpoints): array
@@ -152,7 +155,14 @@ final class SuperAdminJourneyAnalyticsReader
                 if ($path->isEmpty()) {
                     return;
                 }
-                $tenant = $conversation->customerProfile?->tenant;
+                $profile = $conversation->customerProfile;
+                $profile = $profile instanceof CustomerProfile ? $profile : null;
+                $tenant = $profile?->tenant;
+                $tenant = $tenant instanceof Tenant ? $tenant : null;
+                $owner = $conversation->owner;
+                $ownerName = method_exists($owner, 'getAttribute')
+                    ? (string) ($owner->getAttribute('name') ?? '')
+                    : '';
                 $label = $path->implode(' -> ');
                 $channels = $items->pluck('channel')->filter()->map(fn (string $channel): string => Str::of($channel)->replace('_', ' ')->title()->value())->unique()->implode(', ');
                 $segmentLabel = $tenant instanceof Tenant ? $this->segmentLabel($this->segmentResolver->resolveForTenant($tenant)) : 'General';
@@ -160,7 +170,7 @@ final class SuperAdminJourneyAnalyticsReader
                     'label' => $label,
                     'revenue' => 0.0,
                     'vertical' => $segmentLabel,
-                    'owners' => $conversation->owner?->name ?? 'Sin owner',
+                    'owners' => $ownerName !== '' ? $ownerName : 'Sin owner',
                     'channels' => $channels !== '' ? $channels : 'CRM',
                     'conversations' => 0,
                 ];
@@ -177,7 +187,7 @@ final class SuperAdminJourneyAnalyticsReader
         if ($shares->isEmpty()) {
             return 'Sin ruta dominante';
         }
-        $top = $shares->sortByDesc(fn (array $share): float => ((float) ($share['revenue'] ?? 0.0) * 1000) + (int) ($share['conversations'] ?? 0))->first();
+        $top = $shares->sortByDesc(fn (array $share): float => ($share['revenue'] * 1000) + $share['conversations'])->first();
 
         return is_array($top) ? (string) ($top['label'] ?? 'Sin ruta dominante') : 'Sin ruta dominante';
     }

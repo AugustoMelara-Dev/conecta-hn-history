@@ -64,11 +64,11 @@ class StatsOverview extends BaseWidget
 
         $productCount = $tenant->products()->count();
         $plan = app(TenantPlanPresentationReader::class)->forTenant($tenant);
-        $isPro = (bool) ($plan['isCatalogUnlimited'] ?? false);
+        $isPro = $plan['isCatalogUnlimited'];
 
         if ($isPro) {
             $inventoryStat = Stat::make('Capacidad del Plan', 'Ilimitado')
-                ->description($plan['catalogStatusCopy'] ?? 'Plan PRO activo')
+                ->description($plan['catalogStatusCopy'])
                 ->descriptionIcon('heroicon-m-check-badge')
                 ->color('success');
         } else {
@@ -83,19 +83,19 @@ class StatsOverview extends BaseWidget
             $config = match ($state) {
                 'critical' => [
                     'val' => "{$productCount} / {$limit}",
-                    'desc' => $plan['catalogStatusCopy'] ?? 'Limite alcanzado. Activa PRO.',
+                    'desc' => $plan['catalogStatusCopy'],
                     'icon' => 'heroicon-m-lock-closed',
                     'color' => 'danger',
                 ],
                 'warning' => [
                     'val' => "{$productCount} / {$limit}",
-                    'desc' => $plan['catalogStatusCopy'] ?? 'Cerca del limite',
+                    'desc' => $plan['catalogStatusCopy'],
                     'icon' => 'heroicon-m-exclamation-triangle',
                     'color' => 'warning',
                 ],
                 default => [
                     'val' => "{$productCount} / {$limit}",
-                    'desc' => $plan['catalogStatusCopy'] ?? 'Espacio disponible',
+                    'desc' => $plan['catalogStatusCopy'],
                     'icon' => 'heroicon-m-check',
                     'color' => 'success',
                 ],

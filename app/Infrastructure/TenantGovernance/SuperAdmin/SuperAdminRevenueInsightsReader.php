@@ -164,7 +164,11 @@ final class SuperAdminRevenueInsightsReader
     public function cityCohorts(Collection $portfolio, Collection $monthlyProConversions, string $tenantsUrl): array
     {
         return $portfolio
-            ->groupBy(fn (Tenant $tenant): string => (string) ($tenant->city?->name ?: 'Sin ciudad'))
+            ->groupBy(function (Tenant $tenant): string {
+                $city = $tenant->city;
+
+                return $city instanceof \App\Models\City ? (string) $city->name : 'Sin ciudad';
+            })
             ->map(function (Collection $tenants, string $city) use ($monthlyProConversions, $tenantsUrl): array {
                 $count = $tenants->count();
                 $activated = $tenants->filter(fn (Tenant $tenant): bool => $this->isActivatedTenant($tenant))->count();
@@ -278,6 +282,7 @@ final class SuperAdminRevenueInsightsReader
             ->map(function (Collection $tenants, string $ownerKey) use ($monthlyProConversions, $operationsUrl): array {
                 /** @var Tenant|null $firstTenant */
                 $firstTenant = $tenants->first();
+                $crmOwner = $firstTenant?->crmOwner;
                 $converted = $this->convertedTenantCount(
                     $monthlyProConversions,
                     fn (SubscriptionPayment $payment): bool => $this->ownerKeyForPayment($payment) === $ownerKey
@@ -289,7 +294,9 @@ final class SuperAdminRevenueInsightsReader
                 return [
                     'owner' => $ownerKey === 'unassigned'
                         ? 'Sin owner interno'
-                        : (string) (($firstTenant?->crmOwner?->name ?: $firstTenant?->crmOwner?->email) ?? 'Owner interno'),
+                        : ($crmOwner instanceof \App\Models\User
+                            ? (string) ($crmOwner->name ?: $crmOwner->email)
+                            : 'Owner interno'),
                     'count' => $tenants->count(),
                     'converted' => $converted,
                     'expansion' => $expansion,
@@ -403,12 +410,19 @@ final class SuperAdminRevenueInsightsReader
 
     public function cityLabelForPayment(SubscriptionPayment $payment): string
     {
-        return (string) ($payment->tenant?->city?->name ?: 'Sin ciudad');
+        $tenant = $payment->tenant;
+        $tenant = $tenant instanceof Tenant ? $tenant : null;
+        $city = $tenant?->city;
+
+        return $city instanceof \App\Models\City ? (string) $city->name : 'Sin ciudad';
     }
 
     public function ownerKeyForPayment(SubscriptionPayment $payment): string
     {
-        return (string) ($payment->tenant?->crm_owner_id ?: 'unassigned');
+        $tenant = $payment->tenant;
+        $tenant = $tenant instanceof Tenant ? $tenant : null;
+
+        return (string) ($tenant?->crm_owner_id ?: 'unassigned');
     }
 
     public function closingChannelKey(Tenant $tenant): string

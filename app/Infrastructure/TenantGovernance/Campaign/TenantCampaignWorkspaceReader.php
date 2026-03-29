@@ -47,7 +47,6 @@ final class TenantCampaignWorkspaceReader
                 })
                 ->selectRaw("coalesce(nullif(lower(customer_email), ''), concat('phone:', nullif(customer_phone, '')), concat('appointment:', id)) as customer_key")
                 ->groupBy('customer_key')
-                ->get()
                 ->count(),
             AudienceType::WAITLIST => Waitlist::query()
                 ->withoutGlobalScopes()
@@ -56,7 +55,6 @@ final class TenantCampaignWorkspaceReader
                     $query->whereNotNull('email')->orWhereNotNull('phone');
                 })
                 ->count(),
-            AudienceType::CRM_CUSTOMERS => 0,
         };
     }
 
@@ -104,7 +102,9 @@ final class TenantCampaignWorkspaceReader
      */
     public function rewardOptions(Tenant $tenant): array
     {
-        return $this->loyaltyManager->rewardCampaignOptionsForTenant($tenant);
+        return collect($this->loyaltyManager->rewardCampaignOptionsForTenant($tenant))
+            ->mapWithKeys(fn (string $label, int|string $key): array => [(string) $key => $label])
+            ->all();
     }
 
     public function cadencePlaybooksHint(Tenant $tenant): HtmlString|string

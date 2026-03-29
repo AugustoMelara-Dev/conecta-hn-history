@@ -26,7 +26,7 @@ class CreateProduct extends CreateTenantRecord
 
         $plan = app(TenantPlanPresentationReader::class)->forTenant($tenant);
 
-        if (($plan['isCatalogUnlimited'] ?? false) === true) {
+        if ($plan['isCatalogUnlimited']) {
             return;
         }
 
@@ -37,11 +37,11 @@ class CreateProduct extends CreateTenantRecord
             Notification::make()
                 ->danger()
                 ->title('Limite del catalogo alcanzado')
-                ->body($plan['catalogStatusCopy'] ?? "Has alcanzado el limite de {$limit} productos de tu plan.")
+                ->body($plan['catalogStatusCopy'])
                 ->persistent()
                 ->actions([
                     Action::make('upgrade')
-                        ->label($plan['billingCta'] ?? 'Activar PRO')
+                        ->label($plan['billingCta'])
                         ->url(route('filament.app.pages.manage-billing', [
                             'tenant' => (string) ($tenant->getAttribute('slug') ?? ''),
                         ]))

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
 
 use App\Models\CustomerNote;
+use App\Models\CustomerProfile;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -115,7 +116,13 @@ class NotesRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Agregar nota')
                     ->mutateDataUsing(function (array $data): array {
-                        $data['tenant_id'] = (string) $this->getOwnerRecord()->tenant_id;
+                        $owner = $this->ownerProfile();
+
+                        if (! $owner instanceof CustomerProfile) {
+                            return $data;
+                        }
+
+                        $data['tenant_id'] = (string) $owner->tenant_id;
                         $data['created_by_user_id'] = auth()->id();
                         $data['priority'] = (string) ($data['priority'] ?? 'normal');
                         $data['pinned_at'] = ! empty($data['pin_note']) ? now() : null;
@@ -134,7 +141,13 @@ class NotesRelationManager extends RelationManager
                         'pin_note' => filled($record->pinned_at),
                     ])
                     ->mutateDataUsing(function (array $data): array {
-                        $data['tenant_id'] = (string) $this->getOwnerRecord()->tenant_id;
+                        $owner = $this->ownerProfile();
+
+                        if (! $owner instanceof CustomerProfile) {
+                            return $data;
+                        }
+
+                        $data['tenant_id'] = (string) $owner->tenant_id;
                         $data['priority'] = (string) ($data['priority'] ?? 'normal');
                         $data['pinned_at'] = ! empty($data['pin_note']) ? now() : null;
                         unset($data['pin_note']);
@@ -148,5 +161,12 @@ class NotesRelationManager extends RelationManager
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private function ownerProfile(): ?CustomerProfile
+    {
+        $owner = $this->getOwnerRecord();
+
+        return $owner instanceof CustomerProfile ? $owner : null;
     }
 }

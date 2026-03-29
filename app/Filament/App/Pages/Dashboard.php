@@ -30,6 +30,8 @@ use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Carbon;
 use Throwable;
 
 class Dashboard extends \Filament\Pages\Page
@@ -249,7 +251,7 @@ class Dashboard extends \Filament\Pages\Page
         $this->hasAdvancedBrandingFeature = $tenant->hasFeature(TenantFeature::ADVANCED_BRANDING);
         $this->canUpgradeToPro = $tenant->hasFeature(TenantFeature::UPGRADE_PROMPT);
         $this->isPro = ! $this->canUpgradeToPro;
-        $this->businessType = $tenant->business_type?->value ?? BusinessType::RETAIL->value;
+        $this->businessType = $tenant->business_type->value;
 
         try {
             $this->productsCount = $tenant->products()->count();
@@ -701,6 +703,7 @@ class Dashboard extends \Filament\Pages\Page
                 ->whereIn('status', $activeStatuses)
                 ->with('assignee');
 
+            /** @var EloquentCollection<int, OperationalPlaybookTask> $activeTasks */
             $activeTasks = $this->applyPlaybookPriorityOrdering(clone $query)
                 ->limit(4)
                 ->get();
@@ -856,13 +859,14 @@ class Dashboard extends \Filament\Pages\Page
      */
     private function playbookDashboardCard(OperationalPlaybookTask $task): array
     {
-        $assignee = $task->assignee?->name ?: 'Sin asignar';
+        $assignee = $task->assignee instanceof User ? $task->assignee->name : 'Sin asignar';
         $sla = 'Sin SLA';
+        $dueAt = $this->taskCarbon($task->due_at);
 
-        if ($task->due_at !== null) {
+        if ($dueAt instanceof Carbon) {
             $sla = $task->isOverdue()
                 ? 'SLA vencido'
-                : 'SLA '.(string) $task->due_at->diffForHumans();
+                : 'SLA '.(string) $dueAt->diffForHumans();
         }
 
         return [
@@ -918,10 +922,23 @@ class Dashboard extends \Filament\Pages\Page
 
     private function currentTimestampSql(): string
     {
-        return match (OperationalPlaybookTask::query()->withoutGlobalScopes()->getConnection()->getDriverName()) {
+        return match ((string) config('database.default', 'mysql')) {
             'sqlite' => 'CURRENT_TIMESTAMP',
             default => 'now()',
         };
+    }
+
+    private function taskCarbon(mixed $value): ?Carbon
+    {
+        if ($value instanceof Carbon) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            return Carbon::parse($value);
+        }
+
+        return null;
     }
 
     private function resolveWorkspaceHref(string $routeKey): string

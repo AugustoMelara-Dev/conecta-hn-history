@@ -7,10 +7,10 @@ namespace App\Infrastructure\Notifications;
 use App\Application\Access\Contracts\TenantPermissionGuardInterface;
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Contracts\AdminNotifier as OperationsAdminNotifier;
+use App\Domain\Sales\Entities\LeadEntity;
 use App\Domain\Shared\Contracts\AdminNotifierInterface as LegacyAdminNotifierInterface;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Appointment;
-use App\Models\Lead;
 use App\Models\Order;
 use App\Models\Review;
 use App\Models\Tenant;
@@ -31,19 +31,13 @@ final class FilamentAdminNotifier implements LegacyAdminNotifierInterface, Opera
 
     public function notifyNewLead(object $lead): void
     {
-        if (! $lead instanceof Lead) {
-            return;
-        }
-
-        $tenant = $this->findTenant($lead->getAttribute('tenant_id'));
+        $tenant = $this->resolveLeadTenant($lead);
 
         if (! $tenant instanceof Tenant) {
             return;
         }
 
-        $leadName = (string) ($lead->getAttribute('customer_name')
-            ?? $lead->getAttribute('name')
-            ?? 'Nuevo lead');
+        $leadName = $this->resolveLeadName($lead);
 
         $this->sendToRecipients(
             $this->recipientsForTenant($tenant, Capability::NOTIFICATIONS_BASIC, [Permission::MARKETING_MANAGE]),
@@ -146,7 +140,7 @@ final class FilamentAdminNotifier implements LegacyAdminNotifierInterface, Opera
         }
 
         $customerName = (string) ($appointment->customer_display_name ?? $appointment->customer_name ?? 'Cliente');
-        $scheduledAt = $appointment->scheduled_at?->format('d/m H:i') ?? 'proximamente';
+        $scheduledAt = $appointment->scheduled_at->format('d/m H:i');
 
         $this->sendToRecipients(
             $this->recipientsForTenant($tenant, Capability::APPOINTMENT_BOOKING, [Permission::APPOINTMENTS_MANAGE]),
@@ -175,7 +169,7 @@ final class FilamentAdminNotifier implements LegacyAdminNotifierInterface, Opera
         }
 
         $customerName = (string) ($appointment->customer_display_name ?? $appointment->customer_name ?? 'Cliente');
-        $scheduledAt = $appointment->scheduled_at?->format('d/m H:i') ?? 'proximamente';
+        $scheduledAt = $appointment->scheduled_at->format('d/m H:i');
 
         $this->sendToRecipients(
             $this->recipientsForTenant($tenant, Capability::APPOINTMENT_BOOKING, [Permission::APPOINTMENTS_MANAGE]),
@@ -272,11 +266,18 @@ final class FilamentAdminNotifier implements LegacyAdminNotifierInterface, Opera
     {
         $owner = $tenant->user;
 
-        $members = $tenant->memberships()
+        /** @var \Illuminate\Database\Eloquent\Collection<int, TenantMembership> $memberships */
+        $memberships = $tenant->memberships()
             ->whereNotNull('accepted_at')
             ->with('user')
-            ->get()
-            ->map(fn (TenantMembership $membership): ?User => $membership->user)
+            ->get();
+
+        $members = $memberships
+            ->map(function (TenantMembership $membership): ?User {
+                $user = $membership->user;
+
+                return $user instanceof User ? $user : null;
+            })
             ->filter(fn (?User $user): bool => $user instanceof User)
             ->filter(function (User $user) use ($tenant, $capability, $permissions): bool {
                 foreach ($permissions as $permission) {
@@ -315,6 +316,37 @@ final class FilamentAdminNotifier implements LegacyAdminNotifierInterface, Opera
         $tenant = Tenant::query()->find($tenantId);
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    private function resolveLeadTenant(mixed $lead): ?Tenant
+    {
+        if ($lead instanceof LeadEntity) {
+            return $this->findTenant($lead->tenantId);
+        }
+
+        if (is_object($lead) && method_exists($lead, 'getAttribute')) {
+            /** @var mixed $tenantId */
+            $tenantId = $lead->getAttribute('tenant_id');
+
+            return $this->findTenant($tenantId);
+        }
+
+        return null;
+    }
+
+    private function resolveLeadName(mixed $lead): string
+    {
+        if ($lead instanceof LeadEntity) {
+            return (string) ($lead->contactData['name'] ?? 'Nuevo lead');
+        }
+
+        if (is_object($lead) && method_exists($lead, 'getAttribute')) {
+            return (string) ($lead->getAttribute('customer_name')
+                ?? $lead->getAttribute('name')
+                ?? 'Nuevo lead');
+        }
+
+        return 'Nuevo lead';
     }
 
     private function resolveTenantFromModel(object $model): ?Tenant

@@ -184,7 +184,9 @@ final class SuperAdminDashboardAssembler
                 $renewal = $tenants->filter(fn (Tenant $tenant): bool => $this->isRenewalMotionCandidate($tenant))->count();
                 $goal = $activation + $growth + $watch + $renewal;
                 $covered = $tasks->filter(function (OperationalPlaybookTask $task) use ($ownerKey): bool {
-                    $resolvedOwnerKey = (string) ($task->admin_owner_id ?? $task->tenant?->crm_owner_id ?? '');
+                    $tenant = $task->tenant;
+                    $tenant = $tenant instanceof Tenant ? $tenant : null;
+                    $resolvedOwnerKey = (string) ($task->admin_owner_id ?? ($tenant instanceof Tenant ? $tenant->crm_owner_id : '') ?? '');
 
                     if ($ownerKey === 'unassigned') {
                         return $resolvedOwnerKey === '' && in_array((string) $task->queue, ['activation', 'growth', 'billing', 'retention'], true);
@@ -195,9 +197,12 @@ final class SuperAdminDashboardAssembler
                 $gap = max(0, $goal - $covered);
                 /** @var Tenant|null $firstTenant */
                 $firstTenant = $tenants->first();
+                $crmOwner = $firstTenant?->crmOwner;
                 $ownerName = $ownerKey === 'unassigned'
                     ? 'Sin owner interno'
-                    : (string) (($firstTenant?->crmOwner?->name ?: $firstTenant?->crmOwner?->email) ?? 'Owner interno');
+                    : ($crmOwner instanceof \App\Models\User
+                        ? (string) ($crmOwner->name ?: $crmOwner->email)
+                        : 'Owner interno');
 
                 return [
                     'owner' => $ownerName,
@@ -235,7 +240,7 @@ final class SuperAdminDashboardAssembler
         return collect($teams)
             ->map(function (array $teamConfig, string $team) use ($portfolio, $tasks, $operationsUrl): array {
                 $goal = $this->revenueGoalForTeam($portfolio, $team);
-                $queues = array_values(array_filter((array) ($teamConfig['queues'] ?? []), static fn (mixed $value): bool => is_string($value) && $value !== ''));
+                $queues = array_values(array_filter((array) ($teamConfig['queues'] ?? []), static fn (mixed $value): bool => $value !== ''));
                 $covered = $tasks->filter(fn (OperationalPlaybookTask $task): bool => in_array((string) $task->queue, $queues, true))->count();
                 $teamPortfolio = $portfolio->filter(fn (Tenant $tenant): bool => (string) ($tenant->getRawOriginal('crm_team') ?? Tenant::CRM_TEAM_ACTIVATION) === $team)->count();
                 $gap = max(0, $goal - $covered);

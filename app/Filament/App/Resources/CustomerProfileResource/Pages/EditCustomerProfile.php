@@ -10,6 +10,7 @@ use App\Domain\TenantGovernance\Repositories\CustomerProfileRepositoryInterface;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\Pages\EditTenantRecord;
 use App\Infrastructure\TenantGovernance\CustomerProfile\TenantCustomerProfileEditReader;
+use App\Models\CustomerProfile;
 use App\Models\Tenant;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -31,9 +32,15 @@ class EditCustomerProfile extends EditTenantRecord
      */
     protected function mutateFormDataBeforeFill(array $data): array
     {
+        $profile = $this->currentProfile();
+
+        if (! $profile instanceof CustomerProfile) {
+            return $data;
+        }
+
         return [
             ...$data,
-            ...$this->editReader()->formState($this->getRecord()),
+            ...$this->editReader()->formState($profile),
         ];
     }
 
@@ -53,8 +60,14 @@ class EditCustomerProfile extends EditTenantRecord
                         ->getOptionLabelUsing(fn (mixed $value): ?string => $this->duplicateLabel($value)),
                 ])
                 ->action(function (array $data): void {
+                    $profile = $this->currentProfile();
+
+                    if (! $profile instanceof CustomerProfile) {
+                        return;
+                    }
+
                     $duplicate = $this->profileRepository()->findTenantRecord(
-                        (string) $this->getRecord()->tenant_id,
+                        (string) $profile->tenant_id,
                         (int) $data['duplicate_profile_id'],
                     );
 
@@ -70,8 +83,8 @@ class EditCustomerProfile extends EditTenantRecord
 
                     $merged = app(MergeCustomerProfilesHandler::class)->handle(
                         new MergeCustomerProfilesCommand(
-                            tenantId: (string) $this->getRecord()->tenant_id,
-                            primaryProfileId: (int) $this->getRecord()->getKey(),
+                            tenantId: (string) $profile->tenant_id,
+                            primaryProfileId: (int) $profile->getKey(),
                             duplicateProfileId: (int) $duplicate->getKey(),
                             actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
                         ),
@@ -108,12 +121,20 @@ class EditCustomerProfile extends EditTenantRecord
      */
     private function duplicateOptions(string $search): array
     {
-        return $this->editReader()->duplicateOptions($this->getRecord(), $search);
+        $profile = $this->currentProfile();
+
+        return $profile instanceof CustomerProfile
+            ? $this->editReader()->duplicateOptions($profile, $search)
+            : [];
     }
 
     private function duplicateLabel(mixed $value): ?string
     {
-        return $this->editReader()->duplicateLabel($this->getRecord(), $value);
+        $profile = $this->currentProfile();
+
+        return $profile instanceof CustomerProfile
+            ? $this->editReader()->duplicateLabel($profile, $value)
+            : null;
     }
 
     private function profileRepository(): CustomerProfileRepositoryInterface
@@ -124,5 +145,12 @@ class EditCustomerProfile extends EditTenantRecord
     private function editReader(): TenantCustomerProfileEditReader
     {
         return app(TenantCustomerProfileEditReader::class);
+    }
+
+    private function currentProfile(): ?CustomerProfile
+    {
+        $record = $this->getRecord();
+
+        return $record instanceof CustomerProfile ? $record : null;
     }
 }

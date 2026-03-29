@@ -301,7 +301,7 @@ class CampaignResource extends Resource
         ];
     }
 
-    private static function getTenantRecord(): ?Tenant
+    protected static function getTenantRecord(): ?Tenant
     {
         $tenant = Filament::getTenant();
 
@@ -311,7 +311,7 @@ class CampaignResource extends Resource
     /**
      * @return array<string, string>
      */
-    private static function teamOptions(): array
+    protected static function teamOptions(): array
     {
         $tenant = self::getTenantRecord();
 
@@ -325,7 +325,7 @@ class CampaignResource extends Resource
     /**
      * @return array<string, string>
      */
-    private static function locationOptions(): array
+    protected static function locationOptions(): array
     {
         $tenant = self::getTenantRecord();
 
@@ -339,7 +339,7 @@ class CampaignResource extends Resource
     /**
      * @return array<string, string>
      */
-    private static function rewardOptions(): array
+    protected static function rewardOptions(): array
     {
         $tenant = self::getTenantRecord();
 
@@ -350,47 +350,47 @@ class CampaignResource extends Resource
         return self::workspaceReader()->rewardOptions($tenant);
     }
 
-    private static function cadencePlaybooksHint(): HtmlString|string
+    protected static function cadencePlaybooksHint(): HtmlString|string
     {
         return self::placeholderReader()->cadencePlaybooksHint(self::getTenantRecord());
     }
 
-    private static function workspaceReader(): TenantCampaignWorkspaceReader
+    protected static function workspaceReader(): TenantCampaignWorkspaceReader
     {
         return app(TenantCampaignWorkspaceReader::class);
     }
 
-    private static function actionReader(): CampaignActionReader
+    protected static function actionReader(): CampaignActionReader
     {
         return app(CampaignActionReader::class);
     }
 
-    private static function presentationReader(): TenantCampaignPresentationReader
+    protected static function presentationReader(): TenantCampaignPresentationReader
     {
         return app(TenantCampaignPresentationReader::class);
     }
 
-    private static function formBehaviorReader(): CampaignFormBehaviorReader
+    protected static function formBehaviorReader(): CampaignFormBehaviorReader
     {
         return app(CampaignFormBehaviorReader::class);
     }
 
-    private static function tableStateReader(): CampaignTableStateReader
+    protected static function tableStateReader(): CampaignTableStateReader
     {
         return app(CampaignTableStateReader::class);
     }
 
-    private static function placeholderReader(): CampaignPlaceholderReader
+    protected static function placeholderReader(): CampaignPlaceholderReader
     {
         return app(CampaignPlaceholderReader::class);
     }
 
-    private static function emptyStateReader(): CampaignEmptyStateReader
+    protected static function emptyStateReader(): CampaignEmptyStateReader
     {
         return app(CampaignEmptyStateReader::class);
     }
 
-    private static function runDispatch(Campaign $record): void
+    protected static function runDispatch(Campaign $record): void
     {
         $result = self::actionReader()->dispatch(self::getTenantRecord(), $record);
 

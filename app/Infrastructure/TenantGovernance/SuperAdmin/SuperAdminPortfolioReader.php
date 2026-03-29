@@ -236,7 +236,7 @@ final class SuperAdminPortfolioReader
                 };
 
                 return [
-                    'business' => (string) ($payment->tenant?->name ?? 'Negocio sin registro'),
+                    'business' => $this->paymentTenantName($payment),
                     'reference' => (string) ($payment->reference_number ?? 'Sin referencia'),
                     'amount' => 'L. '.number_format((float) $payment->amount, 2),
                     'status' => $status,
@@ -249,9 +249,16 @@ final class SuperAdminPortfolioReader
 
     private function currentTimestampSql(): string
     {
-        return match (OperationalPlaybookTask::query()->withoutGlobalScopes()->getConnection()->getDriverName()) {
+        return match ((string) config('database.default', 'mysql')) {
             'sqlite' => 'CURRENT_TIMESTAMP',
             default => 'now()',
         };
+    }
+
+    private function paymentTenantName(SubscriptionPayment $payment): string
+    {
+        $tenant = $payment->tenant;
+
+        return $tenant instanceof Tenant ? (string) $tenant->name : 'Negocio sin registro';
     }
 }

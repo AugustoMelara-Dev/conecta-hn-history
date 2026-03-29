@@ -158,10 +158,6 @@ final class EloquentTenantProfileWriter implements TenantProfileWriterInterface
         $rowsByDay = [];
 
         foreach ($hoursData as $row) {
-            if (! is_array($row)) {
-                continue;
-            }
-
             $day = $this->resolveDayOfWeek($row['day'] ?? null);
             $openingTime = $this->normalizeTime($row['open'] ?? null);
             $closingTime = $this->normalizeTime($row['close'] ?? null);

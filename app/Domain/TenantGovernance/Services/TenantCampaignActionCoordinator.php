@@ -20,7 +20,7 @@ final class TenantCampaignActionCoordinator
     public function dispatch(Tenant $tenant, Campaign $campaign): array
     {
         $dispatch = $this->dispatchPlanner->planDispatch($tenant, $campaign);
-        $audienceCount = (int) ($dispatch['audience_count'] ?? 0);
+        $audienceCount = $dispatch['audience_count'];
 
         if ($audienceCount === 0) {
             return [
@@ -35,8 +35,8 @@ final class TenantCampaignActionCoordinator
 
         return [
             'status' => 'success',
-            'title' => (bool) ($dispatch['uses_cadence'] ?? false) ? 'Cadencia activada' : 'Campana en cola',
-            'body' => (bool) ($dispatch['uses_cadence'] ?? false)
+            'title' => $dispatch['uses_cadence'] ? 'Cadencia activada' : 'Campana en cola',
+            'body' => $dispatch['uses_cadence']
                 ? "La campana se lanzo ahora y seguira viva para {$audienceCount} destinatarios elegibles."
                 : "Se procesara el envio a {$audienceCount} destinatarios en breve.",
         ];

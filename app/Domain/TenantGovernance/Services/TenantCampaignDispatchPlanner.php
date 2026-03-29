@@ -26,7 +26,7 @@ final class TenantCampaignDispatchPlanner
         $usesCadence = $campaign->usesCadence();
         $nextRunAt = $usesCadence
             ? ($campaign->next_run_at !== null && $campaign->next_run_at->isFuture()
-                ? $campaign->next_run_at
+                ? Carbon::instance($campaign->next_run_at)
                 : now()->addDays((int) $campaign->cadence_interval_days))
             : null;
 

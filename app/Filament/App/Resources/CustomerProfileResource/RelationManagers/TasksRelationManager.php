@@ -6,6 +6,7 @@ namespace App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
 
 use App\Application\TenantGovernance\CustomerProfiles\Commands\CompleteCustomerTaskCommand;
 use App\Application\TenantGovernance\CustomerProfiles\Handlers\CompleteCustomerTaskHandler;
+use App\Models\CustomerProfile;
 use App\Models\CustomerTask;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -16,6 +17,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -41,7 +43,7 @@ class TasksRelationManager extends RelationManager
                 Forms\Components\Textarea::make('body')
                     ->label('Contexto')
                     ->rows(4),
-                Forms\Components\Grid::make(3)
+                Grid::make(3)
                     ->schema([
                         Forms\Components\Select::make('task_type')
                             ->label('Tipo')
@@ -79,7 +81,7 @@ class TasksRelationManager extends RelationManager
                             ->native(false)
                             ->required(),
                     ]),
-                Forms\Components\Grid::make(3)
+                Grid::make(3)
                     ->schema([
                         Forms\Components\Select::make('assigned_user_id')
                             ->label('Owner')
@@ -95,7 +97,7 @@ class TasksRelationManager extends RelationManager
                             ->label('Canal')
                             ->placeholder('whatsapp, email, mostrador'),
                     ]),
-                Forms\Components\Grid::make(2)
+                Grid::make(2)
                     ->schema([
                         Forms\Components\DateTimePicker::make('due_at')
                             ->label('Proxima accion')
@@ -160,7 +162,13 @@ class TasksRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Nueva tarea')
                     ->mutateDataUsing(function (array $data): array {
-                        $data['tenant_id'] = (string) $this->getOwnerRecord()->tenant_id;
+                        $owner = $this->ownerProfile();
+
+                        if (! $owner instanceof CustomerProfile) {
+                            return $data;
+                        }
+
+                        $data['tenant_id'] = (string) $owner->tenant_id;
                         $data['created_by_user_id'] = auth()->id();
 
                         return $data;
@@ -205,5 +213,12 @@ class TasksRelationManager extends RelationManager
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private function ownerProfile(): ?CustomerProfile
+    {
+        $owner = $this->getOwnerRecord();
+
+        return $owner instanceof CustomerProfile ? $owner : null;
     }
 }

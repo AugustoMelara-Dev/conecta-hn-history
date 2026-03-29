@@ -378,7 +378,7 @@ class PaymentResource extends Resource
                 ELSE 4 END");
     }
 
-    private static function sendNotificationToUser(User $user, Notification $notification): void
+    protected static function sendNotificationToUser(User $user, Notification $notification): void
     {
         try {
             $notification->sendToDatabase($user);
@@ -390,7 +390,7 @@ class PaymentResource extends Resource
     /**
      * @param  array<string, mixed>  $properties
      */
-    private static function logTenantPaymentEvent(Tenant $tenant, string $description, array $properties = []): void
+    protected static function logTenantPaymentEvent(Tenant $tenant, string $description, array $properties = []): void
     {
         $actor = auth()->user();
 

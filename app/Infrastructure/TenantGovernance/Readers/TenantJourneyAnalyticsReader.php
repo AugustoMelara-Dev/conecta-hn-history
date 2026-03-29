@@ -60,7 +60,11 @@ final class TenantJourneyAnalyticsReader
                 $sent = $items->count();
                 $replied = $items->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->replied_at !== null)->count();
                 $closedConversations = $items
-                    ->map(fn (CustomerTouchpoint $touchpoint): ?CustomerConversation => $touchpoint->conversation)
+                    ->map(function (CustomerTouchpoint $touchpoint): ?CustomerConversation {
+                        $conversation = $touchpoint->conversation;
+
+                        return $conversation instanceof CustomerConversation ? $conversation : null;
+                    })
                     ->filter(fn (?CustomerConversation $conversation): bool => $conversation instanceof CustomerConversation && $conversation->status === 'closed')
                     ->unique(fn (CustomerConversation $conversation): int => (int) $conversation->getKey())
                     ->values();
@@ -80,7 +84,7 @@ final class TenantJourneyAnalyticsReader
                     'closeRate' => $sent > 0 ? number_format(($conversions / $sent) * 100, 1).'%' : '0.0%',
                 ];
             })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['conversions'] ?? 0) * 100) + ((int) ($row['replied'] ?? 0) * 10) + (int) ($row['sent'] ?? 0))
+            ->sortByDesc(fn (array $row): float => ($row['revenue_raw'] * 1000) + ($row['conversions'] * 100) + ($row['replied'] * 10) + $row['sent'])
             ->take(4)
             ->values()
             ->all();
@@ -91,18 +95,23 @@ final class TenantJourneyAnalyticsReader
                 $sent = $items->count();
                 $replied = $items->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->replied_at !== null)->count();
                 $closedConversations = $items
-                    ->map(fn (CustomerTouchpoint $touchpoint): ?CustomerConversation => $touchpoint->conversation)
+                    ->map(function (CustomerTouchpoint $touchpoint): ?CustomerConversation {
+                        $conversation = $touchpoint->conversation;
+
+                        return $conversation instanceof CustomerConversation ? $conversation : null;
+                    })
                     ->filter(fn (?CustomerConversation $conversation): bool => $conversation instanceof CustomerConversation && $conversation->status === 'closed')
                     ->unique(fn (CustomerConversation $conversation): int => (int) $conversation->getKey())
                     ->values();
                 $conversions = $closedConversations->count();
                 $revenue = $closedConversations->sum(fn (CustomerConversation $conversation): float => $this->conversationRevenueValue($conversation));
                 $first = $items->first();
+                $first = $first instanceof CustomerTouchpoint ? $first : null;
 
                 return [
-                    'label' => (string) data_get($first?->metadata, 'journey_sequence_label', data_get($first?->metadata, 'journey_step_title', $this->formatSourceLabel($sequenceKey))),
-                    'branch' => (string) data_get($first?->metadata, 'journey_branch_label', 'Ruta base'),
-                    'lane' => $this->formatSourceLabel((string) data_get($first?->metadata, 'journey_lane', 'follow_up')),
+                    'label' => (string) data_get($first instanceof CustomerTouchpoint ? $first->metadata : null, 'journey_sequence_label', data_get($first instanceof CustomerTouchpoint ? $first->metadata : null, 'journey_step_title', $this->formatSourceLabel($sequenceKey))),
+                    'branch' => (string) data_get($first instanceof CustomerTouchpoint ? $first->metadata : null, 'journey_branch_label', 'Ruta base'),
+                    'lane' => $this->formatSourceLabel((string) data_get($first instanceof CustomerTouchpoint ? $first->metadata : null, 'journey_lane', 'follow_up')),
                     'sent' => $sent,
                     'replied' => $replied,
                     'conversions' => $conversions,
@@ -112,7 +121,7 @@ final class TenantJourneyAnalyticsReader
                     'closeRate' => $sent > 0 ? number_format(($conversions / $sent) * 100, 1).'%' : '0.0%',
                 ];
             })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['conversions'] ?? 0) * 100) + ((int) ($row['replied'] ?? 0) * 10) + (int) ($row['sent'] ?? 0))
+            ->sortByDesc(fn (array $row): float => ($row['revenue_raw'] * 1000) + ($row['conversions'] * 100) + ($row['replied'] * 10) + $row['sent'])
             ->take(4)
             ->values()
             ->all();
@@ -128,7 +137,7 @@ final class TenantJourneyAnalyticsReader
                     'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
                 ];
             })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['clicks'] ?? 0) * 10) + (int) ($row['replies'] ?? 0))
+            ->sortByDesc(fn (array $row): float => ($row['revenue_raw'] * 1000) + ($row['clicks'] * 10) + $row['replies'])
             ->take(4)
             ->values()
             ->all();
@@ -144,7 +153,7 @@ final class TenantJourneyAnalyticsReader
                     'channels' => (string) ($share['channels'] ?? 'CRM'),
                 ];
             })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['conversations'] ?? 0) * 100))
+            ->sortByDesc(fn (array $row): float => ($row['revenue_raw'] * 1000) + ($row['conversations'] * 100))
             ->take(4)
             ->values()
             ->all();
@@ -166,7 +175,7 @@ final class TenantJourneyAnalyticsReader
                     'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
                 ];
             })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['purchaseClosures'] ?? 0) * 100) + ((int) ($row['upgradeAssists'] ?? 0) * 10))
+            ->sortByDesc(fn (array $row): float => ($row['revenue_raw'] * 1000) + ($row['purchaseClosures'] * 100) + ($row['upgradeAssists'] * 10))
             ->take(4)
             ->values()
             ->all();
@@ -289,7 +298,7 @@ final class TenantJourneyAnalyticsReader
                 'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
                 'context' => (string) ($share['context'] ?? 'Secuencia CRM'),
             ];
-        })->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['clicks'] ?? 0) * 10) + (int) ($row['replies'] ?? 0))->take(4)->values()->all();
+        })->sortByDesc(fn (array $row): float => ($row['revenue_raw'] * 1000) + ($row['clicks'] * 10) + $row['replies'])->take(4)->values()->all();
     }
 
     private function buildConversationPathShares(Collection $touchpoints): array
@@ -367,6 +376,6 @@ final class TenantJourneyAnalyticsReader
                     'avgFirstResponse' => $avgResponse > 0 ? $avgResponse.' min' : 'Sin datos',
                     'conversionRate' => $slice->count() > 0 ? number_format(($closed / $slice->count()) * 100, 1).'%' : '0.0%',
                 ];
-            })->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['closed'] ?? 0) * 100) + ((int) ($row['breached'] ?? 0) * 10) + (int) ($row['total'] ?? 0))->take(4)->values()->all();
+            })->sortByDesc(fn (array $row): float => ($row['revenue_raw'] * 1000) + ($row['closed'] * 100) + ($row['breached'] * 10) + $row['total'])->take(4)->values()->all();
     }
 }

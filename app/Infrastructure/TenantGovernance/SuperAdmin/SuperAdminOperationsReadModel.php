@@ -48,7 +48,9 @@ final class SuperAdminOperationsReadModel
             ->map(function (Collection $groupedTasks) use ($operationsUrl): array {
                 /** @var OperationalPlaybookTask $first */
                 $first = $groupedTasks->first();
-                $ownerName = $first->adminOwner?->name ?? 'Sin owner interno';
+                $adminOwner = $first->adminOwner;
+                $adminOwner = $adminOwner instanceof User ? $adminOwner : null;
+                $ownerName = $adminOwner instanceof User ? $adminOwner->name : 'Sin owner interno';
                 $queueSummary = $groupedTasks
                     ->map(fn (OperationalPlaybookTask $task): string => (string) $task->queue_label)
                     ->unique()
@@ -61,8 +63,9 @@ final class SuperAdminOperationsReadModel
                 $overdueCount = $groupedTasks->filter(fn (OperationalPlaybookTask $task): bool => $task->isOverdue())->count();
                 $taskCount = $groupedTasks->count();
                 $nextTouchCount = $groupedTasks->filter(function (OperationalPlaybookTask $task): bool {
-                    return $task->next_follow_up_at instanceof Carbon
-                        && $task->next_follow_up_at->lte(now()->endOfDay());
+                    $nextFollowUpAt = $task->next_follow_up_at;
+
+                    return $this->resolveCarbon($nextFollowUpAt)?->lte(now()->endOfDay()) ?? false;
                 })->count();
 
                 return [
@@ -101,6 +104,8 @@ final class SuperAdminOperationsReadModel
             ->map(function (Collection $tenants) use ($operationsUrl): array {
                 /** @var Tenant $first */
                 $first = $tenants->first();
+                $crmOwner = $first->crmOwner;
+                $crmOwner = $crmOwner instanceof User ? $crmOwner : null;
                 $overdueCount = $tenants->filter(fn (Tenant $tenant): bool => $tenant->crm_next_follow_up_at instanceof Carbon && $tenant->crm_next_follow_up_at->isPast())->count();
                 $watchCount = $tenants->filter(fn (Tenant $tenant): bool => (int) ($tenant->crm_watch_score ?? 0) > 0)->count();
                 $renewalCount = $tenants->filter(fn (Tenant $tenant): bool => $this->isRenewalMotionCandidate($tenant))->count();
@@ -111,7 +116,7 @@ final class SuperAdminOperationsReadModel
                     ->implode(', ');
 
                 return [
-                    'name' => $first->crmOwner?->name ?? 'Sin owner interno',
+                    'name' => $crmOwner instanceof User ? $crmOwner->name : 'Sin owner interno',
                     'context' => collect([
                         $teamSummary !== '' ? $teamSummary : null,
                         $tenants->count().' cuentas',
@@ -120,7 +125,7 @@ final class SuperAdminOperationsReadModel
                     'overdue_count' => $overdueCount,
                     'watch_count' => $watchCount,
                     'renewal_count' => $renewalCount,
-                    'tone' => $overdueCount > 0 ? 'danger' : ($watchCount > 0 ? 'warning' : (($first->crmOwner?->name ?? '') === '' ? 'gray' : 'info')),
+                    'tone' => $overdueCount > 0 ? 'danger' : ($watchCount > 0 ? 'warning' : ($crmOwner instanceof User ? 'info' : 'gray')),
                     'href' => $operationsUrl,
                 ];
             })
@@ -198,10 +203,12 @@ final class SuperAdminOperationsReadModel
             ->take(6)
             ->map(function (Tenant $tenant) use ($safeRoute): array {
                 $nextTouch = $tenant->crm_next_follow_up_at;
+                $crmOwner = $tenant->crmOwner;
+                $crmOwner = $crmOwner instanceof User ? $crmOwner : null;
 
                 return [
                     'business' => (string) $tenant->name,
-                    'owner' => $tenant->crmOwner?->name ?? 'Sin owner interno',
+                    'owner' => $crmOwner instanceof User ? $crmOwner->name : 'Sin owner interno',
                     'team' => (string) $tenant->crm_team_label,
                     'status' => (string) $tenant->crm_status_label,
                     'backlog' => $nextTouch instanceof Carbon && $nextTouch->isPast()
@@ -278,7 +285,7 @@ final class SuperAdminOperationsReadModel
 
                 return [
                     'playbook' => (string) $task->title,
-                    'business' => (string) ($task->tenant?->name ?? 'Negocio sin nombre'),
+                    'business' => (string) (($task->tenant instanceof Tenant ? $task->tenant->name : null) ?? 'Negocio sin nombre'),
                     'queue' => (string) $task->queue_label,
                     'segment' => $this->segmentLabel((string) ($task->segment_key ?? '')),
                     'owner' => $this->internalOwnerLabel($task),
@@ -305,10 +312,15 @@ final class SuperAdminOperationsReadModel
             ->sortByDesc(fn (Tenant $tenant): int => (int) ($tenant->crm_watch_score ?? 0))
             ->take(6)
             ->map(function (Tenant $tenant) use ($safeRoute): array {
+                $tenantUser = $tenant->user;
+                $tenantUser = $tenantUser instanceof User ? $tenantUser : null;
+                $crmOwner = $tenant->crmOwner;
+                $crmOwner = $crmOwner instanceof User ? $crmOwner : null;
+
                 return [
                     'business' => (string) $tenant->name,
-                    'owner' => $this->tenantOwnerLabel($tenant->user),
-                    'internal_owner' => $tenant->crmOwner?->name ?? 'Sin owner interno',
+                    'owner' => $this->tenantOwnerLabel($tenantUser),
+                    'internal_owner' => $crmOwner instanceof User ? $crmOwner->name : 'Sin owner interno',
                     'reason' => (string) ($tenant->crm_watch_reason ?? 'Cuenta en observacion.'),
                     'metric' => (string) ($tenant->crm_watch_metric ?? 'Watchlist activa'),
                     'flagged_at' => $tenant->crm_watch_flagged_at instanceof Carbon
@@ -333,7 +345,10 @@ final class SuperAdminOperationsReadModel
             ->take(6)
             ->map(function (OperationalPlaybookTask $task) use ($operationsUrl, $tenantsUrl, $safeRoute): array {
                 $tenant = $task->tenant;
-                $assignee = $task->assignee?->name;
+                $tenant = $tenant instanceof Tenant ? $tenant : null;
+                $assigneeModel = $task->assignee;
+                $assigneeModel = $assigneeModel instanceof User ? $assigneeModel : null;
+                $assignee = $assigneeModel?->name;
 
                 if ($assignee === null || $assignee === '') {
                     $presetLabel = $this->presetLabel((string) ($task->suggested_preset_key ?? ''));
@@ -341,7 +356,7 @@ final class SuperAdminOperationsReadModel
                 }
 
                 return [
-                    'business' => (string) ($tenant?->name ?? 'Negocio sin nombre'),
+                    'business' => (string) ($tenant instanceof Tenant ? $tenant->name : 'Negocio sin nombre'),
                     'playbook' => (string) $task->title,
                     'queue' => (string) $task->queue_label,
                     'owner' => $this->internalOwnerLabel($task),
@@ -395,7 +410,11 @@ final class SuperAdminOperationsReadModel
 
     private function ownerKeyForPayment(SubscriptionPayment $payment): string
     {
-        return (string) ($payment->tenant?->crm_owner_id ?: 'unassigned');
+        $tenant = $payment->tenant;
+
+        return $tenant instanceof Tenant && filled($tenant->crm_owner_id)
+            ? (string) $tenant->crm_owner_id
+            : 'unassigned';
     }
 
     private function isRenewalMotionCandidate(Tenant $tenant): bool
@@ -418,7 +437,11 @@ final class SuperAdminOperationsReadModel
             $monthlyProConversions,
             fn (SubscriptionPayment $payment): bool => $this->segmentKeyForPayment($payment) === $segmentKey
         );
-        $ownerKey = (string) ($task->admin_owner_id ?? $task->tenant?->crm_owner_id ?? 'unassigned');
+        $tenant = $task->tenant;
+        $tenant = $tenant instanceof Tenant ? $tenant : null;
+        $ownerKey = filled($task->admin_owner_id)
+            ? (string) $task->admin_owner_id
+            : ($tenant instanceof Tenant && filled($tenant->crm_owner_id) ? (string) $tenant->crm_owner_id : 'unassigned');
         $ownerConversions = $this->convertedTenantCount(
             $monthlyProConversions,
             fn (SubscriptionPayment $payment): bool => $this->ownerKeyForPayment($payment) === $ownerKey
@@ -467,7 +490,9 @@ final class SuperAdminOperationsReadModel
 
     private function formatSla(OperationalPlaybookTask $task): string
     {
-        if (! $task->due_at instanceof Carbon) {
+        $dueAt = $this->resolveCarbon($task->due_at);
+
+        if (! $dueAt instanceof Carbon) {
             return 'Sin SLA';
         }
 
@@ -475,20 +500,22 @@ final class SuperAdminOperationsReadModel
             return 'SLA vencido';
         }
 
-        return 'Vence '.$task->due_at->diffForHumans();
+        return 'Vence '.$dueAt->diffForHumans();
     }
 
     private function nextTouchLabel(OperationalPlaybookTask $task): string
     {
-        if (! $task->next_follow_up_at instanceof Carbon) {
+        $nextFollowUpAt = $this->resolveCarbon($task->next_follow_up_at);
+
+        if (! $nextFollowUpAt instanceof Carbon) {
             return 'Sin siguiente toque';
         }
 
-        if ($task->next_follow_up_at->isPast()) {
-            return 'Toque atrasado '.$task->next_follow_up_at->diffForHumans();
+        if ($nextFollowUpAt->isPast()) {
+            return 'Toque atrasado '.$nextFollowUpAt->diffForHumans();
         }
 
-        return 'Siguiente '.$task->next_follow_up_at->diffForHumans();
+        return 'Siguiente '.$nextFollowUpAt->diffForHumans();
     }
 
     private function presetLabel(string $presetKey): string
@@ -515,8 +542,12 @@ final class SuperAdminOperationsReadModel
             return (string) ($task->adminOwner->name ?: $task->adminOwner->email);
         }
 
-        if ($task->tenant?->crmOwner instanceof User) {
-            return (string) ($task->tenant->crmOwner->name ?: $task->tenant->crmOwner->email).' / cartera';
+        $tenant = $task->tenant;
+        $tenant = $tenant instanceof Tenant ? $tenant : null;
+        $crmOwner = $tenant?->crmOwner;
+
+        if ($crmOwner instanceof User) {
+            return (string) ($crmOwner->name ?: $crmOwner->email).' / cartera';
         }
 
         $presetLabel = $this->presetLabel((string) ($task->suggested_preset_key ?? ''));
@@ -554,7 +585,12 @@ final class SuperAdminOperationsReadModel
     private function mapWorkboardTask(OperationalPlaybookTask $task, string $operationsUrl, string $tenantsUrl, callable $safeRoute): array
     {
         $tenant = $task->tenant;
-        $businessAssignee = $task->assignee?->name;
+        $tenant = $tenant instanceof Tenant ? $tenant : null;
+        $assigneeModel = $task->assignee;
+        $assigneeModel = $assigneeModel instanceof User ? $assigneeModel : null;
+        $tenantUser = $tenant?->user;
+        $tenantUser = $tenantUser instanceof User ? $tenantUser : null;
+        $businessAssignee = $assigneeModel?->name;
 
         if ($businessAssignee === null || $businessAssignee === '') {
             $presetLabel = $this->presetLabel((string) ($task->suggested_preset_key ?? ''));
@@ -563,8 +599,8 @@ final class SuperAdminOperationsReadModel
 
         return [
             'task' => (string) $task->title,
-            'business' => (string) ($tenant?->name ?? 'Negocio sin nombre'),
-            'owner' => $this->tenantOwnerLabel($tenant?->user),
+            'business' => (string) ($tenant instanceof Tenant ? $tenant->name : 'Negocio sin nombre'),
+            'owner' => $this->tenantOwnerLabel($tenantUser),
             'internal_owner' => $this->internalOwnerLabel($task),
             'assignee' => $businessAssignee,
             'follow_up' => (string) $task->follow_up_status_label,
@@ -575,5 +611,10 @@ final class SuperAdminOperationsReadModel
             'tone' => $this->playbookTone($task),
             'href' => $this->taskAdminHref($task, $operationsUrl, $tenantsUrl, $safeRoute),
         ];
+    }
+
+    private function resolveCarbon(mixed $value): ?Carbon
+    {
+        return $value instanceof Carbon ? $value : null;
     }
 }

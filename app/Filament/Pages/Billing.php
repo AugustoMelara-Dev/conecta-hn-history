@@ -17,9 +17,9 @@ final class Billing extends Page
 {
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationLabel = 'Facturación';
+    protected static ?string $navigationLabel = 'FacturaciÃ³n';
 
-    protected static ?string $title = 'Facturación de la plataforma';
+    protected static ?string $title = 'FacturaciÃ³n de la plataforma';
 
     protected static ?string $slug = 'billing';
 
@@ -72,10 +72,7 @@ final class Billing extends Page
 
         $superAdmins = config('auth.super_admins', []);
         $isWhitelisted = in_array($user->email ?? '', $superAdmins, true);
-        $role = $user->role;
-        $hasSuperAdminRole = $role instanceof UserRole
-            ? $role === UserRole::SUPER_ADMIN
-            : (string) $role === UserRole::SUPER_ADMIN->value;
+        $hasSuperAdminRole = $user->role === UserRole::SUPER_ADMIN;
 
         return $hasSuperAdminRole || $user->isSuperAdmin() || $isWhitelisted;
     }
@@ -174,7 +171,11 @@ final class Billing extends Page
             $this->proConversionRate = round(($this->proBusinesses / $totalBusinesses) * 100, 1);
 
             $this->cityFunnel = $tenantSnapshot
-                ->groupBy(fn (Tenant $tenant): string => (string) ($tenant->city?->name ?? 'Sin ciudad'))
+                ->groupBy(function (Tenant $tenant): string {
+                    $city = $tenant->city;
+
+                    return $city instanceof \App\Models\City ? (string) $city->name : 'Sin ciudad';
+                })
                 ->map(function ($group, string $name): array {
                     $total = $group->count();
                     $pro = $group->filter(fn (Tenant $tenant): bool => $this->planReader()->isPaidPlan($tenant))->count();
@@ -192,7 +193,11 @@ final class Billing extends Page
                 ->all();
 
             $this->categoryFunnel = $tenantSnapshot
-                ->groupBy(fn (Tenant $tenant): string => (string) ($tenant->category?->name ?? 'Sin categoría'))
+                ->groupBy(function (Tenant $tenant): string {
+                    $category = $tenant->category;
+
+                    return $category instanceof \App\Models\Category ? (string) $category->name : 'Sin categoria';
+                })
                 ->map(function ($group, string $name): array {
                     $total = $group->count();
                     $pro = $group->filter(fn (Tenant $tenant): bool => $this->planReader()->isPaidPlan($tenant))->count();

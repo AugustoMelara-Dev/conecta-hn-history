@@ -55,6 +55,7 @@ class CustomerConversationThreadBuilder
      */
     private function buildFromConversation(CustomerConversation $conversation, int $limit): array
     {
+        /** @var Collection<int, CustomerConversationMessage> $messages */
         $messages = $conversation->messages()
             ->withoutGlobalScopes()
             ->with('author')
@@ -75,7 +76,7 @@ class CustomerConversationThreadBuilder
                         : 'Respuesta del equipo',
                     'body' => trim((string) ($message->body ?? 'Sin contenido.')),
                     'channel' => ucfirst((string) ($message->channel ?? 'crm')),
-                    'when' => $message->occurred_at?->diffForHumans() ?? 'Hace un momento',
+                    'when' => $message->occurred_at->diffForHumans(),
                     'color' => $isCustomer ? 'warning' : 'info',
                     'thread' => $message->provider_thread_key,
                 ];
@@ -86,11 +87,14 @@ class CustomerConversationThreadBuilder
         $internalNotes = $messages
             ->where('direction', 'internal')
             ->map(function (CustomerConversationMessage $message): array {
+                $author = $message->author;
+                $author = $author instanceof \App\Models\User ? $author : null;
+
                 return [
                     'title' => 'Nota interna',
                     'body' => trim((string) ($message->body ?? 'Sin detalle.')),
-                    'when' => $message->occurred_at?->diffForHumans() ?? 'Hace un momento',
-                    'author' => (string) ($message->author?->name ?? 'Equipo'),
+                    'when' => $message->occurred_at->diffForHumans(),
+                    'author' => $author instanceof \App\Models\User ? (string) $author->name : 'Equipo',
                 ];
             })
             ->values()

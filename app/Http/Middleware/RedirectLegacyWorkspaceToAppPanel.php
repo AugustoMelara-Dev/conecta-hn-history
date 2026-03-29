@@ -61,8 +61,12 @@ final class RedirectLegacyWorkspaceToAppPanel
             ->select('tenants.*')
             ->first();
 
-        if ($memberTenant instanceof Tenant && filled($memberTenant->slug)) {
-            return (string) $memberTenant->slug;
+        if (method_exists($memberTenant, 'getAttribute')) {
+            $memberTenantSlug = $memberTenant->getAttribute('slug');
+
+            if (filled($memberTenantSlug)) {
+                return (string) $memberTenantSlug;
+            }
         }
 
         return null;

@@ -33,7 +33,9 @@ final class ResendTouchpointEventProcessor
         $occurredAt = $this->eventTimestamp($payload);
 
         $touchpoint = $this->resolveTouchpoint($tags, $providerMessageId);
-        $tenantId = (string) ($touchpoint?->tenant_id ?? $tags['tenant_id'] ?? 'system');
+        $tenantId = $touchpoint instanceof CustomerTouchpoint
+            ? (string) $touchpoint->tenant_id
+            : (string) ($tags['tenant_id'] ?? 'system');
 
         $webhook = $this->trackingRecorder->begin($webhookId, $tenantId, $eventType, $payload);
 

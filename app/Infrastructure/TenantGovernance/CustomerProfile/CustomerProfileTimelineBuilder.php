@@ -54,14 +54,19 @@ class CustomerProfileTimelineBuilder
     private function orders(string $tenantId, int $profileId): Collection
     {
         return $this->activityReader->orders($tenantId, $profileId)
-            ->map(fn (Order $order): array => [
-                'type' => 'order',
-                'title' => 'Pedido '.$order->order_number,
-                'copy' => 'Pedido '.mb_strtolower((string) $order->status_label).' por L. '.number_format((float) $order->total, 2).'.',
-                'channel' => $order->source,
-                'sort_at' => $order->created_at ?? now(),
-                'color' => 'success',
-            ]);
+            ->map(function (Order $order): array {
+                /** @var mixed $source */
+                $source = $order->getAttribute('source');
+
+                return [
+                    'type' => 'order',
+                    'title' => 'Pedido '.$order->order_number,
+                    'copy' => 'Pedido '.mb_strtolower((string) $order->status_label).' por L. '.number_format((float) $order->total, 2).'.',
+                    'channel' => is_string($source) ? $source : null,
+                    'sort_at' => $order->created_at ?? now(),
+                    'color' => 'success',
+                ];
+            });
     }
 
     private function appointments(string $tenantId, int $profileId): Collection
@@ -70,7 +75,7 @@ class CustomerProfileTimelineBuilder
             ->map(fn (Appointment $appointment): array => [
                 'type' => 'appointment',
                 'title' => 'Cita '.mb_strtolower($appointment->status_label),
-                'copy' => 'Programada para '.$appointment->scheduled_at?->format('d/m/Y H:i').' con estado '.$appointment->status_label.'.',
+                'copy' => 'Programada para '.$appointment->scheduled_at->format('d/m/Y H:i').' con estado '.$appointment->status_label.'.',
                 'channel' => 'agenda',
                 'sort_at' => $appointment->scheduled_at ?? $appointment->created_at ?? now(),
                 'color' => 'info',
