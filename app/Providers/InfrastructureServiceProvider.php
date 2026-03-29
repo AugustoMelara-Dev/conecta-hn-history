@@ -146,6 +146,11 @@ class InfrastructureServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantCustomerInboxNoteFinderInterface::class,
+            \App\Infrastructure\TenantGovernance\Inbox\EloquentTenantCustomerInboxNoteFinder::class
+        );
+
+        $this->app->bind(
             \App\Application\TenantGovernance\Contracts\TenantGrowthSignalsViewInterface::class,
             \App\Infrastructure\TenantGovernance\TenantGrowthSignalsView::class
         );

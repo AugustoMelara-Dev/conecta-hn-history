@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\TenantGovernance\Services;
+namespace App\Infrastructure\TenantGovernance\Inbox;
 
+use App\Domain\TenantGovernance\Services\CustomerConversationTemplateManager;
+use App\Domain\TenantGovernance\Services\CustomerSegmentPlaybook;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Models\CustomerConversation;
 use App\Models\CustomerJourneyRun;

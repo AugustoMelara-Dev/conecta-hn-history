@@ -4,13 +4,24 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
-use App\Domain\TenantGovernance\Services\CustomerConversationOpsManager;
+use App\Application\TenantGovernance\Inbox\Commands\AddCustomerInboxInternalNoteCommand;
+use App\Application\TenantGovernance\Inbox\Commands\MoveCustomerInboxConversationLocationCommand;
+use App\Application\TenantGovernance\Inbox\Commands\ReassignCustomerInboxConversationCommand;
+use App\Application\TenantGovernance\Inbox\Commands\ResolveCustomerInboxConversationCommand;
+use App\Application\TenantGovernance\Inbox\Commands\RouteCustomerInboxConversationGroupCommand;
+use App\Application\TenantGovernance\Inbox\Commands\SendCustomerInboxTemplateCommand;
+use App\Application\TenantGovernance\Inbox\Commands\TakeCustomerInboxConversationCommand;
+use App\Application\TenantGovernance\Inbox\Handlers\AddCustomerInboxInternalNoteHandler;
+use App\Application\TenantGovernance\Inbox\Handlers\MoveCustomerInboxConversationLocationHandler;
+use App\Application\TenantGovernance\Inbox\Handlers\ReassignCustomerInboxConversationHandler;
+use App\Application\TenantGovernance\Inbox\Handlers\ResolveCustomerInboxConversationHandler;
+use App\Application\TenantGovernance\Inbox\Handlers\RouteCustomerInboxConversationGroupHandler;
+use App\Application\TenantGovernance\Inbox\Handlers\SendCustomerInboxTemplateHandler;
+use App\Application\TenantGovernance\Inbox\Handlers\TakeCustomerInboxConversationHandler;
 use App\Domain\TenantGovernance\Services\CustomerConversationRouting;
-use App\Domain\TenantGovernance\Services\CustomerConversationTemplateManager;
-use App\Domain\TenantGovernance\Services\CustomerInboxReadModel;
 use App\Filament\App\Resources\CustomerProfileResource;
+use App\Infrastructure\TenantGovernance\Inbox\CustomerInboxReadModel;
 use App\Models\CustomerNote;
-use App\Models\CustomerProfile;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
@@ -179,13 +190,24 @@ class CustomerInbox extends Page
 
     public function take(int $noteId): void
     {
-        $note = $this->findTenantNote($noteId);
+        $tenant = Filament::getTenant();
 
-        if (! $note instanceof CustomerNote) {
+        if (! $tenant instanceof Tenant) {
             return;
         }
 
-        app(CustomerConversationOpsManager::class)->take($note, auth()->id());
+        $updated = app(TakeCustomerInboxConversationHandler::class)->handle(
+            new TakeCustomerInboxConversationCommand(
+                tenantId: (string) $tenant->getKey(),
+                noteId: $noteId,
+                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            ),
+        );
+
+        if (! $updated instanceof CustomerNote) {
+            return;
+        }
+
         $this->selectedConversationId = $noteId;
         $this->refreshQueue();
 
@@ -198,13 +220,24 @@ class CustomerInbox extends Page
 
     public function resolve(int $noteId): void
     {
-        $note = $this->findTenantNote($noteId);
+        $tenant = Filament::getTenant();
 
-        if (! $note instanceof CustomerNote) {
+        if (! $tenant instanceof Tenant) {
             return;
         }
 
-        app(CustomerConversationOpsManager::class)->resolve($note, auth()->id());
+        $updated = app(ResolveCustomerInboxConversationHandler::class)->handle(
+            new ResolveCustomerInboxConversationCommand(
+                tenantId: (string) $tenant->getKey(),
+                noteId: $noteId,
+                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            ),
+        );
+
+        if (! $updated instanceof CustomerNote) {
+            return;
+        }
+
         $this->selectedConversationId = $noteId;
         $this->refreshQueue();
 
@@ -217,14 +250,26 @@ class CustomerInbox extends Page
 
     public function reassignOwner(int $noteId, ?string $userId = null): void
     {
-        $note = $this->findTenantNote($noteId);
+        $tenant = Filament::getTenant();
 
-        if (! $note instanceof CustomerNote) {
+        if (! $tenant instanceof Tenant) {
             return;
         }
 
         $normalizedUserId = filled($userId) ? (string) $userId : null;
-        app(CustomerConversationOpsManager::class)->reassign($note, $normalizedUserId, auth()->id());
+        $updated = app(ReassignCustomerInboxConversationHandler::class)->handle(
+            new ReassignCustomerInboxConversationCommand(
+                tenantId: (string) $tenant->getKey(),
+                noteId: $noteId,
+                ownerUserId: $normalizedUserId,
+                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            ),
+        );
+
+        if (! $updated instanceof CustomerNote) {
+            return;
+        }
+
         $this->selectedConversationId = $noteId;
         $this->refreshQueue();
 
@@ -237,14 +282,26 @@ class CustomerInbox extends Page
 
     public function moveLocation(int $noteId, ?string $locationId = null): void
     {
-        $note = $this->findTenantNote($noteId);
+        $tenant = Filament::getTenant();
 
-        if (! $note instanceof CustomerNote) {
+        if (! $tenant instanceof Tenant) {
             return;
         }
 
         $normalizedLocationId = filled($locationId) ? (string) $locationId : null;
-        app(CustomerConversationOpsManager::class)->moveToLocation($note, $normalizedLocationId, auth()->id());
+        $updated = app(MoveCustomerInboxConversationLocationHandler::class)->handle(
+            new MoveCustomerInboxConversationLocationCommand(
+                tenantId: (string) $tenant->getKey(),
+                noteId: $noteId,
+                locationId: $normalizedLocationId,
+                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            ),
+        );
+
+        if (! $updated instanceof CustomerNote) {
+            return;
+        }
+
         $this->selectedConversationId = $noteId;
         $this->refreshQueue();
 
@@ -257,14 +314,26 @@ class CustomerInbox extends Page
 
     public function routeGroup(int $noteId, ?string $group = null): void
     {
-        $note = $this->findTenantNote($noteId);
+        $tenant = Filament::getTenant();
 
-        if (! $note instanceof CustomerNote) {
+        if (! $tenant instanceof Tenant) {
             return;
         }
 
         $normalizedGroup = filled($group) ? (string) $group : null;
-        app(CustomerConversationOpsManager::class)->routeGroup($note, $normalizedGroup, auth()->id());
+        $updated = app(RouteCustomerInboxConversationGroupHandler::class)->handle(
+            new RouteCustomerInboxConversationGroupCommand(
+                tenantId: (string) $tenant->getKey(),
+                noteId: $noteId,
+                group: $normalizedGroup,
+                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            ),
+        );
+
+        if (! $updated instanceof CustomerNote) {
+            return;
+        }
+
         $this->selectedConversationId = $noteId;
         $this->refreshQueue();
 
@@ -277,43 +346,36 @@ class CustomerInbox extends Page
 
     public function sendSuggestedReply(int $noteId, string $templateKey): void
     {
-        $note = $this->findTenantNote($noteId);
+        $tenant = Filament::getTenant();
 
-        if (! $note instanceof CustomerNote) {
-            return;
-        }
-
-        $profile = $note->customerProfile;
-
-        if (! $profile instanceof CustomerProfile) {
-            $profile = CustomerProfile::query()
-                ->withoutGlobalScopes()
-                ->with(['assignedUser', 'location', 'tenant'])
-                ->find($note->customer_profile_id);
-        }
-
-        if (! $profile instanceof CustomerProfile) {
-            Notification::make()
-                ->title('No se pudo enviar')
-                ->danger()
-                ->body('La conversacion no tiene un cliente valido ligado al CRM.')
-                ->send();
-
+        if (! $tenant instanceof Tenant) {
             return;
         }
 
         try {
-            $touchpoint = app(CustomerConversationTemplateManager::class)->send(
-                profile: $profile,
-                templateKey: $templateKey,
-                note: $note,
-                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            $touchpoint = app(SendCustomerInboxTemplateHandler::class)->handle(
+                new SendCustomerInboxTemplateCommand(
+                    tenantId: (string) $tenant->getKey(),
+                    noteId: $noteId,
+                    templateKey: $templateKey,
+                    actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+                ),
             );
         } catch (\Throwable $exception) {
             Notification::make()
                 ->title('No se pudo enviar')
                 ->danger()
                 ->body($exception->getMessage())
+                ->send();
+
+            return;
+        }
+
+        if ($touchpoint === null) {
+            Notification::make()
+                ->title('No se pudo enviar')
+                ->danger()
+                ->body('La conversacion no tiene un cliente valido ligado al CRM.')
                 ->send();
 
             return;
@@ -336,16 +398,19 @@ class CustomerInbox extends Page
 
     public function addInternalNote(int $noteId): void
     {
-        $note = $this->findTenantNote($noteId);
+        $tenant = Filament::getTenant();
 
-        if (! $note instanceof CustomerNote) {
+        if (! $tenant instanceof Tenant) {
             return;
         }
 
-        $entry = app(CustomerConversationOpsManager::class)->addInternalNote(
-            $note,
-            $this->draftInternalNote,
-            auth()->id() !== null ? (string) auth()->id() : null,
+        $entry = app(AddCustomerInboxInternalNoteHandler::class)->handle(
+            new AddCustomerInboxInternalNoteCommand(
+                tenantId: (string) $tenant->getKey(),
+                noteId: $noteId,
+                body: $this->draftInternalNote,
+                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+            ),
         );
 
         if ($entry === null) {
@@ -450,34 +515,4 @@ class CustomerInbox extends Page
         $this->selectedConversation = $reader->buildConversationWorkspace($tenant, $note);
     }
 
-    private function findTenantNote(int $noteId): ?CustomerNote
-    {
-        $tenant = Filament::getTenant();
-
-        if (! $tenant instanceof Tenant) {
-            return null;
-        }
-
-        $note = app(CustomerInboxReadModel::class)->findTenantNote($tenant, $noteId);
-
-        if ($note instanceof CustomerNote) {
-            return $note;
-        }
-
-        return CustomerNote::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $tenant->getKey())
-            ->with([
-                'assignedUser' => fn ($query) => $query->withoutGlobalScopes(),
-                'handledBy' => fn ($query) => $query->withoutGlobalScopes(),
-                'location' => fn ($query) => $query->withoutGlobalScopes(),
-                'customerProfile' => fn ($query) => $query->withoutGlobalScopes()->with(['assignedUser', 'location', 'tenant']),
-                'conversation' => fn ($query) => $query->withoutGlobalScopes()->with([
-                    'owner' => fn ($owner) => $owner->withoutGlobalScopes(),
-                    'location' => fn ($location) => $location->withoutGlobalScopes(),
-                    'journeyRun',
-                ]),
-            ])
-            ->find($noteId);
-    }
 }
