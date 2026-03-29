@@ -506,7 +506,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
                 ->event('operations')
                 ->withProperties(array_merge([
                     'source' => 'superpanel',
-                    'ip' => request()?->ip(),
+                    'ip' => request()->ip(),
                 ], $properties))
                 ->log($description);
         } catch (\Throwable $exception) {
@@ -938,3 +938,4 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->getIsProAttribute();
     }
 }
+

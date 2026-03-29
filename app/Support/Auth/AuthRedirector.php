@@ -17,7 +17,7 @@ final class AuthRedirector
             return route('dashboard', [], false).$suffix;
         }
 
-        if (method_exists($user, 'hasVerifiedEmail') && ! $user->hasVerifiedEmail()) {
+        if (! $user->hasVerifiedEmail()) {
             return route('verification.notice', [], false);
         }
 
@@ -71,8 +71,10 @@ final class AuthRedirector
             ->select('tenants.*')
             ->first();
 
-        if ($memberTenant instanceof Tenant && filled($memberTenant->slug)) {
-            return (string) $memberTenant->slug;
+        $memberTenantSlug = data_get($memberTenant, 'slug');
+
+        if (is_string($memberTenantSlug) && $memberTenantSlug !== '') {
+            return $memberTenantSlug;
         }
 
         if ($allowAnyTenant) {
@@ -95,7 +97,7 @@ final class AuthRedirector
             return route('dashboard', [], false);
         }
 
-        if (method_exists($user, 'hasVerifiedEmail') && ! $user->hasVerifiedEmail()) {
+        if (! $user->hasVerifiedEmail()) {
             return route('verification.notice', [], false);
         }
 
