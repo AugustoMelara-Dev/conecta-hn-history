@@ -42,7 +42,8 @@ final class CampaignFormNormalizer
         } elseif ($scheduledAt instanceof Carbon && $scheduledAt->isFuture()) {
             $data['status'] = 'scheduled';
             $data['next_run_at'] = null;
-        } elseif (($record?->status ?? null) !== 'sending' && ($record?->status ?? null) !== 'sent') {
+        } elseif (($record instanceof Campaign ? $record->status : null) !== 'sending'
+            && ($record instanceof Campaign ? $record->status : null) !== 'sent') {
             $data['status'] = 'draft';
             $data['next_run_at'] = null;
         }

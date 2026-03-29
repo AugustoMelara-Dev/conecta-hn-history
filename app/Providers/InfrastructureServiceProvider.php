@@ -270,7 +270,7 @@ class InfrastructureServiceProvider extends ServiceProvider
         if ($this->app->environment('local') && $this->app->bound('request')) {
             $request = $this->app->make('request');
 
-            if ($request instanceof Request && filled($request->getSchemeAndHttpHost())) {
+            if (filled($request->getSchemeAndHttpHost())) {
                 URL::forceRootUrl($request->getSchemeAndHttpHost());
             }
         }

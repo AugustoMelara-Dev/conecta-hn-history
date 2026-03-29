@@ -144,10 +144,13 @@ class CustomerAutomationManager
             );
         }
 
+        $tenant = $profile->tenant;
+        $tenantName = $tenant instanceof Tenant ? (string) $tenant->name : 'Conecta HN';
+
         return $this->dispatchEmailTouchpoint(
             $record,
             $profile,
-            (string) ($record->subject ?: 'Seguimiento de '.($profile->tenant?->name ?? 'Conecta HN')),
+            (string) ($record->subject ?: 'Seguimiento de '.$tenantName),
             (string) $record->message,
             $actorUserId,
             $options,
@@ -270,7 +273,8 @@ class CustomerAutomationManager
      */
     public function preview(CustomerProfile $profile, string $automationKey = 'reactivation_email', ?string $channel = null): array
     {
-        $tenant = $profile->tenant()->withoutGlobalScopes()->first();
+        $tenantRecord = $profile->tenant()->withoutGlobalScopes()->first();
+        $tenant = $tenantRecord instanceof Tenant ? $tenantRecord : null;
         $segmentKey = $this->segmentKey($profile, $tenant);
         $defaults = (array) config("customer-automation.defaults.{$automationKey}", []);
         $overrides = (array) config("customer-automation.profiles.{$segmentKey}.{$automationKey}", []);
@@ -280,7 +284,7 @@ class CustomerAutomationManager
         $governance = $this->governance->definition($automationKey, $resolvedChannel, $definition);
         $ctaUrl = $this->defaultCtaUrl($profile, $tenant);
         $replace = [
-            '{business_name}' => (string) ($tenant?->name ?? 'Conecta HN'),
+            '{business_name}' => (string) ($tenant->name ?? 'Conecta HN'),
             '{customer_name}' => (string) ($profile->name ?? 'cliente'),
             '{cta_url}' => $ctaUrl ?? '',
         ];
@@ -363,10 +367,12 @@ class CustomerAutomationManager
         $this->prepareAttempt($touchpoint);
 
         try {
+            $tenant = $profile->tenant;
+            $tenantName = $tenant instanceof Tenant ? (string) $tenant->name : 'Conecta HN';
             $mail = new CustomerLifecycleMail($subject, [
-                'tenant_name' => (string) ($profile->tenant?->name ?? 'Conecta HN'),
+                'tenant_name' => $tenantName,
                 'customer_name' => (string) ($profile->name ?? 'cliente'),
-                'intro' => (string) ($profile->tenant?->name ?? 'Conecta HN'),
+                'intro' => $tenantName,
                 'body' => $body,
                 'cta_label' => $options['cta_label'] ?? data_get($touchpoint->metadata, 'cta_label'),
                 'cta_url' => $options['cta_url'] ?? $this->defaultCtaUrl($profile),
@@ -390,16 +396,16 @@ class CustomerAutomationManager
 
             $touchpoint->forceFill([
                 'status' => CustomerTouchpoint::STATUS_SENT,
-                'provider' => $dispatch['provider'] ?? null,
+                'provider' => $dispatch['provider'],
                 'provider_message_id' => $dispatch['provider_message_id'] ?: null,
                 'delivery_status' => $dispatch['delivery_status'] ?: CustomerTouchpoint::DELIVERY_SENT,
                 'sent_at' => now(),
                 'failed_at' => null,
                 'next_retry_at' => null,
                 'last_error' => null,
-                'provider_payload' => $dispatch['payload'] ?? null,
+                'provider_payload' => $dispatch['payload'],
                 'metadata' => array_merge($touchpoint->metadata ?? [], [
-                    'transport' => $dispatch['payload'] ?? [],
+                    'transport' => $dispatch['payload'],
                     'provider_thread_key' => $options['provider_thread_key']
                         ?? data_get($touchpoint->metadata, 'provider_thread_key')
                         ?? data_get($touchpoint->metadata, 'conversation_key'),
@@ -442,7 +448,7 @@ class CustomerAutomationManager
         ]));
 
         if (! filled($profile->phone)) {
-            return $this->markSkipped($touchpoint, 'El cliente no tiene telÃ©fono para WhatsApp.');
+            return $this->markSkipped($touchpoint, 'El cliente no tiene teléfono para WhatsApp.');
         }
 
         if (! $profile->whatsapp_opt_in) {
@@ -509,16 +515,16 @@ class CustomerAutomationManager
 
             $touchpoint->forceFill([
                 'status' => CustomerTouchpoint::STATUS_SENT,
-                'provider' => $dispatch['provider'] ?? null,
+                'provider' => $dispatch['provider'],
                 'provider_message_id' => $dispatch['provider_message_id'] ?: null,
                 'delivery_status' => $dispatch['delivery_status'] ?: CustomerTouchpoint::DELIVERY_SENT,
                 'sent_at' => now(),
                 'failed_at' => null,
                 'next_retry_at' => null,
                 'last_error' => null,
-                'provider_payload' => $dispatch['payload'] ?? null,
+                'provider_payload' => $dispatch['payload'],
                 'metadata' => array_merge($touchpoint->metadata ?? [], [
-                    'transport' => $dispatch['payload'] ?? [],
+                    'transport' => $dispatch['payload'],
                     'provider_thread_key' => $options['provider_thread_key']
                         ?? data_get($touchpoint->metadata, 'provider_thread_key')
                         ?? data_get($touchpoint->metadata, 'conversation_key'),
@@ -669,7 +675,7 @@ class CustomerAutomationManager
             return null;
         }
 
-        if ($tenant->business_type?->value === 'service') {
+        if ($tenant->business_type->value === 'service') {
             return route('public.booking.index', ['tenant' => $tenant->slug]);
         }
 

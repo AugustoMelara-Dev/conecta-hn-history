@@ -105,13 +105,13 @@ class SendAppointmentReminders implements ShouldQueue
         // Mark as reminded (idempotency flag)
         $appointment->update(['reminder_sent_at' => now()]);
 
-        if ($appointment->tenant instanceof Tenant) {
-            $playbookTaskManager->syncForTrigger($appointment->tenant, 'appointment_reminder', [
-                'related' => $appointment,
-                'customer_name' => (string) ($appointment->customer_display_name ?? 'este cliente'),
-                'service_name' => (string) ($appointment->service?->name ?? 'el servicio'),
-            ]);
-        }
+        $tenant = $appointment->tenant;
+
+        $playbookTaskManager->syncForTrigger($tenant, 'appointment_reminder', [
+            'related' => $appointment,
+            'customer_name' => (string) ($appointment->customer_display_name ?? 'este cliente'),
+            'service_name' => (string) ($appointment->service->name ?? 'el servicio'),
+        ]);
 
         $notifier->notifyAppointmentReminder($appointment);
 

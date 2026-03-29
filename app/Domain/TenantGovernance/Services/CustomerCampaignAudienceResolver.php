@@ -21,6 +21,8 @@ class CustomerCampaignAudienceResolver
             ->where('tenant_id', $tenantId);
 
         $campaign->loadMissing('loyaltyReward');
+        $rewardRelation = $campaign->getRelationValue('loyaltyReward');
+        $reward = $rewardRelation instanceof \App\Models\LoyaltyReward ? $rewardRelation : null;
 
         if ($campaign->audience_type === AudienceType::CRM_CUSTOMERS || $campaign->customer_segment !== null || $campaign->loyalty_tier !== null || $campaign->loyalty_reward_id !== null) {
             if ($campaign->customer_segment !== null) {
@@ -32,8 +34,8 @@ class CustomerCampaignAudienceResolver
             }
 
             if ($campaign->only_redeemable_rewards) {
-                if ($campaign->loyaltyReward?->points_cost !== null) {
-                    $query->where('loyalty_points_balance', '>=', (int) $campaign->loyaltyReward->points_cost);
+                if ($reward?->points_cost !== null) {
+                    $query->where('loyalty_points_balance', '>=', (int) $reward->points_cost);
                 } else {
                     $query->where('redeemable_rewards_count', '>', 0);
                 }

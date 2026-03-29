@@ -36,7 +36,7 @@ final class NotifyAppointmentBookedListener implements ShouldQueue, ShouldQueueA
             $this->playbookTaskManager->syncForTrigger($tenant, 'appointment_booking', [
                 'related' => $appointment,
                 'customer_name' => (string) ($appointment->customer_display_name ?? 'este cliente'),
-                'service_name' => (string) ($appointment->service?->name ?? 'el servicio'),
+                'service_name' => (string) ($appointment->service->name ?? 'el servicio'),
             ]);
         }
 

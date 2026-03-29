@@ -67,7 +67,9 @@ final class SendCustomerCampaignTouchpoint implements ShouldBeUnique, ShouldQueu
 
         $automationKey = 'campaign_'.$campaign->id;
         $actorUserId = $campaign->owner_user_id !== null ? (string) $campaign->owner_user_id : null;
-        $rewardContext = $this->rewardContext($campaign->loyaltyReward, $profile, $loyaltyManager);
+        $rewardRelation = $campaign->getRelationValue('loyaltyReward');
+        $reward = $rewardRelation instanceof LoyaltyReward ? $rewardRelation : null;
+        $rewardContext = $this->rewardContext($reward, $profile, $loyaltyManager);
         $body = $this->buildMessageBody((string) $campaign->content, $rewardContext['copy']);
 
         if ($campaign->type === 'whatsapp') {
@@ -82,12 +84,12 @@ final class SendCustomerCampaignTouchpoint implements ShouldBeUnique, ShouldQueu
                     'template_language' => $campaign->whatsapp_template_language ?: 'es_HN',
                     'template_variables' => array_values(array_filter([
                         (string) ($profile->name ?? 'cliente'),
-                        (string) ($campaign->loyaltyReward?->name ?? 'beneficio'),
+                        (string) ($reward->name ?? 'beneficio'),
                     ])),
                     'campaign_id' => $campaign->id,
                     'campaign_subject' => $campaign->subject,
-                    'reward_name' => $campaign->loyaltyReward?->name,
-                    'reward_points_cost' => $campaign->loyaltyReward?->points_cost,
+                    'reward_name' => $reward?->name,
+                    'reward_points_cost' => $reward?->points_cost,
                     'cta_label' => $rewardContext['cta_label'],
                     'cadence_interval_days' => $campaign->cadence_interval_days,
                 ],
@@ -106,8 +108,8 @@ final class SendCustomerCampaignTouchpoint implements ShouldBeUnique, ShouldQueu
                 'requires_marketing_opt_in' => (bool) $campaign->requires_marketing_opt_in,
                 'campaign_id' => $campaign->id,
                 'campaign_subject' => $campaign->subject,
-                'reward_name' => $campaign->loyaltyReward?->name,
-                'reward_points_cost' => $campaign->loyaltyReward?->points_cost,
+                'reward_name' => $reward?->name,
+                'reward_points_cost' => $reward?->points_cost,
                 'cta_label' => $rewardContext['cta_label'],
                 'cadence_interval_days' => $campaign->cadence_interval_days,
             ],

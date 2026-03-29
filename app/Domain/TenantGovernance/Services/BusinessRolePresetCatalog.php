@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
-use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Tenant;
 use Illuminate\Support\Collection;
@@ -22,7 +21,7 @@ final class BusinessRolePresetCatalog
     public function forTenant(Tenant $tenant): array
     {
         $segmentKey = $this->segmentResolver->resolveForTenant($tenant);
-        $businessType = $tenant->business_type?->value ?? BusinessType::RETAIL->value;
+        $businessType = $tenant->business_type->value;
 
         return collect(config('rbac.presets', []))
             ->filter(fn (mixed $preset): bool => is_array($preset))
