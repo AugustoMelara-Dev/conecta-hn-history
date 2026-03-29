@@ -18,13 +18,15 @@ return new class extends Migration
             return;
         }
 
-        Schema::table('outbox_messages', function (Blueprint $table) {
-            // LEVEL 42: Add locked_at for zombie lock prevention
-            if (! Schema::hasColumn('outbox_messages', 'locked_at')) {
+        $hasLockedAt = Schema::hasColumn('outbox_messages', 'locked_at');
+
+        if (! $hasLockedAt) {
+            Schema::table('outbox_messages', function (Blueprint $table) {
+                // LEVEL 42: Add locked_at for zombie lock prevention
                 $table->timestamp('locked_at')->nullable()
                     ->comment('Timestamp when worker claimed this message');
-            }
-        });
+            });
+        }
 
         // Add index only if it doesn't exist (check via raw query for idempotence)
         $indexExists = collect(Schema::getIndexes('outbox_messages'))
@@ -39,9 +41,26 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('outbox_messages', function (Blueprint $table) {
-            $table->dropIndex('idx_outbox_worker_query');
-            $table->dropColumn('locked_at');
+        if (! Schema::hasTable('outbox_messages')) {
+            return;
+        }
+
+        $indexExists = collect(Schema::getIndexes('outbox_messages'))
+            ->contains(fn ($idx) => $idx['name'] === 'idx_outbox_worker_query');
+        $hasLockedAt = Schema::hasColumn('outbox_messages', 'locked_at');
+
+        if (! $indexExists && ! $hasLockedAt) {
+            return;
+        }
+
+        Schema::table('outbox_messages', function (Blueprint $table) use ($indexExists, $hasLockedAt) {
+            if ($indexExists) {
+                $table->dropIndex('idx_outbox_worker_query');
+            }
+
+            if ($hasLockedAt) {
+                $table->dropColumn('locked_at');
+            }
         });
     }
 };

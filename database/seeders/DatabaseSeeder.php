@@ -128,7 +128,6 @@ class DatabaseSeeder extends Seeder
                 'city_id' => $data['city']->id,
                 'status' => 'approved',
                 'is_active' => true,
-                'is_pro' => true,
                 'plan_type' => 'pro',
                 'subscription_status' => 'active',
                 'product_limit' => 999,
@@ -171,7 +170,6 @@ class DatabaseSeeder extends Seeder
                 'city_id' => $data['city']->id,
                 'status' => 'approved',
                 'is_active' => true,
-                'is_pro' => false,
                 'plan_type' => 'semilla',
                 'subscription_status' => 'active',
                 'product_limit' => 10,
@@ -206,7 +204,8 @@ class DatabaseSeeder extends Seeder
                 'city_id' => $tegus->id,
                 'status' => 'pending', // CRÍTICO: Pendiente de aprobación
                 'is_active' => 0,
-                'is_pro' => false,
+                'plan_type' => 'semilla',
+                'subscription_status' => 'pending',
                 'description' => 'Este negocio está esperando aprobación del admin.',
             ]);
         }
