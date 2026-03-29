@@ -109,4 +109,51 @@ final class BookingPageRouteTest extends TestCase
             'status' => Appointment::STATUS_PENDING,
         ]);
     }
+
+    #[Test]
+    public function it_rejects_cross_tenant_service_and_provider_ids_in_public_booking(): void
+    {
+        $user = User::factory()->create();
+        $tenantA = Tenant::factory()->pro()->create([
+            'user_id' => $user->id,
+            'slug' => 'barberia-tenant-a',
+            'business_type' => 'service',
+            'status' => 'approved',
+            'subscription_status' => 'active',
+        ]);
+        $tenantB = Tenant::factory()->pro()->create([
+            'slug' => 'barberia-tenant-b',
+            'business_type' => 'service',
+            'status' => 'approved',
+            'subscription_status' => 'active',
+        ]);
+
+        $foreignService = Service::factory()->create([
+            'tenant_id' => $tenantB->id,
+            'is_active' => true,
+        ]);
+        $foreignProvider = ServiceProvider::factory()->create([
+            'tenant_id' => $tenantB->id,
+            'is_active' => true,
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $response = $this->post("/t/{$tenantA->slug}/book", [
+            'service_id' => $foreignService->id,
+            'service_provider_id' => $foreignProvider->id,
+            'date' => now()->addDay()->format('Y-m-d'),
+            'time' => '09:00',
+            'customer_name' => 'Intruso',
+            'customer_email' => 'intruso@example.test',
+            'customer_phone' => '9999-0000',
+        ]);
+
+        $response->assertNotFound();
+
+        $this->assertDatabaseMissing('appointments', [
+            'tenant_id' => $tenantA->id,
+            'customer_email' => 'intruso@example.test',
+        ]);
+    }
 }
