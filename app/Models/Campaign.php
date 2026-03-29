@@ -80,7 +80,9 @@ class Campaign extends Model
 
     public function getRewardLabelAttribute(): string
     {
-        return $this->loyaltyReward?->name ?? 'Sin recompensa';
+        $reward = $this->loyaltyReward;
+
+        return $reward instanceof LoyaltyReward ? $reward->name : 'Sin recompensa';
     }
 
     public function getCadenceLabelAttribute(): string
@@ -115,16 +117,22 @@ class Campaign extends Model
             $parts[] = 'Con canje listo';
         }
 
-        if ($this->loyaltyReward?->name) {
-            $parts[] = 'Reward '.$this->loyaltyReward->name;
+        $reward = $this->loyaltyReward;
+
+        if ($reward instanceof LoyaltyReward && $reward->name !== '') {
+            $parts[] = 'Reward '.$reward->name;
         }
 
-        if ($this->location?->name) {
-            $parts[] = 'Sede '.$this->location->name;
+        $location = $this->location;
+
+        if ($location instanceof Location && $location->name !== '') {
+            $parts[] = 'Sede '.$location->name;
         }
 
-        if ($this->ownerUser?->name) {
-            $parts[] = 'Owner '.$this->ownerUser->name;
+        $owner = $this->ownerUser;
+
+        if ($owner instanceof User && $owner->name !== '') {
+            $parts[] = 'Owner '.$owner->name;
         }
 
         if ($this->is_recurring && $this->cadence_interval_days) {

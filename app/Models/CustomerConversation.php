@@ -149,12 +149,20 @@ class CustomerConversation extends Model
 
     public function getOwnerLabelAttribute(): string
     {
-        return $this->owner?->name ?? 'Sin owner';
+        $owner = $this->owner;
+
+        return $owner instanceof User && $owner->name !== ''
+            ? $owner->name
+            : 'Sin owner';
     }
 
     public function getLocationLabelAttribute(): string
     {
-        return $this->location?->name ?? 'Sin sede';
+        $location = $this->location;
+
+        return $location instanceof Location && $location->name !== ''
+            ? $location->name
+            : 'Sin sede';
     }
 
     public function getAssignmentGroupLabelAttribute(): string
