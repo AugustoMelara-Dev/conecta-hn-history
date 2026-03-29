@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Tenant;
 
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\Shared\Contracts\PaginatedResult;
 use App\Domain\Tenant\Contracts\BillingRepository;
 use App\Infrastructure\Shared\EloquentPaginatedResult;
@@ -33,10 +34,23 @@ final class EloquentBillingRepository implements BillingRepository
             return [];
         }
 
+        $planKey = $tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? null);
+        $resolvedPlan = match (true) {
+            $planKey instanceof TenantPlan => $planKey->value,
+            is_string($planKey) && $planKey !== '' => $planKey,
+            default => Tenant::PLAN_SEMILLA,
+        };
+        $isPaidPlan = $resolvedPlan !== Tenant::PLAN_SEMILLA;
+
         return [
-            'status' => $tenant->subscription_status ?? ($tenant->is_pro ? 'active' : 'inactive'),
+            'status' => $tenant->subscription_status ?? ($isPaidPlan ? 'active' : 'inactive'),
             'renewal_date' => $tenant->subscription_ends_at?->toIso8601String(),
-            'plan' => $tenant->is_pro ? 'PRO' : 'FREE',
+            'plan' => match ($resolvedPlan) {
+                Tenant::PLAN_CRECIMIENTO => 'CRECIMIENTO',
+                Tenant::PLAN_COSECHA => 'COSECHA',
+                TenantPlan::PRO->value => 'PRO',
+                default => 'FREE',
+            },
         ];
     }
 }

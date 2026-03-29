@@ -165,10 +165,6 @@ final class PaymentWebhookControllerTest extends TestCase
             $tenantPayload['subscription_ends_at'] = null;
         }
 
-        if (Schema::hasColumn('tenants', 'is_pro')) {
-            $tenantPayload['is_pro'] = false;
-        }
-
         DB::table('tenants')->insert($tenantPayload);
 
         DB::table('users')->where('id', $userId)->update([

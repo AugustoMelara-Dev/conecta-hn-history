@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Application\Shared\DTOs\Mail\TenantMailData;
 use App\Domain\Contracts\AdminNotifier;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Services\OperationalPlaybookTaskManager;
 use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
 use App\Mail\SubscriptionExpiredMail;
@@ -54,6 +55,13 @@ use Illuminate\Support\Facades\Mail;
  */
 class SubscriptionLifecycleCommand extends Command
 {
+    /** @var array<int, string> */
+    private const PAID_PLAN_KEYS = [
+        TenantPlan::PRO->value,
+        Tenant::PLAN_CRECIMIENTO,
+        Tenant::PLAN_COSECHA,
+    ];
+
     protected $signature = 'subscription:lifecycle
                             {--grace-days= : Override grace period (default: from GeneralSettings)}
                             {--warning-days=3 : Days before expiry to send warning}
@@ -131,10 +139,8 @@ class SubscriptionLifecycleCommand extends Command
             $targetEnd = Carbon::now()->addDays($daysBeforeExpiry)->endOfDay();
 
             Tenant::query()
-                ->where(function ($q) {
-                    $q->where('subscription_status', 'active')
-                        ->orWhere('is_pro', true);
-                })
+                ->whereIn('plan_type', self::PAID_PLAN_KEYS)
+                ->where('subscription_status', 'active')
                 ->where(function ($q) use ($targetStart, $targetEnd) {
                     $q->whereBetween('subscription_ends_at', [$targetStart, $targetEnd]);
                 })
@@ -234,10 +240,8 @@ class SubscriptionLifecycleCommand extends Command
             $cutoffDate = Carbon::now()->subDays($graceDays);
 
             Tenant::query()
-                ->where(function ($q) {
-                    $q->where('subscription_status', 'active')
-                        ->orWhere('is_pro', true);
-                })
+                ->whereIn('plan_type', self::PAID_PLAN_KEYS)
+                ->where('subscription_status', 'active')
                 ->where(function ($q) use ($cutoffDate) {
                     $q->where('subscription_ends_at', '<', $cutoffDate);
                 })
@@ -261,11 +265,11 @@ class SubscriptionLifecycleCommand extends Command
      * ║                                                                        ║
      * ║  RACE CONDITION SCENARIO:                                              ║
      * ║    1. DB::transaction starts                                          ║
-     * ║    2. $tenant->update(['is_pro' => false]) ← SQL UPDATE (uncommitted) ║
+     * ║    2. $tenant->update(['plan_type' => 'semilla']) ← SQL UPDATE        ║
      * ║    3. Mail::queue() ← Job pushed to Redis IMMEDIATELY                 ║
      * ║    4. AuditTenantLimits::dispatch() ← Throws exception                ║
-     * ║    5. Transaction ROLLBACK ← is_pro reverts to true                   ║
-     * ║    6. User receives "Plan expired" email but is_pro = true in DB!     ║
+     * ║    5. Transaction ROLLBACK ← paid plan state reverts                  ║
+     * ║    6. User receives "Plan expired" email but tenant is still paid     ║
      * ║                                                                        ║
      * ║  SOLUTION: Use DB::afterCommit() to queue jobs ONLY after commit.     ║
      * ║    If transaction fails, no email is sent.                            ║
@@ -287,7 +291,7 @@ class SubscriptionLifecycleCommand extends Command
             DB::transaction(function () use ($tenant, $freeProductLimit) {
                 // Step 1: Update subscription status (DB operation)
                 $tenant->update([
-                    'is_pro' => false,
+                    'plan_type' => TenantPlan::SEMILLA->value,
                     'subscription_status' => 'expired',
                     'product_limit' => $freeProductLimit,
                 ]);
@@ -332,7 +336,7 @@ class SubscriptionLifecycleCommand extends Command
             );
         } catch (\Exception $e) {
             // Transaction failed - NO email was sent, NO job was dispatched
-            // State is consistent: user is still PRO and received no communication
+            // State is consistent: tenant keeps its paid plan and received no communication
             $this->errorCount++;
             Log::error('SubscriptionLifecycle: Failed to expire subscription', [
                 'tenant_id' => $tenant->id,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Events\PaymentApproved;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Services\CustomerJourneySignalRecorder;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
@@ -102,19 +103,23 @@ class UpdateTenantSubscription
             }
 
             $newEndDate = $baseDate->copy()->addDays($event->daysToAdd);
-            $planBeforeUpgrade = (string) ($tenant->getRawOriginal('plan_type') ?? '');
+            $rawPlanBeforeUpgrade = $tenant->getRawOriginal('plan_type');
+            $planBeforeUpgrade = match (true) {
+                $rawPlanBeforeUpgrade instanceof TenantPlan => $rawPlanBeforeUpgrade->value,
+                is_string($rawPlanBeforeUpgrade) => $rawPlanBeforeUpgrade,
+                default => '',
+            };
 
             if ($planBeforeUpgrade === '') {
-                $planBeforeUpgrade = $tenant->is_pro ? 'pro' : Tenant::PLAN_SEMILLA;
+                $planBeforeUpgrade = Tenant::PLAN_SEMILLA;
             }
 
             $tenantUpdates = [
                 'is_active' => true,
-                'is_pro' => true,
                 'subscription_status' => 'active',
                 'subscription_ends_at' => $newEndDate,
                 'next_billing_date' => $newEndDate->toDateString(),
-                'plan_type' => 'pro',
+                'plan_type' => TenantPlan::PRO->value,
             ];
 
             if (Schema::hasColumn('tenants', 'plan_expires_at')) {
