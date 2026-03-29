@@ -16,7 +16,6 @@ use Illuminate\Support\Str;
 class CustomerConversationOpsManager
 {
     public function __construct(
-        private readonly CustomerSegmentPlaybook $segmentPlaybook,
         private readonly CustomerTaskManager $customerTaskManager,
         private readonly CustomerConversationManager $conversationManager,
         private readonly CustomerJourneyManager $journeyManager,
@@ -45,16 +44,16 @@ class CustomerConversationOpsManager
             (string) $touchpoint->channel,
         );
 
-        $respondedAt = $touchpoint->sent_at ?? now();
+        $respondedAt = Carbon::instance($touchpoint->sent_at ?? now());
         $conversationKey = (string) data_get($touchpoint->metadata, 'conversation_key', $note?->conversation_key ?: Str::uuid()->toString());
         $conversation = $this->conversationManager->ensure($profile, (string) $touchpoint->channel, $conversationKey, [
-            'owner_user_id' => $actorUserId ?? $note?->assigned_user_id ?? $profile->assigned_user_id,
-            'location_id' => $note?->location_id ?? $profile->location_id,
+            'owner_user_id' => $actorUserId ?? ($note instanceof CustomerNote ? $note->assigned_user_id : null) ?? $profile->assigned_user_id,
+            'location_id' => ($note instanceof CustomerNote ? $note->location_id : null) ?? $profile->location_id,
             'assignment_group' => data_get($note?->metadata, 'assignment_group', $routing['assignment_group']),
             'status' => 'waiting_customer',
-            'priority' => $note?->priority ?? 'normal',
+            'priority' => ($note instanceof CustomerNote ? $note->priority : null) ?? 'normal',
             'response_sla_minutes' => (int) $routing['response_sla_minutes'],
-            'first_response_at' => $note?->first_response_at ?? $respondedAt,
+            'first_response_at' => ($note instanceof CustomerNote ? $note->first_response_at : null) ?? $respondedAt,
             'last_team_message_at' => $respondedAt,
             'next_action_at' => $respondedAt->copy()->addHours($this->followUpGraceHours()),
             'response_due_at' => $note?->response_due_at,

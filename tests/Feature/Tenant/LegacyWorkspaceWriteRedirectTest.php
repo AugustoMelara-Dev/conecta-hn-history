@@ -94,9 +94,11 @@ final class LegacyWorkspaceWriteRedirectTest extends TestCase
             ->assertRedirect(route('filament.app.resources.products.index', ['tenant' => $tenant->slug], false))
             ->assertSessionHas('error', 'La gestion de productos ya se administra desde el panel oficial en /app.');
 
-        self::assertSame('Producto estable', $product->fresh()?->name);
-        self::assertSame('1500.00', (string) $product->fresh()?->price);
-        self::assertTrue((bool) $product->fresh()?->is_visible);
+        $freshProduct = $product->fresh();
+        self::assertInstanceOf(Product::class, $freshProduct);
+        self::assertSame('Producto estable', $freshProduct->name);
+        self::assertSame('1500.00', (string) $freshProduct->price);
+        self::assertTrue((bool) $freshProduct->is_visible);
     }
 
     public function test_legacy_order_status_route_redirects_to_the_official_orders_panel_without_mutating(): void
@@ -167,8 +169,10 @@ final class LegacyWorkspaceWriteRedirectTest extends TestCase
             ->assertRedirect(route('filament.app.pages.settings', ['tenant' => $tenant->slug], false))
             ->assertSessionHas('error', 'La configuracion del negocio ya se administra desde el panel oficial en /app.');
 
-        self::assertSame('Nombre Original', $tenant->fresh()?->name);
-        self::assertSame('Descripcion original', $tenant->fresh()?->description);
+        $freshTenant = $tenant->fresh();
+        self::assertInstanceOf(Tenant::class, $freshTenant);
+        self::assertSame('Nombre Original', $freshTenant->name);
+        self::assertSame('Descripcion original', $freshTenant->description);
     }
 
     /**

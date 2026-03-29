@@ -11,7 +11,7 @@ function testingEnv(string $key, ?string $default = null): ?string
 {
     $value = $_SERVER[$key] ?? $_ENV[$key] ?? getenv($key);
 
-    if ($value === false || $value === null || $value === '') {
+    if ($value === false || $value === '') {
         return $default;
     }
 

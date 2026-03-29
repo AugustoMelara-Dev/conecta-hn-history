@@ -48,7 +48,9 @@ final class RegistrationControllerTest extends TestCase
     #[Test]
     public function registration_persists_selected_business_type_and_enables_matching_capabilities(): void
     {
+        /** @var Category $category */
         $category = Category::factory()->create(['name' => 'Servicios', 'slug' => 'servicios']);
+        /** @var City $city */
         $city = City::factory()->create();
 
         $response = $this->post(route('tenant.register.store', [], false), [

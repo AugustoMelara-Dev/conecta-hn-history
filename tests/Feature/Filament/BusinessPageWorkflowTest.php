@@ -704,7 +704,6 @@ final class BusinessPageWorkflowTest extends TestCase
 
         $this->assertSame('TRX-998877', $payment->reference_number);
         $this->assertSame(SubscriptionPayment::STATUS_PENDING, $payment->status);
-        $this->assertNotNull($payment->proof_path);
         $this->assertTrue(Storage::disk('local')->exists($payment->proof_path));
     }
 

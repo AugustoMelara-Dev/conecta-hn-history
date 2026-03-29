@@ -13,6 +13,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
+use ReflectionObject;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -114,7 +115,7 @@ abstract class TestCase extends BaseTestCase
 
     private function configureTestingRuntimePaths(): void
     {
-        $compiledViewPath = env('VIEW_COMPILED_PATH');
+        $compiledViewPath = config('view.compiled');
 
         if (! is_string($compiledViewPath) || $compiledViewPath === '') {
             return;
@@ -128,10 +129,15 @@ abstract class TestCase extends BaseTestCase
         }
 
         $compiler = $this->app['blade.compiler'];
+        $reflection = new ReflectionObject($compiler);
 
-        (function () use ($compiledViewPath): void {
-            $this->cachePath = $compiledViewPath;
-        })->bindTo($compiler, $compiler)();
+        if (! $reflection->hasProperty('cachePath')) {
+            return;
+        }
+
+        $cachePath = $reflection->getProperty('cachePath');
+        $cachePath->setAccessible(true);
+        $cachePath->setValue($compiler, $compiledViewPath);
     }
 
     private function primeSafeSystemSettings(): void

@@ -98,7 +98,7 @@ final class SuperAdminActionWorkflowTest extends TestCase
         $this->assertSame(Tenant::CRM_PRIORITY_HIGH, (string) $tenant->getRawOriginal('crm_priority'));
         $this->assertSame(12, (int) $tenant->crm_sla_hours);
         $this->assertNotNull($tenant->crm_next_follow_up_at);
-        $this->assertSame($nextTouch->format('Y-m-d H:i'), $tenant->crm_next_follow_up_at?->format('Y-m-d H:i'));
+        $this->assertSame($nextTouch->format('Y-m-d H:i'), $tenant->crm_next_follow_up_at->format('Y-m-d H:i'));
         $this->assertNotNull($tenant->crm_last_contacted_at);
         $this->assertStringContainsString('Negocio listo para upsell despues de publicar su catalogo base.', (string) $tenant->crm_notes);
     }

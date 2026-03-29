@@ -23,6 +23,7 @@ final class BookingPageRouteTest extends TestCase
     public function it_renders_the_booking_wizard_with_a_preselected_service_when_requested_from_the_microsite(): void
     {
         $user = User::factory()->create();
+        /** @var Tenant $tenant */
         $tenant = Tenant::factory()->pro()->create([
             'user_id' => $user->id,
             'slug' => 'bufete-lex-hn',
@@ -31,6 +32,7 @@ final class BookingPageRouteTest extends TestCase
             'subscription_status' => 'active',
         ]);
 
+        /** @var Service $service */
         $service = Service::factory()->create([
             'tenant_id' => $tenant->id,
             'name' => 'Consulta legal inicial',
@@ -61,6 +63,7 @@ final class BookingPageRouteTest extends TestCase
     public function it_accepts_numeric_ids_from_the_public_booking_wizard_and_redirects_to_success(): void
     {
         $user = User::factory()->create();
+        /** @var Tenant $tenant */
         $tenant = Tenant::factory()->pro()->create([
             'user_id' => $user->id,
             'slug' => 'barberia-norte-pro',
@@ -69,6 +72,7 @@ final class BookingPageRouteTest extends TestCase
             'subscription_status' => 'active',
         ]);
 
+        /** @var Service $service */
         $service = Service::factory()->create([
             'tenant_id' => $tenant->id,
             'name' => 'Corte premium con barba',
@@ -77,6 +81,7 @@ final class BookingPageRouteTest extends TestCase
             'is_active' => true,
         ]);
 
+        /** @var ServiceProvider $provider */
         $provider = ServiceProvider::factory()->create([
             'tenant_id' => $tenant->id,
             'name' => 'Marco Diaz',
@@ -114,6 +119,7 @@ final class BookingPageRouteTest extends TestCase
     public function it_rejects_cross_tenant_service_and_provider_ids_in_public_booking(): void
     {
         $user = User::factory()->create();
+        /** @var Tenant $tenantA */
         $tenantA = Tenant::factory()->pro()->create([
             'user_id' => $user->id,
             'slug' => 'barberia-tenant-a',
@@ -121,6 +127,7 @@ final class BookingPageRouteTest extends TestCase
             'status' => 'approved',
             'subscription_status' => 'active',
         ]);
+        /** @var Tenant $tenantB */
         $tenantB = Tenant::factory()->pro()->create([
             'slug' => 'barberia-tenant-b',
             'business_type' => 'service',
@@ -128,10 +135,12 @@ final class BookingPageRouteTest extends TestCase
             'subscription_status' => 'active',
         ]);
 
+        /** @var Service $foreignService */
         $foreignService = Service::factory()->create([
             'tenant_id' => $tenantB->id,
             'is_active' => true,
         ]);
+        /** @var ServiceProvider $foreignProvider */
         $foreignProvider = ServiceProvider::factory()->create([
             'tenant_id' => $tenantB->id,
             'is_active' => true,
