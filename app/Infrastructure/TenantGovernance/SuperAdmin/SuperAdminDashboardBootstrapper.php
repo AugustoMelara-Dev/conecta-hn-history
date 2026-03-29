@@ -12,9 +12,6 @@ final class SuperAdminDashboardBootstrapper
         private readonly SuperAdminDashboardUrlMapReader $urlMapReader,
     ) {}
 
-    /**
-     * @param  object  $target
-     */
     public function boot(object $target): void
     {
         $this->signalSynchronizer->sync();

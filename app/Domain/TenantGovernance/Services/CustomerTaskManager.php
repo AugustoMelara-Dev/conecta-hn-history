@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Services;
 
 use App\Domain\TenantGovernance\Repositories\CustomerTaskRepositoryInterface;
+use App\Models\CustomerJourneyRun;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
-use App\Models\CustomerJourneyRun;
 use App\Models\CustomerTask;
 
 class CustomerTaskManager

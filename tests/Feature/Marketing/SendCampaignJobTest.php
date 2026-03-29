@@ -6,7 +6,6 @@ use App\Mail\CampaignOfferMail;
 use App\Models\Campaign;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 

@@ -164,4 +164,3 @@ final class BusinessRecordPageSmokeTest extends TestCase
         $this->actingAsTenant((string) $tenant->getKey());
     }
 }
-

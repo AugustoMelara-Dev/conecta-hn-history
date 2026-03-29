@@ -11,7 +11,7 @@ abstract class EditTenantRecord extends EditRecord
 {
     public function getTitle(): string
     {
-        return 'Editar ' . Str::lower($this->getResource()::getModelLabel());
+        return 'Editar '.Str::lower($this->getResource()::getModelLabel());
     }
 
     public function getBreadcrumb(): string

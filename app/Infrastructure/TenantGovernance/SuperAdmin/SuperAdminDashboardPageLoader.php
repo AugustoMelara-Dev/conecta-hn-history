@@ -11,9 +11,6 @@ final class SuperAdminDashboardPageLoader
         private readonly SuperAdminDashboardPropsBinder $propsBinder,
     ) {}
 
-    /**
-     * @param  object  $target
-     */
     public function load(object $target): void
     {
         $this->propsBinder->bind($target, $this->pageStateReader->read());

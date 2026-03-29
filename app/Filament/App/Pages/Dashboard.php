@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
-use App\Domain\TenantGovernance\Services\BusinessOperationsBlueprint;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\TenantFeature;
+use App\Domain\TenantGovernance\Services\BusinessOperationsBlueprint;
 use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\CouponResource;
@@ -21,17 +21,15 @@ use App\Filament\App\Resources\ServiceResource;
 use App\Filament\App\Resources\TenantUserResource;
 use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
 use App\Models\Appointment;
-use App\Models\Campaign;
-use App\Models\Lead;
 use App\Models\OpeningHour;
 use App\Models\OperationalPlaybookTask;
 use App\Models\Order;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Facades\Filament;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Builder;
 use Throwable;
 
 class Dashboard extends \Filament\Pages\Page
@@ -81,8 +79,11 @@ class Dashboard extends \Filament\Pages\Page
     public string $workspaceCopy = '';
 
     public bool $isPro = false;
+
     public bool $hasMarketingSuite = false;
+
     public bool $hasAdvancedBrandingFeature = false;
+
     public bool $canUpgradeToPro = false;
 
     public bool $isOpen = true;

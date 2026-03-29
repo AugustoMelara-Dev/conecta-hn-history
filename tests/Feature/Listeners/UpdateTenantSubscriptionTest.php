@@ -7,7 +7,6 @@ use App\Listeners\UpdateTenantSubscription;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 
 uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);

@@ -281,7 +281,4 @@ class CustomerProfileManager
 
         return $clean !== '' ? $clean : null;
     }
-
 }
-
-

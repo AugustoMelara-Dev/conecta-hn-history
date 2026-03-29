@@ -1147,4 +1147,3 @@ class AppServiceProvider extends ServiceProvider
         $registry->register($commandClass, $app->make($validatorClass));
     }
 }
-

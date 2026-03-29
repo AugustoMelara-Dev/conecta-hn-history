@@ -13,10 +13,10 @@ use App\Application\Tenant\Results\RegisterTenantResult;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Identity\Events\TenantRegistered;
 use App\Domain\Identity\Factories\UserFactory;
-use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Security\Contracts\HasherInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
+use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Factories\TenantFactory;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
@@ -111,7 +111,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             ->first();
 
         if (! $membership instanceof TenantMembership) {
-            $membership = new TenantMembership();
+            $membership = new TenantMembership;
         }
 
         $membership->forceFill([
@@ -127,7 +127,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             ->first();
 
         if (! $location instanceof Location) {
-            $location = new Location();
+            $location = new Location;
         }
 
         $location->forceFill([

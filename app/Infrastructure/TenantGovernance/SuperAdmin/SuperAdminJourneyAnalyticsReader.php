@@ -117,17 +117,25 @@ final class SuperAdminJourneyAnalyticsReader
     private function conversationRevenueValue(CustomerConversation $conversation): float
     {
         $profile = $conversation->customerProfile;
-        if (! $profile instanceof CustomerProfile) { return 0.0; }
+        if (! $profile instanceof CustomerProfile) {
+            return 0.0;
+        }
         $firstConversion = (float) ($profile->first_conversion_value ?? 0);
-        if ($firstConversion > 0) { return $firstConversion; }
+        if ($firstConversion > 0) {
+            return $firstConversion;
+        }
         $initialLtv = (float) ($profile->initial_ltv ?? 0);
-        if ($initialLtv > 0) { return $initialLtv; }
+        if ($initialLtv > 0) {
+            return $initialLtv;
+        }
+
         return (float) ($profile->total_spent ?? 0);
     }
 
     private function conversationHasJourneyAssistance(CustomerConversation $conversation): bool
     {
         $signals = (array) data_get($conversation->metadata, 'business_signals', []);
+
         return $signals !== [] || ($conversation->source_channel !== null && $conversation->source_channel !== '');
     }
 
@@ -137,9 +145,13 @@ final class SuperAdminJourneyAnalyticsReader
         $touchpoints->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->customer_conversation_id ?? ''))
             ->each(function (Collection $items) use (&$shares): void {
                 $conversation = $items->first()?->conversation;
-                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') { return; }
+                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') {
+                    return;
+                }
                 $path = $items->sortBy('id')->map(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_label', data_get($touchpoint->metadata, 'journey_step_title', $touchpoint->template_label)))->filter()->unique()->values();
-                if ($path->isEmpty()) { return; }
+                if ($path->isEmpty()) {
+                    return;
+                }
                 $tenant = $conversation->customerProfile?->tenant;
                 $label = $path->implode(' -> ');
                 $channels = $items->pluck('channel')->filter()->map(fn (string $channel): string => Str::of($channel)->replace('_', ' ')->title()->value())->unique()->implode(', ');
@@ -155,14 +167,18 @@ final class SuperAdminJourneyAnalyticsReader
                 $shares[$label]['revenue'] += $this->conversationRevenueValue($conversation);
                 $shares[$label]['conversations']++;
             });
+
         return $shares;
     }
 
     private function topConversationPathLabel(Collection $touchpoints): string
     {
         $shares = collect($this->buildConversationPathShares($touchpoints));
-        if ($shares->isEmpty()) { return 'Sin ruta dominante'; }
+        if ($shares->isEmpty()) {
+            return 'Sin ruta dominante';
+        }
         $top = $shares->sortByDesc(fn (array $share): float => ((float) ($share['revenue'] ?? 0.0) * 1000) + (int) ($share['conversations'] ?? 0))->first();
+
         return is_array($top) ? (string) ($top['label'] ?? 'Sin ruta dominante') : 'Sin ruta dominante';
     }
 }

@@ -28,18 +28,18 @@ return new class extends Migration
             Schema::table('outbox_messages', function (Blueprint $table) use ($hasAggregateId, $hasPartitionKey, $hasSequenceNumber) {
                 // LEVEL 44: Aggregate Affinity Columns
                 if (! $hasAggregateId) {
-                $table->string('aggregate_id', 36)->nullable()
-                    ->comment('Business entity ID for sequence grouping');
+                    $table->string('aggregate_id', 36)->nullable()
+                        ->comment('Business entity ID for sequence grouping');
                 }
 
                 if (! $hasPartitionKey) {
-                $table->unsignedSmallInteger('partition_key')->default(0)
-                    ->comment('Deterministic partition for worker sharding (crc32 % N)');
+                    $table->unsignedSmallInteger('partition_key')->default(0)
+                        ->comment('Deterministic partition for worker sharding (crc32 % N)');
                 }
 
                 if (! $hasSequenceNumber) {
-                $table->unsignedBigInteger('sequence_number')->default(0)
-                    ->comment('Monotonic sequence per aggregate for ordering');
+                    $table->unsignedBigInteger('sequence_number')->default(0)
+                        ->comment('Monotonic sequence per aggregate for ordering');
                 }
             });
         }

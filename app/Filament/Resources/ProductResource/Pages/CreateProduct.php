@@ -19,10 +19,10 @@ class CreateProduct extends CreateRecord
     {
         $tenant = Filament::getTenant();
 
-            if ($tenant instanceof Tenant) {
-                $limit = (int) ($tenant->getAttribute('product_limit') ?? 12);
-                $planType = (string) $tenant->getRawOriginal('plan_type');
-                $currentCount = $tenant->products()->count();
+        if ($tenant instanceof Tenant) {
+            $limit = (int) ($tenant->getAttribute('product_limit') ?? 12);
+            $planType = (string) $tenant->getRawOriginal('plan_type');
+            $currentCount = $tenant->products()->count();
 
             if ($planType === 'semilla' && $currentCount >= $limit) {
                 Notification::make()

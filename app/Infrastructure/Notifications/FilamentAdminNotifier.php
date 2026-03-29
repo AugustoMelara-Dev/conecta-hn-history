@@ -23,7 +23,7 @@ use Illuminate\Support\Collection;
 /**
  * Infrastructure adapter for Filament database notifications.
  */
-final class FilamentAdminNotifier implements OperationsAdminNotifier, LegacyAdminNotifierInterface
+final class FilamentAdminNotifier implements LegacyAdminNotifierInterface, OperationsAdminNotifier
 {
     public function __construct(
         private readonly TenantPermissionGuardInterface $guard,

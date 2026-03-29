@@ -263,6 +263,7 @@ class InfrastructureServiceProvider extends ServiceProvider
     {
         if ($this->app->isProduction()) {
             URL::forceScheme('https');
+
             return;
         }
 

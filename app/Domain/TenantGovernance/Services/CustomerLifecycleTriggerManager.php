@@ -150,5 +150,4 @@ class CustomerLifecycleTriggerManager
             ->withoutGlobalScopes()
             ->find((int) $profileId);
     }
-
 }

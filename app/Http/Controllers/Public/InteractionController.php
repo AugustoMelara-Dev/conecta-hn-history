@@ -93,7 +93,7 @@ final class InteractionController extends Controller
                 $tenant->longitude()
             );
         } elseif (! empty($tenant->address())) {
-            $url = 'https://www.google.com/maps/search/?api=1&query=' . urlencode($tenant->address());
+            $url = 'https://www.google.com/maps/search/?api=1&query='.urlencode($tenant->address());
         } else {
             return redirect()->back()->with('error', 'Este negocio no tiene ubicación configurada.');
         }

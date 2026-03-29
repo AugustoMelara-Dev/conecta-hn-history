@@ -11,8 +11,8 @@ use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
 use App\Application\Shared\Contracts\TenantRateLimiterInterface;
 use App\Application\Shared\Exceptions\CommandValidationException;
 use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
 
 /**

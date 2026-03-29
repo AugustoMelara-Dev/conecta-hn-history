@@ -11,8 +11,8 @@ use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 
 abstract class TestCase extends BaseTestCase
 {

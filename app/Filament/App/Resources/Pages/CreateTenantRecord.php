@@ -14,7 +14,7 @@ abstract class CreateTenantRecord extends CreateRecord
 {
     public function getTitle(): string
     {
-        return 'Crear ' . Str::lower($this->getResource()::getModelLabel());
+        return 'Crear '.Str::lower($this->getResource()::getModelLabel());
     }
 
     public function getBreadcrumb(): string

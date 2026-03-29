@@ -7,7 +7,6 @@ use App\Models\Location;
 use App\Models\Product;
 use App\Models\Tenant;
 use Illuminate\Database\QueryException;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 
 uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 

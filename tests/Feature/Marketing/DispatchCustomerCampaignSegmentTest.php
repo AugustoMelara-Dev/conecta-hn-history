@@ -156,4 +156,3 @@ final class DispatchCustomerCampaignSegmentTest extends TestCase
         return [$user, $tenant];
     }
 }
-

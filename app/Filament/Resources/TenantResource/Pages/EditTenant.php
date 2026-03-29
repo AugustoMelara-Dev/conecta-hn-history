@@ -164,7 +164,7 @@ class EditTenant extends EditAdminRecord
      */
     private function filterTenantColumns(array $payload): array
     {
-        self::$tenantColumns ??= Schema::getColumnListing((new Tenant())->getTable());
+        self::$tenantColumns ??= Schema::getColumnListing((new Tenant)->getTable());
 
         return array_intersect_key($payload, array_flip(self::$tenantColumns));
     }

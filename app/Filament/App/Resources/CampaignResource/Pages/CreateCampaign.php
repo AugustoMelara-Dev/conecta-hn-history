@@ -8,8 +8,8 @@ use App\Application\TenantGovernance\Campaigns\Commands\NormalizeCampaignFormDat
 use App\Application\TenantGovernance\Campaigns\Handlers\NormalizeCampaignFormDataHandler;
 use App\Filament\App\Resources\CampaignResource;
 use App\Filament\App\Resources\Pages\CreateTenantRecord;
-use Filament\Facades\Filament;
 use App\Models\Tenant;
+use Filament\Facades\Filament;
 
 class CreateCampaign extends CreateTenantRecord
 {

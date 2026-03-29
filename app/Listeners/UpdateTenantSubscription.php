@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Events\PaymentApproved;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Services\CustomerJourneySignalRecorder;
+use App\Events\PaymentApproved;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;

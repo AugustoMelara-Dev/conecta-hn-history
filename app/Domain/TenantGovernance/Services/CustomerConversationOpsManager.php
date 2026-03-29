@@ -255,5 +255,4 @@ class CustomerConversationOpsManager
     {
         return max(1, (int) config('customer-loyalty.conversation.follow_up_grace_hours', 48));
     }
-
 }

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\CRM;
 
-use App\Domain\TenantGovernance\Services\CustomerMessagingGateway;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
+use App\Domain\TenantGovernance\Services\CustomerMessagingGateway;
 use App\Mail\CustomerLifecycleMail;
 use App\Models\Category;
 use App\Models\City;

@@ -14,6 +14,9 @@ use App\Application\TenantGovernance\CustomerProfiles\Handlers\RedeemCustomerPro
 use App\Application\TenantGovernance\CustomerProfiles\Handlers\SendCustomerProfileEmailFollowUpHandler;
 use App\Application\TenantGovernance\CustomerProfiles\Handlers\SendCustomerProfileWhatsappFollowUpHandler;
 use App\Application\TenantGovernance\CustomerProfiles\Handlers\TriggerCustomerProfileReactivationHandler;
+use App\Filament\App\Pages\CustomerInbox;
+use App\Filament\App\Resources\CustomerProfileResource\Pages;
+use App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
 use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileActionCopyReader;
 use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileActionFormReader;
 use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileEmptyStateReader;
@@ -24,9 +27,6 @@ use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileTablePres
 use App\Infrastructure\TenantGovernance\CustomerProfile\CustomerProfileWorkspacePlaceholderReader;
 use App\Infrastructure\TenantGovernance\CustomerProfile\TenantCustomerProfilePresentationReader;
 use App\Infrastructure\TenantGovernance\CustomerProfile\TenantCustomerWorkspaceReader;
-use App\Filament\App\Resources\CustomerProfileResource\Pages;
-use App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
-use App\Filament\App\Pages\CustomerInbox;
 use App\Models\CustomerProfile;
 use App\Models\Tenant;
 use Filament\Actions\Action;
@@ -726,6 +726,3 @@ class CustomerProfileResource extends Resource
             ->send();
     }
 }
-
-
-

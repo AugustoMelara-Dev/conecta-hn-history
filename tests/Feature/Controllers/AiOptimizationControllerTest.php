@@ -89,5 +89,3 @@ final class StubAiTenantContext implements TenantContext
         return ['id' => $this->tenantUuid];
     }
 }
-
-

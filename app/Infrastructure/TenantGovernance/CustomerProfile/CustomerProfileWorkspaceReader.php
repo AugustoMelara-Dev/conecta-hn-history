@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\TenantGovernance\CustomerProfile;
 
-use App\Domain\TenantGovernance\Repositories\CustomerProfileRepositoryInterface;
 use App\Models\CustomerProfile;
 
 final class CustomerProfileWorkspaceReader

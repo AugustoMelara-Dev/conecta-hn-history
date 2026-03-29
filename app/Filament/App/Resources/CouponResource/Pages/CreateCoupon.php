@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\CouponResource\Pages;
 
-use App\Filament\App\Resources\Pages\CreateTenantRecord;
 use App\Filament\App\Resources\CouponResource;
+use App\Filament\App\Resources\Pages\CreateTenantRecord;
 
 class CreateCoupon extends CreateTenantRecord
 {

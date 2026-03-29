@@ -125,5 +125,4 @@ class EditCustomerProfile extends EditTenantRecord
     {
         return app(TenantCustomerProfileEditReader::class);
     }
-
 }

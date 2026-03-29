@@ -19,7 +19,6 @@ use App\Application\TenantGovernance\Inbox\Handlers\RouteCustomerInboxConversati
 use App\Application\TenantGovernance\Inbox\Handlers\SendCustomerInboxTemplateHandler;
 use App\Application\TenantGovernance\Inbox\Handlers\TakeCustomerInboxConversationHandler;
 use App\Domain\TenantGovernance\Services\CustomerConversationRouting;
-use App\Filament\App\Resources\CustomerProfileResource;
 use App\Infrastructure\TenantGovernance\Inbox\CustomerInboxReadModel;
 use App\Models\CustomerNote;
 use App\Models\Tenant;
@@ -514,5 +513,4 @@ class CustomerInbox extends Page
 
         $this->selectedConversation = $reader->buildConversationWorkspace($tenant, $note);
     }
-
 }

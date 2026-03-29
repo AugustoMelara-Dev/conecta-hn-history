@@ -32,8 +32,7 @@ final class SalesExportController extends Controller
     public function store(
         Request $request,
         QueueSalesExportHandler $handler
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $validated = $request->validate([
             'start_date' => ['nullable', 'date', 'before_or_equal:end_date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],

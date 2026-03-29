@@ -91,7 +91,7 @@ final class Billing extends Page
         try {
             $settings = app(GeneralSettings::class);
 
-            $this->proPlanPrice = 'L. ' . number_format((float) ($settings->pro_plan_price ?? 99), 2);
+            $this->proPlanPrice = 'L. '.number_format((float) ($settings->pro_plan_price ?? 99), 2);
             $this->supportEmail = (string) ($settings->support_email ?? $this->supportEmail);
 
             $supportWhatsApp = (string) ($settings->support_whatsapp_number ?? '');
@@ -155,7 +155,7 @@ final class Billing extends Page
                             SubscriptionPayment::STATUS_REJECTED => 'Rechazado',
                             default => 'Desconocido',
                         },
-                        'amount' => 'L. ' . number_format((float) $payment->amount, 2),
+                        'amount' => 'L. '.number_format((float) $payment->amount, 2),
                         'reported_at' => optional($payment->created_at)?->format('d/m/Y H:i'),
                     ];
                 })

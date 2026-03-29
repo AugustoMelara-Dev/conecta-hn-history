@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\CategoryResource\Pages;
 
-use App\Filament\Resources\Pages\ListAdminRecords;
 use App\Filament\Resources\CategoryResource;
+use App\Filament\Resources\Pages\ListAdminRecords;
 use Filament\Actions;
 
 class ListCategories extends ListAdminRecords

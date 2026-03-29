@@ -5,13 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Filament;
 
 use App\Domain\Identity\Enums\UserRole;
-use App\Filament\App\Pages\GrowthCenter;
-use App\Filament\App\Pages\CustomerInbox;
 use App\Filament\App\Pages\EditTenantProfile;
 use App\Filament\App\Pages\ManageBilling;
 use App\Filament\App\Pages\ManageMarketing;
 use App\Filament\App\Pages\Settings;
-use App\Models\Appointment;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\CustomerTouchpointResource;
@@ -19,15 +16,16 @@ use App\Filament\App\Resources\MenuSectionResource;
 use App\Filament\App\Resources\OperationalPlaybookTaskResource;
 use App\Filament\App\Resources\ServiceResource;
 use App\Filament\App\Resources\TenantUserResource;
+use App\Models\Appointment;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Follow;
 use App\Models\Lead;
 use App\Models\LoyaltyProgram;
 use App\Models\MenuSection;
+use App\Models\OpeningHour;
 use App\Models\OperationalPlaybookTask;
 use App\Models\Order;
-use App\Models\OpeningHour;
 use App\Models\Product;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
@@ -682,7 +680,7 @@ final class BusinessPageWorkflowTest extends TestCase
 
         Livewire::test(ManageMarketing::class)
             ->call('downloadPoster')
-            ->assertFileDownloaded($tenant->slug . '-cartel-qr.pdf');
+            ->assertFileDownloaded($tenant->slug.'-cartel-qr.pdf');
     }
 
     public function test_free_owner_can_submit_payment_proof_and_store_pending_payment(): void
@@ -729,7 +727,7 @@ final class BusinessPageWorkflowTest extends TestCase
 
         Livewire::test(ManageBilling::class)
             ->call('downloadReceipt', $payment)
-            ->assertFileDownloaded('recibo-' . $payment->id . '.pdf');
+            ->assertFileDownloaded('recibo-'.$payment->id.'.pdf');
     }
 
     protected function tearDown(): void
@@ -799,4 +797,3 @@ final class BusinessPageWorkflowTest extends TestCase
         return $menuSection->fresh() ?? $menuSection;
     }
 }
-

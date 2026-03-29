@@ -17,7 +17,6 @@ use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Str;
 
 class OperationalPlaybookTaskResource extends Resource
@@ -122,13 +121,13 @@ class OperationalPlaybookTaskResource extends Resource
                         else 3
                     end
                 ")
-                ->orderByRaw("
+                ->orderByRaw('
                     case
                         when due_at is null then 2
-                        when due_at < ".static::currentTimestampSql($query)." then 0
+                        when due_at < '.static::currentTimestampSql($query).' then 0
                         else 1
                     end
-                ")
+                ')
                 ->orderBy('due_at'))
             ->columns([
                 Tables\Columns\TextColumn::make('title')

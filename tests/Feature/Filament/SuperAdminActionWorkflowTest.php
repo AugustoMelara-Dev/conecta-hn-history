@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Filament;
 
 use App\Domain\Identity\Enums\UserRole;
-use App\Infrastructure\TenantGovernance\SuperAdmin\SuperAdminTenantPlanReader;
 use App\Filament\Resources\OperationalPlaybookTaskResource\Pages\ListOperationalPlaybookTasks;
 use App\Filament\Resources\PaymentResource\Pages\ListPayments;
 use App\Filament\Resources\TenantResource\Pages\ListTenants;
 use App\Filament\Resources\UserResource\Pages\ListUsers;
+use App\Infrastructure\TenantGovernance\SuperAdmin\SuperAdminTenantPlanReader;
 use App\Models\OperationalPlaybookTask;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;

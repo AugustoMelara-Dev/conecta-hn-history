@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\MenuSectionResource\Pages;
 
-use App\Filament\App\Resources\Pages\CreateTenantRecord;
 use App\Filament\App\Resources\MenuSectionResource;
+use App\Filament\App\Resources\Pages\CreateTenantRecord;
 use Illuminate\Database\Eloquent\Model;
 
 class CreateMenuSection extends CreateTenantRecord

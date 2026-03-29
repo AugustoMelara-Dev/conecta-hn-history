@@ -4,7 +4,6 @@ use App\Application\Shared\DTOs\Mail\CampaignMailData;
 use App\Domain\Shared\Services\TenantContext;
 use App\Models\Campaign;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 
 uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);

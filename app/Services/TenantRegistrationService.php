@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\Payment;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Domain\TenantGovernance\Enums\TenantPlan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;

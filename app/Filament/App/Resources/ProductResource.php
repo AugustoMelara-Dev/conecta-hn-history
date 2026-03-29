@@ -29,7 +29,6 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -328,7 +327,6 @@ class ProductResource extends Resource
                                     ->required()
                                     ->maxLength(100)
                                     ->autofocus(),
-
 
                                 // Seccion activa por defecto.
                                 Forms\Components\Hidden::make('is_active')

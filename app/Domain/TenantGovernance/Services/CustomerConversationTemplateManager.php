@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Services;
 
 use App\Models\CustomerConversation;
-use App\Models\CustomerMessageTemplate;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;

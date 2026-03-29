@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Tenant;
 
-use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\Shared\Contracts\PaginatedResult;
 use App\Domain\Tenant\Contracts\BillingRepository;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Infrastructure\Shared\EloquentPaginatedResult;
 use App\Models\Payment;
 use App\Models\Tenant;

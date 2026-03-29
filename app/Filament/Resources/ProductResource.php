@@ -22,8 +22,8 @@ use Filament\Tables;
 use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Schema as DatabaseSchema;
+use Illuminate\Support\HtmlString;
 
 class ProductResource extends Resource
 {

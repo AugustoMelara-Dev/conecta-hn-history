@@ -48,20 +48,20 @@ class AdminLogin extends Login
         ]);
     }
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         return 'Acceso de superadministración';
     }
 
-    public function getHeading(): string | Htmlable | null
+    public function getHeading(): string|Htmlable|null
     {
         return 'Panel de superadministración';
     }
 
-    public function getSubheading(): string | Htmlable | null
+    public function getSubheading(): string|Htmlable|null
     {
         return new HtmlString(
-            'Usa una cuenta autorizada como superadministrador. ' .
+            'Usa una cuenta autorizada como superadministrador. '.
             'Si vas a entrar al panel de tu negocio, usa <a href="/login" style="color:#34d399;font-weight:700;text-decoration:none;">/login</a>.'
         );
     }

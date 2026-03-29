@@ -17,7 +17,7 @@ final class CampaignCreatePageTest extends TestCase
 
     public function test_campaign_model_accepts_tenant_assignment_and_pro_owner_can_open_create_page(): void
     {
-        $this->assertContains('tenant_id', (new Campaign())->getFillable());
+        $this->assertContains('tenant_id', (new Campaign)->getFillable());
 
         [$user, $tenant] = $this->makeTenantOwner(isPro: true);
 
@@ -68,4 +68,3 @@ final class CampaignCreatePageTest extends TestCase
         return [$user, $tenant];
     }
 }
-

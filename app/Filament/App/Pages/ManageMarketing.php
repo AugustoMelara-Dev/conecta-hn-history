@@ -245,11 +245,11 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
                         if ($count > 0) {
                             return "**Atención:** esta sección contiene **{$count} producto(s)** asociados.\n\n"
-                                . "Si la eliminas:\n"
-                                . "- Los productos **no se borrarán** de la base de datos.\n"
-                                . "- Quedarán en **Sin categoría**.\n"
-                                . "- **Dejarán de ser visibles** en el catálogo público hasta que los reasignes.\n\n"
-                                . '¿Seguro que quieres continuar?';
+                                ."Si la eliminas:\n"
+                                ."- Los productos **no se borrarán** de la base de datos.\n"
+                                ."- Quedarán en **Sin categoría**.\n"
+                                ."- **Dejarán de ser visibles** en el catálogo público hasta que los reasignes.\n\n"
+                                .'¿Seguro que quieres continuar?';
                         }
 
                         return "Esta sección está vacía (0 productos). ¿Seguro que quieres eliminarla?\n\nEsta acción no se puede deshacer.";
@@ -395,7 +395,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();
-        }, $tenant->slug . '-cartel-qr.pdf', [
+        }, $tenant->slug.'-cartel-qr.pdf', [
             'Content-Type' => 'application/pdf',
         ]);
     }

@@ -6,7 +6,6 @@ namespace Tests\Feature\Filament;
 
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Identity\Enums\UserRole;
-use App\Filament\App\Resources\TenantUserResource;
 use App\Filament\App\Resources\TenantUserResource\Pages\CreateTenantUser;
 use App\Models\Category;
 use App\Models\City;

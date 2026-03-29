@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
-use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
 use App\Domain\TenantGovernance\Services\CustomerJourneySignalRecorder;
+use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
 use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Models\Order;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;

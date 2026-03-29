@@ -546,4 +546,3 @@ final readonly class TenantMicrositeTransformer
         return $result;
     }
 }
-

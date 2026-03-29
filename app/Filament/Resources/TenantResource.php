@@ -951,6 +951,3 @@ class TenantResource extends Resource
         $tenant->logOperationalEvent($description, $resolvedActor, $properties);
     }
 }
-
-
-

@@ -17,7 +17,6 @@ use App\Filament\App\Resources\MenuSectionResource\Pages;
 use App\Models\MenuSection;
 use App\Models\Tenant;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;

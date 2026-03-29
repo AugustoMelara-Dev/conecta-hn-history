@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
-use App\Filament\App\Pages\Dashboard;
 use App\Filament\App\Pages\CustomerInbox;
+use App\Filament\App\Pages\Dashboard;
 use App\Filament\App\Pages\GrowthCenter;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
@@ -186,7 +186,7 @@ class AppPanelProvider extends PanelProvider
             $url = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
             $text = "Mira mi negocio {$tenant->name} en Conecta HN.";
 
-            return 'https://wa.me/?text=' . urlencode("{$text}\n\n{$url}");
+            return 'https://wa.me/?text='.urlencode("{$text}\n\n{$url}");
         }
 
         return '#';

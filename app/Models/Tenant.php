@@ -16,8 +16,8 @@ use App\Application\TenantGovernance\Contracts\TenantFeatureAccessManagerInterfa
 use App\Domain\Shared\Traits\HasDomainEvents;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\Capability;
-use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Enums\TenantFeature;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Scopes\LocationScope;
 use App\Traits\CanBeFavorited;

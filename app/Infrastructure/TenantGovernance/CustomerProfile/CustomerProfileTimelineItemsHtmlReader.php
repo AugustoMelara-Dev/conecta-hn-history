@@ -26,15 +26,15 @@ final class CustomerProfileTimelineItemsHtmlReader
                         'info', 'primary' => '#2563eb',
                         default => '#64748b',
                     }
-                    .';"></span>'
-                    .'<div>'
-                    .'<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;">'
-                    .'<p style="margin:0; font-weight:700; color:#0f172a;">'.$item['title'].'</p>'
-                    .'<p style="margin:0; color:#64748b; font-size:.9rem;">'.$item['when'].$channel.'</p>'
-                    .'</div>'
-                    .'<p style="margin:.35rem 0 0; color:#475569;">'.$item['copy'].'</p>'
-                    .'</div>'
-                    .'</div>';
+                .';"></span>'
+                .'<div>'
+                .'<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;">'
+                .'<p style="margin:0; font-weight:700; color:#0f172a;">'.$item['title'].'</p>'
+                .'<p style="margin:0; color:#64748b; font-size:.9rem;">'.$item['when'].$channel.'</p>'
+                .'</div>'
+                .'<p style="margin:.35rem 0 0; color:#475569;">'.$item['copy'].'</p>'
+                .'</div>'
+                .'</div>';
             })
             ->implode('');
 

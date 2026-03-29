@@ -160,5 +160,4 @@ class Dashboard extends \Filament\Pages\Page
     {
         return static::$routePath;
     }
-
 }

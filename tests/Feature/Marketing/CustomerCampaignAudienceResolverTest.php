@@ -134,4 +134,3 @@ final class CustomerCampaignAudienceResolverTest extends TestCase
         return [$user, $tenant];
     }
 }
-

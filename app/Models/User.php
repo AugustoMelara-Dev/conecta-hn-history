@@ -85,7 +85,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
         'remember_token',
     ];
 
-        /**
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -411,4 +411,3 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
         return null;
     }
 }
-

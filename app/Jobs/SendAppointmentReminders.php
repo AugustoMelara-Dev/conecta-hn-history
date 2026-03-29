@@ -40,8 +40,7 @@ class SendAppointmentReminders implements ShouldQueue
     public function handle(
         AdminNotifier $notifier,
         ?OperationalPlaybookTaskManager $playbookTaskManager = null,
-    ): void
-    {
+    ): void {
         $playbookTaskManager ??= app(OperationalPlaybookTaskManager::class);
 
         // Define the 24-hour window (23h to 24h from now)
@@ -77,8 +76,7 @@ class SendAppointmentReminders implements ShouldQueue
         Appointment $appointment,
         AdminNotifier $notifier,
         OperationalPlaybookTaskManager $playbookTaskManager,
-    ): void
-    {
+    ): void {
         // Skip if no customer email
         if (empty($appointment->customer_email)) {
             Log::warning('SendAppointmentReminders: Skipped appointment (no email)', [

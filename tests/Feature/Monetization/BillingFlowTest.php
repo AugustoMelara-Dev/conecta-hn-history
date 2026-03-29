@@ -4,7 +4,6 @@ use App\Events\PaymentApproved;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 

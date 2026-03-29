@@ -204,17 +204,31 @@ final class TenantJourneyAnalyticsReader
         ];
     }
 
-    private function formatCurrency(float $value): string { return 'L. '.number_format($value, 2); }
-    private function formatSourceLabel(string $value): string { return str($value === '' ? 'manual' : $value)->replace('_', ' ')->replace('-', ' ')->title()->value(); }
+    private function formatCurrency(float $value): string
+    {
+        return 'L. '.number_format($value, 2);
+    }
+
+    private function formatSourceLabel(string $value): string
+    {
+        return str($value === '' ? 'manual' : $value)->replace('_', ' ')->replace('-', ' ')->title()->value();
+    }
 
     private function conversationRevenueValue(CustomerConversation $conversation): float
     {
         $profile = $conversation->customerProfile;
-        if (! $profile instanceof CustomerProfile) { return 0.0; }
+        if (! $profile instanceof CustomerProfile) {
+            return 0.0;
+        }
         $firstConversion = (float) ($profile->first_conversion_value ?? 0);
-        if ($firstConversion > 0) { return $firstConversion; }
+        if ($firstConversion > 0) {
+            return $firstConversion;
+        }
         $initialLtv = (float) ($profile->initial_ltv ?? 0);
-        if ($initialLtv > 0) { return $initialLtv; }
+        if ($initialLtv > 0) {
+            return $initialLtv;
+        }
+
         return (float) ($profile->total_spent ?? 0);
     }
 
@@ -224,10 +238,14 @@ final class TenantJourneyAnalyticsReader
         $touchpoints->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->customer_conversation_id ?? ''))
             ->each(function (Collection $items) use (&$shares, $dimension): void {
                 $conversation = $items->first()?->conversation;
-                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') { return; }
+                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') {
+                    return;
+                }
                 $sequenceGroups = $items->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_key', $touchpoint->template_key ?: 'manual'))
                     ->filter(fn (Collection $slice, string $key): bool => $key !== '');
-                if ($sequenceGroups->isEmpty()) { return; }
+                if ($sequenceGroups->isEmpty()) {
+                    return;
+                }
                 $revenue = $this->conversationRevenueValue($conversation);
                 $conversionShare = 1 / max(1, $sequenceGroups->count());
                 $revenueShare = $revenue / max(1, $sequenceGroups->count());
@@ -235,9 +253,19 @@ final class TenantJourneyAnalyticsReader
                     $dimensionKey = $sequenceKey;
                     $context = '';
                     $label = (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey));
-                    if ($dimension === 'owner') { $label = $conversation->ownerLabel; $dimensionKey = "{$label}|{$sequenceKey}"; $context = (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey)); }
-                    elseif ($dimension === 'location') { $label = $conversation->locationLabel; $dimensionKey = "{$label}|{$sequenceKey}"; $context = (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey)); }
-                    elseif ($dimension === 'channel') { $label = $this->formatSourceLabel((string) ($conversation->source_channel ?: 'crm')); $dimensionKey = "{$label}|{$sequenceKey}"; $context = (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey)); }
+                    if ($dimension === 'owner') {
+                        $label = $conversation->ownerLabel;
+                        $dimensionKey = "{$label}|{$sequenceKey}";
+                        $context = (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey));
+                    } elseif ($dimension === 'location') {
+                        $label = $conversation->locationLabel;
+                        $dimensionKey = "{$label}|{$sequenceKey}";
+                        $context = (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey));
+                    } elseif ($dimension === 'channel') {
+                        $label = $this->formatSourceLabel((string) ($conversation->source_channel ?: 'crm'));
+                        $dimensionKey = "{$label}|{$sequenceKey}";
+                        $context = (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey));
+                    }
                     $shares[$dimensionKey] ??= ['label' => $label, 'revenue' => 0.0, 'replies' => 0, 'clicks' => 0, 'conversions' => 0.0, 'context' => $context];
                     $shares[$dimensionKey]['revenue'] += $revenueShare;
                     $shares[$dimensionKey]['replies'] += $slice->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->replied_at !== null)->count();
@@ -245,6 +273,7 @@ final class TenantJourneyAnalyticsReader
                     $shares[$dimensionKey]['conversions'] += $conversionShare;
                 });
             });
+
         return $shares;
     }
 
@@ -269,15 +298,20 @@ final class TenantJourneyAnalyticsReader
         $touchpoints->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->customer_conversation_id ?? ''))
             ->each(function (Collection $items) use (&$shares): void {
                 $conversation = $items->first()?->conversation;
-                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') { return; }
+                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') {
+                    return;
+                }
                 $path = $items->sortBy('id')->map(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_label', data_get($touchpoint->metadata, 'journey_step_title', $touchpoint->template_label)))->filter()->unique()->values();
-                if ($path->isEmpty()) { return; }
+                if ($path->isEmpty()) {
+                    return;
+                }
                 $label = $path->implode(' -> ');
                 $channels = $items->pluck('channel')->filter()->map(fn (string $channel): string => $this->formatSourceLabel($channel))->unique()->implode(', ');
                 $shares[$label] ??= ['label' => $label, 'revenue' => 0.0, 'conversations' => 0, 'owners' => $conversation->ownerLabel, 'channels' => $channels !== '' ? $channels : 'CRM'];
                 $shares[$label]['revenue'] += $this->conversationRevenueValue($conversation);
                 $shares[$label]['conversations']++;
             });
+
         return $shares;
     }
 
@@ -287,10 +321,14 @@ final class TenantJourneyAnalyticsReader
         $touchpoints->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->customer_conversation_id ?? ''))
             ->each(function (Collection $items) use (&$shares): void {
                 $conversation = $items->first()?->conversation;
-                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') { return; }
+                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') {
+                    return;
+                }
                 $sequenceGroups = $items->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_key', $touchpoint->template_key ?: 'manual'))
                     ->filter(fn (Collection $slice, string $key): bool => $key !== '');
-                if ($sequenceGroups->isEmpty()) { return; }
+                if ($sequenceGroups->isEmpty()) {
+                    return;
+                }
                 $signals = (array) data_get($conversation->metadata, 'business_signals', []);
                 $revenue = $this->conversationRevenueValue($conversation);
                 $revenueShare = $revenue / max(1, $sequenceGroups->count());
@@ -303,6 +341,7 @@ final class TenantJourneyAnalyticsReader
                     $shares[$sequenceKey]['upgrade_assists'] += array_key_exists('tenant_upgrade', $signals) ? 1 : 0;
                 });
             });
+
         return $shares;
     }
 
@@ -315,6 +354,7 @@ final class TenantJourneyAnalyticsReader
                 $avgResponse = $responded->count() > 0 ? round((float) $responded->map(fn (CustomerConversation $conversation): int => max(0, (int) $conversation->last_customer_message_at?->diffInMinutes($conversation->first_response_at)))->avg(), 1) : 0.0;
                 $closed = $slice->where('status', 'closed')->count();
                 $revenue = $slice->filter(fn (CustomerConversation $conversation): bool => $conversation->status === 'closed')->sum(fn (CustomerConversation $conversation): float => $this->conversationRevenueValue($conversation));
+
                 return [
                     'name' => $key === 'none' ? $emptyLabel : (string) data_get($slice->first(), $labelAccessor, $emptyLabel),
                     'total' => $slice->count(),

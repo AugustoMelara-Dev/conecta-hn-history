@@ -212,7 +212,7 @@ final class EloquentTenantProfileWriter implements TenantProfileWriterInterface
         $normalized = trim((string) $value);
 
         if (preg_match('/^\d{2}:\d{2}$/', $normalized) === 1) {
-            return $normalized . ':00';
+            return $normalized.':00';
         }
 
         if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $normalized) === 1) {

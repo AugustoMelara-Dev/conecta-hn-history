@@ -17,7 +17,6 @@ use App\Models\Service;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
@@ -26,6 +25,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class OperationalPlaybookTaskResource extends Resource
 {
@@ -129,8 +129,8 @@ class OperationalPlaybookTaskResource extends Resource
 
                 return static::applyPriorityOrdering(
                     $query
-                    ->where('tenant_id', (string) $tenant->getKey())
-                    ->with('assignee')
+                        ->where('tenant_id', (string) $tenant->getKey())
+                        ->with('assignee')
                 );
             })
             ->columns([
@@ -433,13 +433,13 @@ class OperationalPlaybookTaskResource extends Resource
                     else 3
                 end
             ")
-            ->orderByRaw("
+            ->orderByRaw('
                 case
                     when due_at is null then 2
-                    when due_at < ".static::currentTimestampSql()." then 0
+                    when due_at < '.static::currentTimestampSql().' then 0
                     else 1
                 end
-            ")
+            ')
             ->orderBy('due_at');
     }
 

@@ -6,11 +6,9 @@ namespace App\Domain\TenantGovernance\Services;
 
 use App\Domain\Access\Enums\Role;
 use App\Domain\TenantGovernance\Repositories\OperationalPlaybookTaskRepositoryInterface;
-use App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope;
 use App\Models\OperationalPlaybookTask;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -141,8 +139,8 @@ final class OperationalPlaybookTaskManager
     }
 
     /**
-     * @return array{0: string|null, 1: string|null}
      * @param  array<string, mixed>  $context
+     * @return array{0: string|null, 1: string|null}
      */
     private function resolveRelatedContext(array $context): array
     {

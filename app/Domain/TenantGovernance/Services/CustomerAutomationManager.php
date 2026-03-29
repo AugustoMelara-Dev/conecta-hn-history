@@ -41,29 +41,29 @@ class CustomerAutomationManager
 
         $governance = $this->governance->definition($automationKey, 'email', $options);
         $touchpoint = $this->touchpoints->create([
-                'tenant_id' => (string) $profile->tenant_id,
-                'customer_profile_id' => (int) $profile->getKey(),
-                'created_by_user_id' => $actorUserId,
-                'channel' => 'email',
-                'direction' => 'outbound',
-                'automation_key' => $automationKey,
-                'template_key' => $governance['template_key'],
-                'subject' => $subject,
-                'message' => $body,
-                'recipient_address' => $profile->email,
-                'status' => CustomerTouchpoint::STATUS_QUEUED,
-                'provider' => null,
-                'provider_message_id' => null,
-                'delivery_status' => CustomerTouchpoint::DELIVERY_SENT,
-                'attempt_count' => 0,
-                'retry_limit' => $governance['retry_limit'],
-                'opt_in_snapshot' => (bool) $profile->email_opt_in,
-                'metadata' => $this->touchpointMetadata($profile, array_merge($options, [
-                    'conversation_key' => $conversationKey,
-                    'provider_thread_key' => $providerThreadKey,
-                    'provider_reply_to' => $providerReplyTo,
-                ]), $governance),
-            ]);
+            'tenant_id' => (string) $profile->tenant_id,
+            'customer_profile_id' => (int) $profile->getKey(),
+            'created_by_user_id' => $actorUserId,
+            'channel' => 'email',
+            'direction' => 'outbound',
+            'automation_key' => $automationKey,
+            'template_key' => $governance['template_key'],
+            'subject' => $subject,
+            'message' => $body,
+            'recipient_address' => $profile->email,
+            'status' => CustomerTouchpoint::STATUS_QUEUED,
+            'provider' => null,
+            'provider_message_id' => null,
+            'delivery_status' => CustomerTouchpoint::DELIVERY_SENT,
+            'attempt_count' => 0,
+            'retry_limit' => $governance['retry_limit'],
+            'opt_in_snapshot' => (bool) $profile->email_opt_in,
+            'metadata' => $this->touchpointMetadata($profile, array_merge($options, [
+                'conversation_key' => $conversationKey,
+                'provider_thread_key' => $providerThreadKey,
+                'provider_reply_to' => $providerReplyTo,
+            ]), $governance),
+        ]);
 
         return $this->dispatchEmailTouchpoint($touchpoint, $profile, $subject, $body, $actorUserId, $options);
     }
@@ -88,29 +88,29 @@ class CustomerAutomationManager
 
         $governance = $this->governance->definition($automationKey, 'whatsapp', $options);
         $touchpoint = $this->touchpoints->create([
-                'tenant_id' => (string) $profile->tenant_id,
-                'customer_profile_id' => (int) $profile->getKey(),
-                'created_by_user_id' => $actorUserId,
-                'channel' => 'whatsapp',
-                'direction' => 'outbound',
-                'automation_key' => $automationKey,
-                'template_key' => $governance['template_key'],
-                'subject' => null,
-                'message' => $body,
-                'recipient_address' => $profile->phone,
-                'status' => CustomerTouchpoint::STATUS_QUEUED,
-                'provider' => null,
-                'provider_message_id' => null,
-                'delivery_status' => CustomerTouchpoint::DELIVERY_SENT,
-                'attempt_count' => 0,
-                'retry_limit' => $governance['retry_limit'],
-                'opt_in_snapshot' => (bool) $profile->whatsapp_opt_in,
-                'metadata' => $this->touchpointMetadata($profile, array_merge($options, [
-                    'conversation_key' => $conversationKey,
-                    'provider_thread_key' => $providerThreadKey,
-                    'provider_reply_to' => $providerReplyTo,
-                ]), $governance),
-            ]);
+            'tenant_id' => (string) $profile->tenant_id,
+            'customer_profile_id' => (int) $profile->getKey(),
+            'created_by_user_id' => $actorUserId,
+            'channel' => 'whatsapp',
+            'direction' => 'outbound',
+            'automation_key' => $automationKey,
+            'template_key' => $governance['template_key'],
+            'subject' => null,
+            'message' => $body,
+            'recipient_address' => $profile->phone,
+            'status' => CustomerTouchpoint::STATUS_QUEUED,
+            'provider' => null,
+            'provider_message_id' => null,
+            'delivery_status' => CustomerTouchpoint::DELIVERY_SENT,
+            'attempt_count' => 0,
+            'retry_limit' => $governance['retry_limit'],
+            'opt_in_snapshot' => (bool) $profile->whatsapp_opt_in,
+            'metadata' => $this->touchpointMetadata($profile, array_merge($options, [
+                'conversation_key' => $conversationKey,
+                'provider_thread_key' => $providerThreadKey,
+                'provider_reply_to' => $providerReplyTo,
+            ]), $governance),
+        ]);
 
         return $this->dispatchWhatsAppTouchpoint($touchpoint, $profile, $body, $actorUserId, $options);
     }

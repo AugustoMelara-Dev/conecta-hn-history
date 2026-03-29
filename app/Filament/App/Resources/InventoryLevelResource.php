@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\Inventory\Enums\MovementType;
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\InventoryLevelResource\Pages;
 use App\Filament\Traits\ScopesToTenant;
 use App\Models\InventoryLevel;

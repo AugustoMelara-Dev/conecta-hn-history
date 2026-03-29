@@ -16,19 +16,17 @@ use App\Domain\TenantGovernance\Services\BusinessGrowthBlueprint;
 use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\CampaignResource;
+use App\Filament\App\Resources\CouponResource;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\CustomerTouchpointResource;
-use App\Filament\App\Resources\CouponResource;
 use App\Filament\App\Resources\FollowerResource;
 use App\Filament\App\Resources\Leads\LeadResource;
 use App\Filament\App\Resources\LoyaltyProgramResource;
 use App\Filament\App\Resources\OperationalPlaybookTaskResource;
 use App\Filament\App\Resources\OrderResource;
-use App\Models\LoyaltyProgram;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
-use Illuminate\Support\Collection;
 
 class GrowthCenter extends Page
 {
@@ -73,9 +71,13 @@ class GrowthCenter extends Page
     public string $automationCopy = '';
 
     public bool $isPro = false;
+
     public bool $hasMarketingSuite = false;
+
     public bool $hasCampaignFeature = false;
+
     public bool $hasLoyaltyFeature = false;
+
     public bool $canUpgradeToPro = false;
 
     public bool $hasWhatsApp = false;
@@ -816,14 +818,3 @@ class GrowthCenter extends Page
         };
     }
 }
-
-
-
-
-
-
-
-
-
-
-

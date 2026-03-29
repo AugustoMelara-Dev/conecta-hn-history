@@ -7,7 +7,6 @@ namespace App\Infrastructure\TenantGovernance\SuperAdmin;
 use App\Models\OperationalPlaybookTask;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
-use Illuminate\Support\Collection;
 
 final class SuperAdminDashboardStateReader
 {

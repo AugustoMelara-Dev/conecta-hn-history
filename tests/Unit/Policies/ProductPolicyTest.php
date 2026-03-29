@@ -14,9 +14,9 @@ use App\Policies\ProductPolicy;
 use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\Response;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Mockery\Expectation;
 use Mockery\MockInterface;
 

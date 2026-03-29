@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
-use App\Domain\TenantGovernance\Repositories\CustomerTouchpointEventRepositoryInterface;
-use App\Domain\TenantGovernance\Repositories\CustomerTouchpointRepositoryInterface;
-use App\Domain\TenantGovernance\Repositories\InboundWebhookRepositoryInterface;
-
 final class WhatsAppTouchpointEventProcessor
 {
     public function __construct(

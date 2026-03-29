@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\OrderResource\Pages;
 
-use App\Filament\App\Resources\Pages\ListTenantRecords;
 use App\Filament\App\Resources\OrderResource;
+use App\Filament\App\Resources\Pages\ListTenantRecords;
 
 class ListOrders extends ListTenantRecords
 {

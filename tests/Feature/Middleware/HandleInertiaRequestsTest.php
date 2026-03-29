@@ -22,8 +22,8 @@ use Tests\Traits\InteractsWithInertiaRoutes;
  */
 class HandleInertiaRequestsTest extends TestCase
 {
-    use InteractsWithInertiaRoutes;
     use DatabaseTransactions;
+    use InteractsWithInertiaRoutes;
 
     private const LEGACY_PAID_PLAN_FLAG = 'is_pro';
 
