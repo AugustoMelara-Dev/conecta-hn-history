@@ -6,11 +6,12 @@ namespace App\Filament\App\Resources\ProductResource\Pages;
 
 use App\Filament\App\Resources\Pages\CreateTenantRecord;
 use App\Filament\App\Resources\ProductResource;
+use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
 use App\Models\Tenant;
-use App\Settings\GeneralSettings;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
+
 class CreateProduct extends CreateTenantRecord
 {
     protected static string $resource = ProductResource::class;
@@ -23,26 +24,24 @@ class CreateProduct extends CreateTenantRecord
             return;
         }
 
-        if ($tenant->getIsProAttribute()) {
+        $plan = app(TenantPlanPresentationReader::class)->forTenant($tenant);
+
+        if (($plan['isCatalogUnlimited'] ?? false) === true) {
             return;
         }
 
-        $settings = app(GeneralSettings::class);
-        $limit = is_numeric($tenant->getAttribute('product_limit'))
-            ? (int) $tenant->getAttribute('product_limit')
-            : (int) ($settings->free_plan_product_limit ?? 10);
-
+        $limit = (int) ($plan['productLimit'] ?? 0);
         $currentCount = $tenant->products()->count();
 
         if ($currentCount >= $limit) {
             Notification::make()
                 ->danger()
-                ->title('Límite del plan alcanzado')
-                ->body("Has alcanzado el límite de {$limit} productos de tu plan. Actualiza a PRO para productos ilimitados.")
+                ->title('Limite del catalogo alcanzado')
+                ->body($plan['catalogStatusCopy'] ?? "Has alcanzado el limite de {$limit} productos de tu plan.")
                 ->persistent()
                 ->actions([
                     Action::make('upgrade')
-                        ->label('Ver Plan PRO')
+                        ->label($plan['billingCta'] ?? 'Activar PRO')
                         ->url(route('filament.app.pages.manage-billing', [
                             'tenant' => (string) ($tenant->getAttribute('slug') ?? ''),
                         ]))

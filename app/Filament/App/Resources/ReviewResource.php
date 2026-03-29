@@ -6,6 +6,8 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\ReviewResource\Pages;
 use App\Models\Review;
+use App\Models\Tenant;
+use Filament\Facades\Filament;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Textarea;
@@ -29,6 +31,21 @@ class ReviewResource extends Resource
     protected static ?string $pluralModelLabel = 'Reseñas';
 
     protected static string|\UnitEnum|null $navigationGroup = 'Marketing';
+
+    public static function canViewAny(): bool
+    {
+        return static::getTenantRecord() instanceof Tenant;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function canAccess(): bool
+    {
+        return static::canViewAny();
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -102,5 +119,12 @@ class ReviewResource extends Resource
         return [
             'index' => Pages\ListReviews::route('/'),
         ];
+    }
+
+    private static function getTenantRecord(): ?Tenant
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

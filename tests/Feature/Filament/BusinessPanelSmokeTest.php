@@ -66,10 +66,14 @@ final class BusinessPanelSmokeTest extends TestCase
             'filament.app.resources.orders.index' => 200,
             'filament.app.resources.products.index' => 200,
             'filament.app.resources.products.create' => 200,
+            'filament.app.resources.reviews.index' => 200,
             'filament.app.resources.inventory-levels.index' => 200,
             'filament.app.resources.inventory-movements.index' => 200,
             'filament.app.resources.campaigns.index' => 403,
             'filament.app.resources.campaigns.create' => 403,
+            'filament.app.resources.coupons.index' => 403,
+            'filament.app.resources.loyalty-programs.index' => 403,
+            'filament.app.resources.loyalty-rewards.index' => 403,
         ];
     }
 
@@ -86,8 +90,12 @@ final class BusinessPanelSmokeTest extends TestCase
             'filament.app.pages.upgrade-to-pro',
             'filament.app.resources.campaigns.index',
             'filament.app.resources.campaigns.create',
+            'filament.app.resources.coupons.index',
+            'filament.app.resources.loyalty-programs.index',
+            'filament.app.resources.loyalty-rewards.index',
             'filament.app.resources.products.index',
             'filament.app.resources.products.create',
+            'filament.app.resources.reviews.index',
             'filament.app.resources.leads.index',
             'filament.app.resources.leads.create',
             'filament.app.resources.orders.index',

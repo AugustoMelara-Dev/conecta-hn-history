@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Filament\App\Resources\LoyaltyRewardResource\Pages;
 use App\Models\LoyaltyReward;
 use App\Models\Tenant;
@@ -38,14 +39,14 @@ class LoyaltyRewardResource extends Resource
     {
         $tenant = self::getTenantRecord();
 
-        return $tenant instanceof Tenant && (bool) $tenant->is_pro;
+        return $tenant instanceof Tenant && $tenant->hasFeature(TenantFeature::LOYALTY_REWARDS);
     }
 
     public static function canAccess(): bool
     {
         $tenant = self::getTenantRecord();
 
-        return $tenant instanceof Tenant && (bool) $tenant->is_pro;
+        return $tenant instanceof Tenant && $tenant->hasFeature(TenantFeature::LOYALTY_REWARDS);
     }
 
     public static function form(Schema $schema): Schema
