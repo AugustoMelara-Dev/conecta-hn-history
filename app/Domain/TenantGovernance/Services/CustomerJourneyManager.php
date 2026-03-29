@@ -6,9 +6,11 @@ namespace App\Domain\TenantGovernance\Services;
 
 use App\Domain\TenantGovernance\Repositories\CustomerJourneyRunRepositoryInterface;
 use App\Models\CustomerConversation;
+use App\Models\CustomerJourneyRun;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
-use Illuminate\Support\Carbon;
+use App\Models\Tenant;
+use Carbon\Carbon;
 
 class CustomerJourneyManager
 {
@@ -24,8 +26,9 @@ class CustomerJourneyManager
         $templateManager = app(CustomerConversationTemplateManager::class);
         $steps = $templateManager->journeyDefinition($profile);
         $segmentKey = (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new');
-        $businessSegmentKey = filled($profile->tenant?->business_segment_key)
-            ? (string) $profile->tenant->business_segment_key
+        $tenant = $profile->tenant;
+        $businessSegmentKey = $tenant instanceof Tenant && filled($tenant->business_segment_key)
+            ? (string) $tenant->business_segment_key
             : null;
         $run = $this->journeyRuns->firstOrNewByConversation((int) $conversation->getKey());
         $resolved = $this->resolveStepState($conversation, $steps, $segmentKey, $run->exists ? (int) $run->current_step_index : null);
@@ -35,20 +38,20 @@ class CustomerJourneyManager
             $conversation,
             $resolved['current_step'],
             $journeyKey,
-            (int) ($resolved['current_step_index'] ?? 0),
+            (int) $resolved['current_step_index'],
         );
         $nextStep = $this->branchResolver->resolve(
             $profile,
             $conversation,
             $resolved['next_step'],
             $journeyKey,
-            min((int) ($resolved['current_step_index'] ?? 0) + 1, max(0, count($steps) - 1)),
+            min((int) $resolved['current_step_index'] + 1, max(0, count($steps) - 1)),
         );
         $stepDueAt = $resolved['step_due_at'];
         $status = $conversation->status === 'closed' ? 'completed' : 'active';
         $sequenceState = $this->resolveSequenceState($conversation, $stepDueAt, $status);
         $dueState = $this->resolveDueState($conversation, $stepDueAt, $status);
-        $currentStepIndex = (int) ($resolved['current_step_index'] ?? 0);
+        $currentStepIndex = (int) $resolved['current_step_index'];
         $currentStepKey = (string) ($currentStep['key'] ?? '');
         $stepChanged = $currentStepKey !== (string) ($run->current_step_key ?? '');
         $currentStepExecutedAt = $stepChanged ? null : $run->current_step_executed_at;
@@ -92,9 +95,9 @@ class CustomerJourneyManager
                 'next_sequence_label' => $nextStep['sequence_label'] ?? null,
                 'sequence_state_label' => $this->sequenceStateLabel($sequenceState),
                 'due_state_label' => $this->dueStateLabel($dueState),
-                'step_due_at' => $stepDueAt?->toIso8601String(),
+                'step_due_at' => $stepDueAt->toIso8601String(),
                 'auto_send' => (bool) ($currentStep['auto_send'] ?? false),
-                'current_step_executed_at' => $currentStepExecutedAt?->toIso8601String(),
+                'current_step_executed_at' => $currentStepExecutedAt !== null ? $currentStepExecutedAt->toIso8601String() : null,
             ],
         ]);
 
@@ -115,7 +118,7 @@ class CustomerJourneyManager
         $run = $run->fresh();
 
         if (! $run instanceof CustomerJourneyRun) {
-            return $run;
+            throw new \RuntimeException('No se pudo refrescar el run del journey.');
         }
 
         $conversation = $run->conversation()->withoutGlobalScopes()->first();
@@ -134,7 +137,7 @@ class CustomerJourneyManager
             return $run;
         }
 
-        $executedAt = $touchpoint->sent_at ?? now();
+        $executedAt = Carbon::instance($touchpoint->sent_at ?? now());
         $currentIndex = min(max(0, (int) $run->current_step_index), max(0, count($steps) - 1));
         $nextIndex = min($currentIndex + 1, max(0, count($steps) - 1));
         $hasAdvanced = $nextIndex > $currentIndex;
@@ -154,7 +157,7 @@ class CustomerJourneyManager
 
         $currentStepExecutedAt = $hasAdvanced ? null : $executedAt;
         $sequenceState = 'waiting_customer';
-        $dueState = $stepDueAt instanceof Carbon && $stepDueAt->isPast() ? 'breached' : 'scheduled';
+        $dueState = $stepDueAt->isPast() ? 'breached' : 'scheduled';
 
         $run->forceFill([
             'current_step_index' => $nextIndex,
@@ -185,21 +188,14 @@ class CustomerJourneyManager
                 'next_sequence_label' => $nextStep['sequence_label'] ?? null,
                 'sequence_state_label' => $this->sequenceStateLabel($sequenceState),
                 'due_state_label' => $this->dueStateLabel($dueState),
-                'step_due_at' => $stepDueAt?->toIso8601String(),
+                'step_due_at' => $stepDueAt->toIso8601String(),
                 'auto_send' => (bool) ($currentStep['auto_send'] ?? false),
-                'current_step_executed_at' => $currentStepExecutedAt?->toIso8601String(),
+                'current_step_executed_at' => $currentStepExecutedAt !== null ? $currentStepExecutedAt->toIso8601String() : null,
                 'last_auto_touchpoint_id' => (int) $touchpoint->getKey(),
             ]),
         ]);
 
         $run = $this->journeyRuns->save($run);
-
-        if ($sequenceState === 'stalled') {
-            $this->customerTaskManager->createJourneyRescueTask(
-                $run,
-                'La automatizacion no pudo sostener la secuencia y conviene mover rescate humano.'
-            );
-        }
 
         return $run;
     }
@@ -305,7 +301,7 @@ class CustomerJourneyManager
     /**
      * @param  array<string, mixed>|null  $step
      */
-    private function stepDueAtFromExecution(Carbon $executedAt, ?array $step, CustomerConversation $conversation): ?Carbon
+    private function stepDueAtFromExecution(Carbon $executedAt, ?array $step, CustomerConversation $conversation): Carbon
     {
         if ($step === null) {
             return $conversation->next_action_at ?? $executedAt->copy()->addHours(24);

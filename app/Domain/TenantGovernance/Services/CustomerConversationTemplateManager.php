@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Services;
 
 use App\Models\CustomerConversation;
+use App\Models\CustomerJourneyRun;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
@@ -56,7 +57,7 @@ class CustomerConversationTemplateManager
         $templates = $this->templateKeysForConversation($profile, $segmentKey, $recommendedTemplateKey)
             ->map(fn (mixed $templateKey): array => $this->templateDefinition(
                 $profile,
-                is_string($templateKey) ? $templateKey : 'fast_follow_up',
+                (string) $templateKey,
                 $note,
             ))
             ->values()
@@ -92,7 +93,8 @@ class CustomerConversationTemplateManager
         }
 
         $channel = $definition['channel'];
-        $tenant = $profile->tenant()->withoutGlobalScopes()->first();
+        $tenantRecord = $profile->tenant()->withoutGlobalScopes()->first();
+        $tenant = $tenantRecord instanceof Tenant ? $tenantRecord : null;
 
         $options = [
             'cta_label' => $definition['cta_label'],
@@ -205,14 +207,16 @@ class CustomerConversationTemplateManager
      */
     private function currentStepFromConversation(?CustomerConversation $conversation, array $journey): ?array
     {
-        if ($conversation?->journeyRun !== null) {
-            $currentStep = data_get($conversation->journeyRun->metadata, 'current_step');
+        $journeyRun = $conversation?->journeyRun;
+
+        if ($journeyRun instanceof CustomerJourneyRun) {
+            $currentStep = data_get($journeyRun->metadata, 'current_step');
 
             if (is_array($currentStep)) {
                 return $currentStep;
             }
 
-            $currentStepKey = (string) ($conversation->journeyRun->current_step_key ?? '');
+            $currentStepKey = (string) ($journeyRun->current_step_key ?? '');
 
             if ($currentStepKey !== '') {
                 return collect($journey)
@@ -228,7 +232,8 @@ class CustomerConversationTemplateManager
      */
     private function nextStepFromConversation(?CustomerConversation $conversation): ?array
     {
-        $nextStep = data_get($conversation?->journeyRun?->metadata, 'next_step');
+        $journeyRun = $conversation?->journeyRun;
+        $nextStep = $journeyRun instanceof CustomerJourneyRun ? data_get($journeyRun->metadata, 'next_step') : null;
 
         return is_array($nextStep) ? $nextStep : null;
     }
@@ -239,7 +244,8 @@ class CustomerConversationTemplateManager
      */
     private function recommendedTemplateKey(?array $currentStep, ?array $nextStep, ?CustomerConversation $conversation): ?string
     {
-        $templateKey = $conversation?->journeyRun?->next_template_key;
+        $journeyRun = $conversation?->journeyRun;
+        $templateKey = $journeyRun instanceof CustomerJourneyRun ? $journeyRun->next_template_key : null;
 
         if (filled($templateKey)) {
             return (string) $templateKey;
@@ -272,9 +278,10 @@ class CustomerConversationTemplateManager
      */
     private function journeyContext(CustomerProfile $profile, ?CustomerConversation $conversation, string $templateKey): array
     {
-        $journeyRun = $conversation?->journeyRun()
+        $journeyRunRecord = $conversation?->journeyRun()
             ->withoutGlobalScopes()
             ->first();
+        $journeyRun = $journeyRunRecord instanceof CustomerJourneyRun ? $journeyRunRecord : null;
         $currentStep = is_array(data_get($journeyRun?->metadata, 'current_step'))
             ? data_get($journeyRun?->metadata, 'current_step')
             : null;
@@ -294,7 +301,7 @@ class CustomerConversationTemplateManager
             );
         }
 
-        $journeyKey = filled($journeyRun?->journey_key)
+        $journeyKey = $journeyRun instanceof CustomerJourneyRun && filled($journeyRun->journey_key)
             ? (string) $journeyRun->journey_key
             : $this->journeyKey($profile, (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new'));
 
@@ -358,9 +365,7 @@ class CustomerConversationTemplateManager
             return null;
         }
 
-        $businessType = is_object($tenant->business_type)
-            ? (string) $tenant->business_type->value
-            : (string) $tenant->business_type;
+        $businessType = (string) $tenant->business_type->value;
 
         if ($businessType === 'service') {
             return route('public.booking.index', ['tenant' => $tenant->slug]);
