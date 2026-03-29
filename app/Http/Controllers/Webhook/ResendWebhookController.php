@@ -8,7 +8,7 @@ use App\Domain\TenantGovernance\Services\CustomerTouchpointEventRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class ResendWebhookController
+final class ResendWebhookController
 {
     public function __construct(
         private readonly CustomerTouchpointEventRecorder $recorder,
