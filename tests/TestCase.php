@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
 use ReflectionObject;
 
 abstract class TestCase extends BaseTestCase
@@ -121,12 +120,8 @@ abstract class TestCase extends BaseTestCase
             return;
         }
 
-        try {
-            File::ensureDirectoryExists($compiledViewPath);
-        } catch (\ErrorException $exception) {
-            if (! is_dir($compiledViewPath)) {
-                throw $exception;
-            }
+        if (! is_dir($compiledViewPath) && ! @mkdir($compiledViewPath, 0755, true) && ! is_dir($compiledViewPath)) {
+            throw new \RuntimeException("Unable to create compiled view path [{$compiledViewPath}].");
         }
 
         config(['view.compiled' => $compiledViewPath]);
