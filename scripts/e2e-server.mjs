@@ -7,7 +7,7 @@ const rootEnv = {
     APP_URL: 'http://127.0.0.1:8011',
     APP_KEY: 'base64:2fl+Ktvkfl+Fuz4Qk/NaWvy1Pt7EQqHMA2wc/ulkZyo=',
     CACHE_STORE: 'array',
-    QUEUE_CONNECTION: 'database',
+    QUEUE_CONNECTION: 'sync',
     SESSION_DRIVER: 'file',
     DB_CONNECTION: 'mysql',
     DB_HOST: process.env.E2E_DB_HOST || '127.0.0.1',
