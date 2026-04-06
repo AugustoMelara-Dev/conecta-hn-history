@@ -21,19 +21,39 @@ function runStep(command, args) {
     console.error(`\n[e2e-server] Running: ${command} ${args.join(' ')}`);
 
     const result = spawnSync(command, args, {
-        stdio: 'inherit',
+        encoding: 'utf8',
         env: rootEnv,
     });
 
     if (result.status !== 0) {
+        if (result.stdout) {
+            process.stderr.write(result.stdout);
+        }
+
+        if (result.stderr) {
+            process.stderr.write(result.stderr);
+        }
+
         console.error(`[e2e-server] Step failed with exit code ${result.status ?? 1}`);
         process.exit(result.status ?? 1);
     }
+
+    if (result.stdout) {
+        process.stderr.write(result.stdout);
+    }
+
+    if (result.stderr) {
+        process.stderr.write(result.stderr);
+    }
 }
 
-runStep('php', ['artisan', 'migrate:fresh', '--env=testing', '--force']);
-runStep('php', ['artisan', 'db:seed', '--class=Database\\Seeders\\GeoSeeder', '--env=testing', '--force']);
-runStep('php', ['artisan', 'db:seed', '--class=Database\\Seeders\\E2EStorefrontSeeder', '--env=testing', '--force']);
+if (process.env.E2E_SKIP_BOOTSTRAP !== '1') {
+    runStep('php', ['artisan', 'migrate:fresh', '--env=testing', '--force']);
+    runStep('php', ['artisan', 'db:seed', '--class=Database\\Seeders\\GeoSeeder', '--env=testing', '--force']);
+    runStep('php', ['artisan', 'db:seed', '--class=Database\\Seeders\\E2EStorefrontSeeder', '--env=testing', '--force']);
+} else {
+    console.error('\n[e2e-server] Skipping DB bootstrap because E2E_SKIP_BOOTSTRAP=1');
+}
 
 console.error('\n[e2e-server] Starting Laravel server on http://127.0.0.1:8011');
 const server = spawn('php', ['artisan', 'serve', '--env=testing', '--host=127.0.0.1', '--port=8011'], {
