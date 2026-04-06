@@ -121,7 +121,14 @@ abstract class TestCase extends BaseTestCase
             return;
         }
 
-        File::ensureDirectoryExists($compiledViewPath);
+        try {
+            File::ensureDirectoryExists($compiledViewPath);
+        } catch (\ErrorException $exception) {
+            if (! is_dir($compiledViewPath)) {
+                throw $exception;
+            }
+        }
+
         config(['view.compiled' => $compiledViewPath]);
 
         if (! $this->app->resolved('blade.compiler')) {

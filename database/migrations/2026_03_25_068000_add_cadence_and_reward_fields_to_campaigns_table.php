@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('campaigns')) {
+            return;
+        }
+
         Schema::table('campaigns', function (Blueprint $table): void {
             if (! Schema::hasColumn('campaigns', 'is_recurring')) {
                 $table->boolean('is_recurring')->default(false)->after('scheduled_at');
@@ -31,8 +36,13 @@ return new class extends Migration
                 $table->foreignId('loyalty_reward_id')->nullable()->after('owner_user_id')->constrained('loyalty_rewards')->nullOnDelete();
             }
 
-            $table->index(['status', 'scheduled_at'], 'campaigns_status_scheduled_at_idx');
-            $table->index(['is_recurring', 'next_run_at'], 'campaigns_recurring_next_run_at_idx');
+            if (! $this->indexExists('campaigns', 'campaigns_status_scheduled_at_idx')) {
+                $table->index(['status', 'scheduled_at'], 'campaigns_status_scheduled_at_idx');
+            }
+
+            if (! $this->indexExists('campaigns', 'campaigns_recurring_next_run_at_idx')) {
+                $table->index(['is_recurring', 'next_run_at'], 'campaigns_recurring_next_run_at_idx');
+            }
         });
     }
 
@@ -59,5 +69,14 @@ return new class extends Migration
                 }
             }
         });
+    }
+
+    private function indexExists(string $table, string $index): bool
+    {
+        return DB::table('information_schema.statistics')
+            ->where('table_schema', DB::getDatabaseName())
+            ->where('table_name', $table)
+            ->where('index_name', $index)
+            ->exists();
     }
 };
