@@ -48,15 +48,15 @@ function runStep(command, args) {
 }
 
 if (process.env.E2E_SKIP_BOOTSTRAP !== '1') {
-    runStep('php', ['artisan', 'migrate:fresh', '--env=testing', '--force']);
-    runStep('php', ['artisan', 'db:seed', '--class=Database\\Seeders\\GeoSeeder', '--env=testing', '--force']);
-    runStep('php', ['artisan', 'db:seed', '--class=Database\\Seeders\\E2EStorefrontSeeder', '--env=testing', '--force']);
+    runStep('php', ['artisan', 'migrate:fresh', '--force']);
+    runStep('php', ['artisan', 'db:seed', '--class=Database\\Seeders\\GeoSeeder', '--force']);
+    runStep('php', ['artisan', 'db:seed', '--class=Database\\Seeders\\E2EStorefrontSeeder', '--force']);
 } else {
     console.error('\n[e2e-server] Skipping DB bootstrap because E2E_SKIP_BOOTSTRAP=1');
 }
 
 console.error('\n[e2e-server] Starting Laravel server on http://127.0.0.1:8011');
-const server = spawn('php', ['artisan', 'serve', '--env=testing', '--host=127.0.0.1', '--port=8011'], {
+const server = spawn('php', ['artisan', 'serve', '--host=127.0.0.1', '--port=8011'], {
     stdio: 'inherit',
     env: rootEnv,
 });
