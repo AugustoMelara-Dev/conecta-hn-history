@@ -31,7 +31,6 @@ function runStep(command, args) {
     }
 }
 
-runStep('php', ['artisan', 'optimize:clear', '--env=testing']);
 runStep('php', ['artisan', 'migrate:fresh', '--env=testing', '--force']);
 runStep('php', ['artisan', 'db:seed', '--class=Database\\Seeders\\GeoSeeder', '--env=testing', '--force']);
 runStep('php', ['artisan', 'db:seed', '--class=Database\\Seeders\\E2EStorefrontSeeder', '--env=testing', '--force']);
