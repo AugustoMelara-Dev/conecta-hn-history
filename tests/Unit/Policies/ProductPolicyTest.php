@@ -16,7 +16,6 @@ use Filament\Facades\Filament;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\DB;
 use Mockery\Expectation;
 use Mockery\MockInterface;
 
@@ -308,33 +307,9 @@ test('create allows FREE tenant under 10 products', function () {
 test('create denies FREE tenant at 10 products', function () {
     bindProductPolicyServices();
 
-    $tenantId = normalizeProductTenantId(10);
     $user = makePolicyUser();
-    $tenant = makePolicyTenant(tenantId: $tenantId, productCount: 10);
+    $tenant = makePolicyTenant(tenantId: 10, productCount: 10);
     fakeCurrentTenant($tenant);
-
-    Tenant::query()->forceCreate([
-        'id' => $tenantId,
-        'name' => 'Tenant limite',
-        'slug' => 'tenant-limite-'.strtolower(fake()->bothify('??##')),
-        'plan_type' => TenantPlan::SEMILLA->value,
-        'subscription_status' => 'active',
-        'is_active' => true,
-        'status' => 'approved',
-    ]);
-
-    foreach (range(1, 10) as $index) {
-        DB::table('products')->insert([
-            'tenant_id' => $tenantId,
-            'name' => "Producto {$index}",
-            'slug' => "producto-{$index}-".strtolower(fake()->bothify('??##')),
-            'price' => 100 + $index,
-            'is_active' => true,
-            'is_visible' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-    }
 
     $result = (new ProductPolicy)->create($user);
 
