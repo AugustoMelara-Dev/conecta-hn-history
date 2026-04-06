@@ -1,6 +1,4 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { writeFileSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
 import process from 'node:process';
 
 const rootEnv = {
@@ -20,7 +18,7 @@ const rootEnv = {
 };
 
 function runStep(command, args) {
-    console.log(`\n[e2e-server] Running: ${command} ${args.join(' ')}`);
+    console.error(`\n[e2e-server] Running: ${command} ${args.join(' ')}`);
 
     const result = spawnSync(command, args, {
         stdio: 'inherit',
@@ -33,30 +31,12 @@ function runStep(command, args) {
     }
 }
 
-const bootstrapDatabasePath = join(process.cwd(), '.tmp-e2e-db-bootstrap.php');
-const bootstrapDatabaseScript = `<?php
-$host = getenv('DB_HOST') ?: '127.0.0.1';
-$port = getenv('DB_PORT') ?: '3306';
-$database = getenv('DB_DATABASE') ?: 'conecta_hn_e2e_testing';
-$username = getenv('DB_USERNAME') ?: 'root';
-$password = getenv('DB_PASSWORD') ?: '';
-
-$pdo = new PDO("mysql:host={$host};port={$port}", $username, $password, [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-]);
-
-$pdo->exec("CREATE DATABASE IF NOT EXISTS \`{$database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-`;
-
-writeFileSync(bootstrapDatabasePath, bootstrapDatabaseScript, 'utf8');
-runStep('php', [bootstrapDatabasePath]);
-unlinkSync(bootstrapDatabasePath);
 runStep('php', ['artisan', 'optimize:clear', '--env=testing']);
 runStep('php', ['artisan', 'migrate:fresh', '--env=testing', '--force']);
 runStep('php', ['artisan', 'db:seed', '--class=Database\\Seeders\\GeoSeeder', '--env=testing', '--force']);
 runStep('php', ['artisan', 'db:seed', '--class=Database\\Seeders\\E2EStorefrontSeeder', '--env=testing', '--force']);
 
-console.log('\n[e2e-server] Starting Laravel server on http://127.0.0.1:8011');
+console.error('\n[e2e-server] Starting Laravel server on http://127.0.0.1:8011');
 const server = spawn('php', ['artisan', 'serve', '--env=testing', '--host=127.0.0.1', '--port=8011'], {
     stdio: 'inherit',
     env: rootEnv,
