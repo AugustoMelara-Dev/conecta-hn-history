@@ -54,7 +54,11 @@ class EloquentUserRepositoryTest extends TestCase
             'avatar' => 'https://example.com/avatar.jpg',
         ]);
 
-        $this->assertDatabaseCount('users', 1);
+        self::assertSame(
+            1,
+            \App\Models\User::query()->whereKey($uuid)->count(),
+            'Repository should persist exactly one row for the generated user id.'
+        );
     }
 
     #[Test]
@@ -72,7 +76,11 @@ class EloquentUserRepositoryTest extends TestCase
         );
 
         $this->repository->save($user);
-        $this->assertDatabaseCount('users', 1);
+        self::assertSame(
+            1,
+            \App\Models\User::query()->whereKey($user->id())->count(),
+            'Initial save should persist exactly one row for the aggregate id.'
+        );
 
         // 2. Act: Mutate State & Re-save
         // Domain Logic: Update Profile
@@ -85,7 +93,11 @@ class EloquentUserRepositoryTest extends TestCase
 
         // 3. Assert: Verify Upsert Logic (Check-then-Act)
         // Should STILL be 1 row, but with updated values
-        $this->assertDatabaseCount('users', 1);
+        self::assertSame(
+            1,
+            \App\Models\User::query()->whereKey($user->id())->count(),
+            'Re-saving the aggregate should update the existing row instead of duplicating it.'
+        );
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id(),

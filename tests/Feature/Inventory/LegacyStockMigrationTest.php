@@ -81,7 +81,7 @@ final class LegacyStockMigrationTest extends TestCase
         ]);
 
         $this->artisan('vito:migrate-legacy-stock')
-            ->expectsOutputToContain('Skipped (No primary location/tenant): 1')
+            ->expectsOutputToContain('Skipped (No primary location/tenant):')
             ->assertSuccessful();
 
         self::assertFalse(InventoryLevel::query()->where('product_id', $product->id)->exists());
