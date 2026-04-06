@@ -20,7 +20,7 @@ export default defineConfig({
     },
     webServer: {
         command: 'node scripts/e2e-server.mjs',
-        url: 'http://127.0.0.1:8011',
+        url: 'http://127.0.0.1:8011/up',
         reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === '1',
         timeout: 180_000,
     },
