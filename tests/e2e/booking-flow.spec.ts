@@ -11,17 +11,6 @@ function nextDayIso(): string {
     return `${year}-${month}-${day}`;
 }
 
-function dayOffsetIso(offset: number): string {
-    const date = new Date();
-    date.setDate(date.getDate() + offset);
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-
-    return `${year}-${month}-${day}`;
-}
-
 test.describe('Reservas publicas', () => {
     test('service CTA from the microsite preselects the chosen service', async ({ page }) => {
         await page.goto('/t/bufete-lex-hn');
@@ -67,44 +56,54 @@ async function startBookingFlow(page) {
 
 async function selectAvailableSlot(page, preference = 'middle') {
     const slotOptions = page.locator('[data-testid^="booking-slot-"]');
-    const dateInput = page.getByTestId('booking-date-input');
+    const date = nextDayIso();
 
-    for (let offset = 1; offset <= 7; offset += 1) {
-        const date = offset === 1 ? nextDayIso() : dayOffsetIso(offset);
-        const slotResponsePromise = page.waitForResponse((response) =>
-            response.request().method() === 'GET'
-            && response.url().includes('/book/slots')
-            && response.url().includes(`date=${date}`)
-        , { timeout: 8000 }).catch(() => null);
+    await setBookingDate(page, date);
+    await waitForSlotResults(page);
 
-        await dateInput.fill(date);
-        await expect(dateInput).toHaveValue(date);
-        await dateInput.press('Tab');
-
-        const slotResponse = await slotResponsePromise;
-        if (!slotResponse || !slotResponse.ok()) {
-            continue;
-        }
-
-        const payload = await slotResponse.json();
-        const slots = Array.isArray(payload.slots) ? payload.slots : [];
-
-        if (slots.length === 0) {
-            continue;
-        }
-
-        const targetSlot = preference === 'last'
-            ? slots[slots.length - 1]
-            : slots[Math.min(2, slots.length - 1)];
-        const selectedSlot = page.getByTestId(`booking-slot-${targetSlot.time.replace(':', '-')}`);
-        await expect(slotOptions.first()).toBeVisible();
-        await expect(selectedSlot).toBeVisible();
-        await selectedSlot.click();
-
-        return;
+    const count = await slotOptions.count();
+    if (count === 0) {
+        const slotPanelText = await page.getByTestId('booking-slots').innerText();
+        throw new Error(`No booking slots became available for ${date}. Panel text: ${slotPanelText}`);
     }
 
-    throw new Error('No booking slots became available within the next 7 days.');
+    const selectedSlot = preference === 'last'
+        ? slotOptions.last()
+        : slotOptions.nth(Math.min(2, count - 1));
+
+    await expect(selectedSlot).toBeVisible();
+    await selectedSlot.click();
+}
+
+async function setBookingDate(page, date) {
+    const dateInput = page.getByTestId('booking-date-input');
+
+    await dateInput.evaluate((element, value) => {
+        const input = element;
+        const descriptor = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+        descriptor?.set?.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    }, date);
+
+    await expect(dateInput).toHaveValue(date);
+}
+
+async function waitForSlotResults(page) {
+    await page.waitForFunction(() => {
+        const slotPanel = document.querySelector('[data-testid="booking-slots"]');
+        if (!slotPanel) {
+            return false;
+        }
+
+        const text = slotPanel.textContent ?? '';
+        if (text.includes('Cargando horarios disponibles...')) {
+            return false;
+        }
+
+        return slotPanel.querySelector('[data-testid^="booking-slot-"]')
+            || text.includes('No hay horarios disponibles para esta fecha. Prueba con otro dia.');
+    }, { timeout: 10000 });
 }
 
 async function submitBookingWithFallback(page) {
