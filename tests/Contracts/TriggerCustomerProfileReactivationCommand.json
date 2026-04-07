@@ -1,0 +1,25 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "TriggerCustomerProfileReactivationCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "profileId": {
+            "type": "integer"
+        },
+        "actorUserId": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "tenantId",
+        "profileId",
+        "actorUserId"
+    ],
+    "additionalProperties": false
+}

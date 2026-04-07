@@ -1,0 +1,25 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "RunCustomerReactivationSweepCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "actorUserId": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "limit": {
+            "type": "integer",
+            "default": 25
+        }
+    },
+    "required": [
+        "tenantId",
+        "actorUserId"
+    ],
+    "additionalProperties": false
+}

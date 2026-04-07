@@ -13,13 +13,13 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 final class SuperAdminPanelSmokeTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_superadmin_route_matrix_is_accessible_without_server_errors(): void
     {

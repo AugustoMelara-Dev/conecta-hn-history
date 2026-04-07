@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\TenantGovernance\Contracts\WhatsAppTemplateDeliveryInterface;
 use App\Mail\CustomerLifecycleMail;
 use App\Models\CustomerProfile;
 use App\Models\Tenant;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Contracts\Mail\Factory as MailFactory;
 
 class CustomerMessagingGateway
 {
+    public function __construct(
+        private readonly MailFactory $mail,
+        private readonly WhatsAppTemplateDeliveryInterface $whatsAppDelivery,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $context
      * @return array{provider: string, provider_message_id: string|null, delivery_status: string|null, payload: array<string, mixed>}
@@ -54,7 +59,7 @@ class CustomerMessagingGateway
             ];
         }
 
-        Mail::to($profile->email)->send($mailable);
+        $this->mail->to($profile->email)->send($mailable);
 
         return [
             'provider' => (string) config('mail.default', 'mail'),
@@ -139,12 +144,7 @@ class CustomerMessagingGateway
             ];
         }
 
-        $response = Http::timeout(15)
-            ->acceptJson()
-            ->withToken($accessToken)
-            ->post("https://graph.facebook.com/{$apiVersion}/{$phoneNumberId}/messages", $payload)
-            ->throw()
-            ->json();
+        $response = $this->whatsAppDelivery->sendTemplate($accessToken, $apiVersion, $phoneNumberId, $payload);
 
         return [
             'provider' => 'whatsapp_cloud',

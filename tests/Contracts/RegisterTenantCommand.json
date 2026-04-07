@@ -24,6 +24,9 @@
         "categoryId": {
             "type": "integer"
         },
+        "businessType": {
+            "type": "string"
+        },
         "whatsapp": {
             "type": [
                 "string",
@@ -61,6 +64,7 @@
         "password",
         "cityId",
         "categoryId",
+        "businessType",
         "whatsapp"
     ],
     "additionalProperties": false

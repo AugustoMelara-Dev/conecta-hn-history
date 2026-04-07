@@ -1,0 +1,18 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "DeleteMenuSectionCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "menuSectionId": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "tenantId",
+        "menuSectionId"
+    ],
+    "additionalProperties": false
+}

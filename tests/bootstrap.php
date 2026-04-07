@@ -122,6 +122,27 @@ function bootstrapParallelMysqlDatabase(): void
         return;
     }
 
+    // `php artisan test --parallel` already provisions isolated databases via
+    // Laravel ParallelTesting. Re-appending our own process suffix on top of
+    // that produces names like `db_test_1_test_1` and causes duplicate
+    // migrations/schema drift across workers. We still sanitize the worker
+    // database itself because stale MySQL schemas from previous runs can leave
+    // a token database partially migrated even when the base testing database
+    // is already correct.
+    if (filter_var(testingEnv('LARAVEL_PARALLEL_TESTING', 'false'), FILTER_VALIDATE_BOOLEAN)) {
+        // In CI, Laravel already provisions clean parallel databases for the
+        // worker tokens. Forcing an extra drop/create here can race against
+        // that lifecycle and reintroduce schema duplication. Keep the custom
+        // reset only for local stale-worker cleanup.
+        if (filter_var(testingEnv('CI', 'false'), FILTER_VALIDATE_BOOLEAN)) {
+            return;
+        }
+
+        resetLaravelParallelMysqlDatabase();
+
+        return;
+    }
+
     $token = testingEnv('TEST_TOKEN');
 
     if ($token === null) {
@@ -171,6 +192,72 @@ function bootstrapParallelMysqlDatabase(): void
     }
 
     testingSetEnv('DB_DATABASE', $parallelDatabase);
+}
+
+/**
+ * Reset Laravel's per-worker MySQL database when running `artisan test --parallel`.
+ *
+ * Laravel assigns names like `conecta_hn_testing_test_1`. If a previous local
+ * run left one of those worker databases half-migrated, subsequent parallel
+ * runs can clone or reuse an inconsistent schema even though the base testing
+ * database is clean. Recreating only the current worker database keeps the run
+ * deterministic without touching the primary testing database.
+ */
+function resetLaravelParallelMysqlDatabase(): void
+{
+    $token = testingEnv('TEST_TOKEN');
+
+    if ($token === null) {
+        return;
+    }
+
+    $connection = testingEnv('DB_CONNECTION', 'mysql');
+
+    if (! in_array($connection, ['mysql', 'mariadb'], true)) {
+        return;
+    }
+
+    $database = testingEnv('DB_DATABASE');
+
+    if ($database === null) {
+        return;
+    }
+
+    $safeToken = preg_replace('/[^A-Za-z0-9_]/', '_', $token) ?: '1';
+    $expectedSuffix = "_test_{$safeToken}";
+
+    if (! str_ends_with($database, $expectedSuffix)) {
+        return;
+    }
+
+    $charset = preg_replace('/[^A-Za-z0-9_]/', '', testingEnv('DB_CHARSET', 'utf8mb4') ?? 'utf8mb4') ?: 'utf8mb4';
+    $collation = preg_replace('/[^A-Za-z0-9_]/', '', testingEnv('DB_COLLATION', 'utf8mb4_unicode_ci') ?? 'utf8mb4_unicode_ci') ?: 'utf8mb4_unicode_ci';
+
+    try {
+        $pdo = new PDO(
+            sprintf(
+                'mysql:host=%s;port=%s;charset=%s',
+                testingEnv('DB_HOST', '127.0.0.1'),
+                testingEnv('DB_PORT', '3306'),
+                $charset,
+            ),
+            testingEnv('DB_USERNAME', 'root') ?? 'root',
+            testingEnv('DB_PASSWORD', '') ?? '',
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ],
+        );
+
+        $quotedDatabase = str_replace('`', '``', $database);
+        $pdo->exec("DROP DATABASE IF EXISTS `{$quotedDatabase}`");
+        $pdo->exec("CREATE DATABASE `{$quotedDatabase}` CHARACTER SET {$charset} COLLATE {$collation}");
+    } catch (Throwable $exception) {
+        fwrite(
+            STDERR,
+            "[tests/bootstrap] Unable to reset the Laravel parallel worker database '{$database}': {$exception->getMessage()}".PHP_EOL
+        );
+        exit(1);
+    }
 }
 
 function testingRunsInParallel(): bool

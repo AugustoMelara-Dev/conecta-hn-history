@@ -50,7 +50,7 @@ final readonly class UserRegistered implements DomainEventInterface, ShouldDispa
         return new self(
             user_id: $user_id,
             name: $name,
-            email: new \App\Domain\Shared\ValueObjects\EncryptedEmail(\Illuminate\Support\Facades\Crypt::encryptString($email)),
+            email: new \App\Domain\Shared\ValueObjects\EncryptedEmail(encrypt($email)),
             role: $role,
             tenant_id: $tenant_id,
             occurredOn: new DateTimeImmutable,

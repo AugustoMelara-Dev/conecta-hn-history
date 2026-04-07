@@ -1,0 +1,29 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "UpdateTenantPublicProfileCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "profileData": {
+            "type": "array"
+        },
+        "hoursData": {
+            "type": [
+                "array",
+                "null"
+            ],
+            "default": null
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "default": 1
+        }
+    },
+    "required": [
+        "tenantId",
+        "profileData"
+    ],
+    "additionalProperties": false
+}
