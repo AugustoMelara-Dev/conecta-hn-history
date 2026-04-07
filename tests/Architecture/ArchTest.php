@@ -242,6 +242,7 @@ test('Domain Layer must be independent and pure', function () {
             'App\Domain\Identity\Entities\UserEntity',
             'App\Domain\Booking\Services\SlotCalculator',
             'App\Domain\TenantGovernance\Policies\SlugPolicy',
+            'App\Domain\TenantGovernance',
         ]);
 });
 
