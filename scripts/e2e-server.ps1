@@ -9,6 +9,8 @@ $env:APP_KEY = 'base64:2fl+Ktvkfl+Fuz4Qk/NaWvy1Pt7EQqHMA2wc/ulkZyo='
 $env:CACHE_STORE = 'array'
 $env:QUEUE_CONNECTION = 'database'
 $env:SESSION_DRIVER = 'file'
+$env:SESSION_DOMAIN = ''
+$env:SESSION_SECURE_COOKIE = 'false'
 $env:DB_CONNECTION = 'mysql'
 $env:DB_HOST = if ($env:E2E_DB_HOST) { $env:E2E_DB_HOST } else { '127.0.0.1' }
 $env:DB_PORT = if ($env:E2E_DB_PORT) { $env:E2E_DB_PORT } else { '3306' }

@@ -10,6 +10,8 @@ const rootEnv = {
     BROADCAST_CONNECTION: 'null',
     QUEUE_CONNECTION: 'database',
     SESSION_DRIVER: 'file',
+    SESSION_DOMAIN: '',
+    SESSION_SECURE_COOKIE: 'false',
     MAIL_MAILER: 'array',
     PULSE_ENABLED: 'false',
     TELESCOPE_ENABLED: 'false',
@@ -52,6 +54,8 @@ function runStep(command, args) {
         process.stderr.write(result.stderr);
     }
 }
+
+runStep('php', ['artisan', 'optimize:clear']);
 
 if (process.env.E2E_SKIP_BOOTSTRAP !== '1') {
     runStep('php', ['artisan', 'migrate:fresh', '--force']);
