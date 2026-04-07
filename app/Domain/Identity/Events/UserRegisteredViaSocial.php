@@ -35,7 +35,7 @@ final readonly class UserRegisteredViaSocial
         return new self(
             userId: $userId,
             tenantId: $tenantId,
-            email: new \App\Domain\Shared\ValueObjects\EncryptedEmail(\Illuminate\Support\Facades\Crypt::encryptString($email)),
+            email: new \App\Domain\Shared\ValueObjects\EncryptedEmail(encrypt($email)),
             provider: $provider,
             occurredAt: new DateTimeImmutable,
         );
