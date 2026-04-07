@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Events\Appointment\AppointmentCreated;
 use App\Domain\Contracts\AdminNotifier;
 use App\Domain\TenantGovernance\Services\OperationalPlaybookTaskManager;
+use App\Events\Appointment\AppointmentCreated;
 use App\Listeners\NotifyAppointmentBookedListener;
 use App\Listeners\SendAppointmentConfirmation;
 use App\Mail\AppointmentConfirmationMail;
