@@ -175,6 +175,11 @@ class InfrastructureServiceProvider extends ServiceProvider
             \App\Infrastructure\TenantGovernance\TenantJourneyAnalyticsView::class
         );
 
+        $this->app->bind(
+            \App\Domain\TenantGovernance\Contracts\WhatsAppTemplateDeliveryInterface::class,
+            \App\Infrastructure\TenantGovernance\Messaging\WhatsAppCloudTemplateDelivery::class
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
         // UPCASTING INFRASTRUCTURE (Resilient Read)
         // ═══════════════════════════════════════════════════════════════════════
