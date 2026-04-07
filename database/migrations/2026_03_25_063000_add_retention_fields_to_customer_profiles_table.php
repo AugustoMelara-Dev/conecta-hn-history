@@ -10,6 +10,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('customer_profiles') || Schema::hasColumn('customer_profiles', 'acquisition_channel')) {
+            return;
+        }
+
         Schema::table('customer_profiles', function (Blueprint $table): void {
             $table->string('acquisition_channel', 32)->nullable()->after('email_opt_in');
             $table->string('first_conversion_channel', 32)->nullable()->after('acquisition_channel');
@@ -30,6 +34,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('customer_profiles') || ! Schema::hasColumn('customer_profiles', 'acquisition_channel')) {
+            return;
+        }
+
         Schema::table('customer_profiles', function (Blueprint $table): void {
             $table->dropIndex('customer_profiles_tenant_acquisition_idx');
             $table->dropIndex('customer_profiles_tenant_loyalty_idx');

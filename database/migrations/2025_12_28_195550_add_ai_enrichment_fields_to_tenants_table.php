@@ -11,11 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (! Schema::hasTable('tenants')) {
+            return;
+        }
+
         Schema::table('tenants', function (Blueprint $table) {
             // AI Enrichment Flag
-            $table->boolean('is_ai_enhanced')->default(false)->after('is_active');
+            if (! Schema::hasColumn('tenants', 'is_ai_enhanced')) {
+                $table->boolean('is_ai_enhanced')->default(false)->after('is_active');
+            }
             // Admin notes for moderation and enrichment logging
-            $table->text('admin_notes')->nullable()->after('is_ai_enhanced');
+            if (! Schema::hasColumn('tenants', 'admin_notes')) {
+                $table->text('admin_notes')->nullable()->after('is_ai_enhanced');
+            }
         });
     }
 

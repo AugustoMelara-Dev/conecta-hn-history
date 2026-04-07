@@ -10,6 +10,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('customer_notes')) {
+            return;
+        }
+
         Schema::create('customer_notes', function (Blueprint $table): void {
             $table->id();
             $table->foreignUuid('tenant_id')->constrained('tenants')->cascadeOnDelete();
@@ -29,6 +33,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('customer_notes');
+        if (Schema::hasTable('customer_notes')) {
+            Schema::drop('customer_notes');
+        }
     }
 };
