@@ -116,6 +116,69 @@ final class BookingPageRouteTest extends TestCase
     }
 
     #[Test]
+    public function it_renders_the_success_page_after_creating_a_public_booking(): void
+    {
+        config(['app.e2e_browser_release' => true]);
+
+        $user = User::factory()->create();
+        /** @var Tenant $tenant */
+        $tenant = Tenant::factory()->pro()->create([
+            'user_id' => $user->id,
+            'slug' => 'barberia-norte-pro',
+            'business_type' => 'service',
+            'status' => 'approved',
+            'subscription_status' => 'active',
+        ]);
+
+        /** @var Service $service */
+        $service = Service::factory()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Corte premium con barba',
+            'duration_minutes' => 50,
+            'price' => 320,
+            'is_active' => true,
+        ]);
+
+        /** @var ServiceProvider $provider */
+        $provider = ServiceProvider::factory()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Marco Diaz',
+            'is_active' => true,
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $date = now()->addDay()->format('Y-m-d');
+
+        $storeResponse = $this->from("/t/{$tenant->slug}/book")
+            ->post("/t/{$tenant->slug}/book", [
+                'service_id' => $service->id,
+                'service_provider_id' => $provider->id,
+                'date' => $date,
+                'time' => '09:00',
+                'customer_name' => 'Cliente E2E',
+                'customer_email' => 'cliente.e2e@example.test',
+                'customer_phone' => '9999-1111',
+                'customer_notes' => 'Reserva creada desde feature test.',
+            ]);
+
+        $storeResponse->assertRedirectContains("/t/{$tenant->slug}/book/success?appointment=");
+
+        app(TenantContext::class)->reset();
+
+        $successResponse = $this->get($storeResponse->headers->get('Location'));
+
+        $successResponse->assertOk();
+        $successResponse->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Public/Book/Success')
+            ->where('tenant.slug', $tenant->slug)
+            ->where('appointment.service_name', 'Corte premium con barba')
+            ->where('appointment.provider_name', 'Marco Diaz')
+            ->where('appointment.customer_name', 'Cliente E2E')
+        );
+    }
+
+    #[Test]
     public function it_rejects_cross_tenant_service_and_provider_ids_in_public_booking(): void
     {
         $user = User::factory()->create();

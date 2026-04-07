@@ -109,8 +109,8 @@ async function waitForSlotResults(page) {
 async function submitBookingWithFallback(page) {
     const successUrl = /\/t\/barberia-norte-pro\/book\/success\?appointment=/;
 
-    const firstResponse = await submitBookingRequest(page);
-    if (await finalizeBookingSuccess(page, firstResponse, successUrl)) {
+    const firstAttempt = await submitBookingRequest(page);
+    if (await finalizeBookingSuccess(page, firstAttempt, successUrl)) {
         return;
     }
 
@@ -118,13 +118,14 @@ async function submitBookingWithFallback(page) {
     await selectAvailableSlot(page, 'last');
     await fillBookingDetails(page);
 
-    const retryResponse = await submitBookingRequest(page);
-    if (await finalizeBookingSuccess(page, retryResponse, successUrl)) {
+    const retryAttempt = await submitBookingRequest(page);
+    if (await finalizeBookingSuccess(page, retryAttempt, successUrl)) {
         return;
     }
 
+    const failureDetails = await describeBookingFailure(page, retryAttempt);
     const visibleErrors = await page.locator('.text-rose-600, .text-rose-700').allInnerTexts();
-    throw new Error(`Booking flow did not reach success after retry. Visible errors: ${visibleErrors.join(' | ') || 'none'}`);
+    throw new Error(`Booking flow did not reach success after retry. Visible errors: ${visibleErrors.join(' | ') || 'none'}. ${failureDetails}`);
 }
 
 async function submitBookingRequest(page) {
@@ -132,14 +133,30 @@ async function submitBookingRequest(page) {
         response.request().method() === 'POST'
         && response.url().includes('/t/barberia-norte-pro/book')
     , { timeout: 20000 }).catch(() => null);
+    const successPageResponsePromise = page.waitForResponse((response) =>
+        response.request().method() === 'GET'
+        && /\/t\/barberia-norte-pro\/book\/success\?appointment=/.test(response.url())
+    , { timeout: 12000 }).catch(() => null);
 
     await page.getByTestId('booking-submit').click();
 
-    return bookingPostResponsePromise;
+    const [bookingResponse, successPageResponse] = await Promise.all([
+        bookingPostResponsePromise,
+        successPageResponsePromise,
+    ]);
+
+    return { bookingResponse, successPageResponse };
 }
 
-async function finalizeBookingSuccess(page, bookingResponse, successUrl) {
+async function finalizeBookingSuccess(page, attempt, successUrl) {
     if (successUrl.test(page.url())) {
+        return true;
+    }
+
+    if (attempt.successPageResponse?.ok()) {
+        await page.waitForURL(successUrl, { timeout: 10000 }).catch(() => null);
+        await expect(page.getByTestId('booking-success')).toBeVisible({ timeout: 15000 });
+
         return true;
     }
 
@@ -147,29 +164,34 @@ async function finalizeBookingSuccess(page, bookingResponse, successUrl) {
         await page.waitForFunction(
             (pattern) => new RegExp(pattern).test(window.location.href),
             successUrl.source,
-            { timeout: 5000 },
+            { timeout: 12000 },
         );
+
+        await expect(page.getByTestId('booking-success')).toBeVisible({ timeout: 15000 });
 
         return true;
     } catch {
-        const responseUrl = bookingResponse?.url() ?? '';
-        const locationHeader = bookingResponse?.headers()?.location ?? '';
-        const inertiaLocationHeader = bookingResponse?.headers()?.['x-inertia-location'] ?? '';
+        const responseUrl = attempt.bookingResponse?.url() ?? '';
+        const locationHeader = attempt.bookingResponse?.headers()?.location ?? '';
+        const inertiaLocationHeader = attempt.bookingResponse?.headers()?.['x-inertia-location'] ?? '';
 
         if (successUrl.test(responseUrl)) {
             await page.goto(responseUrl);
+            await expect(page.getByTestId('booking-success')).toBeVisible({ timeout: 15000 });
 
             return true;
         }
 
         if (successUrl.test(locationHeader)) {
             await page.goto(locationHeader);
+            await expect(page.getByTestId('booking-success')).toBeVisible({ timeout: 15000 });
 
             return true;
         }
 
         if (successUrl.test(inertiaLocationHeader)) {
             await page.goto(inertiaLocationHeader);
+            await expect(page.getByTestId('booking-success')).toBeVisible({ timeout: 15000 });
 
             return true;
         }
@@ -180,4 +202,20 @@ async function finalizeBookingSuccess(page, bookingResponse, successUrl) {
 
         return false;
     }
+}
+
+async function describeBookingFailure(page, attempt) {
+    const serverErrorVisible = await page.getByRole('heading', { name: '500' }).isVisible().catch(() => false);
+    const bodyText = await page.locator('body').innerText().catch(() => '');
+
+    return [
+        `current URL: ${page.url()}`,
+        `POST status: ${attempt.bookingResponse?.status() ?? 'none'}`,
+        `POST location: ${attempt.bookingResponse?.headers()?.location ?? 'none'}`,
+        `POST inertia location: ${attempt.bookingResponse?.headers()?.['x-inertia-location'] ?? 'none'}`,
+        `success GET status: ${attempt.successPageResponse?.status() ?? 'none'}`,
+        `success GET url: ${attempt.successPageResponse?.url() ?? 'none'}`,
+        serverErrorVisible ? 'server error page visible: yes' : 'server error page visible: no',
+        `body snippet: ${JSON.stringify(bodyText.replace(/\s+/g, ' ').slice(0, 240))}`,
+    ].join(' | ');
 }
