@@ -140,13 +140,22 @@ async function submitBookingRequest(page) {
 }
 
 async function finalizeBookingSuccess(page, bookingResponse, successUrl) {
+    if (successUrl.test(page.url())) {
+        return true;
+    }
+
     try {
-        await page.waitForURL(successUrl, { timeout: 5000 });
+        await page.waitForFunction(
+            (pattern) => new RegExp(pattern).test(window.location.href),
+            successUrl.source,
+            { timeout: 5000 },
+        );
 
         return true;
     } catch {
         const responseUrl = bookingResponse?.url() ?? '';
         const locationHeader = bookingResponse?.headers()?.location ?? '';
+        const inertiaLocationHeader = bookingResponse?.headers()?.['x-inertia-location'] ?? '';
 
         if (successUrl.test(responseUrl)) {
             await page.goto(responseUrl);
@@ -157,6 +166,16 @@ async function finalizeBookingSuccess(page, bookingResponse, successUrl) {
         if (successUrl.test(locationHeader)) {
             await page.goto(locationHeader);
 
+            return true;
+        }
+
+        if (successUrl.test(inertiaLocationHeader)) {
+            await page.goto(inertiaLocationHeader);
+
+            return true;
+        }
+
+        if (successUrl.test(page.url())) {
             return true;
         }
 
