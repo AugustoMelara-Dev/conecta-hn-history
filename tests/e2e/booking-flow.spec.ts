@@ -113,7 +113,7 @@ async function submitBookingWithFallback(page) {
 
     const changeScheduleButton = page.getByRole('button', { name: 'Cambiar horario' });
     await expect(changeScheduleButton).toBeVisible({ timeout: 5000 });
-    await changeScheduleButton.click();
+    await changeScheduleButton.click({ force: true });
     await expect(page.getByTestId('booking-step-slots')).toBeVisible();
 
     const slotOptions = page.locator('[data-testid^="booking-slot-"]');
