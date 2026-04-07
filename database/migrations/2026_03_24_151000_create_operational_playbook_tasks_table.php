@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('operational_playbook_tasks')) {
+            return;
+        }
+
         Schema::create('operational_playbook_tasks', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
@@ -40,6 +44,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('operational_playbook_tasks');
+        if (Schema::hasTable('operational_playbook_tasks')) {
+            Schema::drop('operational_playbook_tasks');
+        }
     }
 };
