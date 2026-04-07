@@ -9,7 +9,9 @@ use App\Listeners\NotifyAppointmentBookedListener;
 use App\Listeners\SendAppointmentConfirmation;
 use App\Mail\AppointmentConfirmationMail;
 use App\Models\Appointment;
+use App\Providers\EventServiceProvider;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Events\Dispatcher;
 use Illuminate\Support\Facades\Config;
 
 afterEach(function () {
@@ -85,6 +87,18 @@ describe('Event Configuration', function () {
 
         expect($events)->toHaveKey('created');
         expect($events['created'])->toBe(AppointmentCreated::class);
+    });
+
+    it('EventServiceProvider removes appointment listeners during browser release e2e', function () {
+        Config::set('app.e2e_browser_release', true);
+
+        $dispatcher = new Dispatcher(app());
+        $dispatcher->listen(AppointmentCreated::class, fn () => null);
+        app()->instance('events', $dispatcher);
+
+        (new EventServiceProvider(app()))->boot();
+
+        expect($dispatcher->hasListeners(AppointmentCreated::class))->toBeFalse();
     });
 });
 
