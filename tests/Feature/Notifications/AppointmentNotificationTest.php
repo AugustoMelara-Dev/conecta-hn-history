@@ -3,10 +3,58 @@
 declare(strict_types=1);
 
 use App\Events\Appointment\AppointmentCreated;
+use App\Domain\Contracts\AdminNotifier;
+use App\Domain\TenantGovernance\Services\OperationalPlaybookTaskManager;
+use App\Listeners\NotifyAppointmentBookedListener;
 use App\Listeners\SendAppointmentConfirmation;
 use App\Mail\AppointmentConfirmationMail;
 use App\Models\Appointment;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Config;
+
+afterEach(function () {
+    Mockery::close();
+});
+
+function makeAppointmentCreatedEvent(): AppointmentCreated
+{
+    $appointment = new Appointment;
+    $appointment->forceFill([
+        'id' => 1,
+        'tenant_id' => '00000000-0000-0000-0000-000000000001',
+    ]);
+
+    return new AppointmentCreated($appointment);
+}
+
+function makeAdminNotifier(): AdminNotifier
+{
+    return new class implements AdminNotifier
+    {
+        public function notifyNewLead(object $lead): void {}
+
+        public function notifyNewReview(object $review): void {}
+
+        public function notifyNewOrder(int|string $tenantId, int $orderId, float $total): void {}
+
+        public function notifyPaymentUpdate(int|string $tenantId, string $status, float $amount): void {}
+
+        public function notifyAppointmentBooked(object $appointment): void {}
+
+        public function notifyAppointmentReminder(object $appointment): void {}
+
+        public function notifyRecoveryOfferReady(object $tenant, ?string $customerName, string $couponCode, float $subtotal): void {}
+
+        public function notifyRepeatPurchaseOpportunity(object $order): void {}
+
+        public function notifyRenewalAttention(object $tenant, int $daysUntilExpiry): void {}
+    };
+}
+
+function makeOperationalPlaybookTaskManager(): OperationalPlaybookTaskManager
+{
+    return (new ReflectionClass(OperationalPlaybookTaskManager::class))->newInstanceWithoutConstructor();
+}
 
 describe('Notification Classes Exist', function () {
     it('AppointmentCreated event class exists', function () {
@@ -44,6 +92,32 @@ describe('Listener Configuration', function () {
     it('SendAppointmentConfirmation implements ShouldQueue (async)', function () {
         $listener = new SendAppointmentConfirmation;
         expect($listener)->toBeInstanceOf(ShouldQueue::class);
+    });
+
+    it('appointment listeners do not queue during browser release e2e', function () {
+        Config::set('app.e2e_browser_release', true);
+        $event = makeAppointmentCreatedEvent();
+
+        $notificationListener = new NotifyAppointmentBookedListener(
+            makeAdminNotifier(),
+            makeOperationalPlaybookTaskManager(),
+        );
+
+        expect((new SendAppointmentConfirmation)->shouldQueue($event))->toBeFalse();
+        expect($notificationListener->shouldQueue($event))->toBeFalse();
+    });
+
+    it('appointment listeners still queue outside browser release e2e', function () {
+        Config::set('app.e2e_browser_release', false);
+        $event = makeAppointmentCreatedEvent();
+
+        $notificationListener = new NotifyAppointmentBookedListener(
+            makeAdminNotifier(),
+            makeOperationalPlaybookTaskManager(),
+        );
+
+        expect((new SendAppointmentConfirmation)->shouldQueue($event))->toBeTrue();
+        expect($notificationListener->shouldQueue($event))->toBeTrue();
     });
 
     it('SendAppointmentConfirmation has handle method', function () {

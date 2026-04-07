@@ -21,6 +21,11 @@ use Illuminate\Support\Facades\Mail;
  */
 class SendAppointmentConfirmation implements ShouldQueue, ShouldQueueAfterCommit
 {
+    public function shouldQueue(AppointmentCreated $event): bool
+    {
+        return ! config('app.e2e_browser_release');
+    }
+
     public function handle(AppointmentCreated $event): void
     {
         if (config('app.e2e_browser_release')) {
