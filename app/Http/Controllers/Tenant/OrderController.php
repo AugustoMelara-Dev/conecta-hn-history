@@ -8,7 +8,6 @@ use App\Domain\Orders\Contracts\ReceiptGeneratorInterface;
 use App\Domain\Shared\Contracts\TenantContext;
 use App\Domain\Tenant\Contracts\OrderRepository;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Tenant\UpdateOrderStatusRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -50,30 +49,18 @@ final class OrderController extends Controller
         return Inertia::render('Tenant/Orders/Index', [
             'orders' => $orders,
             'filters' => $request->only(['status', 'date', 'search']),
-            'tenant' => $this->tenantContext->getTenantData(['id', 'name', 'slug', 'is_pro']),
+            'tenant' => $this->tenantContext->getTenantData(['id', 'name', 'slug', 'plan_type', 'is_paid_plan']),
         ]);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
     // UPDATE STATUS - Order Lifecycle
     // ═══════════════════════════════════════════════════════════════════════
-    public function updateStatus(UpdateOrderStatusRequest $request, int $orderId): RedirectResponse
+    public function updateStatus(Request $request, int $orderId): RedirectResponse
     {
-        $tenantId = $this->tenantContext->getTenantId();
-        $validated = $request->validated();
-
-        // DELEGATED: Update logic lives in Repository
-        $updated = $this->orderRepository->updateStatus(
-            tenantId: $tenantId,
-            orderId: $orderId,
-            status: $validated['status']
-        );
-
-        if (! $updated) {
-            abort(404, 'Order not found.');
-        }
-
-        return back()->with('success', 'Estado actualizado.');
+        return redirect()
+            ->to(route('filament.app.resources.orders.index', ['tenant' => $this->tenantSlug()], false))
+            ->with('error', 'La gestion operativa de pedidos ya se administra desde el panel oficial en /app.');
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -120,5 +107,10 @@ final class OrderController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => sprintf('inline; filename="%s"', $filename),
         ]);
+    }
+
+    private function tenantSlug(): string
+    {
+        return (string) ($this->tenantContext->getTenantData(['slug'])['slug'] ?? '');
     }
 }

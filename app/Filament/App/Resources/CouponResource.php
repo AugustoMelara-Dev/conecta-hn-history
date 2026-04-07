@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Filament\App\Resources\CouponResource\Pages;
 use App\Models\Coupon;
 use App\Models\Tenant;
@@ -55,14 +56,14 @@ class CouponResource extends Resource
     {
         $tenant = self::getTenantRecord();
 
-        return $tenant instanceof Tenant && (bool) $tenant->is_pro;
+        return $tenant instanceof Tenant && $tenant->hasFeature(TenantFeature::PROMOTIONAL_COUPONS);
     }
 
     public static function canAccess(): bool
     {
         $tenant = self::getTenantRecord();
 
-        return $tenant instanceof Tenant && (bool) $tenant->is_pro;
+        return $tenant instanceof Tenant && $tenant->hasFeature(TenantFeature::PROMOTIONAL_COUPONS);
     }
 
     public static function form(Schema $schema): Schema

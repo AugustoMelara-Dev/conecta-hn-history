@@ -282,11 +282,15 @@ class CustomerLoyaltyManager
         $nextLockedReward = $rewards->first(fn (LoyaltyReward $reward): bool => (int) $reward->points_cost > $balance);
         $bestAvailableReward = $affordableRewards->last();
 
+        $nextRewardName = $bestAvailableReward instanceof LoyaltyReward
+            ? $bestAvailableReward->name
+            : ($nextLockedReward instanceof LoyaltyReward ? $nextLockedReward->name : null);
+
         $profile->forceFill([
             'loyalty_points_balance' => $balance,
             'lifetime_points_earned' => $lifetimePoints,
             'redeemable_rewards_count' => $affordableRewards->count(),
-            'next_reward_name' => $bestAvailableReward?->name ?? $nextLockedReward?->name,
+            'next_reward_name' => $nextRewardName,
             'points_to_next_reward' => $nextLockedReward instanceof LoyaltyReward
                 ? max(0, (int) $nextLockedReward->points_cost - $balance)
                 : 0,

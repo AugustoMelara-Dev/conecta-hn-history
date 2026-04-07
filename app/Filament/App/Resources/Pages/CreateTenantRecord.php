@@ -14,7 +14,7 @@ abstract class CreateTenantRecord extends CreateRecord
 {
     public function getTitle(): string
     {
-        return 'Crear ' . Str::lower($this->getResource()::getModelLabel());
+        return 'Crear '.Str::lower($this->getResource()::getModelLabel());
     }
 
     public function getBreadcrumb(): string
@@ -43,7 +43,9 @@ abstract class CreateTenantRecord extends CreateRecord
             $tenant instanceof Model &&
             in_array(BelongsToTenant::class, class_uses_recursive($record), true)
         ) {
-            $record->tenant_id = $tenant->getKey();
+            $record->forceFill([
+                'tenant_id' => $tenant->getKey(),
+            ]);
         }
 
         if ($parentRecord = $this->getParentRecord()) {

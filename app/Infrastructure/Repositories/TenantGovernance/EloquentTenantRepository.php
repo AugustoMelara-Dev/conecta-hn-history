@@ -72,7 +72,6 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
                 'cover_path',
                 'brand_color',
                 'plan_type',
-                'is_pro',
             ])
             ->published()
             ->inPriorityOrder()
@@ -92,7 +91,10 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
                     'plan_type' => $planType instanceof TenantPlan
                         ? $planType->value
                         : (string) ($planType ?? TenantPlan::SEMILLA->value),
-                    'is_pro' => (bool) $tenant->is_pro,
+                    'is_paid_plan' => (bool) (
+                        ($planType instanceof TenantPlan ? $planType->value : (string) ($planType ?? TenantPlan::SEMILLA->value))
+                        !== TenantPlan::SEMILLA->value
+                    ),
                 ];
             })
             ->all();
@@ -162,7 +164,6 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'landing_page_data' => $state['landing_page_data'] ?? null,
             'simple_schedule' => $state['simple_schedule'] ?? null,
             'is_ai_enhanced' => $state['is_ai_enhanced'] ?? false,
-            'is_pro' => $state['is_pro'] ?? false,
             'product_limit' => $state['product_limit'] ?? 10,
             'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
             'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
@@ -206,7 +207,6 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
                 'landing_page_data' => $state['landing_page_data'] ?? null,
                 'simple_schedule' => $state['simple_schedule'] ?? null,
                 'is_ai_enhanced' => $state['is_ai_enhanced'] ?? false,
-                'is_pro' => $state['is_pro'] ?? false,
                 'product_limit' => $state['product_limit'] ?? 10,
                 'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
                 'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
@@ -275,7 +275,6 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'landing_page_data' => $this->nullableArray($model->getAttribute('landing_page_data')),
             'simple_schedule' => $this->nullableArray($model->getAttribute('simple_schedule')),
             'is_ai_enhanced' => (bool) $model->getAttribute('is_ai_enhanced'),
-            'is_pro' => (bool) $model->is_pro,
             'product_limit' => (int) ($model->getAttribute('product_limit') ?? 10),
             'version' => (int) ($model->getAttribute('version') ?? 1),
         ]);

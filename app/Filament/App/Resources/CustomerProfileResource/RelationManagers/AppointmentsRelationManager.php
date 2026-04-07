@@ -7,6 +7,7 @@ namespace App\Filament\App\Resources\CustomerProfileResource\RelationManagers;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Models\Appointment;
 use App\Models\Tenant;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -52,7 +53,7 @@ class AppointmentsRelationManager extends RelationManager
             ->defaultSort('scheduled_at', 'desc')
             ->headerActions([])
             ->actions([
-                Tables\Actions\Action::make('open')
+                Action::make('open')
                     ->label('Abrir')
                     ->icon('heroicon-o-arrow-top-right-on-square')
                     ->url(function (Appointment $record): string {

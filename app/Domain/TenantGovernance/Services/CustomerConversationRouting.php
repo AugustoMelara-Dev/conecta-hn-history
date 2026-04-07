@@ -19,12 +19,13 @@ class CustomerConversationRouting
     public function resolve(CustomerProfile $profile, string $channel = 'crm'): array
     {
         $segmentKey = (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new');
-        $businessSegmentKey = filled($profile->tenant?->business_segment_key)
-            ? (string) $profile->tenant->business_segment_key
+        $tenant = $profile->tenant;
+        $businessSegmentKey = $tenant instanceof \App\Models\Tenant && filled($tenant->business_segment_key)
+            ? (string) $tenant->business_segment_key
             : null;
-
         $groups = (array) config('customer-operations.groups', []);
-        $baseGroup = (string) ((array) config('customer-operations.segment_groups', []))[$segmentKey] ?? 'sales';
+        $segmentGroups = (array) config('customer-operations.segment_groups', []);
+        $baseGroup = (string) ($segmentGroups[$segmentKey] ?? 'sales');
         $override = $businessSegmentKey !== null
             ? (array) config("customer-operations.business_segment_overrides.{$businessSegmentKey}", [])
             : [];

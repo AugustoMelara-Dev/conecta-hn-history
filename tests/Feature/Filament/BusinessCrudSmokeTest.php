@@ -112,7 +112,12 @@ final class BusinessCrudSmokeTest extends TestCase
             ->assertHasNoErrors()
             ->assertRedirect(route('filament.app.resources.products.index', ['tenant' => $tenant->slug], false));
 
-        $product = Product::query()->withoutGlobalScopes()->first();
+        $product = Product::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenant->getKey())
+            ->where('name', 'Cafe latte')
+            ->latest('created_at')
+            ->first();
 
         $this->assertNotNull($product);
         $this->assertSame((string) $tenant->getKey(), (string) $product->tenant_id);

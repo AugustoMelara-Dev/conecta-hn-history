@@ -6,7 +6,9 @@ namespace App\Listeners;
 
 use App\Events\Appointment\AppointmentCreated;
 use App\Mail\AppointmentConfirmationMail;
+use App\Models\Appointment;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -17,19 +19,27 @@ use Illuminate\Support\Facades\Mail;
  * INVARIANT: Only sends if customer_email is present.
  * Walk-ins (no email) are silently skipped.
  */
-class SendAppointmentConfirmation implements ShouldQueue
+class SendAppointmentConfirmation implements ShouldQueue, ShouldQueueAfterCommit
 {
+    public function shouldQueue(AppointmentCreated $event): bool
+    {
+        return ! config('app.e2e_browser_release');
+    }
+
     public function handle(AppointmentCreated $event): void
     {
-        $appointment = $event->appointment;
-
-        // Skip if no email (walk-in or guest without email)
-        if (empty($appointment->customer_email)) {
+        if (config('app.e2e_browser_release')) {
             return;
         }
 
-        // Ensure relationships are loaded for the email template
-        $appointment->loadMissing(['tenant', 'service', 'provider']);
+        $appointmentId = $event->appointment->getKey();
+        $appointment = Appointment::query()
+            ->with(['tenant', 'service', 'provider'])
+            ->find($appointmentId);
+
+        if (! $appointment || empty($appointment->customer_email)) {
+            return;
+        }
 
         Mail::to($appointment->customer_email)
             ->send(new AppointmentConfirmationMail($appointment));

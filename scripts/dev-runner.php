@@ -48,7 +48,7 @@ $commandLine = implode(' ', $segments);
 $isDryRun = in_array('--dry-run', $argv, true) || getenv('CODEX_DEV_RUNNER_DRY_RUN') !== false;
 
 if ($isDryRun) {
-    fwrite(STDOUT, $commandLine . PHP_EOL);
+    fwrite(STDOUT, $commandLine.PHP_EOL);
 
     exit(0);
 }

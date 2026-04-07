@@ -12,9 +12,11 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
+use App\Application\TenantGovernance\Contracts\TenantFeatureAccessManagerInterface;
 use App\Domain\Shared\Traits\HasDomainEvents;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\Capability;
+use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Scopes\LocationScope;
@@ -35,9 +37,6 @@ use Spatie\Activitylog\Models\Activity as ActivityModel;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\OpeningHours\OpeningHours;
 
-/**
- * @property bool $is_pro
- */
 #[ObservedBy(\App\Observers\TenantObserver::class)]
 class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 {
@@ -124,6 +123,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'business_type',
         'business_segment_key',
         // Premium Profile Fields (unlocked for microsite customization)
+        'logo_path',
         'about',
         'hero_image',
         'latitude',
@@ -141,7 +141,6 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'subscription_ends_at',
         'plan_expires_at',
         'product_limit',
-        'is_pro',
     ];
 
     protected $casts = [
@@ -283,11 +282,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             default => '',
         };
 
-        if ($value === '' && array_key_exists('is_pro', $rawAttributes)) {
-            return (bool) $rawAttributes['is_pro'];
-        }
-
-        if (! in_array($value, ['pro', 'enterprise'])) {
+        if (! in_array($value, ['pro', self::PLAN_CRECIMIENTO, self::PLAN_COSECHA, 'enterprise'], true)) {
             return false;
         }
 
@@ -486,7 +481,6 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         }
 
         $this->forceFill([
-            'is_pro' => true,
             'is_active' => true,
             'plan_type' => TenantPlan::PRO->value,
             'subscription_status' => 'active',
@@ -512,7 +506,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
                 ->event('operations')
                 ->withProperties(array_merge([
                     'source' => 'superpanel',
-                    'ip' => request()?->ip(),
+                    'ip' => request()->ip(),
                 ], $properties))
                 ->log($description);
         } catch (\Throwable $exception) {
@@ -595,7 +589,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     {
         // FIXED: Only log attributes that are always present during model lifecycle.
         // Removed: status (doesn't exist), plan_expires_at, subscription_ends_at,
-        // is_pro (computed accessor), and other nullable/conditional fields that
+        // and other nullable/conditional fields that
         // cause MissingAttributeException during factory creation.
         return LogOptions::defaults()
             ->logOnly([
@@ -900,7 +894,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public function getPublicMenuStructure(?int $productLimit = null): ?\Illuminate\Support\Collection
     {
-        if (! $this->is_pro) {
+        if (! $this->isPaidPlan()) {
             return null;
         }
 
@@ -922,7 +916,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             ->where('is_visible', true)
             ->orderBy('name');
 
-        if (! $this->is_pro) {
+        if (! $this->isPaidPlan()) {
             $query->take($limit);
         }
 
@@ -932,5 +926,15 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function hasCapability(Capability $capability): bool
     {
         return app(CapabilityManagerInterface::class)->has($this, $capability);
+    }
+
+    public function hasFeature(TenantFeature $feature): bool
+    {
+        return app(TenantFeatureAccessManagerInterface::class)->has($this, $feature);
+    }
+
+    private function isPaidPlan(): bool
+    {
+        return $this->getIsProAttribute();
     }
 }

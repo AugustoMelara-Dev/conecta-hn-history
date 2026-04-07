@@ -44,14 +44,14 @@ class MinimalSeeder extends Seeder
         // 4. Create Tenants for the Seller
         // Using TenantGovernance Domain Factory
         $businesses = [
-            ['name' => 'Café El Indio', 'city' => 'Tegucigalpa', 'is_pro' => true],
-            ['name' => 'TechStore SPS', 'city' => 'San Pedro Sula', 'is_pro' => true],
-            ['name' => 'Farmacia Salud', 'city' => 'La Ceiba', 'is_pro' => true],
-            ['name' => 'Restaurante Don Pepe', 'city' => 'Tegucigalpa', 'is_pro' => true],
-            ['name' => 'Inversiones La Paz', 'city' => 'San Pedro Sula', 'is_pro' => true],
-            ['name' => 'Comedor Suyapa', 'city' => 'Tegucigalpa', 'is_pro' => false],
-            ['name' => 'Tienda La Esquina', 'city' => 'La Ceiba', 'is_pro' => false],
-            ['name' => 'Barbería El Corte', 'city' => 'San Pedro Sula', 'is_pro' => false],
+            ['name' => 'Café El Indio', 'city' => 'Tegucigalpa', 'plan_type' => 'pro'],
+            ['name' => 'TechStore SPS', 'city' => 'San Pedro Sula', 'plan_type' => 'pro'],
+            ['name' => 'Farmacia Salud', 'city' => 'La Ceiba', 'plan_type' => 'pro'],
+            ['name' => 'Restaurante Don Pepe', 'city' => 'Tegucigalpa', 'plan_type' => 'pro'],
+            ['name' => 'Inversiones La Paz', 'city' => 'San Pedro Sula', 'plan_type' => 'pro'],
+            ['name' => 'Comedor Suyapa', 'city' => 'Tegucigalpa', 'plan_type' => 'semilla'],
+            ['name' => 'Tienda La Esquina', 'city' => 'La Ceiba', 'plan_type' => 'semilla'],
+            ['name' => 'Barbería El Corte', 'city' => 'San Pedro Sula', 'plan_type' => 'semilla'],
         ];
 
         // Retrieve category IDs
@@ -91,7 +91,7 @@ class MinimalSeeder extends Seeder
                     'whatsapp_number' => '+504 9999-999'.$idx,
                 ]);
 
-            if ($biz['is_pro']) {
+            if ($biz['plan_type'] === 'pro') {
                 $factory = $factory->pro();
             } else {
                 $factory = $factory->state(['plan_type' => 'semilla']);

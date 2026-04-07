@@ -30,7 +30,7 @@ final class AvatarPlaceholder
 </svg>
 SVG;
 
-        return 'data:image/svg+xml;charset=UTF-8,' . rawurlencode($svg);
+        return 'data:image/svg+xml;charset=UTF-8,'.rawurlencode($svg);
     }
 
     private static function initials(string $name): string

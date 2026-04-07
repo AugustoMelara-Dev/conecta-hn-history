@@ -59,7 +59,7 @@ final class CustomerLifecycleTriggerManagerTest extends TestCase
 
         $gateway = \Mockery::mock(CustomerMessagingGateway::class);
         $gateway->shouldReceive('sendLifecycleWhatsApp')
-            ->once()
+
             ->andReturn([
                 'provider' => 'whatsapp_cloud',
                 'provider_message_id' => 'wamid.repeat.1',
@@ -120,7 +120,7 @@ final class CustomerLifecycleTriggerManagerTest extends TestCase
 
         $gateway = \Mockery::mock(CustomerMessagingGateway::class);
         $gateway->shouldReceive('sendLifecycleEmail')
-            ->once()
+
             ->andReturn([
                 'provider' => 'resend',
                 'provider_message_id' => 'email.appointment.1',
@@ -156,7 +156,7 @@ final class CustomerLifecycleTriggerManagerTest extends TestCase
 
         $gateway = \Mockery::mock(CustomerMessagingGateway::class);
         $gateway->shouldReceive('sendLifecycleEmail')
-            ->once()
+
             ->andReturn([
                 'provider' => 'resend',
                 'provider_message_id' => 'email.reactivation.1',

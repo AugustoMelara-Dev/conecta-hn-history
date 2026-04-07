@@ -10,6 +10,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('customer_conversation_messages')) {
+            return;
+        }
+
         Schema::create('customer_conversation_messages', function (Blueprint $table): void {
             $table->id();
             $table->foreignUuid('tenant_id')->constrained('tenants')->cascadeOnDelete();

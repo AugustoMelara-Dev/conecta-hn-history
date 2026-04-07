@@ -10,6 +10,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('customer_loyalty_ledger')) {
+            return;
+        }
+
         Schema::create('customer_loyalty_ledger', function (Blueprint $table): void {
             $table->id();
             $table->char('tenant_id', 36);

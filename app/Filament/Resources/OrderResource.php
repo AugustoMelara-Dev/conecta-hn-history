@@ -19,6 +19,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontFamily;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * OrderResource - Forensic Immutable Viewer & Workflow Command Center
@@ -35,6 +36,8 @@ use Filament\Tables\Table;
 class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
+
+    protected static bool $isScopedToTenant = false;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
 
@@ -273,6 +276,11 @@ class OrderResource extends Resource
     }
 
     use \App\Filament\Traits\ScopesToTenant;
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->withoutGlobalScopes();
+    }
 
     public static function getRelations(): array
     {

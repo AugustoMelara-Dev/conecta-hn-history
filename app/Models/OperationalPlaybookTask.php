@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 class OperationalPlaybookTask extends Model
 {
@@ -100,9 +101,11 @@ class OperationalPlaybookTask extends Model
 
     public function isOverdue(): bool
     {
+        $dueAt = $this->getAttribute('due_at');
+
         return $this->completed_at === null
-            && $this->due_at !== null
-            && $this->due_at->isPast();
+            && $dueAt instanceof Carbon
+            && $dueAt->isPast();
     }
 
     public function markInProgress(?User $user = null): void
@@ -123,7 +126,7 @@ class OperationalPlaybookTask extends Model
         }
 
         $this->status = self::STATUS_COMPLETED;
-        $this->completed_at = now();
+        $this->completed_at = now()->toDateTimeString();
         $this->save();
     }
 

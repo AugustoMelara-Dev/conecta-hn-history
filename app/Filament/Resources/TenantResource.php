@@ -6,6 +6,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\TenantResource\Pages;
 use App\Filament\Resources\TenantResource\RelationManagers\ActivityLogsRelationManager;
+use App\Infrastructure\TenantGovernance\SuperAdmin\SuperAdminTenantPlanReader;
 // MIGRATION: Updated to Domain namespace (2026-01-05)
 use App\Models\Tenant;
 use App\Models\User;
@@ -111,10 +112,13 @@ class TenantResource extends Resource
 
                 Section::make('Configuración de plan')
                     ->schema([
-                        Forms\Components\Toggle::make('is_pro')
-                            ->label('Plan PRO Activo')
-                            ->default(false)
-                            ->live(),
+                        Forms\Components\Select::make('plan_type')
+                            ->label('Plan comercial')
+                            ->options(static::planTypeOptions())
+                            ->default(\App\Domain\TenantGovernance\Enums\TenantPlan::SEMILLA->value)
+                            ->required()
+                            ->live()
+                            ->native(false),
 
                         Forms\Components\TextInput::make('product_limit')
                             ->label('Límite de productos')
@@ -130,8 +134,8 @@ class TenantResource extends Resource
                             ->helperText('Si se desactiva, el negocio no podrá operar.'),
                     ])->columns(3),
 
-                Section::make('Personalización (PRO)')
-                    ->description('Personaliza la apariencia del micrositio. Exclusivo para planes PRO.')
+                Section::make('Personalización de plan pagado')
+                    ->description('Personaliza la apariencia del micrositio. Disponible para planes comerciales pagados.')
                     ->schema([
                         Forms\Components\FileUpload::make('logo_path')
                             ->label('Logo')
@@ -147,27 +151,27 @@ class TenantResource extends Resource
                             ->maxSize(2048)
                             ->image()
                             ->directory('tenants/banners')
-                            ->disabled(fn (Get $get) => ! $get('is_pro'))
-                            ->helperText(fn (Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
+                            ->disabled(fn (Get $get) => ! static::stateHasPaidPlan($get))
+                            ->helperText(fn (Get $get) => ! static::stateHasPaidPlan($get) ? 'Activa un plan pagado para habilitar.' : null),
 
                         Forms\Components\ColorPicker::make('primary_color')
                             ->label('Color de Marca')
                             ->default('#000000')
-                            ->disabled(fn (Get $get) => ! $get('is_pro'))
-                            ->helperText(fn (Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
+                            ->disabled(fn (Get $get) => ! static::stateHasPaidPlan($get))
+                            ->helperText(fn (Get $get) => ! static::stateHasPaidPlan($get) ? 'Activa un plan pagado para habilitar.' : null),
 
                         Forms\Components\TextInput::make('whatsapp_number')
                             ->label('WhatsApp Business')
                             ->tel()
-                            ->disabled(fn (Get $get) => ! $get('is_pro'))
-                            ->helperText(fn (Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar el Botón Mágico.' : null),
+                            ->disabled(fn (Get $get) => ! static::stateHasPaidPlan($get))
+                            ->helperText(fn (Get $get) => ! static::stateHasPaidPlan($get) ? 'Activa un plan pagado para habilitar el Botón Mágico.' : null),
 
                         Forms\Components\KeyValue::make('social_links')
                             ->label('Redes Sociales')
                             ->keyLabel('Plataforma (facebook, instagram, etc)')
                             ->valueLabel('URL Completa')
-                            ->disabled(fn (Get $get) => ! $get('is_pro'))
-                            ->helperText(fn (Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
+                            ->disabled(fn (Get $get) => ! static::stateHasPaidPlan($get))
+                            ->helperText(fn (Get $get) => ! static::stateHasPaidPlan($get) ? 'Activa un plan pagado para habilitar.' : null),
                     ])->columns(2),
 
                 // BRAND IDENTITY SECTION - White-Label Customization
@@ -334,12 +338,12 @@ class TenantResource extends Resource
                     ->sortable()
                     ->description(fn (Tenant $record): string => $record->category instanceof \App\Models\Category ? $record->category->name : ''),
 
-                Tables\Columns\TextColumn::make('is_pro')
+                Tables\Columns\TextColumn::make('plan_type')
                     ->label('Plan')
                     ->badge()
-                    ->color(fn (bool $state): string => $state ? 'success' : 'gray')
-                    ->icon(fn (bool $state): string => $state ? 'heroicon-o-star' : 'heroicon-o-user')
-                    ->formatStateUsing(fn (bool $state): string => $state ? 'PRO' : 'FREE'),
+                    ->color(fn (Tenant $record): string => static::tenantHasPaidPlan($record) ? 'success' : 'gray')
+                    ->icon(fn (Tenant $record): string => static::tenantHasPaidPlan($record) ? 'heroicon-o-star' : 'heroicon-o-user')
+                    ->formatStateUsing(fn ($state, Tenant $record): string => static::planReader()->planLabel((string) ($state instanceof \BackedEnum ? $state->value : ($state ?: static::planReader()->planKey($record))))),
 
                 Tables\Columns\ColorColumn::make('primary_color')
                     ->label('Marca')
@@ -450,11 +454,9 @@ class TenantResource extends Resource
                     ->preload()
                     ->multiple(),
 
-                Tables\Filters\TernaryFilter::make('is_pro')
+                Tables\Filters\SelectFilter::make('plan_type')
                     ->label('Plan')
-                    ->placeholder('Todos')
-                    ->trueLabel('Solo PRO')
-                    ->falseLabel('Solo FREE'),
+                    ->options(static::planTypeOptions()),
 
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Estado Operativo')
@@ -742,7 +744,7 @@ class TenantResource extends Resource
                     ->label('Forzar PRO')
                     ->icon('heroicon-o-arrow-up-circle')
                     ->color('info')
-                    ->visible(fn (Tenant $record): bool => ! $record->is_pro)
+                    ->visible(fn (Tenant $record): bool => ! static::tenantHasPaidPlan($record))
                     ->requiresConfirmation()
                     ->modalHeading('Activar Plan PRO Manualmente')
                     ->modalDescription('Esto activará el Plan PRO sin registro de pago. Úsalo solo para regalos o pruebas.')
@@ -806,7 +808,7 @@ class TenantResource extends Resource
     /**
      * @return array<string, string>
      */
-    private static function internalOwnerOptions(): array
+    protected static function internalOwnerOptions(): array
     {
         $superAdmins = collect(config('auth.super_admins', []))
             ->filter(static fn (mixed $email): bool => is_string($email) && $email !== '')
@@ -829,7 +831,7 @@ class TenantResource extends Resource
     /**
      * @return array<string, string>
      */
-    private static function crmStatusOptions(): array
+    protected static function crmStatusOptions(): array
     {
         return [
             Tenant::CRM_STATUS_NEW => 'Nuevo',
@@ -845,7 +847,7 @@ class TenantResource extends Resource
     /**
      * @return array<string, string>
      */
-    private static function crmTeamOptions(): array
+    protected static function crmTeamOptions(): array
     {
         return [
             Tenant::CRM_TEAM_ACTIVATION => 'Activacion',
@@ -859,7 +861,7 @@ class TenantResource extends Resource
     /**
      * @return array<string, string>
      */
-    private static function crmPriorityOptions(): array
+    protected static function crmPriorityOptions(): array
     {
         return [
             Tenant::CRM_PRIORITY_LOW => 'Baja',
@@ -869,7 +871,7 @@ class TenantResource extends Resource
         ];
     }
 
-    private static function crmStatusColor(string $status): string
+    protected static function crmStatusColor(string $status): string
     {
         return match ($status) {
             Tenant::CRM_STATUS_ACTIVE, Tenant::CRM_STATUS_UPSELL => 'success',
@@ -881,7 +883,7 @@ class TenantResource extends Resource
         };
     }
 
-    private static function crmPriorityColor(string $priority): string
+    protected static function crmPriorityColor(string $priority): string
     {
         return match ($priority) {
             Tenant::CRM_PRIORITY_CRITICAL => 'danger',
@@ -891,7 +893,35 @@ class TenantResource extends Resource
         };
     }
 
-    private static function appendCrmNote(string $existing, string $incoming, ?User $actor = null): string
+    /**
+     * @return array<string, string>
+     */
+    protected static function planTypeOptions(): array
+    {
+        return [
+            \App\Domain\TenantGovernance\Enums\TenantPlan::SEMILLA->value => 'Semilla',
+            \App\Domain\TenantGovernance\Enums\TenantPlan::PRO->value => 'PRO',
+            Tenant::PLAN_CRECIMIENTO => 'Crecimiento',
+            Tenant::PLAN_COSECHA => 'Cosecha',
+        ];
+    }
+
+    protected static function stateHasPaidPlan(Get $get): bool
+    {
+        return in_array((string) ($get('plan_type') ?? ''), ['pro', 'crecimiento', 'cosecha'], true);
+    }
+
+    protected static function tenantHasPaidPlan(Tenant $tenant): bool
+    {
+        return static::planReader()->isPaidPlan($tenant);
+    }
+
+    protected static function planReader(): SuperAdminTenantPlanReader
+    {
+        return app(SuperAdminTenantPlanReader::class);
+    }
+
+    protected static function appendCrmNote(string $existing, string $incoming, ?User $actor = null): string
     {
         $incoming = trim($incoming);
 
@@ -899,7 +929,7 @@ class TenantResource extends Resource
             return $existing;
         }
 
-        $prefix = now()->format('d/m/Y H:i').' - '.($actor?->name ?? 'Sistema');
+        $prefix = now()->format('d/m/Y H:i').' - '.($actor instanceof User ? $actor->name : 'Sistema');
         $entry = $prefix.': '.$incoming;
         $existing = trim($existing);
 
@@ -909,7 +939,7 @@ class TenantResource extends Resource
     /**
      * @param  array<string, mixed>  $properties
      */
-    private static function logTenantEvent(Tenant $tenant, string $description, array $properties = [], ?User $actor = null): void
+    protected static function logTenantEvent(Tenant $tenant, string $description, array $properties = [], ?User $actor = null): void
     {
         $resolvedActor = $actor;
 
@@ -921,6 +951,3 @@ class TenantResource extends Resource
         $tenant->logOperationalEvent($description, $resolvedActor, $properties);
     }
 }
-
-
-

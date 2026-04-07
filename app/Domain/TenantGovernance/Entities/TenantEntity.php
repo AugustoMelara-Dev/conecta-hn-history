@@ -65,8 +65,6 @@ final class TenantEntity
 
     private ?string $longitude = null;
 
-    private bool $isPro = false;
-
     private int $productLimit = 10;
 
     private ?string $description = null;
@@ -242,7 +240,9 @@ final class TenantEntity
 
     public function isPro(): bool
     {
-        return $this->isPro;
+        return $this->planId !== null
+            && in_array($this->planId, ['pro', 'crecimiento', 'cosecha', 'enterprise'], true)
+            && in_array($this->subscriptionStatus, ['active', 'trial'], true);
     }
 
     public function isPubliclyVisible(): bool
@@ -341,7 +341,7 @@ final class TenantEntity
         ?BusinessType $businessType = null,
         ?string $logoPath = null,
         ?string $whatsapp = null,
-        bool $isPro = false,
+        bool $hasPaidPlan = false,
         int $productLimit = 10
     ): void {
         $this->ownerId = $ownerId;
@@ -350,7 +350,9 @@ final class TenantEntity
         $this->businessType = $businessType ?? BusinessType::RETAIL;
         $this->logoPath = $logoPath;
         $this->whatsapp = $whatsapp;
-        $this->isPro = $isPro;
+        if ($this->planId === null) {
+            $this->planId = $hasPaidPlan ? 'pro' : 'semilla';
+        }
         $this->productLimit = $productLimit;
         $this->updatedAt = new DateTimeImmutable;
     }
@@ -478,7 +480,6 @@ final class TenantEntity
             'address' => $this->address,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
-            'is_pro' => $this->isPro,
             'product_limit' => $this->productLimit,
             'description' => $this->description,
             'about' => $this->about,
@@ -547,7 +548,6 @@ final class TenantEntity
         $tenant->address = isset($state['address']) ? (string) $state['address'] : null;
         $tenant->latitude = isset($state['latitude']) ? (string) $state['latitude'] : null;
         $tenant->longitude = isset($state['longitude']) ? (string) $state['longitude'] : null;
-        $tenant->isPro = isset($state['is_pro']) ? (bool) $state['is_pro'] : false;
         $tenant->productLimit = isset($state['product_limit']) ? (int) $state['product_limit'] : 10;
         $tenant->description = isset($state['description']) ? (string) $state['description'] : null;
         $tenant->about = isset($state['about']) ? (string) $state['about'] : null;

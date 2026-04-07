@@ -73,6 +73,7 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
         if ($this->snapshotStrategy->shouldSnapshot($user)) {
             try {
                 $this->snapshotRepository->save(
+                    'User',
                     $user->id(),
                     $user->version(),
                     $user->toStateArray()

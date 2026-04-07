@@ -21,11 +21,15 @@ use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 use Illuminate\Support\HtmlString;
 
 class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
+
+    protected static bool $isScopedToTenant = false;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
 
@@ -150,13 +154,21 @@ class ProductResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $imageColumn = DatabaseSchema::hasTable('media')
+            ? SpatieMediaLibraryImageColumn::make('product-images')
+                ->label('Imagen')
+                ->collection('product-images')
+                ->conversion('thumb')
+                ->circular()
+            : Tables\Columns\TextColumn::make('id')
+                ->label('Imagen')
+                ->formatStateUsing(static fn (): string => 'Sin media')
+                ->badge()
+                ->color('gray');
+
         return $table
             ->columns([
-                SpatieMediaLibraryImageColumn::make('product-images')
-                    ->label('Imagen')
-                    ->collection('product-images')
-                    ->conversion('thumb')
-                    ->circular(),
+                $imageColumn,
 
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
@@ -203,6 +215,11 @@ class ProductResource extends Resource
     }
 
     use \App\Filament\Traits\ScopesToTenant;
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->withoutGlobalScopes();
+    }
 
     public static function getRelations(): array
     {

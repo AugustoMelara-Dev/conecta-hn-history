@@ -7,7 +7,6 @@ use App\Domain\Shared\ValueObjects\TenantId;
 use App\Listeners\InvalidateStorefrontCache;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 
 uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 

@@ -19,6 +19,8 @@ final class TenantMicrositeTransformerTest extends TestCase
 {
     use DatabaseTransactions;
 
+    private const LEGACY_PAID_PLAN_FLAG = 'is_pro';
+
     #[Test]
     public function it_exposes_the_about_field_for_storytelling(): void
     {
@@ -33,6 +35,9 @@ final class TenantMicrositeTransformerTest extends TestCase
 
         self::assertArrayHasKey('about', $result);
         self::assertSame('Our story began in 2020...', $result['about']);
+        self::assertArrayHasKey('plan_type', $result);
+        self::assertArrayHasKey('is_paid_plan', $result);
+        self::assertArrayNotHasKey(self::LEGACY_PAID_PLAN_FLAG, $result);
     }
 
     #[Test]

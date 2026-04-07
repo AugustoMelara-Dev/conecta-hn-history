@@ -18,6 +18,11 @@ import Pusher from 'pusher-js';
 window.axios = axios;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
+const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+if (csrfTokenMeta?.content) {
+    window.axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfTokenMeta.content;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // LARAVEL ECHO CONFIGURATION (WebSocket Layer)
 // ═══════════════════════════════════════════════════════════════════════════

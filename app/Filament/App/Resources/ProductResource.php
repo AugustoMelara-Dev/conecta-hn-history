@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Domain\TenantGovernance\Enums\Capability;
+use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Filament\App\Resources\ProductResource\Pages;
 use App\Filament\App\Resources\ProductResource\RelationManagers\OptionGroupsRelationManager;
 use App\Models\Product;
@@ -28,7 +29,6 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -116,7 +116,7 @@ class ProductResource extends Resource
             ->whereNull('deleted_at')
             ->count();
 
-        if ($tenant->is_pro) {
+        if ($tenant->hasFeature(TenantFeature::ADVANCED_CATALOG)) {
             return static::$productLimitInfoCache[$cacheKey] = [
                 'count' => $currentCount,
                 'limit' => null,
@@ -327,7 +327,6 @@ class ProductResource extends Resource
                                     ->required()
                                     ->maxLength(100)
                                     ->autofocus(),
-
 
                                 // Seccion activa por defecto.
                                 Forms\Components\Hidden::make('is_active')
@@ -705,7 +704,7 @@ class ProductResource extends Resource
     {
         $tenant = static::getCurrentTenant();
 
-        return $tenant instanceof Tenant ? (bool) $tenant->is_pro : false;
+        return $tenant instanceof Tenant ? $tenant->hasFeature(TenantFeature::ADVANCED_CATALOG) : false;
     }
 
     protected static function currentTenantHasCapability(Capability $capability): bool

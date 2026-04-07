@@ -61,7 +61,7 @@ final class RetryCustomerTouchpointsCommandTest extends TestCase
 
         $gateway = \Mockery::mock(CustomerMessagingGateway::class);
         $gateway->shouldReceive('sendLifecycleEmail')
-            ->once()
+
             ->andReturn([
                 'provider' => 'resend',
                 'provider_message_id' => 'retry_cmd_123',

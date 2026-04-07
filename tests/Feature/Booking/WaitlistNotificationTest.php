@@ -7,7 +7,6 @@ use App\Mail\WaitlistSlotFreedMail;
 use App\Models\Service;
 use App\Models\Tenant;
 use App\Models\Waitlist;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 

@@ -8,11 +8,11 @@ use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\ServiceResource\Pages;
 use App\Models\Service;
 use App\Models\Tenant;
-use Filament\Facades\Filament;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -155,7 +155,7 @@ class ServiceResource extends Resource
         ];
     }
 
-    private static function getTenantRecord(): ?Tenant
+    protected static function getTenantRecord(): ?Tenant
     {
         $tenant = Filament::getTenant();
 

@@ -92,7 +92,8 @@ class EditTenant extends EditAdminRecord
     private function normalizeTenantData(array $data): array
     {
         $settings = app(GeneralSettings::class);
-        $isPro = (bool) ($data['is_pro'] ?? false);
+        $planType = (string) ($data['plan_type'] ?? TenantPlan::SEMILLA->value);
+        $isPro = in_array($planType, [TenantPlan::PRO->value, Tenant::PLAN_CRECIMIENTO, Tenant::PLAN_COSECHA], true);
         $explicitLimit = $data['product_limit'] ?? null;
 
         return $this->filterTenantColumns([
@@ -105,8 +106,7 @@ class EditTenant extends EditAdminRecord
             'address' => $data['address'] ?? null,
             'phone' => $data['phone'] ?? null,
             'website_url' => $data['website_url'] ?? null,
-            'is_pro' => $isPro,
-            'plan_type' => $isPro ? TenantPlan::PRO->value : TenantPlan::SEMILLA->value,
+            'plan_type' => $planType,
             'product_limit' => is_numeric($explicitLimit)
                 ? (int) $explicitLimit
                 : (int) ($isPro ? $settings->pro_plan_product_limit : $settings->free_plan_product_limit),
@@ -164,7 +164,7 @@ class EditTenant extends EditAdminRecord
      */
     private function filterTenantColumns(array $payload): array
     {
-        self::$tenantColumns ??= Schema::getColumnListing((new Tenant())->getTable());
+        self::$tenantColumns ??= Schema::getColumnListing((new Tenant)->getTable());
 
         return array_intersect_key($payload, array_flip(self::$tenantColumns));
     }

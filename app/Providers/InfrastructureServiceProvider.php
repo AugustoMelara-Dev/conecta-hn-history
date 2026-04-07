@@ -130,6 +130,51 @@ class InfrastructureServiceProvider extends ServiceProvider
             \App\Infrastructure\Tenant\EloquentAppointmentRepository::class
         );
 
+        $this->app->bind(
+            \App\Application\Tenant\Contracts\TenantProfileWriterInterface::class,
+            \App\Infrastructure\Tenant\EloquentTenantProfileWriter::class
+        );
+
+        $this->app->bind(
+            \App\Application\Catalog\Contracts\MenuSectionWriterInterface::class,
+            \App\Infrastructure\Catalog\EloquentMenuSectionWriter::class
+        );
+
+        $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantCampaignFinderInterface::class,
+            \App\Infrastructure\TenantGovernance\Campaign\EloquentTenantCampaignFinder::class
+        );
+
+        $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantCustomerInboxNoteFinderInterface::class,
+            \App\Infrastructure\TenantGovernance\Inbox\EloquentTenantCustomerInboxNoteFinder::class
+        );
+
+        $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantCustomerTaskFinderInterface::class,
+            \App\Infrastructure\TenantGovernance\CustomerProfile\EloquentTenantCustomerTaskFinder::class
+        );
+
+        $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantCustomerTouchpointFinderInterface::class,
+            \App\Infrastructure\TenantGovernance\CustomerProfile\EloquentTenantCustomerTouchpointFinder::class
+        );
+
+        $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantGrowthSignalsViewInterface::class,
+            \App\Infrastructure\TenantGovernance\TenantGrowthSignalsView::class
+        );
+
+        $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantOperationalComparisonsViewInterface::class,
+            \App\Infrastructure\TenantGovernance\TenantOperationalComparisonsView::class
+        );
+
+        $this->app->bind(
+            \App\Application\TenantGovernance\Contracts\TenantJourneyAnalyticsViewInterface::class,
+            \App\Infrastructure\TenantGovernance\TenantJourneyAnalyticsView::class
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
         // UPCASTING INFRASTRUCTURE (Resilient Read)
         // ═══════════════════════════════════════════════════════════════════════
@@ -218,13 +263,14 @@ class InfrastructureServiceProvider extends ServiceProvider
     {
         if ($this->app->isProduction()) {
             URL::forceScheme('https');
+
             return;
         }
 
         if ($this->app->environment('local') && $this->app->bound('request')) {
             $request = $this->app->make('request');
 
-            if ($request instanceof Request && filled($request->getSchemeAndHttpHost())) {
+            if (filled($request->getSchemeAndHttpHost())) {
                 URL::forceRootUrl($request->getSchemeAndHttpHost());
             }
         }

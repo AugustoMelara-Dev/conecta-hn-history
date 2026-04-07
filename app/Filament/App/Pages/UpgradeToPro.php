@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
+use App\Domain\TenantGovernance\Enums\TenantFeature;
+use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
 use App\Models\Tenant;
-use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
 
@@ -37,57 +38,59 @@ class UpgradeToPro extends Page
     {
         $tenant = self::getTenantRecord();
 
-        return $tenant instanceof Tenant && ! $tenant->is_pro;
+        return $tenant instanceof Tenant && $tenant->hasFeature(TenantFeature::UPGRADE_PROMPT);
     }
 
     public function getViewData(): array
     {
-        $price = 'L. 99.00';
-        $period = 'mes';
-
-        try {
-            $settings = app(GeneralSettings::class);
-            $price = 'L. '.number_format((float) ($settings->pro_plan_price ?? 99), 2);
-        } catch (\Throwable) {
-            // Keep the page usable even if settings bootstrap is unstable locally.
-        }
+        $tenant = self::getTenantRecord();
+        $plan = $tenant instanceof Tenant
+            ? app(TenantPlanPresentationReader::class)->forTenant($tenant)
+            : [
+                'marketingLabel' => 'Plan PRO',
+                'billingCta' => 'Activar PRO',
+                'priceLabel' => 'L. 99.00/mes',
+                'catalogCopy' => 'Catalogo ampliado para publicar mas productos, imagenes y merchandising.',
+                'marketingCopy' => 'Suite comercial activa para QR, WhatsApp, campanas y seguimiento.',
+                'brandingCopy' => 'Personalizacion visual avanzada ya habilitada para tu micrositio.',
+                'followersCopy' => 'Tu audiencia ya esta disponible con detalle completo para operar seguimiento.',
+            ];
 
         return [
-            'tenant' => self::getTenantRecord(),
+            'tenant' => $tenant,
+            'plan' => $plan,
             'features' => [
                 [
                     'icon' => 'heroicon-o-chat-bubble-left-right',
-                    'title' => 'Integración con WhatsApp',
-                    'description' => 'Botón directo para que tus clientes te escriban sin pasos extra.',
+                    'title' => 'Integracion con WhatsApp',
+                    'description' => $plan['marketingCopy'],
                 ],
                 [
                     'icon' => 'heroicon-o-cube',
-                    'title' => 'Productos ilimitados',
-                    'description' => 'Publica todo tu catálogo sin toparte con el límite del plan base.',
+                    'title' => 'Catalogo ampliado',
+                    'description' => $plan['catalogCopy'],
                 ],
                 [
                     'icon' => 'heroicon-o-paint-brush',
                     'title' => 'Marca personalizada',
-                    'description' => 'Destaca tu negocio con banner, logo y una presencia pública más completa.',
+                    'description' => $plan['brandingCopy'],
                 ],
                 [
                     'icon' => 'heroicon-o-users',
                     'title' => 'Seguidores visibles',
-                    'description' => 'Consulta quién sigue tu negocio y entiende mejor tu audiencia.',
+                    'description' => $plan['followersCopy'],
                 ],
                 [
                     'icon' => 'heroicon-o-megaphone',
-                    'title' => 'Campañas de marketing',
-                    'description' => 'Prepara promociones y novedades para tu audiencia desde el panel.',
+                    'title' => 'Campanas de marketing',
+                    'description' => $plan['marketingCopy'],
                 ],
                 [
                     'icon' => 'heroicon-o-chart-bar',
-                    'title' => 'Métricas avanzadas',
-                    'description' => 'Ten una lectura más completa del rendimiento y la actividad del negocio.',
+                    'title' => 'Metricas avanzadas',
+                    'description' => 'Ten una lectura mas completa del rendimiento y la actividad del negocio.',
                 ],
             ],
-            'price' => $price,
-            'period' => $period,
         ];
     }
 

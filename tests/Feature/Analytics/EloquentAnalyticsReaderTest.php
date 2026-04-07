@@ -58,7 +58,7 @@ final class EloquentAnalyticsReaderTest extends TestCase
 
         $this->assertSame(31, $analytic->getAttributes()['views']);
         $this->assertSame(12, $analytic->getAttributes()['unique_visitors']);
-        $this->assertSame(31, $analytic->total_visits);
-        $this->assertSame(12, $analytic->unique_visits);
+        $this->assertSame(31, $analytic->getAttribute('total_visits'));
+        $this->assertSame(12, $analytic->getAttribute('unique_visits'));
     }
 }

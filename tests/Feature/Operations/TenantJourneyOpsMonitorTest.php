@@ -9,8 +9,8 @@ use App\Domain\TenantGovernance\Services\TenantJourneyOpsMonitor;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\CustomerConversation;
-use App\Models\CustomerProfile;
 use App\Models\CustomerJourneyRun;
+use App\Models\CustomerProfile;
 use App\Models\OperationalPlaybookTask;
 use App\Models\Tenant;
 use App\Models\User;
@@ -74,7 +74,7 @@ final class TenantJourneyOpsMonitorTest extends TestCase
 
         $result = app(TenantJourneyOpsMonitor::class)->syncSignals();
 
-        $this->assertGreaterThanOrEqual(1, (int) ($result['conversion'] ?? 0));
+        $this->assertGreaterThanOrEqual(1, (int) $result['conversion']);
 
         $task = OperationalPlaybookTask::query()
             ->withoutGlobalScopes()
@@ -82,8 +82,8 @@ final class TenantJourneyOpsMonitorTest extends TestCase
             ->where('trigger_key', 'journey_conversion_watch')
             ->first();
 
-        $this->assertNotNull($task);
-        $this->assertStringContainsString('Intervenir secuencia comercial degradada', (string) $task?->title);
+        $this->assertInstanceOf(OperationalPlaybookTask::class, $task);
+        $this->assertStringContainsString('Intervenir secuencia comercial degradada', (string) $task->title);
     }
 
     /**

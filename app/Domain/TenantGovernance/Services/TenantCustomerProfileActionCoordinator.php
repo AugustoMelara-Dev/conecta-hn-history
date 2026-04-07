@@ -18,12 +18,14 @@ final class TenantCustomerProfileActionCoordinator
     public function awardBonus(CustomerProfile $profile, array $data, ?string $actorUserId = null): array
     {
         $this->loyaltyManager->awardBonus($profile, (int) $data['points'], (string) $data['description'], $actorUserId);
+
         return ['title' => 'Bonificacion aplicada', 'color' => 'success', 'body' => 'El cliente ya tiene puntos nuevos y el CRM lo reflejo en su ficha.'];
     }
 
     public function redeemReward(CustomerProfile $profile, array $data, ?string $actorUserId = null): array
     {
         $this->loyaltyManager->redeemReward($profile, (int) $data['reward_id'], $actorUserId);
+
         return ['title' => 'Canje registrado', 'color' => 'success', 'body' => 'La recompensa y el balance del cliente ya quedaron actualizados.'];
     }
 
@@ -36,18 +38,21 @@ final class TenantCustomerProfileActionCoordinator
             automationKey: (string) ($data['automation_key'] ?? 'manual_follow_up'),
             actorUserId: $actorUserId,
         );
+
         return $this->touchpointFeedback($touchpoint, 'El CRM ya guardo este movimiento en el historial del cliente.');
     }
 
     public function sendWhatsappFollowUp(CustomerProfile $profile, ?string $actorUserId = null): array
     {
         $touchpoint = $this->automationManager->sendSuggestedAutomation($profile, 'manual_follow_up_whatsapp', $actorUserId, 'whatsapp');
+
         return $this->touchpointFeedback($touchpoint, 'El seguimiento por WhatsApp ya quedo auditado en el CRM.');
     }
 
     public function triggerReactivation(CustomerProfile $profile, ?string $actorUserId = null): array
     {
         $touchpoint = $this->lifecycleTriggerManager->triggerJourney($profile, 'reactivation', $actorUserId);
+
         return $this->touchpointFeedback($touchpoint, 'El CRM ya registro la accion de reactivacion para este cliente.', true);
     }
 

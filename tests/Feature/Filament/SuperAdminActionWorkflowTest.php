@@ -9,6 +9,7 @@ use App\Filament\Resources\OperationalPlaybookTaskResource\Pages\ListOperational
 use App\Filament\Resources\PaymentResource\Pages\ListPayments;
 use App\Filament\Resources\TenantResource\Pages\ListTenants;
 use App\Filament\Resources\UserResource\Pages\ListUsers;
+use App\Infrastructure\TenantGovernance\SuperAdmin\SuperAdminTenantPlanReader;
 use App\Models\OperationalPlaybookTask;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
@@ -97,7 +98,7 @@ final class SuperAdminActionWorkflowTest extends TestCase
         $this->assertSame(Tenant::CRM_PRIORITY_HIGH, (string) $tenant->getRawOriginal('crm_priority'));
         $this->assertSame(12, (int) $tenant->crm_sla_hours);
         $this->assertNotNull($tenant->crm_next_follow_up_at);
-        $this->assertSame($nextTouch->format('Y-m-d H:i'), $tenant->crm_next_follow_up_at?->format('Y-m-d H:i'));
+        $this->assertSame($nextTouch->format('Y-m-d H:i'), $tenant->crm_next_follow_up_at->format('Y-m-d H:i'));
         $this->assertNotNull($tenant->crm_last_contacted_at);
         $this->assertStringContainsString('Negocio listo para upsell despues de publicar su catalogo base.', (string) $tenant->crm_notes);
     }
@@ -142,11 +143,12 @@ final class SuperAdminActionWorkflowTest extends TestCase
             ->assertHasNoTableActionErrors();
 
         $tenant->refresh();
+        $planReader = app(SuperAdminTenantPlanReader::class);
 
         $this->assertSame('pro', (string) $tenant->getRawOriginal('plan_type'));
         $this->assertSame('active', (string) $tenant->getRawOriginal('subscription_status'));
         $this->assertTrue((bool) $tenant->getRawOriginal('is_active'));
-        $this->assertTrue($tenant->is_pro);
+        $this->assertTrue($planReader->isPaidPlan($tenant));
         $this->assertNotNull($tenant->subscription_ends_at);
     }
 
@@ -165,6 +167,7 @@ final class SuperAdminActionWorkflowTest extends TestCase
 
         $payment->refresh();
         $tenant->refresh();
+        $planReader = app(SuperAdminTenantPlanReader::class);
 
         $this->assertSame(SubscriptionPayment::STATUS_APPROVED, $payment->status);
         $this->assertSame((string) $superAdmin->getKey(), (string) $payment->reviewed_by);
@@ -173,7 +176,7 @@ final class SuperAdminActionWorkflowTest extends TestCase
         $this->assertSame('semilla', (string) $payment->plan_before_upgrade);
         $this->assertSame('pro', (string) $tenant->getRawOriginal('plan_type'));
         $this->assertSame('active', (string) $tenant->getRawOriginal('subscription_status'));
-        $this->assertTrue($tenant->is_pro);
+        $this->assertTrue($planReader->isPaidPlan($tenant));
         $this->assertNotNull($tenant->subscription_ends_at);
     }
 

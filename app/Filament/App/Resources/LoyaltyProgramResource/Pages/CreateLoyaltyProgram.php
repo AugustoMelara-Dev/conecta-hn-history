@@ -2,8 +2,8 @@
 
 namespace App\Filament\App\Resources\LoyaltyProgramResource\Pages;
 
-use App\Filament\App\Resources\Pages\CreateTenantRecord;
 use App\Filament\App\Resources\LoyaltyProgramResource;
+use App\Filament\App\Resources\Pages\CreateTenantRecord;
 
 class CreateLoyaltyProgram extends CreateTenantRecord
 {

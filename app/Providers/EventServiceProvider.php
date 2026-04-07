@@ -73,6 +73,8 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        if (config('app.e2e_browser_release')) {
+            $this->app['events']->forget(\App\Events\Appointment\AppointmentCreated::class);
+        }
     }
 }

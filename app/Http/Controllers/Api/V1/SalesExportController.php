@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Application\Reporting\Commands\QueueSalesExportCommand;
+use App\Application\Reporting\Handlers\QueueSalesExportHandler;
+use App\Domain\Shared\Contracts\TenantContext;
 use App\Http\Controllers\Controller;
-use App\Infrastructure\Jobs\Exports\GenerateSalesExport;
-use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
@@ -20,6 +21,7 @@ final class SalesExportController extends Controller
 {
     public function __construct(
         private StatefulGuard $auth,
+        private TenantContext $tenantContext,
         private LoggerInterface $log,
         private FilesystemFactory $storage
     ) {}
@@ -27,8 +29,10 @@ final class SalesExportController extends Controller
     /**
      * @throws ValidationException
      */
-    public function store(Request $request): JsonResponse
-    {
+    public function store(
+        Request $request,
+        QueueSalesExportHandler $handler
+    ): JsonResponse {
         $validated = $request->validate([
             'start_date' => ['nullable', 'date', 'before_or_equal:end_date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
@@ -45,32 +49,25 @@ final class SalesExportController extends Controller
             ], 401);
         }
 
-        $tenant = $user->tenant;
-
-        if (! $tenant instanceof Tenant) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No tienes un negocio asociado.',
-            ], 403);
-        }
-
         $criteriaData = [
             'start_date' => $validated['start_date'] ?? null,
             'end_date' => $validated['end_date'] ?? null,
             'status' => $validated['status'] ?? null,
         ];
 
-        GenerateSalesExport::dispatch(
-            userId: $user->getAuthIdentifier(),
-            tenantId: (string) $tenant->getKey(),
+        $tenantId = $this->tenantContext->getTenantUuid();
+
+        $handler->handle(new QueueSalesExportCommand(
+            requestorId: $user->getAuthIdentifier(),
+            tenantId: $tenantId,
             criteriaData: $criteriaData,
             requestIp: $request->ip() ?? '127.0.0.1',
             userAgent: $request->userAgent() ?? 'Unknown',
-        );
+        ));
 
         $this->log->info('SalesExport job dispatched', [
             'user_id' => $user->getAuthIdentifier(),
-            'tenant_id' => (string) $tenant->getKey(),
+            'tenant_id' => $tenantId,
             'criteria' => $criteriaData,
         ]);
 

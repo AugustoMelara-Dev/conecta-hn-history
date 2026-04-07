@@ -22,8 +22,10 @@ use Tests\Traits\InteractsWithInertiaRoutes;
  */
 class HandleInertiaRequestsTest extends TestCase
 {
-    use InteractsWithInertiaRoutes;
     use DatabaseTransactions;
+    use InteractsWithInertiaRoutes;
+
+    private const LEGACY_PAID_PLAN_FLAG = 'is_pro';
 
     protected function setUp(): void
     {
@@ -77,7 +79,8 @@ class HandleInertiaRequestsTest extends TestCase
             'name' => 'Test Store',
             'slug' => 'test-store',
             'primary_color' => '#3B82F6',
-            'is_pro' => true,
+            'plan_type' => 'pro',
+            'subscription_status' => 'active',
         ]);
 
         app()->instance('currentTenant', $tenant);
@@ -91,6 +94,9 @@ class HandleInertiaRequestsTest extends TestCase
         $this->assertNotNull($props['tenant']);
         $this->assertEquals($tenant->id, $props['tenant']['id']);
         $this->assertEquals('Test Store', $props['tenant']['name']);
+        $this->assertSame('pro', $props['tenant']['plan_type']);
+        $this->assertTrue($props['tenant']['is_paid_plan']);
+        $this->assertArrayNotHasKey(self::LEGACY_PAID_PLAN_FLAG, $props['tenant']);
         $this->assertEquals('#3B82F6', $props['tenant']['primary_color']);
 
         app()->forgetInstance('currentTenant');

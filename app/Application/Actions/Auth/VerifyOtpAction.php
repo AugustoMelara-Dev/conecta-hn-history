@@ -45,5 +45,3 @@ final readonly class VerifyOtpAction
         ];
     }
 }
-
-

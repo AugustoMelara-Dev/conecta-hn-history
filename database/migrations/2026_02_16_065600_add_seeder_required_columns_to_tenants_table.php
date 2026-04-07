@@ -20,12 +20,8 @@ return new class extends Migration
                 $table->string('status')->default('pending')->after('is_active');
             }
 
-            if (! Schema::hasColumn('tenants', 'is_pro')) {
-                $table->boolean('is_pro')->default(false)->after('status');
-            }
-
             if (! Schema::hasColumn('tenants', 'product_limit')) {
-                $table->unsignedInteger('product_limit')->default(10)->after('is_pro');
+                $table->unsignedInteger('product_limit')->default(10)->after('status');
             }
 
             if (! Schema::hasColumn('tenants', 'banner_path')) {
@@ -49,7 +45,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('tenants', function (Blueprint $table) {
-            $columns = ['status', 'is_pro', 'product_limit', 'banner_path', 'social_links', 'primary_color'];
+            $columns = ['status', 'product_limit', 'banner_path', 'social_links', 'primary_color'];
 
             foreach ($columns as $column) {
                 if (Schema::hasColumn('tenants', $column)) {

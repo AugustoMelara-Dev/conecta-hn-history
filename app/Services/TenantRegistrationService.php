@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\Payment;
 use App\Models\Tenant;
 use App\Models\User;
@@ -72,7 +73,7 @@ class TenantRegistrationService
 
     public ?Payment $payment = null;
 
-    public bool $isPro = false;
+    public bool $hasPaidPlan = false;
 
     /**
      * 🛡️ Check if slug is reserved by system
@@ -163,8 +164,8 @@ class TenantRegistrationService
             }
 
             // 3. DETERMINE PLAN LIMITS
-            $isPro = ($data['selected_plan'] ?? 'free') === 'pro';
-            $productLimit = $isPro
+            $selectedPaidPlan = ($data['selected_plan'] ?? 'free') === 'pro';
+            $productLimit = $selectedPaidPlan
                 ? ($data['pro_product_limit'] ?? 100)
                 : ($data['free_product_limit'] ?? 10);
 
@@ -178,16 +179,17 @@ class TenantRegistrationService
                 'whatsapp_number' => $data['whatsapp'] ?? null,
                 'product_limit' => $productLimit,
                 // Plan-based state:
-                // Free: approved + active + !pro
+                // Free: approved + active + semilla
                 // PRO: pending + inactive (until paid) + pro
-                'is_active' => ! $isPro,
-                'is_pro' => $isPro,
-                'status' => $isPro ? 'pending' : 'approved',
+                'is_active' => ! $selectedPaidPlan,
+                'status' => $selectedPaidPlan ? 'pending' : 'approved',
+                'plan_type' => $selectedPaidPlan ? TenantPlan::PRO->value : TenantPlan::SEMILLA->value,
+                'subscription_status' => 'inactive',
             ]);
 
             // 5. CREATE PAYMENT (PRO only)
             $payment = null;
-            if ($isPro) {
+            if ($selectedPaidPlan) {
                 $payment = Payment::create([
                     'tenant_id' => $tenant->id,
                     'amount' => $data['pro_plan_price'] ?? 500.00,
@@ -202,7 +204,7 @@ class TenantRegistrationService
                 'user' => $user,
                 'tenant' => $tenant,
                 'payment' => $payment,
-                'isPro' => $isPro,
+                'hasPaidPlan' => $selectedPaidPlan,
             ];
         });
 
@@ -210,7 +212,7 @@ class TenantRegistrationService
         $this->user = $result['user'];
         $this->tenant = $result['tenant'];
         $this->payment = $result['payment'];
-        $this->isPro = $result['isPro'];
+        $this->hasPaidPlan = $result['hasPaidPlan'];
 
         return $this;
     }
@@ -220,7 +222,7 @@ class TenantRegistrationService
      */
     public function getRedirectRoute(): string
     {
-        if ($this->isPro && $this->payment) {
+        if ($this->hasPaidPlan && $this->payment) {
             return route('payment.pending', $this->payment->id);
         }
 
@@ -232,7 +234,7 @@ class TenantRegistrationService
      */
     public function getFlashMessage(): array
     {
-        if ($this->isPro) {
+        if ($this->hasPaidPlan) {
             return [
                 'type' => 'success',
                 'message' => '¡Negocio registrado! Completa el pago para activar tu cuenta.',

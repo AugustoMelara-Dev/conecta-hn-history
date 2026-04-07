@@ -24,8 +24,8 @@ use Tests\Traits\InteractsWithInertiaRoutes;
  */
 class TenantResolutionTest extends TestCase
 {
-    use InteractsWithInertiaRoutes;
     use DatabaseTransactions;
+    use InteractsWithInertiaRoutes;
 
     protected function setUp(): void
     {

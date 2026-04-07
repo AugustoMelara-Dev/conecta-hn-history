@@ -7,7 +7,6 @@ use App\Listeners\UpdateTenantSubscription;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 
 uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
@@ -43,6 +42,7 @@ test('listener extends subscription exactly once for approved payments', functio
 
     expect($payment->subscription_extended_at)->not->toBeNull()
         ->and($payment->plan_before_upgrade)->toBe('semilla')
+        ->and((string) $tenant->getRawOriginal('plan_type'))->toBe('pro')
         ->and($tenant->subscription_status)->toBe('active')
         ->and($tenant->subscription_ends_at)->not->toBeNull();
 

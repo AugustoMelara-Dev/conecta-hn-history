@@ -62,10 +62,14 @@ class AdminPanelProvider extends PanelProvider
                 fn (): \Illuminate\Contracts\View\View => view('filament.components.admin-inline-overrides'),
             )
             ->resources([
+                \App\Filament\Resources\ActivityLogResource::class,
                 \App\Filament\Resources\OperationalPlaybookTaskResource::class,
                 \App\Filament\Resources\TenantResource::class,
                 \App\Filament\Resources\UserResource::class,
                 \App\Filament\Resources\PaymentResource::class,
+                \App\Filament\Resources\OrderResource::class,
+                \App\Filament\Resources\ProductResource::class,
+                \App\Filament\Resources\CouponResource::class,
                 \App\Filament\Resources\CategoryResource::class,
                 \App\Filament\Resources\CityResource::class,
             ])

@@ -621,7 +621,6 @@ final class E2EStorefrontSeeder extends Seeder
             'subscription_status' => 'active',
             'subscription_ends_at' => now()->addMonths(6),
             'product_limit' => 500,
-            'is_pro' => true,
         ]));
 
         $owner->forceFill(['tenant_id' => $tenant->id])->save();

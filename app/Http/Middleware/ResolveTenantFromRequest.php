@@ -107,8 +107,8 @@ final class ResolveTenantFromRequest
         // 3. Cache Miss - Database Query (Optimized Memory Footprint)
         // Select ONLY essential columns to keep Redis serialization light.
         // 3. Cache Miss - Database Query (Optimized Memory Footprint)
-        // REVERTED to select('*') because 'is_pro' accessor requires 'plan_type', 'subscription_status', etc.
-        // Explicit selection caused MissingAttributeException on computed properties.
+        // Keep select('*') because downstream serializers derive public plan state
+        // from plan_type plus subscription metadata.
         $query = Tenant::query()
             ->select('*')
             ->take(1);
@@ -127,7 +127,7 @@ final class ResolveTenantFromRequest
                 // 'domain' removed - property does not exist
                 'name' => $tenant->name,
                 'is_active' => $tenant->is_active,
-                'is_pro' => $tenant->is_pro,
+                'plan_type' => $tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? Tenant::PLAN_SEMILLA),
                 'logo_path' => $tenant->logo_path,
             ];
             Cache::put($cacheKey, $payload, self::TTL_VALID);

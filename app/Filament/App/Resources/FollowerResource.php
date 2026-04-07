@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\FollowerResource\Pages;
+use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
 use App\Models\Follow;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
@@ -77,10 +78,12 @@ class FollowerResource extends Resource
     public static function table(Table $table): Table
     {
         $tenant = static::getTenantRecord();
-        $isPro = $tenant?->getIsProAttribute() ?? false;
+        $plan = static::getPlanPresentation();
+        $hasFollowerInsights = (bool) ($plan['hasFollowerInsights'] ?? false);
+
         return $table
-            ->modifyQueryUsing(function (Builder $query) use ($isPro, $tenant) {
-                if ($isPro) {
+            ->modifyQueryUsing(function (Builder $query) use ($hasFollowerInsights, $tenant) {
+                if ($hasFollowerInsights) {
                     return $query->where('tenant_id', (string) $tenant?->getKey());
                 }
 
@@ -101,11 +104,13 @@ class FollowerResource extends Resource
                     ->sortable(),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'badge' => $isPro ? 'Audiencia' : 'Solo PRO',
-                'heading' => $isPro ? 'Todavía no tienes seguidores registrados' : 'La lista de seguidores se desbloquea con PRO',
-                'description' => $isPro
-                    ? 'Cuando alguien siga tu negocio, su registro aparecerá aquí para que puedas entender mejor tu audiencia.'
-                    : 'En el plan Base mantienes el contador general. La lista completa con nombres y correos se habilita al activar PRO.',
+                'badge' => $hasFollowerInsights ? 'Audiencia' : ($plan['marketingLabel'] ?? 'Plan Base'),
+                'heading' => $hasFollowerInsights
+                    ? 'Todavia no tienes seguidores registrados'
+                    : 'La lista de seguidores se desbloquea con PRO',
+                'description' => $hasFollowerInsights
+                    ? 'Cuando alguien siga tu negocio, su registro aparecera aqui para que puedas entender mejor tu audiencia.'
+                    : ($plan['followersCopy'] ?? 'En el plan Base mantienes el conteo general.'),
             ]));
     }
 
@@ -114,6 +119,20 @@ class FollowerResource extends Resource
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function getPlanPresentation(): array
+    {
+        $tenant = static::getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
+        return app(TenantPlanPresentationReader::class)->forTenant($tenant);
     }
 
     public static function getPages(): array

@@ -37,7 +37,7 @@ final class HydrateTenantContextFromPanelRoute
             return $routeTenant;
         }
 
-        if (is_string($routeTenant) || is_int($routeTenant)) {
+        if (is_string($routeTenant) && $routeTenant !== '') {
             return $this->findTenant($routeTenant);
         }
 
@@ -72,10 +72,6 @@ final class HydrateTenantContextFromPanelRoute
             return true;
         }
 
-        if (method_exists($user, 'canAccessTenant')) {
-            return (bool) $user->canAccessTenant($tenant);
-        }
-
-        return true;
+        return (bool) $user->canAccessTenant($tenant);
     }
 }

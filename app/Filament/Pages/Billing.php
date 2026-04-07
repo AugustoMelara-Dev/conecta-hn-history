@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Domain\Identity\Enums\UserRole;
+use App\Infrastructure\TenantGovernance\SuperAdmin\SuperAdminTenantPlanReader;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\User;
@@ -16,9 +17,9 @@ final class Billing extends Page
 {
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationLabel = 'Facturación';
+    protected static ?string $navigationLabel = 'FacturaciÃ³n';
 
-    protected static ?string $title = 'Facturación de la plataforma';
+    protected static ?string $title = 'FacturaciÃ³n de la plataforma';
 
     protected static ?string $slug = 'billing';
 
@@ -71,10 +72,7 @@ final class Billing extends Page
 
         $superAdmins = config('auth.super_admins', []);
         $isWhitelisted = in_array($user->email ?? '', $superAdmins, true);
-        $role = $user->role;
-        $hasSuperAdminRole = $role instanceof UserRole
-            ? $role === UserRole::SUPER_ADMIN
-            : (string) $role === UserRole::SUPER_ADMIN->value;
+        $hasSuperAdminRole = $user->role === UserRole::SUPER_ADMIN;
 
         return $hasSuperAdminRole || $user->isSuperAdmin() || $isWhitelisted;
     }
@@ -90,7 +88,7 @@ final class Billing extends Page
         try {
             $settings = app(GeneralSettings::class);
 
-            $this->proPlanPrice = 'L. ' . number_format((float) ($settings->pro_plan_price ?? 99), 2);
+            $this->proPlanPrice = 'L. '.number_format((float) ($settings->pro_plan_price ?? 99), 2);
             $this->supportEmail = (string) ($settings->support_email ?? $this->supportEmail);
 
             $supportWhatsApp = (string) ($settings->support_whatsapp_number ?? '');
@@ -119,14 +117,22 @@ final class Billing extends Page
                 ->where('status', SubscriptionPayment::STATUS_REJECTED)
                 ->count();
 
-            $this->proBusinesses = Tenant::query()
-                ->where('plan_type', 'pro')
+            $tenantSnapshot = Tenant::query()
+                ->with([
+                    'city:id,name',
+                    'category:id,name',
+                ])
+                ->withCount([
+                    'products as products_total' => fn (Builder $query): Builder => $query->withoutGlobalScopes(),
+                ])
+                ->get();
+
+            $this->proBusinesses = $tenantSnapshot
+                ->filter(fn (Tenant $tenant): bool => $this->planReader()->isPaidPlan($tenant))
                 ->count();
 
-            $this->baseBusinesses = Tenant::query()
-                ->where(function ($query): void {
-                    $query->whereNull('plan_type')->orWhere('plan_type', '!=', 'pro');
-                })
+            $this->baseBusinesses = $tenantSnapshot
+                ->filter(fn (Tenant $tenant): bool => $this->planReader()->isBasePlan($tenant))
                 ->count();
 
             $this->recentPayments = (clone $payments)
@@ -146,21 +152,11 @@ final class Billing extends Page
                             SubscriptionPayment::STATUS_REJECTED => 'Rechazado',
                             default => 'Desconocido',
                         },
-                        'amount' => 'L. ' . number_format((float) $payment->amount, 2),
+                        'amount' => 'L. '.number_format((float) $payment->amount, 2),
                         'reported_at' => optional($payment->created_at)?->format('d/m/Y H:i'),
                     ];
                 })
                 ->all();
-
-            $tenantSnapshot = Tenant::query()
-                ->with([
-                    'city:id,name',
-                    'category:id,name',
-                ])
-                ->withCount([
-                    'products as products_total' => fn (Builder $query): Builder => $query->withoutGlobalScopes(),
-                ])
-                ->get();
 
             $this->businessesWithCatalog = $tenantSnapshot
                 ->where('products_total', '>', 0)
@@ -175,10 +171,14 @@ final class Billing extends Page
             $this->proConversionRate = round(($this->proBusinesses / $totalBusinesses) * 100, 1);
 
             $this->cityFunnel = $tenantSnapshot
-                ->groupBy(fn (Tenant $tenant): string => (string) ($tenant->city?->name ?? 'Sin ciudad'))
+                ->groupBy(function (Tenant $tenant): string {
+                    $city = $tenant->city;
+
+                    return $city instanceof \App\Models\City ? (string) $city->name : 'Sin ciudad';
+                })
                 ->map(function ($group, string $name): array {
                     $total = $group->count();
-                    $pro = $group->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+                    $pro = $group->filter(fn (Tenant $tenant): bool => $this->planReader()->isPaidPlan($tenant))->count();
 
                     return [
                         'name' => $name,
@@ -193,10 +193,14 @@ final class Billing extends Page
                 ->all();
 
             $this->categoryFunnel = $tenantSnapshot
-                ->groupBy(fn (Tenant $tenant): string => (string) ($tenant->category?->name ?? 'Sin categoría'))
+                ->groupBy(function (Tenant $tenant): string {
+                    $category = $tenant->category;
+
+                    return $category instanceof \App\Models\Category ? (string) $category->name : 'Sin categoria';
+                })
                 ->map(function ($group, string $name): array {
                     $total = $group->count();
-                    $pro = $group->filter(fn (Tenant $tenant): bool => $tenant->is_pro)->count();
+                    $pro = $group->filter(fn (Tenant $tenant): bool => $this->planReader()->isPaidPlan($tenant))->count();
 
                     return [
                         'name' => $name,
@@ -217,5 +221,10 @@ final class Billing extends Page
             $this->cityFunnel = [];
             $this->categoryFunnel = [];
         }
+    }
+
+    private function planReader(): SuperAdminTenantPlanReader
+    {
+        return app(SuperAdminTenantPlanReader::class);
     }
 }

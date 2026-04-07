@@ -35,7 +35,7 @@ final class RegistrationController extends Controller
         if ($this->guard->check()) {
             $user = $this->guard->user();
 
-            if ($user !== null && method_exists($user, 'hasVerifiedEmail') && ! $user->hasVerifiedEmail()) {
+            if ($user !== null && ! $user->hasVerifiedEmail()) {
                 return redirect()->route('verification.notice');
             }
 

@@ -82,7 +82,7 @@
             <p>Tu cuenta ha sido creada exitosamente. Ahora eres parte de una comunidad que valora el crecimiento, la transparencia y la conexión directa.</p>
             
             @if($user->role === 'seller')
-            <p>Como negocio, ahora puedes crear tu micrositio, subir productos y llegar a miles de clientes potenciales.</p>
+            <p>Como negocio, ahora puedes activar tu micrositio publico, subir productos y gestionar tu operacion desde el panel oficial.</p>
             @else
             <p>Como usuario, ahora puedes explorar los mejores negocios locales, guardar tus favoritos y contactar directamente.</p>
             @endif

@@ -14,6 +14,7 @@ class CustomerLifecycleTriggerManager
 {
     public function __construct(
         private readonly CustomerAutomationManager $automationManager,
+        private readonly CustomerLifecycleDeliveryPolicy $deliveryPolicy,
     ) {}
 
     public function handleOrderSaved(Order $order): ?CustomerTouchpoint
@@ -115,10 +116,10 @@ class CustomerLifecycleTriggerManager
     ): ?CustomerTouchpoint {
         $profile->loadMissing('tenant');
 
-        $channel = $this->resolveChannel($profile);
+        $channel = $this->deliveryPolicy->resolveChannel($profile);
         $automationKey = "{$journeyKey}_{$channel}";
 
-        if ($this->wasRecentlyTriggered($profile, $automationKey, $channel)) {
+        if ($this->deliveryPolicy->wasRecentlyTriggered($profile, $automationKey, $channel)) {
             return null;
         }
 
@@ -148,33 +149,5 @@ class CustomerLifecycleTriggerManager
         return CustomerProfile::query()
             ->withoutGlobalScopes()
             ->find((int) $profileId);
-    }
-
-    private function resolveChannel(CustomerProfile $profile): string
-    {
-        if ($profile->preferred_channel === 'whatsapp' && filled($profile->phone) && $profile->whatsapp_opt_in) {
-            return 'whatsapp';
-        }
-
-        if (filled($profile->email) && $profile->email_opt_in) {
-            return 'email';
-        }
-
-        if (filled($profile->phone) && $profile->whatsapp_opt_in) {
-            return 'whatsapp';
-        }
-
-        return filled($profile->email) ? 'email' : 'whatsapp';
-    }
-
-    private function wasRecentlyTriggered(CustomerProfile $profile, string $automationKey, string $channel): bool
-    {
-        return CustomerTouchpoint::query()
-            ->withoutGlobalScopes()
-            ->where('customer_profile_id', (int) $profile->getKey())
-            ->where('automation_key', $automationKey)
-            ->where('channel', $channel)
-            ->where('created_at', '>=', now()->subHours(24))
-            ->exists();
     }
 }

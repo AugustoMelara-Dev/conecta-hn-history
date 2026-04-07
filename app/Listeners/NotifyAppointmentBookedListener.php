@@ -7,27 +7,48 @@ namespace App\Listeners;
 use App\Domain\Contracts\AdminNotifier;
 use App\Domain\TenantGovernance\Services\OperationalPlaybookTaskManager;
 use App\Events\Appointment\AppointmentCreated;
+use App\Models\Appointment;
 use App\Models\Tenant;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 
-final class NotifyAppointmentBookedListener
+final class NotifyAppointmentBookedListener implements ShouldQueue, ShouldQueueAfterCommit
 {
     public function __construct(
         private readonly AdminNotifier $notifier,
         private readonly OperationalPlaybookTaskManager $playbookTaskManager,
     ) {}
 
+    public function shouldQueue(AppointmentCreated $event): bool
+    {
+        return ! config('app.e2e_browser_release');
+    }
+
     public function handle(AppointmentCreated $event): void
     {
-        $tenant = $event->appointment->tenant;
+        if (config('app.e2e_browser_release')) {
+            return;
+        }
+
+        $appointmentId = $event->appointment->getKey();
+        $appointment = Appointment::query()
+            ->with(['tenant', 'service', 'provider'])
+            ->find($appointmentId);
+
+        if (! $appointment) {
+            return;
+        }
+
+        $tenant = $appointment->tenant;
 
         if ($tenant instanceof Tenant) {
             $this->playbookTaskManager->syncForTrigger($tenant, 'appointment_booking', [
-                'related' => $event->appointment,
-                'customer_name' => (string) ($event->appointment->customer_display_name ?? 'este cliente'),
-                'service_name' => (string) ($event->appointment->service?->name ?? 'el servicio'),
+                'related' => $appointment,
+                'customer_name' => (string) ($appointment->customer_display_name ?? 'este cliente'),
+                'service_name' => (string) ($appointment->service->name ?? 'el servicio'),
             ]);
         }
 
-        $this->notifier->notifyAppointmentBooked($event->appointment);
+        $this->notifier->notifyAppointmentBooked($appointment);
     }
 }

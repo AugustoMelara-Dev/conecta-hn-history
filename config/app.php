@@ -135,4 +135,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'e2e_browser_release' => (bool) env('E2E_BROWSER_RELEASE', false),
+
 ];

@@ -6,7 +6,6 @@ use App\Models\InventoryLevel;
 use App\Models\InventoryMovement;
 use App\Policies\InventoryLevelPolicy;
 use App\Policies\InventoryMovementPolicy;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Gate;
 
 uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);

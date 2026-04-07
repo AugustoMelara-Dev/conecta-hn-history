@@ -39,7 +39,7 @@ final class TenantFactory
         string $slug,
         string $ownerId,
         TenantPlan $planType,
-        bool $isPro = false,
+        bool $hasPaidPlan = false,
         int $productLimit = 10,
         BusinessType $businessType = BusinessType::RETAIL,
         ?string $logoPath = null,
@@ -60,7 +60,7 @@ final class TenantFactory
             businessType: $businessType,
             logoPath: $logoPath,
             whatsapp: $whatsapp,
-            isPro: $isPro,
+            hasPaidPlan: $hasPaidPlan,
             productLimit: $productLimit
         );
 

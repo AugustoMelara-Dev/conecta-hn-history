@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
-use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Models\Tenant;
 
 final class BusinessOperationsBlueprint
@@ -18,7 +17,7 @@ final class BusinessOperationsBlueprint
      */
     public function forTenant(Tenant $tenant): array
     {
-        $businessType = $tenant->business_type?->value ?? BusinessType::RETAIL->value;
+        $businessType = $tenant->business_type->value;
         $segmentKey = $this->segmentResolver->resolveForTenant($tenant);
 
         return $this->forSegment($segmentKey, $businessType);
@@ -37,7 +36,7 @@ final class BusinessOperationsBlueprint
         $fallbackKey = $defaults[$businessType] ?? 'retail_growth';
         $fallbackProfile = $profiles[$fallbackKey] ?? [];
 
-        if (isset($profiles[$segmentKey]) && is_array($profiles[$segmentKey])) {
+        if (isset($profiles[$segmentKey])) {
             return array_replace_recursive($fallbackProfile, $profiles[$segmentKey]);
         }
 

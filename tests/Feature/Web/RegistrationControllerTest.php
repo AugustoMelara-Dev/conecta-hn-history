@@ -48,7 +48,9 @@ final class RegistrationControllerTest extends TestCase
     #[Test]
     public function registration_persists_selected_business_type_and_enables_matching_capabilities(): void
     {
+        /** @var Category $category */
         $category = Category::factory()->create(['name' => 'Servicios', 'slug' => 'servicios']);
+        /** @var City $city */
         $city = City::factory()->create();
 
         $response = $this->post(route('tenant.register.store', [], false), [
@@ -73,6 +75,8 @@ final class RegistrationControllerTest extends TestCase
 
         $this->assertInstanceOf(Tenant::class, $tenant);
         $this->assertSame('service', $tenant->getRawOriginal('business_type'));
+        $this->assertSame('semilla', $tenant->getRawOriginal('plan_type'));
+        $this->assertSame('inactive', $tenant->getRawOriginal('subscription_status'));
 
         /** @var CapabilityManagerInterface $capabilityManager */
         $capabilityManager = $this->app->make(CapabilityManagerInterface::class);

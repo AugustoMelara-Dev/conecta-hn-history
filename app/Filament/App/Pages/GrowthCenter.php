@@ -4,47 +4,29 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
+use App\Application\TenantGovernance\Handlers\GetTenantGrowthSignalsHandler;
+use App\Application\TenantGovernance\Handlers\GetTenantJourneyAnalyticsHandler;
+use App\Application\TenantGovernance\Handlers\GetTenantOperationalComparisonsHandler;
+use App\Application\TenantGovernance\Queries\GetTenantGrowthSignalsQuery;
+use App\Application\TenantGovernance\Queries\GetTenantJourneyAnalyticsQuery;
+use App\Application\TenantGovernance\Queries\GetTenantOperationalComparisonsQuery;
 use App\Domain\TenantGovernance\Enums\BusinessType;
+use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Domain\TenantGovernance\Services\BusinessGrowthBlueprint;
-use App\Domain\TenantGovernance\Services\CustomerProfileManager;
 use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
-use App\Domain\TenantGovernance\Services\TenantGrowthSignalsReader;
-use App\Domain\TenantGovernance\Services\TenantOperationalComparisonReader;
-use App\Domain\TenantGovernance\Services\TenantJourneyAnalyticsReader;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\CampaignResource;
+use App\Filament\App\Resources\CouponResource;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\CustomerTouchpointResource;
-use App\Filament\App\Resources\CouponResource;
 use App\Filament\App\Resources\FollowerResource;
 use App\Filament\App\Resources\Leads\LeadResource;
 use App\Filament\App\Resources\LoyaltyProgramResource;
 use App\Filament\App\Resources\OperationalPlaybookTaskResource;
 use App\Filament\App\Resources\OrderResource;
-use App\Models\Appointment;
-use App\Models\Campaign;
-use App\Models\CustomerConversation;
-use App\Models\CustomerJourneyRun;
-use App\Models\CustomerLoyaltyLedger;
-use App\Models\CustomerNote;
-use App\Models\CustomerProfile;
-use App\Models\CustomerTask;
-use App\Models\CustomerTouchpoint;
-use App\Models\Follow;
-use App\Models\Lead;
-use App\Models\LoyaltyProgram;
-use App\Models\Location;
-use App\Models\OperationalPlaybookTask;
-use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Tenant;
-use App\Models\TenantAnalytic;
-use App\Models\User;
-use App\Models\Waitlist;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 
 class GrowthCenter extends Page
 {
@@ -89,6 +71,14 @@ class GrowthCenter extends Page
     public string $automationCopy = '';
 
     public bool $isPro = false;
+
+    public bool $hasMarketingSuite = false;
+
+    public bool $hasCampaignFeature = false;
+
+    public bool $hasLoyaltyFeature = false;
+
+    public bool $canUpgradeToPro = false;
 
     public bool $hasWhatsApp = false;
 
@@ -347,8 +337,12 @@ class GrowthCenter extends Page
 
         $tenantSlug = (string) ($tenant->slug ?? '');
         $this->tenantName = (string) ($tenant->name ?? 'Tu negocio');
-        $this->isPro = (bool) $tenant->is_pro;
-        $this->businessType = $tenant->business_type?->value ?? BusinessType::RETAIL->value;
+        $this->hasMarketingSuite = $tenant->hasFeature(TenantFeature::MARKETING_SUITE);
+        $this->hasCampaignFeature = $tenant->hasFeature(TenantFeature::MARKETING_CAMPAIGNS);
+        $this->hasLoyaltyFeature = $tenant->hasFeature(TenantFeature::LOYALTY_PROGRAM);
+        $this->canUpgradeToPro = $tenant->hasFeature(TenantFeature::UPGRADE_PROMPT);
+        $this->isPro = ! $this->canUpgradeToPro;
+        $this->businessType = $tenant->business_type->value;
         $this->businessTypeLabel = (string) (config("business-types.options.{$this->businessType}.label") ?? 'Negocio');
         $this->hasWhatsApp = filled($tenant->whatsapp_number);
 
@@ -397,9 +391,12 @@ class GrowthCenter extends Page
 
     private function loadSignals(Tenant $tenant): void
     {
-        /** @var TenantGrowthSignalsReader $reader */
-        $reader = app(TenantGrowthSignalsReader::class);
-        $summary = $reader->summarize($tenant, $this->businessType);
+        /** @var GetTenantGrowthSignalsHandler $handler */
+        $handler = app(GetTenantGrowthSignalsHandler::class);
+        $summary = $handler->handle(new GetTenantGrowthSignalsQuery(
+            tenantId: (string) $tenant->getKey(),
+            businessType: $this->businessType,
+        ));
 
         foreach ($summary as $property => $value) {
             if (property_exists($this, $property)) {
@@ -506,9 +503,11 @@ class GrowthCenter extends Page
 
             return;
         }
-        /** @var TenantOperationalComparisonReader $reader */
-        $reader = app(TenantOperationalComparisonReader::class);
-        $summary = $reader->summarize($tenant, fn (float $value): string => $this->formatCurrency($value));
+        /** @var GetTenantOperationalComparisonsHandler $handler */
+        $handler = app(GetTenantOperationalComparisonsHandler::class);
+        $summary = $handler->handle(new GetTenantOperationalComparisonsQuery(
+            tenantId: (string) $tenant->getKey(),
+        ));
 
         $this->ownerComparisons = $summary['ownerComparisons'];
         $this->locationComparisons = $summary['locationComparisons'];
@@ -532,9 +531,11 @@ class GrowthCenter extends Page
 
             return;
         }
-        /** @var TenantJourneyAnalyticsReader $reader */
-        $reader = app(TenantJourneyAnalyticsReader::class);
-        $summary = $reader->summarize($tenant);
+        /** @var GetTenantJourneyAnalyticsHandler $handler */
+        $handler = app(GetTenantJourneyAnalyticsHandler::class);
+        $summary = $handler->handle(new GetTenantJourneyAnalyticsQuery(
+            tenantId: (string) $tenant->getKey(),
+        ));
 
         $this->templatePerformance = $summary['templatePerformance'];
         $this->sequencePerformance = $summary['sequencePerformance'];
@@ -547,200 +548,6 @@ class GrowthCenter extends Page
         $this->upgradeAssistedRevenue30d = $summary['upgradeAssistedRevenue30d'];
         $this->ownerConversationPerformance = $summary['ownerConversationPerformance'];
         $this->locationConversationPerformance = $summary['locationConversationPerformance'];
-    }
-
-    /**
-     * @param  Collection<int, CustomerTouchpoint>  $touchpoints
-     * @return array<string, array{label:string,revenue:float,replies:int,clicks:int,conversions:float}>
-     */
-    private function buildAttributedSequenceShares(Collection $touchpoints, ?string $dimension = null): array
-    {
-        $shares = [];
-
-        $touchpoints
-            ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->customer_conversation_id ?? ''))
-            ->each(function (Collection $items) use (&$shares): void {
-                $conversation = $items->first()?->conversation;
-
-                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') {
-                    return;
-                }
-
-                $sequenceGroups = $items
-                    ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_key', $touchpoint->template_key ?: 'manual'))
-                    ->filter(fn (Collection $slice, string $key): bool => $key !== '');
-
-                if ($sequenceGroups->isEmpty()) {
-                    return;
-                }
-
-                $revenue = $this->conversationRevenueValue($conversation);
-                $conversionShare = 1 / max(1, $sequenceGroups->count());
-                $revenueShare = $revenue / max(1, $sequenceGroups->count());
-
-                $sequenceGroups->each(function (Collection $slice, string $sequenceKey) use (&$shares, $conversionShare, $revenueShare, $conversation, $dimension): void {
-                    $dimensionKey = $sequenceKey;
-                    $context = '';
-                    $label = (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey));
-
-                    if ($dimension === 'owner') {
-                        $ownerName = $conversation->ownerLabel;
-                        $dimensionKey = "{$ownerName}|{$sequenceKey}";
-                        $context = $label;
-                        $label = $ownerName;
-                    } elseif ($dimension === 'location') {
-                        $locationName = $conversation->locationLabel;
-                        $dimensionKey = "{$locationName}|{$sequenceKey}";
-                        $context = $label;
-                        $label = $locationName;
-                    } elseif ($dimension === 'channel') {
-                        $channel = $this->formatSourceLabel((string) ($conversation->source_channel ?: 'crm'));
-                        $dimensionKey = "{$channel}|{$sequenceKey}";
-                        $context = $label;
-                        $label = $channel;
-                    }
-
-                    $shares[$dimensionKey] ??= [
-                        'label' => $label,
-                        'revenue' => 0.0,
-                        'replies' => 0,
-                        'clicks' => 0,
-                        'conversions' => 0.0,
-                        'context' => $context,
-                    ];
-
-                    $shares[$dimensionKey]['revenue'] += $revenueShare;
-                    $shares[$dimensionKey]['replies'] += $slice->filter(fn (CustomerTouchpoint $touchpoint): bool => $touchpoint->replied_at !== null)->count();
-                    $shares[$dimensionKey]['clicks'] += $slice->filter(fn (CustomerTouchpoint $touchpoint): bool => in_array($touchpoint->delivery_status, [
-                        CustomerTouchpoint::DELIVERY_CLICKED,
-                        CustomerTouchpoint::DELIVERY_READ,
-                    ], true))->count();
-                    $shares[$dimensionKey]['conversions'] += $conversionShare;
-                });
-            });
-
-        return $shares;
-    }
-
-    /**
-     * @param  array<string, array{label:string,revenue:float,replies:int,clicks:int,conversions:float,context?:string}>  $shares
-     * @return list<array{name:string,revenue:string,replies:int,clicks:int,conversions:string,context:string}>
-     */
-    private function buildAttributedDimensionRows(array $shares): array
-    {
-        return collect($shares)
-            ->map(function (array $share): array {
-                return [
-                    'name' => (string) ($share['label'] ?? 'Sin dato'),
-                    'revenue' => $this->formatCurrency((float) ($share['revenue'] ?? 0.0)),
-                    'replies' => (int) ($share['replies'] ?? 0),
-                    'clicks' => (int) ($share['clicks'] ?? 0),
-                    'conversions' => number_format((float) ($share['conversions'] ?? 0.0), 2),
-                    'revenue_raw' => (float) ($share['revenue'] ?? 0.0),
-                    'context' => (string) ($share['context'] ?? 'Secuencia CRM'),
-                ];
-            })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['clicks'] ?? 0) * 10) + (int) ($row['replies'] ?? 0))
-            ->take(4)
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @param  Collection<int, CustomerTouchpoint>  $touchpoints
-     * @return array<string, array{label:string,revenue:float,conversations:int,owners:string,channels:string}>
-     */
-    private function buildConversationPathShares(Collection $touchpoints): array
-    {
-        $shares = [];
-
-        $touchpoints
-            ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->customer_conversation_id ?? ''))
-            ->each(function (Collection $items) use (&$shares): void {
-                $conversation = $items->first()?->conversation;
-
-                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') {
-                    return;
-                }
-
-                $path = $items
-                    ->sortBy('id')
-                    ->map(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_label', data_get($touchpoint->metadata, 'journey_step_title', $touchpoint->template_label)))
-                    ->filter()
-                    ->unique()
-                    ->values();
-
-                if ($path->isEmpty()) {
-                    return;
-                }
-
-                $label = $path->implode(' -> ');
-                $channels = $items->pluck('channel')->filter()->map(fn (string $channel): string => $this->formatSourceLabel($channel))->unique()->implode(', ');
-                $owner = $conversation->ownerLabel;
-
-                $shares[$label] ??= [
-                    'label' => $label,
-                    'revenue' => 0.0,
-                    'conversations' => 0,
-                    'owners' => $owner,
-                    'channels' => $channels !== '' ? $channels : 'CRM',
-                ];
-
-                $shares[$label]['revenue'] += $this->conversationRevenueValue($conversation);
-                $shares[$label]['conversations']++;
-            });
-
-        return $shares;
-    }
-
-    /**
-     * @param  Collection<int, CustomerTouchpoint>  $touchpoints
-     * @return array<string, array{label:string,revenue:float,purchase_closures:int,no_show_recovered:int,reward_repurchases:int,upgrade_assists:int}>
-     */
-    private function buildOutcomeAttributedSequenceShares(Collection $touchpoints): array
-    {
-        $shares = [];
-
-        $touchpoints
-            ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) ($touchpoint->customer_conversation_id ?? ''))
-            ->each(function (Collection $items) use (&$shares): void {
-                $conversation = $items->first()?->conversation;
-
-                if (! $conversation instanceof CustomerConversation || $conversation->status !== 'closed') {
-                    return;
-                }
-
-                $sequenceGroups = $items
-                    ->groupBy(fn (CustomerTouchpoint $touchpoint): string => (string) data_get($touchpoint->metadata, 'journey_sequence_key', $touchpoint->template_key ?: 'manual'))
-                    ->filter(fn (Collection $slice, string $key): bool => $key !== '');
-
-                if ($sequenceGroups->isEmpty()) {
-                    return;
-                }
-
-                $signals = (array) data_get($conversation->metadata, 'business_signals', []);
-                $revenue = $this->conversationRevenueValue($conversation);
-                $revenueShare = $revenue / max(1, $sequenceGroups->count());
-
-                $sequenceGroups->each(function (Collection $slice, string $sequenceKey) use (&$shares, $signals, $revenueShare): void {
-                    $shares[$sequenceKey] ??= [
-                        'label' => (string) data_get($slice->first()?->metadata, 'journey_sequence_label', $this->formatSourceLabel($sequenceKey)),
-                        'revenue' => 0.0,
-                        'purchase_closures' => 0,
-                        'no_show_recovered' => 0,
-                        'reward_repurchases' => 0,
-                        'upgrade_assists' => 0,
-                    ];
-
-                    $shares[$sequenceKey]['revenue'] += $revenueShare;
-                    $shares[$sequenceKey]['purchase_closures'] += array_key_exists('purchase_closed', $signals) ? 1 : 0;
-                    $shares[$sequenceKey]['no_show_recovered'] += array_key_exists('no_show_recovered', $signals) ? 1 : 0;
-                    $shares[$sequenceKey]['reward_repurchases'] += array_key_exists('reward_repurchase', $signals) ? 1 : 0;
-                    $shares[$sequenceKey]['upgrade_assists'] += array_key_exists('tenant_upgrade', $signals) ? 1 : 0;
-                });
-            });
-
-        return $shares;
     }
 
     private function buildGrowthActions(): void
@@ -761,7 +568,7 @@ class GrowthCenter extends Page
             $actions[] = $this->action('Ver pedidos', 'Conecta conversion con ticket y recompra.', $this->ordersUrl);
         }
 
-        if ($this->isPro) {
+        if ($this->hasLoyaltyFeature) {
             $actions[] = $this->action('Audiencia y fidelidad', 'Mueve seguidores, loyalty y reactivacion con mas criterio.', $this->hasLoyaltyProgram ? $this->loyaltyUrl : $this->followersUrl);
         }
 
@@ -780,15 +587,15 @@ class GrowthCenter extends Page
             $queue[] = $this->priority('Cierra mejor tu captura', 'Ya hay trafico, pero casi no estas convirtiendo visitas en conversaciones.', $this->marketingUrl, 'warning');
         }
 
-        if ($this->repeatCustomerCount > 0 && ! $this->hasLoyaltyProgram && $this->isPro) {
+        if ($this->repeatCustomerCount > 0 && ! $this->hasLoyaltyProgram && $this->hasLoyaltyFeature) {
             $queue[] = $this->priority('Activa fidelidad', 'Ya existe recompra: conviene convertirla en programa y no dejarla al azar.', $this->loyaltyUrl, 'warning');
         }
 
-        if ($this->campaignsSent30d === 0 && $this->isPro && ($this->followersCount > 0 || $this->closedLeadsCount > 0 || $this->campaignReadyCustomersCount > 0)) {
-            $queue[] = $this->priority('Lanza una campana', $this->campaignReadyCustomersCount > 0 ? 'Tu CRM ya tiene base opt-in lista para una campaÃ±a por segmento, owner o sede.' : 'Tu base ya aguanta un empuje comercial y todavia no lo estas usando.', $this->marketingUrl, 'info');
+        if ($this->campaignsSent30d === 0 && $this->hasMarketingSuite && ($this->followersCount > 0 || $this->closedLeadsCount > 0 || $this->campaignReadyCustomersCount > 0)) {
+            $queue[] = $this->priority('Lanza una campaña', $this->campaignReadyCustomersCount > 0 ? 'Tu CRM ya tiene base opt-in lista para una campaña por segmento, owner o sede.' : 'Tu base ya aguanta un empuje comercial y todavía no lo estás usando.', $this->marketingUrl, 'info');
         }
 
-        if ($this->isPro && $this->campaignReadyCustomersCount > 0 && $this->recurringCampaignsCount === 0) {
+        if ($this->hasCampaignFeature && $this->campaignReadyCustomersCount > 0 && $this->recurringCampaignsCount === 0) {
             $queue[] = $this->priority('Enciende una cadencia recurrente', 'Ya tienes base con permiso claro, pero ninguna campana recurrente sosteniendo recompra o reactivacion.', $this->campaignsUrl, 'warning');
         }
 
@@ -880,186 +687,6 @@ class GrowthCenter extends Page
     }
 
     /**
-     * @param  Collection<int, CustomerProfile>  $profiles
-     * @param  Collection<int, CustomerTask>  $tasks
-     * @param  array<string, string>  $labels
-     * @return list<array{name: string, revenue: string, customers: int, openTasks: int, overdueTasks: int, repeatRate: string, context: string}>
-     */
-    private function buildPortfolioComparisonRows(
-        Collection $profiles,
-        Collection $tasks,
-        string $dimensionKey,
-        array $labels,
-        string $emptyLabel,
-    ): array {
-        return $profiles->pluck($dimensionKey)
-            ->merge($tasks->pluck($dimensionKey))
-            ->map(fn (mixed $value): string => (string) ($value ?: 'none'))
-            ->unique()
-            ->values()
-            ->map(function (string $key) use ($profiles, $tasks, $dimensionKey, $labels, $emptyLabel): array {
-                $profileSlice = $profiles->filter(fn (CustomerProfile $profile): bool => (string) ($profile->{$dimensionKey} ?: 'none') === $key);
-                $taskSlice = $tasks->filter(fn (CustomerTask $task): bool => (string) ($task->{$dimensionKey} ?: 'none') === $key);
-                $customerCount = $profileSlice->count();
-                $repeatCustomers = $profileSlice->filter(fn (CustomerProfile $profile): bool => (int) $profile->repeat_purchase_count > 0)->count();
-                $overdueTasks = $taskSlice->filter(fn (CustomerTask $task): bool => $task->sla_due_at !== null && $task->sla_due_at->isPast())->count();
-                $topSegment = (string) ($profileSlice->pluck('customer_segment')->filter()->countBy()->sortDesc()->keys()->first() ?? 'sin segmento');
-                $revenue = (float) $profileSlice->sum('total_spent');
-
-                return [
-                    'name' => $labels[$key] ?? $emptyLabel,
-                    'revenue' => $this->formatCurrency($revenue),
-                    'customers' => $customerCount,
-                    'openTasks' => $taskSlice->count(),
-                    'overdueTasks' => $overdueTasks,
-                    'repeatRate' => $customerCount > 0 ? number_format(($repeatCustomers / $customerCount) * 100, 1).'%' : '0.0%',
-                    'context' => 'Segmento dominante: '.$this->formatSourceLabel($topSegment),
-                ];
-            })
-            ->sortByDesc(fn (array $row): float => ($row['overdueTasks'] * 1000) + ($row['openTasks'] * 100) + (float) str_replace(['L. ', ','], '', $row['revenue']))
-            ->take(4)
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @param  Collection<int, CustomerConversation>  $conversations
-     * @return list<array{name:string,total:int,closed:int,conversions:int,revenue:string,waiting:int,breached:int,avgFirstResponse:string,conversionRate:string}>
-     */
-    private function buildConversationPerformanceRows(
-        Collection $conversations,
-        string $dimensionKey,
-        string $labelAccessor,
-        string $emptyLabel,
-    ): array {
-        return $conversations->pluck($dimensionKey)
-            ->map(fn (mixed $value): string => (string) ($value ?: 'none'))
-            ->unique()
-            ->values()
-            ->map(function (string $key) use ($conversations, $dimensionKey, $labelAccessor, $emptyLabel): array {
-                $slice = $conversations->filter(fn (CustomerConversation $conversation): bool => (string) ($conversation->{$dimensionKey} ?: 'none') === $key);
-                $responded = $slice->filter(fn (CustomerConversation $conversation): bool => $conversation->first_response_at !== null && $conversation->last_customer_message_at !== null);
-                $avgResponse = $responded->count() > 0
-                    ? round((float) $responded->map(function (CustomerConversation $conversation): int {
-                        return max(0, (int) $conversation->last_customer_message_at?->diffInMinutes($conversation->first_response_at));
-                    })->avg(), 1)
-                    : 0.0;
-                $closed = $slice->where('status', 'closed')->count();
-                $revenue = $slice
-                    ->filter(fn (CustomerConversation $conversation): bool => $conversation->status === 'closed')
-                    ->sum(fn (CustomerConversation $conversation): float => $this->conversationRevenueValue($conversation));
-
-                return [
-                    'name' => $key === 'none'
-                        ? $emptyLabel
-                        : (string) data_get($slice->first(), $labelAccessor, $emptyLabel),
-                    'total' => $slice->count(),
-                    'closed' => $closed,
-                    'conversions' => $closed,
-                    'revenue' => $this->formatCurrency($revenue),
-                    'revenue_raw' => $revenue,
-                    'waiting' => $slice->where('status', 'waiting_customer')->count(),
-                    'breached' => $slice->filter(fn (CustomerConversation $conversation): bool => $conversation->response_due_at !== null && $conversation->response_due_at->isPast())->count(),
-                    'avgFirstResponse' => $avgResponse > 0 ? $avgResponse.' min' : 'Sin datos',
-                    'conversionRate' => $slice->count() > 0 ? number_format(($closed / $slice->count()) * 100, 1).'%' : '0.0%',
-                ];
-            })
-            ->sortByDesc(fn (array $row): float => ((float) ($row['revenue_raw'] ?? 0.0) * 1000) + ((int) ($row['closed'] ?? 0) * 100) + ((int) ($row['breached'] ?? 0) * 10) + (int) ($row['total'] ?? 0))
-            ->take(4)
-            ->values()
-            ->all();
-    }
-
-    private function conversationRevenueValue(CustomerConversation $conversation): float
-    {
-        $profile = $conversation->customerProfile;
-
-        if (! $profile instanceof CustomerProfile) {
-            return 0.0;
-        }
-
-        $firstConversion = (float) ($profile->first_conversion_value ?? 0);
-
-        if ($firstConversion > 0) {
-            return $firstConversion;
-        }
-
-        $initialLtv = (float) ($profile->initial_ltv ?? 0);
-
-        if ($initialLtv > 0) {
-            return $initialLtv;
-        }
-
-        return (float) ($profile->total_spent ?? 0);
-    }
-
-    /**
-     * @return array{distinct: int, repeat: int, reactivation: int}
-     */
-    private function customerSnapshotFromOrders(string $tenantId, Carbon $since): array
-    {
-        $customerKey = "coalesce(nullif(lower(customer_email), ''), concat('phone:', nullif(customer_phone, '')), concat('guest:', id))";
-
-        /** @var Collection<int, object> $rows */
-        $rows = Order::query()
-            ->withoutGlobalScopes()
-            ->without(['items'])
-            ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', $since)
-            ->whereNotIn('status', [Order::STATUS_CANCELLED])
-            ->selectRaw("{$customerKey} as customer_key, count(*) as total_orders, max(created_at) as last_seen_at")
-            ->groupByRaw($customerKey)
-            ->get();
-
-        return $this->aggregateCustomerSnapshot($rows);
-    }
-
-    /**
-     * @return array{distinct: int, repeat: int, reactivation: int}
-     */
-    private function customerSnapshotFromAppointments(string $tenantId, Carbon $since): array
-    {
-        $customerKey = "coalesce(nullif(lower(customer_email), ''), concat('phone:', nullif(customer_phone, '')), concat('guest:', id))";
-
-        /** @var Collection<int, object> $rows */
-        $rows = Appointment::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', $since)
-            ->whereNotIn('status', [Appointment::STATUS_CANCELLED, Appointment::STATUS_NO_SHOW])
-            ->selectRaw("{$customerKey} as customer_key, count(*) as total_orders, max(created_at) as last_seen_at")
-            ->groupByRaw($customerKey)
-            ->get();
-
-        return $this->aggregateCustomerSnapshot($rows);
-    }
-
-    /**
-     * @param  Collection<int, object>  $rows
-     * @return array{distinct: int, repeat: int, reactivation: int}
-     */
-    private function aggregateCustomerSnapshot(Collection $rows): array
-    {
-        $distinct = $rows->count();
-        $repeat = $rows->filter(static fn (object $row): bool => (int) ($row->total_orders ?? 0) >= 2)->count();
-        $reactivation = $rows->filter(function (object $row): bool {
-            $lastSeen = $row->last_seen_at ?? null;
-
-            if ($lastSeen === null) {
-                return false;
-            }
-
-            return Carbon::parse((string) $lastSeen)->lt(now()->subDays(30));
-        })->count();
-
-        return [
-            'distinct' => $distinct,
-            'repeat' => $repeat,
-            'reactivation' => $reactivation,
-        ];
-    }
-
-    /**
      * @return array{ready: bool, label: string, color: string}
      */
     private function resolveAutomationReadiness(string $state): array
@@ -1071,8 +698,8 @@ class GrowthCenter extends Page
             'mixed_activity' => $this->readiness(($this->orders30d + $this->appointments30d) > 0, 'Actividad lista', 'Necesita pedidos o citas'),
             'audience_ready' => $this->readiness(($this->followersCount + $this->newLeadsCount + $this->contactedLeadsCount + $this->closedLeadsCount) > 0, 'Audiencia lista', 'Necesita audiencia'),
             'orders_or_audience' => $this->readiness($this->orders30d > 0 || $this->followersCount > 0, 'Base lista', 'Necesita pedidos o audiencia'),
-            'promo_growth' => $this->readiness($this->isPro, 'Lista para promo', 'Requiere PRO'),
-            'loyalty_growth' => $this->readiness($this->isPro && ($this->hasLoyaltyProgram || $this->repeatCustomerCount > 0), $this->hasLoyaltyProgram ? 'Loyalty activo' : 'Base lista para loyalty', 'Requiere PRO o recompra'),
+            'promo_growth' => $this->readiness($this->hasMarketingSuite, 'Lista para promo', 'Requiere suite comercial'),
+            'loyalty_growth' => $this->readiness($this->hasLoyaltyFeature && ($this->hasLoyaltyProgram || $this->repeatCustomerCount > 0), $this->hasLoyaltyProgram ? 'Loyalty activo' : 'Base lista para loyalty', 'Requiere loyalty o recompra'),
             default => $this->readiness(true, 'Disponible', 'Disponible'),
         };
     }
@@ -1169,115 +796,4 @@ class GrowthCenter extends Page
     {
         return 'L. '.number_format($value, 2);
     }
-
-    private function formatSourceLabel(string $source): string
-    {
-        return match ($source) {
-            'whatsapp_click' => 'WhatsApp',
-            'catalog' => 'Catalogo',
-            'website' => 'Sitio web',
-            'manual' => 'Manual',
-            default => ucfirst(str_replace('_', ' ', $source)),
-        };
-    }
-
-    private function formatOrderSourceLabel(string $source): string
-    {
-        return match ($source) {
-            'web' => 'Web',
-            'whatsapp' => 'WhatsApp',
-            'direct' => 'Directo',
-            default => ucfirst(str_replace('_', ' ', $source)),
-        };
-    }
-
-    private function ensureCustomerProfilesBootstrapped(string $tenantId): void
-    {
-        $profilesExist = CustomerProfile::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->exists();
-
-        if ($profilesExist) {
-            return;
-        }
-
-        $hasCustomerSignals = Order::query()
-            ->withoutGlobalScopes()
-            ->without(['items'])
-            ->where('tenant_id', $tenantId)
-            ->where(function ($query): void {
-                $query->whereNotNull('customer_email')->orWhereNotNull('customer_phone');
-            })
-            ->exists()
-            || Appointment::query()
-                ->withoutGlobalScopes()
-                ->where('tenant_id', $tenantId)
-                ->where(function ($query): void {
-                    $query->whereNotNull('customer_email')->orWhereNotNull('customer_phone');
-                })
-                ->exists()
-            || Lead::query()
-                ->withoutGlobalScopes()
-                ->where('tenant_id', $tenantId)
-                ->where(function ($query): void {
-                    $query->whereNotNull('email')->orWhereNotNull('phone');
-                })
-                ->exists();
-
-        if ($hasCustomerSignals) {
-            app(CustomerProfileManager::class)->syncTenant($tenantId);
-        }
-    }
-
-    private function loadTopProductOffer(string $tenantId, Carbon $since): void
-    {
-        $topProduct = OrderItem::query()
-            ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->where('orders.tenant_id', $tenantId)
-            ->where('orders.created_at', '>=', $since)
-            ->whereNotIn('orders.status', [Order::STATUS_CANCELLED])
-            ->selectRaw('coalesce(order_items.product_name, "Producto") as offer_name, sum(order_items.quantity) as units, sum(coalesce(order_items.line_total, order_items.total_price, 0)) as revenue')
-            ->groupBy('offer_name')
-            ->orderByDesc('revenue')
-            ->orderByDesc('units')
-            ->first();
-
-        if ($topProduct !== null) {
-            $this->topOfferLabel = (string) $topProduct->offer_name;
-            $this->topOfferCopy = (int) ($topProduct->units ?? 0) > 0
-                ? ((int) $topProduct->units).' unidades movieron '.$this->formatCurrency((float) ($topProduct->revenue ?? 0)).' en los ultimos 30 dias.'
-                : 'Tu catalogo ya muestra una oferta dominante.';
-        }
-    }
-
-    private function loadTopServiceOffer(string $tenantId, Carbon $since): void
-    {
-        $topService = Appointment::query()
-            ->withoutGlobalScopes()
-            ->leftJoin('services', 'services.id', '=', 'appointments.service_id')
-            ->where('appointments.tenant_id', $tenantId)
-            ->where('appointments.created_at', '>=', $since)
-            ->whereNotIn('appointments.status', [Appointment::STATUS_CANCELLED, Appointment::STATUS_NO_SHOW])
-            ->selectRaw('coalesce(services.name, "Servicio") as offer_name, count(*) as units')
-            ->groupBy('offer_name')
-            ->orderByDesc('units')
-            ->first();
-
-        if ($topService !== null && (int) ($topService->units ?? 0) > 0) {
-            $this->topOfferLabel = (string) $topService->offer_name;
-            $this->topOfferCopy = (int) $topService->units.' reservas recientes apuntan a esta oferta como la de mayor traccion.';
-        }
-    }
 }
-
-
-
-
-
-
-
-
-
-
-

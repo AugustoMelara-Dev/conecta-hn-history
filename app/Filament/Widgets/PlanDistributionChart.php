@@ -4,11 +4,19 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\Tenant;
 use Filament\Widgets\ChartWidget;
 
 class PlanDistributionChart extends ChartWidget
 {
+    /** @var array<int, string> */
+    private const PAID_PLAN_KEYS = [
+        TenantPlan::PRO->value,
+        Tenant::PLAN_CRECIMIENTO,
+        Tenant::PLAN_COSECHA,
+    ];
+
     protected ?string $heading = 'Distribucion de Cartera';
 
     protected static ?int $sort = 3;
@@ -22,8 +30,8 @@ class PlanDistributionChart extends ChartWidget
 
     protected function getData(): array
     {
-        $proCount = Tenant::where('is_pro', true)->count();
-        $freeCount = Tenant::where('is_pro', false)->count();
+        $proCount = Tenant::whereIn('plan_type', self::PAID_PLAN_KEYS)->count();
+        $freeCount = Tenant::where('plan_type', Tenant::PLAN_SEMILLA)->count();
 
         $total = $proCount + $freeCount;
         $proPercent = $total > 0 ? round(($proCount / $total) * 100, 1) : 0;

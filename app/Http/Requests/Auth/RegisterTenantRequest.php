@@ -62,7 +62,7 @@ final class RegisterTenantRequest extends FormRequest
                 'min:3',
                 'alpha_dash',
                 'unique:tenants,slug',
-                'not_in:' . implode(',', self::RESERVED_SLUGS),
+                'not_in:'.implode(',', self::RESERVED_SLUGS),
             ],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],

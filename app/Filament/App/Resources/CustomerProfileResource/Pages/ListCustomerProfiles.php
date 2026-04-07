@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\CustomerProfileResource\Pages;
 
-use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
-use App\Domain\TenantGovernance\Services\CustomerLifecycleTriggerManager;
-use App\Domain\TenantGovernance\Services\CustomerProfileManager;
+use App\Application\TenantGovernance\CustomerProfiles\Commands\RunCustomerReactivationSweepCommand;
+use App\Application\TenantGovernance\CustomerProfiles\Commands\SyncTenantCustomersCommand;
+use App\Application\TenantGovernance\CustomerProfiles\Handlers\RunCustomerReactivationSweepHandler;
+use App\Application\TenantGovernance\CustomerProfiles\Handlers\SyncTenantCustomersHandler;
 use App\Filament\App\Pages\CustomerInbox;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\CustomerTouchpointResource;
@@ -41,7 +42,9 @@ class ListCustomerProfiles extends ListTenantRecords
             ->exists();
 
         if (! $profilesExist && $this->hasAnyCustomerActivity($tenantId)) {
-            app(CustomerProfileManager::class)->syncTenant($tenant);
+            app(SyncTenantCustomersHandler::class)->handle(
+                new SyncTenantCustomersCommand((string) $tenant->getKey()),
+            );
         }
     }
 
@@ -58,7 +61,9 @@ class ListCustomerProfiles extends ListTenantRecords
                         return;
                     }
 
-                    app(CustomerProfileManager::class)->syncTenant($tenant);
+                    app(SyncTenantCustomersHandler::class)->handle(
+                        new SyncTenantCustomersCommand((string) $tenant->getKey()),
+                    );
 
                     Notification::make()
                         ->success()
@@ -80,10 +85,12 @@ class ListCustomerProfiles extends ListTenantRecords
                         return;
                     }
 
-                    $result = app(CustomerLifecycleTriggerManager::class)->runReactivationSweep(
-                        tenant: $tenant,
-                        actorUserId: auth()->id(),
-                        limit: 25,
+                    $result = app(RunCustomerReactivationSweepHandler::class)->handle(
+                        new RunCustomerReactivationSweepCommand(
+                            tenantId: (string) $tenant->getKey(),
+                            actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+                            limit: 25,
+                        ),
                     );
 
                     Notification::make()

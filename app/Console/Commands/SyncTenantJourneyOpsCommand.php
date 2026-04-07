@@ -19,9 +19,9 @@ class SyncTenantJourneyOpsCommand extends Command
 
         $this->info(sprintf(
             'Journey ops sincronizado: conversion=%d, no_show=%d, reward=%d',
-            (int) ($result['conversion'] ?? 0),
-            (int) ($result['no_show'] ?? 0),
-            (int) ($result['reward'] ?? 0),
+            (int) $result['conversion'],
+            (int) $result['no_show'],
+            (int) $result['reward'],
         ));
 
         return self::SUCCESS;

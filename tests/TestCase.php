@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Cache;
+use ReflectionObject;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -46,6 +47,7 @@ abstract class TestCase extends BaseTestCase
             new CommandValidatorRegistry
         );
 
+        $this->configureTestingRuntimePaths();
         $this->resetSharedTenantState();
         $this->primeSafeSystemSettings();
     }
@@ -108,6 +110,36 @@ abstract class TestCase extends BaseTestCase
                 // Skipping the reset in that scenario keeps the global cleanup safe.
             }
         }
+    }
+
+    private function configureTestingRuntimePaths(): void
+    {
+        $compiledViewPath = config('view.compiled');
+
+        if (! is_string($compiledViewPath) || $compiledViewPath === '') {
+            return;
+        }
+
+        if (! is_dir($compiledViewPath) && ! @mkdir($compiledViewPath, 0755, true) && ! is_dir($compiledViewPath)) {
+            throw new \RuntimeException("Unable to create compiled view path [{$compiledViewPath}].");
+        }
+
+        config(['view.compiled' => $compiledViewPath]);
+
+        if (! $this->app->resolved('blade.compiler')) {
+            return;
+        }
+
+        $compiler = $this->app['blade.compiler'];
+        $reflection = new ReflectionObject($compiler);
+
+        if (! $reflection->hasProperty('cachePath')) {
+            return;
+        }
+
+        $cachePath = $reflection->getProperty('cachePath');
+        $cachePath->setAccessible(true);
+        $cachePath->setValue($compiler, $compiledViewPath);
     }
 
     private function primeSafeSystemSettings(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Services;
 
 use App\Domain\TenantGovernance\Repositories\CampaignRepositoryInterface;
+use App\Infrastructure\TenantGovernance\Campaign\TenantCampaignWorkspaceReader;
 use App\Models\Campaign;
 use App\Models\Tenant;
 use Illuminate\Support\Carbon;
@@ -25,7 +26,7 @@ final class TenantCampaignDispatchPlanner
         $usesCadence = $campaign->usesCadence();
         $nextRunAt = $usesCadence
             ? ($campaign->next_run_at !== null && $campaign->next_run_at->isFuture()
-                ? $campaign->next_run_at
+                ? Carbon::instance($campaign->next_run_at)
                 : now()->addDays((int) $campaign->cadence_interval_days))
             : null;
 

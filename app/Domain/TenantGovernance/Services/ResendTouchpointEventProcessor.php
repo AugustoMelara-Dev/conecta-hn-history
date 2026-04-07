@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
-use App\Domain\TenantGovernance\Repositories\CustomerTouchpointEventRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\CustomerTouchpointRepositoryInterface;
-use App\Domain\TenantGovernance\Repositories\InboundWebhookRepositoryInterface;
 use App\Models\CustomerTouchpoint;
 use App\Models\CustomerTouchpointEvent;
 use Illuminate\Support\Carbon;
@@ -35,7 +33,9 @@ final class ResendTouchpointEventProcessor
         $occurredAt = $this->eventTimestamp($payload);
 
         $touchpoint = $this->resolveTouchpoint($tags, $providerMessageId);
-        $tenantId = (string) ($touchpoint?->tenant_id ?? $tags['tenant_id'] ?? 'system');
+        $tenantId = $touchpoint instanceof CustomerTouchpoint
+            ? (string) $touchpoint->tenant_id
+            : (string) ($tags['tenant_id'] ?? 'system');
 
         $webhook = $this->trackingRecorder->begin($webhookId, $tenantId, $eventType, $payload);
 
@@ -73,6 +73,7 @@ final class ResendTouchpointEventProcessor
         if (filled($touchpointId) && is_numeric($touchpointId)) {
             return $this->touchpoints->findById((int) $touchpointId);
         }
+
         return $providerMessageId === '' ? null : $this->touchpoints->findByProviderMessage('resend', $providerMessageId);
     }
 
@@ -85,6 +86,7 @@ final class ResendTouchpointEventProcessor
             if (is_string($key) && is_scalar($item)) {
                 return [$key => (string) $item];
             }
+
             return [];
         })->all();
     }
@@ -92,6 +94,7 @@ final class ResendTouchpointEventProcessor
     private function eventTimestamp(array $payload): Carbon
     {
         $value = $payload['created_at'] ?? $payload['createdAt'] ?? now()->toIso8601String();
+
         return Carbon::parse((string) $value);
     }
 }

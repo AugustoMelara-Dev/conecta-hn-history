@@ -153,8 +153,8 @@ function HeroSection() {
                         </h1>
 
                         <p className="max-w-lg text-xl leading-relaxed text-slate-600">
-                            Digitaliza tu restaurante, tienda o clinica con la infraestructura premium de Vito.
-                            Gestion de pedidos, analitica avanzada y marketing en una sola plataforma.
+                            Gestiona catalogo, reservas, pedidos, CRM, billing y micrositio publico desde un solo panel
+                            para negocios locales.
                         </p>
 
                         <div className="flex flex-col gap-4 pt-4 sm:flex-row">
@@ -221,8 +221,8 @@ function BenefitsSection() {
         },
         {
             icon: ReceiptText,
-            title: 'Facturacion Local',
-            body: 'Cumplimiento fiscal integrado para el mercado de Honduras.',
+            title: 'Billing y Cobros',
+            body: 'Gestiona pagos reportados, estados de suscripcion y seguimiento comercial desde el panel.',
             className: 'bg-slate-200 text-slate-950',
         },
     ];
@@ -233,7 +233,7 @@ function BenefitsSection() {
                 <div className="mb-16">
                     <SectionTitle className="text-4xl">Todo lo que necesitas para operar</SectionTitle>
                     <p className="mt-4 max-w-xl text-slate-600">
-                        Olvidate de usar 10 herramientas diferentes. Vito centraliza tu operacion digital con arquitectura de alto rendimiento.
+                        Catalogo, reservas, CRM, campañas, analytics y operacion conectados sin duplicar herramientas ni flujos.
                     </p>
                 </div>
 
@@ -243,10 +243,10 @@ function BenefitsSection() {
                             <div>
                                 <BarChart3 className="mb-6 h-10 w-10 text-slate-950" />
                                 <h3 className="text-3xl font-bold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                    Analitica de Ventas en Tiempo Real
+                                    Analytics y Growth Center
                                 </h3>
                                 <p className="mt-4 max-w-md text-slate-600">
-                                    Toma decisiones basadas en datos. Visualiza tus productos mas vendidos, horas pico y crecimiento mensual desde un solo panel.
+                                    Visualiza ventas, pedidos, crecimiento, embudos y señales operativas desde un solo panel.
                                 </p>
                             </div>
 
@@ -404,9 +404,10 @@ function PricingSection({ settings = {} }) {
                             <ul className="mb-10 space-y-4 text-sm">
                                 {[
                                     `Catalogo Digital (${starterLimit} items)`,
-                                    'Pedidos via WhatsApp',
-                                    'Analitica Basica',
-                                    'Soporte por Correo',
+                                    'Pedidos y cierre por WhatsApp',
+                                    'Booking o storefront segun tu negocio',
+                                    'Analytics basica',
+                                    'Micrositio publico',
                                 ].map((item) => (
                                     <li key={item} className="flex items-center gap-3">
                                         <CheckCircle2 className="h-4 w-4 text-slate-950" />
@@ -442,10 +443,10 @@ function PricingSection({ settings = {} }) {
                             <ul className="mb-10 space-y-4 text-sm">
                                 {[
                                     `Catalogo Ilimitado o hasta ${proLimit} items`,
-                                    'Facturacion Fiscal Integrada',
-                                    'Automatizacion de Marketing',
-                                    'Soporte Prioritario 24/7',
-                                    'Multi-sucursal',
+                                    'Growth Center y exports',
+                                    'Marketing y cupones',
+                                    'Branding del micrositio',
+                                    'Operacion multi-sede',
                                 ].map((item) => (
                                     <li key={item} className="flex items-center gap-3">
                                         <CheckCircle2 className="h-4 w-4 text-white" />
@@ -480,7 +481,7 @@ function SocialProofSection({ stats = {} }) {
                             ))}
                         </div>
                         <p className="text-lg italic font-medium leading-relaxed text-slate-900">
-                            "Vito cambio la forma en que gestionamos los pedidos de nuestro restaurante. Las ventas por WhatsApp subieron un 40% en el primer mes."
+                            "Ahora tenemos pedidos, reservas y seguimiento comercial mucho mas ordenados desde el mismo panel."
                         </p>
                         <div className="flex items-center gap-4">
                             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-900">
@@ -488,26 +489,26 @@ function SocialProofSection({ stats = {} }) {
                             </div>
                             <div>
                                 <p className="text-sm font-bold text-slate-950">Carlos Mendoza</p>
-                                <p className="text-xs text-slate-500">Dueno de Bistro 504</p>
+                                <p className="text-xs text-slate-500">Negocio local</p>
                             </div>
                         </div>
                     </article>
 
                     <article className="flex flex-col items-center justify-center rounded-[1.9rem] bg-white p-10 text-center shadow-sm">
                         <span className="mb-2 text-6xl font-extrabold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                            {stats?.tenants || 500}+
+                            {stats?.tenants || 0}+
                         </span>
                         <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                            Negocios Activos
+                            Negocios visibles
                         </p>
                     </article>
 
                     <article className="flex flex-col items-center justify-center rounded-[1.9rem] bg-white p-10 text-center shadow-sm">
                         <span className="mb-2 text-6xl font-extrabold text-slate-700" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                            99%
+                            CRM
                         </span>
                         <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                            Uptime Garantizado
+                            Seguimiento comercial
                         </p>
                     </article>
                 </div>
@@ -523,8 +524,8 @@ function FaqSection() {
             body: 'Tus clientes navegan tu catalogo digital, agregan productos al carrito y al finalizar, el pedido llega estructurado directamente a tu numero de WhatsApp Business, listo para ser procesado.',
         },
         {
-            title: 'Es compatible con la facturacion de la SAR?',
-            body: 'Si, nuestro plan avanzado contempla facturacion conectada a la realidad fiscal local y una arquitectura lista para integrar cumplimiento de Honduras.',
+            title: 'Que incluye hoy billing?',
+            body: 'Hoy el panel cubre gestion de suscripcion, reporte de pagos, seguimiento comercial y operaciones de cobro dentro del producto.',
         },
         {
             title: 'Puedo usar mi propio dominio?',
@@ -558,10 +559,10 @@ function FinalCtaSection() {
             <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-700" />
             <div className="relative z-10 mx-auto max-w-5xl text-center">
                 <h2 className="mb-8 text-4xl font-extrabold tracking-tight text-white md:text-6xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                    Lleva tu negocio al siguiente nivel digital.
+                    Opera con un panel claro y una presencia publica profesional.
                 </h2>
                 <p className="mx-auto mb-12 max-w-2xl text-xl text-slate-300">
-                    Unete a cientos de empresarios que ya estan operando con eficiencia y escalando sus ventas.
+                    Activa tu catalogo, reservas, CRM y micrositio sin promesas infladas ni superficies duplicadas.
                 </p>
                 <div className="flex flex-col justify-center gap-6 sm:flex-row">
                     <Link
@@ -601,12 +602,12 @@ export default function Welcome({ newTenants = [], stats = {}, settings = {} }) 
             <Head title="Vito Business OS | El Sistema Operativo para Negocios Locales">
                 <meta
                     name="description"
-                    content="Digitaliza tu restaurante, tienda o clinica con la infraestructura premium de Vito. Gestion de pedidos, analitica avanzada y marketing en una sola plataforma."
+                    content="Gestiona catalogo, reservas, pedidos, CRM, billing y micrositio publico desde un solo panel para negocios locales."
                 />
                 <meta property="og:title" content="Vito Business OS | El Sistema Operativo para Negocios Locales" />
                 <meta
                     property="og:description"
-                    content="Digitaliza tu restaurante, tienda o clinica con la infraestructura premium de Vito. Gestion de pedidos, analitica avanzada y marketing en una sola plataforma."
+                    content="Gestiona catalogo, reservas, pedidos, CRM, billing y micrositio publico desde un solo panel para negocios locales."
                 />
                 <meta property="og:type" content="website" />
                 <link rel="canonical" href={route('home')} />

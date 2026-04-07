@@ -3,45 +3,8 @@
 declare(strict_types=1);
 
 use App\Filament\App\Resources\ServiceProviderResource;
-use App\Filament\App\Resources\TenantProfileResource;
-use App\Filament\App\Resources\TenantProfileResource\RelationManagers\OpeningHoursRelationManager;
 use App\Models\OpeningHour;
 use App\Models\ServiceProvider;
-
-// ═══════════════════════════════════════════════════════════════════════
-// VISUAL SCHEDULE EDITOR - Filament Resources Tests
-// ═══════════════════════════════════════════════════════════════════════
-
-describe('OpeningHoursRelationManager', function () {
-    it('exists and is properly configured', function () {
-        expect(class_exists(OpeningHoursRelationManager::class))->toBeTrue();
-    });
-
-    it('has correct relationship name', function () {
-        $reflection = new ReflectionClass(OpeningHoursRelationManager::class);
-        $property = $reflection->getProperty('relationship');
-
-        expect($property->getDefaultValue())->toBe('openingHours');
-    });
-
-    it('has Spanish labels configured', function () {
-        $reflection = new ReflectionClass(OpeningHoursRelationManager::class);
-
-        $title = $reflection->getProperty('title');
-        $modelLabel = $reflection->getProperty('modelLabel');
-
-        expect($title->getDefaultValue())->toBe('Horario de Atención');
-        expect($modelLabel->getDefaultValue())->toBe('Horario');
-    });
-});
-
-describe('TenantProfileResource Relations', function () {
-    it('includes OpeningHoursRelationManager', function () {
-        $relations = TenantProfileResource::getRelations();
-
-        expect($relations)->toContain(OpeningHoursRelationManager::class);
-    });
-});
 
 describe('ServiceProviderResource Schedule Config', function () {
     it('has schedule_config in fillable', function () {

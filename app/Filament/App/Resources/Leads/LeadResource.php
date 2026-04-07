@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+
 class LeadResource extends Resource
 {
     protected static ?string $model = Lead::class;

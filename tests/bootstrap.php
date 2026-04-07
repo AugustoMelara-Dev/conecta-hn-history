@@ -11,7 +11,7 @@ function testingEnv(string $key, ?string $default = null): ?string
 {
     $value = $_SERVER[$key] ?? $_ENV[$key] ?? getenv($key);
 
-    if ($value === false || $value === null || $value === '') {
+    if ($value === false || $value === '') {
         return $default;
     }
 
@@ -29,19 +29,102 @@ function testingSetEnv(string $key, string $value): void
 }
 
 /**
+ * Get a stable process suffix for filesystem isolation during tests.
+ */
+function testingProcessSuffix(): string
+{
+    $token = testingEnv('TEST_TOKEN');
+
+    if ($token !== null) {
+        return preg_replace('/[^A-Za-z0-9_]/', '_', $token) ?: '1';
+    }
+
+    $pid = function_exists('getmypid') ? getmypid() : null;
+
+    if (is_int($pid) && $pid > 0) {
+        return "pid_{$pid}";
+    }
+
+    return 'main';
+}
+
+/**
+ * Recursively delete a directory tree.
+ */
+function testingDeleteDirectory(string $path): void
+{
+    if (! is_dir($path)) {
+        return;
+    }
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST,
+    );
+
+    foreach ($iterator as $item) {
+        if ($item->isDir()) {
+            @rmdir($item->getPathname());
+        } else {
+            @unlink($item->getPathname());
+        }
+    }
+
+    @rmdir($path);
+}
+
+/**
+ * Isolate runtime filesystem paths per test process so Blade, cache and
+ * session artifacts do not contend on Windows or during concurrent Pest runs.
+ */
+function configureTestingRuntimeStorage(): void
+{
+    $suffix = testingProcessSuffix();
+    $runtimeStoragePath = __DIR__."/../storage/testing/{$suffix}";
+    $frameworkPath = "{$runtimeStoragePath}/framework";
+    $compiledViewPath = "{$frameworkPath}/views";
+
+    $directories = [
+        $runtimeStoragePath,
+        $frameworkPath,
+        "{$frameworkPath}/cache",
+        "{$frameworkPath}/cache/data",
+        "{$frameworkPath}/sessions",
+        "{$frameworkPath}/testing",
+        $compiledViewPath,
+        "{$runtimeStoragePath}/app",
+        "{$runtimeStoragePath}/logs",
+    ];
+
+    foreach ($directories as $directory) {
+        if (! is_dir($directory) && ! @mkdir($directory, 0777, true) && ! is_dir($directory)) {
+            fwrite(STDERR, "[tests/bootstrap] Unable to create runtime testing directory '{$directory}'.".PHP_EOL);
+            exit(1);
+        }
+    }
+
+    testingSetEnv('LARAVEL_STORAGE_PATH', realpath($runtimeStoragePath) ?: $runtimeStoragePath);
+    testingSetEnv('VIEW_COMPILED_PATH', realpath($compiledViewPath) ?: $compiledViewPath);
+
+    register_shutdown_function(static function () use ($runtimeStoragePath): void {
+        testingDeleteDirectory($runtimeStoragePath);
+    });
+}
+
+/**
  * When Pest runs in parallel directly, Laravel's native database cloning flow
  * is skipped. We provision a per-process database up front so RefreshDatabase
  * does not make multiple workers fight over the same schema.
  */
 function bootstrapParallelMysqlDatabase(): void
 {
-    $token = testingEnv('TEST_TOKEN');
-    $isNativeLaravelParallel = filter_var(
-        testingEnv('LARAVEL_PARALLEL_TESTING', 'false'),
-        FILTER_VALIDATE_BOOLEAN
-    );
+    if (! testingRunsInParallel()) {
+        return;
+    }
 
-    if ($token === null || $isNativeLaravelParallel) {
+    $token = testingEnv('TEST_TOKEN');
+
+    if ($token === null) {
         return;
     }
 
@@ -90,12 +173,33 @@ function bootstrapParallelMysqlDatabase(): void
     testingSetEnv('DB_DATABASE', $parallelDatabase);
 }
 
-function fallbackTestingDatabaseToSqlite(): void
+function testingRunsInParallel(): bool
+{
+    if (filter_var(testingEnv('LARAVEL_PARALLEL_TESTING', 'false'), FILTER_VALIDATE_BOOLEAN)) {
+        return true;
+    }
+
+    $argv = $_SERVER['argv'] ?? [];
+
+    foreach ($argv as $argument) {
+        if ($argument === '--parallel' || $argument === '-p') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function ensureTestingMysqlDatabaseAvailable(): void
 {
     $connection = testingEnv('DB_CONNECTION', 'mysql');
 
     if (! in_array($connection, ['mysql', 'mariadb'], true)) {
-        return;
+        fwrite(
+            STDERR,
+            "[tests/bootstrap] Unsupported testing database connection '{$connection}'. The testing suite is pinned to MySQL.".PHP_EOL
+        );
+        exit(1);
     }
 
     $host = testingEnv('DB_HOST', '127.0.0.1') ?? '127.0.0.1';
@@ -114,69 +218,12 @@ function fallbackTestingDatabaseToSqlite(): void
 
         return;
     } catch (Throwable) {
-        $sqlitePath = testingEnv('TESTING_SQLITE_PATH');
-
-        if (! is_string($sqlitePath) || $sqlitePath === '') {
-            $sqlitePath = tempnam(__DIR__.'/../database', 'testing_sqlite_') ?: (__DIR__.'/../database/testing_sqlite.sqlite');
-            testingSetEnv('TESTING_SQLITE_PATH', $sqlitePath);
-        }
-
-        testingSetEnv('DB_CONNECTION', 'sqlite');
-        testingSetEnv('DB_DATABASE', $sqlitePath);
-        testingSetEnv('DB_FOREIGN_KEYS', '1');
+        fwrite(
+            STDERR,
+            "[tests/bootstrap] Unable to connect to MySQL at {$host}:{$port} for testing. Start the local MySQL service and ensure credentials in .env.testing/phpunit.xml are valid.".PHP_EOL
+        );
+        exit(1);
     }
-}
-
-function prepareSqliteTestingSchema(): void
-{
-    if (testingEnv('DB_CONNECTION') !== 'sqlite') {
-        return;
-    }
-
-    $sqlitePath = testingEnv('DB_DATABASE');
-    $schemaReadyKey = 'TESTING_SQLITE_SCHEMA_READY_'.md5((string) $sqlitePath);
-
-    if (testingEnv($schemaReadyKey) === '1') {
-        return;
-    }
-
-    testingSetEnv($schemaReadyKey, '1');
-
-    $attempts = 0;
-    $lastOutput = [];
-    $lastExitCode = 0;
-
-    while ($attempts < 2) {
-        $attempts++;
-
-        if ($sqlitePath !== null && $sqlitePath !== ':memory:' && is_file($sqlitePath)) {
-            @unlink($sqlitePath);
-        }
-
-        if ($sqlitePath !== null && $sqlitePath !== ':memory:' && ! is_file($sqlitePath)) {
-            touch($sqlitePath);
-        }
-
-        $command = sprintf('"%s" artisan migrate:fresh --env=testing --force', PHP_BINARY);
-        $output = [];
-        $exitCode = 0;
-
-        exec($command.' 2>&1', $output, $exitCode);
-
-        if ($exitCode === 0) {
-            return;
-        }
-
-        $lastOutput = $output;
-        $lastExitCode = $exitCode;
-        testingSetEnv($schemaReadyKey, '0');
-    }
-
-    fwrite(
-        STDERR,
-        "[tests/bootstrap] Unable to prepare sqlite testing schema: ".implode(PHP_EOL, $lastOutput).PHP_EOL
-    );
-    exit($lastExitCode);
 }
 
 $bootstrapCacheFiles = [
@@ -200,6 +247,6 @@ putenv('APP_ENV=testing');
 $_ENV['APP_ENV'] = 'testing';
 $_SERVER['APP_ENV'] = 'testing';
 
+configureTestingRuntimeStorage();
 bootstrapParallelMysqlDatabase();
-fallbackTestingDatabaseToSqlite();
-prepareSqliteTestingSchema();
+ensureTestingMysqlDatabaseAvailable();

@@ -6,9 +6,10 @@ namespace App\Filament\App\Resources\ProductResource\Pages;
 
 use App\Filament\App\Resources\Pages\ListTenantRecords;
 use App\Filament\App\Resources\ProductResource;
-use App\Settings\GeneralSettings;
+use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
 use Filament\Actions;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 
 class ListProducts extends ListTenantRecords
@@ -28,54 +29,45 @@ class ListProducts extends ListTenantRecords
 
     public function getSubheading(): ?string
     {
-        $limitInfo = ProductResource::getProductLimitInfo();
+        $plan = $this->getPlanPresentation();
 
-        if ($limitInfo['isPro'] ?? false) {
-            return 'Administra tu catálogo y mantén visibles solo los productos que quieres ofrecer hoy.';
+        if (($plan['isCatalogUnlimited'] ?? false) === true) {
+            return $plan['catalogCopy'];
         }
 
-        if (($limitInfo['percentage'] ?? 0) >= 80) {
-            return sprintf(
-                'Estás usando el %d%% del límite de productos del plan Base.',
-                $limitInfo['percentage']
-            );
-        }
-
-        return 'Agrega, edita y publica tu catálogo desde una sola vista.';
+        return $plan['catalogStatusCopy'] ?? 'Agrega, edita y publica tu catalogo desde una sola vista.';
     }
 
     protected function getHeaderActions(): array
     {
         $limitInfo = ProductResource::getProductLimitInfo();
+        $plan = $this->getPlanPresentation();
 
         return [
             Actions\Action::make('upgrade')
-                ->label('Pasar a PRO')
+                ->label($plan['billingCta'] ?? 'Activar PRO')
                 ->color('warning')
                 ->icon('heroicon-o-sparkles')
                 ->url(route('filament.app.pages.manage-billing', ['tenant' => ProductResource::currentTenantSlug()]))
-                ->visible(! $limitInfo['canCreate'] && ! ($limitInfo['isPro'] ?? false)),
+                ->visible(! $limitInfo['canCreate'] && (bool) ($plan['isUpgradeable'] ?? false)),
 
             Actions\CreateAction::make()
                 ->label('Nuevo producto')
                 ->disabled(! $limitInfo['canCreate'])
-                ->before(function ($action) use ($limitInfo): void {
+                ->before(function ($action) use ($limitInfo, $plan): void {
                     if ($limitInfo['canCreate']) {
                         return;
                     }
 
-                    $settings = app(GeneralSettings::class);
-                    $price = number_format((float) ($settings->pro_plan_price ?? 500), 2);
-
                     Notification::make()
                         ->danger()
-                        ->title('Llegaste al límite del plan Base')
-                        ->body("Ya usaste {$limitInfo['limit']} productos. Activa PRO para trabajar con catálogo ampliado.")
+                        ->title('Llegaste al limite del catalogo')
+                        ->body("Ya usaste {$limitInfo['limit']} productos. {$plan['catalogStatusCopy']}")
                         ->persistent()
                         ->actions([
                             Action::make('upgrade')
                                 ->button()
-                                ->label("Activar PRO - L. {$price}/mes")
+                                ->label(($plan['billingCta'] ?? 'Activar PRO').' - '.($plan['priceLabel'] ?? 'L. 99.00/mes'))
                                 ->url(route('filament.app.pages.manage-billing', ['tenant' => ProductResource::currentTenantSlug()]))
                                 ->markAsRead(),
                         ])
@@ -97,5 +89,19 @@ class ListProducts extends ListTenantRecords
         }
 
         return [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getPlanPresentation(): array
+    {
+        $tenant = Filament::getTenant();
+
+        if (! $tenant instanceof \App\Models\Tenant) {
+            return [];
+        }
+
+        return app(TenantPlanPresentationReader::class)->forTenant($tenant);
     }
 }

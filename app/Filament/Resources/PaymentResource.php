@@ -262,7 +262,7 @@ class PaymentResource extends Resource
                                 [
                                     'payment_id' => (string) $record->getKey(),
                                     'payment_reference' => (string) ($record->reference_number ?? ''),
-                                    'payment_amount' => 'L. ' . number_format((float) $record->amount, 2),
+                                    'payment_amount' => 'L. '.number_format((float) $record->amount, 2),
                                     'status' => SubscriptionPayment::STATUS_APPROVED,
                                     'subscription_ends_at' => $endDate,
                                 ],
@@ -272,9 +272,9 @@ class PaymentResource extends Resource
                                 static::sendNotificationToUser(
                                     $user,
                                     Notification::make()
-                                    ->success()
-                                    ->title('Pago Aprobado')
-                                    ->body("Tu Plan PRO para {$tenantName} esta activo hasta el {$endDate}.")
+                                        ->success()
+                                        ->title('Pago Aprobado')
+                                        ->body("Tu Plan PRO para {$tenantName} esta activo hasta el {$endDate}.")
                                 );
                             }
                         }
@@ -323,7 +323,7 @@ class PaymentResource extends Resource
                                 [
                                     'payment_id' => (string) $record->getKey(),
                                     'payment_reference' => (string) ($record->reference_number ?? ''),
-                                    'payment_amount' => 'L. ' . number_format((float) $record->amount, 2),
+                                    'payment_amount' => 'L. '.number_format((float) $record->amount, 2),
                                     'status' => SubscriptionPayment::STATUS_REJECTED,
                                     'reason' => (string) ($data['rejection_reason'] ?? ''),
                                 ],
@@ -334,9 +334,9 @@ class PaymentResource extends Resource
                             static::sendNotificationToUser(
                                 $user,
                                 Notification::make()
-                                ->danger()
-                                ->title('Pago Rechazado')
-                                ->body($data['rejection_reason'])
+                                    ->danger()
+                                    ->title('Pago Rechazado')
+                                    ->body($data['rejection_reason'])
                             );
                         }
 
@@ -378,7 +378,7 @@ class PaymentResource extends Resource
                 ELSE 4 END");
     }
 
-    private static function sendNotificationToUser(User $user, Notification $notification): void
+    protected static function sendNotificationToUser(User $user, Notification $notification): void
     {
         try {
             $notification->sendToDatabase($user);
@@ -390,7 +390,7 @@ class PaymentResource extends Resource
     /**
      * @param  array<string, mixed>  $properties
      */
-    private static function logTenantPaymentEvent(Tenant $tenant, string $description, array $properties = []): void
+    protected static function logTenantPaymentEvent(Tenant $tenant, string $description, array $properties = []): void
     {
         $actor = auth()->user();
 

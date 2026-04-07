@@ -4,6 +4,17 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
+use App\Application\Catalog\Commands\CreateMenuSectionCommand;
+use App\Application\Catalog\Commands\DeleteMenuSectionCommand;
+use App\Application\Catalog\Commands\ReorderMenuSectionsCommand;
+use App\Application\Catalog\Commands\UpdateMenuSectionCommand;
+use App\Application\Catalog\Handlers\CreateMenuSectionHandler;
+use App\Application\Catalog\Handlers\DeleteMenuSectionHandler;
+use App\Application\Catalog\Handlers\ReorderMenuSectionsHandler;
+use App\Application\Catalog\Handlers\UpdateMenuSectionHandler;
+use App\Application\Tenant\Commands\UpdateTenantMarketingWhatsAppCommand;
+use App\Application\Tenant\Handlers\UpdateTenantMarketingWhatsAppHandler;
+use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Models\MenuSection;
 use App\Models\Tenant;
 use App\Services\QrCodeService;
@@ -25,7 +36,6 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 /**
  * @property-read Schema $form
@@ -51,9 +61,6 @@ class ManageMarketing extends Page implements HasForms, HasTable
     public string $qrCodeDataUri = '';
 
     public string $businessUrl = '';
-
-    /** @var array<int, string>|null */
-    private static ?array $tenantColumns = null;
 
     public static function getNavigationLabel(): string
     {
@@ -88,7 +95,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
             return;
         }
 
-        $this->isPro = (bool) $tenant->is_pro;
+        $this->isPro = $tenant->hasFeature(TenantFeature::MARKETING_SUITE);
         $this->businessUrl = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
 
         if (! $this->isPro) {
@@ -153,6 +160,13 @@ class ManageMarketing extends Page implements HasForms, HasTable
                     ->sortable()
                     ->rules(['required', 'max:50', 'min:2'])
                     ->placeholder('Escribe el nombre...')
+                    ->updateStateUsing(function (MenuSection $record, mixed $state): string {
+                        $updatedRecord = $this->updateMenuSection($record, [
+                            'name' => (string) $state,
+                        ]);
+
+                        return (string) $updatedRecord->name;
+                    })
                     ->extraAttributes(['class' => 'font-semibold']),
 
                 Tables\Columns\TextColumn::make('products_count')
@@ -170,6 +184,13 @@ class ManageMarketing extends Page implements HasForms, HasTable
                     ->label('Activa')
                     ->onColor('success')
                     ->offColor('danger')
+                    ->updateStateUsing(function (MenuSection $record, mixed $state): bool {
+                        $updatedRecord = $this->updateMenuSection($record, [
+                            'is_active' => (bool) $state,
+                        ]);
+
+                        return (bool) $updatedRecord->is_active;
+                    })
                     ->tooltip('Activa o desactiva la visibilidad en el menú público.'),
 
                 Tables\Columns\TextColumn::make('sort_order')
@@ -199,14 +220,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
                             ->default(true)
                             ->helperText('Las secciones inactivas no se muestran en el catálogo público.'),
                     ])
-                    ->mutateFormDataUsing(function (array $data): array {
-                        $tenant = $this->getTenantRecord();
-                        $tenantId = $tenant?->getKey();
-
-                        $data['sort_order'] = (int) MenuSection::where('tenant_id', $tenantId)->max('sort_order') + 1;
-
-                        return $data;
-                    })
+                    ->using(fn (array $data): MenuSection => $this->createMenuSection($data))
                     ->successNotificationTitle('Sección creada correctamente'),
             ])
             ->actions([
@@ -221,7 +235,8 @@ class ManageMarketing extends Page implements HasForms, HasTable
                             ->minLength(2),
                         Forms\Components\Toggle::make('is_active')
                             ->label('Activa'),
-                    ]),
+                    ])
+                    ->using(fn (MenuSection $record, array $data): MenuSection => $this->updateMenuSection($record, $data)),
                 DeleteAction::make()
                     ->iconButton()
                     ->modalHeading('¿Eliminar esta sección?')
@@ -230,14 +245,17 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
                         if ($count > 0) {
                             return "**Atención:** esta sección contiene **{$count} producto(s)** asociados.\n\n"
-                                . "Si la eliminas:\n"
-                                . "- Los productos **no se borrarán** de la base de datos.\n"
-                                . "- Quedarán en **Sin categoría**.\n"
-                                . "- **Dejarán de ser visibles** en el catálogo público hasta que los reasignes.\n\n"
-                                . '¿Seguro que quieres continuar?';
+                                ."Si la eliminas:\n"
+                                ."- Los productos **no se borrarán** de la base de datos.\n"
+                                ."- Quedarán en **Sin categoría**.\n"
+                                ."- **Dejarán de ser visibles** en el catálogo público hasta que los reasignes.\n\n"
+                                .'¿Seguro que quieres continuar?';
                         }
 
                         return "Esta sección está vacía (0 productos). ¿Seguro que quieres eliminarla?\n\nEsta acción no se puede deshacer.";
+                    })
+                    ->action(function (MenuSection $record): void {
+                        $this->deleteMenuSection($record);
                     })
                     ->modalSubmitActionLabel('Sí, eliminar sección')
                     ->successNotificationTitle('Sección eliminada'),
@@ -246,6 +264,23 @@ class ManageMarketing extends Page implements HasForms, HasTable
                 'heading' => 'Aún no has creado secciones del catálogo',
                 'description' => 'Usa "Nueva sección" para ordenar tu oferta en bloques como bebidas, servicios o promociones.',
             ]));
+    }
+
+    /**
+     * @param  array<int|string>  $order
+     */
+    public function reorderTable(array $order, int|string|null $draggedRecordKey = null): void
+    {
+        if (! $this->getTable()->isReorderable()) {
+            return;
+        }
+
+        app(ReorderMenuSectionsHandler::class)->handle(
+            new ReorderMenuSectionsCommand(
+                tenantId: $this->resolveTenantIdOrFail(),
+                orderedMenuSectionIds: $this->normalizeMenuSectionIds($order),
+            )
+        );
     }
 
     public function updateMessagePreview(): void
@@ -304,14 +339,13 @@ class ManageMarketing extends Page implements HasForms, HasTable
             return;
         }
 
-        $cleanNumber = preg_replace('/[^0-9]/', '', (string) $data['whatsapp_number']);
-
-        $tenant->update([
-            ...$this->filterTenantColumns([
-                'whatsapp_number' => $cleanNumber,
-                'whatsapp_message' => $data['whatsapp_message'],
-            ]),
-        ]);
+        app(UpdateTenantMarketingWhatsAppHandler::class)->handle(
+            new UpdateTenantMarketingWhatsAppCommand(
+                tenantId: (string) $tenant->getKey(),
+                whatsappNumber: (string) ($data['whatsapp_number'] ?? ''),
+                whatsappMessage: (string) ($data['whatsapp_message'] ?? ''),
+            )
+        );
 
         Notification::make()
             ->success()
@@ -361,7 +395,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();
-        }, $tenant->slug . '-cartel-qr.pdf', [
+        }, $tenant->slug.'-cartel-qr.pdf', [
             'Content-Type' => 'application/pdf',
         ]);
     }
@@ -417,13 +451,73 @@ class ManageMarketing extends Page implements HasForms, HasTable
     }
 
     /**
-     * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
+     * @param  array<string, mixed>  $data
      */
-    private function filterTenantColumns(array $payload): array
+    private function createMenuSection(array $data): MenuSection
     {
-        self::$tenantColumns ??= DatabaseSchema::getColumnListing((new Tenant())->getTable());
+        return app(CreateMenuSectionHandler::class)->handle(
+            new CreateMenuSectionCommand(
+                tenantId: $this->resolveTenantIdOrFail(),
+                name: (string) ($data['name'] ?? ''),
+                isActive: (bool) ($data['is_active'] ?? true),
+            )
+        );
+    }
 
-        return array_intersect_key($payload, array_flip(self::$tenantColumns));
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function updateMenuSection(MenuSection $record, array $data): MenuSection
+    {
+        return app(UpdateMenuSectionHandler::class)->handle(
+            new UpdateMenuSectionCommand(
+                tenantId: $this->resolveTenantIdOrFail(),
+                menuSectionId: (int) $record->getKey(),
+                name: array_key_exists('name', $data) ? (string) $data['name'] : null,
+                isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
+            )
+        );
+    }
+
+    private function deleteMenuSection(MenuSection $record): void
+    {
+        app(DeleteMenuSectionHandler::class)->handle(
+            new DeleteMenuSectionCommand(
+                tenantId: $this->resolveTenantIdOrFail(),
+                menuSectionId: (int) $record->getKey(),
+            )
+        );
+    }
+
+    private function resolveTenantIdOrFail(): string
+    {
+        $tenant = $this->getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            throw new \RuntimeException('Unable to resolve tenant context for menu section mutation.');
+        }
+
+        return (string) $tenant->getKey();
+    }
+
+    /**
+     * @param  array<int|string>  $order
+     * @return array<int, int>
+     */
+    private function normalizeMenuSectionIds(array $order): array
+    {
+        $normalized = [];
+
+        foreach ($order as $menuSectionId) {
+            $menuSectionId = (int) $menuSectionId;
+
+            if ($menuSectionId <= 0 || in_array($menuSectionId, $normalized, true)) {
+                continue;
+            }
+
+            $normalized[] = $menuSectionId;
+        }
+
+        return $normalized;
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Models\Location;
 use App\Models\Order;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 
 uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 

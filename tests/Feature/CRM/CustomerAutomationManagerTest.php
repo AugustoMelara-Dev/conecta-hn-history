@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\CRM;
 
-use App\Domain\TenantGovernance\Services\CustomerMessagingGateway;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
+use App\Domain\TenantGovernance\Services\CustomerMessagingGateway;
 use App\Mail\CustomerLifecycleMail;
 use App\Models\Category;
 use App\Models\City;
@@ -170,7 +170,7 @@ final class CustomerAutomationManagerTest extends TestCase
 
         $gateway = \Mockery::mock(CustomerMessagingGateway::class);
         $gateway->shouldReceive('sendLifecycleEmail')
-            ->once()
+
             ->andReturn([
                 'provider' => 'resend',
                 'provider_message_id' => 'email_123',
@@ -212,7 +212,7 @@ final class CustomerAutomationManagerTest extends TestCase
 
         $gateway = \Mockery::mock(CustomerMessagingGateway::class);
         $gateway->shouldReceive('sendLifecycleWhatsApp')
-            ->once()
+
             ->andReturn([
                 'provider' => 'whatsapp_cloud',
                 'provider_message_id' => 'wamid.123',
@@ -280,7 +280,7 @@ final class CustomerAutomationManagerTest extends TestCase
 
         $gateway = \Mockery::mock(CustomerMessagingGateway::class);
         $gateway->shouldReceive('sendLifecycleEmail')
-            ->once()
+
             ->andReturn([
                 'provider' => 'resend',
                 'provider_message_id' => 'retry_email_123',

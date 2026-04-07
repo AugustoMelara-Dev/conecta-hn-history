@@ -58,14 +58,7 @@ class ArchitectureHealth extends Page
     {
         $user = auth()->user();
 
-        if (! $user instanceof User) {
-            return false;
-        }
-
-        $role = $user->role;
-
-        return $role instanceof UserRole
-            ? $role === UserRole::SUPER_ADMIN
-            : (string) $role === UserRole::SUPER_ADMIN->value;
+        return $user instanceof User
+            && $user->role === UserRole::SUPER_ADMIN;
     }
 }

@@ -23,7 +23,7 @@ final class ProfileController extends Controller
         private Redirector $redirector
     ) {}
 
-    public function edit(Request $request): Response|RedirectResponse
+    public function edit(Request $request): RedirectResponse
     {
         return redirect()->to(AuthRedirector::profileDestinationFor($request->user()));
     }

@@ -6,14 +6,20 @@ namespace App\Policies;
 
 use App\Domain\Access\Enums\Permission;
 use App\Domain\TenantGovernance\Enums\Capability;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\Product;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Settings\GeneralSettings;
 use Illuminate\Auth\Access\Response;
-use Illuminate\Support\Facades\DB;
 
 class ProductPolicy extends TenantAwarePolicy
 {
+    public function before(User $user, string $ability): ?bool
+    {
+        return $this->isAdmin($user) ? true : null;
+    }
+
     public function viewAny(User $user): bool
     {
         return $this->allows($user, Capability::CATALOG_BASIC, Permission::CATALOG_VIEW);
@@ -37,21 +43,18 @@ class ProductPolicy extends TenantAwarePolicy
         }
 
         $settings = app(GeneralSettings::class);
-        $limit = $tenant->is_pro
+        $limit = $this->isPaidPlan($tenant)
             ? $settings->pro_plan_product_limit
             : $settings->free_plan_product_limit;
 
-        $currentCount = DB::table('products')
-            ->where('tenant_id', $tenant->id)
-            ->whereNull('deleted_at')
-            ->count();
+        $currentCount = $tenant->products()->count();
 
         if ($currentCount < $limit) {
             return Response::allow();
         }
 
-        $planName = $tenant->is_pro ? 'PRO' : 'Gratuito';
-        $upgradePrompt = $tenant->is_pro
+        $planName = $this->isPaidPlan($tenant) ? $this->planLabel($tenant) : 'Gratuito';
+        $upgradePrompt = $this->isPaidPlan($tenant)
             ? 'Contacta a soporte para aumentar tu capacidad.'
             : 'Actualiza a PRO para expandir tu catalogo.';
 
@@ -79,5 +82,32 @@ class ProductPolicy extends TenantAwarePolicy
     {
         return $this->allows($user, Capability::CATALOG_BASIC, Permission::CATALOG_DELETE, $product)
             && $this->isTenantOwner($user, $this->resolveTenant($user, $product));
+    }
+
+    private function isPaidPlan(Tenant $tenant): bool
+    {
+        $planKey = $tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? null);
+
+        return match (true) {
+            $planKey instanceof TenantPlan => $planKey !== TenantPlan::SEMILLA,
+            is_string($planKey) => $planKey !== '' && $planKey !== Tenant::PLAN_SEMILLA,
+            default => false,
+        };
+    }
+
+    private function planLabel(Tenant $tenant): string
+    {
+        $planKey = $tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? null);
+        $value = match (true) {
+            $planKey instanceof TenantPlan => $planKey->value,
+            is_string($planKey) => $planKey,
+            default => Tenant::PLAN_SEMILLA,
+        };
+
+        return match ($value) {
+            Tenant::PLAN_CRECIMIENTO => 'Crecimiento',
+            Tenant::PLAN_COSECHA => 'Cosecha',
+            default => 'PRO',
+        };
     }
 }

@@ -2,7 +2,6 @@
 
 use App\Settings\BaseSettings;
 use App\Settings\GeneralSettings;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 

@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Application\Shared\DTOs\Mail\TenantMailData;
 use App\Domain\Contracts\AdminNotifier;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Services\OperationalPlaybookTaskManager;
 use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
 use App\Mail\SubscriptionExpiredMail;
@@ -23,26 +24,26 @@ use Illuminate\Support\Facades\Mail;
 /**
  * SubscriptionLifecycleCommand - Unified Subscription State Machine
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  OPERATIONAL RISK ANALYSIS: Domain Consolidation Strategy               ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  PROBLEM: Split commands (CheckExpiry + ExpireSubscriptions) create:    ║
- * ║    - Race conditions if run concurrently                                ║
- * ║    - Maintenance ambiguity (which file handles what?)                   ║
- * ║    - Inconsistent error handling between commands                       ║
- * ║                                                                          ║
- * ║  SOLUTION: Single command with orchestrated workflow:                    ║
- * ║    1. notifyUpcomingExpirations() - 3-day warnings                      ║
- * ║    2. processExpiredSubscriptions() - Downgrade expired plans           ║
- * ║                                                                          ║
- * ║  TRANSACTIONAL INTEGRITY:                                                ║
- * ║    Each expiration is wrapped in DB::transaction() ensuring:            ║
- * ║    - Status Update + Notification + Webhook are atomic                  ║
- * ║    - If notification fails, subscription is NOT downgraded              ║
- * ║    - Audit trail preserved even on partial failures                     ║
- * ║                                                                          ║
- * ║  MEMORY SAFETY: Uses chunkById(100) for all tenant iterations           ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * +--------------------------------------------------------------------------+
+ * �  OPERATIONAL RISK ANALYSIS: Domain Consolidation Strategy               �
+ * �--------------------------------------------------------------------------�
+ * �  PROBLEM: Split commands (CheckExpiry + ExpireSubscriptions) create:    �
+ * �    - Race conditions if run concurrently                                �
+ * �    - Maintenance ambiguity (which file handles what?)                   �
+ * �    - Inconsistent error handling between commands                       �
+ * �                                                                          �
+ * �  SOLUTION: Single command with orchestrated workflow:                    �
+ * �    1. notifyUpcomingExpirations() - 3-day warnings                      �
+ * �    2. processExpiredSubscriptions() - Downgrade expired plans           �
+ * �                                                                          �
+ * �  TRANSACTIONAL INTEGRITY:                                                �
+ * �    Each expiration is wrapped in DB::transaction() ensuring:            �
+ * �    - Status Update + Notification + Webhook are atomic                  �
+ * �    - If notification fails, subscription is NOT downgraded              �
+ * �    - Audit trail preserved even on partial failures                     �
+ * �                                                                          �
+ * �  MEMORY SAFETY: Uses chunkById(100) for all tenant iterations           �
+ * +--------------------------------------------------------------------------+
  *
  * USAGE:
  *   php artisan subscription:lifecycle
@@ -54,6 +55,13 @@ use Illuminate\Support\Facades\Mail;
  */
 class SubscriptionLifecycleCommand extends Command
 {
+    /** @var array<int, string> */
+    private const PAID_PLAN_KEYS = [
+        TenantPlan::PRO->value,
+        Tenant::PLAN_CRECIMIENTO,
+        Tenant::PLAN_COSECHA,
+    ];
+
     protected $signature = 'subscription:lifecycle
                             {--grace-days= : Override grace period (default: from GeneralSettings)}
                             {--warning-days=3 : Days before expiry to send warning}
@@ -80,9 +88,9 @@ class SubscriptionLifecycleCommand extends Command
         $warningDays = (int) $this->option('warning-days');
         $freeProductLimit = $settings->free_plan_product_limit;
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // -----------------------------------------------------------------------
         // HEADER
-        // ═══════════════════════════════════════════════════════════════════════
+        // -----------------------------------------------------------------------
         $this->components->info('Subscription Lifecycle Manager');
         $this->components->bulletList([
             "Grace period: {$graceDays} days",
@@ -91,19 +99,19 @@ class SubscriptionLifecycleCommand extends Command
             'Mode: '.($this->dryRun ? 'DRY RUN (no changes)' : 'LIVE'),
         ]);
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // -----------------------------------------------------------------------
         // PHASE 1: Send expiration warnings (3 days out)
-        // ═══════════════════════════════════════════════════════════════════════
+        // -----------------------------------------------------------------------
         $this->notifyUpcomingExpirations($warningDays);
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // -----------------------------------------------------------------------
         // PHASE 2: Process expired subscriptions (downgrade)
-        // ═══════════════════════════════════════════════════════════════════════
+        // -----------------------------------------------------------------------
         $this->processExpiredSubscriptions($graceDays, $freeProductLimit);
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // -----------------------------------------------------------------------
         // SUMMARY
-        // ═══════════════════════════════════════════════════════════════════════
+        // -----------------------------------------------------------------------
         $this->newLine();
         $this->components->twoColumnDetail('Warnings sent', (string) $this->notifiedCount);
         $this->components->twoColumnDetail('Subscriptions expired', (string) $this->expiredCount);
@@ -131,10 +139,8 @@ class SubscriptionLifecycleCommand extends Command
             $targetEnd = Carbon::now()->addDays($daysBeforeExpiry)->endOfDay();
 
             Tenant::query()
-                ->where(function ($q) {
-                    $q->where('subscription_status', 'active')
-                        ->orWhere('is_pro', true);
-                })
+                ->whereIn('plan_type', self::PAID_PLAN_KEYS)
+                ->where('subscription_status', 'active')
                 ->where(function ($q) use ($targetStart, $targetEnd) {
                     $q->whereBetween('subscription_ends_at', [$targetStart, $targetEnd]);
                 })
@@ -174,11 +180,8 @@ class SubscriptionLifecycleCommand extends Command
             return;
         }
 
-        $operationalNotificationSent = false;
-
         try {
             app(AdminNotifier::class)->notifyRenewalAttention($tenant, $daysUntilExpiry);
-            $operationalNotificationSent = true;
             app(OperationalPlaybookTaskManager::class)->syncForTrigger($tenant, 'renewal_attention', [
                 'related_type' => Tenant::class,
                 'related_id' => (string) $tenant->getKey(),
@@ -199,20 +202,10 @@ class SubscriptionLifecycleCommand extends Command
 
             $this->notifiedCount++;
             $this->components->twoColumnDetail(
-                "  ✓ Notified: {$tenant->name}",
+                "  ? Notified: {$tenant->name}",
                 $user->email
             );
         } catch (\Exception $e) {
-            if (! $operationalNotificationSent) {
-                try {
-                    app(AdminNotifier::class)->notifyRenewalAttention($tenant, $daysUntilExpiry);
-                } catch (\Throwable $notificationException) {
-                    Log::warning('SubscriptionLifecycle: Failed to send operational renewal alert', [
-                        'tenant_id' => $tenant->id,
-                        'error' => $notificationException->getMessage(),
-                    ]);
-                }
-            }
 
             $this->errorCount++;
             Log::error('SubscriptionLifecycle: Failed to send warning', [
@@ -234,10 +227,8 @@ class SubscriptionLifecycleCommand extends Command
             $cutoffDate = Carbon::now()->subDays($graceDays);
 
             Tenant::query()
-                ->where(function ($q) {
-                    $q->where('subscription_status', 'active')
-                        ->orWhere('is_pro', true);
-                })
+                ->whereIn('plan_type', self::PAID_PLAN_KEYS)
+                ->where('subscription_status', 'active')
                 ->where(function ($q) use ($cutoffDate) {
                     $q->where('subscription_ends_at', '<', $cutoffDate);
                 })
@@ -254,22 +245,22 @@ class SubscriptionLifecycleCommand extends Command
     /**
      * Expire a single tenant's subscription with TRUE transactional integrity.
      *
-     * ╔════════════════════════════════════════════════════════════════════════╗
-     * ║  CRITICAL FIX: afterCommit() for Queue Operations                      ║
-     * ╠════════════════════════════════════════════════════════════════════════╣
-     * ║  PROBLEM: Mail::queue() dispatches IMMEDIATELY, not after commit.      ║
-     * ║                                                                        ║
-     * ║  RACE CONDITION SCENARIO:                                              ║
-     * ║    1. DB::transaction starts                                          ║
-     * ║    2. $tenant->update(['is_pro' => false]) ← SQL UPDATE (uncommitted) ║
-     * ║    3. Mail::queue() ← Job pushed to Redis IMMEDIATELY                 ║
-     * ║    4. AuditTenantLimits::dispatch() ← Throws exception                ║
-     * ║    5. Transaction ROLLBACK ← is_pro reverts to true                   ║
-     * ║    6. User receives "Plan expired" email but is_pro = true in DB!     ║
-     * ║                                                                        ║
-     * ║  SOLUTION: Use DB::afterCommit() to queue jobs ONLY after commit.     ║
-     * ║    If transaction fails, no email is sent.                            ║
-     * ╚════════════════════════════════════════════════════════════════════════╝
+     * +------------------------------------------------------------------------+
+     * �  CRITICAL FIX: afterCommit() for Queue Operations                      �
+     * �------------------------------------------------------------------------�
+     * �  PROBLEM: Mail::queue() dispatches IMMEDIATELY, not after commit.      �
+     * �                                                                        �
+     * �  RACE CONDITION SCENARIO:                                              �
+     * �    1. DB::transaction starts                                          �
+     * �    2. $tenant->update(['plan_type' => 'semilla']) ? SQL UPDATE        �
+     * �    3. Mail::queue() ? Job pushed to Redis IMMEDIATELY                 �
+     * �    4. AuditTenantLimits::dispatch() ? Throws exception                �
+     * �    5. Transaction ROLLBACK ? paid plan state reverts                  �
+     * �    6. User receives "Plan expired" email but tenant is still paid     �
+     * �                                                                        �
+     * �  SOLUTION: Use DB::afterCommit() to queue jobs ONLY after commit.     �
+     * �    If transaction fails, no email is sent.                            �
+     * +------------------------------------------------------------------------+
      */
     protected function expireTenantSubscription(Tenant $tenant, int $freeProductLimit): void
     {
@@ -287,7 +278,7 @@ class SubscriptionLifecycleCommand extends Command
             DB::transaction(function () use ($tenant, $freeProductLimit) {
                 // Step 1: Update subscription status (DB operation)
                 $tenant->update([
-                    'is_pro' => false,
+                    'plan_type' => TenantPlan::SEMILLA->value,
                     'subscription_status' => 'expired',
                     'product_limit' => $freeProductLimit,
                 ]);
@@ -300,12 +291,12 @@ class SubscriptionLifecycleCommand extends Command
                 ]);
             });
 
-            // ═══════════════════════════════════════════════════════════════════════
+            // -----------------------------------------------------------------------
             // QUEUE OPERATIONS: Execute ONLY after successful commit
-            // ═══════════════════════════════════════════════════════════════════════
+            // -----------------------------------------------------------------------
             // These are now OUTSIDE the transaction, ensuring they only run
             // if the database changes were successfully committed.
-            // ═══════════════════════════════════════════════════════════════════════
+            // -----------------------------------------------------------------------
 
             // Reload tenant to get confirmed state
             $tenant->refresh();
@@ -327,12 +318,12 @@ class SubscriptionLifecycleCommand extends Command
 
             $this->expiredCount++;
             $this->components->twoColumnDetail(
-                "  ✓ Expired: {$tenant->name}",
+                "  ? Expired: {$tenant->name}",
                 'Downgraded to Free'
             );
         } catch (\Exception $e) {
             // Transaction failed - NO email was sent, NO job was dispatched
-            // State is consistent: user is still PRO and received no communication
+            // State is consistent: tenant keeps its paid plan and received no communication
             $this->errorCount++;
             Log::error('SubscriptionLifecycle: Failed to expire subscription', [
                 'tenant_id' => $tenant->id,
@@ -340,7 +331,7 @@ class SubscriptionLifecycleCommand extends Command
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            $this->components->error("  ✗ Failed: {$tenant->name} - {$e->getMessage()}");
+            $this->components->error("  ? Failed: {$tenant->name} - {$e->getMessage()}");
         }
     }
 

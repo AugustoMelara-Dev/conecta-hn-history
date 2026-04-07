@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
-use App\Domain\TenantGovernance\Services\BusinessOperationsBlueprint;
 use App\Domain\TenantGovernance\Enums\BusinessType;
+use App\Domain\TenantGovernance\Enums\TenantFeature;
+use App\Domain\TenantGovernance\Services\BusinessOperationsBlueprint;
 use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\CouponResource;
@@ -18,9 +19,8 @@ use App\Filament\App\Resources\ProductResource;
 use App\Filament\App\Resources\ServiceProviderResource;
 use App\Filament\App\Resources\ServiceResource;
 use App\Filament\App\Resources\TenantUserResource;
+use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
 use App\Models\Appointment;
-use App\Models\Campaign;
-use App\Models\Lead;
 use App\Models\OpeningHour;
 use App\Models\OperationalPlaybookTask;
 use App\Models\Order;
@@ -29,6 +29,10 @@ use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Carbon;
+use Throwable;
 
 class Dashboard extends \Filament\Pages\Page
 {
@@ -77,6 +81,12 @@ class Dashboard extends \Filament\Pages\Page
     public string $workspaceCopy = '';
 
     public bool $isPro = false;
+
+    public bool $hasMarketingSuite = false;
+
+    public bool $hasAdvancedBrandingFeature = false;
+
+    public bool $canUpgradeToPro = false;
 
     public bool $isOpen = true;
 
@@ -237,8 +247,11 @@ class Dashboard extends \Filament\Pages\Page
         $attributes = $tenant->getAttributes();
         $tenantSlug = (string) ($attributes['slug'] ?? '');
         $this->tenantName = (string) ($attributes['name'] ?? 'Tu negocio');
-        $this->isPro = (bool) $tenant->is_pro;
-        $this->businessType = $tenant->business_type?->value ?? BusinessType::RETAIL->value;
+        $this->hasMarketingSuite = $tenant->hasFeature(TenantFeature::MARKETING_SUITE);
+        $this->hasAdvancedBrandingFeature = $tenant->hasFeature(TenantFeature::ADVANCED_BRANDING);
+        $this->canUpgradeToPro = $tenant->hasFeature(TenantFeature::UPGRADE_PROMPT);
+        $this->isPro = ! $this->canUpgradeToPro;
+        $this->businessType = $tenant->business_type->value;
 
         try {
             $this->productsCount = $tenant->products()->count();
@@ -358,7 +371,7 @@ class Dashboard extends \Filament\Pages\Page
             $this->metric('Productos', (string) $this->productsCount, "{$this->activeProductsCount} activos en tu catálogo."),
             $this->metric('Colecciones', (string) $this->sectionsCount, 'Organizan tu oferta para que el cliente encuentre más rápido.'),
             $this->metric('Pedidos pendientes', (string) $this->pendingOrdersCount, 'Confirmaciones u órdenes que todavía requieren atención.'),
-            $this->metric('Plan', $this->isPro ? 'PRO' : 'Base', $this->isPro ? 'Herramientas premium activas.' : 'Modo esencial listo para crecer.'),
+            $this->metric('Plan', $this->planMetricValue(), $this->planMetricCopy()),
         ];
 
         $this->quickActions = [
@@ -378,7 +391,7 @@ class Dashboard extends \Filament\Pages\Page
             $this->metric('Platos y productos', (string) $this->productsCount, "{$this->activeProductsCount} visibles para venta."),
             $this->metric('Secciones del menú', (string) $this->sectionsCount, 'Entradas, bebidas, combos o estaciones.'),
             $this->metric('Pedidos pendientes', (string) $this->pendingOrdersCount, 'Órdenes por confirmar o despachar.'),
-            $this->metric('Plan', $this->isPro ? 'PRO' : 'Base', $this->isPro ? 'QR y promoción avanzada activados.' : 'Listo para operar en modo esencial.'),
+            $this->metric('Plan', $this->planMetricValue(), $this->planMetricCopy()),
         ];
 
         $this->quickActions = [
@@ -398,7 +411,7 @@ class Dashboard extends \Filament\Pages\Page
             $this->metric('Servicios', (string) $this->servicesCount, "{$this->activeServicesCount} activos para reservar."),
             $this->metric('Citas próximas', (string) $this->pendingAppointmentsCount, 'Reservas pendientes o confirmadas en agenda.'),
             $this->metric('Staff operativo', (string) $this->activeStaffCount, "{$this->staffCount} perfiles configurados."),
-            $this->metric('Plan', $this->isPro ? 'PRO' : 'Base', $this->isPro ? 'Herramientas premium para captación activas.' : 'Base sólida para recibir reservas.'),
+            $this->metric('Plan', $this->planMetricValue(), $this->planMetricCopy()),
         ];
 
         $this->quickActions = [
@@ -418,7 +431,7 @@ class Dashboard extends \Filament\Pages\Page
             $this->metric('Productos', (string) $this->productsCount, "{$this->activeProductsCount} activos en tu catálogo."),
             $this->metric('Servicios', (string) $this->servicesCount, "{$this->activeServicesCount} listos para reservar."),
             $this->metric('Agenda activa', (string) $this->pendingAppointmentsCount, 'Reservas que hoy requieren confirmación o ejecución.'),
-            $this->metric('Plan', $this->isPro ? 'PRO' : 'Base', $this->isPro ? 'Operación híbrida premium activa.' : 'Base preparada para crecer por dos vías.'),
+            $this->metric('Plan', $this->planMetricValue(), $this->planMetricCopy()),
         ];
 
         $this->quickActions = [
@@ -520,6 +533,46 @@ class Dashboard extends \Filament\Pages\Page
         }
 
         $this->maturityNextStep = 'Siguiente salto: convierte tu operacion en una maquina repetible con equipo claro, seguimiento y marketing disciplinado.';
+    }
+
+    private function planMetricValue(): string
+    {
+        return (string) ($this->planPresentation()['label'] ?? ($this->isPro ? 'PRO' : 'Base'));
+    }
+
+    private function planMetricCopy(): string
+    {
+        $plan = $this->planPresentation();
+
+        if ($this->isPro) {
+            return (string) ($plan['marketingCopy'] ?? 'Herramientas premium activas.');
+        }
+
+        return (string) ($plan['catalogCopy'] ?? 'Modo esencial listo para crecer.');
+    }
+
+    private function brandingNudgeCopy(): string
+    {
+        return (string) ($this->planPresentation()['brandingCopy'] ?? 'Sube portada o eslogan para que tu negocio se vea mas solido.');
+    }
+
+    private function upgradeNudgeCopy(): string
+    {
+        return (string) ($this->planPresentation()['marketingCopy'] ?? 'Activa marketing y seguimiento para vender desde el panel.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function planPresentation(): array
+    {
+        $tenant = $this->getTenantRecord();
+
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
+        return app(TenantPlanPresentationReader::class)->forTenant($tenant);
     }
 
     private function getTenantRecord(): ?Tenant
@@ -625,12 +678,12 @@ class Dashboard extends \Filament\Pages\Page
             $nudges[] = $this->action('Configura tu WhatsApp', 'Es la forma más directa de convertir visitas en conversaciones.', $this->profileUrl);
         }
 
-        if (! $this->hasBranding && $this->isPro) {
-            $nudges[] = $this->action('Aprovecha tu branding PRO', 'Sube portada o eslogan para que tu negocio se vea más premium.', $this->marketingUrl);
+        if (! $this->hasBranding && $this->hasAdvancedBrandingFeature) {
+            $nudges[] = $this->action('Aprovecha tu branding', $this->brandingNudgeCopy(), $this->marketingUrl);
         }
 
-        if (! $this->isPro) {
-            $nudges[] = $this->action('PRO te desbloquea marketing y seguimiento', 'QR, promoción y más herramientas para vender desde el panel.', $this->billingUrl);
+        if ($this->canUpgradeToPro) {
+            $nudges[] = $this->action('Activa tu siguiente nivel comercial', $this->upgradeNudgeCopy(), $this->billingUrl);
         }
 
         $this->growthNudges = array_slice($nudges, 0, 3);
@@ -650,22 +703,8 @@ class Dashboard extends \Filament\Pages\Page
                 ->whereIn('status', $activeStatuses)
                 ->with('assignee');
 
-            $activeTasks = (clone $query)
-                ->orderByRaw("
-                    case priority
-                        when 'critical' then 1
-                        when 'high' then 2
-                        else 3
-                    end
-                ")
-                ->orderByRaw("
-                    case
-                        when due_at is null then 2
-                        when due_at < now() then 0
-                        else 1
-                    end
-                ")
-                ->orderBy('due_at')
+            /** @var EloquentCollection<int, OperationalPlaybookTask> $activeTasks */
+            $activeTasks = $this->applyPlaybookPriorityOrdering(clone $query)
                 ->limit(4)
                 ->get();
 
@@ -684,7 +723,8 @@ class Dashboard extends \Filament\Pages\Page
                 ->map(fn (OperationalPlaybookTask $task): array => $this->playbookDashboardCard($task))
                 ->values()
                 ->all();
-        } catch (\Throwable) {
+        } catch (Throwable $exception) {
+            report($exception);
             $this->openPlaybookTasksCount = 0;
             $this->myPlaybookTasksCount = 0;
             $this->overduePlaybookTasksCount = 0;
@@ -819,13 +859,14 @@ class Dashboard extends \Filament\Pages\Page
      */
     private function playbookDashboardCard(OperationalPlaybookTask $task): array
     {
-        $assignee = $task->assignee?->name ?: 'Sin asignar';
+        $assignee = $task->assignee instanceof User ? $task->assignee->name : 'Sin asignar';
         $sla = 'Sin SLA';
+        $dueAt = $this->taskCarbon($task->due_at);
 
-        if ($task->due_at !== null) {
+        if ($dueAt instanceof Carbon) {
             $sla = $task->isOverdue()
                 ? 'SLA vencido'
-                : 'SLA '.(string) $task->due_at->diffForHumans();
+                : 'SLA '.(string) $dueAt->diffForHumans();
         }
 
         return [
@@ -857,6 +898,47 @@ class Dashboard extends \Filament\Pages\Page
             OperationalPlaybookTask::PRIORITY_HIGH => 'warning',
             default => 'info',
         };
+    }
+
+    private function applyPlaybookPriorityOrdering(Builder $query): Builder
+    {
+        return $query
+            ->orderByRaw("
+                case priority
+                    when 'critical' then 1
+                    when 'high' then 2
+                    else 3
+                end
+            ")
+            ->orderByRaw("
+                case
+                    when due_at is null then 2
+                    when due_at < {$this->currentTimestampSql()} then 0
+                    else 1
+                end
+            ")
+            ->orderBy('due_at');
+    }
+
+    private function currentTimestampSql(): string
+    {
+        return match ((string) config('database.default', 'mysql')) {
+            'sqlite' => 'CURRENT_TIMESTAMP',
+            default => 'now()',
+        };
+    }
+
+    private function taskCarbon(mixed $value): ?Carbon
+    {
+        if ($value instanceof Carbon) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            return Carbon::parse($value);
+        }
+
+        return null;
     }
 
     private function resolveWorkspaceHref(string $routeKey): string
@@ -900,7 +982,7 @@ class Dashboard extends \Filament\Pages\Page
             'food_sales_base' => $this->productsCount > 0 && ($this->hasWhatsApp || $this->pickupEnabled || $this->deliveryEnabled),
             'service_sales_base' => $this->servicesCount > 0 && $this->hasWhatsApp,
             'hybrid_sales_base' => $this->productsCount > 0 && $this->servicesCount > 0 && $this->hasWhatsApp,
-            'pro_marketing' => $this->isPro,
+            'pro_marketing' => $this->hasMarketingSuite,
             'audience_ready' => $this->followersCount > 0 || $this->leadsCount > 0,
             'whatsapp' => $this->hasWhatsApp,
             'schedule' => $this->hasSchedule,

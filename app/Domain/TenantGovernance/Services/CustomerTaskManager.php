@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Services;
 
 use App\Domain\TenantGovernance\Repositories\CustomerTaskRepositoryInterface;
+use App\Models\CustomerConversation;
+use App\Models\CustomerJourneyRun;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
-use App\Models\CustomerJourneyRun;
 use App\Models\CustomerTask;
 
 class CustomerTaskManager
@@ -18,11 +19,18 @@ class CustomerTaskManager
 
     public function syncFromNote(CustomerNote $note): ?CustomerTask
     {
-        if ($note->customer_profile_id === null) {
+        if ((int) $note->customer_profile_id <= 0) {
             return null;
         }
 
+        /** @var CustomerConversation|null $conversation */
         $conversation = $note->conversation()->withoutGlobalScopes()->first();
+        $assignmentGroup = $conversation instanceof CustomerConversation
+            ? $conversation->assignment_group
+            : data_get($note->metadata, 'assignment_group');
+        $responseSlaMinutes = $conversation instanceof CustomerConversation
+            ? $conversation->response_sla_minutes
+            : null;
 
         $task = $this->customerTasks->firstOrNewByNote((string) $note->tenant_id, (int) $note->getKey());
 
@@ -31,13 +39,13 @@ class CustomerTaskManager
             'customer_conversation_id' => $note->customer_conversation_id,
             'assigned_user_id' => $note->assigned_user_id,
             'location_id' => $note->location_id,
-            'assignment_group' => $conversation?->assignment_group ?? data_get($note->metadata, 'assignment_group'),
+            'assignment_group' => $assignmentGroup,
             'task_type' => $note->note_type === 'inbound_reply' ? 'reply_follow_up' : ($note->note_type ?: 'follow_up'),
             'title' => $this->resolveTitle($note),
             'body' => $note->body,
             'status' => $this->resolveStatus($note),
             'priority' => $note->priority ?: 'normal',
-            'response_sla_minutes' => $conversation?->response_sla_minutes,
+            'response_sla_minutes' => $responseSlaMinutes,
             'source_channel' => $note->source_channel,
             'due_at' => $note->next_action_at,
             'sla_due_at' => $note->response_due_at,
@@ -69,6 +77,7 @@ class CustomerTaskManager
 
     public function createJourneyRescueTask(CustomerJourneyRun $run, string $reason): ?CustomerTask
     {
+        /** @var CustomerConversation|null $conversation */
         $conversation = $run->conversation()->withoutGlobalScopes()->first();
         $profile = $run->customerProfile()->withoutGlobalScopes()->first();
 
@@ -76,20 +85,46 @@ class CustomerTaskManager
             return null;
         }
 
+        $assignedUserId = $conversation instanceof CustomerConversation
+            ? $conversation->owner_user_id
+            : $profile->assigned_user_id;
+        $locationId = $conversation instanceof CustomerConversation
+            ? $conversation->location_id
+            : $profile->location_id;
+        $assignmentGroup = $conversation instanceof CustomerConversation
+            ? $conversation->assignment_group
+            : 'retention';
+        $responseSlaMinutes = $conversation instanceof CustomerConversation
+            ? $conversation->response_sla_minutes
+            : 120;
+        $sourceChannel = $conversation instanceof CustomerConversation
+            ? $conversation->source_channel
+            : $profile->preferred_channel;
+        $dueAt = $run->step_due_at;
+
+        if ($dueAt === null && $conversation instanceof CustomerConversation) {
+            $dueAt = $conversation->next_action_at;
+        }
+
+        $dueAt ??= now()->addHours(4);
+        $slaDueAt = $conversation instanceof CustomerConversation
+            ? ($conversation->response_due_at ?? now()->addHours(2))
+            : now()->addHours(2);
+
         $task = $this->customerTasks->firstOpenJourneyRescueTask((string) $run->tenant_id, (int) $run->customer_conversation_id);
 
         $task->forceFill([
             'customer_profile_id' => (int) $profile->getKey(),
-            'assigned_user_id' => $conversation?->owner_user_id ?? $profile->assigned_user_id,
-            'location_id' => $conversation?->location_id ?? $profile->location_id,
-            'assignment_group' => $conversation?->assignment_group ?? 'retention',
+            'assigned_user_id' => $assignedUserId,
+            'location_id' => $locationId,
+            'assignment_group' => $assignmentGroup,
             'title' => 'Rescatar secuencia de '.$profile->name,
             'body' => $reason,
             'priority' => 'high',
-            'response_sla_minutes' => $conversation?->response_sla_minutes ?? 120,
-            'source_channel' => $conversation?->source_channel ?? $profile->preferred_channel,
-            'due_at' => $run->step_due_at ?? $conversation?->next_action_at ?? now()->addHours(4),
-            'sla_due_at' => $conversation?->response_due_at ?? now()->addHours(2),
+            'response_sla_minutes' => $responseSlaMinutes,
+            'source_channel' => $sourceChannel,
+            'due_at' => $dueAt,
+            'sla_due_at' => $slaDueAt,
             'metadata' => array_merge((array) $task->metadata, [
                 'journey_key' => $run->journey_key,
                 'sequence_key' => data_get($run->metadata, 'current_sequence_key'),
@@ -100,7 +135,7 @@ class CustomerTaskManager
         ]);
 
         if (! $task->exists) {
-            $task->created_by_user_id = $conversation?->owner_user_id;
+            $task->created_by_user_id = $conversation instanceof CustomerConversation ? $conversation->owner_user_id : null;
         }
 
         return $this->customerTasks->save($task);

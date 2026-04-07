@@ -25,6 +25,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class OperationalPlaybookTaskResource extends Resource
 {
@@ -126,24 +127,11 @@ class OperationalPlaybookTaskResource extends Resource
                     return $query->whereRaw('1 = 0');
                 }
 
-                return $query
-                    ->where('tenant_id', (string) $tenant->getKey())
-                    ->with('assignee')
-                    ->orderByRaw("
-                        case priority
-                            when 'critical' then 1
-                            when 'high' then 2
-                            else 3
-                        end
-                    ")
-                    ->orderByRaw("
-                        case
-                            when due_at is null then 2
-                            when due_at < now() then 0
-                            else 1
-                        end
-                    ")
-                    ->orderBy('due_at');
+                return static::applyPriorityOrdering(
+                    $query
+                        ->where('tenant_id', (string) $tenant->getKey())
+                        ->with('assignee')
+                );
             })
             ->columns([
                 Tables\Columns\TextColumn::make('title')
@@ -183,11 +171,13 @@ class OperationalPlaybookTaskResource extends Resource
                 Tables\Columns\TextColumn::make('due_at')
                     ->label('SLA')
                     ->state(function (OperationalPlaybookTask $record): string {
-                        if (! $record->due_at) {
+                        $dueAt = static::recordCarbon($record->due_at);
+
+                        if ($dueAt === null) {
                             return 'Sin SLA';
                         }
 
-                        return $record->due_at->format('d/m H:i');
+                        return $dueAt->format('d/m H:i');
                     })
                     ->badge()
                     ->color(function (OperationalPlaybookTask $record): string {
@@ -202,7 +192,9 @@ class OperationalPlaybookTaskResource extends Resource
                         return $record->isOverdue() ? 'danger' : 'info';
                     })
                     ->description(function (OperationalPlaybookTask $record): string {
-                        if (! $record->due_at) {
+                        $dueAt = static::recordCarbon($record->due_at);
+
+                        if ($dueAt === null) {
                             return 'Sin vencimiento';
                         }
 
@@ -212,7 +204,7 @@ class OperationalPlaybookTaskResource extends Resource
 
                         return $record->isOverdue()
                             ? 'SLA vencido'
-                            : $record->due_at->diffForHumans();
+                            : $dueAt->diffForHumans();
                     }),
             ])
             ->filters([
@@ -435,6 +427,34 @@ class OperationalPlaybookTaskResource extends Resource
         };
     }
 
+    protected static function applyPriorityOrdering(Builder $query): Builder
+    {
+        return $query
+            ->orderByRaw("
+                case priority
+                    when 'critical' then 1
+                    when 'high' then 2
+                    else 3
+                end
+            ")
+            ->orderByRaw('
+                case
+                    when due_at is null then 2
+                    when due_at < '.static::currentTimestampSql().' then 0
+                    else 1
+                end
+            ')
+            ->orderBy('due_at');
+    }
+
+    protected static function currentTimestampSql(): string
+    {
+        return match ((string) config('database.default', 'mysql')) {
+            'sqlite' => 'CURRENT_TIMESTAMP',
+            default => 'now()',
+        };
+    }
+
     protected static function canManageTasks(): bool
     {
         return static::checkPermission(Permission::PLAYBOOKS_MANAGE);
@@ -465,6 +485,19 @@ class OperationalPlaybookTaskResource extends Resource
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    protected static function recordCarbon(mixed $value): ?\Illuminate\Support\Carbon
+    {
+        if ($value instanceof \Illuminate\Support\Carbon) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            return \Illuminate\Support\Carbon::parse($value);
+        }
+
+        return null;
     }
 
     /**

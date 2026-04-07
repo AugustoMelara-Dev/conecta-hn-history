@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
-use App\Domain\TenantGovernance\Services\SuperAdminDashboardBootstrapper;
+use App\Infrastructure\TenantGovernance\SuperAdmin\SuperAdminDashboardBootstrapper;
 use Filament\Panel;
 
 class Dashboard extends \Filament\Pages\Page
@@ -160,5 +160,4 @@ class Dashboard extends \Filament\Pages\Page
     {
         return static::$routePath;
     }
-
 }

@@ -7,6 +7,8 @@ namespace App\Filament\Auth;
 use Filament\Actions\Action;
 use Filament\Auth\Pages\Login;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\TextInput;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Schemas\Components\Component;
 use Illuminate\Contracts\Support\Htmlable;
@@ -48,41 +50,50 @@ class AdminLogin extends Login
         ]);
     }
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         return 'Acceso de superadministración';
     }
 
-    public function getHeading(): string | Htmlable | null
+    public function getHeading(): string|Htmlable|null
     {
         return 'Panel de superadministración';
     }
 
-    public function getSubheading(): string | Htmlable | null
+    public function getSubheading(): string|Htmlable|null
     {
         return new HtmlString(
-            'Usa una cuenta autorizada como superadministrador. ' .
+            'Usa una cuenta autorizada como superadministrador. '.
             'Si vas a entrar al panel de tu negocio, usa <a href="/login" style="color:#34d399;font-weight:700;text-decoration:none;">/login</a>.'
         );
     }
 
     protected function getEmailFormComponent(): Component
     {
-        return parent::getEmailFormComponent()
+        /** @var TextInput $component */
+        $component = parent::getEmailFormComponent();
+
+        return $component
             ->extraAttributes(['class' => 'biz-auth-input-wrap'])
             ->extraFieldWrapperAttributes(['class' => 'biz-auth-field']);
     }
 
     protected function getPasswordFormComponent(): Component
     {
-        return parent::getPasswordFormComponent()
+        /** @var TextInput $component */
+        $component = parent::getPasswordFormComponent();
+
+        return $component
             ->extraAttributes(['class' => 'biz-auth-input-wrap'])
             ->extraFieldWrapperAttributes(['class' => 'biz-auth-field']);
     }
 
     protected function getRememberFormComponent(): Component
     {
-        return parent::getRememberFormComponent()
+        /** @var Checkbox $component */
+        $component = parent::getRememberFormComponent();
+
+        return $component
             ->extraFieldWrapperAttributes(['class' => 'biz-auth-remember']);
     }
 

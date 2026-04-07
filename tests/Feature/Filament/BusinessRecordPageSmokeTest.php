@@ -134,7 +134,9 @@ final class BusinessRecordPageSmokeTest extends TestCase
             'role' => UserRole::TENANT_OWNER,
         ]);
 
+        /** @var City $city */
         $city = City::factory()->create();
+        /** @var Category $category */
         $category = Category::factory()->create();
 
         $tenantFactory = Tenant::factory()->state([
@@ -164,4 +166,3 @@ final class BusinessRecordPageSmokeTest extends TestCase
         $this->actingAsTenant((string) $tenant->getKey());
     }
 }
-

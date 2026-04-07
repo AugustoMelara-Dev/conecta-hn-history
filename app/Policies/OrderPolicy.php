@@ -12,6 +12,11 @@ use Illuminate\Auth\Access\Response;
 
 class OrderPolicy extends TenantAwarePolicy
 {
+    public function before(User $user, string $ability): ?bool
+    {
+        return $this->isAdmin($user) ? true : null;
+    }
+
     public function viewAny(User $user): bool
     {
         return $this->allows($user, Capability::CHECKOUT_BASIC, Permission::ORDERS_VIEW);

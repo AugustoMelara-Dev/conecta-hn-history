@@ -163,11 +163,19 @@ class CustomerNote extends Model
 
     public function getAssignedOwnerLabelAttribute(): string
     {
-        return $this->assignedUser?->name ?? 'Sin asignar';
+        $assignedUser = $this->assignedUser;
+
+        return $assignedUser instanceof User && $assignedUser->name !== ''
+            ? $assignedUser->name
+            : 'Sin asignar';
     }
 
     public function getLocationLabelAttribute(): string
     {
-        return $this->location?->name ?? 'Sin sede';
+        $location = $this->location;
+
+        return $location instanceof Location && $location->name !== ''
+            ? $location->name
+            : 'Sin sede';
     }
 }

@@ -22,14 +22,13 @@ final class EloquentReportReader implements ReportReader
     /**
      * {@inheritdoc}
      */
-    public function getSalesData(int $tenantId, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
+    public function getSalesData(int|string $tenantId, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
     {
-        $tenantId = (int) $tenantId;
         $carbonStart = Carbon::instance($startDate);
         $carbonEnd = Carbon::instance($endDate);
 
         return Order::withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
+            ->where('tenant_id', (string) $tenantId)
             ->whereBetween('created_at', [$carbonStart, $carbonEnd])
             ->whereIn('status', ['completed', 'paid', 'delivered'])
             ->with('items')
@@ -45,7 +44,7 @@ final class EloquentReportReader implements ReportReader
      * Otherwise, executes a fresh database query (fallback for standalone usage).
      */
     public function getSalesSummary(
-        int $tenantId,
+        int|string $tenantId,
         \DateTimeImmutable $startDate,
         \DateTimeImmutable $endDate,
         ?array $preloadedOrders = null

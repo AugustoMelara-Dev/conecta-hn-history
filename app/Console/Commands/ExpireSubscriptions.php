@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Application\Shared\DTOs\Mail\TenantMailData;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
 use App\Mail\SubscriptionExpiredMail;
 use App\Mail\SubscriptionExpiringMail;
@@ -26,6 +27,13 @@ use Illuminate\Support\Facades\Mail;
  */
 class ExpireSubscriptions extends Command
 {
+    /** @var array<int, string> */
+    private const PAID_PLAN_KEYS = [
+        TenantPlan::PRO->value,
+        Tenant::PLAN_CRECIMIENTO,
+        Tenant::PLAN_COSECHA,
+    ];
+
     /**
      * The name and signature of the console command.
      * --grace-days es una sobreescritura de emergencia (debugging)
@@ -104,7 +112,8 @@ class ExpireSubscriptions extends Command
             $targetDate = now()->addDays($days)->startOfDay();
             $nextDay = $targetDate->copy()->endOfDay();
 
-            $tenants = Tenant::where('is_pro', true)
+            $tenants = Tenant::whereIn('plan_type', self::PAID_PLAN_KEYS)
+                ->where('subscription_status', 'active')
                 ->whereBetween('subscription_ends_at', [$targetDate, $nextDay])
                 ->with('user')
                 ->get();
@@ -145,7 +154,8 @@ class ExpireSubscriptions extends Command
         // Fecha limite = hoy - dias de gracia
         $cutoffDate = now()->subDays($graceDays);
 
-        $expiredTenants = Tenant::where('is_pro', true)
+        $expiredTenants = Tenant::whereIn('plan_type', self::PAID_PLAN_KEYS)
+            ->where('subscription_status', 'active')
             ->where('subscription_ends_at', '<', $cutoffDate)
             ->with('user')
             ->get();
@@ -179,7 +189,8 @@ class ExpireSubscriptions extends Command
             try {
                 // Soft Downgrade con limite dinamico
                 $tenant->update([
-                    'is_pro' => false,
+                    'plan_type' => TenantPlan::SEMILLA->value,
+                    'subscription_status' => 'expired',
                     'product_limit' => $freeProductLimit, // Limite desde GeneralSettings
                 ]);
 

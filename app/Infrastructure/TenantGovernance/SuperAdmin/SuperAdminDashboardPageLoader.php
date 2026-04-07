@@ -1,0 +1,18 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\TenantGovernance\SuperAdmin;
+
+final class SuperAdminDashboardPageLoader
+{
+    public function __construct(
+        private readonly SuperAdminDashboardPageStateReader $pageStateReader,
+        private readonly SuperAdminDashboardPropsBinder $propsBinder,
+    ) {}
+
+    public function load(object $target): void
+    {
+        $this->propsBinder->bind($target, $this->pageStateReader->read());
+    }
+}

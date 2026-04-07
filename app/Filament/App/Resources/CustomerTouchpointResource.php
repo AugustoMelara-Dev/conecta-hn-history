@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
+use App\Application\TenantGovernance\CustomerProfiles\Commands\RetryCustomerTouchpointCommand;
+use App\Application\TenantGovernance\CustomerProfiles\Handlers\RetryCustomerTouchpointHandler;
 use App\Filament\App\Resources\CustomerTouchpointResource\Pages;
 use App\Models\CustomerProfile;
 use App\Models\CustomerTouchpoint;
@@ -140,7 +141,7 @@ class CustomerTouchpointResource extends Resource
                         });
                     })
                     ->weight('bold')
-                    ->description(fn (CustomerTouchpoint $record): string => (string) ($record->recipient_address ?? $record->customerProfile?->email ?? 'Sin destinatario')),
+                    ->description(fn (CustomerTouchpoint $record): string => static::recipientLabel($record)),
                 Tables\Columns\TextColumn::make('channel')
                     ->label('Canal')
                     ->badge()
@@ -266,10 +267,23 @@ class CustomerTouchpointResource extends Resource
                     ->requiresConfirmation()
                     ->visible(fn (CustomerTouchpoint $record): bool => $record->isRetryable())
                     ->action(function (CustomerTouchpoint $record): void {
-                        $updated = app(CustomerAutomationManager::class)->retryTouchpoint(
-                            $record,
-                            auth()->id() !== null ? (string) auth()->id() : null,
+                        $updated = app(RetryCustomerTouchpointHandler::class)->handle(
+                            new RetryCustomerTouchpointCommand(
+                                tenantId: (string) $record->tenant_id,
+                                touchpointId: (int) $record->getKey(),
+                                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+                            ),
                         );
+
+                        if (! $updated instanceof CustomerTouchpoint) {
+                            Notification::make()
+                                ->title('No se pudo reintentar')
+                                ->danger()
+                                ->body('El contacto ya no existe dentro de este negocio.')
+                                ->send();
+
+                            return;
+                        }
 
                         $success = $updated->status === CustomerTouchpoint::STATUS_SENT;
                         $hasNextRetry = $updated->next_retry_at !== null;
@@ -324,5 +338,18 @@ class CustomerTouchpointResource extends Resource
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    protected static function recipientLabel(CustomerTouchpoint $record): string
+    {
+        if (filled($record->recipient_address)) {
+            return (string) $record->recipient_address;
+        }
+
+        $profile = $record->customerProfile;
+
+        return $profile instanceof CustomerProfile
+            ? (string) ($profile->email ?? 'Sin destinatario')
+            : 'Sin destinatario';
     }
 }

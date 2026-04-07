@@ -18,30 +18,30 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class EloquentProductReader implements ProductReader
 {
-    public function getInventory(int $tenantId): array
+    public function getInventory(int|string $tenantId): array
     {
         return Product::withoutGlobalScopes()
-            ->where('tenant_id', (int) $tenantId)
+            ->where('tenant_id', (string) $tenantId)
             ->orderBy('name')
             ->get()
             ->toArray();
     }
 
-    public function getLowStockProducts(int $tenantId): array
+    public function getLowStockProducts(int|string $tenantId): array
     {
         return Product::withoutGlobalScopes()
-            ->where('tenant_id', (int) $tenantId)
+            ->where('tenant_id', (string) $tenantId)
             ->whereIn('stock_status', ['low_stock', 'out_of_stock'])
             ->orderBy('name')
             ->get()
             ->toArray();
     }
 
-    public function search(int $tenantId, array $filters, int $perPage = 20): PaginatedResult
+    public function search(int|string $tenantId, array $filters, int $perPage = 20): PaginatedResult
     {
         return new EloquentPaginatedResult(
             Product::query()
-                ->where('tenant_id', (int) $tenantId)
+                ->where('tenant_id', (string) $tenantId)
                 ->where('is_active', true)
                 ->when($filters['search'] ?? null, function (Builder $query, string $term) {
                     $query->where(function (Builder $q) use ($term) {
@@ -60,9 +60,9 @@ final class EloquentProductReader implements ProductReader
         );
     }
 
-    public function find(int $tenantId, int $productId): ?object
+    public function find(int|string $tenantId, int $productId): ?object
     {
-        return Product::where('tenant_id', (int) $tenantId)
+        return Product::where('tenant_id', (string) $tenantId)
             ->where('id', $productId)
             ->where('is_active', true)
             ->with(['category', 'images'])

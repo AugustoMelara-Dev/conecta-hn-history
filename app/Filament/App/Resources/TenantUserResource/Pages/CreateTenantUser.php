@@ -34,14 +34,14 @@ class CreateTenantUser extends CreateRecord
                 'role' => $normalizedData['role'],
                 'preset_key' => $normalizedData['preset_key'] ?? null,
                 'granted_permissions' => $normalizedData['granted_permissions'] ?? [],
-                'accepted_at' => now(),
+                'accepted_at' => now()->toDateTimeString(),
             ]);
             $membership->tenant_id = $tenantId;
         } else {
             $membership->role = $normalizedData['role'];
             $membership->preset_key = $normalizedData['preset_key'] ?? null;
             $membership->granted_permissions = $normalizedData['granted_permissions'] ?? [];
-            $membership->accepted_at = now();
+            $membership->accepted_at = now()->toDateTimeString();
         }
 
         $membership->save();

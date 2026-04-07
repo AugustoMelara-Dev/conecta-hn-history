@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
-use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Models\Tenant;
 use Illuminate\Support\Str;
 
@@ -12,13 +11,15 @@ final class BusinessSegmentResolver
 {
     public function resolveForTenant(Tenant $tenant): string
     {
+        $category = $tenant->category;
+
         return $this->resolve(
-            businessType: $tenant->business_type?->value ?? BusinessType::RETAIL->value,
+            businessType: $tenant->business_type->value,
             name: $tenant->name,
             description: $tenant->description,
             about: $tenant->about,
-            categorySlug: $tenant->category?->slug,
-            categoryName: $tenant->category?->name,
+            categorySlug: $category instanceof \App\Models\Category ? $category->slug : null,
+            categoryName: $category instanceof \App\Models\Category ? $category->name : null,
         );
     }
 

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Filament\App\Pages\Dashboard;
 use App\Filament\App\Widgets\OrdersChart;
 use App\Filament\App\Widgets\RevenueChart;
 

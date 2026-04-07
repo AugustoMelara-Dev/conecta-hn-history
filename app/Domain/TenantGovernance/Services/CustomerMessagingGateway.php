@@ -6,6 +6,7 @@ namespace App\Domain\TenantGovernance\Services;
 
 use App\Mail\CustomerLifecycleMail;
 use App\Models\CustomerProfile;
+use App\Models\Tenant;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
@@ -24,7 +25,7 @@ class CustomerMessagingGateway
             $resend = \Resend::client($resendKey);
             $envelope = $mailable->envelope();
             $from = $envelope->from;
-            $replyTo = collect($envelope->replyTo ?? [])
+            $replyTo = collect($envelope->replyTo)
                 ->filter(static fn ($address): bool => $address instanceof \Illuminate\Mail\Mailables\Address)
                 ->map(static fn (\Illuminate\Mail\Mailables\Address $address): string => $address->address)
                 ->values()
@@ -210,7 +211,10 @@ class CustomerMessagingGateway
      */
     private function resolveTemplateVariable(string $key, CustomerProfile $profile, array $context): string
     {
-        $businessName = (string) ($profile->tenant?->name ?? 'Conecta HN');
+        $tenant = $profile->tenant;
+        $businessName = $tenant instanceof Tenant && $tenant->name !== ''
+            ? $tenant->name
+            : 'Conecta HN';
         $ctaUrl = (string) ($context['cta_url'] ?? '');
 
         return match ($key) {

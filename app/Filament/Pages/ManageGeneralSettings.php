@@ -59,10 +59,7 @@ class ManageGeneralSettings extends Page implements HasForms
 
         $superAdmins = config('auth.super_admins', []);
         $isWhitelisted = in_array($user->email ?? '', $superAdmins, true);
-        $role = $user->role;
-        $hasSuperAdminRole = $role instanceof UserRole
-            ? $role === UserRole::SUPER_ADMIN
-            : (string) $role === UserRole::SUPER_ADMIN->value;
+        $hasSuperAdminRole = $user->role === UserRole::SUPER_ADMIN;
 
         return $hasSuperAdminRole || $user->isSuperAdmin() || $isWhitelisted;
     }
