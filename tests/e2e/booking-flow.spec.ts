@@ -45,9 +45,12 @@ test.describe('Reservas publicas', () => {
         await page.getByTestId('booking-phone-input').fill('9999-1111');
         await page.getByTestId('booking-email-input').fill('cliente.e2e@example.test');
         await page.getByTestId('booking-notes-input').fill('Reserva creada desde Playwright.');
-        await page.getByTestId('booking-submit').click();
+        await Promise.all([
+            page.waitForURL(/\/t\/barberia-norte-pro\/book\/success\?appointment=/, { timeout: 20000 }),
+            page.getByTestId('booking-submit').click(),
+        ]);
 
-        await expect(page.getByTestId('booking-success')).toBeVisible();
+        await expect(page.getByTestId('booking-success')).toBeVisible({ timeout: 20000 });
         await expect(page.getByTestId('booking-success')).toContainText('Corte premium con barba');
     });
 });
