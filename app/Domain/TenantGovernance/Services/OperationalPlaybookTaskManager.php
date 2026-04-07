@@ -39,10 +39,13 @@ final class OperationalPlaybookTaskManager
         $assigneeId = $this->resolveAssigneeId($tenant, $profile);
         $title = $this->interpolate((string) ($profile['title'] ?? 'Playbook operativo'), $tenant, $context);
         $summary = $this->interpolate((string) ($profile['summary'] ?? ''), $tenant, $context);
+        $crmOwnerId = $this->tenantAttribute($tenant, 'crm_owner_id');
+        $crmSlaHours = (int) ($this->tenantAttribute($tenant, 'crm_sla_hours', 0) ?? 0);
+        $crmNextFollowUpAt = $this->tenantAttribute($tenant, 'crm_next_follow_up_at');
         $crmSlaMinutes = max(
             15,
-            (int) (($tenant->crm_sla_hours ?? 0) > 0
-                ? ((int) $tenant->crm_sla_hours * 60)
+            (int) ($crmSlaHours > 0
+                ? ($crmSlaHours * 60)
                 : (int) ($profile['sla_minutes'] ?? 60))
         );
         $steps = collect((array) ($profile['steps'] ?? []))
@@ -50,12 +53,12 @@ final class OperationalPlaybookTaskManager
             ->values()
             ->all();
 
-        $task->forceFill([
+        $task->forceFill($this->filterPersistableTaskAttributes([
             'tenant_id' => (string) $tenant->getKey(),
             'assigned_user_id' => $assigneeId,
             'admin_owner_id' => $existingTask instanceof OperationalPlaybookTask
                 ? $existingTask->admin_owner_id
-                : (filled($tenant->crm_owner_id) ? (string) $tenant->crm_owner_id : null),
+                : (filled($crmOwnerId) ? (string) $crmOwnerId : null),
             'trigger_key' => $triggerKey,
             'queue' => (string) ($profile['queue'] ?? 'leads'),
             'route_key' => Arr::get($profile, 'route_key'),
@@ -67,7 +70,7 @@ final class OperationalPlaybookTaskManager
                 : OperationalPlaybookTask::STATUS_OPEN,
             'follow_up_status' => $existingTask instanceof OperationalPlaybookTask
                 ? $existingTask->follow_up_status
-                : (filled($tenant->crm_owner_id) ? OperationalPlaybookTask::FOLLOW_UP_ASSIGNED : OperationalPlaybookTask::FOLLOW_UP_NEW),
+                : (filled($crmOwnerId) ? OperationalPlaybookTask::FOLLOW_UP_ASSIGNED : OperationalPlaybookTask::FOLLOW_UP_NEW),
             'sla_minutes' => $crmSlaMinutes,
             'title' => $title,
             'summary' => $summary,
@@ -78,8 +81,8 @@ final class OperationalPlaybookTaskManager
             'due_at' => now()->addMinutes($crmSlaMinutes),
             'next_follow_up_at' => $existingTask instanceof OperationalPlaybookTask
                 ? $existingTask->next_follow_up_at
-                : $tenant->crm_next_follow_up_at,
-        ]);
+                : $crmNextFollowUpAt,
+        ]));
 
         if (! $existingTask instanceof OperationalPlaybookTask) {
             $task->started_at = null;
@@ -225,5 +228,25 @@ final class OperationalPlaybookTaskManager
         ];
 
         return trim(Str::of(strtr($template, $replacements))->squish()->value());
+    }
+
+    private function tenantAttribute(Tenant $tenant, string $key, mixed $default = null): mixed
+    {
+        $attributes = $tenant->getAttributes();
+
+        return array_key_exists($key, $attributes) ? $attributes[$key] : $default;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function filterPersistableTaskAttributes(array $attributes): array
+    {
+        $task = new OperationalPlaybookTask;
+        /** @var array<int, string> $columns */
+        $columns = $task->getConnection()->getSchemaBuilder()->getColumnListing($task->getTable());
+
+        return Arr::only($attributes, $columns);
     }
 }

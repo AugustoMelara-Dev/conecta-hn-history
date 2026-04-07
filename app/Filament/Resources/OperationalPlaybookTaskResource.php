@@ -160,8 +160,8 @@ class OperationalPlaybookTaskResource extends Resource
                     ->description(fn (OperationalPlaybookTask $record): string => $record->isOverdue() ? 'SLA vencido' : static::relativeDateTime($record->due_at)),
                 Tables\Columns\TextColumn::make('next_follow_up_at')
                     ->label('Siguiente toque')
-                    ->state(fn (OperationalPlaybookTask $record): string => static::formatDateTime($record->next_follow_up_at))
-                    ->description(fn (OperationalPlaybookTask $record): string => static::relativeDateTime($record->next_follow_up_at))
+                    ->state(fn (OperationalPlaybookTask $record): string => static::formatDateTime(static::taskAttribute($record, 'next_follow_up_at')))
+                    ->description(fn (OperationalPlaybookTask $record): string => static::relativeDateTime(static::taskAttribute($record, 'next_follow_up_at')))
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('internal_notes')
                     ->label('Notas internas')
@@ -285,7 +285,7 @@ class OperationalPlaybookTaskResource extends Resource
                     ->fillForm(fn (OperationalPlaybookTask $record): array => [
                         'admin_owner_id' => static::resolvedOwnerId($record),
                         'follow_up_status' => $record->follow_up_status ?: OperationalPlaybookTask::FOLLOW_UP_NEW,
-                        'next_follow_up_at' => static::dateTimeInputValue($record->next_follow_up_at),
+                        'next_follow_up_at' => static::dateTimeInputValue(static::taskAttribute($record, 'next_follow_up_at')),
                         'due_at' => static::dateTimeInputValue($record->due_at),
                         'internal_note' => '',
                     ])
@@ -344,7 +344,7 @@ class OperationalPlaybookTaskResource extends Resource
                         static::logInternalFollowUp($record, 'Seguimiento interno actualizado', [
                             'admin_owner_id' => $selectedOwner instanceof User ? (string) $selectedOwner->getKey() : null,
                             'follow_up_status' => (string) ($record->follow_up_status ?? OperationalPlaybookTask::FOLLOW_UP_NEW),
-                            'next_follow_up_at' => static::carbonValue($record->next_follow_up_at)?->toIso8601String(),
+                            'next_follow_up_at' => static::carbonValue(static::taskAttribute($record, 'next_follow_up_at'))?->toIso8601String(),
                         ], $actor instanceof User ? $actor : null);
 
                         Notification::make()
@@ -670,5 +670,12 @@ class OperationalPlaybookTaskResource extends Resource
     protected static function dateTimeInputValue(mixed $value): ?string
     {
         return static::carbonValue($value)?->format('Y-m-d\TH:i');
+    }
+
+    protected static function taskAttribute(OperationalPlaybookTask $record, string $key, mixed $default = null): mixed
+    {
+        $attributes = $record->getAttributes();
+
+        return array_key_exists($key, $attributes) ? $attributes[$key] : $default;
     }
 }
