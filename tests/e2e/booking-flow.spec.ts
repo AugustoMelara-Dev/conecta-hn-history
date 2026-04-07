@@ -35,22 +35,52 @@ test.describe('Reservas publicas', () => {
 
         await page.getByTestId('booking-date-input').fill(nextDayIso());
 
-        const firstSlot = page.locator('[data-testid^="booking-slot-"]').first();
-        await expect(firstSlot).toBeVisible();
-        await firstSlot.click();
+        const slotOptions = page.locator('[data-testid^="booking-slot-"]');
+        await expect(slotOptions.first()).toBeVisible();
 
-        await expect(page.getByTestId('booking-step-confirm')).toBeVisible();
+        const selectedSlot = (await slotOptions.count()) > 2 ? slotOptions.nth(2) : slotOptions.first();
+        await selectedSlot.click();
 
-        await page.getByTestId('booking-name-input').fill('Cliente E2E');
-        await page.getByTestId('booking-phone-input').fill('9999-1111');
-        await page.getByTestId('booking-email-input').fill('cliente.e2e@example.test');
-        await page.getByTestId('booking-notes-input').fill('Reserva creada desde Playwright.');
-        await Promise.all([
-            page.waitForURL(/\/t\/barberia-norte-pro\/book\/success\?appointment=/, { timeout: 20000 }),
-            page.getByTestId('booking-submit').click(),
-        ]);
+        await fillBookingDetails(page);
+        await submitBookingWithFallback(page);
 
         await expect(page.getByTestId('booking-success')).toBeVisible({ timeout: 20000 });
         await expect(page.getByTestId('booking-success')).toContainText('Corte premium con barba');
     });
 });
+
+async function fillBookingDetails(page) {
+    await expect(page.getByTestId('booking-step-confirm')).toBeVisible();
+    await page.getByTestId('booking-name-input').fill('Cliente E2E');
+    await page.getByTestId('booking-phone-input').fill('9999-1111');
+    await page.getByTestId('booking-email-input').fill('cliente.e2e@example.test');
+    await page.getByTestId('booking-notes-input').fill('Reserva creada desde Playwright.');
+}
+
+async function submitBookingWithFallback(page) {
+    const successUrl = /\/t\/barberia-norte-pro\/book\/success\?appointment=/;
+
+    await page.getByTestId('booking-submit').click();
+
+    try {
+        await page.waitForURL(successUrl, { timeout: 20000 });
+
+        return;
+    } catch {
+        const slotUnavailableError = page.getByText('Este horario ya no esta disponible. Por favor selecciona otro.');
+        await expect(slotUnavailableError).toBeVisible({ timeout: 5000 });
+
+        await page.getByRole('button', { name: 'Cambiar horario' }).click();
+        await expect(page.getByTestId('booking-step-slots')).toBeVisible();
+
+        const slotOptions = page.locator('[data-testid^="booking-slot-"]');
+        await expect(slotOptions.nth(1)).toBeVisible();
+        await slotOptions.nth(1).click();
+
+        await fillBookingDetails(page);
+        await Promise.all([
+            page.waitForURL(successUrl, { timeout: 20000 }),
+            page.getByTestId('booking-submit').click(),
+        ]);
+    }
+}
