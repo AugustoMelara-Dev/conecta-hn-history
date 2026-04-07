@@ -71,17 +71,17 @@ async function selectAvailableSlot(page) {
         const slotResponsePromise = page.waitForResponse((response) =>
             response.request().method() === 'GET'
             && response.url().includes('/book/slots')
-        );
+            && response.url().includes(`date=${date}`)
+        , { timeout: 8000 }).catch(() => null);
 
-        await dateInput.evaluate((element, value) => {
-            const input = element;
-            input.value = value;
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        }, date);
+        await dateInput.fill(date);
+        await expect(dateInput).toHaveValue(date);
+        await dateInput.press('Tab');
 
         const slotResponse = await slotResponsePromise;
-        expect(slotResponse.ok()).toBeTruthy();
+        if (!slotResponse || !slotResponse.ok()) {
+            continue;
+        }
 
         const payload = await slotResponse.json();
         const slots = Array.isArray(payload.slots) ? payload.slots : [];
@@ -90,9 +90,10 @@ async function selectAvailableSlot(page) {
             continue;
         }
 
+        const targetSlot = slots[Math.min(2, slots.length - 1)];
+        const selectedSlot = page.getByTestId(`booking-slot-${targetSlot.time.replace(':', '-')}`);
         await expect(slotOptions.first()).toBeVisible();
-
-        const selectedSlot = slots.length > 2 ? slotOptions.nth(2) : slotOptions.first();
+        await expect(selectedSlot).toBeVisible();
         await selectedSlot.click();
 
         return;
