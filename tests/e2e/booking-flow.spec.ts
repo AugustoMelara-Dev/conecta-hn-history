@@ -11,6 +11,17 @@ function nextDayIso(): string {
     return `${year}-${month}-${day}`;
 }
 
+function dayOffsetIso(offset: number): string {
+    const date = new Date();
+    date.setDate(date.getDate() + offset);
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
 test.describe('Reservas publicas', () => {
     test('service CTA from the microsite preselects the chosen service', async ({ page }) => {
         await page.goto('/t/bufete-lex-hn');
@@ -33,13 +44,7 @@ test.describe('Reservas publicas', () => {
         await page.locator('[data-testid^="booking-provider-"]').filter({ hasText: 'Marco Diaz' }).click();
         await expect(page.getByTestId('booking-step-slots')).toBeVisible();
 
-        await page.getByTestId('booking-date-input').fill(nextDayIso());
-
-        const slotOptions = page.locator('[data-testid^="booking-slot-"]');
-        await expect(slotOptions.first()).toBeVisible();
-
-        const selectedSlot = (await slotOptions.count()) > 2 ? slotOptions.nth(2) : slotOptions.first();
-        await selectedSlot.click();
+        await selectAvailableSlot(page);
 
         await fillBookingDetails(page);
         await submitBookingWithFallback(page);
@@ -55,6 +60,45 @@ async function fillBookingDetails(page) {
     await page.getByTestId('booking-phone-input').fill('9999-1111');
     await page.getByTestId('booking-email-input').fill('cliente.e2e@example.test');
     await page.getByTestId('booking-notes-input').fill('Reserva creada desde Playwright.');
+}
+
+async function selectAvailableSlot(page) {
+    const slotOptions = page.locator('[data-testid^="booking-slot-"]');
+    const dateInput = page.getByTestId('booking-date-input');
+
+    for (let offset = 1; offset <= 7; offset += 1) {
+        const date = offset === 1 ? nextDayIso() : dayOffsetIso(offset);
+        const slotResponsePromise = page.waitForResponse((response) =>
+            response.request().method() === 'GET'
+            && response.url().includes('/book/slots')
+        );
+
+        await dateInput.evaluate((element, value) => {
+            const input = element;
+            input.value = value;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }, date);
+
+        const slotResponse = await slotResponsePromise;
+        expect(slotResponse.ok()).toBeTruthy();
+
+        const payload = await slotResponse.json();
+        const slots = Array.isArray(payload.slots) ? payload.slots : [];
+
+        if (slots.length === 0) {
+            continue;
+        }
+
+        await expect(slotOptions.first()).toBeVisible();
+
+        const selectedSlot = slots.length > 2 ? slotOptions.nth(2) : slotOptions.first();
+        await selectedSlot.click();
+
+        return;
+    }
+
+    throw new Error('No booking slots became available within the next 7 days.');
 }
 
 async function submitBookingWithFallback(page) {
