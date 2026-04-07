@@ -30,7 +30,7 @@ test.describe('Reservas publicas', () => {
         await page.locator('[data-testid^="booking-service-"]').first().click();
         await expect(page.getByTestId('booking-step-providers')).toBeVisible();
 
-        await page.getByTestId('booking-provider-any').click();
+        await page.locator('[data-testid^="booking-provider-"]').first().click();
         await expect(page.getByTestId('booking-step-slots')).toBeVisible();
 
         await page.getByTestId('booking-date-input').fill(nextDayIso());
