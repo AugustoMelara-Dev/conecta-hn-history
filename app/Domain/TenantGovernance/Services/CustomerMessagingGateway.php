@@ -8,12 +8,12 @@ use App\Domain\TenantGovernance\Contracts\WhatsAppTemplateDeliveryInterface;
 use App\Mail\CustomerLifecycleMail;
 use App\Models\CustomerProfile;
 use App\Models\Tenant;
-use Illuminate\Contracts\Mail\Factory as MailFactory;
+use Illuminate\Contracts\Mail\Mailer;
 
 class CustomerMessagingGateway
 {
     public function __construct(
-        private readonly MailFactory $mail,
+        private readonly Mailer $mail,
         private readonly WhatsAppTemplateDeliveryInterface $whatsAppDelivery,
     ) {}
 
