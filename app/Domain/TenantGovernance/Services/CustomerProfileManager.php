@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Domain\TenantGovernance\Repositories\CustomerProfileRepositoryInterface;
 use App\Models\Appointment;
 use App\Models\CustomerProfile;
 use App\Models\Lead;
 use App\Models\Order;
 use App\Models\Tenant;
-use Illuminate\Support\Facades\DB;
 
 class CustomerProfileManager
 {
@@ -20,6 +20,7 @@ class CustomerProfileManager
         private readonly CustomerProfileSnapshotCalculator $snapshotCalculator,
         private readonly CustomerProfileWorkspaceRelinker $workspaceRelinker,
         private readonly CustomerProfileIdentityResolver $identityResolver,
+        private readonly TenantContext $tenantContext,
     ) {}
 
     public function syncTenant(Tenant|string $tenant): void
@@ -115,63 +116,76 @@ class CustomerProfileManager
             return $primary->fresh();
         }
 
-        return DB::transaction(function () use ($primary, $duplicate, $actorUserId): CustomerProfile {
-            $primary = $this->customerProfileRepository->findWithoutScopes((string) $primary->getKey())
-                ?? CustomerProfile::query()->withoutGlobalScopes()->findOrFail($primary->getKey());
-            $duplicate = $this->customerProfileRepository->findWithoutScopes((string) $duplicate->getKey())
-                ?? CustomerProfile::query()->withoutGlobalScopes()->findOrFail($duplicate->getKey());
+        $initializedTenantContext = false;
 
-            $mergePayload = [
-                'normalized_email' => $primary->normalized_email ?? $duplicate->normalized_email,
-                'normalized_phone' => $primary->normalized_phone ?? $duplicate->normalized_phone,
-                'name' => $this->resolveBestName($primary->name, $duplicate->name),
-                'email' => $primary->email ?? $duplicate->email,
-                'phone' => $primary->phone ?? $duplicate->phone,
-                'preferred_channel' => $this->resolvePreferredChannel(
-                    $primary->preferred_channel,
-                    $primary->normalized_email ?? $duplicate->normalized_email,
-                    $primary->normalized_phone ?? $duplicate->normalized_phone,
-                ),
-                'manual_segment' => $primary->manual_segment ?? $duplicate->manual_segment,
-                'assigned_user_id' => $primary->assigned_user_id ?? $duplicate->assigned_user_id,
-                'location_id' => $primary->location_id ?? $duplicate->location_id,
-                'marketing_opt_in' => (bool) $primary->marketing_opt_in || (bool) $duplicate->marketing_opt_in,
-                'whatsapp_opt_in' => (bool) $primary->whatsapp_opt_in || (bool) $duplicate->whatsapp_opt_in,
-                'email_opt_in' => (bool) $primary->email_opt_in || (bool) $duplicate->email_opt_in,
-                'tags' => collect(array_merge((array) $primary->tags, (array) $duplicate->tags))
-                    ->filter(static fn (mixed $tag): bool => is_string($tag) && trim($tag) !== '')
-                    ->map(static fn (string $tag): string => trim($tag))
-                    ->unique()
-                    ->values()
-                    ->all(),
-                'crm_notes' => collect([$primary->crm_notes, $duplicate->crm_notes])
-                    ->filter(static fn (mixed $value): bool => is_string($value) && trim($value) !== '')
-                    ->implode("\n\n"),
-            ];
+        if (! $this->tenantContext->isInitialized()) {
+            $this->tenantContext->setTenant((string) $primary->tenant_id);
+            $initializedTenantContext = true;
+        }
 
-            $this->workspaceRelinker->relink($primary, $duplicate);
+        try {
+            return CustomerProfile::query()->getConnection()->transaction(function () use ($primary, $duplicate, $actorUserId): CustomerProfile {
+                $primary = $this->customerProfileRepository->findWithoutScopes((string) $primary->getKey())
+                    ?? CustomerProfile::query()->withoutGlobalScopes()->findOrFail($primary->getKey());
+                $duplicate = $this->customerProfileRepository->findWithoutScopes((string) $duplicate->getKey())
+                    ?? CustomerProfile::query()->withoutGlobalScopes()->findOrFail($duplicate->getKey());
 
-            $this->customerProfileRepository->deleteWithoutScopes((string) $duplicate->getKey());
+                $mergePayload = [
+                    'normalized_email' => $primary->normalized_email ?? $duplicate->normalized_email,
+                    'normalized_phone' => $primary->normalized_phone ?? $duplicate->normalized_phone,
+                    'name' => $this->resolveBestName($primary->name, $duplicate->name),
+                    'email' => $primary->email ?? $duplicate->email,
+                    'phone' => $primary->phone ?? $duplicate->phone,
+                    'preferred_channel' => $this->resolvePreferredChannel(
+                        $primary->preferred_channel,
+                        $primary->normalized_email ?? $duplicate->normalized_email,
+                        $primary->normalized_phone ?? $duplicate->normalized_phone,
+                    ),
+                    'manual_segment' => $primary->manual_segment ?? $duplicate->manual_segment,
+                    'assigned_user_id' => $primary->assigned_user_id ?? $duplicate->assigned_user_id,
+                    'location_id' => $primary->location_id ?? $duplicate->location_id,
+                    'marketing_opt_in' => (bool) $primary->marketing_opt_in || (bool) $duplicate->marketing_opt_in,
+                    'whatsapp_opt_in' => (bool) $primary->whatsapp_opt_in || (bool) $duplicate->whatsapp_opt_in,
+                    'email_opt_in' => (bool) $primary->email_opt_in || (bool) $duplicate->email_opt_in,
+                    'tags' => collect(array_merge((array) $primary->tags, (array) $duplicate->tags))
+                        ->filter(static fn (mixed $tag): bool => is_string($tag) && trim($tag) !== '')
+                        ->map(static fn (string $tag): string => trim($tag))
+                        ->unique()
+                        ->values()
+                        ->all(),
+                    'crm_notes' => collect([$primary->crm_notes, $duplicate->crm_notes])
+                        ->filter(static fn (mixed $value): bool => is_string($value) && trim($value) !== '')
+                        ->implode("\n\n"),
+                ];
 
-            $primary->forceFill($mergePayload)->save();
+                $this->workspaceRelinker->relink($primary, $duplicate);
 
-            $this->recalculateProfile($primary);
+                $this->customerProfileRepository->deleteWithoutScopes((string) $duplicate->getKey());
 
-            $freshPrimary = $primary->fresh();
+                $primary->forceFill($mergePayload)->save();
 
-            if ($actorUserId !== null) {
-                $notesTarget = $freshPrimary instanceof CustomerProfile ? $freshPrimary : $primary;
+                $this->recalculateProfile($primary);
 
-                $notesTarget->forceFill([
-                    'crm_notes' => trim((string) collect([
-                        $notesTarget->crm_notes,
-                        'Merge manual ejecutado el '.now()->format('d/m/Y H:i').' por '.$actorUserId.'.',
-                    ])->filter()->implode("\n\n")),
-                ])->save();
+                $freshPrimary = $primary->fresh();
+
+                if ($actorUserId !== null) {
+                    $notesTarget = $freshPrimary instanceof CustomerProfile ? $freshPrimary : $primary;
+
+                    $notesTarget->forceFill([
+                        'crm_notes' => trim((string) collect([
+                            $notesTarget->crm_notes,
+                            'Merge manual ejecutado el '.now()->format('d/m/Y H:i').' por '.$actorUserId.'.',
+                        ])->filter()->implode("\n\n")),
+                    ])->save();
+                }
+
+                return ($freshPrimary instanceof CustomerProfile ? $freshPrimary : $primary)->fresh();
+            });
+        } finally {
+            if ($initializedTenantContext) {
+                $this->tenantContext->reset();
             }
-
-            return ($freshPrimary instanceof CustomerProfile ? $freshPrimary : $primary)->fresh();
-        });
+        }
     }
 
     private function syncSourceRecord(

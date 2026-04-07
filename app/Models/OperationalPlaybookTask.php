@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class OperationalPlaybookTask extends Model
 {
@@ -82,6 +84,16 @@ class OperationalPlaybookTask extends Model
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $task): void {
+            $task->setRawAttributes(
+                Arr::only($task->getAttributes(), Schema::getColumnListing($task->getTable())),
+                false,
+            );
+        });
     }
 
     public function tenant(): BelongsTo
