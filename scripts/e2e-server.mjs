@@ -14,6 +14,7 @@ const rootEnv = {
     PULSE_ENABLED: 'false',
     TELESCOPE_ENABLED: 'false',
     ACTIVITY_LOGGER_ENABLED: 'false',
+    E2E_BROWSER_RELEASE: 'true',
     DB_CONNECTION: 'mysql',
     DB_HOST: process.env.E2E_DB_HOST || '127.0.0.1',
     DB_PORT: process.env.E2E_DB_PORT || '3306',

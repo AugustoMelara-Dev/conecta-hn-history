@@ -13,6 +13,10 @@ class AppointmentCustomerProfileObserver implements ShouldHandleEventsAfterCommi
 {
     public function saved(Appointment $appointment): void
     {
+        if (config('app.e2e_browser_release')) {
+            return;
+        }
+
         ProcessAppointmentCustomerProfileEffects::dispatch(
             tenantId: (string) $appointment->tenant_id,
             appointmentId: (int) $appointment->getKey(),

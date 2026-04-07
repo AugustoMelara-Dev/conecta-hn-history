@@ -21,6 +21,10 @@ final class NotifyAppointmentBookedListener implements ShouldQueue, ShouldQueueA
 
     public function handle(AppointmentCreated $event): void
     {
+        if (config('app.e2e_browser_release')) {
+            return;
+        }
+
         $appointmentId = $event->appointment->getKey();
         $appointment = Appointment::query()
             ->with(['tenant', 'service', 'provider'])
