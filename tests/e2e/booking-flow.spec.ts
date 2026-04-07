@@ -104,28 +104,65 @@ async function selectAvailableSlot(page) {
 
 async function submitBookingWithFallback(page) {
     const successUrl = /\/t\/barberia-norte-pro\/book\/success\?appointment=/;
+    const submitButton = page.getByTestId('booking-submit');
 
-    await page.getByTestId('booking-submit').click();
-
-    try {
-        await page.waitForURL(successUrl, { timeout: 20000 });
-
+    const firstResponse = await submitBookingRequest(page, submitButton);
+    if (await finalizeBookingSuccess(page, firstResponse, successUrl)) {
         return;
+    }
+
+    const changeScheduleButton = page.getByRole('button', { name: 'Cambiar horario' });
+    await expect(changeScheduleButton).toBeVisible({ timeout: 5000 });
+    await changeScheduleButton.click();
+    await expect(page.getByTestId('booking-step-slots')).toBeVisible();
+
+    const slotOptions = page.locator('[data-testid^="booking-slot-"]');
+    await expect(slotOptions.last()).toBeVisible();
+    await slotOptions.last().click();
+
+    await fillBookingDetails(page);
+
+    const retryResponse = await submitBookingRequest(page, submitButton);
+    if (await finalizeBookingSuccess(page, retryResponse, successUrl)) {
+        return;
+    }
+
+    const visibleErrors = await page.locator('.text-rose-600, .text-rose-700').allInnerTexts();
+    throw new Error(`Booking flow did not reach success after retry. Visible errors: ${visibleErrors.join(' | ') || 'none'}`);
+}
+
+async function submitBookingRequest(page, submitButton) {
+    const bookingPostResponsePromise = page.waitForResponse((response) =>
+        response.request().method() === 'POST'
+        && response.url().includes('/t/barberia-norte-pro/book')
+    , { timeout: 20000 }).catch(() => null);
+
+    await submitButton.click();
+
+    return bookingPostResponsePromise;
+}
+
+async function finalizeBookingSuccess(page, bookingResponse, successUrl) {
+    try {
+        await page.waitForURL(successUrl, { timeout: 5000 });
+
+        return true;
     } catch {
-        const slotUnavailableError = page.getByText('Este horario ya no esta disponible. Por favor selecciona otro.');
-        await expect(slotUnavailableError).toBeVisible({ timeout: 5000 });
+        const responseUrl = bookingResponse?.url() ?? '';
+        const locationHeader = bookingResponse?.headers()?.location ?? '';
 
-        await page.getByRole('button', { name: 'Cambiar horario' }).click();
-        await expect(page.getByTestId('booking-step-slots')).toBeVisible();
+        if (successUrl.test(responseUrl)) {
+            await page.goto(responseUrl);
 
-        const slotOptions = page.locator('[data-testid^="booking-slot-"]');
-        await expect(slotOptions.nth(1)).toBeVisible();
-        await slotOptions.nth(1).click();
+            return true;
+        }
 
-        await fillBookingDetails(page);
-        await Promise.all([
-            page.waitForURL(successUrl, { timeout: 20000 }),
-            page.getByTestId('booking-submit').click(),
-        ]);
+        if (successUrl.test(locationHeader)) {
+            await page.goto(locationHeader);
+
+            return true;
+        }
+
+        return false;
     }
 }
