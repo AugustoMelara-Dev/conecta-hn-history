@@ -1,0 +1,30 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "QueueSalesExportCommand",
+    "type": "object",
+    "properties": {
+        "requestorId": {
+            "type": "string"
+        },
+        "tenantId": {
+            "type": "string"
+        },
+        "criteriaData": {
+            "type": "array"
+        },
+        "requestIp": {
+            "type": "string"
+        },
+        "userAgent": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "requestorId",
+        "tenantId",
+        "criteriaData",
+        "requestIp",
+        "userAgent"
+    ],
+    "additionalProperties": false
+}

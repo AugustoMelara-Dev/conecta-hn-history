@@ -1,0 +1,32 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "MoveCustomerInboxConversationLocationCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "noteId": {
+            "type": "integer"
+        },
+        "locationId": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "actorUserId": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "tenantId",
+        "noteId",
+        "locationId",
+        "actorUserId"
+    ],
+    "additionalProperties": false
+}

@@ -1,0 +1,25 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "CompleteCustomerTaskCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "taskId": {
+            "type": "integer"
+        },
+        "actorUserId": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "tenantId",
+        "taskId",
+        "actorUserId"
+    ],
+    "additionalProperties": false
+}

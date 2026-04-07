@@ -1,0 +1,29 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "MergeCustomerProfilesCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "primaryProfileId": {
+            "type": "integer"
+        },
+        "duplicateProfileId": {
+            "type": "integer"
+        },
+        "actorUserId": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "tenantId",
+        "primaryProfileId",
+        "duplicateProfileId",
+        "actorUserId"
+    ],
+    "additionalProperties": false
+}

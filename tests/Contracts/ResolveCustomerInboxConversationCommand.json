@@ -1,0 +1,25 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "ResolveCustomerInboxConversationCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "noteId": {
+            "type": "integer"
+        },
+        "actorUserId": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "tenantId",
+        "noteId",
+        "actorUserId"
+    ],
+    "additionalProperties": false
+}

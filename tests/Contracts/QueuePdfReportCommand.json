@@ -1,0 +1,36 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "QueuePdfReportCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "requestorId": {
+            "type": "string"
+        },
+        "reportType": {
+            "type": "string"
+        },
+        "startDate": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "endDate": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        }
+    },
+    "required": [
+        "tenantId",
+        "requestorId",
+        "reportType"
+    ],
+    "additionalProperties": false
+}

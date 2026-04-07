@@ -1,0 +1,25 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "NormalizeCampaignFormDataCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "data": {
+            "type": "array"
+        },
+        "campaignId": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "default": null
+        }
+    },
+    "required": [
+        "tenantId",
+        "data"
+    ],
+    "additionalProperties": false
+}

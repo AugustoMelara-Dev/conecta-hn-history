@@ -1,0 +1,29 @@
+{
+    "$schema": "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+    "title": "SendCustomerInboxTemplateCommand",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "type": "string"
+        },
+        "noteId": {
+            "type": "integer"
+        },
+        "templateKey": {
+            "type": "string"
+        },
+        "actorUserId": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "tenantId",
+        "noteId",
+        "templateKey",
+        "actorUserId"
+    ],
+    "additionalProperties": false
+}
