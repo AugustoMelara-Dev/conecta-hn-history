@@ -34,17 +34,8 @@ test.describe('Reservas publicas', () => {
     });
 
     test('visitor can complete a booking flow for a service business', async ({ page }) => {
-        await page.goto('/t/barberia-norte-pro/book');
-
-        await expect(page.getByTestId('booking-wizard')).toBeVisible();
-
-        await page.locator('[data-testid^="booking-service-"]').first().click();
-        await expect(page.getByTestId('booking-step-providers')).toBeVisible();
-
-        await page.locator('[data-testid^="booking-provider-"]').filter({ hasText: 'Marco Diaz' }).click();
-        await expect(page.getByTestId('booking-step-slots')).toBeVisible();
-
-        await selectAvailableSlot(page);
+        await startBookingFlow(page);
+        await selectAvailableSlot(page, 'middle');
 
         await fillBookingDetails(page);
         await submitBookingWithFallback(page);
@@ -62,7 +53,19 @@ async function fillBookingDetails(page) {
     await page.getByTestId('booking-notes-input').fill('Reserva creada desde Playwright.');
 }
 
-async function selectAvailableSlot(page) {
+async function startBookingFlow(page) {
+    await page.goto('/t/barberia-norte-pro/book');
+
+    await expect(page.getByTestId('booking-wizard')).toBeVisible();
+
+    await page.locator('[data-testid^="booking-service-"]').first().click();
+    await expect(page.getByTestId('booking-step-providers')).toBeVisible();
+
+    await page.locator('[data-testid^="booking-provider-"]').filter({ hasText: 'Marco Diaz' }).click();
+    await expect(page.getByTestId('booking-step-slots')).toBeVisible();
+}
+
+async function selectAvailableSlot(page, preference = 'middle') {
     const slotOptions = page.locator('[data-testid^="booking-slot-"]');
     const dateInput = page.getByTestId('booking-date-input');
 
@@ -90,7 +93,9 @@ async function selectAvailableSlot(page) {
             continue;
         }
 
-        const targetSlot = slots[Math.min(2, slots.length - 1)];
+        const targetSlot = preference === 'last'
+            ? slots[slots.length - 1]
+            : slots[Math.min(2, slots.length - 1)];
         const selectedSlot = page.getByTestId(`booking-slot-${targetSlot.time.replace(':', '-')}`);
         await expect(slotOptions.first()).toBeVisible();
         await expect(selectedSlot).toBeVisible();
@@ -104,25 +109,17 @@ async function selectAvailableSlot(page) {
 
 async function submitBookingWithFallback(page) {
     const successUrl = /\/t\/barberia-norte-pro\/book\/success\?appointment=/;
-    const submitButton = page.getByTestId('booking-submit');
 
-    const firstResponse = await submitBookingRequest(page, submitButton);
+    const firstResponse = await submitBookingRequest(page);
     if (await finalizeBookingSuccess(page, firstResponse, successUrl)) {
         return;
     }
 
-    const changeScheduleButton = page.getByRole('button', { name: 'Cambiar horario' });
-    await expect(changeScheduleButton).toBeVisible({ timeout: 5000 });
-    await changeScheduleButton.click({ force: true });
-    await expect(page.getByTestId('booking-step-slots')).toBeVisible();
-
-    const slotOptions = page.locator('[data-testid^="booking-slot-"]');
-    await expect(slotOptions.last()).toBeVisible();
-    await slotOptions.last().click();
-
+    await startBookingFlow(page);
+    await selectAvailableSlot(page, 'last');
     await fillBookingDetails(page);
 
-    const retryResponse = await submitBookingRequest(page, submitButton);
+    const retryResponse = await submitBookingRequest(page);
     if (await finalizeBookingSuccess(page, retryResponse, successUrl)) {
         return;
     }
@@ -131,13 +128,13 @@ async function submitBookingWithFallback(page) {
     throw new Error(`Booking flow did not reach success after retry. Visible errors: ${visibleErrors.join(' | ') || 'none'}`);
 }
 
-async function submitBookingRequest(page, submitButton) {
+async function submitBookingRequest(page) {
     const bookingPostResponsePromise = page.waitForResponse((response) =>
         response.request().method() === 'POST'
         && response.url().includes('/t/barberia-norte-pro/book')
     , { timeout: 20000 }).catch(() => null);
 
-    await submitButton.click();
+    await page.getByTestId('booking-submit').click();
 
     return bookingPostResponsePromise;
 }
