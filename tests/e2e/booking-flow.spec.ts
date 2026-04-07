@@ -1,14 +1,20 @@
 import { expect, test } from '@playwright/test';
 
-function nextDayIso(): string {
-    const date = new Date();
-    date.setDate(date.getDate() + 1);
+function nextBookingDates(daysAhead = 7): string[] {
+    const base = new Date();
+    // Use midday to avoid DST edge-case jumps when adding days.
+    base.setHours(12, 0, 0, 0);
 
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    return Array.from({ length: daysAhead }, (_, index) => {
+        const date = new Date(base);
+        date.setDate(base.getDate() + index + 1);
 
-    return `${year}-${month}-${day}`;
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+
+        return `${year}-${month}-${day}`;
+    });
 }
 
 test.describe('Reservas publicas', () => {
@@ -56,23 +62,56 @@ async function startBookingFlow(page) {
 
 async function selectAvailableSlot(page, preference = 'middle') {
     const slotOptions = page.locator('[data-testid^="booking-slot-"]');
-    const date = nextDayIso();
+    const candidateDates = nextBookingDates(7);
+    const attempts = [];
 
-    await setBookingDate(page, date);
-    await waitForSlotResults(page);
+    for (const date of candidateDates) {
+        const slotsResponsePromise = page.waitForResponse((response) => {
+            if (response.request().method() !== 'GET' || !response.url().includes('/book/slots')) {
+                return false;
+            }
 
-    const count = await slotOptions.count();
-    if (count === 0) {
-        const slotPanelText = await page.getByTestId('booking-slots').innerText();
-        throw new Error(`No booking slots became available for ${date}. Panel text: ${slotPanelText}`);
+            try {
+                return new URL(response.url()).searchParams.get('date') === date;
+            } catch {
+                return false;
+            }
+        }, { timeout: 12000 }).catch(() => null);
+
+        await setBookingDate(page, date);
+        await waitForSlotResults(page);
+
+        const slotsResponse = await slotsResponsePromise;
+        const count = await slotOptions.count();
+
+        if (count > 0) {
+            const selectedSlot = preference === 'last'
+                ? slotOptions.last()
+                : slotOptions.nth(Math.min(2, count - 1));
+
+            await expect(selectedSlot).toBeVisible();
+            await selectedSlot.click();
+
+            return;
+        }
+
+        const slotPanelText = await page.getByTestId('booking-slots').innerText().catch(() => 'Panel unavailable');
+        let responseBodySnippet = 'none';
+
+        if (slotsResponse && !slotsResponse.ok()) {
+            const rawBody = await slotsResponse.text().catch(() => '');
+            responseBodySnippet = JSON.stringify(rawBody.replace(/\s+/g, ' ').slice(0, 200));
+        }
+
+        attempts.push([
+            `date: ${date}`,
+            `status: ${slotsResponse?.status() ?? 'none'}`,
+            `panel: ${slotPanelText.replace(/\s+/g, ' ').trim()}`,
+            `body: ${responseBodySnippet}`,
+        ].join(' | '));
     }
 
-    const selectedSlot = preference === 'last'
-        ? slotOptions.last()
-        : slotOptions.nth(Math.min(2, count - 1));
-
-    await expect(selectedSlot).toBeVisible();
-    await selectedSlot.click();
+    throw new Error(`No booking slots became available in the next ${candidateDates.length} days. Attempts: ${attempts.join(' || ')}`);
 }
 
 async function setBookingDate(page, date) {

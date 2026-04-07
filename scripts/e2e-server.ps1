@@ -54,4 +54,4 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 php artisan db:seed --class="Database\Seeders\E2EStorefrontSeeder" --env=testing --force
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-php artisan serve --env=testing --host=127.0.0.1 --port=8011
+php artisan serve --env=testing --host=127.0.0.1 --port=8011 --no-reload

@@ -66,7 +66,7 @@ if (process.env.E2E_SKIP_BOOTSTRAP !== '1') {
 }
 
 console.error('\n[e2e-server] Starting Laravel server on http://127.0.0.1:8011');
-const server = spawn('php', ['artisan', 'serve', '--host=127.0.0.1', '--port=8011'], {
+const server = spawn('php', ['artisan', 'serve', '--host=127.0.0.1', '--port=8011', '--no-reload'], {
     stdio: 'inherit',
     env: rootEnv,
 });
