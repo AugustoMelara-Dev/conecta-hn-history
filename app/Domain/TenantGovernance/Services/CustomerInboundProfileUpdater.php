@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Schema;
 final class CustomerInboundProfileUpdater
 {
     private ?bool $supportsLastInboundReplyAt = null;
+
     private ?bool $supportsLastEngagedChannel = null;
 
     public function __construct(
