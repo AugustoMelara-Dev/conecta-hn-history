@@ -62,7 +62,7 @@ class CustomerProfileSnapshotCalculator
         $lastOrderAt = $this->asCarbon($orders->max('created_at'));
         $lastAppointmentAt = $this->asCarbon($appointments->max('scheduled_at') ?: $appointments->max('created_at'));
         $lastLeadAt = $this->asCarbon($leads->max('created_at'));
-        $lastSeenAt = collect([$lastOrderAt, $lastAppointmentAt, $lastLeadAt, $profile->last_contacted_at])
+        $lastSeenAt = collect([$lastOrderAt, $lastAppointmentAt, $lastLeadAt, $this->profileDate($profile, 'last_contacted_at')])
             ->filter(static fn (mixed $value): bool => $value instanceof Carbon)
             ->sort()
             ->last();
@@ -105,10 +105,10 @@ class CustomerProfileSnapshotCalculator
             ->first(['channel', 'replied_at']);
         $lastEngagedChannel = $lastReplyTouchpoint instanceof CustomerTouchpoint
             ? $lastReplyTouchpoint->channel
-            : ($profile->last_engaged_channel ?? $profile->preferred_channel);
+            : ($this->profileString($profile, 'last_engaged_channel') ?? $this->profileString($profile, 'preferred_channel'));
         $lastInboundReplyAt = $lastReplyTouchpoint instanceof CustomerTouchpoint
             ? $lastReplyTouchpoint->replied_at
-            : $profile->last_inbound_reply_at;
+            : $this->profileDate($profile, 'last_inbound_reply_at');
         $bestLocationId = $orders
             ->filter(static fn (Order $order): bool => filled($order->location_id))
             ->sortByDesc('created_at')
@@ -119,12 +119,12 @@ class CustomerProfileSnapshotCalculator
 
         return [
             'name' => $this->sanitizeText(is_string($bestName) ? $bestName : null),
-            'email' => $bestEmail ?? $profile->email,
-            'phone' => $this->sanitizeText(is_string($bestPhone) ? $bestPhone : null) ?? $profile->phone,
-            'normalized_email' => $bestEmail ?? $profile->normalized_email,
-            'normalized_phone' => $normalizedBestPhone ?? $profile->normalized_phone,
-            'preferred_channel' => $this->resolvePreferredChannel($profile->preferred_channel, $bestEmail, $normalizedBestPhone),
-            'location_id' => $bestLocationId ?? $profile->location_id,
+            'email' => $bestEmail ?? $this->profileString($profile, 'email'),
+            'phone' => $this->sanitizeText(is_string($bestPhone) ? $bestPhone : null) ?? $this->profileString($profile, 'phone'),
+            'normalized_email' => $bestEmail ?? $this->profileString($profile, 'normalized_email'),
+            'normalized_phone' => $normalizedBestPhone ?? $this->profileString($profile, 'normalized_phone'),
+            'preferred_channel' => $this->resolvePreferredChannel($this->profileString($profile, 'preferred_channel'), $bestEmail, $normalizedBestPhone),
+            'location_id' => $bestLocationId ?? $this->profileString($profile, 'location_id'),
             'acquisition_channel' => $acquisitionChannel,
             'first_conversion_channel' => $firstConversionChannel,
             'first_conversion_value' => $firstConversionValue,
@@ -390,5 +390,25 @@ class CustomerProfileSnapshotCalculator
         }
 
         return Carbon::parse($value);
+    }
+
+    private function profileString(CustomerProfile $profile, string $attribute): ?string
+    {
+        if (! array_key_exists($attribute, $profile->getAttributes())) {
+            return null;
+        }
+
+        $value = $profile->getAttribute($attribute);
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    private function profileDate(CustomerProfile $profile, string $attribute): ?Carbon
+    {
+        if (! array_key_exists($attribute, $profile->getAttributes())) {
+            return null;
+        }
+
+        return $this->asCarbon($profile->getAttribute($attribute));
     }
 }
