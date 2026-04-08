@@ -4,22 +4,25 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('customer_profiles') && ! Schema::hasColumn('customer_profiles', 'lifetime_points_earned')) {
-            Schema::table('customer_profiles', function (Blueprint $table): void {
-                $table->unsignedInteger('lifetime_points_earned')->default(0)->after('loyalty_points_balance');
-                $table->unsignedInteger('redeemable_rewards_count')->default(0)->after('loyalty_tier');
-                $table->unsignedInteger('points_to_next_reward')->default(0)->after('redeemable_rewards_count');
-                $table->string('next_reward_name')->nullable()->after('points_to_next_reward');
-                $table->timestamp('last_loyalty_activity_at')->nullable()->after('last_inbound_reply_at');
+        if (Schema::hasTable('customer_profiles')) {
+            $this->addCustomerProfileRetentionColumns();
 
-                $table->index(['tenant_id', 'redeemable_rewards_count'], 'customer_profiles_tenant_redeemable_idx');
-            });
+            if (
+                Schema::hasColumn('customer_profiles', 'tenant_id')
+                && Schema::hasColumn('customer_profiles', 'redeemable_rewards_count')
+                && ! $this->indexExists('customer_profiles', 'customer_profiles_tenant_redeemable_idx')
+            ) {
+                Schema::table('customer_profiles', function (Blueprint $table): void {
+                    $table->index(['tenant_id', 'redeemable_rewards_count'], 'customer_profiles_tenant_redeemable_idx');
+                });
+            }
         }
 
         if (Schema::hasTable('customer_notes') && ! Schema::hasColumn('customer_notes', 'conversation_key')) {
@@ -56,7 +59,9 @@ return new class extends Migration
 
         if (Schema::hasTable('customer_profiles') && Schema::hasColumn('customer_profiles', 'lifetime_points_earned')) {
             Schema::table('customer_profiles', function (Blueprint $table): void {
-                $table->dropIndex('customer_profiles_tenant_redeemable_idx');
+                if ($this->indexExists('customer_profiles', 'customer_profiles_tenant_redeemable_idx')) {
+                    $table->dropIndex('customer_profiles_tenant_redeemable_idx');
+                }
                 $table->dropColumn([
                     'lifetime_points_earned',
                     'redeemable_rewards_count',
@@ -66,5 +71,77 @@ return new class extends Migration
                 ]);
             });
         }
+    }
+
+    private function addCustomerProfileRetentionColumns(): void
+    {
+        if (! Schema::hasColumn('customer_profiles', 'lifetime_points_earned')) {
+            Schema::table('customer_profiles', function (Blueprint $table): void {
+                if (Schema::hasColumn('customer_profiles', 'loyalty_points_balance')) {
+                    $table->unsignedInteger('lifetime_points_earned')->default(0)->after('loyalty_points_balance');
+                } else {
+                    $table->unsignedInteger('lifetime_points_earned')->default(0);
+                }
+            });
+        }
+
+        if (! Schema::hasColumn('customer_profiles', 'redeemable_rewards_count')) {
+            Schema::table('customer_profiles', function (Blueprint $table): void {
+                if (Schema::hasColumn('customer_profiles', 'loyalty_tier')) {
+                    $table->unsignedInteger('redeemable_rewards_count')->default(0)->after('loyalty_tier');
+                } elseif (Schema::hasColumn('customer_profiles', 'lifetime_points_earned')) {
+                    $table->unsignedInteger('redeemable_rewards_count')->default(0)->after('lifetime_points_earned');
+                } else {
+                    $table->unsignedInteger('redeemable_rewards_count')->default(0);
+                }
+            });
+        }
+
+        if (! Schema::hasColumn('customer_profiles', 'points_to_next_reward')) {
+            Schema::table('customer_profiles', function (Blueprint $table): void {
+                if (Schema::hasColumn('customer_profiles', 'redeemable_rewards_count')) {
+                    $table->unsignedInteger('points_to_next_reward')->default(0)->after('redeemable_rewards_count');
+                } else {
+                    $table->unsignedInteger('points_to_next_reward')->default(0);
+                }
+            });
+        }
+
+        if (! Schema::hasColumn('customer_profiles', 'next_reward_name')) {
+            Schema::table('customer_profiles', function (Blueprint $table): void {
+                if (Schema::hasColumn('customer_profiles', 'points_to_next_reward')) {
+                    $table->string('next_reward_name')->nullable()->after('points_to_next_reward');
+                } else {
+                    $table->string('next_reward_name')->nullable();
+                }
+            });
+        }
+
+        if (! Schema::hasColumn('customer_profiles', 'last_inbound_reply_at')) {
+            Schema::table('customer_profiles', function (Blueprint $table): void {
+                if (Schema::hasColumn('customer_profiles', 'last_reactivated_at')) {
+                    $table->timestamp('last_inbound_reply_at')->nullable()->after('last_reactivated_at');
+                } else {
+                    $table->timestamp('last_inbound_reply_at')->nullable();
+                }
+            });
+        }
+
+        if (! Schema::hasColumn('customer_profiles', 'last_loyalty_activity_at')) {
+            Schema::table('customer_profiles', function (Blueprint $table): void {
+                if (Schema::hasColumn('customer_profiles', 'last_inbound_reply_at')) {
+                    $table->timestamp('last_loyalty_activity_at')->nullable()->after('last_inbound_reply_at');
+                } else {
+                    $table->timestamp('last_loyalty_activity_at')->nullable();
+                }
+            });
+        }
+    }
+
+    private function indexExists(string $table, string $indexName): bool
+    {
+        $result = DB::select("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName]);
+
+        return $result !== [];
     }
 };
