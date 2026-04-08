@@ -117,7 +117,6 @@ return [
             Permission::MARKETING_VIEW->value,
             Permission::ANALYTICS_VIEW->value,
             Permission::INTEGRATIONS_VIEW->value,
-            Permission::WEBHOOKS_VIEW->value,
         ],
     ],
 
