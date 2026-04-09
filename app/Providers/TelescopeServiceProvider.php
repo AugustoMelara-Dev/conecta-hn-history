@@ -4,118 +4,60 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use Illuminate\Support\Facades\Gate;
-use Laravel\Telescope\IncomingEntry;
-use Laravel\Telescope\Telescope;
-use Laravel\Telescope\TelescopeApplicationServiceProvider;
+use Illuminate\Support\ServiceProvider;
 
-/**
- * TelescopeServiceProvider - APM Security Configuration
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  HIGH SECURITY: Telescope exposes sensitive system internals            ║
- * ║  Access strictly gated to authorized administrators only                ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * SECURITY MODEL:
- * - Only super admins can access /telescope
- * - Production access requires explicit email whitelist
- * - Data pruned after 48 hours to prevent database bloat
- */
-class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
-{
-    /**
-     * Register any application services.
-     */
-    public function register(): void
+if (class_exists(\Laravel\Telescope\TelescopeApplicationServiceProvider::class)) {
+    class TelescopeServiceProvider extends \Laravel\Telescope\TelescopeApplicationServiceProvider
     {
-        // ═══════════════════════════════════════════════════════════════════════
-        // PERFORMANCE: Early escape when Telescope is disabled
-        // ═══════════════════════════════════════════════════════════════════════
-        // This prevents Telescope from consuming memory/CPU on every request
-        // when it's not actually recording anything. Critical for production.
-        //
-        // Telescope will still "boot" (it's registered in providers.php),
-        // but this early return prevents the filter closures and observers
-        // from being registered, saving ~2-5ms per request.
-        // ═══════════════════════════════════════════════════════════════════════
-        if (! config('telescope.enabled', false)) {
-            return;
+        public function register(): void
+        {
+            if (! config('telescope.enabled', false)) {
+                return;
+            }
+
+            \Laravel\Telescope\Telescope::night();
+
+            $this->hideSensitiveRequestDetails();
+
+            \Laravel\Telescope\Telescope::filter(function (\Laravel\Telescope\IncomingEntry $entry) {
+                if ($this->app->environment('local')) {
+                    return true;
+                }
+
+                return $entry->isReportableException() ||
+                    $entry->isFailedRequest() ||
+                    $entry->isFailedJob() ||
+                    $entry->isScheduledTask() ||
+                    $entry->hasMonitoredTag();
+            });
         }
 
-        // Enable dark mode for the dashboard
-        Telescope::night();
-
-        $this->hideSensitiveRequestDetails();
-
-        // Filter entries to reduce noise and database size
-        Telescope::filter(function (IncomingEntry $entry) {
-            // Always record in local development
+        protected function hideSensitiveRequestDetails(): void
+        {
             if ($this->app->environment('local')) {
-                return true;
+                return;
             }
 
-            // In production, only record important entries
-            return $entry->isReportableException() ||
-                   $entry->isFailedRequest() ||
-                   $entry->isFailedJob() ||
-                   $entry->isScheduledTask() ||
-                   $entry->hasMonitoredTag();
-        });
-    }
-
-    /**
-     * Prevent sensitive request details from being logged.
-     */
-    protected function hideSensitiveRequestDetails(): void
-    {
-        if ($this->app->environment('local')) {
-            return;
+            \Laravel\Telescope\Telescope::hideRequestParameters(['_token', 'password', 'password_confirmation']);
+            \Laravel\Telescope\Telescope::hideRequestHeaders([
+                'cookie',
+                'x-csrf-token',
+                'x-xsrf-token',
+                'authorization',
+            ]);
         }
 
-        Telescope::hideRequestParameters(['_token', 'password', 'password_confirmation']);
-        Telescope::hideRequestHeaders([
-            'cookie',
-            'x-csrf-token',
-            'x-xsrf-token',
-            'authorization',
-        ]);
+        protected function gate(): void
+        {
+            \Illuminate\Support\Facades\Gate::define('viewTelescope', function ($user) {
+                $superAdmins = config('auth.super_admins', []);
+                $hasSuperAdminRole = isset($user->role) && $user->role === 'super_admin';
+                $isWhitelisted = in_array($user->email ?? '', $superAdmins, true);
+
+                return ($hasSuperAdminRole && $isWhitelisted) || $isWhitelisted;
+            });
+        }
     }
-
-    /**
-     * Register the Telescope gate.
-     *
-     * SECURITY GATE:
-     * This gate controls who can access the Telescope dashboard.
-     * Access is restricted to:
-     * 1. Authenticated users only
-     * 2. Users with verified super admin status
-     * 3. Or users in the explicit email whitelist
-     */
-    protected function gate(): void
-    {
-        Gate::define('viewTelescope', function ($user) {
-            // ═══════════════════════════════════════════════════════════════
-            // WHITELIST: Super admin emails from environment config
-            // ═══════════════════════════════════════════════════════════════
-            $superAdmins = config('auth.super_admins', []);
-
-            // Dual-gate: Role + Whitelist check
-            $hasSuperAdminRole = isset($user->role) && $user->role === 'super_admin';
-            $isWhitelisted = in_array($user->email ?? '', $superAdmins, true);
-
-            // Option 1: Role + Whitelist check (recommended)
-            if ($hasSuperAdminRole && $isWhitelisted) {
-                return true;
-            }
-
-            // Option 2: Whitelist-only check for production debugging
-            if ($isWhitelisted) {
-                return true;
-            }
-
-            // Default: DENY access to everyone else
-            return false;
-        });
-    }
+} else {
+    class TelescopeServiceProvider extends ServiceProvider {}
 }

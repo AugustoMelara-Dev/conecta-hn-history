@@ -1,22 +1,24 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
-use Spatie\LaravelTypeScriptTransformer\TypeScriptTransformerApplicationServiceProvider as BaseTypeScriptTransformerServiceProvider;
-use Spatie\TypeScriptTransformer\Transformers\AttributedClassTransformer;
-use Spatie\TypeScriptTransformer\Transformers\EnumTransformer;
-use Spatie\TypeScriptTransformer\TypeScriptTransformerConfigFactory;
-use Spatie\TypeScriptTransformer\Writers\GlobalNamespaceWriter;
+use Illuminate\Support\ServiceProvider;
 
-class TypeScriptTransformerServiceProvider extends BaseTypeScriptTransformerServiceProvider
-{
-    protected function configure(TypeScriptTransformerConfigFactory $config): void
+if (class_exists(\Spatie\LaravelTypeScriptTransformer\TypeScriptTransformerApplicationServiceProvider::class)) {
+    class TypeScriptTransformerServiceProvider extends \Spatie\LaravelTypeScriptTransformer\TypeScriptTransformerApplicationServiceProvider
     {
-        $config
-            ->outputDirectory(resource_path('js/types'))
-            ->transformer(AttributedClassTransformer::class)
-            ->transformer(EnumTransformer::class)
-            ->transformDirectories(app_path())
-            ->writer(new GlobalNamespaceWriter('generated.d.ts'));
+        protected function configure(\Spatie\TypeScriptTransformer\TypeScriptTransformerConfigFactory $config): void
+        {
+            $config
+                ->outputDirectory(resource_path('js/types'))
+                ->transformer(\Spatie\TypeScriptTransformer\Transformers\AttributedClassTransformer::class)
+                ->transformer(\Spatie\TypeScriptTransformer\Transformers\EnumTransformer::class)
+                ->transformDirectories(app_path())
+                ->writer(new \Spatie\TypeScriptTransformer\Writers\GlobalNamespaceWriter('generated.d.ts'));
+        }
     }
+} else {
+    class TypeScriptTransformerServiceProvider extends ServiceProvider {}
 }

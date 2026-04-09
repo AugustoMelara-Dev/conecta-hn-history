@@ -162,3 +162,5 @@ bootstrap/cache/*.tmp
 /.tmp-e2e-db-bootstrap.php
 /system-tests*.xml
 /storage/testing/
+
+.vercel

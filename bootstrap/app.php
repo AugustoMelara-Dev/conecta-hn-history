@@ -8,6 +8,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Throwable;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -70,6 +72,31 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('seo:generate-sitemap')->daily()->at('00:30');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (Throwable $exception, Request $request) {
+            if (env('VERCEL') && (bool) env('APP_DEBUG', false)) {
+                $lines = [];
+                $cursor = $exception;
+                $depth = 0;
+
+                while ($cursor instanceof Throwable && $depth < 4) {
+                    $lines[] = sprintf(
+                        '[%d] %s: %s',
+                        $depth,
+                        $cursor::class,
+                        $cursor->getMessage()
+                    );
+                    $cursor = $cursor->getPrevious();
+                    $depth++;
+                }
+
+                return new SymfonyResponse(implode("\n", $lines), 500, [
+                    'Content-Type' => 'text/plain; charset=UTF-8',
+                ]);
+            }
+
+            return null;
+        });
+
         $exceptions->render(function (TenantNotFoundException $exception, Request $request) {
             if ($request->expectsJson()) {
                 return response()->json([
