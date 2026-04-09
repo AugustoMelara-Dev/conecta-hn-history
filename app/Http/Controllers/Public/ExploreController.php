@@ -34,17 +34,30 @@ final class ExploreController extends Controller
      */
     public function __invoke(): Response
     {
-        $data = $this->cache->remember('v'.config('app.version').'_explore_data', 3600, function (): array {
-            return [
-                'featuredTenants' => $this->tenantRepository->getFeatured(12),
-                'categories' => $this->referenceReader->getPopularCategories(8),
-                'cities' => $this->referenceReader->getPopularCities(4),
+        try {
+            $data = $this->cache->remember('v'.config('app.version').'_explore_data', 3600, function (): array {
+                return [
+                    'featuredTenants' => $this->tenantRepository->getFeatured(12),
+                    'categories' => $this->referenceReader->getPopularCategories(8),
+                    'cities' => $this->referenceReader->getPopularCities(4),
+                    'stats' => [
+                        'total_tenants' => $this->tenantRepository->countActive(),
+                        'total_cities' => $this->referenceReader->countActiveCities(),
+                    ],
+                ];
+            });
+        } catch (\Throwable) {
+            // Serverless/runtime fallback: keep /explore available even if DB/cache backends fail.
+            $data = [
+                'featuredTenants' => [],
+                'categories' => [],
+                'cities' => [],
                 'stats' => [
-                    'total_tenants' => $this->tenantRepository->countActive(),
-                    'total_cities' => $this->referenceReader->countActiveCities(),
+                    'total_tenants' => 0,
+                    'total_cities' => 0,
                 ],
             ];
-        });
+        }
 
         return Inertia::render('Public/Explore', $data);
     }

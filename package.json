@@ -5,6 +5,7 @@
         "build": "vite build",
         "dev": "vite",
         "test:e2e": "playwright test",
+        "test:e2e:smoke": "playwright test tests/e2e/smoke-post-deploy.spec.ts --reporter=list,html,junit",
         "test:e2e:release": "playwright test tests/e2e/booking-flow.spec.ts tests/e2e/storefront-verticals.spec.ts",
         "test:e2e:headed": "playwright test --headed",
         "type-check": "tsc --noEmit",
