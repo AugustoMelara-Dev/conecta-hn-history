@@ -25,6 +25,21 @@ function formatCurrency(value) {
     });
 }
 
+function safeRoute(name, fallback = '/') {
+    try {
+        if (typeof route === 'function') {
+            const router = route();
+            if (typeof router?.has === 'function' && router.has(name)) {
+                return route(name);
+            }
+        }
+    } catch (_error) {
+        // Fall back to a safe URL when Ziggy route metadata is missing.
+    }
+
+    return fallback;
+}
+
 function SectionEyebrow({ children, dark = false }) {
     return (
         <p
@@ -590,11 +605,13 @@ export default function Welcome({ newTenants = [], stats = {}, settings = {} }) 
         [newTenants],
     );
 
+    const homeUrl = safeRoute('home', '/');
+
     const schema = {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
         name: 'Vito Business OS | Conecta HN',
-        url: route('home'),
+        url: homeUrl,
     };
 
     return (
@@ -610,7 +627,7 @@ export default function Welcome({ newTenants = [], stats = {}, settings = {} }) 
                     content="Gestiona catalogo, reservas, pedidos, CRM, billing y micrositio publico desde un solo panel para negocios locales."
                 />
                 <meta property="og:type" content="website" />
-                <link rel="canonical" href={route('home')} />
+                <link rel="canonical" href={homeUrl} />
                 <script type="application/ld+json">{JSON.stringify(schema)}</script>
             </Head>
 

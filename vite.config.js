@@ -31,6 +31,7 @@ export default defineConfig(({ mode }) => {
         plugins.push(
             VitePWA({
                 registerType: "autoUpdate",
+                selfDestroying: true,
                 outDir: "public/build",
                 buildBase: "/build/",
                 scope: "/",
