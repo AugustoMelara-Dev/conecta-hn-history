@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -68,6 +69,7 @@ class SecurityHeaders
 
         // Store nonce in container for Blade/Inertia access
         app()->instance('csp-nonce', $nonce);
+        Vite::useCspNonce($nonce);
 
         $response = $next($request);
 
@@ -182,6 +184,7 @@ class SecurityHeaders
             $scriptSrc,
             $styleSrc,
             "img-src 'self' data: https: blob:".$viteDevSrc,
+            "manifest-src 'self' https:",
             "font-src 'self' https://fonts.gstatic.com https://fonts.bunny.net",
             "connect-src 'self' ".implode(' ', self::TRUSTED_CONNECT).' wss:'.$viteDevSrc.$viteDevWs.$reverbWs.(app()->environment('local') ? ' http://localhost:* http://127.0.0.1:*' : ''),
             "frame-src 'self' https://js.stripe.com https://www.facebook.com",
