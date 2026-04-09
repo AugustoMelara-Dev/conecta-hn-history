@@ -8,6 +8,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -71,6 +72,22 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('seo:generate-sitemap')->daily()->at('00:30');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->respond(function (SymfonyResponse $response, \Throwable $exception, Request $request) {
+            if (app()->environment(['local', 'testing'])) {
+                return $response;
+            }
+
+            $status = $response->getStatusCode();
+
+            if ($status >= 500 && $request->header('X-Inertia')) {
+                return Inertia::render('Error', [
+                    'status' => $status,
+                ])->toResponse($request)->setStatusCode($status);
+            }
+
+            return $response;
+        });
+
         $exceptions->render(function (\Throwable $exception, Request $request) {
             if (env('VERCEL') && (bool) env('APP_DEBUG', false)) {
                 $lines = [];
