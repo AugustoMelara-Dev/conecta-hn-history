@@ -3,5 +3,5 @@
   "framework": "vite",
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
-  "outputDirectory": "public/build"
+  "outputDirectory": "public"
 }
