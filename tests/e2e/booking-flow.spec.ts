@@ -68,9 +68,7 @@ async function selectAvailableSlot(page, preference = 'middle') {
     const attempts = [];
 
     for (const date of candidateDates) {
-        await setBookingDate(page, date);
-
-        const slotsResponse = await page.waitForResponse((response) => {
+        const slotsResponsePromise = page.waitForResponse((response) => {
             if (response.request().method() !== 'GET' || !response.url().includes('/book/slots')) {
                 return false;
             }
@@ -81,6 +79,9 @@ async function selectAvailableSlot(page, preference = 'middle') {
                 return false;
             }
         }, { timeout: 15000 }).catch(() => null);
+
+        await setBookingDate(page, date);
+        const slotsResponse = await slotsResponsePromise;
 
         await waitForSlotResults(page);
         const count = await slotOptions.count();
