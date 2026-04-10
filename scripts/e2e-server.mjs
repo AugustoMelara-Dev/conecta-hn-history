@@ -1,5 +1,10 @@
 import { spawn, spawnSync } from 'node:child_process';
+import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(scriptDir, '..');
 
 const rootEnv = {
     ...process.env,
@@ -8,7 +13,7 @@ const rootEnv = {
     APP_KEY: 'base64:2fl+Ktvkfl+Fuz4Qk/NaWvy1Pt7EQqHMA2wc/ulkZyo=',
     CACHE_STORE: 'array',
     BROADCAST_CONNECTION: 'null',
-    QUEUE_CONNECTION: 'database',
+    QUEUE_CONNECTION: 'sync',
     SESSION_DRIVER: 'file',
     SESSION_DOMAIN: '',
     SESSION_SECURE_COOKIE: 'false',
@@ -31,6 +36,7 @@ function runStep(command, args) {
     const result = spawnSync(command, args, {
         encoding: 'utf8',
         env: rootEnv,
+        cwd: projectRoot,
     });
 
     if (result.status !== 0) {
@@ -69,6 +75,7 @@ console.error('\n[e2e-server] Starting Laravel server on http://127.0.0.1:8011')
 const server = spawn('php', ['artisan', 'serve', '--host=127.0.0.1', '--port=8011', '--no-reload'], {
     stdio: 'inherit',
     env: rootEnv,
+    cwd: projectRoot,
 });
 
 const forwardSignal = (signal) => {

@@ -10,9 +10,55 @@ import { route } from 'ziggy-js';
 // Global Toast System
 import { ToastProvider } from '@/Components/Toast/ToastProvider';
 
+const routeFallbacks = {
+    home: '/',
+    login: '/login',
+    'tenant.register': '/registrar-negocio',
+    'public.explore': '/explore',
+    'directory.index': '/directorio',
+    'mi-cuenta.edit': '/mi-cuenta',
+};
+
+function buildRouteFallback(name, params = {}) {
+    if (Object.prototype.hasOwnProperty.call(routeFallbacks, name)) {
+        return routeFallbacks[name];
+    }
+
+    if (name === 'tenant.microsite.show' && params?.tenant) {
+        return `/t/${params.tenant}`;
+    }
+
+    if (name === 'filament.app.pages.dashboard' && params?.tenant) {
+        return `/app/${params.tenant}`;
+    }
+
+    return '#';
+}
+
+function safeRoute(...args) {
+    if (args.length === 0) {
+        try {
+            return route();
+        } catch {
+            return {
+                current: () => false,
+                has: () => false,
+                params: {},
+            };
+        }
+    }
+
+    try {
+        return route(...args);
+    } catch {
+        return buildRouteFallback(args[0], args[1]);
+    }
+}
+
 // Use the runtime Ziggy payload injected by Blade via @routes.
 // This avoids a second stale route catalog living in resources/js/ziggy.js.
-window.route = route;
+// If Ziggy is missing in a request, keep rendering with safe fallbacks.
+window.route = safeRoute;
 
 if (typeof window !== 'undefined') {
     const isLocalBrowser = ['localhost', '127.0.0.1'].includes(window.location.hostname);
