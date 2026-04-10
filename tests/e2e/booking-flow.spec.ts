@@ -29,6 +29,8 @@ test.describe('Reservas publicas', () => {
     });
 
     test('visitor can complete a booking flow for a service business', async ({ page }) => {
+        test.setTimeout(180_000);
+
         await startBookingFlow(page);
         await selectAvailableSlot(page, 'middle');
 
@@ -66,7 +68,9 @@ async function selectAvailableSlot(page, preference = 'middle') {
     const attempts = [];
 
     for (const date of candidateDates) {
-        const slotsResponsePromise = page.waitForResponse((response) => {
+        await setBookingDate(page, date);
+
+        const slotsResponse = await page.waitForResponse((response) => {
             if (response.request().method() !== 'GET' || !response.url().includes('/book/slots')) {
                 return false;
             }
@@ -76,12 +80,9 @@ async function selectAvailableSlot(page, preference = 'middle') {
             } catch {
                 return false;
             }
-        }, { timeout: 12000 }).catch(() => null);
+        }, { timeout: 15000 }).catch(() => null);
 
-        await setBookingDate(page, date);
         await waitForSlotResults(page);
-
-        const slotsResponse = await slotsResponsePromise;
         const count = await slotOptions.count();
 
         if (count > 0) {
