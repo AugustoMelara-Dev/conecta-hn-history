@@ -9,14 +9,20 @@ use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
 use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Sales\Contracts\OrderReader;
+use App\Domain\Shared\Services\TenantContext;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\StoreCheckoutRequest;
 use App\Models\Location;
+use App\Models\User;
 use DomainException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 /**
  * OrderController - Transactional Gateway (Hexagonal Compliant)
@@ -34,6 +40,7 @@ final class OrderController extends Controller
         private readonly UserRepositoryInterface $userRepository,
         private readonly OrderReader $orderReader,
         private readonly CapabilityManagerInterface $capabilityManager,
+        private readonly TenantContext $tenantContext,
     ) {}
 
     public function store(StoreCheckoutRequest $request): JsonResponse
@@ -49,19 +56,10 @@ final class OrderController extends Controller
             ], 400);
         }
 
-        $customerId = $request->user()?->id;
+        $this->tenantContext->setTenant($tenantId);
 
-        if ($customerId === null && ! empty($validated['customer_email'])) {
-            $customer = $this->userRepository->findByEmail((string) $validated['customer_email'], $tenantId);
-            $customerId = $customer?->id();
-        }
-
-        if ($customerId === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Customer identification required.',
-            ], 422);
-        }
+        $checkoutCustomer = $this->resolveOrCreateCheckoutCustomer($request, $validated, $tenantId);
+        $customerId = (string) $checkoutCustomer->id;
 
         $this->assertFulfillmentCapability(
             $tenantId,
@@ -81,7 +79,7 @@ final class OrderController extends Controller
                 currency: 'HNL',
                 customerName: (string) ($validated['customer_name'] ?? ''),
                 customerPhone: (string) ($validated['customer_phone'] ?? ''),
-                customerEmail: $validated['customer_email'] ?? null,
+                customerEmail: (string) ($validated['customer_email'] ?? $checkoutCustomer->email),
                 customerAddress: $validated['customer_address'] ?? null,
                 customerNotes: $validated['customer_notes'] ?? null,
                 deliveryType: (string) ($validated['delivery_type'] ?? 'pickup'),
@@ -97,9 +95,19 @@ final class OrderController extends Controller
             $result = $this->createOrderHandler->handle($command);
 
             $order = $this->orderReader->find($tenantId, $result->id);
-            $whatsappUrl = is_object($order) && method_exists($order, 'getWhatsAppUrl')
-                ? $order->getWhatsAppUrl()
-                : null;
+            $whatsappUrl = null;
+
+            if (is_object($order) && method_exists($order, 'getWhatsAppUrl')) {
+                try {
+                    $whatsappUrl = $order->getWhatsAppUrl();
+                } catch (Throwable $whatsappError) {
+                    $this->log->warning('OrderController: Unable to build WhatsApp URL for order response', [
+                        'tenant_id' => $tenantId,
+                        'order_id' => $result->id,
+                        'error' => $whatsappError->getMessage(),
+                    ]);
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -192,5 +200,58 @@ final class OrderController extends Controller
         throw ValidationException::withMessages([
             'location_id' => 'No active primary location found for this tenant.',
         ]);
+    }
+
+    /**
+     * Resolve authenticated customer or create a tenant-scoped guest user.
+     *
+     * This keeps public storefront checkout functional without requiring prior auth.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveOrCreateCheckoutCustomer(Request $request, array $validated, string $tenantId): User
+    {
+        $authenticatedUser = $request->user();
+        if ($authenticatedUser instanceof User) {
+            return $authenticatedUser;
+        }
+
+        $providedEmail = isset($validated['customer_email']) && is_string($validated['customer_email'])
+            ? trim(mb_strtolower($validated['customer_email']))
+            : '';
+
+        if ($providedEmail !== '') {
+            $existingTenantCustomer = $this->userRepository->findByEmail($providedEmail, $tenantId);
+            if ($existingTenantCustomer !== null) {
+                $existingModel = User::query()->find($existingTenantCustomer->id());
+                if ($existingModel instanceof User) {
+                    return $existingModel;
+                }
+            }
+
+            $globalEmailCollision = User::query()->where('email', $providedEmail)->first();
+            if ($globalEmailCollision instanceof User && (string) $globalEmailCollision->tenant_id !== $tenantId) {
+                $providedEmail = '';
+            }
+        }
+
+        $name = isset($validated['customer_name']) && is_string($validated['customer_name'])
+            ? trim($validated['customer_name'])
+            : '';
+
+        $guest = new User;
+        $guest->name = $name !== '' ? $name : 'Cliente invitado';
+        $guest->email = $providedEmail !== ''
+            ? $providedEmail
+            : sprintf('guest+%s+%s@vito.local', Str::slug($tenantId), Str::lower((string) Str::ulid()));
+        $guest->password = Hash::make(Str::random(48));
+        $guest->tenant_id = $tenantId;
+        $guest->phone = isset($validated['customer_phone']) && is_string($validated['customer_phone'])
+            ? trim($validated['customer_phone'])
+            : null;
+        $guest->email_verified_at = now()->toDateTimeString();
+        $guest->save();
+
+        return $guest;
     }
 }
