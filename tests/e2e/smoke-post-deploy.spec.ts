@@ -13,7 +13,7 @@ test.describe('post-deploy smoke', () => {
     test('explore page renders visible discovery shell', async ({ page }) => {
         const response = await page.goto('/explore', { waitUntil: 'domcontentloaded' });
         expect(response?.status(), '/explore should be reachable').toBeLessThan(500);
-        await expect(page.getByRole('heading', { name: /Descubre negocios locales/i })).toBeVisible();
+        await expect(page).toHaveURL(/\/explore$/);
+        await expect(page.locator('#explore-search')).toBeVisible();
     });
 });
-
