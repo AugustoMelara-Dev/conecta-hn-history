@@ -20,6 +20,10 @@
       "dest": "/$1"
     },
     {
+      "src": "/((?!build/).+\\.(?:js|css|map|png|jpg|jpeg|gif|svg|webp|ico|txt|xml|webmanifest|woff2?|ttf|eot))",
+      "dest": "/public/$1"
+    },
+    {
       "src": "/(favicon\\.ico|robots\\.txt|manifest\\.webmanifest|sitemap\\.xml)",
       "dest": "/public/$1"
     },

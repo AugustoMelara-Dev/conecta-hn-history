@@ -9,6 +9,7 @@ use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Models\Tenant;
+use App\Scopes\LocationScope;
 use Illuminate\Support\Facades\DB;
 use Spatie\OpeningHours\OpeningHours;
 
@@ -40,7 +41,10 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
 
     public function findBySlug(string $slug): ?TenantEntity
     {
-        $model = Tenant::where('slug', $slug)->first();
+        $model = Tenant::query()
+            ->withoutGlobalScope(LocationScope::class)
+            ->where('slug', $slug)
+            ->first();
 
         return $model ? $this->toEntity($model) : null;
     }
@@ -50,12 +54,18 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
      */
     public function existsBySlug(string $slug): bool
     {
-        return Tenant::where('slug', $slug)->exists();
+        return Tenant::query()
+            ->withoutGlobalScope(LocationScope::class)
+            ->where('slug', $slug)
+            ->exists();
     }
 
     public function findByDomain(string $domain): ?TenantEntity
     {
-        $model = Tenant::where('slug', $domain)->first();
+        $model = Tenant::query()
+            ->withoutGlobalScope(LocationScope::class)
+            ->where('slug', $domain)
+            ->first();
 
         return $model ? $this->toEntity($model) : null;
     }
