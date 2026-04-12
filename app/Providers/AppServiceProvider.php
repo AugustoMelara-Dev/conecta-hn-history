@@ -681,7 +681,16 @@ class AppServiceProvider extends ServiceProvider
         );
         $this->app->bind(
             \App\Application\Shared\Contracts\IdempotencyServiceInterface::class,
-            \App\Infrastructure\Common\Idempotency\RedisIdempotencyService::class
+            function ($app) {
+                $hasRedisExtension = extension_loaded('redis');
+                $isTestRuntime = $app->environment(['testing']) || $app->runningUnitTests();
+
+                if ($isTestRuntime || ! $hasRedisExtension) {
+                    return $app->make(\App\Infrastructure\Common\Idempotency\CacheIdempotencyService::class);
+                }
+
+                return $app->make(\App\Infrastructure\Common\Idempotency\RedisIdempotencyService::class);
+            }
         );
 
         // ORDERS DOMAIN: Receipt PDF Generator
@@ -823,6 +832,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Application\Shared\Contracts\CircuitBreakerInterface::class,
             function ($app) {
+                $hasRedisExtension = extension_loaded('redis');
+                $isTestRuntime = $app->environment(['testing']) || $app->runningUnitTests();
+
+                if ($isTestRuntime || ! $hasRedisExtension) {
+                    return $app->make(\App\Infrastructure\Resilience\NullCircuitBreaker::class);
+                }
+
                 return new \App\Infrastructure\Resilience\RedisCircuitBreaker(
                     redis: $app['redis']->connection(), // Explicit Connection Resolution
                     metrics: $app->make(\App\Application\Shared\Contracts\MetricsCollectorInterface::class)

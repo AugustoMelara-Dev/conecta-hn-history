@@ -1,10 +1,12 @@
 import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, '..');
+const viteManifestPath = path.join(projectRoot, 'public', 'build', 'manifest.json');
 
 const rootEnv = {
     ...process.env,
@@ -39,6 +41,11 @@ function runStep(command, args) {
         cwd: projectRoot,
     });
 
+    if (result.error) {
+        console.error(`[e2e-server] ${command} failed to start: ${result.error.message}`);
+        process.exit(1);
+    }
+
     if (result.status !== 0) {
         if (result.stdout) {
             process.stderr.write(result.stdout);
@@ -61,7 +68,24 @@ function runStep(command, args) {
     }
 }
 
+function runNpmBuildStep() {
+    if (process.platform === 'win32') {
+        // Use cmd /c for maximum compatibility inside Playwright webServer child processes.
+        runStep('cmd', ['/c', 'npm run build']);
+
+        return;
+    }
+
+    runStep('npm', ['run', 'build']);
+}
+
 runStep('php', ['artisan', 'optimize:clear']);
+
+if (process.env.E2E_SKIP_BUILD !== '1' && !fs.existsSync(viteManifestPath)) {
+    runNpmBuildStep();
+} else if (!fs.existsSync(viteManifestPath)) {
+    console.error('\n[e2e-server] Skipping frontend build because E2E_SKIP_BUILD=1');
+}
 
 if (process.env.E2E_SKIP_BOOTSTRAP !== '1') {
     runStep('php', ['artisan', 'migrate:fresh', '--force']);
