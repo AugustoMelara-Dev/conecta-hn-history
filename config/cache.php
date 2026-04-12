@@ -2,6 +2,9 @@
 
 use Illuminate\Support\Str;
 
+$isVercel = (bool) env('VERCEL');
+$serverlessCachePath = rtrim((string) env('SERVERLESS_CACHE_PATH', sys_get_temp_dir().'/conecta-cache'), '/\\');
+
 return [
 
     /*
@@ -49,8 +52,8 @@ return [
 
         'file' => [
             'driver' => 'file',
-            'path' => storage_path('framework/cache/data'),
-            'lock_path' => storage_path('framework/cache/data'),
+            'path' => env('CACHE_FILE_PATH', $isVercel ? $serverlessCachePath.'/data' : storage_path('framework/cache/data')),
+            'lock_path' => env('CACHE_LOCK_PATH', $isVercel ? $serverlessCachePath.'/data' : storage_path('framework/cache/data')),
         ],
 
         'memcached' => [

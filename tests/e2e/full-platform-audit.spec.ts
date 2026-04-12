@@ -97,7 +97,8 @@ test.describe('Auditoria funcional E2E', () => {
 
         await expect(page).toHaveURL(/\/(app|dashboard|verify-email|registro\/pago-pendiente)/, { timeout: 30_000 });
 
-        const isolatedContext = await browser.newContext({ baseURL: 'http://127.0.0.1:8011' });
+        const runtimeBaseUrl = new URL(page.url()).origin;
+        const isolatedContext = await browser.newContext({ baseURL: runtimeBaseUrl });
         const loginPage = await isolatedContext.newPage();
 
         await loginPage.goto('/login', { waitUntil: 'domcontentloaded' });

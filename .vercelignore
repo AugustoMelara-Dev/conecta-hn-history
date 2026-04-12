@@ -1,0 +1,17 @@
+.git
+.github
+.agents
+.codex-appdata
+node_modules
+tests
+test-results
+playwright-report
+artifacts
+scratch-clean
+wt-clean-pr
+wt-release-main
+wt-vercel-runtime
+wtclean
+tmp-*.log
+phpstan-report*.json
+superadmin-dashboard-debug.log

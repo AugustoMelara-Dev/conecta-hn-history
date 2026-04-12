@@ -1,5 +1,8 @@
 <?php
 
+$isVercel = (bool) env('VERCEL');
+$serverlessViewPath = rtrim((string) env('SERVERLESS_VIEW_PATH', sys_get_temp_dir().'/conecta-views'), '/\\');
+
 return [
 
     /*
@@ -30,7 +33,9 @@ return [
 
     'compiled' => env(
         'VIEW_COMPILED_PATH',
-        realpath(storage_path('framework/views'))
+        $isVercel
+            ? $serverlessViewPath
+            : realpath(storage_path('framework/views'))
     ),
 
 ];
