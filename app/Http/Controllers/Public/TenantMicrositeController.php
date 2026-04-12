@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use LogicException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 /**
@@ -54,90 +55,118 @@ final class TenantMicrositeController extends Controller
             abort(404);
         }
 
-        $previewMode = false;
-        $previewReason = null;
-
         try {
-            // 2. Gatekeeper Logic (Domain Service)
-            $this->visibilityService->check($tenant);
-        } catch (TenantNotFoundException) {
-            $viewer = $request->user();
-            $canPreviewUnpublishedTenant = $viewer !== null
-                && ($viewer->isSuperAdmin() || (string) $viewer->id === (string) $tenant->user_id);
+            $previewMode = false;
+            $previewReason = null;
 
-            if (! $canPreviewUnpublishedTenant) {
+            try {
+                // 2. Gatekeeper Logic (Domain Service)
+                $this->visibilityService->check($tenant);
+            } catch (TenantNotFoundException) {
+                $viewer = $request->user();
+                $canPreviewUnpublishedTenant = $viewer !== null
+                    && ($viewer->isSuperAdmin() || (string) $viewer->id === (string) $tenant->user_id);
+
+                if (! $canPreviewUnpublishedTenant) {
+                    abort(404);
+                }
+
+                $previewMode = true;
+                $previewReason = $this->resolvePreviewReason($tenant);
+            } catch (Throwable $exception) {
+                report($exception);
+
+                $status = (string) ($tenant->status ?? '');
+                $isActive = (bool) ($tenant->is_active ?? false);
+                $isPublicTenant = $isActive && in_array($status, ['approved', 'active'], true);
+
+                if (! $isPublicTenant) {
+                    abort(404);
+                }
+            }
+
+            // 3. Side-Effect Managment (Event Driven)
+            // Fire and Forget. Listener handles increment logic.
+            // Needs basic Event class.
+            $this->dispatchMicrositeViewedSafely($tenant, $request);
+
+            // 4. Transform & Respond
+            $tenantData = $this->safeTransformTenant($tenant);
+            $visibleProductsCount = count($tenantData['products'] ?? []);
+            $totalProductsCount = $this->safeTotalProductsCount($tenant, $visibleProductsCount);
+            $productLimit = $this->planService->getMaxProductLimit($tenant);
+
+            // Preserve the transformed DTO contract, then paginate the in-memory collection.
+            $search = (string) $request->input('search', '');
+            $productsCollection = collect($tenantData['products'] ?? []);
+
+            if ($search !== '') {
+                $needle = mb_strtolower($search);
+
+                $productsCollection = $productsCollection
+                    ->filter(function (array $product) use ($needle): bool {
+                        $name = mb_strtolower((string) ($product['name'] ?? ''));
+                        $description = mb_strtolower((string) ($product['description'] ?? ''));
+
+                        return str_contains($name, $needle) || str_contains($description, $needle);
+                    })
+                    ->values();
+            }
+
+            $page = max(1, (int) $request->input('page', 1));
+            $perPage = 12;
+
+            $paginatedProducts = new \Illuminate\Pagination\LengthAwarePaginator(
+                $productsCollection->forPage($page, $perPage)->values(),
+                $productsCollection->count(),
+                $perPage,
+                $page,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+
+            $isOwner = $request->user() && $request->user()->id === $tenant->user_id;
+
+            return Inertia::render('Tenant/Show', [
+                'tenantPlan' => $this->planService->determinePlan($tenant),
+                'tenant' => $tenantData,
+                'products' => $paginatedProducts,
+                'filters' => [
+                    'search' => $search,
+                ],
+                'hasHiddenProducts' => $totalProductsCount > $visibleProductsCount,
+                'totalProductsCount' => $totalProductsCount,
+                'hiddenProductsCount' => max(0, $totalProductsCount - $visibleProductsCount),
+                'productLimit' => $productLimit,
+                'isOwner' => $isOwner,
+                'isFollowing' => false,
+                'followersCount' => 0,
+                'isOpen' => $this->safeIsCurrentlyOpen($tenant),
+                'openingHours' => $this->safeOpeningHours($tenant),
+                'seoStructuredData' => $this->safeStructuredData($tenant),
+                'canonicalUrl' => route('tenant.microsite.show', ['tenant' => $tenant->slug]),
+                'previewMode' => $previewMode,
+                'previewReason' => $previewReason,
+            ]);
+        } catch (Throwable $exception) {
+            if ($exception instanceof HttpExceptionInterface) {
+                throw $exception;
+            }
+
+            report($exception);
+
+            $status = (string) ($tenant->status ?? '');
+            $isActive = (bool) ($tenant->is_active ?? false);
+            $isPublicTenant = $isActive && in_array($status, ['approved', 'active'], true);
+
+            if (! $isPublicTenant) {
                 abort(404);
             }
 
-            $previewMode = true;
-            $previewReason = $this->resolvePreviewReason($tenant);
+            return $this->fallbackMicrositeResponse($request, $tenant);
         }
-
-        // 3. Side-Effect Managment (Event Driven)
-        // Fire and Forget. Listener handles increment logic.
-        // Needs basic Event class.
-        $this->dispatchMicrositeViewedSafely($tenant, $request);
-
-        // 4. Transform & Respond
-        $tenantData = $this->safeTransformTenant($tenant);
-        $visibleProductsCount = count($tenantData['products'] ?? []);
-        $totalProductsCount = $this->safeTotalProductsCount($tenant, $visibleProductsCount);
-        $productLimit = $this->planService->getMaxProductLimit($tenant);
-
-        // Preserve the transformed DTO contract, then paginate the in-memory collection.
-        $search = (string) $request->input('search', '');
-        $productsCollection = collect($tenantData['products'] ?? []);
-
-        if ($search !== '') {
-            $needle = mb_strtolower($search);
-
-            $productsCollection = $productsCollection
-                ->filter(function (array $product) use ($needle): bool {
-                    $name = mb_strtolower((string) ($product['name'] ?? ''));
-                    $description = mb_strtolower((string) ($product['description'] ?? ''));
-
-                    return str_contains($name, $needle) || str_contains($description, $needle);
-                })
-                ->values();
-        }
-
-        $page = max(1, (int) $request->input('page', 1));
-        $perPage = 12;
-
-        $paginatedProducts = new \Illuminate\Pagination\LengthAwarePaginator(
-            $productsCollection->forPage($page, $perPage)->values(),
-            $productsCollection->count(),
-            $perPage,
-            $page,
-            [
-                'path' => $request->url(),
-                'query' => $request->query(),
-            ]
-        );
-
-        $isOwner = $request->user() && $request->user()->id === $tenant->user_id;
-
-        return Inertia::render('Tenant/Show', [
-            'tenantPlan' => $this->planService->determinePlan($tenant),
-            'tenant' => $tenantData,
-            'products' => $paginatedProducts,
-            'filters' => [
-                'search' => $search,
-            ],
-            'hasHiddenProducts' => $totalProductsCount > $visibleProductsCount,
-            'totalProductsCount' => $totalProductsCount,
-            'hiddenProductsCount' => max(0, $totalProductsCount - $visibleProductsCount),
-            'productLimit' => $productLimit,
-            'isOwner' => $isOwner,
-            'isFollowing' => false,
-            'followersCount' => 0,
-            'isOpen' => $this->safeIsCurrentlyOpen($tenant),
-            'openingHours' => $this->safeOpeningHours($tenant),
-            'seoStructuredData' => $this->safeStructuredData($tenant),
-            'canonicalUrl' => route('tenant.microsite.show', ['tenant' => $tenant->slug]),
-            'previewMode' => $previewMode,
-            'previewReason' => $previewReason,
-        ]);
     }
 
     private function resolvePreviewReason(object $tenant): string
@@ -276,5 +305,49 @@ final class TenantMicrositeController extends Controller
 
             return [];
         }
+    }
+
+    private function fallbackMicrositeResponse(Request $request, object $tenant): Response
+    {
+        $search = (string) $request->input('search', '');
+        $emptyProducts = new \Illuminate\Pagination\LengthAwarePaginator(
+            collect(),
+            0,
+            12,
+            1,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
+        return Inertia::render('Tenant/Show', [
+            'tenantPlan' => 'starter',
+            'tenant' => [
+                'id' => $tenant->id,
+                'slug' => $tenant->slug,
+                'name' => $tenant->name,
+                'description' => $tenant->description ?? null,
+                'products' => [],
+                'services' => [],
+            ],
+            'products' => $emptyProducts,
+            'filters' => [
+                'search' => $search,
+            ],
+            'hasHiddenProducts' => false,
+            'totalProductsCount' => 0,
+            'hiddenProductsCount' => 0,
+            'productLimit' => 0,
+            'isOwner' => false,
+            'isFollowing' => false,
+            'followersCount' => 0,
+            'isOpen' => false,
+            'openingHours' => [],
+            'seoStructuredData' => [],
+            'canonicalUrl' => route('tenant.microsite.show', ['tenant' => $tenant->slug]),
+            'previewMode' => false,
+            'previewReason' => null,
+        ]);
     }
 }
