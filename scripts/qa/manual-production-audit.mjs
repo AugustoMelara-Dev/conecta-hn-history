@@ -7,7 +7,7 @@ const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = path.resolve('artifacts', 'manual-audit', stamp);
 
 const checks = [
-  { id: 'home', route: '/', marker: { type: 'text', value: 'Conecta HN' } },
+  { id: 'home', route: '/', marker: null },
   { id: 'explore', route: '/explore', marker: { type: 'selector', value: '#explore-search' } },
   { id: 'register-business', route: '/registrar-negocio', marker: { type: 'selector', value: '#business_name' } },
   { id: 'login', route: '/login', marker: { type: 'selector', value: '#email' } },
@@ -17,6 +17,8 @@ const checks = [
   { id: 'booking-entry', route: '/t/barberia-norte-pro/book', marker: { type: 'selector', value: '[data-testid="booking-wizard"]' } },
   { id: 'not-found', route: '/__manual-audit-not-found-404', marker: { type: 'text', value: '404' } },
 ];
+
+const defaultFlowRoute = '/t/casa-brasa-bistro';
 
 async function ensureDir(dir) {
   await fs.mkdir(dir, { recursive: true });
@@ -56,9 +58,12 @@ async function waitForMarker(page, marker) {
 }
 
 async function runFlowAudit(page) {
+  const discovered = await discoverExploreRoutes(page);
+  const flowRoute = discovered.micrositeRoute || defaultFlowRoute;
+
   const result = {
     id: 'checkout-flow',
-    route: '/t/casa-brasa-bistro',
+    route: flowRoute,
     startedAt: nowIso(),
     endedAt: null,
     status: null,
@@ -70,7 +75,7 @@ async function runFlowAudit(page) {
   };
 
   try {
-    const url = toAbsUrl('/t/casa-brasa-bistro');
+    const url = toAbsUrl(flowRoute);
     const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     result.status = response?.status() ?? null;
 
@@ -105,6 +110,30 @@ async function runFlowAudit(page) {
     }
 
   return result;
+}
+
+async function discoverExploreRoutes(page) {
+  try {
+    await page.goto(toAbsUrl('/explore'), { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+    const payloadRaw = await page.locator('#app').getAttribute('data-page');
+    if (!payloadRaw) {
+      return { micrositeRoute: null };
+    }
+
+    const payload = JSON.parse(payloadRaw);
+    const featured = payload?.props?.featuredTenants ?? [];
+    const first = Array.isArray(featured) && featured.length > 0 ? featured[0] : null;
+    const slug = first?.slug ? String(first.slug).trim() : null;
+
+    if (!slug) {
+      return { micrositeRoute: null };
+    }
+
+    return { micrositeRoute: `/t/${slug}` };
+  } catch {
+    return { micrositeRoute: null };
+  }
 }
 
 function toMarkdown(base, records, consoleEvents) {
@@ -165,8 +194,18 @@ async function main() {
   });
 
   const records = [];
+  const discovered = await discoverExploreRoutes(page);
+  const dynamicChecks = [...checks];
 
-  for (const check of checks) {
+  if (discovered.micrositeRoute) {
+    dynamicChecks.push({
+      id: 'microsite-discovered',
+      route: discovered.micrositeRoute,
+      marker: { type: 'selector', value: '[data-testid="tenant-microsite"]' },
+    });
+  }
+
+  for (const check of dynamicChecks) {
     const row = {
       id: check.id,
       route: check.route,

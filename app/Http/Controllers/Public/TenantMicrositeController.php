@@ -15,6 +15,8 @@ use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use LogicException;
+use Throwable;
 
 /**
  * TenantMicrositeController - Clean Read-Only
@@ -45,7 +47,7 @@ final class TenantMicrositeController extends Controller
             abort(404);
         }
 
-        $tenantContext->setTenant($tenantLookup->id);
+        $this->hydrateTenantContext($tenantContext, (string) $tenantLookup->id);
 
         $tenant = $this->repository->findBySlug($tenantSlug);
         if (! $tenant) {
@@ -74,27 +76,17 @@ final class TenantMicrositeController extends Controller
         // 3. Side-Effect Managment (Event Driven)
         // Fire and Forget. Listener handles increment logic.
         // Needs basic Event class.
-        if (class_exists(\App\Events\Analytics\MicrositeViewed::class)) {
-            $tenantEntity = \App\Domain\TenantGovernance\Entities\TenantEntity::fromStateArray([
-                'id' => $tenant->id,
-                'name' => $tenant->name,
-                'domain' => $tenant->slug,
-                'is_active' => $tenant->is_active,
-            ]);
-
-            \App\Events\Analytics\MicrositeViewed::dispatch($tenantEntity, $request->ip(), $request->userAgent());
-        }
+        $this->dispatchMicrositeViewedSafely($tenant, $request);
 
         // 4. Transform & Respond
-        $totalProductsCount = $tenant->products()->where('is_visible', true)->count();
+        $tenantData = $this->safeTransformTenant($tenant);
+        $visibleProductsCount = count($tenantData['products'] ?? []);
+        $totalProductsCount = $this->safeTotalProductsCount($tenant, $visibleProductsCount);
         $productLimit = $this->planService->getMaxProductLimit($tenant);
-
-        $tenantData = $this->transformer->transform($tenant);
-        $visibleProductsCount = count($tenantData['products']);
 
         // Preserve the transformed DTO contract, then paginate the in-memory collection.
         $search = (string) $request->input('search', '');
-        $productsCollection = collect($tenantData['products']);
+        $productsCollection = collect($tenantData['products'] ?? []);
 
         if ($search !== '') {
             $needle = mb_strtolower($search);
@@ -139,9 +131,9 @@ final class TenantMicrositeController extends Controller
             'isOwner' => $isOwner,
             'isFollowing' => false,
             'followersCount' => 0,
-            'isOpen' => $this->transformer->isCurrentlyOpen($tenant),
-            'openingHours' => $this->transformer->transformOpeningHours($tenant->openingHours),
-            'seoStructuredData' => $this->transformer->buildStructuredData($tenant),
+            'isOpen' => $this->safeIsCurrentlyOpen($tenant),
+            'openingHours' => $this->safeOpeningHours($tenant),
+            'seoStructuredData' => $this->safeStructuredData($tenant),
             'canonicalUrl' => route('tenant.microsite.show', ['tenant' => $tenant->slug]),
             'previewMode' => $previewMode,
             'previewReason' => $previewReason,
@@ -171,5 +163,118 @@ final class TenantMicrositeController extends Controller
         }
 
         return 'Este negocio todavia no esta visible para visitantes.';
+    }
+
+    private function hydrateTenantContext(\App\Domain\Shared\Services\TenantContext $tenantContext, string $tenantId): void
+    {
+        if ($tenantContext->isInitialized()) {
+            try {
+                if ((string) $tenantContext->id() !== $tenantId) {
+                    $tenantContext->reset();
+                }
+            } catch (LogicException) {
+                // Root context or inconsistent state from previous request in long-lived workers.
+                $tenantContext->reset();
+            }
+        }
+
+        $tenantContext->setTenant($tenantId);
+    }
+
+    private function dispatchMicrositeViewedSafely(object $tenant, Request $request): void
+    {
+        if (! class_exists(\App\Events\Analytics\MicrositeViewed::class)) {
+            return;
+        }
+
+        try {
+            $tenantEntity = \App\Domain\TenantGovernance\Entities\TenantEntity::fromStateArray([
+                'id' => $tenant->id,
+                'name' => $tenant->name,
+                'domain' => $tenant->slug,
+                'is_active' => $tenant->is_active,
+            ]);
+
+            \App\Events\Analytics\MicrositeViewed::dispatch($tenantEntity, $request->ip(), $request->userAgent());
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function safeTransformTenant(object $tenant): array
+    {
+        try {
+            $transformed = $this->transformer->transform($tenant);
+
+            return is_array($transformed) ? $transformed : [];
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return [
+                'id' => $tenant->id,
+                'slug' => $tenant->slug,
+                'name' => $tenant->name,
+                'description' => $tenant->description ?? null,
+                'products' => [],
+                'services' => [],
+            ];
+        }
+    }
+
+    private function safeTotalProductsCount(object $tenant, int $fallback): int
+    {
+        try {
+            return (int) $tenant->products()->where('is_visible', true)->count();
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return max(0, $fallback);
+        }
+    }
+
+    private function safeIsCurrentlyOpen(object $tenant): bool
+    {
+        try {
+            return (bool) $this->transformer->isCurrentlyOpen($tenant);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return false;
+        }
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function safeOpeningHours(object $tenant): array
+    {
+        try {
+            $openingHours = $this->transformer->transformOpeningHours($tenant->openingHours);
+
+            return is_array($openingHours) ? $openingHours : [];
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return [];
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function safeStructuredData(object $tenant): array
+    {
+        try {
+            $structuredData = $this->transformer->buildStructuredData($tenant);
+
+            return is_array($structuredData) ? $structuredData : [];
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return [];
+        }
     }
 }
