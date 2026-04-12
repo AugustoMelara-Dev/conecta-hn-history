@@ -131,4 +131,3 @@ final class TenantUserRoleGuardTest extends TestCase
         $this->actingAsTenant((string) $tenant->getKey());
     }
 }
-

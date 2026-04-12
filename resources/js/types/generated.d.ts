@@ -59,7 +59,7 @@ namespace Enums {
 export type BusinessType = "retail" | "food" | "service" | "hybrid";
 export type Capability = "catalog_basic" | "checkout_basic" | "customer_directory" | "payments_basic" | "notifications_basic" | "analytics_basic" | "coupons_basic" | "staff_basic" | "ai_content" | "web_push" | "product_variants" | "inventory_tracking" | "stock_alerts" | "pickup_orders" | "shipping_orders" | "delivery_orders" | "menu_modifiers" | "kitchen_display" | "table_management" | "appointment_booking" | "staff_calendar" | "service_duration_buffers" | "service_packages" | "appointment_reminders";
 export type TenantFeature = "advanced_catalog" | "marketing_suite" | "marketing_campaigns" | "promotional_coupons" | "loyalty_program" | "loyalty_rewards" | "advanced_branding" | "upgrade_prompt";
-export type TenantPlan = "semilla" | "pro";
+export type TenantPlan = "semilla" | "pro" | "crecimiento" | "cosecha" | "enterprise";
 }
 }
 }

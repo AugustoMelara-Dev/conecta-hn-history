@@ -43,4 +43,3 @@ final class BusinessSegmentResolverTest extends TestCase
         $this->assertSame('corporate_law_firm', $segment);
     }
 }
-
