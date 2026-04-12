@@ -60,7 +60,7 @@ class EnsureTenantOwnership
         }
 
         $user = auth()->user();
-        if (is_object($user) && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+        if ($user?->isSuperAdmin()) {
             return $next($request);
         }
 

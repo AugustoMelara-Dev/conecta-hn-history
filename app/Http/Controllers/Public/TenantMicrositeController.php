@@ -236,9 +236,7 @@ final class TenantMicrositeController extends Controller
     private function safeTransformTenant(object $tenant): array
     {
         try {
-            $transformed = $this->transformer->transform($tenant);
-
-            return is_array($transformed) ? $transformed : [];
+            return $this->transformer->transform($tenant);
         } catch (Throwable $exception) {
             report($exception);
 
@@ -281,9 +279,7 @@ final class TenantMicrositeController extends Controller
     private function safeOpeningHours(object $tenant): array
     {
         try {
-            $openingHours = $this->transformer->transformOpeningHours($tenant->openingHours);
-
-            return is_array($openingHours) ? $openingHours : [];
+            return $this->transformer->transformOpeningHours($tenant->openingHours);
         } catch (Throwable $exception) {
             report($exception);
 
@@ -297,9 +293,7 @@ final class TenantMicrositeController extends Controller
     private function safeStructuredData(object $tenant): array
     {
         try {
-            $structuredData = $this->transformer->buildStructuredData($tenant);
-
-            return is_array($structuredData) ? $structuredData : [];
+            return $this->transformer->buildStructuredData($tenant);
         } catch (Throwable $exception) {
             report($exception);
 
