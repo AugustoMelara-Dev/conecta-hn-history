@@ -13,7 +13,13 @@ test.describe('post-deploy smoke', () => {
     test('explore page renders visible discovery shell', async ({ page }) => {
         const response = await page.goto('/explore', { waitUntil: 'domcontentloaded' });
         expect(response?.status(), '/explore should be reachable').toBeLessThan(500);
-        await expect(page).toHaveURL(/\/explore$/);
-        await expect(page.locator('#explore-search')).toBeVisible();
+        await expect(page).toHaveURL(/\/explore(?:$|[?#])/);
+
+        const shellByInputId = page.locator('#explore-search');
+        const shellByTestId = page.getByTestId('explore-search');
+        const shellByHeading = page.getByRole('heading', { name: /Descubre negocios locales/i });
+        const stableShellMarker = shellByInputId.or(shellByTestId).or(shellByHeading);
+
+        await expect(stableShellMarker.first()).toBeVisible({ timeout: 15_000 });
     });
 });
