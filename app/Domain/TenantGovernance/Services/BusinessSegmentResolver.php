@@ -18,6 +18,7 @@ final class BusinessSegmentResolver
             name: $tenant->name,
             description: $tenant->description,
             about: $tenant->about,
+            slug: $tenant->slug,
             categorySlug: $category instanceof \App\Models\Category ? $category->slug : null,
             categoryName: $category instanceof \App\Models\Category ? $category->name : null,
         );
@@ -28,11 +29,14 @@ final class BusinessSegmentResolver
         ?string $name = null,
         ?string $description = null,
         ?string $about = null,
+        ?string $slug = null,
         ?string $categorySlug = null,
         ?string $categoryName = null,
     ): string {
         /** @var array<string, array<int, string>> $segmentKeywordMap */
         $segmentKeywordMap = config('storefront-segments.keyword_map', []);
+        /** @var array<string, string> $slugOverrides */
+        $slugOverrides = config('storefront-segments.slug_overrides', []);
         /** @var array<string, mixed> $verticalConfig */
         $verticalConfig = config('storefront-verticals', []);
         /** @var array<string, array<int, string>> $keywordMap */
@@ -41,6 +45,11 @@ final class BusinessSegmentResolver
         $categoryMap = $verticalConfig['category_map'] ?? [];
         /** @var array<string, string> $defaults */
         $defaults = $verticalConfig['defaults'] ?? [];
+
+        $normalizedSlug = Str::lower(Str::ascii((string) $slug));
+        if ($normalizedSlug !== '' && isset($slugOverrides[$normalizedSlug])) {
+            return $slugOverrides[$normalizedSlug];
+        }
 
         $haystack = Str::lower(Str::ascii(implode(' ', array_filter([
             $name,

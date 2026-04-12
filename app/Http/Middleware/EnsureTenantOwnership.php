@@ -59,16 +59,15 @@ class EnsureTenantOwnership
             return $next($request);
         }
 
-        // Get the user's accessible tenant IDs
-        $allowedTenantIds = $this->getUserTenantIds();
-
-        // If user has no tenants, allow (might be admin or buyer)
-        if (empty($allowedTenantIds)) {
+        $user = auth()->user();
+        if (is_object($user) && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
             return $next($request);
         }
 
+        $tenantBoundModels = [];
+
         // Check all route parameters for tenant-bound models
-        foreach ($request->route()->parameters() as $key => $value) {
+        foreach ($request->route()->parameters() as $value) {
             // Skip non-model values (IDs, slugs, etc.)
             if (! is_object($value)) {
                 continue;
@@ -76,15 +75,33 @@ class EnsureTenantOwnership
 
             // Check if this is a tenant-bound model
             if ($this->isTenantBoundModel($value)) {
-                // Verify ownership
-                if (! $this->verifyOwnership($value, $allowedTenantIds)) {
-                    // Log the suspicious access attempt
-                    $this->logSecurityViolation($request, $value);
+                $tenantBoundModels[] = $value;
+            }
+        }
 
-                    // Return 404 to prevent information disclosure
-                    // (Don't reveal if resource exists but is denied)
-                    abort(404);
-                }
+        if ($tenantBoundModels === []) {
+            return $next($request);
+        }
+
+        // Get the user's accessible tenant IDs
+        $allowedTenantIds = $this->getUserTenantIds();
+
+        if ($allowedTenantIds === []) {
+            foreach ($tenantBoundModels as $model) {
+                $this->logSecurityViolation($request, $model);
+            }
+
+            abort(404);
+        }
+
+        foreach ($tenantBoundModels as $model) {
+            if (! $this->verifyOwnership($model, $allowedTenantIds)) {
+                // Log the suspicious access attempt
+                $this->logSecurityViolation($request, $model);
+
+                // Return 404 to prevent information disclosure
+                // (Don't reveal if resource exists but is denied)
+                abort(404);
             }
         }
 
@@ -98,8 +115,14 @@ class EnsureTenantOwnership
     {
         $user = auth()->user();
 
-        // User->tenants() returns HasMany
-        return $user->tenants()->pluck('id')->toArray();
+        $ownedTenantIds = $user->tenants()->pluck('id')->map(static fn (mixed $id): string => (string) $id)->all();
+        $memberTenantIds = $user->memberTenants()
+            ->wherePivotNotNull('accepted_at')
+            ->pluck('tenants.id')
+            ->map(static fn (mixed $id): string => (string) $id)
+            ->all();
+
+        return array_values(array_unique(array_merge($ownedTenantIds, $memberTenantIds)));
     }
 
     /**
@@ -120,7 +143,10 @@ class EnsureTenantOwnership
      */
     protected function verifyOwnership($model, array $allowedTenantIds): bool
     {
-        return in_array($model->tenant_id, $allowedTenantIds);
+        $tenantId = (string) ($model->tenant_id ?? '');
+        $normalizedAllowedIds = array_map(static fn (mixed $id): string => (string) $id, $allowedTenantIds);
+
+        return in_array($tenantId, $normalizedAllowedIds, true);
     }
 
     /**

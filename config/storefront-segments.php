@@ -3,6 +3,11 @@
 declare(strict_types=1);
 
 return [
+    'slug_overrides' => [
+        'bufete-lex-hn' => 'law_firm',
+        'lex-corporativo-hn' => 'corporate_law_firm',
+    ],
+
     'keyword_map' => [
         'corporate_law_firm' => ['corporativo', 'corporativa', 'compliance', 'societario', 'contratos empresariales'],
         'dental_clinic' => ['odont', 'dental', 'ortodoncia', 'implante', 'sonrisa', 'endodoncia'],

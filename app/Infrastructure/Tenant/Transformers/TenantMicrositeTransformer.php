@@ -401,6 +401,7 @@ final readonly class TenantMicrositeTransformer
             name: $tenant->name,
             description: $tenant->description,
             about: $tenant->about,
+            slug: $tenant->slug,
             categorySlug: $category?->slug,
             categoryName: $category?->name,
         );

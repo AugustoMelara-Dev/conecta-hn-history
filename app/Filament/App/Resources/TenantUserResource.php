@@ -32,6 +32,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class TenantUserResource extends Resource
 {
@@ -306,8 +307,12 @@ class TenantUserResource extends Resource
 
     public static function getRoleOptions(): array
     {
+        $tenant = static::getTenantRecord();
+        $assignableRoles = static::resolveAssignableRoles($tenant);
+
         return collect(array_keys(config('rbac.roles', [])))
             ->filter(static fn (mixed $value): bool => is_string($value) && Role::tryFrom($value) !== null)
+            ->filter(static fn (string $value): bool => in_array($value, $assignableRoles, true))
             ->mapWithKeys(static fn (string $value): array => [$value => static::getRoleLabel($value)])
             ->all();
     }
@@ -437,6 +442,13 @@ class TenantUserResource extends Resource
      */
     public static function normalizeMembershipData(Tenant $tenant, array $data): array
     {
+        $assignableRoles = static::resolveAssignableRoles($tenant);
+        if ($assignableRoles === []) {
+            throw ValidationException::withMessages([
+                'role' => 'No tienes permisos para asignar roles en este negocio.',
+            ]);
+        }
+
         $presetKey = isset($data['preset_key']) && is_string($data['preset_key']) && $data['preset_key'] !== ''
             ? $data['preset_key']
             : null;
@@ -445,6 +457,12 @@ class TenantUserResource extends Resource
 
         if (is_array($preset) && isset($preset['role']) && is_string($preset['role'])) {
             $role = $preset['role'];
+        }
+
+        if (! in_array($role, $assignableRoles, true)) {
+            throw ValidationException::withMessages([
+                'role' => 'No puedes asignar ese rol con tus permisos actuales.',
+            ]);
         }
 
         return array_merge($data, [
@@ -508,5 +526,68 @@ class TenantUserResource extends Resource
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected static function resolveAssignableRoles(?Tenant $tenant): array
+    {
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
+        $actor = auth()->user();
+        if (! $actor instanceof User) {
+            return [];
+        }
+
+        if ($actor->isSuperAdmin()) {
+            return [
+                Role::ADMIN->value,
+                Role::MANAGER->value,
+                Role::OPERATOR->value,
+                Role::VIEWER->value,
+            ];
+        }
+
+        if ((string) $tenant->user_id === (string) $actor->id) {
+            return [
+                Role::ADMIN->value,
+                Role::MANAGER->value,
+                Role::OPERATOR->value,
+                Role::VIEWER->value,
+            ];
+        }
+
+        $membership = TenantMembership::query()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->where('user_id', (string) $actor->getKey())
+            ->whereNotNull('accepted_at')
+            ->first();
+
+        $actorRoleValue = $membership?->getAttribute('role');
+        $actorRole = $actorRoleValue instanceof Role
+            ? $actorRoleValue
+            : Role::tryFrom((string) $actorRoleValue);
+
+        return match ($actorRole) {
+            Role::OWNER => [
+                Role::ADMIN->value,
+                Role::MANAGER->value,
+                Role::OPERATOR->value,
+                Role::VIEWER->value,
+            ],
+            Role::ADMIN => [
+                Role::MANAGER->value,
+                Role::OPERATOR->value,
+                Role::VIEWER->value,
+            ],
+            Role::MANAGER => [
+                Role::OPERATOR->value,
+                Role::VIEWER->value,
+            ],
+            default => [],
+        };
     }
 }
