@@ -1,4 +1,4 @@
-﻿import { Link, useForm } from "@inertiajs/react"
+import { Link, useForm } from "@inertiajs/react"
 import { useEffect, useMemo, useState } from "react"
 import {
     ArrowLeft,
@@ -26,10 +26,10 @@ import {
 } from "@/lib/publicTypography"
 
 const STEPS = [
-    { key: "business", label: "Info", title: "InformaciÃ³n del negocio", icon: Building2 },
-    { key: "location", label: "Loc", title: "UbicaciÃ³n y contacto", icon: MapPin },
-    { key: "account", label: "User", title: "Cuenta propietaria", icon: UserRound },
-    { key: "plan", label: "Plan", title: "Plan y activaciÃ³n", icon: Sparkles },
+    { key: "business", label: "Negocio", title: "Información del negocio", icon: Building2 },
+    { key: "location", label: "Zona", title: "Ubicación y contacto", icon: MapPin },
+    { key: "account", label: "Cuenta", title: "Cuenta propietaria", icon: UserRound },
+    { key: "plan", label: "Lanzar", title: "Plan y activación", icon: Sparkles },
 ]
 
 const STEP_FIELDS = {
@@ -257,9 +257,22 @@ export function RegisterTenantWizard({
         return (categoryMatches.length > 0 ? categoryMatches : profiles).slice(0, 4)
     }, [data.business_type, selectedCategory, segmentProfiles])
     const selectedSegment = segmentCandidates[0] || null
-    const slugBaseHost = settings.slugBaseHost || "vito.hn"
+    const slugBaseHost = useMemo(() => {
+        if (typeof window !== "undefined" && window.location?.host) {
+            return window.location.host
+        }
+
+        return "vito.hn"
+    }, [])
+    const slugCheckEndpoint = useMemo(() => {
+        try {
+            return route("api.check-slug")
+        } catch {
+            return "/api/check-slug"
+        }
+    }, [])
     const businessPreview = data.business_name.trim() || "Tu negocio"
-    const slugPreview = data.slug ? `${slugBaseHost}/${slugify(data.slug)}` : `${slugBaseHost}/tu-negocio`
+    const slugPreview = data.slug ? `${slugBaseHost}/t/${slugify(data.slug)}` : `${slugBaseHost}/t/tu-negocio`
     const progress = ((step + 1) / STEPS.length) * 100
     const freeLimit = Number(settings.freeProductLimit ?? 10)
     const proLimit = Number(settings.proProductLimit ?? 100)
@@ -302,7 +315,7 @@ export function RegisterTenantWizard({
         if (!slug) {
             setSlugState({
                 status: "idle",
-                message: "La URL se genera automÃ¡ticamente a partir del nombre comercial.",
+                message: "La URL se genera automáticamente a partir del nombre comercial.",
                 suggestions: [],
             })
             return undefined
@@ -322,7 +335,7 @@ export function RegisterTenantWizard({
             try {
                 setSlugState({ status: "checking", message: "Validando URL...", suggestions: [] })
 
-                const response = await fetch(`${route("api.check-slug")}?slug=${encodeURIComponent(slug)}`, {
+                const response = await fetch(`${slugCheckEndpoint}?slug=${encodeURIComponent(slug)}`, {
                     headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
                     signal: controller.signal,
                 })
@@ -332,12 +345,12 @@ export function RegisterTenantWizard({
                     payload.available
                         ? {
                               status: "available",
-                              message: payload.message || "Esta URL estÃ¡ disponible.",
+                              message: payload.message || "Esta URL está disponible.",
                               suggestions: [],
                           }
                         : {
                               status: "unavailable",
-                              message: payload.message || "Esta URL ya estÃ¡ ocupada.",
+                              message: payload.message || "Esta URL ya está ocupada.",
                               suggestions: payload.suggestions || [],
                           }
                 )
@@ -345,7 +358,7 @@ export function RegisterTenantWizard({
                 if (error.name !== "AbortError") {
                     setSlugState({
                         status: "error",
-                        message: "No pudimos revisar la URL ahora mismo. El servidor la validarÃ¡ al enviar.",
+                        message: "No pudimos revisar la URL ahora mismo. El servidor la validará al enviar.",
                         suggestions: [],
                     })
                 }
@@ -356,7 +369,7 @@ export function RegisterTenantWizard({
             controller.abort()
             window.clearTimeout(timer)
         }
-    }, [data.slug])
+    }, [data.slug, slugCheckEndpoint])
 
     const updateField = (field, value) => {
         setLocalErrors((current) => {
@@ -381,9 +394,9 @@ export function RegisterTenantWizard({
             if (!data.business_name.trim()) nextErrors.business_name = "Escribe el nombre comercial."
             if (!slug) nextErrors.slug = "Define una URL para el negocio."
             else if (slug.length < 3) nextErrors.slug = "La URL necesita al menos 3 caracteres."
-            else if (slugState.status === "checking") nextErrors.slug = "Espera a que termine la revisiÃ³n de la URL."
-            else if (slugState.status === "unavailable") nextErrors.slug = "Esa URL ya estÃ¡ ocupada."
-            if (!String(data.category_id).trim()) nextErrors.category_id = "Selecciona una categorÃ­a."
+            else if (slugState.status === "checking") nextErrors.slug = "Espera a que termine la revisión de la URL."
+            else if (slugState.status === "unavailable") nextErrors.slug = "Esa URL ya está ocupada."
+            if (!String(data.category_id).trim()) nextErrors.category_id = "Selecciona una categoría."
             if (!String(data.business_type).trim()) nextErrors.business_type = "Selecciona el tipo de negocio."
         }
 
@@ -394,16 +407,16 @@ export function RegisterTenantWizard({
         if (targetStep === 2) {
             if (!data.name.trim()) nextErrors.name = "Escribe tu nombre completo."
             if (!data.email.trim()) nextErrors.email = "Escribe el correo de acceso."
-            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) nextErrors.email = "Escribe un correo vÃ¡lido."
-            if (!data.password) nextErrors.password = "Crea una contraseÃ±a."
+            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) nextErrors.email = "Escribe un correo válido."
+            if (!data.password) nextErrors.password = "Crea una contraseña."
             else if (data.password.length < 8) nextErrors.password = "Usa al menos 8 caracteres."
-            if (!data.password_confirmation) nextErrors.password_confirmation = "Confirma la contraseÃ±a."
-            else if (data.password_confirmation !== data.password) nextErrors.password_confirmation = "Las contraseÃ±as no coinciden."
+            if (!data.password_confirmation) nextErrors.password_confirmation = "Confirma la contraseña."
+            else if (data.password_confirmation !== data.password) nextErrors.password_confirmation = "Las contraseñas no coinciden."
         }
 
         if (targetStep === 3) {
-            if (!["free", "pro"].includes(data.selected_plan)) nextErrors.selected_plan = "Selecciona un plan vÃ¡lido."
-            if (!data.terms_accepted) nextErrors.terms_accepted = "Debes aceptar los tÃ©rminos para continuar."
+            if (!["free", "pro"].includes(data.selected_plan)) nextErrors.selected_plan = "Selecciona un plan válido."
+            if (!data.terms_accepted) nextErrors.terms_accepted = "Debes aceptar los términos para continuar."
         }
 
         const fields = STEP_FIELDS[targetStep]
@@ -433,48 +446,70 @@ export function RegisterTenantWizard({
             topActions={
                 <>
                     <Link href={route("login")} className="hidden text-sm font-semibold text-slate-600 transition hover:text-slate-950 md:inline-flex">
-                        Iniciar sesiÃ³n
+                        Iniciar sesión
                     </Link>
                     <Link href={route("public.explore")} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950">
                         Explorar
                     </Link>
                 </>
             }
-                        aside={
+            aside={
                 <>
                     <div className="max-w-xl space-y-6">
-                        <div className="space-y-3">
-                            <p
-                                className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-300"
-                                style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                            >
-                                Registro guiado
-                            </p>
+                        <div
+                            className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-300"
+                            style={{ fontFamily: PUBLIC_LABEL_FONT }}
+                        >
+                            Onboarding conectado
+                        </div>
+
+                        <div className="space-y-4">
                             <h2 className="max-w-lg text-4xl font-extrabold leading-[1.02] tracking-tight text-white xl:text-5xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                Abre tu negocio en cuatro pasos claros.
+                                Lanza tu negocio en minutos con un registro guiado.
                             </h2>
-                            <p className="max-w-lg text-base leading-7 text-slate-300">
-                                Menos ruido, mas foco: completa lo esencial y activa tu panel sin friccion.
+                            <p className="max-w-lg text-base leading-7 text-slate-300 xl:text-lg">
+                                Definimos URL, perfil comercial, cuenta y plan en un solo flujo conectado a producción.
                             </p>
                         </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-5">
                         <AuthAsideCard
                             invert
                             eyebrow={`Paso ${step + 1} de ${STEPS.length}`}
                             title={STEPS[step].title}
-                            description="Completa este bloque y continua. Guardamos validaciones en tiempo real."
+                            description="Cada paso pide solo lo necesario para activar tu panel sin fricción."
                         >
-                            <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
+                            <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/10">
                                 <div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${progress}%` }} />
                             </div>
                         </AuthAsideCard>
 
-                        <AuthAsideCard eyebrow="Vista rapida" title={businessPreview} description={slugPreview}>
-                            <div className="mt-4 grid gap-2">
-                                <SummaryRow label="Categoria" value={selectedCategory?.name || "Pendiente"} />
+                        <AuthAsideCard
+                            invert
+                            eyebrow="Checklist de activación"
+                            title="Lo que queda listo al enviar"
+                            description="Este registro no es demo: crea recursos reales dentro de la plataforma."
+                        >
+                            <div className="mt-4 space-y-3">
+                                {[
+                                    "Cuenta propietaria con login real",
+                                    "Negocio con slug validado y aislado",
+                                    "Acceso al panel y flujo de verificación",
+                                ].map((item) => (
+                                    <div key={item} className="flex items-start gap-2 text-sm text-slate-200">
+                                        <CheckCircle2 className="mt-0.5 h-4 w-4" />
+                                        <span>{item}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </AuthAsideCard>
+
+                        <AuthAsideCard eyebrow="Vista previa" title={businessPreview} description={slugPreview}>
+                            <div className="mt-4 space-y-3">
+                                <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
                                 <SummaryRow label="Tipo" value={selectedBusinessType?.label || "Pendiente"} />
+                                <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
                                 <SummaryRow label="Ciudad" value={selectedCity?.name || "Pendiente"} />
                                 <SummaryRow label="Plan" value={data.selected_plan === "pro" ? "Business Pro" : "Basic"} />
                             </div>
@@ -491,10 +526,10 @@ export function RegisterTenantWizard({
                                 Registro de negocio
                             </p>
                             <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                Crea tu negocio con un flujo simple y directo.
+                                Crea tu negocio con una experiencia más clara.
                             </h1>
                             <p className="max-w-2xl text-sm leading-7 text-slate-500">
-                                Solo pedimos lo necesario en cada paso para que llegues al panel rapido.
+                                Cuatro pasos, validaciones en vivo y activación real al finalizar.
                             </p>
                         </div>
 
@@ -507,7 +542,7 @@ export function RegisterTenantWizard({
 
                     {!canSubmit ? (
                         <div className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                            No pudimos cargar ciudades o categorÃ­as. Recarga la pÃ¡gina e intÃ©ntalo de nuevo.
+                            No pudimos cargar ciudades o categorías. Recarga la página e inténtalo de nuevo.
                         </div>
                     ) : null}
 
@@ -526,7 +561,7 @@ export function RegisterTenantWizard({
                                 <FieldGroup>
                                     <Field>
                                         <FieldLabel htmlFor="business_name">Nombre comercial</FieldLabel>
-                                        <Input id="business_name" value={data.business_name} onChange={(event) => updateField("business_name", event.target.value)} placeholder="Ej. CafÃ© La Esperanza" className={inputClass("business_name")} />
+                                        <Input id="business_name" value={data.business_name} onChange={(event) => updateField("business_name", event.target.value)} placeholder="Ej. Café La Esperanza" className={inputClass("business_name")} />
                                         {errorFor("business_name") ? <FieldDescription className="text-rose-600">{errorFor("business_name")}</FieldDescription> : null}
                                     </Field>
 
@@ -534,11 +569,11 @@ export function RegisterTenantWizard({
                                         <div className="flex items-center justify-between gap-3">
                                             <FieldLabel htmlFor="slug">URL personalizada</FieldLabel>
                                             <span className={`text-[11px] font-bold uppercase tracking-[0.18em] ${slugState.status === "available" ? "text-slate-950" : slugState.status === "unavailable" || slugState.status === "error" ? "text-rose-600" : "text-slate-400"}`} style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                                                {slugState.status === "available" ? "Disponible" : slugState.status === "checking" ? "Revisando" : slugState.status === "unavailable" ? "Ocupada" : "URL"}
+                                                {slugState.status === "available" ? "Disponible" : slugState.status === "checking" ? "Revisando" : slugState.status === "unavailable" ? "Ocupada" : "Pendiente"}
                                             </span>
                                         </div>
                                         <div className="relative">
-                                            <span className="absolute inset-y-0 left-4 inline-flex items-center text-sm text-slate-400">{slugBaseHost}/</span>
+                                            <span className="absolute inset-y-0 left-4 inline-flex items-center text-xs text-slate-400">{`${slugBaseHost}/t/`}</span>
                                             <Input
                                                 id="slug"
                                                 value={data.slug}
@@ -547,27 +582,30 @@ export function RegisterTenantWizard({
                                                     updateField("slug", slugify(event.target.value))
                                                 }}
                                                 placeholder="tunegocio"
-                                                className={`${inputClass("slug")} pl-24 pr-4`}
+                                                className={`${inputClass("slug")} pl-40 pr-4 sm:pl-44`}
                                             />
                                         </div>
                                         <FieldDescription className={slugState.status === "unavailable" || slugState.status === "error" ? "text-rose-600" : "text-slate-500"}>
                                             {errorFor("slug") || slugState.message}
                                         </FieldDescription>
                                         {slugState.suggestions?.length ? (
-                                            <div className="flex flex-wrap gap-2">
-                                                {slugState.suggestions.map((suggestion) => (
-                                                    <button key={suggestion} type="button" onClick={() => { setSlugTouched(true); updateField("slug", suggestion) }} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950">
-                                                        {suggestion}
-                                                    </button>
-                                                ))}
+                                            <div className="space-y-2">
+                                                <p className="text-xs font-semibold text-slate-500">Opciones sugeridas:</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {slugState.suggestions.map((suggestion) => (
+                                                        <button key={suggestion} type="button" onClick={() => { setSlugTouched(true); updateField("slug", suggestion) }} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950">
+                                                            {suggestion}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
                                         ) : null}
                                     </Field>
 
                                     <Field>
-                                        <FieldLabel htmlFor="category_id">CategorÃ­a</FieldLabel>
+                                        <FieldLabel htmlFor="category_id">Categoría</FieldLabel>
                                         <select id="category_id" value={data.category_id} onChange={(event) => updateField("category_id", event.target.value)} className={`h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-300 ${errorFor("category_id") ? "border-rose-300 focus:ring-rose-200" : ""}`}>
-                                            <option value="">Selecciona una categorÃ­a</option>
+                                            <option value="">Selecciona una categoría</option>
                                             {categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                                         </select>
                                         {errorFor("category_id") ? <FieldDescription className="text-rose-600">{errorFor("category_id")}</FieldDescription> : null}
@@ -576,7 +614,9 @@ export function RegisterTenantWizard({
                                     <Field>
                                         <div className="space-y-2">
                                             <FieldLabel>Tipo de negocio</FieldLabel>
-                                            <FieldDescription>Selecciona el modelo que mejor describe tu operacion principal.</FieldDescription>
+                                            <FieldDescription>
+                                                Elige la operación que mejor representa cómo vendes hoy.
+                                            </FieldDescription>
                                         </div>
 
                                         <div className="grid gap-4 xl:grid-cols-2">
@@ -598,17 +638,71 @@ export function RegisterTenantWizard({
 
                                         {suggestedBusinessType && !businessTypeTouched ? (
                                             <FieldDescription>
-                                                Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "este tipo"}</strong> por la categorÃ­a que elegiste.
+                                                Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "este tipo"}</strong> por la categoría que elegiste.
                                             </FieldDescription>
                                         ) : null}
 
                                         {selectedSegment ? (
-                                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                                                    Recomendacion
-                                                </p>
-                                                <p className="mt-2 text-sm font-semibold text-slate-900">{selectedSegment.label}</p>
-                                                <p className="mt-1 text-sm leading-6 text-slate-600">{selectedSegment.onboardingCopy || selectedSegment.teaser}</p>
+                                            <div className="rounded-[1.75rem] border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 p-5 shadow-[0_20px_50px_rgba(16,185,129,0.08)]">
+                                                <div className="space-y-3">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span
+                                                            className="inline-flex rounded-full bg-slate-950 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-white"
+                                                            style={{ fontFamily: PUBLIC_LABEL_FONT }}
+                                                        >
+                                                            Segmento sugerido
+                                                        </span>
+                                                        <span
+                                                            className="inline-flex rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700"
+                                                            style={{ fontFamily: PUBLIC_LABEL_FONT }}
+                                                        >
+                                                            {selectedSegment.label}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <h3 className="text-xl font-extrabold tracking-tight text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                                                            {selectedSegment.onboardingTitle}
+                                                        </h3>
+                                                        <p className="text-sm leading-7 text-slate-600">
+                                                            {selectedSegment.onboardingCopy || selectedSegment.teaser}
+                                                        </p>
+                                                    </div>
+
+                                                    {selectedSegment.modules?.length ? (
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {selectedSegment.modules.slice(0, 4).map((module) => (
+                                                                <span
+                                                                    key={module}
+                                                                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700"
+                                                                >
+                                                                    {module}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : null}
+
+                                                    {segmentCandidates.length > 1 ? (
+                                                        <div className="space-y-2">
+                                                            <p
+                                                                className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500"
+                                                                style={{ fontFamily: PUBLIC_LABEL_FONT }}
+                                                            >
+                                                                Rutas cercanas para este rubro
+                                                            </p>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {segmentCandidates.slice(1).map((segment) => (
+                                                                    <span
+                                                                        key={segment.key}
+                                                                        className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
+                                                                    >
+                                                                        {segment.label}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : null}
+                                                </div>
                                             </div>
                                         ) : null}
 
@@ -650,19 +744,19 @@ export function RegisterTenantWizard({
                                         {errorFor("email") ? (
                                             <FieldDescription className="text-rose-600">{errorFor("email")}</FieldDescription>
                                         ) : (
-                                            <FieldDescription>Usaremos este correo para login, verificaciÃ³n y recuperaciÃ³n.</FieldDescription>
+                                            <FieldDescription>Usaremos este correo para login, verificación y recuperación.</FieldDescription>
                                         )}
                                     </Field>
 
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <Field>
-                                            <FieldLabel htmlFor="password">ContraseÃ±a</FieldLabel>
+                                            <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                                             <Input id="password" type="password" value={data.password} onChange={(event) => updateField("password", event.target.value)} className={inputClass("password")} />
-                                            {errorFor("password") ? <FieldDescription className="text-rose-600">{errorFor("password")}</FieldDescription> : <FieldDescription>MÃ­nimo 8 caracteres.</FieldDescription>}
+                                            {errorFor("password") ? <FieldDescription className="text-rose-600">{errorFor("password")}</FieldDescription> : <FieldDescription>Mínimo 8 caracteres.</FieldDescription>}
                                         </Field>
 
                                         <Field>
-                                            <FieldLabel htmlFor="password_confirmation">Confirmar contraseÃ±a</FieldLabel>
+                                            <FieldLabel htmlFor="password_confirmation">Confirmar contraseña</FieldLabel>
                                             <Input id="password_confirmation" type="password" value={data.password_confirmation} onChange={(event) => updateField("password_confirmation", event.target.value)} className={inputClass("password_confirmation")} />
                                             {errorFor("password_confirmation") ? <FieldDescription className="text-rose-600">{errorFor("password_confirmation")}</FieldDescription> : null}
                                         </Field>
@@ -673,21 +767,21 @@ export function RegisterTenantWizard({
                             {step === 3 ? (
                                 <FieldGroup>
                                     <div className="grid gap-4 md:grid-cols-2">
-                                        <PlanCard active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price="$0" bullets={["Perfil digital pÃºblico", `CatÃ¡logo de ${freeLimit} productos`, "Panel base para operar"]} onClick={() => updateField("selected_plan", "free")} />
-                                        <PlanCard active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`$${proPrice}`} bullets={["Ventas ilimitadas", "AnalÃ­ticas avanzadas", `Capacidad comercial de ${proLimit} productos`]} onClick={() => updateField("selected_plan", "pro")} />
+                                        <PlanCard active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price="$0" bullets={["Perfil digital público", `Catálogo de ${freeLimit} productos`, "Panel base para operar"]} onClick={() => updateField("selected_plan", "free")} />
+                                        <PlanCard active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`$${proPrice}`} bullets={["Ventas ilimitadas", "Analíticas avanzadas", `Capacidad comercial de ${proLimit} productos`]} onClick={() => updateField("selected_plan", "pro")} />
                                     </div>
                                     {errorFor("selected_plan") ? <FieldDescription className="text-rose-600">{errorFor("selected_plan")}</FieldDescription> : null}
 
                                     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),300px]">
                                         <div className="space-y-3 rounded-[1.75rem] border border-slate-200 bg-white p-5">
-                                            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Resumen de activaciÃ³n</p>
+                                            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Resumen de activación</p>
                                             <SummaryRow label="Negocio" value={businessPreview} />
                                             <SummaryRow label="URL" value={slugPreview} />
-                                            <SummaryRow label="CategorÃ­a" value={selectedCategory?.name || "Pendiente"} />
+                                            <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
                                             <SummaryRow label="Tipo" value={selectedBusinessType?.label || "Pendiente"} />
                                             <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
                                             <SummaryRow label="Ciudad" value={selectedCity?.name || "Pendiente"} />
-                                            <SummaryRow label="Cuenta" value={data.email || "Sin correo aÃºn"} />
+                                            <SummaryRow label="Cuenta" value={data.email || "Sin correo aún"} />
                                             <SummaryRow label="Plan" value={data.selected_plan === "pro" ? "Business Pro" : "Basic"} />
                                         </div>
 
@@ -695,7 +789,7 @@ export function RegisterTenantWizard({
                                             <label className="flex items-start gap-3 rounded-[1.75rem] border border-slate-200 bg-slate-50 px-5 py-5">
                                                 <input type="checkbox" checked={data.terms_accepted} onChange={(event) => updateField("terms_accepted", event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-300" />
                                                 <span className="text-sm leading-7 text-slate-600">
-                                                    Confirmo que tengo autorizaciÃ³n para registrar este negocio y acepto los tÃ©rminos operativos de Conecta HN.
+                                                    Confirmo que tengo autorización para registrar este negocio y acepto los términos operativos de Conecta HN.
                                                 </span>
                                             </label>
                                             {errorFor("terms_accepted") ? <FieldDescription className="text-rose-600">{errorFor("terms_accepted")}</FieldDescription> : null}
@@ -703,7 +797,7 @@ export function RegisterTenantWizard({
                                             <div className="rounded-[1.75rem] bg-slate-950 px-5 py-6 text-white">
                                                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Lo que sucede al enviar</p>
                                                 <p className="mt-3 text-sm leading-7 text-slate-300">
-                                                    Creamos la cuenta, el negocio y el acceso al panel en una sola pasada, conectado al backend real.
+                                                    Creamos cuenta, negocio y acceso al panel en una sola pasada sobre el backend real.
                                                 </p>
                                             </div>
                                         </div>
@@ -726,7 +820,7 @@ export function RegisterTenantWizard({
                         <div className="flex items-center justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0 || processing} className="h-12 rounded-xl border-slate-200 bg-white text-slate-950 hover:bg-slate-50">
                                 <ArrowLeft className="mr-2 h-4 w-4" />
-                                AtrÃ¡s
+                                Atrás
                             </Button>
 
                             {step < STEPS.length - 1 ? (
@@ -743,7 +837,7 @@ export function RegisterTenantWizard({
                                         </>
                                     ) : (
                                         <>
-                                            Crear cuenta
+                                            Crear negocio
                                             <BadgeCheck className="ml-2 h-4 w-4" />
                                         </>
                                     )}
