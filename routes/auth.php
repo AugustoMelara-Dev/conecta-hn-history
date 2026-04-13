@@ -10,6 +10,11 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
+// Backward-compatible slug check alias for cached frontend bundles.
+Route::get('check-slug', [\App\Http\Controllers\Web\RegistrationController::class, 'checkSlug'])
+    ->middleware('throttle:60,1')
+    ->name('check-slug');
+
 Route::middleware('guest')->group(function () {
     Route::get('register', static fn () => redirect()->route('tenant.register'))
         ->name('register');

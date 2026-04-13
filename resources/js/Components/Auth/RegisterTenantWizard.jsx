@@ -261,8 +261,9 @@ export function RegisterTenantWizard({
         return (categoryMatches.length > 0 ? categoryMatches : profiles).slice(0, 4)
     }, [data.business_type, selectedCategory, segmentProfiles])
     const selectedSegment = segmentCandidates[0] || null
+    const slugBaseHost = settings.slugBaseHost || "vito.hn"
     const businessPreview = data.business_name.trim() || "Tu negocio"
-    const slugPreview = data.slug ? `vito.hn/${slugify(data.slug)}` : "vito.hn/tu-negocio"
+    const slugPreview = data.slug ? `${slugBaseHost}/${slugify(data.slug)}` : `${slugBaseHost}/tu-negocio`
     const progress = ((step + 1) / STEPS.length) * 100
     const freeLimit = Number(settings.freeProductLimit ?? 10)
     const proLimit = Number(settings.proProductLimit ?? 100)
@@ -547,7 +548,7 @@ export function RegisterTenantWizard({
                                             </span>
                                         </div>
                                         <div className="relative">
-                                            <span className="absolute inset-y-0 left-4 inline-flex items-center text-sm text-slate-400">vito.hn/</span>
+                                            <span className="absolute inset-y-0 left-4 inline-flex items-center text-sm text-slate-400">{slugBaseHost}/</span>
                                             <Input
                                                 id="slug"
                                                 value={data.slug}

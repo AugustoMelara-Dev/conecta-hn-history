@@ -52,6 +52,7 @@ final class RegistrationController extends Controller
                 'freeProductLimit' => config('conecta.free_plan_product_limit', 10),
                 'proProductLimit' => config('conecta.pro_plan_product_limit', 100),
                 'proPlanPrice' => config('conecta.pro_plan_price', 500.00),
+                'slugBaseHost' => request()->getHost(),
             ],
         ]);
     }
