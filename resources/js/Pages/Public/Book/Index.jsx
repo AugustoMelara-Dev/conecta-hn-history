@@ -92,6 +92,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
     const [selectedProvider, setSelectedProvider] = useState(null);
     const [selectedDate, setSelectedDate] = useState('');
     const [availableSlots, setAvailableSlots] = useState([]);
+    const [slotTimeline, setSlotTimeline] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
 
     const { data, setData, post, processing, errors } = useForm({
@@ -103,6 +104,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
         customer_email: '',
         customer_phone: '',
         customer_notes: '',
+        contact_consent: false,
     });
 
     useEffect(() => {
@@ -124,6 +126,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
     useEffect(() => {
         if (!selectedDate || !data.service_id) {
             setAvailableSlots([]);
+            setSlotTimeline([]);
 
             return;
         }
@@ -144,11 +147,13 @@ export default function BookingWizard({ tenant, services, providers, preselected
 
                 if (!cancelled) {
                     setAvailableSlots(response.data.slots || []);
+                    setSlotTimeline(response.data.timeline || []);
                 }
             } catch (error) {
                 if (!cancelled) {
                     console.error('Error fetching slots:', error);
                     setAvailableSlots([]);
+                    setSlotTimeline([]);
                 }
             } finally {
                 if (!cancelled) {
@@ -173,6 +178,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
         setSelectedProvider(null);
         setSelectedDate('');
         setAvailableSlots([]);
+        setSlotTimeline([]);
         setData({
             ...data,
             service_id: service.id,
@@ -187,6 +193,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
         setSelectedProvider(provider);
         setSelectedDate('');
         setAvailableSlots([]);
+        setSlotTimeline([]);
         setData({
             ...data,
             service_provider_id: provider?.id ?? providers[0]?.id ?? null,
@@ -386,23 +393,33 @@ export default function BookingWizard({ tenant, services, providers, preselected
                                         ) : availableSlots.length === 0 ? (
                                             <div className="rounded-[1.75rem] border border-dashed border-amber-200 bg-amber-50 px-6 py-10 text-center text-sm text-amber-900">No hay horarios disponibles para esta fecha. Prueba con otro dia.</div>
                                         ) : (
-                                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                                {availableSlots.map((slot) => (
-                                                    <button
-                                                        key={slot.time}
-                                                        type="button"
-                                                        onClick={() => handleTimeSelect(slot)}
-                                                        className={`rounded-2xl border px-4 py-4 text-left transition ${
-                                                            data.time === slot.time
-                                                                ? 'border-slate-950 bg-slate-950 text-white'
-                                                                : 'border-slate-200 bg-white text-slate-950 hover:border-slate-950'
-                                                        }`}
-                                                        data-testid={`booking-slot-${slot.time.replace(':', '-')}`}
-                                                    >
-                                                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">Horario</p>
-                                                        <p className="mt-2 text-lg font-black">{slot.display}</p>
-                                                    </button>
-                                                ))}
+                                            <div className="space-y-4">
+                                                <p className="text-xs font-semibold text-slate-500">
+                                                    Mostramos disponibilidad real: horarios ocupados aparecen bloqueados.
+                                                </p>
+                                                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                                    {(slotTimeline.length > 0 ? slotTimeline : availableSlots).map((slot) => (
+                                                        <button
+                                                            key={`${slot.time}-${slot.available === false ? 'blocked' : 'free'}`}
+                                                            type="button"
+                                                            onClick={() => handleTimeSelect(slot)}
+                                                            disabled={slot.available === false}
+                                                            className={`rounded-2xl border px-4 py-4 text-left transition ${
+                                                                slot.available === false
+                                                                    ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+                                                                    : data.time === slot.time
+                                                                        ? 'border-slate-950 bg-slate-950 text-white'
+                                                                        : 'border-slate-200 bg-white text-slate-950 hover:border-slate-950'
+                                                            }`}
+                                                            data-testid={`booking-slot-${slot.time.replace(':', '-')}`}
+                                                        >
+                                                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">
+                                                                {slot.available === false ? 'Ocupado' : 'Horario'}
+                                                            </p>
+                                                            <p className="mt-2 text-lg font-black">{slot.display}</p>
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -442,6 +459,22 @@ export default function BookingWizard({ tenant, services, providers, preselected
                                         <div className="md:col-span-2">
                                             <label htmlFor="customer_notes" className="mb-2 block text-sm font-semibold text-slate-700">Notas opcionales</label>
                                             <textarea id="customer_notes" value={data.customer_notes} onChange={(event) => setData('customer_notes', event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-slate-950" rows={4} placeholder="Comparte detalles utiles para atender mejor tu cita." data-testid="booking-notes-input" />
+                                        </div>
+
+                                        <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                                            <label className="flex items-start gap-3 text-sm leading-7 text-slate-700">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={Boolean(data.contact_consent)}
+                                                    onChange={(event) => setData('contact_consent', event.target.checked)}
+                                                    className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-300"
+                                                    data-testid="booking-consent-checkbox"
+                                                />
+                                                <span>
+                                                    Confirmo que mis datos son reales y autorizo que este negocio me contacte por WhatsApp o correo para confirmar o reprogramar la cita.
+                                                </span>
+                                            </label>
+                                            {errors.contact_consent ? <p className="mt-2 text-sm text-rose-600">{errors.contact_consent}</p> : null}
                                         </div>
                                     </div>
 

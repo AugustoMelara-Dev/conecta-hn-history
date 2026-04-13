@@ -45,32 +45,35 @@ export function LoginForm({
             <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
                 <CardHeader>
                     <CardTitle className="text-2xl font-semibold text-slate-950">
-                        Login to your account
+                        Inicia sesion en tu cuenta
                     </CardTitle>
                     <CardDescription className="text-slate-500">
-                        Enter your email below to login to your account
+                        Accede con tu correo y contrasena para administrar tu negocio.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={submit}>
+                    <form onSubmit={submit} data-testid="login-form">
                         <FieldGroup>
                             {status ? (
-                                <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                                <div aria-live="polite" className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                                     {status}
                                 </div>
                             ) : null}
 
                             <Field>
-                                <FieldLabel htmlFor="email">Email</FieldLabel>
+                                <FieldLabel htmlFor="email">Correo</FieldLabel>
                                 <Input
                                     id="email"
+                                    name="email"
                                     type="email"
-                                    placeholder="m@example.com"
+                                    placeholder="nombre@negocio.hn"
                                     autoComplete="email"
+                                    spellCheck={false}
                                     required
                                     autoFocus
                                     value={data.email}
                                     onChange={(event) => setData("email", event.target.value)}
+                                    data-testid="login-email-input"
                                     className={cn(
                                         inputClassName,
                                         errors.email && "border-rose-300 focus-visible:ring-rose-200"
@@ -85,23 +88,25 @@ export function LoginForm({
 
                             <Field>
                                 <div className="flex items-center">
-                                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                                    <FieldLabel htmlFor="password">Contrasena</FieldLabel>
                                     {canResetPassword ? (
                                         <Link
                                             href={route("password.request")}
                                             className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                                         >
-                                            Forgot your password?
+                                            Olvidaste tu contrasena?
                                         </Link>
                                     ) : null}
                                 </div>
                                 <Input
                                     id="password"
+                                    name="password"
                                     type="password"
                                     autoComplete="current-password"
                                     required
                                     value={data.password}
                                     onChange={(event) => setData("password", event.target.value)}
+                                    data-testid="login-password-input"
                                     className={cn(
                                         inputClassName,
                                         errors.password && "border-rose-300 focus-visible:ring-rose-200"
@@ -118,9 +123,10 @@ export function LoginForm({
                                 <Button
                                     type="submit"
                                     disabled={processing}
+                                    data-testid="login-submit"
                                     className="w-full bg-slate-950 text-white hover:bg-slate-800"
                                 >
-                                    {processing ? "Login..." : "Login"}
+                                    {processing ? "Entrando..." : "Iniciar sesion"}
                                 </Button>
                                 <Button
                                     variant="outline"
@@ -129,16 +135,16 @@ export function LoginForm({
                                     asChild
                                 >
                                     <Link href={route("public.explore")}>
-                                        Explore businesses
+                                        Explorar negocios
                                     </Link>
                                 </Button>
                                 <FieldDescription className="text-center">
-                                    Don&apos;t have an account?{" "}
+                                    No tienes cuenta?{" "}
                                     <Link
                                         href={route("tenant.register")}
                                         className="underline underline-offset-4"
                                     >
-                                        Sign up
+                                        Registrar negocio
                                     </Link>
                                 </FieldDescription>
                             </Field>

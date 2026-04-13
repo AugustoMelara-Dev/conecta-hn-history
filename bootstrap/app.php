@@ -27,13 +27,23 @@ return Application::configure(basePath: dirname(__DIR__))
         __DIR__.'/../app/Console/Commands',
     ])
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(append: [
-            \App\Http\Middleware\IdentifyTenantBySubdomain::class, // FIRST: Tenant Context from Subdomain
-            \App\Http\Middleware\SecurityHeaders::class, // Zero-Trust Security Headers
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
-            \App\Http\Middleware\HydrateLocationFromCookie::class, // DIRECTIVE 2: Sticky persistence
-            \App\Http\Middleware\CheckMaintenanceMode::class, // Kill Switch Inteligente
+        $middleware->web(
+            prepend: [
+                \App\Http\Middleware\UseRequestHostSessionDomain::class, // Prevent 419 when SESSION_DOMAIN mismatches runtime host
+            ],
+            append: [
+                \App\Http\Middleware\IdentifyTenantBySubdomain::class, // FIRST: Tenant Context from Subdomain
+                \App\Http\Middleware\ShareObservabilityContext::class, // Trace + domain context for production observability
+                \App\Http\Middleware\SecurityHeaders::class, // Zero-Trust Security Headers
+                \App\Http\Middleware\HandleInertiaRequests::class,
+                \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+                \App\Http\Middleware\HydrateLocationFromCookie::class, // DIRECTIVE 2: Sticky persistence
+                \App\Http\Middleware\CheckMaintenanceMode::class, // Kill Switch Inteligente
+            ]
+        );
+
+        $middleware->api(append: [
+            \App\Http\Middleware\ShareObservabilityContext::class,
         ]);
 
         $middleware->alias([
@@ -78,6 +88,12 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             $status = $response->getStatusCode();
+
+            if ($status === 419 && $request->header('X-Inertia')) {
+                return redirect()
+                    ->back(303)
+                    ->with('error', 'Tu sesión expiró por seguridad. Recargamos la vista para que continúes.');
+            }
 
             if ($status >= 500 && $request->header('X-Inertia')) {
                 return Inertia::render('Error', [

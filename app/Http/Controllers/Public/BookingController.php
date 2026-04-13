@@ -12,11 +12,14 @@ use App\Application\Tenant\Commands\CreateAppointmentCommand;
 use App\Domain\Shared\Services\TenantContext;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
+use App\Infrastructure\Observability\DomainTelemetry;
+use App\Models\Appointment;
 use App\Models\Tenant;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -36,7 +39,8 @@ final class BookingController extends Controller
         private ServiceProviderRepositoryInterface $providerRepository,
         private AppointmentRepositoryInterface $appointmentRepository,
         private CommandBusInterface $commandBus,
-        private \App\Domain\Booking\Services\SlotCalculator $slotCalculator
+        private \App\Domain\Booking\Services\SlotCalculator $slotCalculator,
+        private DomainTelemetry $telemetry,
     ) {}
 
     /**
@@ -126,6 +130,8 @@ final class BookingController extends Controller
      */
     public function getSlots(Request $request, string $tenantSlug): JsonResponse
     {
+        $startedAt = microtime(true);
+
         if (! $this->initializeTenantContext($tenantSlug)) {
             abort(404, 'Tenant not found.');
         }
@@ -134,6 +140,14 @@ final class BookingController extends Controller
         if (! $tenant) {
             abort(404, 'Tenant not found.');
         }
+
+        $slotsRateLimitKey = sprintf('booking:slots:%s:%s', $tenant->id(), (string) $request->ip());
+        if (RateLimiter::tooManyAttempts($slotsRateLimitKey, 90)) {
+            return response()->json([
+                'message' => 'Demasiadas consultas de horarios. Espera un momento e intenta de nuevo.',
+            ], 429);
+        }
+        RateLimiter::hit($slotsRateLimitKey, 60);
 
         $validated = $request->validate([
             'date' => 'required|date|after_or_equal:today',
@@ -160,8 +174,34 @@ final class BookingController extends Controller
             $service->buffer_before,
             $service->buffer_after
         );
+        $timeline = $this->slotCalculator->calculateTimeline(
+            $tenant->id(),
+            $date,
+            $service->duration_minutes,
+            $validated['provider_id'] ?? null,
+            $service->buffer_before,
+            $service->buffer_after
+        );
+        $durationMs = round((microtime(true) - $startedAt) * 1000, 2);
+        $this->telemetry->record('booking', 'booking_slots_retrieved', [
+            'tenant_id' => $tenant->id(),
+            'service_id' => $service->id,
+            'provider_id' => $validated['provider_id'] ?? null,
+            'status' => 'ok',
+            'slot_count' => count($slots),
+        ]);
+        $this->telemetry->gauge('booking', 'conecta.booking.slot_lookup.duration_ms', $durationMs, [
+            'service_id' => (string) $service->id,
+            'provider_id' => isset($validated['provider_id']) ? (string) $validated['provider_id'] : 'unassigned',
+        ], [
+            'tenant_id' => $tenant->id(),
+            'slot_count' => count($slots),
+        ]);
 
-        return response()->json(['slots' => $slots]);
+        return response()->json([
+            'slots' => $slots,
+            'timeline' => $timeline,
+        ]);
     }
 
     /**
@@ -180,15 +220,24 @@ final class BookingController extends Controller
             abort(404, 'Tenant not found.');
         }
 
+        $bookingRateLimitKey = sprintf('booking:store:%s:%s', $tenant->id(), (string) $request->ip());
+        if (RateLimiter::tooManyAttempts($bookingRateLimitKey, 8)) {
+            return back()->withErrors([
+                'customer_email' => 'Demasiados intentos de reserva en poco tiempo. Espera un minuto antes de reintentar.',
+            ]);
+        }
+        RateLimiter::hit($bookingRateLimitKey, 60);
+
         $validated = $request->validate([
             'service_id' => 'required|integer',
             'service_provider_id' => 'required|integer',
             'date' => 'required|date|after_or_equal:today',
             'time' => 'required|date_format:H:i',
-            'customer_name' => 'required|string|max:255',
+            'customer_name' => ['required', 'string', 'max:255', 'regex:/.*\S.*/'],
             'customer_email' => 'required|email|max:255',
-            'customer_phone' => 'required|string|max:20',
+            'customer_phone' => ['required', 'string', 'max:20', 'regex:/^[\d\s+\-()]{7,20}$/'],
             'customer_notes' => 'nullable|string|max:500',
+            'contact_consent' => 'accepted',
         ]);
 
         $service = $this->serviceRepository->findById($validated['service_id']);
@@ -205,6 +254,17 @@ final class BookingController extends Controller
         $scheduledAt = Carbon::parse($validated['date'].' '.$validated['time']);
         $endAt = $scheduledAt->copy()->addMinutes($service->duration_minutes);
 
+        if ($this->hasExcessivePendingBookings(
+            tenantId: $tenant->id(),
+            customerEmail: (string) $validated['customer_email'],
+            customerPhone: (string) $validated['customer_phone'],
+            appointmentDate: $scheduledAt
+        )) {
+            return back()->withErrors([
+                'customer_email' => 'Detectamos demasiadas reservas activas con este contacto para hoy. Confirma o cancela una reserva anterior antes de crear otra.',
+            ]);
+        }
+
         if (! $this->providerRepository->isAvailableAt(
             $provider->id,
             $scheduledAt,
@@ -212,6 +272,13 @@ final class BookingController extends Controller
             $service->buffer_before,
             $service->buffer_after
         )) {
+            $this->telemetry->record('booking', 'booking_slot_conflict_detected', [
+                'tenant_id' => $tenant->id(),
+                'service_id' => $service->id,
+                'provider_id' => $provider->id,
+                'status' => 'conflict',
+            ], 'warning');
+
             return back()->withErrors([
                 'time' => 'Este horario ya no esta disponible. Por favor selecciona otro.',
             ]);
@@ -230,6 +297,13 @@ final class BookingController extends Controller
         );
 
         $result = $this->commandBus->dispatch($command);
+        $this->telemetry->record('booking', 'booking_appointment_created', [
+            'tenant_id' => $tenant->id(),
+            'service_id' => $service->id,
+            'provider_id' => $provider->id,
+            'status' => 'created',
+            'appointment_id' => $result['id'] ?? null,
+        ]);
 
         return redirect()->route('public.booking.success', [
             'tenant' => $tenant->slug(),
@@ -292,5 +366,40 @@ final class BookingController extends Controller
         app(TenantContext::class)->setTenant((string) $tenant->id);
 
         return $tenant;
+    }
+
+    private function hasExcessivePendingBookings(
+        string $tenantId,
+        string $customerEmail,
+        string $customerPhone,
+        Carbon $appointmentDate
+    ): bool {
+        $maxPerContactPerDay = max(1, (int) config('conecta.booking.max_pending_per_contact_per_day', 3));
+
+        $normalizedEmail = strtolower(trim($customerEmail));
+        $normalizedPhone = preg_replace('/\D+/', '', $customerPhone) ?? '';
+
+        $activeStatuses = [
+            Appointment::STATUS_PENDING,
+            Appointment::STATUS_CONFIRMED,
+        ];
+
+        $query = Appointment::query()
+            ->where('tenant_id', $tenantId)
+            ->whereDate('scheduled_at', $appointmentDate->toDateString())
+            ->whereIn('status', $activeStatuses);
+
+        $matches = $query->where(function ($builder) use ($normalizedEmail, $normalizedPhone): void {
+            $builder->whereRaw('LOWER(customer_email) = ?', [$normalizedEmail]);
+
+            if ($normalizedPhone !== '') {
+                $builder->orWhereRaw(
+                    "REPLACE(REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '-', ''), '(', ''), ')', '') = ?",
+                    [$normalizedPhone]
+                );
+            }
+        })->count();
+
+        return $matches >= $maxPerContactPerDay;
     }
 }

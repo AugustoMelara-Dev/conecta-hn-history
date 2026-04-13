@@ -22,7 +22,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Psr\Log\LoggerInterface;
-use Throwable;
 
 /**
  * OrderController - Transactional Gateway (Hexagonal Compliant)
@@ -100,7 +99,7 @@ final class OrderController extends Controller
             if (is_object($order) && method_exists($order, 'getWhatsAppUrl')) {
                 try {
                     $whatsappUrl = $order->getWhatsAppUrl();
-                } catch (Throwable $whatsappError) {
+                } catch (\Throwable $whatsappError) {
                     $this->log->warning('OrderController: Unable to build WhatsApp URL for order response', [
                         'tenant_id' => $tenantId,
                         'order_id' => $result->id,
@@ -211,9 +210,8 @@ final class OrderController extends Controller
      */
     private function resolveOrCreateCheckoutCustomer(Request $request, array $validated, string $tenantId): User
     {
-        $authenticatedUser = $request->user();
-        if ($authenticatedUser instanceof User) {
-            return $authenticatedUser;
+        if ($request->user() instanceof User) {
+            return $request->user();
         }
 
         $providedEmail = isset($validated['customer_email']) && is_string($validated['customer_email'])

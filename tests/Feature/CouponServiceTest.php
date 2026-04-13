@@ -10,6 +10,8 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\CouponValidatorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -146,9 +148,16 @@ class CouponServiceTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function it_throws_exception_for_guests_using_restricted_coupons(): void
     {
-        // Skip if coupon_user table doesn't exist
-        if (! \Illuminate\Support\Facades\Schema::hasTable('coupon_user')) {
-            $this->markTestSkipped('coupon_user table does not exist');
+        $driver = DB::connection()->getDriverName();
+
+        if (! Schema::hasTable('coupon_user')) {
+            $this->assertNotContains(
+                $driver,
+                ['mysql', 'mariadb', 'pgsql'],
+                'coupon_user debe existir en perfiles SQL de release.'
+            );
+
+            return;
         }
 
         // Arrange: Create a coupon WITH per-user limit

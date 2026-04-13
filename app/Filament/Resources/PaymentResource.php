@@ -368,7 +368,10 @@ class PaymentResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return SubscriptionPayment::query()
+        /** @var Builder<\Illuminate\Database\Eloquent\Model> $query */
+        $query = parent::getEloquentQuery();
+
+        return $query
             ->withoutGlobalScopes()
             ->with(['tenant.user'])
             ->orderByRaw("CASE status

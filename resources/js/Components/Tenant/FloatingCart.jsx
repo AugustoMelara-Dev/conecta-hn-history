@@ -160,6 +160,7 @@ export default function FloatingCart() {
             {/* Floating Button - Animated entrance */}
             <button
                 onClick={() => setIsOpen(true)}
+                data-testid="cart-fab"
                 className={cn(
                     "fixed bottom-6 right-6 z-40",
                     "w-16 h-16 rounded-full",
@@ -216,6 +217,7 @@ export default function FloatingCart() {
                                     leaveTo="translate-x-full"
                                 >
                                     <Dialog.Panel className="w-screen max-w-md transform overflow-hidden bg-slate-900 shadow-2xl flex flex-col h-full">
+                                        <div data-testid="cart-drawer" className="flex h-full flex-col">
                                         {/* ═══════════════════════════════════════════════════════════════
                                             HEADER
                                         ═══════════════════════════════════════════════════════════════ */}
@@ -330,6 +332,7 @@ export default function FloatingCart() {
                                                         {/* Continue button */}
                                                         <button
                                                             onClick={handleProceedToCheckout}
+                                                            data-testid="cart-continue"
                                                             className={cn(
                                                                 "w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2",
                                                                 "bg-white text-slate-950 hover:bg-slate-200",
@@ -367,6 +370,7 @@ export default function FloatingCart() {
                                                 errors={errors}
                                             />
                                         )}
+                                        </div>
                                     </Dialog.Panel>
                                 </Transition.Child>
                             </div>

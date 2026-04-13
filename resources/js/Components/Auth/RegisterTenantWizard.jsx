@@ -1,4 +1,4 @@
-import { Link, useForm } from "@inertiajs/react"
+﻿import { Link, useForm } from "@inertiajs/react"
 import { useEffect, useMemo, useState } from "react"
 import {
     ArrowLeft,
@@ -26,10 +26,10 @@ import {
 } from "@/lib/publicTypography"
 
 const STEPS = [
-    { key: "business", label: "Negocio", title: "Información del negocio", icon: Building2 },
-    { key: "location", label: "Zona", title: "Ubicación y contacto", icon: MapPin },
+    { key: "business", label: "Negocio", title: "InformaciÃ³n del negocio", icon: Building2 },
+    { key: "location", label: "Zona", title: "UbicaciÃ³n y contacto", icon: MapPin },
     { key: "account", label: "Cuenta", title: "Cuenta propietaria", icon: UserRound },
-    { key: "plan", label: "Lanzar", title: "Plan y activación", icon: Sparkles },
+    { key: "plan", label: "Lanzar", title: "Plan y activaciÃ³n", icon: Sparkles },
 ]
 
 const STEP_FIELDS = {
@@ -61,6 +61,35 @@ function money(value) {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
     })
+}
+
+function normalizeHost(value) {
+    if (!value || typeof value !== "string") {
+        return null
+    }
+
+    return value
+        .replace(/^https?:\/\//i, "")
+        .replace(/\/+$/, "")
+        .replace(/\/.*/, "")
+        .trim() || null
+}
+
+function firstValidUrl(...candidates) {
+    for (const candidate of candidates) {
+        if (typeof candidate !== "string") {
+            continue
+        }
+
+        const normalized = candidate.trim()
+        if (!normalized || normalized === "#") {
+            continue
+        }
+
+        return normalized
+    }
+
+    return null
 }
 
 function StepPill({ step, index, currentStep, onClick }) {
@@ -258,18 +287,35 @@ export function RegisterTenantWizard({
     }, [data.business_type, selectedCategory, segmentProfiles])
     const selectedSegment = segmentCandidates[0] || null
     const slugBaseHost = useMemo(() => {
-        if (typeof window !== "undefined" && window.location?.host) {
-            return window.location.host
-        }
+        const currentHost = typeof window !== "undefined" ? normalizeHost(window.location?.host) : null
+        const configuredHost = normalizeHost(settings?.registrationHost)
 
-        return "vito.hn"
-    }, [])
+        return currentHost || configuredHost || "vito.hn"
+    }, [settings?.registrationHost])
     const slugCheckEndpoint = useMemo(() => {
+        const configured = firstValidUrl(settings?.slugCheckUrl)
+        if (configured) return configured
+
+        const candidates = []
+
         try {
-            return route("api.check-slug")
-        } catch {
-            return "/api/check-slug"
-        }
+            candidates.push(route("api.check-slug"))
+        } catch {}
+
+        try {
+            candidates.push(route("check-slug"))
+        } catch {}
+
+        return firstValidUrl(...candidates, "/api/check-slug", "/check-slug") || "/api/check-slug"
+    }, [settings?.slugCheckUrl])
+    const registerStoreEndpoint = useMemo(() => {
+        const candidates = []
+
+        try {
+            candidates.push(route("tenant.register.store"))
+        } catch {}
+
+        return firstValidUrl(...candidates, "/registrar-negocio") || "/registrar-negocio"
     }, [])
     const businessPreview = data.business_name.trim() || "Tu negocio"
     const slugPreview = data.slug ? `${slugBaseHost}/t/${slugify(data.slug)}` : `${slugBaseHost}/t/tu-negocio`
@@ -278,6 +324,17 @@ export function RegisterTenantWizard({
     const proLimit = Number(settings.proProductLimit ?? 100)
     const proPrice = money(settings.proPlanPrice ?? 500)
     const canSubmit = categories.length > 0 && cities.length > 0
+
+    const focusField = (field) => {
+        if (typeof window === "undefined") return
+
+        window.requestAnimationFrame(() => {
+            const node = document.getElementById(field)
+            if (node && typeof node.focus === "function") {
+                node.focus()
+            }
+        })
+    }
 
     useEffect(() => {
         const firstServerError = Object.keys(errors)[0]
@@ -315,7 +372,7 @@ export function RegisterTenantWizard({
         if (!slug) {
             setSlugState({
                 status: "idle",
-                message: "La URL se genera automáticamente a partir del nombre comercial.",
+                message: "La URL se genera automÃ¡ticamente a partir del nombre comercial.",
                 suggestions: [],
             })
             return undefined
@@ -339,18 +396,25 @@ export function RegisterTenantWizard({
                     headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
                     signal: controller.signal,
                 })
-                const payload = await response.json()
+                const contentType = response.headers.get("content-type") || ""
+                const payload = contentType.includes("application/json")
+                    ? await response.json()
+                    : null
+
+                if (!response.ok || !payload) {
+                    throw new Error("slug-check-unavailable")
+                }
 
                 setSlugState(
                     payload.available
                         ? {
                               status: "available",
-                              message: payload.message || "Esta URL está disponible.",
+                              message: payload.message || "Esta URL estÃ¡ disponible.",
                               suggestions: [],
                           }
                         : {
                               status: "unavailable",
-                              message: payload.message || "Esta URL ya está ocupada.",
+                              message: payload.message || "Esta URL ya estÃ¡ ocupada.",
                               suggestions: payload.suggestions || [],
                           }
                 )
@@ -358,7 +422,7 @@ export function RegisterTenantWizard({
                 if (error.name !== "AbortError") {
                     setSlugState({
                         status: "error",
-                        message: "No pudimos revisar la URL ahora mismo. El servidor la validará al enviar.",
+                        message: "No pudimos revisar la URL ahora mismo. El servidor la validarÃ¡ al enviar.",
                         suggestions: [],
                     })
                 }
@@ -394,9 +458,9 @@ export function RegisterTenantWizard({
             if (!data.business_name.trim()) nextErrors.business_name = "Escribe el nombre comercial."
             if (!slug) nextErrors.slug = "Define una URL para el negocio."
             else if (slug.length < 3) nextErrors.slug = "La URL necesita al menos 3 caracteres."
-            else if (slugState.status === "checking") nextErrors.slug = "Espera a que termine la revisión de la URL."
-            else if (slugState.status === "unavailable") nextErrors.slug = "Esa URL ya está ocupada."
-            if (!String(data.category_id).trim()) nextErrors.category_id = "Selecciona una categoría."
+            else if (slugState.status === "checking") nextErrors.slug = "Espera a que termine la revisiÃ³n de la URL."
+            else if (slugState.status === "unavailable") nextErrors.slug = "Esa URL ya estÃ¡ ocupada."
+            if (!String(data.category_id).trim()) nextErrors.category_id = "Selecciona una categorÃ­a."
             if (!String(data.business_type).trim()) nextErrors.business_type = "Selecciona el tipo de negocio."
         }
 
@@ -407,16 +471,16 @@ export function RegisterTenantWizard({
         if (targetStep === 2) {
             if (!data.name.trim()) nextErrors.name = "Escribe tu nombre completo."
             if (!data.email.trim()) nextErrors.email = "Escribe el correo de acceso."
-            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) nextErrors.email = "Escribe un correo válido."
-            if (!data.password) nextErrors.password = "Crea una contraseña."
+            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) nextErrors.email = "Escribe un correo vÃ¡lido."
+            if (!data.password) nextErrors.password = "Crea una contraseÃ±a."
             else if (data.password.length < 8) nextErrors.password = "Usa al menos 8 caracteres."
-            if (!data.password_confirmation) nextErrors.password_confirmation = "Confirma la contraseña."
-            else if (data.password_confirmation !== data.password) nextErrors.password_confirmation = "Las contraseñas no coinciden."
+            if (!data.password_confirmation) nextErrors.password_confirmation = "Confirma la contraseÃ±a."
+            else if (data.password_confirmation !== data.password) nextErrors.password_confirmation = "Las contraseÃ±as no coinciden."
         }
 
         if (targetStep === 3) {
-            if (!["free", "pro"].includes(data.selected_plan)) nextErrors.selected_plan = "Selecciona un plan válido."
-            if (!data.terms_accepted) nextErrors.terms_accepted = "Debes aceptar los términos para continuar."
+            if (!["free", "pro"].includes(data.selected_plan)) nextErrors.selected_plan = "Selecciona un plan vÃ¡lido."
+            if (!data.terms_accepted) nextErrors.terms_accepted = "Debes aceptar los tÃ©rminos para continuar."
         }
 
         const fields = STEP_FIELDS[targetStep]
@@ -431,9 +495,13 @@ export function RegisterTenantWizard({
 
     const submit = (event) => {
         if (event) event.preventDefault()
-        if (!validateStep(step)) return
+        if (!validateStep(step)) {
+            const firstInvalid = (STEP_FIELDS[step] || []).find((field) => Boolean(errorFor(field)))
+            if (firstInvalid) focusField(firstInvalid)
+            return
+        }
 
-        post(route("tenant.register.store"), {
+        post(registerStoreEndpoint, {
             onError: (serverErrors) => {
                 const firstField = Object.keys(serverErrors)[0]
                 if (firstField) setStep(FIELD_TO_STEP[firstField] ?? 0)
@@ -446,7 +514,7 @@ export function RegisterTenantWizard({
             topActions={
                 <>
                     <Link href={route("login")} className="hidden text-sm font-semibold text-slate-600 transition hover:text-slate-950 md:inline-flex">
-                        Iniciar sesión
+                        Iniciar sesiÃ³n
                     </Link>
                     <Link href={route("public.explore")} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950">
                         Explorar
@@ -468,7 +536,7 @@ export function RegisterTenantWizard({
                                 Lanza tu negocio en minutos con un registro guiado.
                             </h2>
                             <p className="max-w-lg text-base leading-7 text-slate-300 xl:text-lg">
-                                Definimos URL, perfil comercial, cuenta y plan en un solo flujo conectado a producción.
+                                Definimos URL, perfil comercial, cuenta y plan en un solo flujo conectado a producciÃ³n.
                             </p>
                         </div>
                     </div>
@@ -478,7 +546,7 @@ export function RegisterTenantWizard({
                             invert
                             eyebrow={`Paso ${step + 1} de ${STEPS.length}`}
                             title={STEPS[step].title}
-                            description="Cada paso pide solo lo necesario para activar tu panel sin fricción."
+                            description="Cada paso pide solo lo necesario para activar tu panel sin fricciÃ³n."
                         >
                             <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/10">
                                 <div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${progress}%` }} />
@@ -487,7 +555,7 @@ export function RegisterTenantWizard({
 
                         <AuthAsideCard
                             invert
-                            eyebrow="Checklist de activación"
+                            eyebrow="Checklist de activaciÃ³n"
                             title="Lo que queda listo al enviar"
                             description="Este registro no es demo: crea recursos reales dentro de la plataforma."
                         >
@@ -495,7 +563,7 @@ export function RegisterTenantWizard({
                                 {[
                                     "Cuenta propietaria con login real",
                                     "Negocio con slug validado y aislado",
-                                    "Acceso al panel y flujo de verificación",
+                                    "Acceso al panel y flujo de verificaciÃ³n",
                                 ].map((item) => (
                                     <div key={item} className="flex items-start gap-2 text-sm text-slate-200">
                                         <CheckCircle2 className="mt-0.5 h-4 w-4" />
@@ -507,7 +575,7 @@ export function RegisterTenantWizard({
 
                         <AuthAsideCard eyebrow="Vista previa" title={businessPreview} description={slugPreview}>
                             <div className="mt-4 space-y-3">
-                                <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
+                                <SummaryRow label="CategorÃ­a" value={selectedCategory?.name || "Pendiente"} />
                                 <SummaryRow label="Tipo" value={selectedBusinessType?.label || "Pendiente"} />
                                 <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
                                 <SummaryRow label="Ciudad" value={selectedCity?.name || "Pendiente"} />
@@ -526,10 +594,10 @@ export function RegisterTenantWizard({
                                 Registro de negocio
                             </p>
                             <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                Crea tu negocio con una experiencia más clara.
+                                Crea tu negocio con una experiencia mÃ¡s clara.
                             </h1>
                             <p className="max-w-2xl text-sm leading-7 text-slate-500">
-                                Cuatro pasos, validaciones en vivo y activación real al finalizar.
+                                Cuatro pasos, validaciones en vivo y activaciÃ³n real al finalizar.
                             </p>
                         </div>
 
@@ -542,7 +610,7 @@ export function RegisterTenantWizard({
 
                     {!canSubmit ? (
                         <div className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                            No pudimos cargar ciudades o categorías. Recarga la página e inténtalo de nuevo.
+                            No pudimos cargar ciudades o categorÃ­as. Recarga la pÃ¡gina e intÃ©ntalo de nuevo.
                         </div>
                     ) : null}
 
@@ -561,7 +629,7 @@ export function RegisterTenantWizard({
                                 <FieldGroup>
                                     <Field>
                                         <FieldLabel htmlFor="business_name">Nombre comercial</FieldLabel>
-                                        <Input id="business_name" value={data.business_name} onChange={(event) => updateField("business_name", event.target.value)} placeholder="Ej. Café La Esperanza" className={inputClass("business_name")} />
+                                        <Input id="business_name" name="business_name" autoComplete="organization" value={data.business_name} onChange={(event) => updateField("business_name", event.target.value)} placeholder="Ej. Cafe La Esperanza" className={inputClass("business_name")} />
                                         {errorFor("business_name") ? <FieldDescription className="text-rose-600">{errorFor("business_name")}</FieldDescription> : null}
                                     </Field>
 
@@ -572,20 +640,26 @@ export function RegisterTenantWizard({
                                                 {slugState.status === "available" ? "Disponible" : slugState.status === "checking" ? "Revisando" : slugState.status === "unavailable" ? "Ocupada" : "Pendiente"}
                                             </span>
                                         </div>
-                                        <div className="relative">
-                                            <span className="absolute inset-y-0 left-4 inline-flex items-center text-xs text-slate-400">{`${slugBaseHost}/t/`}</span>
-                                            <Input
-                                                id="slug"
+                                        <div className={`grid h-12 grid-cols-[minmax(90px,auto)_auto_1fr] items-center gap-1 rounded-xl border bg-slate-50 px-3 text-sm transition focus-within:ring-4 ${
+                                            errorFor("slug")
+                                                ? "border-rose-300 focus-within:border-rose-300 focus-within:ring-rose-200"
+                                                : "border-slate-200 focus-within:border-slate-950 focus-within:ring-slate-300"
+                                        }`}>
+                                            <span className="truncate text-xs text-slate-500" title={slugBaseHost}>
+                                                {slugBaseHost}
+                                            </span>
+                                            <span className="text-xs text-slate-400">/t/</span>
+                                            <input id="slug" name="slug" autoComplete="off"
                                                 value={data.slug}
                                                 onChange={(event) => {
                                                     setSlugTouched(true)
                                                     updateField("slug", slugify(event.target.value))
                                                 }}
                                                 placeholder="tunegocio"
-                                                className={`${inputClass("slug")} pl-40 pr-4 sm:pl-44`}
+                                                className="h-full w-full border-0 bg-transparent px-1 text-slate-950 outline-none placeholder:text-slate-400"
                                             />
                                         </div>
-                                        <FieldDescription className={slugState.status === "unavailable" || slugState.status === "error" ? "text-rose-600" : "text-slate-500"}>
+                                        <FieldDescription aria-live="polite" className={slugState.status === "unavailable" || slugState.status === "error" ? "text-rose-600" : "text-slate-500"}>
                                             {errorFor("slug") || slugState.message}
                                         </FieldDescription>
                                         {slugState.suggestions?.length ? (
@@ -603,9 +677,9 @@ export function RegisterTenantWizard({
                                     </Field>
 
                                     <Field>
-                                        <FieldLabel htmlFor="category_id">Categoría</FieldLabel>
-                                        <select id="category_id" value={data.category_id} onChange={(event) => updateField("category_id", event.target.value)} className={`h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-300 ${errorFor("category_id") ? "border-rose-300 focus:ring-rose-200" : ""}`}>
-                                            <option value="">Selecciona una categoría</option>
+                                        <FieldLabel htmlFor="category_id">CategorÃ­a</FieldLabel>
+                                        <select id="category_id" name="category_id" autoComplete="off" value={data.category_id} onChange={(event) => updateField("category_id", event.target.value)} className={`h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-300 ${errorFor("category_id") ? "border-rose-300 focus:ring-rose-200" : ""}`}>
+                                            <option value="">Selecciona una categorÃ­a</option>
                                             {categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                                         </select>
                                         {errorFor("category_id") ? <FieldDescription className="text-rose-600">{errorFor("category_id")}</FieldDescription> : null}
@@ -615,7 +689,7 @@ export function RegisterTenantWizard({
                                         <div className="space-y-2">
                                             <FieldLabel>Tipo de negocio</FieldLabel>
                                             <FieldDescription>
-                                                Elige la operación que mejor representa cómo vendes hoy.
+                                                Elige la operaciÃ³n que mejor representa cÃ³mo vendes hoy.
                                             </FieldDescription>
                                         </div>
 
@@ -638,7 +712,7 @@ export function RegisterTenantWizard({
 
                                         {suggestedBusinessType && !businessTypeTouched ? (
                                             <FieldDescription>
-                                                Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "este tipo"}</strong> por la categoría que elegiste.
+                                                Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "este tipo"}</strong> por la categorÃ­a que elegiste.
                                             </FieldDescription>
                                         ) : null}
 
@@ -715,7 +789,7 @@ export function RegisterTenantWizard({
                                 <FieldGroup>
                                     <Field>
                                         <FieldLabel htmlFor="city_id">Ciudad</FieldLabel>
-                                        <select id="city_id" value={data.city_id} onChange={(event) => updateField("city_id", event.target.value)} className={`h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-300 ${errorFor("city_id") ? "border-rose-300 focus:ring-rose-200" : ""}`}>
+                                        <select id="city_id" name="city_id" autoComplete="address-level2" value={data.city_id} onChange={(event) => updateField("city_id", event.target.value)} className={`h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-300 ${errorFor("city_id") ? "border-rose-300 focus:ring-rose-200" : ""}`}>
                                             <option value="">Selecciona una ciudad</option>
                                             {cities.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                                         </select>
@@ -724,7 +798,7 @@ export function RegisterTenantWizard({
 
                                     <Field>
                                         <FieldLabel htmlFor="whatsapp">WhatsApp</FieldLabel>
-                                        <Input id="whatsapp" value={data.whatsapp} onChange={(event) => updateField("whatsapp", event.target.value)} placeholder="+504 9999-9999" className={inputClass("whatsapp")} />
+                                        <Input id="whatsapp" name="whatsapp" type="tel" autoComplete="tel" inputMode="tel" value={data.whatsapp} onChange={(event) => updateField("whatsapp", event.target.value)} placeholder="+504 9999-9999" className={inputClass("whatsapp")} />
                                         <FieldDescription>Opcional, pero ayuda a conectar pedidos y contacto desde el inicio.</FieldDescription>
                                     </Field>
                                 </FieldGroup>
@@ -734,30 +808,30 @@ export function RegisterTenantWizard({
                                 <FieldGroup>
                                     <Field>
                                         <FieldLabel htmlFor="name">Nombre completo</FieldLabel>
-                                        <Input id="name" value={data.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Nombre Apellido" className={inputClass("name")} />
+                                        <Input id="name" name="name" autoComplete="name" value={data.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Nombre Apellido" className={inputClass("name")} />
                                         {errorFor("name") ? <FieldDescription className="text-rose-600">{errorFor("name")}</FieldDescription> : null}
                                     </Field>
 
                                     <Field>
                                         <FieldLabel htmlFor="email">Correo</FieldLabel>
-                                        <Input id="email" type="email" value={data.email} onChange={(event) => updateField("email", event.target.value)} placeholder="hola@tunegocio.hn" className={inputClass("email")} />
+                                        <Input id="email" name="email" type="email" autoComplete="email" spellCheck={false} value={data.email} onChange={(event) => updateField("email", event.target.value)} placeholder="hola@tunegocio.hn" className={inputClass("email")} />
                                         {errorFor("email") ? (
                                             <FieldDescription className="text-rose-600">{errorFor("email")}</FieldDescription>
                                         ) : (
-                                            <FieldDescription>Usaremos este correo para login, verificación y recuperación.</FieldDescription>
+                                            <FieldDescription>Usaremos este correo para login, verificaciÃ³n y recuperaciÃ³n.</FieldDescription>
                                         )}
                                     </Field>
 
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <Field>
-                                            <FieldLabel htmlFor="password">Contraseña</FieldLabel>
-                                            <Input id="password" type="password" value={data.password} onChange={(event) => updateField("password", event.target.value)} className={inputClass("password")} />
-                                            {errorFor("password") ? <FieldDescription className="text-rose-600">{errorFor("password")}</FieldDescription> : <FieldDescription>Mínimo 8 caracteres.</FieldDescription>}
+                                            <FieldLabel htmlFor="password">ContraseÃ±a</FieldLabel>
+                                            <Input id="password" name="password" type="password" autoComplete="new-password" value={data.password} onChange={(event) => updateField("password", event.target.value)} className={inputClass("password")} />
+                                            {errorFor("password") ? <FieldDescription className="text-rose-600">{errorFor("password")}</FieldDescription> : <FieldDescription>MÃ­nimo 8 caracteres.</FieldDescription>}
                                         </Field>
 
                                         <Field>
-                                            <FieldLabel htmlFor="password_confirmation">Confirmar contraseña</FieldLabel>
-                                            <Input id="password_confirmation" type="password" value={data.password_confirmation} onChange={(event) => updateField("password_confirmation", event.target.value)} className={inputClass("password_confirmation")} />
+                                            <FieldLabel htmlFor="password_confirmation">Confirmar contraseÃ±a</FieldLabel>
+                                            <Input id="password_confirmation" name="password_confirmation" type="password" autoComplete="new-password" value={data.password_confirmation} onChange={(event) => updateField("password_confirmation", event.target.value)} className={inputClass("password_confirmation")} />
                                             {errorFor("password_confirmation") ? <FieldDescription className="text-rose-600">{errorFor("password_confirmation")}</FieldDescription> : null}
                                         </Field>
                                     </div>
@@ -767,21 +841,21 @@ export function RegisterTenantWizard({
                             {step === 3 ? (
                                 <FieldGroup>
                                     <div className="grid gap-4 md:grid-cols-2">
-                                        <PlanCard active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price="$0" bullets={["Perfil digital público", `Catálogo de ${freeLimit} productos`, "Panel base para operar"]} onClick={() => updateField("selected_plan", "free")} />
-                                        <PlanCard active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`$${proPrice}`} bullets={["Ventas ilimitadas", "Analíticas avanzadas", `Capacidad comercial de ${proLimit} productos`]} onClick={() => updateField("selected_plan", "pro")} />
+                                        <PlanCard active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price="$0" bullets={["Perfil digital pÃºblico", `CatÃ¡logo de ${freeLimit} productos`, "Panel base para operar"]} onClick={() => updateField("selected_plan", "free")} />
+                                        <PlanCard active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`$${proPrice}`} bullets={["Ventas ilimitadas", "AnalÃ­ticas avanzadas", `Capacidad comercial de ${proLimit} productos`]} onClick={() => updateField("selected_plan", "pro")} />
                                     </div>
                                     {errorFor("selected_plan") ? <FieldDescription className="text-rose-600">{errorFor("selected_plan")}</FieldDescription> : null}
 
                                     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),300px]">
                                         <div className="space-y-3 rounded-[1.75rem] border border-slate-200 bg-white p-5">
-                                            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Resumen de activación</p>
+                                            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Resumen de activaciÃ³n</p>
                                             <SummaryRow label="Negocio" value={businessPreview} />
                                             <SummaryRow label="URL" value={slugPreview} />
-                                            <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
+                                            <SummaryRow label="CategorÃ­a" value={selectedCategory?.name || "Pendiente"} />
                                             <SummaryRow label="Tipo" value={selectedBusinessType?.label || "Pendiente"} />
                                             <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
                                             <SummaryRow label="Ciudad" value={selectedCity?.name || "Pendiente"} />
-                                            <SummaryRow label="Cuenta" value={data.email || "Sin correo aún"} />
+                                            <SummaryRow label="Cuenta" value={data.email || "Sin correo aÃºn"} />
                                             <SummaryRow label="Plan" value={data.selected_plan === "pro" ? "Business Pro" : "Basic"} />
                                         </div>
 
@@ -789,7 +863,7 @@ export function RegisterTenantWizard({
                                             <label className="flex items-start gap-3 rounded-[1.75rem] border border-slate-200 bg-slate-50 px-5 py-5">
                                                 <input type="checkbox" checked={data.terms_accepted} onChange={(event) => updateField("terms_accepted", event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-300" />
                                                 <span className="text-sm leading-7 text-slate-600">
-                                                    Confirmo que tengo autorización para registrar este negocio y acepto los términos operativos de Conecta HN.
+                                                    Confirmo que tengo autorizaciÃ³n para registrar este negocio y acepto los tÃ©rminos operativos de Conecta HN.
                                                 </span>
                                             </label>
                                             {errorFor("terms_accepted") ? <FieldDescription className="text-rose-600">{errorFor("terms_accepted")}</FieldDescription> : null}
@@ -820,7 +894,7 @@ export function RegisterTenantWizard({
                         <div className="flex items-center justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0 || processing} className="h-12 rounded-xl border-slate-200 bg-white text-slate-950 hover:bg-slate-50">
                                 <ArrowLeft className="mr-2 h-4 w-4" />
-                                Atrás
+                                AtrÃ¡s
                             </Button>
 
                             {step < STEPS.length - 1 ? (

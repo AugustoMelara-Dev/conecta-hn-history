@@ -64,6 +64,10 @@ final class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         $tenant = $user?->tenant;
+        $memberTenantCount = $user?->memberTenants()
+            ->wherePivotNotNull('accepted_at')
+            ->count() ?? 0;
+        $hasBusinessContext = $tenant !== null || $memberTenantCount > 0;
 
         return [
             'auth' => [
@@ -72,6 +76,11 @@ final class HandleInertiaRequests extends Middleware
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $user->role->value,
+                    'persona' => [
+                        'is_super_admin' => $user->isSuperAdmin(),
+                        'is_business_owner_or_staff' => $hasBusinessContext,
+                        'is_customer' => ! $hasBusinessContext && ! $user->isSuperAdmin(),
+                    ],
                 ] : null,
                 'tenant' => $tenant ? [
                     'id' => (string) $tenant->getKey(),

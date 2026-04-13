@@ -48,6 +48,7 @@ async function fillBookingDetails(page) {
     await page.getByTestId('booking-phone-input').fill('9999-1111');
     await page.getByTestId('booking-email-input').fill('cliente.e2e@example.test');
     await page.getByTestId('booking-notes-input').fill('Reserva creada desde Playwright.');
+    await page.getByTestId('booking-consent-checkbox').check();
 }
 
 async function startBookingFlow(page) {
@@ -63,7 +64,7 @@ async function startBookingFlow(page) {
 }
 
 async function selectAvailableSlot(page, preference = 'middle') {
-    const slotOptions = page.locator('[data-testid^="booking-slot-"]');
+    const slotOptions = page.locator('[data-testid^="booking-slot-"]:not([disabled])');
     const candidateDates = nextBookingDates(7);
     const attempts = [];
 

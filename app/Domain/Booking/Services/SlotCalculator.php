@@ -16,17 +16,6 @@ final class SlotCalculator
     ) {}
 
     /**
-     * Generate available time slots for a given date.
-     *
-     * Uses spatie/opening-hours to respect tenant business hours
-     * and provider schedule overrides.
-     *
-     * @param  string  $tenantId  The tenant ID for fallback hours
-     * @param  Carbon  $date  The date to generate slots for
-     * @param  int  $durationMinutes  Service duration in minutes
-     * @param  string|null  $providerId  Optional provider ID for schedule override
-     * @param  int  $bufferBefore  Minutes required before the appointment
-     * @param  int  $bufferAfter  Minutes required after the appointment
      * @return array<array{time: string, display: string}>
      */
     public function calculate(
@@ -37,8 +26,26 @@ final class SlotCalculator
         int $bufferBefore = 0,
         int $bufferAfter = 0
     ): array {
-        $slots = [];
+        return array_values(array_filter(
+            $this->calculateTimeline($tenantId, $date, $durationMinutes, $providerId, $bufferBefore, $bufferAfter),
+            static fn (array $slot): bool => $slot['available'] === true
+        ));
+    }
 
+    /**
+     * Generate a full timeline with available and occupied slots.
+     *
+     * @return array<array{time: string, display: string, available: bool}>
+     */
+    public function calculateTimeline(
+        string $tenantId,
+        Carbon $date,
+        int $durationMinutes,
+        ?string $providerId,
+        int $bufferBefore = 0,
+        int $bufferAfter = 0
+    ): array {
+        $slots = [];
         $openingHours = clone $this->tenantRepository->getOpeningHours($tenantId);
         if ($providerId) {
             $openingHours = $this->providerRepository->getOpeningHours($providerId) ?? $openingHours;
@@ -69,12 +76,11 @@ final class SlotCalculator
                         );
                     }
 
-                    if ($isAvailable) {
-                        $slots[] = [
-                            'time' => $current->format('H:i'),
-                            'display' => $current->format('h:i A'),
-                        ];
-                    }
+                    $slots[] = [
+                        'time' => $current->format('H:i'),
+                        'display' => $current->format('h:i A'),
+                        'available' => $isAvailable,
+                    ];
                 }
 
                 $current->addMinutes($interval);

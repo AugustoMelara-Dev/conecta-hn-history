@@ -26,4 +26,17 @@ return [
 
     ],
 
+    'booking' => [
+        /*
+        |----------------------------------------------------------------------
+        | Public Booking Abuse Guard
+        |----------------------------------------------------------------------
+        |
+        | Maximum active (pending/confirmed) bookings allowed per contact
+        | (email or phone) for the same tenant on the same day.
+        |
+        */
+        'max_pending_per_contact_per_day' => (int) env('CONECTA_BOOKING_MAX_PENDING_PER_CONTACT_PER_DAY', 3),
+    ],
+
 ];

@@ -165,9 +165,8 @@ class ConcurrencyRestockTest extends TestCase
 
     public function test_restock_uses_lock_for_update(): void
     {
-        if (DB::connection()->getDriverName() !== 'mysql') {
-            $this->markTestSkipped('This lock inspection test requires the MySQL-compatible testing database.');
-        }
+        $driver = DB::connection()->getDriverName();
+        $lockingDrivers = ['mysql', 'mariadb', 'pgsql'];
 
         DB::enableQueryLog();
 
@@ -177,10 +176,17 @@ class ConcurrencyRestockTest extends TestCase
         $queries = DB::getQueryLog();
         $hasLock = collect($queries)->contains(fn ($q) => stripos($q['query'], 'for update') !== false);
 
-        $this->assertTrue($hasLock,
-            "CRITICAL: restock() NO usa lockForUpdate()!\n".
-            'Queries: '.json_encode(array_column($queries, 'query'), JSON_PRETTY_PRINT)
-        );
+        if (in_array($driver, $lockingDrivers, true)) {
+            $this->assertTrue($hasLock,
+                "CRITICAL: restock() NO usa lockForUpdate()!\n".
+                'Queries: '.json_encode(array_column($queries, 'query'), JSON_PRETTY_PRINT)
+            );
+        } else {
+            $this->assertFalse(
+                $hasLock,
+                sprintf('El perfil %s no deberia emitir FOR UPDATE.', $driver)
+            );
+        }
 
         DB::disableQueryLog();
     }
@@ -191,9 +197,8 @@ class ConcurrencyRestockTest extends TestCase
 
     public function test_lock_includes_tenant_isolation(): void
     {
-        if (DB::connection()->getDriverName() !== 'mysql') {
-            $this->markTestSkipped('This tenant lock inspection test requires the MySQL-compatible testing database.');
-        }
+        $driver = DB::connection()->getDriverName();
+        $lockingDrivers = ['mysql', 'mariadb', 'pgsql'];
 
         DB::enableQueryLog();
 
@@ -207,7 +212,14 @@ class ConcurrencyRestockTest extends TestCase
             return strpos($sql, 'for update') !== false && strpos($sql, 'tenant_id') !== false;
         });
 
-        $this->assertTrue($hasTenantLock, 'lockForUpdate() debe incluir tenant_id');
+        if (in_array($driver, $lockingDrivers, true)) {
+            $this->assertTrue($hasTenantLock, 'lockForUpdate() debe incluir tenant_id');
+        } else {
+            $this->assertFalse(
+                $hasTenantLock,
+                sprintf('El perfil %s no deberia generar lock FOR UPDATE con tenant_id.', $driver)
+            );
+        }
 
         DB::disableQueryLog();
     }

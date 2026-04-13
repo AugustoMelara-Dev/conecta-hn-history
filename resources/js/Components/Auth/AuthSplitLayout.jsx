@@ -114,7 +114,7 @@ export default function AuthSplitLayout({
 }) {
     return (
         <div
-            className="grid min-h-[100svh] bg-white text-slate-950 lg:grid-cols-2"
+            className="grid min-h-[100svh] bg-white text-slate-950 xl:grid-cols-2"
             style={{ fontFamily: PUBLIC_BODY_FONT }}
         >
             <div className="flex flex-col gap-6 p-6 md:p-10">
@@ -130,7 +130,7 @@ export default function AuthSplitLayout({
                 </div>
             </div>
 
-            <aside className="relative hidden overflow-hidden bg-slate-950 lg:block">
+            <aside className="relative hidden overflow-hidden bg-slate-950 xl:block">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.12),transparent_22%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.08),transparent_28%),linear-gradient(135deg,#020617_0%,#111827_48%,#0f172a_100%)]" />
                 <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] [background-size:72px_72px]" />
 

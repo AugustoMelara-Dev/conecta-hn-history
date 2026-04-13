@@ -9,14 +9,14 @@ use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class RegistrationControllerTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     #[Test]
     public function registration_page_exposes_business_type_and_segment_metadata_for_multi_rubro_onboarding(): void

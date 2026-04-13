@@ -10,14 +10,14 @@ use App\Models\Service;
 use App\Models\ServiceProvider;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class BookingPageRouteTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     #[Test]
     public function it_renders_the_booking_wizard_with_a_preselected_service_when_requested_from_the_microsite(): void
@@ -102,6 +102,7 @@ final class BookingPageRouteTest extends TestCase
                 'customer_email' => 'cliente.e2e@example.test',
                 'customer_phone' => '9999-1111',
                 'customer_notes' => 'Reserva creada desde feature test.',
+                'contact_consent' => true,
             ]);
 
         $response->assertRedirectContains("/t/{$tenant->slug}/book/success?appointment=");
@@ -160,6 +161,7 @@ final class BookingPageRouteTest extends TestCase
                 'customer_email' => 'cliente.e2e@example.test',
                 'customer_phone' => '9999-1111',
                 'customer_notes' => 'Reserva creada desde feature test.',
+                'contact_consent' => true,
             ]);
 
         $storeResponse->assertRedirectContains("/t/{$tenant->slug}/book/success?appointment=");
@@ -219,6 +221,7 @@ final class BookingPageRouteTest extends TestCase
             'customer_name' => 'Intruso',
             'customer_email' => 'intruso@example.test',
             'customer_phone' => '9999-0000',
+            'contact_consent' => true,
         ]);
 
         $response->assertNotFound();
@@ -227,5 +230,70 @@ final class BookingPageRouteTest extends TestCase
             'tenant_id' => $tenantA->id,
             'customer_email' => 'intruso@example.test',
         ]);
+    }
+
+    #[Test]
+    public function it_blocks_excessive_same_day_bookings_for_the_same_contact(): void
+    {
+        config(['conecta.booking.max_pending_per_contact_per_day' => 1]);
+
+        $user = User::factory()->create();
+        /** @var Tenant $tenant */
+        $tenant = Tenant::factory()->pro()->create([
+            'user_id' => $user->id,
+            'slug' => 'dentista-guard',
+            'business_type' => 'service',
+            'status' => 'approved',
+            'subscription_status' => 'active',
+        ]);
+
+        /** @var Service $service */
+        $service = Service::factory()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Limpieza dental',
+            'duration_minutes' => 45,
+            'is_active' => true,
+        ]);
+
+        /** @var ServiceProvider $provider */
+        $provider = ServiceProvider::factory()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Dra. Alicia',
+            'is_active' => true,
+        ]);
+
+        $scheduledAt = now()->addDay()->setTime(9, 0);
+
+        app(TenantContext::class)->setTenant($tenant->id);
+
+        Appointment::factory()->create([
+            'tenant_id' => $tenant->id,
+            'service_id' => $service->id,
+            'service_provider_id' => $provider->id,
+            'scheduled_at' => $scheduledAt,
+            'end_at' => $scheduledAt->copy()->addMinutes(45),
+            'status' => Appointment::STATUS_PENDING,
+            'customer_name' => 'Cliente Repetido',
+            'customer_email' => 'cliente.repetido@example.test',
+            'customer_phone' => '9999-8888',
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $response = $this->from("/t/{$tenant->slug}/book")
+            ->post("/t/{$tenant->slug}/book", [
+                'service_id' => $service->id,
+                'service_provider_id' => $provider->id,
+                'date' => $scheduledAt->format('Y-m-d'),
+                'time' => '10:00',
+                'customer_name' => 'Cliente Repetido',
+                'customer_email' => 'cliente.repetido@example.test',
+                'customer_phone' => '9999-8888',
+                'contact_consent' => true,
+            ]);
+
+        $response
+            ->assertRedirect("/t/{$tenant->slug}/book")
+            ->assertSessionHasErrors('customer_email');
     }
 }

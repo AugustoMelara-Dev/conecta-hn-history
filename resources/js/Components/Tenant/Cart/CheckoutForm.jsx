@@ -41,6 +41,7 @@ export default function CheckoutForm({
                         value={customerName}
                         onChange={(event) => setCustomerName(event.target.value)}
                         placeholder="Ej: Maria Garcia"
+                        data-testid="checkout-name-input"
                         className={cn(
                             'w-full rounded-xl border bg-slate-800 px-4 py-3 text-white placeholder:text-slate-500 transition-all focus:outline-none focus:ring-2 focus:ring-white/20',
                             errors.customerName ? 'border-rose-400' : 'border-white/10'
@@ -56,6 +57,7 @@ export default function CheckoutForm({
                         value={customerPhone}
                         onChange={(event) => setCustomerPhone(event.target.value)}
                         placeholder="Ej: 9999-1234"
+                        data-testid="checkout-phone-input"
                         className={cn(
                             'w-full rounded-xl border bg-slate-800 px-4 py-3 text-white placeholder:text-slate-500 transition-all focus:outline-none focus:ring-2 focus:ring-white/20',
                             errors.customerPhone ? 'border-rose-400' : 'border-white/10'
@@ -70,6 +72,7 @@ export default function CheckoutForm({
                         <button
                             type="button"
                             onClick={() => setDeliveryType('pickup')}
+                            data-testid="checkout-delivery-pickup"
                             className={cn(
                                 'flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all',
                                 deliveryType === 'pickup'
@@ -87,6 +90,7 @@ export default function CheckoutForm({
                         <button
                             type="button"
                             onClick={() => setDeliveryType('delivery')}
+                            data-testid="checkout-delivery-home"
                             className={cn(
                                 'flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all',
                                 deliveryType === 'delivery'
@@ -114,6 +118,7 @@ export default function CheckoutForm({
                             onChange={(event) => setCustomerAddress(event.target.value)}
                             placeholder="Colonia, calle, numero de casa, referencias..."
                             rows={3}
+                            data-testid="checkout-address-input"
                             className={cn(
                                 'w-full resize-none rounded-xl border bg-slate-800 px-4 py-3 text-white placeholder:text-slate-500 transition-all focus:outline-none focus:ring-2 focus:ring-white/20',
                                 errors.customerAddress ? 'border-rose-400' : 'border-white/10'
@@ -130,6 +135,7 @@ export default function CheckoutForm({
                         onChange={(event) => setCustomerNotes(event.target.value)}
                         placeholder="Instrucciones especiales, alergenos, etc."
                         rows={2}
+                        data-testid="checkout-notes-input"
                         className="w-full resize-none rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white placeholder:text-slate-500 transition-all focus:outline-none focus:ring-2 focus:ring-white/20"
                     />
                 </div>
@@ -155,6 +161,7 @@ export default function CheckoutForm({
                 <button
                     onClick={handleSubmitOrder}
                     disabled={isSubmitting}
+                    data-testid="checkout-submit"
                     className={cn(
                         'flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold transition-all active:scale-95',
                         'bg-white text-slate-950 hover:bg-slate-200',

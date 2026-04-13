@@ -125,6 +125,7 @@ export default function AddToCartButton({
             <button
                 type="button"
                 onClick={handleOpenModal}
+                data-testid={`add-to-cart-${product.id}`}
                 className={cn(variants[variant], className)}
                 disabled={showAdded}
             >
