@@ -16,6 +16,18 @@
   ],
   "routes": [
     {
+      "src": "/",
+      "dest": "/api/index.php"
+    },
+    {
+      "src": "/index.php",
+      "dest": "/api/index.php"
+    },
+    {
+      "src": "/(.*\\.php)",
+      "dest": "/api/index.php"
+    },
+    {
       "handle": "filesystem"
     },
     {
