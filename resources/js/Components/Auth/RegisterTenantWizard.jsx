@@ -91,7 +91,6 @@ function firstValidUrl(...candidates) {
 
     return null
 }
-
 function StepPill({ step, index, currentStep, onClick }) {
     const Icon = step.icon
     const active = index === currentStep
@@ -288,15 +287,19 @@ export function RegisterTenantWizard({
     const selectedSegment = segmentCandidates[0] || null
     const slugBaseHost = useMemo(() => {
         const currentHost = typeof window !== "undefined" ? normalizeHost(window.location?.host) : null
+        const forwardedHost = normalizeHost(settings?.requestHost)
         const configuredHost = normalizeHost(settings?.registrationHost)
+        const legacyHost = normalizeHost(settings?.slugBaseHost)
 
-        return currentHost || configuredHost || "vito.hn"
-    }, [settings?.registrationHost])
-    const slugCheckEndpoint = useMemo(() => {
+        return currentHost || forwardedHost || configuredHost || legacyHost || "vito.hn"
+    }, [settings?.registrationHost, settings?.requestHost, settings?.slugBaseHost])
+    const slugCheckCandidates = useMemo(() => {
         const configured = firstValidUrl(settings?.slugCheckUrl)
-        if (configured) return configured
-
         const candidates = []
+
+        if (configured) {
+            candidates.push(configured)
+        }
 
         try {
             candidates.push(route("api.check-slug"))
@@ -306,7 +309,10 @@ export function RegisterTenantWizard({
             candidates.push(route("check-slug"))
         } catch {}
 
-        return firstValidUrl(...candidates, "/api/check-slug", "/check-slug") || "/api/check-slug"
+        candidates.push("/api/check-slug")
+        candidates.push("/check-slug")
+
+        return [...new Set(candidates.filter(Boolean))]
     }, [settings?.slugCheckUrl])
     const registerStoreEndpoint = useMemo(() => {
         const candidates = []
@@ -392,16 +398,27 @@ export function RegisterTenantWizard({
             try {
                 setSlugState({ status: "checking", message: "Validando URL...", suggestions: [] })
 
-                const response = await fetch(`${slugCheckEndpoint}?slug=${encodeURIComponent(slug)}`, {
-                    headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
-                    signal: controller.signal,
-                })
-                const contentType = response.headers.get("content-type") || ""
-                const payload = contentType.includes("application/json")
-                    ? await response.json()
-                    : null
+                let payload = null
+                let response = null
 
-                if (!response.ok || !payload) {
+                for (const endpoint of slugCheckCandidates) {
+                    const candidateResponse = await fetch(`${endpoint}?slug=${encodeURIComponent(slug)}`, {
+                        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+                        signal: controller.signal,
+                    })
+                    const contentType = candidateResponse.headers.get("content-type") || ""
+                    const candidatePayload = contentType.includes("application/json")
+                        ? await candidateResponse.json()
+                        : null
+
+                    if (candidateResponse.ok && candidatePayload) {
+                        response = candidateResponse
+                        payload = candidatePayload
+                        break
+                    }
+                }
+
+                if (!response || !payload) {
                     throw new Error("slug-check-unavailable")
                 }
 
@@ -421,8 +438,8 @@ export function RegisterTenantWizard({
             } catch (error) {
                 if (error.name !== "AbortError") {
                     setSlugState({
-                        status: "error",
-                        message: "No pudimos revisar la URL ahora mismo. El servidor la validarÃ¡ al enviar.",
+                        status: "idle",
+                        message: "No pudimos revisar la URL en tiempo real. Se validará al crear el negocio.",
                         suggestions: [],
                     })
                 }
@@ -433,7 +450,7 @@ export function RegisterTenantWizard({
             controller.abort()
             window.clearTimeout(timer)
         }
-    }, [data.slug, slugCheckEndpoint])
+    }, [data.slug, slugCheckCandidates])
 
     const updateField = (field, value) => {
         setLocalErrors((current) => {

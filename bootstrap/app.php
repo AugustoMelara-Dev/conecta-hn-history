@@ -8,6 +8,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
@@ -112,5 +113,18 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return response()->view('errors.404', [], 404);
+        });
+
+        $exceptions->render(function (TokenMismatchException $exception, Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Tu sesión expiró. Recarga la página e intenta de nuevo.',
+                ], 419);
+            }
+
+            return redirect()
+                ->back()
+                ->withInput($request->except(['password', 'password_confirmation']))
+                ->with('toast', 'Tu sesión expiró por seguridad. Reintentemos desde este paso.');
         });
     })->create();

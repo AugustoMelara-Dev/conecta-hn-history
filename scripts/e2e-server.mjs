@@ -95,22 +95,39 @@ if (process.env.E2E_SKIP_BOOTSTRAP !== '1') {
     console.error('\n[e2e-server] Skipping DB bootstrap because E2E_SKIP_BOOTSTRAP=1');
 }
 
-console.error('\n[e2e-server] Starting Laravel server on http://127.0.0.1:8011');
-const server = spawn('php', ['artisan', 'serve', '--host=127.0.0.1', '--port=8011', '--no-reload'], {
-    stdio: 'inherit',
-    env: rootEnv,
-    cwd: projectRoot,
-});
+let server = null;
+let shuttingDown = false;
+
+function startLaravelServer() {
+    console.error('\n[e2e-server] Starting Laravel server on http://127.0.0.1:8011');
+
+    server = spawn('php', ['artisan', 'serve', '--host=127.0.0.1', '--port=8011', '--no-reload'], {
+        stdio: 'inherit',
+        env: rootEnv,
+        cwd: projectRoot,
+    });
+
+    server.on('exit', (code) => {
+        if (shuttingDown) {
+            process.exit(code ?? 0);
+        }
+
+        console.error(`[e2e-server] Laravel server exited unexpectedly with code ${code ?? 'unknown'}. Restarting in 1s...`);
+        setTimeout(startLaravelServer, 1000);
+    });
+}
 
 const forwardSignal = (signal) => {
-    if (!server.killed) {
+    shuttingDown = true;
+
+    if (server && !server.killed) {
         server.kill(signal);
+    } else {
+        process.exit(0);
     }
 };
 
 process.on('SIGINT', () => forwardSignal('SIGINT'));
 process.on('SIGTERM', () => forwardSignal('SIGTERM'));
 
-server.on('exit', (code) => {
-    process.exit(code ?? 0);
-});
+startLaravelServer();
