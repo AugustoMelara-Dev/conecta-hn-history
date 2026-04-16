@@ -157,6 +157,10 @@ bootstrap/cache/*.tmp
 /.codex-appdata/PsySH/
 /playwright-report/
 /test-results/
+/reports/
+/artifacts/manual-audit/
+/artifacts/closure/
+/e2e-*.xml
 
 # Local E2E/test runtime artifacts
 /.tmp-e2e-db-bootstrap.php
