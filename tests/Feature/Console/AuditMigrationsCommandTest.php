@@ -17,9 +17,10 @@ final class AuditMigrationsCommandTest extends TestCase
 
         $output = Artisan::output();
 
-        $this->assertContains($exitCode, [0, 1]);
+        $this->assertSame(0, $exitCode);
         $this->assertStringContainsString('"total_migrations"', $output);
         $this->assertStringContainsString('"schema_governance"', $output);
+        $this->assertStringContainsString('"unexpected_duplicate_timestamps": []', $output);
         $this->assertStringContainsString('2026_01_20_000009_create_outbox_sequences_table.php', $output);
         $this->assertStringContainsString('2026_01_20_000009_optimize_outbox_indexes.php', $output);
     }

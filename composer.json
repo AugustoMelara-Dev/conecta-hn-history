@@ -149,6 +149,48 @@
             "@php -r \"is_dir('reports/rbac-governance') || mkdir('reports/rbac-governance', 0777, true);\"",
             "@php vendor/bin/pest tests/Unit/Access/PermissionsMatrixContractTest.php tests/Unit/Access/StandardTenantPermissionGuardTest.php tests/Feature/Tenancy/TenantReadIsolationTest.php tests/Feature/Tenancy/TenantWriteIsolationTest.php --log-junit reports/rbac-governance/junit.xml -v"
         ],
+        "check:schema-key-type-governance": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php -r \"is_dir('reports/schema-key-type-governance') || mkdir('reports/schema-key-type-governance', 0777, true);\"",
+            "@php vendor/bin/pest tests/Unit/Database/SchemaKeyTypeGovernanceTest.php --log-junit reports/schema-key-type-governance/junit.xml -v"
+        ],
+        "check:schema-nullability-governance": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php -r \"is_dir('reports/schema-nullability-governance') || mkdir('reports/schema-nullability-governance', 0777, true);\"",
+            "@php vendor/bin/pest tests/Unit/Database/SchemaNullabilityGovernanceTest.php --log-junit reports/schema-nullability-governance/junit.xml -v"
+        ],
+        "check:schema-duplicate-columns-governance": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php -r \"is_dir('reports/schema-duplicate-columns-governance') || mkdir('reports/schema-duplicate-columns-governance', 0777, true);\"",
+            "@php vendor/bin/pest tests/Unit/Database/SchemaDuplicateColumnsGovernanceTest.php --log-junit reports/schema-duplicate-columns-governance/junit.xml -v"
+        ],
+        "check:schema-fk-governance": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php -r \"is_dir('reports/schema-fk-governance') || mkdir('reports/schema-fk-governance', 0777, true);\"",
+            "@php vendor/bin/pest tests/Unit/Database/SchemaFkGovernanceTest.php --log-junit reports/schema-fk-governance/junit.xml -v"
+        ],
+        "check:schema-json-governance": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php -r \"is_dir('reports/schema-json-governance') || mkdir('reports/schema-json-governance', 0777, true);\"",
+            "@php vendor/bin/pest tests/Unit/Database/SchemaJsonGovernanceTest.php --log-junit reports/schema-json-governance/junit.xml -v"
+        ],
+        "check:schema-index-governance": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php -r \"is_dir('reports/schema-index-governance') || mkdir('reports/schema-index-governance', 0777, true);\"",
+            "@php vendor/bin/pest tests/Unit/Database/SchemaIndexGovernanceTest.php --log-junit reports/schema-index-governance/junit.xml -v"
+        ],
         "check:todo-governance": [
             "node scripts/ci/check-workflow-legacy-warnings.mjs"
         ],

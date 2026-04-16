@@ -35,6 +35,34 @@ final class AuditMigrationsCommand extends Command
             ->values()
             ->all();
 
+        $allowedDuplicateGroups = collect((array) config('schema-governance.allowed_duplicate_timestamps', []))
+            ->map(static fn (mixed $group): array => is_array($group) ? array_values(array_map('strval', $group)) : [])
+            ->filter(static fn (array $group): bool => $group !== [])
+            ->map(static function (array $group): string {
+                sort($group);
+
+                return implode('|', $group);
+            })
+            ->all();
+
+        $unexpectedDuplicateTimestamps = collect($timestamps)
+            ->filter(static function (array $group) use ($allowedDuplicateGroups): bool {
+                $sorted = $group;
+                sort($sorted);
+                $signature = implode('|', $sorted);
+
+                return ! in_array($signature, $allowedDuplicateGroups, true);
+            })
+            ->values()
+            ->all();
+
+        $allowlistedDuplicateTimestamps = collect($timestamps)
+            ->reject(static function (array $group) use ($unexpectedDuplicateTimestamps): bool {
+                return in_array($group, $unexpectedDuplicateTimestamps, true);
+            })
+            ->values()
+            ->all();
+
         $tableMutations = [];
         foreach ($files as $filename) {
             if (preg_match('/^\\d{4}_\\d{2}_\\d{2}_\\d{6}_(add|create|drop|align|fix|optimize)_(.+?)_(to|table|tables|in|with)/', $filename, $matches) === 1) {
@@ -141,11 +169,13 @@ final class AuditMigrationsCommand extends Command
             ->all();
 
         $violations = array_merge($createViolations, $tableViolations);
-        $status = empty($timestamps) && $violations === [] ? 'ok' : 'warning';
+        $status = ($violations === [] && $unexpectedDuplicateTimestamps === []) ? 'ok' : 'warning';
 
         $report = [
             'total_migrations' => $files->count(),
             'duplicate_timestamps' => $timestamps,
+            'allowlisted_duplicate_timestamps' => $allowlistedDuplicateTimestamps,
+            'unexpected_duplicate_timestamps' => $unexpectedDuplicateTimestamps,
             'high_churn_targets' => $highChurnTargets,
             'schema_governance' => [
                 'governed_tables' => $governedTables,
@@ -157,7 +187,7 @@ final class AuditMigrationsCommand extends Command
         if ($this->option('json')) {
             $this->line((string) json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
-            return $violations === [] ? self::SUCCESS : self::FAILURE;
+            return ($violations === [] && $unexpectedDuplicateTimestamps === []) ? self::SUCCESS : self::FAILURE;
         }
 
         $this->info('Migration Audit');
@@ -167,6 +197,13 @@ final class AuditMigrationsCommand extends Command
             $this->warn('Duplicate timestamps found:');
             foreach ($timestamps as $group) {
                 $this->line(' - '.implode(', ', $group));
+            }
+
+            if (! empty($unexpectedDuplicateTimestamps)) {
+                $this->error('Unexpected duplicate timestamps (not allowlisted):');
+                foreach ($unexpectedDuplicateTimestamps as $group) {
+                    $this->line(' - '.implode(', ', $group));
+                }
             }
         } else {
             $this->info('No duplicate migration timestamps detected.');
@@ -192,6 +229,6 @@ final class AuditMigrationsCommand extends Command
         $this->newLine();
         $this->line('Recommendation: when adding new schema changes, prefer align/cleanup migrations over repeated incremental field additions on the same table.');
 
-        return $violations === [] ? self::SUCCESS : self::FAILURE;
+        return ($violations === [] && $unexpectedDuplicateTimestamps === []) ? self::SUCCESS : self::FAILURE;
     }
 }
