@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\CouponController;
+use App\Http\Controllers\Api\V1\DirectoryGuideController;
 use App\Http\Controllers\Api\V1\InteractionController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
@@ -78,6 +79,13 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/{id}', [ProductController::class, 'show'])
             ->middleware(['throttle:api', 'cacheResponse:600']);
+    });
+
+    Route::prefix('directory')->group(function () {
+        Route::get('/search', [DirectoryGuideController::class, 'search'])
+            ->middleware(['throttle:api']);
+        Route::get('/guide', [DirectoryGuideController::class, 'guide'])
+            ->middleware(['throttle:api']);
     });
 
     // ═══════════════════════════════════════════════════════════════════════════

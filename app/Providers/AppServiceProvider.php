@@ -167,6 +167,10 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Directory\EloquentDirectoryReader::class
         );
         $this->app->bind(
+            \App\Domain\Directory\Contracts\DirectoryGuideReader::class,
+            \App\Infrastructure\Directory\EloquentDirectoryGuideReader::class
+        );
+        $this->app->bind(
             \App\Domain\Catalog\Contracts\ProductCatalogReader::class,
             \App\Infrastructure\Catalog\CachedProductReader::class
         );
