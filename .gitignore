@@ -158,8 +158,10 @@ bootstrap/cache/*.tmp
 /playwright-report/
 /test-results/
 /reports/
+/artifacts/
 /artifacts/manual-audit/
 /artifacts/closure/
+/e2e-pr-smoke-auth-junit.xml
 /e2e-*.xml
 
 # Local E2E/test runtime artifacts
