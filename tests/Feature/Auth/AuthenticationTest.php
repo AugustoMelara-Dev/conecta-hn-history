@@ -31,7 +31,7 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertRedirect(route('directory.index', absolute: false));
     }
 
     public function test_tenant_owners_are_redirected_to_the_filament_app_panel_after_login(): void

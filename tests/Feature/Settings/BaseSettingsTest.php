@@ -18,8 +18,7 @@ test('native general settings abstraction loads from database', function () {
     );
 
     Cache::forget('settings.general');
-    $property = new ReflectionProperty(BaseSettings::class, 'runtimeCache');
-    $property->setValue([]);
+    BaseSettings::clearRuntimeCache();
 
     $settings = new GeneralSettings;
 

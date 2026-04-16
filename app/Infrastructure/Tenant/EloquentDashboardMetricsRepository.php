@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Tenant;
 
 use App\Domain\Tenant\Contracts\DashboardMetricsRepository;
+use App\Domain\TenantGovernance\Services\TenantOnboardingProgressService;
 use App\Models\Order;
 use App\Models\Tenant;
 use Illuminate\Support\Carbon;
@@ -59,19 +60,20 @@ final class EloquentDashboardMetricsRepository implements DashboardMetricsReposi
             return ['progress' => 0, 'steps' => []];
         }
 
-        // Check if steps definitions should be in Config/Domain vs hidden here.
-        // For now, Repository is a better place than Controller.
-        $steps = [
-            ['id' => 'logo', 'title' => 'Subir logo', 'completed' => (bool) $tenant->logo_path, 'href' => route('tenant.settings.index')],
-            ['id' => 'product', 'title' => 'Agregar producto', 'completed' => $tenant->products()->exists(), 'href' => route('tenant.products.create')],
-            ['id' => 'schedule', 'title' => 'Definir horarios', 'completed' => ! empty($tenant->schedule), 'href' => route('tenant.settings.index')],
-            ['id' => 'phone', 'title' => 'Agregar teléfono', 'completed' => (bool) $tenant->phone, 'href' => route('tenant.settings.index')],
+        $snapshot = app(TenantOnboardingProgressService::class)->persist($tenant, auth()->user());
+
+        return [
+            'progress' => (int) ($snapshot['progress'] ?? 0),
+            'steps' => collect((array) ($snapshot['milestones'] ?? []))
+                ->map(static fn (array $item): array => [
+                    'id' => (string) ($item['key'] ?? ''),
+                    'title' => (string) ($item['title'] ?? ''),
+                    'completed' => (bool) ($item['completed'] ?? false),
+                    'href' => (string) ($item['href'] ?? '#'),
+                ])
+                ->values()
+                ->all(),
         ];
-
-        $completed = collect($steps)->where('completed', true)->count();
-        $progress = round(($completed / count($steps)) * 100);
-
-        return ['progress' => $progress, 'steps' => $steps];
     }
 
     public function getLatestOrders(int $tenantId, int $limit = 5): array

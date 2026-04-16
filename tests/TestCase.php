@@ -5,6 +5,7 @@ namespace Tests;
 use App\Application\Shared\Contracts\CommandValidatorRegistryInterface;
 use App\Domain\Shared\Services\TenantContext;
 use App\Infrastructure\Shared\Middleware\CommandValidatorRegistry;
+use App\Settings\BaseSettings;
 use App\Settings\GeneralSettings;
 use Carbon\Carbon;
 use Filament\Facades\Filament;
@@ -38,6 +39,7 @@ abstract class TestCase extends BaseTestCase
         config(['app.locale' => 'es']);
 
         Cache::flush();
+        BaseSettings::clearRuntimeCache();
         app()->setLocale('es');
         Carbon::setLocale('es');
         setlocale(LC_TIME, 'es_HN.UTF-8', 'es_HN', 'es_ES.UTF-8', 'es_ES', 'es');
@@ -54,6 +56,7 @@ abstract class TestCase extends BaseTestCase
 
     protected function tearDown(): void
     {
+        BaseSettings::clearRuntimeCache();
         $this->resetSharedTenantState();
 
         parent::tearDown();

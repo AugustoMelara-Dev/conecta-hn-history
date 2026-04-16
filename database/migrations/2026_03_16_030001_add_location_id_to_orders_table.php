@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('orders') || ! Schema::hasTable('locations') || Schema::hasColumn('orders', 'location_id')) {
+            return;
+        }
+
         Schema::table('orders', function (Blueprint $table) {
             $table->foreignUuid('location_id')->nullable()->constrained('locations')->nullOnDelete();
         });
@@ -15,8 +19,15 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('orders') || ! Schema::hasColumn('orders', 'location_id')) {
+            return;
+        }
+
         Schema::table('orders', function (Blueprint $table) {
-            $table->dropForeign(['location_id']);
+            try {
+                $table->dropForeign(['location_id']);
+            } catch (\Throwable) {
+            }
             $table->dropColumn('location_id');
         });
     }

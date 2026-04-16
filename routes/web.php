@@ -58,7 +58,9 @@ Route::get('/registro/pago-pendiente/{payment}', [\App\Http\Controllers\Web\Bill
 Route::post('/location/set', [LocationController::class, 'setCity'])->name('location.set');
 Route::post('/location/clear', [LocationController::class, 'clearCity'])->name('location.clear');
 Route::get('/api/cities', [LocationController::class, 'getCities'])->name('cities.all');
-Route::get('/api/check-slug', [\App\Http\Controllers\Web\RegistrationController::class, 'checkSlug'])->name('api.check-slug');
+Route::get('/api/check-slug', [\App\Http\Controllers\Web\RegistrationController::class, 'checkSlug'])
+    ->middleware('throttle:slug-check')
+    ->name('api.check-slug');
 
 // ... (Skip lines)
 
@@ -83,7 +85,7 @@ Route::controller(\App\Http\Controllers\Web\RegistrationController::class)->grou
         ->name('tenant.register');
     Route::post('/registrar-negocio', 'store')
         ->middleware('guest')
-        ->middleware('throttle:5,1')  // 5 attempts per minute
+        ->middleware('throttle:register-tenant')
         ->name('tenant.register.store');
 });
 

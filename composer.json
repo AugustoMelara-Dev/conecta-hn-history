@@ -142,6 +142,13 @@
         "check:parallel-schema-governance": [
             "@php vendor/bin/pest tests/Contracts/CommandSchemaContractTest.php -v"
         ],
+        "check:rbac-governance": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php -r \"is_dir('reports/rbac-governance') || mkdir('reports/rbac-governance', 0777, true);\"",
+            "@php vendor/bin/pest tests/Unit/Access/PermissionsMatrixContractTest.php tests/Unit/Access/StandardTenantPermissionGuardTest.php tests/Feature/Tenancy/TenantReadIsolationTest.php tests/Feature/Tenancy/TenantWriteIsolationTest.php --log-junit reports/rbac-governance/junit.xml -v"
+        ],
         "check:todo-governance": [
             "node scripts/ci/check-workflow-legacy-warnings.mjs"
         ],

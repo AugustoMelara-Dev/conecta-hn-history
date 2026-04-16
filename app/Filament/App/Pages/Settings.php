@@ -159,6 +159,15 @@ class Settings extends Page
         ];
     }
 
+    protected function getHeaderWidgets(): array
+    {
+        request()->attributes->set('onboarding_module', 'settings');
+
+        return [
+            \App\Filament\App\Widgets\OnboardingActivationWidget::class,
+        ];
+    }
+
     protected function getTenantRecord(): ?Tenant
     {
         $tenant = Filament::getTenant();

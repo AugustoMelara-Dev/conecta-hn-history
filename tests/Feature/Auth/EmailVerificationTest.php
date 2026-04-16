@@ -40,7 +40,7 @@ class EmailVerificationTest extends TestCase
 
         Event::assertDispatched(Verified::class);
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
-        $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
+        $response->assertRedirect(route('directory.index', absolute: false).'?verified=1');
     }
 
     public function test_tenant_owners_are_sent_to_the_filament_app_panel_after_email_verification(): void

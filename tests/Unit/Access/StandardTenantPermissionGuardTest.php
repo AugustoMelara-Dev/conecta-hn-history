@@ -155,3 +155,55 @@ it('keeps viewers in read-only mode for playbook execution', function () {
             Permission::PLAYBOOKS_MANAGE
         ))->toBeFalse();
 });
+
+it('enforces module-level permission matrix for manager role', function (Capability $capability, Permission $permission) {
+    $user = User::factory()->create();
+    $tenant = Tenant::factory()->create([
+        'business_type' => BusinessType::SERVICE,
+    ]);
+
+    TenantMembership::query()->create([
+        'tenant_id' => $tenant->id,
+        'user_id' => $user->id,
+        'role' => Role::MANAGER->value,
+        'accepted_at' => now(),
+    ]);
+
+    $guard = app(TenantPermissionGuardInterface::class);
+
+    expect($guard->allows($user, $tenant, $capability, $permission))->toBeTrue();
+})->with([
+    'sales' => [Capability::CHECKOUT_BASIC, Permission::ORDERS_MANAGE],
+    'agenda' => [Capability::APPOINTMENT_BOOKING, Permission::APPOINTMENTS_MANAGE],
+    'customers' => [Capability::CUSTOMER_DIRECTORY, Permission::CUSTOMERS_VIEW],
+    'marketing' => [Capability::NOTIFICATIONS_BASIC, Permission::MARKETING_MANAGE],
+    'finance' => [Capability::PAYMENTS_BASIC, Permission::PAYMENTS_VIEW],
+    'configuration' => [Capability::CATALOG_BASIC, Permission::SETTINGS_VIEW],
+    'administration' => [Capability::STAFF_BASIC, Permission::STAFF_VIEW],
+]);
+
+it('denies cross-tenant access even when user has valid membership on another tenant', function () {
+    $user = User::factory()->create();
+    $tenantA = Tenant::factory()->create([
+        'business_type' => BusinessType::SERVICE,
+    ]);
+    $tenantB = Tenant::factory()->create([
+        'business_type' => BusinessType::SERVICE,
+    ]);
+
+    TenantMembership::query()->create([
+        'tenant_id' => $tenantA->id,
+        'user_id' => $user->id,
+        'role' => Role::MANAGER->value,
+        'accepted_at' => now(),
+    ]);
+
+    $guard = app(TenantPermissionGuardInterface::class);
+
+    expect($guard->allows(
+        $user,
+        $tenantB,
+        Capability::APPOINTMENT_BOOKING,
+        Permission::APPOINTMENTS_MANAGE
+    ))->toBeFalse();
+});

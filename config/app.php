@@ -68,6 +68,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Product Surface URLs (B2B/B2C Split)
+    |--------------------------------------------------------------------------
+    |
+    | Optional absolute origins to separate operational platform (app)
+    | and consumer directory (www) while keeping a single backend.
+    | When omitted, relative routes are used.
+    |
+    */
+    'platform_app_url' => env('PLATFORM_APP_URL'),
+    'platform_directory_url' => env('PLATFORM_DIRECTORY_URL'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

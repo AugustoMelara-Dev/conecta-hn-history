@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 
 // Backward-compatible slug check alias for cached frontend bundles.
 Route::get('check-slug', [\App\Http\Controllers\Web\RegistrationController::class, 'checkSlug'])
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:slug-check')
     ->name('check-slug');
 
 Route::middleware('guest')->group(function () {
@@ -22,12 +22,14 @@ Route::middleware('guest')->group(function () {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 
-    Route::post('login', [AuthenticatedSessionController::class, 'store']);
+    Route::post('login', [AuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:login');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:forgot-password')
         ->name('password.email');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])

@@ -167,6 +167,16 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
         return (string) $tenant->user_id === (string) $this->id;
     }
 
+    public function isStaff(): bool
+    {
+        return $this->role->value === UserRole::STAFF->value;
+    }
+
+    public function isCustomer(): bool
+    {
+        return $this->role->value === UserRole::CUSTOMER->value;
+    }
+
     /**
      * Domain Action: Reactivate User
      *

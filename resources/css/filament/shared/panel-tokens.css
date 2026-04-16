@@ -1,36 +1,6 @@
+@import '../../shared/design-system-v1.css';
+
 :root {
-    color-scheme: dark;
-    --biz-surface-950: #09090b;
-    --biz-surface-900: rgba(9, 9, 11, 0.94);
-    --biz-surface-875: rgba(15, 23, 42, 0.92);
-    --biz-surface-850: rgba(24, 24, 27, 0.9);
-    --biz-surface-800: rgba(24, 24, 27, 0.88);
-    --biz-surface-700: rgba(255, 255, 255, 0.06);
-    --biz-surface-650: rgba(255, 255, 255, 0.05);
-    --biz-surface-600: rgba(255, 255, 255, 0.04);
-    --biz-surface-550: rgba(255, 255, 255, 0.03);
-    --biz-surface-overlay: rgba(0, 0, 0, 0.22);
-    --biz-border-subtle: rgba(255, 255, 255, 0.08);
-    --biz-border-faint: rgba(255, 255, 255, 0.06);
-    --biz-border-strong: rgba(255, 255, 255, 0.1);
-    --biz-text-strong: #ffffff;
-    --biz-text-base: #e4e4e7;
-    --biz-text-soft: #d4d4d8;
-    --biz-text-muted: #a1a1aa;
-    --biz-success: #10b981;
-    --biz-success-strong: #34d399;
-    --biz-success-soft: #6ee7b7;
-    --biz-warning: #f59e0b;
-    --biz-warning-soft: #fcd34d;
-    --biz-danger: #f43f5e;
-    --biz-danger-soft: #fda4af;
-    --biz-info-soft: #93c5fd;
-    --biz-radius-control: 1rem;
-    --biz-radius-card: 1.5rem;
-    --biz-radius-card-sm: 1.25rem;
-    --biz-radius-pill: 999px;
-    --biz-shadow-panel: 0 20px 50px rgba(0, 0, 0, 0.24);
-    --biz-shadow-elevated: 0 24px 70px rgba(0, 0, 0, 0.32);
     --biz-panel-bg: var(--biz-surface-950);
     --biz-topbar-bg: var(--biz-surface-850);
     --biz-sidebar-bg: var(--biz-surface-900);
@@ -39,8 +9,8 @@
     --biz-nav-hover-bg: var(--biz-surface-700);
     --biz-nav-active-bg: rgba(16, 185, 129, 0.12);
     --biz-nav-active-ring: rgba(16, 185, 129, 0.24);
-    --biz-input-border: rgba(148, 163, 184, 0.14);
-    --biz-input-bg: var(--biz-surface-700);
-    --biz-input-placeholder: #94a3b8;
-    --biz-input-focus-ring: rgba(16, 185, 129, 0.12);
+    --biz-input-border: var(--ds-input-border);
+    --biz-input-bg: var(--ds-input-bg);
+    --biz-input-placeholder: var(--ds-input-placeholder);
+    --biz-input-focus-ring: var(--ds-input-focus-ring);
 }

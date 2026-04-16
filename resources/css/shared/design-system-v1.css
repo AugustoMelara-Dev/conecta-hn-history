@@ -1,0 +1,99 @@
+:root {
+    color-scheme: dark;
+
+    /* Core palette */
+    --ds-surface-950: #09090b;
+    --ds-surface-900: #111827;
+    --ds-surface-850: #18181b;
+    --ds-surface-800: #27272a;
+    --ds-surface-700: #3f3f46;
+    --ds-surface-overlay: rgba(0, 0, 0, 0.22);
+
+    --ds-text-strong: #ffffff;
+    --ds-text-base: #e4e4e7;
+    --ds-text-soft: #d4d4d8;
+    --ds-text-muted: #a1a1aa;
+
+    --ds-success: #10b981;
+    --ds-success-strong: #34d399;
+    --ds-success-soft: #6ee7b7;
+    --ds-warning: #f59e0b;
+    --ds-warning-soft: #fcd34d;
+    --ds-danger: #f43f5e;
+    --ds-danger-soft: #fda4af;
+    --ds-info-soft: #93c5fd;
+
+    /* Borders + shape + elevation */
+    --ds-border-subtle: rgba(255, 255, 255, 0.08);
+    --ds-border-faint: rgba(255, 255, 255, 0.06);
+    --ds-border-strong: rgba(255, 255, 255, 0.1);
+
+    --ds-radius-control: 1rem;
+    --ds-radius-card: 1.5rem;
+    --ds-radius-card-sm: 1.25rem;
+    --ds-radius-pill: 999px;
+
+    --ds-shadow-panel: 0 20px 50px rgba(0, 0, 0, 0.24);
+    --ds-shadow-elevated: 0 24px 70px rgba(0, 0, 0, 0.32);
+
+    /* Input system */
+    --ds-input-border: rgba(148, 163, 184, 0.14);
+    --ds-input-bg: rgba(255, 255, 255, 0.06);
+    --ds-input-placeholder: #94a3b8;
+    --ds-input-focus-ring: rgba(16, 185, 129, 0.12);
+
+    /* shadcn semantic aliases */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 142 72% 29%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 350 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 142 72% 29%;
+    --radius: 1rem;
+
+    /* Backward compatibility for existing Filament shell tokens */
+    --biz-surface-950: var(--ds-surface-950);
+    --biz-surface-900: rgba(9, 9, 11, 0.94);
+    --biz-surface-875: rgba(15, 23, 42, 0.92);
+    --biz-surface-850: rgba(24, 24, 27, 0.9);
+    --biz-surface-800: rgba(24, 24, 27, 0.88);
+    --biz-surface-700: rgba(255, 255, 255, 0.06);
+    --biz-surface-650: rgba(255, 255, 255, 0.05);
+    --biz-surface-600: rgba(255, 255, 255, 0.04);
+    --biz-surface-550: rgba(255, 255, 255, 0.03);
+    --biz-surface-overlay: var(--ds-surface-overlay);
+    --biz-border-subtle: var(--ds-border-subtle);
+    --biz-border-faint: var(--ds-border-faint);
+    --biz-border-strong: var(--ds-border-strong);
+    --biz-text-strong: var(--ds-text-strong);
+    --biz-text-base: var(--ds-text-base);
+    --biz-text-soft: var(--ds-text-soft);
+    --biz-text-muted: var(--ds-text-muted);
+    --biz-success: var(--ds-success);
+    --biz-success-strong: var(--ds-success-strong);
+    --biz-success-soft: var(--ds-success-soft);
+    --biz-warning: var(--ds-warning);
+    --biz-warning-soft: var(--ds-warning-soft);
+    --biz-danger: var(--ds-danger);
+    --biz-danger-soft: var(--ds-danger-soft);
+    --biz-info-soft: var(--ds-info-soft);
+    --biz-radius-control: var(--ds-radius-control);
+    --biz-radius-card: var(--ds-radius-card);
+    --biz-radius-card-sm: var(--ds-radius-card-sm);
+    --biz-radius-pill: var(--ds-radius-pill);
+    --biz-shadow-panel: var(--ds-shadow-panel);
+    --biz-shadow-elevated: var(--ds-shadow-elevated);
+}

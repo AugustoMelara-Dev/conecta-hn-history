@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\CouponResource\Pages;
 
 use App\Filament\App\Resources\CouponResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\App\Resources\Pages\ListTenantRecords;
 
-class ListCoupons extends ListRecords
+class ListCoupons extends ListTenantRecords
 {
     protected static string $resource = CouponResource::class;
 

@@ -14,8 +14,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Drop existing favorites table if it exists (old structure)
-        Schema::dropIfExists('favorites');
+        if (Schema::hasTable('favorites')
+            && Schema::hasColumns('favorites', ['favoritable_id', 'favoritable_type'])
+        ) {
+            return;
+        }
+
+        if (Schema::hasTable('favorites')) {
+            Schema::drop('favorites');
+        }
 
         // Create new polymorphic favorites table
         Schema::create('favorites', function (Blueprint $table) {

@@ -80,15 +80,14 @@ class ListProducts extends ListTenantRecords
 
     protected function getHeaderWidgets(): array
     {
+        $widgets = parent::getHeaderWidgets();
         $limitInfo = ProductResource::getProductLimitInfo();
 
         if (! ($limitInfo['isPro'] ?? false) && ($limitInfo['percentage'] ?? 0) >= 80) {
-            return [
-                \App\Filament\App\Widgets\ProductLimitWarning::class,
-            ];
+            $widgets[] = \App\Filament\App\Widgets\ProductLimitWarning::class;
         }
 
-        return [];
+        return $widgets;
     }
 
     /**

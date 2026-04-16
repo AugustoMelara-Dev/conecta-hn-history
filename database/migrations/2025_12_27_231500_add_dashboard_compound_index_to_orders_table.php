@@ -31,34 +31,54 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('orders')) {
+            return;
+        }
+
         Schema::table('orders', function (Blueprint $table) {
             // ═══════════════════════════════════════════════════════════════
             // PRIMARY DASHBOARD INDEX
             // ═══════════════════════════════════════════════════════════════
             // Covers: tenant isolation + status filter + date sorting
             // Eliminates: filesort operations on high-volume tenants
-            $table->index(
-                ['tenant_id', 'status', 'created_at'],
-                'orders_tenant_dashboard_index'
-            );
+            try {
+                $table->index(
+                    ['tenant_id', 'status', 'created_at'],
+                    'orders_tenant_dashboard_index'
+                );
+            } catch (\Throwable) {
+            }
 
             // ═══════════════════════════════════════════════════════════════
             // REPORTING INDEX
             // ═══════════════════════════════════════════════════════════════
             // Covers: date-range queries for sales reports
             // Used by: ReportController::salesExcel, ::salesPdf
-            $table->index(
-                ['tenant_id', 'created_at'],
-                'orders_tenant_reporting_index'
-            );
+            try {
+                $table->index(
+                    ['tenant_id', 'created_at'],
+                    'orders_tenant_reporting_index'
+                );
+            } catch (\Throwable) {
+            }
         });
     }
 
     public function down(): void
     {
+        if (! Schema::hasTable('orders')) {
+            return;
+        }
+
         Schema::table('orders', function (Blueprint $table) {
-            $table->dropIndex('orders_tenant_dashboard_index');
-            $table->dropIndex('orders_tenant_reporting_index');
+            try {
+                $table->dropIndex('orders_tenant_dashboard_index');
+            } catch (\Throwable) {
+            }
+            try {
+                $table->dropIndex('orders_tenant_reporting_index');
+            } catch (\Throwable) {
+            }
         });
     }
 };

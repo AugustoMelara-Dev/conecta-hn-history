@@ -28,14 +28,14 @@ export function ForgotPasswordForm({ status = null, className, ...props }) {
         <form onSubmit={submit} className={cn("flex flex-col gap-6", className)} {...props}>
             <FieldGroup>
                 <div className="flex flex-col items-center gap-1 text-center">
-                    <h1 className="text-2xl font-bold text-slate-950">Forgot your password?</h1>
+                    <h1 className="text-2xl font-bold text-slate-950" data-testid="forgot-password-heading">Forgot your password?</h1>
                     <p className="text-sm text-balance text-slate-500">
                         Enter your email below and we&apos;ll send you a link to reset your password.
                     </p>
                 </div>
 
                 {status ? (
-                    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" data-testid="forgot-password-feedback">
                         {status}
                     </div>
                 ) : null}
@@ -65,6 +65,7 @@ export function ForgotPasswordForm({ status = null, className, ...props }) {
                     <Button
                         type="submit"
                         disabled={processing}
+                        data-testid="forgot-password-submit"
                         className="w-full bg-slate-950 text-white hover:bg-slate-800"
                     >
                         {processing ? "Sending..." : "Send reset link"}

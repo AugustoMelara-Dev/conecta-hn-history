@@ -21,9 +21,7 @@ uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 afterEach(function () {
     app(TenantContext::class)->reset();
     Cache::forget('settings.general');
-
-    $property = new ReflectionProperty(BaseSettings::class, 'runtimeCache');
-    $property->setValue([]);
+    BaseSettings::clearRuntimeCache();
 });
 
 test('product policy enforces dynamic capacity limits from general settings', function () {
@@ -48,8 +46,7 @@ test('product policy enforces dynamic capacity limits from general settings', fu
     );
 
     Cache::forget('settings.general');
-    $property = new ReflectionProperty(BaseSettings::class, 'runtimeCache');
-    $property->setValue([]);
+    BaseSettings::clearRuntimeCache();
 
     $settings = app(GeneralSettings::class);
     $settings->free_plan_product_limit = 1;

@@ -1,4 +1,10 @@
 import { expect, test } from '@playwright/test';
+import {
+    loginSubmitButton,
+    registerNextStepButton,
+    registerSubmitButton,
+    registerTermsCheckbox,
+} from './support/auth-locators';
 
 const SEEDED_OWNER = {
     email: 'casa-brasa-bistro@example.test',
@@ -80,20 +86,20 @@ test.describe('Auditoria funcional E2E', () => {
 
         await page.locator('#business_name').fill(identity.businessName);
         await page.locator('#category_id').selectOption({ index: 1 });
-        await page.getByRole('button', { name: /^Continuar$/ }).click();
+        await registerNextStepButton(page).click();
 
         await page.locator('#city_id').selectOption({ index: 1 });
         await page.locator('#whatsapp').fill('+50499998888');
-        await page.getByRole('button', { name: /^Continuar$/ }).click();
+        await registerNextStepButton(page).click();
 
         await page.locator('#name').fill(identity.ownerName);
         await page.locator('#email').fill(identity.email);
         await page.locator('#password').fill(identity.password);
         await page.locator('#password_confirmation').fill(identity.password);
-        await page.getByRole('button', { name: /^Continuar$/ }).click();
+        await registerNextStepButton(page).click();
 
-        await page.locator('input[type="checkbox"]').first().check();
-        await page.getByRole('button', { name: /Crear cuenta/i }).click();
+        await registerTermsCheckbox(page).check();
+        await registerSubmitButton(page).click();
 
         await expect(page).toHaveURL(/\/(app|dashboard|verify-email|registro\/pago-pendiente)/, { timeout: 30_000 });
 
@@ -104,7 +110,7 @@ test.describe('Auditoria funcional E2E', () => {
         await loginPage.goto('/login', { waitUntil: 'domcontentloaded' });
         await loginPage.locator('#email').fill(identity.email);
         await loginPage.locator('#password').fill(identity.password);
-        await loginPage.getByRole('button', { name: /Login/i }).click();
+        await loginSubmitButton(loginPage).click();
 
         await expect(loginPage).toHaveURL(/\/(app|dashboard|verify-email)/, { timeout: 20_000 });
         await isolatedContext.close();
@@ -118,7 +124,7 @@ test.describe('Auditoria funcional E2E', () => {
         await page.goto('/login', { waitUntil: 'domcontentloaded' });
         await page.locator('#email').fill(SEEDED_OWNER.email);
         await page.locator('#password').fill(SEEDED_OWNER.password);
-        await page.getByRole('button', { name: /Login/i }).click();
+        await loginSubmitButton(page).click();
 
         const appResponse = await page.goto('/app', { waitUntil: 'domcontentloaded' });
         expect(appResponse?.status(), '/app should be reachable after login').toBeLessThan(500);

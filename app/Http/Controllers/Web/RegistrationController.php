@@ -52,10 +52,13 @@ final class RegistrationController extends Controller
                 'freeProductLimit' => config('conecta.free_plan_product_limit', 10),
                 'proProductLimit' => config('conecta.pro_plan_product_limit', 100),
                 'proPlanPrice' => config('conecta.pro_plan_price', 500.00),
-                'slugBaseHost' => request()->getHost(),
+                'slugBaseHost' => $this->resolveDirectoryHost($request),
                 'slugCheckUrl' => route('api.check-slug'),
                 'requestHost' => request()->header('x-forwarded-host', request()->getHost()),
                 'registrationHost' => $request->getHost(),
+                'platformDirectoryUrl' => config('app.platform_directory_url'),
+                'platformAppUrl' => config('app.platform_app_url'),
+                'directoryHost' => $this->resolveDirectoryHost($request),
             ],
         ]);
     }
@@ -194,5 +197,39 @@ final class RegistrationController extends Controller
             )
             ->values()
             ->all();
+    }
+
+    private function resolveDirectoryHost(Request $request): string
+    {
+        $configuredDirectoryHost = $this->extractHost(config('app.platform_directory_url'));
+        if (is_string($configuredDirectoryHost) && $configuredDirectoryHost !== '') {
+            return $configuredDirectoryHost;
+        }
+
+        $forwardedHost = $request->header('x-forwarded-host');
+        if (is_string($forwardedHost) && trim($forwardedHost) !== '') {
+            return trim(explode(',', $forwardedHost)[0]);
+        }
+
+        return $request->getHost();
+    }
+
+    private function extractHost(mixed $candidate): ?string
+    {
+        if (! is_string($candidate) || trim($candidate) === '') {
+            return null;
+        }
+
+        $host = parse_url($candidate, PHP_URL_HOST);
+        if (is_string($host) && $host !== '') {
+            return $host;
+        }
+
+        $hostWithoutScheme = parse_url('https://'.ltrim($candidate, '/'), PHP_URL_HOST);
+        if (is_string($hostWithoutScheme) && $hostWithoutScheme !== '') {
+            return $hostWithoutScheme;
+        }
+
+        return null;
     }
 }

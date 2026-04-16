@@ -46,6 +46,22 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($throttleKey);
         });
 
+        RateLimiter::for('forgot-password', function (Request $request) {
+            $throttleKey = Str::transliterate(Str::lower((string) $request->input('email')).'|'.$request->ip());
+
+            return Limit::perMinute(3)->by($throttleKey);
+        });
+
+        RateLimiter::for('register-tenant', function (Request $request) {
+            $throttleKey = Str::transliterate(Str::lower((string) $request->input('email')).'|'.$request->ip());
+
+            return Limit::perMinute(5)->by($throttleKey);
+        });
+
+        RateLimiter::for('slug-check', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
+        });
+
         // Views (if needed, but actions are the priority)
         // Checks if views exist or basic registration
         if (config('fortify.views', true)) {

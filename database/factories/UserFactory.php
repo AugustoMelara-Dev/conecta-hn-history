@@ -92,7 +92,7 @@ class UserFactory extends Factory
     public function tenantOwner(): static
     {
         return $this->state(fn (array $attributes) => [
-            'role' => UserRole::CUSTOMER,
+            'role' => UserRole::TENANT_OWNER,
         ]);
     }
 

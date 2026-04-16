@@ -8,17 +8,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('inventory_holds', function (Blueprint $table) {
-            $table->id();
-            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
-            $table->string('session_id')->index();
-            $table->integer('quantity');
-            $table->timestamp('expires_at')->index();
-            $table->timestamps();
+        if (! Schema::hasTable('inventory_holds')) {
+            Schema::create('inventory_holds', function (Blueprint $table) {
+                $table->id();
+                $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('product_id')->constrained()->cascadeOnDelete();
+                $table->string('session_id')->index();
+                $table->integer('quantity');
+                $table->timestamp('expires_at')->index();
+                $table->timestamps();
 
-            $table->unique(['tenant_id', 'session_id', 'product_id']);
-        });
+                $table->unique(['tenant_id', 'session_id', 'product_id']);
+            });
+        }
     }
 
     public function down(): void

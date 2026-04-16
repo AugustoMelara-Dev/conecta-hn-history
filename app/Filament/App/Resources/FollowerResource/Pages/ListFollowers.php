@@ -24,6 +24,6 @@ class ListFollowers extends ListTenantRecords
 
     protected function getHeaderWidgets(): array
     {
-        return [];
+        return parent::getHeaderWidgets();
     }
 }

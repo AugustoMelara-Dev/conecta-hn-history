@@ -25,13 +25,15 @@ final class AuthRedirector
             return self::adminPanelDestinationFor($user).$suffix;
         }
 
+        // Business context wins over legacy role strings to avoid sending
+        // owner/staff accounts with accepted tenant context to the B2C surface.
         $tenantSlug = self::resolveTenantSlug($user);
 
         if ($tenantSlug !== null) {
-            return route('filament.app.pages.dashboard', ['tenant' => $tenantSlug], false).$suffix;
+            return self::appPanelDestinationFor($user).$suffix;
         }
 
-        return route('dashboard', [], false).$suffix;
+        return self::directoryDestination().$suffix;
     }
 
     public static function appPanelDestinationFor(?object $user): string
@@ -43,7 +45,9 @@ final class AuthRedirector
         $tenantSlug = self::resolveTenantSlug($user);
 
         if ($tenantSlug !== null) {
-            return route('filament.app.pages.dashboard', ['tenant' => $tenantSlug], false);
+            $path = route('filament.app.pages.dashboard', ['tenant' => $tenantSlug], false);
+
+            return self::surfaceUrl($path, config('app.platform_app_url'));
         }
 
         return route('dashboard', [], false);
@@ -55,7 +59,7 @@ final class AuthRedirector
             return route('dashboard', [], false);
         }
 
-        return route('filament.admin.pages.dashboard', [], false);
+        return self::surfaceUrl(route('filament.admin.pages.dashboard', [], false), config('app.platform_app_url'));
     }
 
     private static function resolveTenantSlug(User $user, bool $allowAnyTenant = false): ?string
@@ -105,10 +109,28 @@ final class AuthRedirector
             return route('filament.admin.auth.profile', [], false);
         }
 
+        // Mirror destinationFor(): tenant context must route to B2B profile.
         if (self::resolveTenantSlug($user) !== null) {
             return route('filament.app.auth.profile', [], false);
         }
 
-        return route('dashboard', [], false);
+        return self::directoryDestination();
+    }
+
+    private static function directoryDestination(): string
+    {
+        return self::surfaceUrl(route('directory.index', [], false), config('app.platform_directory_url'));
+    }
+
+    private static function surfaceUrl(string $path, mixed $baseUrl): string
+    {
+        if (! is_string($baseUrl) || trim($baseUrl) === '') {
+            return $path;
+        }
+
+        $origin = rtrim($baseUrl, '/');
+        $normalizedPath = '/'.ltrim($path, '/');
+
+        return $origin.$normalizedPath;
     }
 }

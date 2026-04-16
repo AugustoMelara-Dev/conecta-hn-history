@@ -19,6 +19,21 @@ abstract class BaseSettings
 
     abstract public static function group(): string;
 
+    /**
+     * Clear settings runtime cache.
+     * If no group is provided, clears all runtime settings cache.
+     */
+    public static function clearRuntimeCache(?string $group = null): void
+    {
+        if ($group === null) {
+            self::$runtimeCache = [];
+
+            return;
+        }
+
+        unset(self::$runtimeCache[$group]);
+    }
+
     public function __construct()
     {
         $this->load();
@@ -78,6 +93,6 @@ abstract class BaseSettings
         });
 
         Cache::forget("settings.{$group}");
-        unset(self::$runtimeCache[$group]);
+        self::clearRuntimeCache($group);
     }
 }

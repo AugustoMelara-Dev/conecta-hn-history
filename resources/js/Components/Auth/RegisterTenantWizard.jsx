@@ -91,6 +91,26 @@ function firstValidUrl(...candidates) {
 
     return null
 }
+
+function routeUrlIfExists(name) {
+    if (typeof route !== "function") {
+        return null
+    }
+
+    try {
+        const helper = route()
+        if (helper && typeof helper.has === "function" && !helper.has(name)) {
+            return null
+        }
+    } catch {}
+
+    try {
+        const value = route(name)
+        return typeof value === "string" && value !== "" ? value : null
+    } catch {
+        return null
+    }
+}
 function StepPill({ step, index, currentStep, onClick }) {
     const Icon = step.icon
     const active = index === currentStep
@@ -287,12 +307,26 @@ export function RegisterTenantWizard({
     const selectedSegment = segmentCandidates[0] || null
     const slugBaseHost = useMemo(() => {
         const currentHost = typeof window !== "undefined" ? normalizeHost(window.location?.host) : null
+        const configuredDirectoryHost = normalizeHost(settings?.directoryHost)
+        const configuredDirectoryUrl = normalizeHost(settings?.platformDirectoryUrl)
         const forwardedHost = normalizeHost(settings?.requestHost)
         const configuredHost = normalizeHost(settings?.registrationHost)
         const legacyHost = normalizeHost(settings?.slugBaseHost)
 
-        return currentHost || forwardedHost || configuredHost || legacyHost || "vito.hn"
-    }, [settings?.registrationHost, settings?.requestHost, settings?.slugBaseHost])
+        return configuredDirectoryHost || configuredDirectoryUrl || currentHost || forwardedHost || configuredHost || legacyHost || "vito.hn"
+    }, [settings?.directoryHost, settings?.platformDirectoryUrl, settings?.registrationHost, settings?.requestHost, settings?.slugBaseHost])
+    const registrationHost = useMemo(() => {
+        const currentHost = typeof window !== "undefined" ? normalizeHost(window.location?.host) : null
+        const forwardedHost = normalizeHost(settings?.requestHost)
+        const configuredHost = normalizeHost(settings?.registrationHost)
+
+        return currentHost || forwardedHost || configuredHost || null
+    }, [settings?.registrationHost, settings?.requestHost])
+    const crossSurfaceHost = Boolean(
+        registrationHost
+        && slugBaseHost
+        && registrationHost.toLowerCase() !== slugBaseHost.toLowerCase()
+    )
     const slugCheckCandidates = useMemo(() => {
         const configured = firstValidUrl(settings?.slugCheckUrl)
         const candidates = []
@@ -301,16 +335,12 @@ export function RegisterTenantWizard({
             candidates.push(configured)
         }
 
-        try {
-            candidates.push(route("api.check-slug"))
-        } catch {}
-
-        try {
-            candidates.push(route("check-slug"))
-        } catch {}
+        const apiSlugRoute = routeUrlIfExists("api.check-slug")
+        if (apiSlugRoute) {
+            candidates.push(apiSlugRoute)
+        }
 
         candidates.push("/api/check-slug")
-        candidates.push("/check-slug")
 
         return [...new Set(candidates.filter(Boolean))]
     }, [settings?.slugCheckUrl])
@@ -653,7 +683,11 @@ export function RegisterTenantWizard({
                                     <Field>
                                         <div className="flex items-center justify-between gap-3">
                                             <FieldLabel htmlFor="slug">URL personalizada</FieldLabel>
-                                            <span className={`text-[11px] font-bold uppercase tracking-[0.18em] ${slugState.status === "available" ? "text-slate-950" : slugState.status === "unavailable" || slugState.status === "error" ? "text-rose-600" : "text-slate-400"}`} style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+                                            <span
+                                                data-testid="register-slug-status"
+                                                className={`text-[11px] font-bold uppercase tracking-[0.18em] ${slugState.status === "available" ? "text-slate-950" : slugState.status === "unavailable" || slugState.status === "error" ? "text-rose-600" : "text-slate-400"}`}
+                                                style={{ fontFamily: PUBLIC_LABEL_FONT }}
+                                            >
                                                 {slugState.status === "available" ? "Disponible" : slugState.status === "checking" ? "Revisando" : slugState.status === "unavailable" ? "Ocupada" : "Pendiente"}
                                             </span>
                                         </div>
@@ -666,7 +700,7 @@ export function RegisterTenantWizard({
                                                 {slugBaseHost}
                                             </span>
                                             <span className="text-xs text-slate-400">/t/</span>
-                                            <input id="slug" name="slug" autoComplete="off"
+                                            <input id="slug" name="slug" data-testid="register-slug-input" autoComplete="off"
                                                 value={data.slug}
                                                 onChange={(event) => {
                                                     setSlugTouched(true)
@@ -679,6 +713,11 @@ export function RegisterTenantWizard({
                                         <FieldDescription aria-live="polite" className={slugState.status === "unavailable" || slugState.status === "error" ? "text-rose-600" : "text-slate-500"}>
                                             {errorFor("slug") || slugState.message}
                                         </FieldDescription>
+                                        {crossSurfaceHost ? (
+                                            <FieldDescription className="text-slate-500">
+                                                Tu panel opera en {registrationHost} y tu micrositio publico se publica en {slugBaseHost}/t/...
+                                            </FieldDescription>
+                                        ) : null}
                                         {slugState.suggestions?.length ? (
                                             <div className="space-y-2">
                                                 <p className="text-xs font-semibold text-slate-500">Opciones sugeridas:</p>
@@ -878,7 +917,7 @@ export function RegisterTenantWizard({
 
                                         <div className="space-y-4">
                                             <label className="flex items-start gap-3 rounded-[1.75rem] border border-slate-200 bg-slate-50 px-5 py-5">
-                                                <input type="checkbox" checked={data.terms_accepted} onChange={(event) => updateField("terms_accepted", event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-300" />
+                                                <input type="checkbox" data-testid="register-terms-checkbox" checked={data.terms_accepted} onChange={(event) => updateField("terms_accepted", event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-300" />
                                                 <span className="text-sm leading-7 text-slate-600">
                                                     Confirmo que tengo autorizaciÃ³n para registrar este negocio y acepto los tÃ©rminos operativos de Conecta HN.
                                                 </span>
@@ -915,12 +954,12 @@ export function RegisterTenantWizard({
                             </Button>
 
                             {step < STEPS.length - 1 ? (
-                                <Button type="button" onClick={() => validateStep(step) && setStep((current) => current + 1)} disabled={processing || !canSubmit} className="h-12 rounded-xl bg-slate-950 text-white hover:bg-slate-800">
+                                <Button type="button" data-testid="register-next-step" onClick={() => validateStep(step) && setStep((current) => current + 1)} disabled={processing || !canSubmit} className="h-12 rounded-xl bg-slate-950 text-white hover:bg-slate-800">
                                     Continuar
                                     <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             ) : (
-                                <Button type="button" onClick={submit} disabled={processing || !canSubmit} className="h-12 rounded-xl bg-slate-950 text-white hover:bg-slate-800">
+                                <Button type="button" data-testid="register-submit" onClick={submit} disabled={processing || !canSubmit} className="h-12 rounded-xl bg-slate-950 text-white hover:bg-slate-800">
                                     {processing ? (
                                         <>
                                             <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />

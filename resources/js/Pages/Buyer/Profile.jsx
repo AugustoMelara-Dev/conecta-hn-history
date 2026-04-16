@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { Heart, MapPin, Package, Star, User, Store } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/Componen
 import { Badge } from '@/Components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 
-export default function Profile({ auth, favorites = [], followedTenants = [] }) {
+export default function Profile({ auth, favorites = [], followedTenants = [], onboarding = null }) {
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
             <Head title="Mi Perfil - Conecta HN" />
@@ -38,6 +38,46 @@ export default function Profile({ auth, favorites = [], followedTenants = [] }) 
                         <h1 className="text-3xl font-bold text-slate-900">Mi Perfil</h1>
                         <p className="text-slate-500">Gestiona tus favoritos y preferencias.</p>
                     </div>
+
+                    {onboarding && (
+                        <Card className="mb-8 border-slate-200">
+                            <CardHeader>
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <p className="text-xs uppercase tracking-wide text-slate-500">Activacion de cuenta</p>
+                                        <CardTitle className="text-xl">Checklist de usuario final</CardTitle>
+                                    </div>
+                                    <Badge className="bg-slate-900 text-white hover:bg-slate-900">
+                                        {onboarding.progress ?? 0}%
+                                    </Badge>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="h-2 w-full rounded-full bg-slate-100">
+                                    <div
+                                        className="h-2 rounded-full bg-slate-900 transition-all"
+                                        style={{ width: `${Math.max(6, onboarding.progress ?? 0)}%` }}
+                                    />
+                                </div>
+                                <div className="space-y-3">
+                                    {(onboarding.milestones ?? []).map((milestone) => (
+                                        <div key={milestone.key} className="flex items-start gap-3">
+                                            <div className={`mt-1 h-5 w-5 rounded-full ${milestone.completed ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                            <div>
+                                                <p className="font-medium text-slate-900">{milestone.title}</p>
+                                                <p className="text-sm text-slate-500">{milestone.copy}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                            <CardFooter>
+                                <Link href={onboarding.nextAction?.href || '/explore'} className="w-full sm:w-auto">
+                                    <Button>{onboarding.nextAction?.title || 'Continuar'}</Button>
+                                </Link>
+                            </CardFooter>
+                        </Card>
+                    )}
 
                     <Tabs defaultValue="favorites" className="space-y-6">
                         <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
@@ -72,7 +112,7 @@ export default function Profile({ auth, favorites = [], followedTenants = [] }) 
                                                 </div>
                                             </div>
                                             <CardContent className="p-4">
-                                                <div className="text-xs text-slate-500 mb-1">{favorite.product.category?.name || 'Categoría'}</div>
+                                                <div className="text-xs text-slate-500 mb-1">{favorite.product.category?.name || 'Categoria'}</div>
                                                 <h3 className="font-bold truncate">{favorite.product.name}</h3>
                                                 <div className="text-primary font-bold mt-1">
                                                     {new Intl.NumberFormat('es-HN', { style: 'currency', currency: 'HNL' }).format(favorite.product.price)}
@@ -92,9 +132,9 @@ export default function Profile({ auth, favorites = [], followedTenants = [] }) 
                                         <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                                             <Heart className="h-8 w-8 text-slate-300" />
                                         </div>
-                                        <h3 className="text-lg font-medium text-slate-900">Aún no tienes favoritos</h3>
+                                        <h3 className="text-lg font-medium text-slate-900">Aun no tienes favoritos</h3>
                                         <p className="text-slate-500 max-w-sm mt-2 mb-6">
-                                            Explora el directorio y guarda los productos que te interesen para encontrarlos fácilmente aquí.
+                                            Explora el directorio y guarda los productos que te interesen para encontrarlos facilmente aquÃ­.
                                         </p>
                                         <Link href="/directorio">
                                             <Button>Explorar Directorio</Button>
@@ -139,7 +179,7 @@ export default function Profile({ auth, favorites = [], followedTenants = [] }) 
                                                     {tenant.city || 'Honduras'}
                                                 </div>
                                                 <p className="text-sm text-slate-600 line-clamp-2 mb-4">
-                                                    {tenant.description || 'Sin descripción.'}
+                                                    {tenant.description || 'Sin descripcion.'}
                                                 </p>
                                                 <Link href={`/${tenant.slug}`} className="w-full">
                                                     <Button className="w-full">Visitar Perfil</Button>
@@ -154,7 +194,7 @@ export default function Profile({ auth, favorites = [], followedTenants = [] }) 
                                         <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                                             <Store className="h-8 w-8 text-slate-300" />
                                         </div>
-                                        <h3 className="text-lg font-medium text-slate-900">No sigues a ningún negocio</h3>
+                                        <h3 className="text-lg font-medium text-slate-900">No sigues a ningun negocio</h3>
                                         <p className="text-slate-500 max-w-sm mt-2 mb-6">
                                             Sigue a tus negocios favoritos para recibir actualizaciones y ofertas exclusivas.
                                         </p>
@@ -171,3 +211,4 @@ export default function Profile({ auth, favorites = [], followedTenants = [] }) 
         </div>
     );
 }
+

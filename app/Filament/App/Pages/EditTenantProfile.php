@@ -368,6 +368,15 @@ class EditTenantProfile extends BaseEditTenantProfile
         ];
     }
 
+    protected function getHeaderWidgets(): array
+    {
+        request()->attributes->set('onboarding_module', 'settings');
+
+        return [
+            \App\Filament\App\Widgets\OnboardingActivationWidget::class,
+        ];
+    }
+
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>

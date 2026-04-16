@@ -8,6 +8,7 @@ use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Domain\TenantGovernance\Services\BusinessOperationsBlueprint;
 use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
+use App\Domain\TenantGovernance\Services\TenantOnboardingProgressService;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\CouponResource;
 use App\Filament\App\Resources\Leads\LeadResource;
@@ -147,6 +148,19 @@ class Dashboard extends \Filament\Pages\Page
     public string $maturityCopy = '';
 
     public string $maturityNextStep = '';
+
+    public int $activationProgress = 0;
+
+    /** @var list<array{key: string, title: string, copy: string, href: string, completed: bool}> */
+    public array $activationMilestones = [];
+
+    /** @var array{key: string, title: string, copy: string, href: string} */
+    public array $nextBestAction = [
+        'key' => 'owner_profile',
+        'title' => 'Completa el perfil',
+        'copy' => 'Llena la base del negocio para operar sin fricción.',
+        'href' => '#',
+    ];
 
     /** @var list<string> */
     public array $businessTypeCapabilities = [];
@@ -324,6 +338,7 @@ class Dashboard extends \Filament\Pages\Page
         $this->loadPlaybookExecutionState($tenant);
 
         $this->configureExperience($tenant);
+        $this->hydrateOnboardingState($tenant);
     }
 
     private function configureExperience(Tenant $tenant): void
@@ -794,6 +809,20 @@ class Dashboard extends \Filament\Pages\Page
                 'severity' => 'success',
             ],
         ];
+    }
+
+    private function hydrateOnboardingState(Tenant $tenant): void
+    {
+        try {
+            $snapshot = app(TenantOnboardingProgressService::class)->persist($tenant, auth()->user());
+            $this->activationProgress = (int) ($snapshot['progress'] ?? 0);
+            $this->activationMilestones = (array) ($snapshot['milestones'] ?? []);
+            $this->nextBestAction = (array) ($snapshot['nextAction'] ?? $this->nextBestAction);
+        } catch (\Throwable) {
+            // Dashboard must remain available even if onboarding persistence fails.
+            $this->activationProgress = 0;
+            $this->activationMilestones = [];
+        }
     }
 
     /**

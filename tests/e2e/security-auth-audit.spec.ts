@@ -1,4 +1,10 @@
 import { expect, test } from '@playwright/test';
+import {
+    forgotPasswordFeedback,
+    forgotPasswordHeading,
+    forgotPasswordSubmitButton,
+    loginSubmitButton,
+} from './support/auth-locators';
 
 const SEEDED_OWNER = {
     email: 'casa-brasa-bistro@example.test',
@@ -11,14 +17,10 @@ test.describe('Security and auth audit', () => {
         const forgotPasswordResponse = await page.goto('/forgot-password', { waitUntil: 'domcontentloaded' });
         expect(forgotPasswordResponse?.status(), '/forgot-password must be reachable').toBeLessThan(500);
 
-        await expect(page.getByRole('heading', { name: /forgot your password/i })).toBeVisible({ timeout: 15_000 });
+        await expect(forgotPasswordHeading(page)).toBeVisible({ timeout: 15_000 });
         await page.locator('#email').fill(SEEDED_OWNER.email);
-        await page.getByRole('button', { name: /send reset link/i }).click();
-
-        const successHint = page.getByText(/password reset link/i);
-        const unknownEmailHint = page.getByText(/no encontramos ningun usuario|no encontramos ningún usuario/i);
-
-        await expect(successHint.or(unknownEmailHint).first()).toBeVisible({ timeout: 20_000 });
+        await forgotPasswordSubmitButton(page).click();
+        await expect(forgotPasswordFeedback(page)).toBeVisible({ timeout: 20_000 });
     });
 
     test('reset-password endpoint handles invalid token gracefully', async ({ page }) => {
@@ -47,7 +49,7 @@ test.describe('Security and auth audit', () => {
         await page.goto('/login', { waitUntil: 'domcontentloaded' });
         await page.locator('#email').fill(SEEDED_OWNER.email);
         await page.locator('#password').fill(SEEDED_OWNER.password);
-        await page.getByRole('button', { name: /login/i }).click();
+        await loginSubmitButton(page).click();
 
         const appResponse = await page.goto('/app', { waitUntil: 'domcontentloaded' });
         expect(appResponse?.status(), '/app should be reachable for seeded owner').toBeLessThan(500);

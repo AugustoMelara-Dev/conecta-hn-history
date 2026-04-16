@@ -13,9 +13,13 @@ use App\Models\Location;
 use App\Models\Product;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
 {
+    private ?bool $inventoryHoldUsesStringPrimaryKey = null;
+
     public function reserve(
         string $tenantId,
         string $locationId,
@@ -100,20 +104,14 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
                 return;
             }
 
-            InventoryHold::query()
-                ->withoutGlobalScopes()
-                ->updateOrCreate(
-                    [
-                        'tenant_id' => $tenantId,
-                        'session_id' => $sessionId,
-                        'location_id' => $locationId,
-                        'product_id' => $productId,
-                    ],
-                    [
-                        'quantity' => $newQuantity,
-                        'expires_at' => now()->addMinutes($expiresInMinutes),
-                    ]
-                );
+            $this->upsertInventoryHold(
+                tenantId: $tenantId,
+                sessionId: $sessionId,
+                locationId: $locationId,
+                productId: $productId,
+                quantity: $newQuantity,
+                expiresInMinutes: $expiresInMinutes
+            );
         });
     }
 
@@ -234,5 +232,62 @@ class EloquentInventoryHoldAdapter implements InventoryHoldPortInterface
         }
 
         throw new DomainException("Invalid or inactive location {$locationId}.");
+    }
+
+    private function upsertInventoryHold(
+        string $tenantId,
+        string $sessionId,
+        string $locationId,
+        int $productId,
+        float $quantity,
+        int $expiresInMinutes
+    ): void {
+        $where = [
+            'tenant_id' => $tenantId,
+            'session_id' => $sessionId,
+            'location_id' => $locationId,
+            'product_id' => $productId,
+        ];
+
+        $timestamps = ['updated_at' => now()];
+        $values = [
+            'quantity' => $quantity,
+            'expires_at' => now()->addMinutes($expiresInMinutes),
+        ];
+
+        $updatedRows = DB::table('inventory_holds')
+            ->where($where)
+            ->update(array_merge($values, $timestamps));
+
+        if ($updatedRows > 0) {
+            return;
+        }
+
+        $insert = array_merge($where, $values, $timestamps, [
+            'created_at' => now(),
+        ]);
+
+        if ($this->inventoryHoldUsesStringPrimaryKey()) {
+            $insert['id'] = (string) Str::uuid();
+        }
+
+        DB::table('inventory_holds')->insert($insert);
+    }
+
+    private function inventoryHoldUsesStringPrimaryKey(): bool
+    {
+        if (is_bool($this->inventoryHoldUsesStringPrimaryKey)) {
+            return $this->inventoryHoldUsesStringPrimaryKey;
+        }
+
+        $idColumn = collect(Schema::getColumns('inventory_holds'))
+            ->firstWhere('name', 'id');
+
+        $idType = strtolower((string) ($idColumn['type'] ?? $idColumn['type_name'] ?? ''));
+
+        $this->inventoryHoldUsesStringPrimaryKey = str_contains($idType, 'char')
+            || str_contains($idType, 'uuid');
+
+        return $this->inventoryHoldUsesStringPrimaryKey;
     }
 }

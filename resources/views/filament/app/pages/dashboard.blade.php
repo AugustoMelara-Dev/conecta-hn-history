@@ -86,6 +86,70 @@
         </div>
 
         <div class="biz-card">
+            <div class="biz-grid-two">
+                <div class="biz-stack">
+                    <div>
+                        <p class="biz-kicker">Activación 7 días</p>
+                        <h2 class="biz-heading">Siguiente mejor acción</h2>
+                        <p class="biz-muted">
+                            Tu progreso se guarda automáticamente por tenant/rol para que cada sesión empiece con contexto claro.
+                        </p>
+                    </div>
+
+                    <div class="biz-stat">
+                        <div class="biz-split">
+                            <div>
+                                <p class="biz-stat-label">Progreso actual</p>
+                                <p class="biz-stat-value">{{ $activationProgress }}%</p>
+                                <p class="biz-stat-copy">{{ $nextBestAction['copy'] ?? 'Avanza con el siguiente paso recomendado.' }}</p>
+                            </div>
+                            <x-filament::badge color="{{ $activationProgress >= 80 ? 'success' : ($activationProgress >= 50 ? 'warning' : 'danger') }}">
+                                {{ $activationProgress >= 80 ? 'Fuerte' : ($activationProgress >= 50 ? 'En progreso' : 'Inicial') }}
+                            </x-filament::badge>
+                        </div>
+                        <div class="biz-progress" style="margin-top: 0.9rem;">
+                            <div
+                                class="biz-progress-bar {{ $activationProgress < 50 ? 'biz-progress-bar-danger' : ($activationProgress < 80 ? 'biz-progress-bar-warning' : '') }}"
+                                style="width: {{ max(6, $activationProgress) }}%;"
+                            ></div>
+                        </div>
+                    </div>
+
+                    <div class="biz-button-row">
+                        <a href="{{ $nextBestAction['href'] ?? '#' }}" class="biz-button">
+                            {{ $nextBestAction['title'] ?? 'Continuar activación' }}
+                        </a>
+                    </div>
+                </div>
+
+                <div class="biz-stack">
+                    <div>
+                        <p class="biz-kicker">Checklist persistente</p>
+                        <h3 class="biz-heading" style="font-size: 1.15rem;">Hitos verificables</h3>
+                    </div>
+
+                    <div class="biz-list">
+                        @forelse ($activationMilestones as $index => $milestone)
+                            <div class="biz-checklist-item">
+                                <div class="biz-checklist-index {{ $milestone['completed'] ? 'is-complete' : 'is-pending' }}">
+                                    {{ $milestone['completed'] ? 'OK' : $index + 1 }}
+                                </div>
+                                <div>
+                                    <p class="biz-checklist-title">{{ $milestone['title'] }}</p>
+                                    <p class="biz-checklist-copy">{{ $milestone['copy'] }}</p>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="biz-empty-state">
+                                <p class="biz-muted">No encontramos hitos todavía. Refresca y vuelve a intentar.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="biz-card">
             <div class="biz-stack">
                 <div class="biz-split">
                     <div>

@@ -8,6 +8,7 @@ use App\Domain\Identity\Enums\UserRole;
 use App\Filament\App\Widgets\AccountCompletenessWidget;
 use App\Filament\App\Widgets\FollowerCountWidget;
 use App\Filament\App\Widgets\FreePlanUpsellWidget;
+use App\Filament\App\Widgets\OnboardingActivationWidget;
 use App\Filament\App\Widgets\PendingReviewAlert;
 use App\Filament\App\Widgets\ProductLimitWarning;
 use App\Filament\App\Widgets\ProductLimitWidget;
@@ -38,6 +39,7 @@ final class AppPanelWidgetSmokeTest extends TestCase
         Livewire::test(ProductLimitWarning::class)->assertOk();
         Livewire::test(PendingReviewAlert::class)->assertOk();
         Livewire::test(FreePlanUpsellWidget::class)->assertOk();
+        Livewire::test(OnboardingActivationWidget::class)->assertOk();
     }
 
     public function test_follower_widget_renders_on_the_followers_page_context(): void
