@@ -14,8 +14,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * Allows users to favorite any model (Tenant, Product, etc.)
  *
  * @property int $id
- * @property int $user_id
- * @property int $favoritable_id
+ * @property string $user_id
+ * @property string $favoritable_id
  * @property string $favoritable_type
  */
 class Favorite extends Model
@@ -24,6 +24,11 @@ class Favorite extends Model
         'user_id',
         'favoritable_id',
         'favoritable_type',
+    ];
+
+    protected $casts = [
+        'user_id' => 'string',
+        'favoritable_id' => 'string',
     ];
 
     /**

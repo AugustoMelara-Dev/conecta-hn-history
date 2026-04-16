@@ -241,6 +241,58 @@ class Order extends Model
         return 'L. '.number_format((float) $this->total, 2);
     }
 
+    /**
+     * Legacy compatibility alias for canonical delivery_address.
+     */
+    public function getCustomerAddressAttribute(): ?string
+    {
+        return isset($this->attributes['delivery_address'])
+            ? (string) $this->attributes['delivery_address']
+            : null;
+    }
+
+    /**
+     * Legacy compatibility alias for canonical delivery_address.
+     */
+    public function setCustomerAddressAttribute(?string $value): void
+    {
+        $this->attributes['delivery_address'] = $value;
+    }
+
+    /**
+     * Legacy compatibility alias for canonical cancellation_reason.
+     */
+    public function getCancelReasonAttribute(): ?string
+    {
+        return isset($this->attributes['cancellation_reason'])
+            ? (string) $this->attributes['cancellation_reason']
+            : null;
+    }
+
+    /**
+     * Legacy compatibility alias for canonical cancellation_reason.
+     */
+    public function setCancelReasonAttribute(?string $value): void
+    {
+        $this->attributes['cancellation_reason'] = $value;
+    }
+
+    /**
+     * Legacy compatibility alias for canonical discount.
+     */
+    public function getDiscountAmountAttribute(): float
+    {
+        return (float) ($this->attributes['discount'] ?? 0);
+    }
+
+    /**
+     * Legacy compatibility alias for canonical discount.
+     */
+    public function setDiscountAmountAttribute(float|int|string|null $value): void
+    {
+        $this->attributes['discount'] = $value ?? 0;
+    }
+
     public function getStatusLabelAttribute(): string
     {
         return self::KANBAN_STATUSES[$this->status] ?? ucfirst($this->status);

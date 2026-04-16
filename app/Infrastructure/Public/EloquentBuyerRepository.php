@@ -16,7 +16,7 @@ final class EloquentBuyerRepository implements BuyerRepository
     {
         return (User::find($userId)
             ?->favorites()
-            ->with(['product.tenant', 'product.category'])
+            ->with(['favoritable'])
             ->get() ?? collect())->toArray();
     }
 

@@ -10,7 +10,7 @@ namespace App\Domain\Public\Contracts;
 interface BuyerRepository
 {
     /**
-     * Get user favorite products with relations.
+     * Get user favorites with polymorphic favoritable relation.
      */
     public function getFavorites(string|int $userId): array;
 

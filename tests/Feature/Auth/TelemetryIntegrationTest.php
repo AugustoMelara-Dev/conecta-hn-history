@@ -8,6 +8,7 @@ use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
 use App\Domain\Shared\Exceptions\ValidationException;
 use App\Infrastructure\Shared\Telemetry\TraceContext;
+use App\Models\Tenant;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
@@ -28,6 +29,7 @@ class TelemetryIntegrationTest extends TestCase
         $traceId = Uuid::uuid7()->toString();
         $tenantId = Uuid::uuid7()->toString();
         $idempotencyKey = Uuid::uuid7()->toString();
+        Tenant::factory()->create(['id' => $tenantId]);
 
         /** @var TraceContext $context */
         $context = $this->app->make(TraceContext::class);

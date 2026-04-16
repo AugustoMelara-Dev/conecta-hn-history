@@ -69,7 +69,7 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
 
         } catch (QueryException $e) {
             // 5. Handle Collision (Unique Constraint Violation)
-            if ($e->getCode() === '23000' || $e->errorInfo[1] === 1062) {
+            if ($this->isDuplicateKeyViolation($e)) {
                 // Another process has this key.
                 // Rolling back cleans up the 'PROCESSING' row if this transaction created it
                 // (though in collision case, it failed to create it).
@@ -136,5 +136,23 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
         }
 
         return null;
+    }
+
+    private function isDuplicateKeyViolation(QueryException $e): bool
+    {
+        $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+        $driverCode = (int) ($e->errorInfo[1] ?? 0);
+        $message = strtolower($e->getMessage());
+
+        if ($driverCode === 1062 || $sqlState === '23505') {
+            return true;
+        }
+
+        if ($sqlState === '23000') {
+            return str_contains($message, 'duplicate')
+                || str_contains($message, 'unique constraint');
+        }
+
+        return false;
     }
 }

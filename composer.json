@@ -106,7 +106,7 @@
             "@php artisan config:clear --ansi",
             "@php artisan view:clear --ansi",
             "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php vendor/bin/pest tests/Feature/Filament/BusinessPageWorkflowTest.php tests/Feature/CRM/CustomerInboxPageTest.php tests/Feature/Public/BookingFlowTest.php tests/Feature/Public/BookingPageRouteTest.php tests/Feature/Public/CommercialNarrativeGuardTest.php tests/Feature/Sales/StorefrontOrderTest.php tests/Feature/Monetization/BillingFlowTest.php tests/Feature/Marketing/CampaignAudienceTest.php tests/Feature/Marketing/DispatchCustomerCampaignSegmentTest.php tests/Feature/Filament/SuperAdminActionWorkflowTest.php tests/Feature/Tenancy/TenantReadIsolationTest.php tests/Feature/Tenancy/TenantWriteIsolationTest.php tests/Feature/Tenancy/MenuSectionWriteIsolationTest.php tests/Feature/Tenant/LegacyWorkspaceWriteRedirectTest.php tests/Feature/Tenant/LegacyWorkspaceRoutePolicyTest.php -v"
+            "@php vendor/bin/pest tests/Feature/Filament/BusinessPageWorkflowTest.php tests/Feature/CRM/CustomerInboxPageTest.php tests/Feature/Public/BookingFlowTest.php tests/Feature/Public/BookingPageRouteTest.php tests/Feature/Public/CommercialNarrativeGuardTest.php tests/Feature/Public/FavoriteTenantFlowTest.php tests/Feature/Sales/StorefrontOrderTest.php tests/Feature/Monetization/BillingFlowTest.php tests/Feature/Marketing/CampaignAudienceTest.php tests/Feature/Marketing/DispatchCustomerCampaignSegmentTest.php tests/Feature/Filament/SuperAdminActionWorkflowTest.php tests/Feature/Tenancy/TenantReadIsolationTest.php tests/Feature/Tenancy/TenantWriteIsolationTest.php tests/Feature/Tenancy/MenuSectionWriteIsolationTest.php tests/Feature/Tenant/LegacyWorkspaceWriteRedirectTest.php tests/Feature/Tenant/LegacyWorkspaceRoutePolicyTest.php -v"
         ],
         "test:parallel-critical:foundation": [
             "@php vendor/bin/pest --parallel tests/Feature/Auth",
@@ -190,6 +190,20 @@
             "@php artisan migrate:fresh --env=testing --force --ansi",
             "@php -r \"is_dir('reports/schema-index-governance') || mkdir('reports/schema-index-governance', 0777, true);\"",
             "@php vendor/bin/pest tests/Unit/Database/SchemaIndexGovernanceTest.php --log-junit reports/schema-index-governance/junit.xml -v"
+        ],
+        "check:schema-wave2-governance": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php -r \"is_dir('reports/schema-wave2-governance') || mkdir('reports/schema-wave2-governance', 0777, true);\"",
+            "@php vendor/bin/pest tests/Unit/Database/WaveTwoConsolidationGovernanceTest.php --log-junit reports/schema-wave2-governance/junit.xml -v"
+        ],
+        "check:schema-wave3-governance": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php -r \"is_dir('reports/schema-wave3-governance') || mkdir('reports/schema-wave3-governance', 0777, true);\"",
+            "@php vendor/bin/pest tests/Unit/Database/WaveThreeConsolidationGovernanceTest.php --log-junit reports/schema-wave3-governance/junit.xml -v"
         ],
         "check:todo-governance": [
             "node scripts/ci/check-workflow-legacy-warnings.mjs"
