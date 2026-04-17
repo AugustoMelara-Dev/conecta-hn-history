@@ -61,6 +61,10 @@ final class DirectoryGuideController extends Controller
         $city = $validated['city'] ?? null;
         $category = $validated['category'] ?? null;
         $hybridRerankEnabled = (bool) config('directory.guide.hybrid_rerank_enabled', false);
+        $maxRerankCandidates = max(
+            $limit,
+            (int) config('directory.guide.max_rerank_candidates', 10)
+        );
 
         if ($budget <= 0) {
             $fallback = $this->reader->searchPublishedTenants($search, $city, $category, $limit);
@@ -79,34 +83,10 @@ final class DirectoryGuideController extends Controller
             ]);
         }
 
-        $recommendations = $this->reader->recommendByBudget($budget, $city, $category, $search, $limit);
+        try {
+            $recommendations = $this->reader->recommendByBudget($budget, $city, $category, $search, $limit);
 
-        if ($recommendations === []) {
-            $fallback = $this->reader->searchPublishedTenants($search, $city, $category, $limit);
-
-            return response()->json([
-                'data' => $fallback,
-                'meta' => [
-                    'budget' => round($budget, 2),
-                    'count' => count($fallback),
-                    'degraded_to_search' => true,
-                    'degraded_reason' => 'no_budget_matches',
-                    'ranking_mode' => 'fallback',
-                    'reasoning_basis' => 'directory_search_fallback',
-                    'generated_at' => now()->toIso8601String(),
-                ],
-            ]);
-        }
-
-        $rankingMode = 'sql';
-        $reasoningBasis = 'sql_budget_filter';
-
-        if ($hybridRerankEnabled && is_string($search) && trim($search) !== '') {
-            try {
-                $recommendations = $this->reader->rerankRecommendations($recommendations, $search, $limit);
-                $rankingMode = 'hybrid';
-                $reasoningBasis = 'sql_filter_plus_embedding_rerank';
-            } catch (\Throwable) {
+            if ($recommendations === []) {
                 $fallback = $this->reader->searchPublishedTenants($search, $city, $category, $limit);
 
                 return response()->json([
@@ -115,13 +95,55 @@ final class DirectoryGuideController extends Controller
                         'budget' => round($budget, 2),
                         'count' => count($fallback),
                         'degraded_to_search' => true,
-                        'degraded_reason' => 'embedding_unavailable',
+                        'degraded_reason' => 'no_budget_matches',
                         'ranking_mode' => 'fallback',
                         'reasoning_basis' => 'directory_search_fallback',
                         'generated_at' => now()->toIso8601String(),
                     ],
                 ]);
             }
+
+            $rankingMode = 'sql';
+            $reasoningBasis = 'sql_budget_filter';
+
+            if ($hybridRerankEnabled && is_string($search) && trim($search) !== '') {
+                try {
+                    $recommendations = array_slice($recommendations, 0, $maxRerankCandidates);
+                    $recommendations = $this->reader->rerankRecommendations($recommendations, $search, $limit);
+                    $rankingMode = 'hybrid';
+                    $reasoningBasis = 'sql_filter_plus_embedding_rerank';
+                } catch (\Throwable) {
+                    $fallback = $this->reader->searchPublishedTenants($search, $city, $category, $limit);
+
+                    return response()->json([
+                        'data' => $fallback,
+                        'meta' => [
+                            'budget' => round($budget, 2),
+                            'count' => count($fallback),
+                            'degraded_to_search' => true,
+                            'degraded_reason' => 'embedding_unavailable',
+                            'ranking_mode' => 'fallback',
+                            'reasoning_basis' => 'directory_search_fallback',
+                            'generated_at' => now()->toIso8601String(),
+                        ],
+                    ]);
+                }
+            }
+        } catch (\Throwable) {
+            $fallback = $this->reader->searchPublishedTenants($search, $city, $category, $limit);
+
+            return response()->json([
+                'data' => $fallback,
+                'meta' => [
+                    'budget' => round($budget, 2),
+                    'count' => count($fallback),
+                    'degraded_to_search' => true,
+                    'degraded_reason' => 'guide_runtime_unavailable',
+                    'ranking_mode' => 'fallback',
+                    'reasoning_basis' => 'directory_search_fallback',
+                    'generated_at' => now()->toIso8601String(),
+                ],
+            ]);
         }
 
         return response()->json([
