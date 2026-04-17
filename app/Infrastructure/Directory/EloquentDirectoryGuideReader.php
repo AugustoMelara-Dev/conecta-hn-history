@@ -67,31 +67,54 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
             return [];
         }
 
-        $products = Product::query()
+        $productsTable = (new Product)->getTable();
+        $menuSectionsTable = (new MenuSection)->getTable();
+        $hasStockStatus = Schema::hasColumn($productsTable, 'stock_status');
+        $hasMenuSection = Schema::hasColumn($productsTable, 'menu_section_id') && Schema::hasTable($menuSectionsTable);
+
+        $selectColumns = [
+            'id',
+            'tenant_id',
+            'name',
+            'slug',
+            'price',
+        ];
+
+        if ($hasStockStatus) {
+            $selectColumns[] = 'stock_status';
+        }
+
+        if ($hasMenuSection) {
+            $selectColumns[] = 'menu_section_id';
+        }
+
+        $productsQuery = Product::query()
             ->withoutGlobalScope(TenantScope::class)
-            ->select([
-                'id',
-                'tenant_id',
-                'name',
-                'slug',
-                'price',
-                'stock_status',
-                'menu_section_id',
-            ])
+            ->select($selectColumns)
             ->where('price', '<=', $safeBudget)
-            ->whereIn('stock_status', self::PURCHASEABLE_STOCK_STATUSES)
             ->whereHas('tenant', function (Builder $query) use ($search, $citySlug, $categorySlug): void {
                 $this->applyTenantFilters($query, $search, $citySlug, $categorySlug);
             })
-            ->with([
-                'tenant:id,name,slug,city_id,category_id',
-                'tenant.city:id,name,slug',
-                'tenant.category:id,name,slug',
-                'menuSection:id,name',
-            ])
             ->orderBy('price')
             ->orderBy('name')
-            ->limit($safeLimit * 8)
+            ->limit($safeLimit * 8);
+
+        if ($hasStockStatus) {
+            $productsQuery->whereIn('stock_status', self::PURCHASEABLE_STOCK_STATUSES);
+        }
+
+        $withRelations = [
+            'tenant:id,name,slug,city_id,category_id',
+            'tenant.city:id,name,slug',
+            'tenant.category:id,name,slug',
+        ];
+
+        if ($hasMenuSection) {
+            $withRelations[] = 'menuSection:id,name';
+        }
+
+        $products = $productsQuery
+            ->with($withRelations)
             ->get();
 
         /** @var array<string, list<Product>> $grouped */
@@ -118,16 +141,16 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
             $productPayload = [];
 
             foreach ($topProducts as $product) {
-                $menuSection = $product->menuSection;
+                $menuSection = $hasMenuSection ? $product->menuSection : null;
                 $menuSectionName = $menuSection instanceof MenuSection ? (string) $menuSection->name : null;
-                $rawStockStatus = $product->getRawOriginal('stock_status');
+                $rawStockStatus = $hasStockStatus ? $product->getRawOriginal('stock_status') : null;
 
                 $productPayload[] = [
                     'id' => $product->id,
                     'name' => $product->name,
                     'slug' => $product->slug,
                     'price' => (float) $product->price,
-                    'stock_status' => is_string($rawStockStatus) ? $rawStockStatus : (string) $rawStockStatus,
+                    'stock_status' => is_string($rawStockStatus) ? $rawStockStatus : null,
                     'menu_section' => $menuSectionName,
                 ];
             }
