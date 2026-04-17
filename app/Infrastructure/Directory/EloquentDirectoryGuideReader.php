@@ -113,9 +113,21 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
             $withRelations[] = 'menuSection:id,name';
         }
 
-        $products = $productsQuery
-            ->with($withRelations)
-            ->get();
+        try {
+            $products = $productsQuery
+                ->with($withRelations)
+                ->get();
+        } catch (\Throwable) {
+            return $this->recommendByBudgetRaw(
+                budget: $safeBudget,
+                citySlug: $citySlug,
+                categorySlug: $categorySlug,
+                search: $search,
+                limit: $safeLimit,
+                hasStockStatus: $hasStockStatus,
+                hasMenuSection: $hasMenuSection,
+            );
+        }
 
         /** @var array<string, list<Product>> $grouped */
         $grouped = [];
@@ -171,6 +183,156 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
         });
 
         return array_slice($recommendations, 0, $safeLimit);
+    }
+
+    private function recommendByBudgetRaw(
+        float $budget,
+        ?string $citySlug,
+        ?string $categorySlug,
+        ?string $search,
+        int $limit,
+        bool $hasStockStatus,
+        bool $hasMenuSection,
+    ): array {
+        $productsTable = (new Product)->getTable();
+        $tenantsTable = (new Tenant)->getTable();
+        $citiesTable = (new City)->getTable();
+        $categoriesTable = (new Category)->getTable();
+
+        $query = DB::table($productsTable.' as p')
+            ->join($tenantsTable.' as t', 't.id', '=', 'p.tenant_id')
+            ->leftJoin($citiesTable.' as c', 'c.id', '=', 't.city_id')
+            ->leftJoin($categoriesTable.' as cat', 'cat.id', '=', 't.category_id')
+            ->select([
+                'p.id',
+                'p.tenant_id',
+                'p.name',
+                'p.slug',
+                'p.price',
+                't.name as tenant_name',
+                't.slug as tenant_slug',
+                'c.name as city_name',
+                'c.slug as city_slug',
+                'cat.name as category_name',
+                'cat.slug as category_slug',
+            ])
+            ->where('p.price', '<=', $budget)
+            ->where('t.is_active', true)
+            ->where('t.subscription_status', 'active')
+            ->orderBy('p.price')
+            ->orderBy('p.name')
+            ->limit($limit * 8);
+
+        if ($hasStockStatus) {
+            $query
+                ->addSelect('p.stock_status')
+                ->whereIn('p.stock_status', self::PURCHASEABLE_STOCK_STATUSES);
+        }
+
+        if ($hasMenuSection) {
+            $query
+                ->leftJoin((new MenuSection)->getTable().' as ms', 'ms.id', '=', 'p.menu_section_id')
+                ->addSelect('ms.name as menu_section');
+        }
+
+        if (is_string($citySlug) && $citySlug !== '') {
+            $query->where('c.slug', $citySlug);
+        }
+
+        if (is_string($categorySlug) && $categorySlug !== '') {
+            $query->where('cat.slug', $categorySlug);
+        }
+
+        $term = trim((string) $search);
+        if ($term !== '') {
+            $hasTenantDescription = Schema::hasColumn($tenantsTable, 'description');
+            $hasTenantTags = Schema::hasColumn($tenantsTable, 'tags');
+
+            $query->where(function ($innerQuery) use ($term, $hasTenantDescription, $hasTenantTags): void {
+                $innerQuery->where('t.name', 'like', "%{$term}%");
+
+                if ($hasTenantDescription) {
+                    $innerQuery->orWhere('t.description', 'like', "%{$term}%");
+                }
+
+                if ($hasTenantTags) {
+                    $innerQuery->orWhere('t.tags', 'like', "%{$term}%");
+                }
+            });
+        }
+
+        $rows = $query->get();
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        /** @var array<string, list<object>> $grouped */
+        $grouped = [];
+        foreach ($rows as $row) {
+            $grouped[(string) $row->tenant_id][] = $row;
+        }
+
+        $recommendations = [];
+
+        foreach ($grouped as $tenantRows) {
+            $topRows = array_slice($tenantRows, 0, 3);
+            if ($topRows === []) {
+                continue;
+            }
+
+            $prices = array_map(static fn (object $row): float => (float) $row->price, $topRows);
+            $minPrice = min($prices);
+            $maxPrice = max($prices);
+            $first = $topRows[0];
+
+            $products = [];
+            foreach ($topRows as $row) {
+                $products[] = [
+                    'id' => (int) $row->id,
+                    'name' => (string) $row->name,
+                    'slug' => (string) $row->slug,
+                    'price' => (float) $row->price,
+                    'stock_status' => property_exists($row, 'stock_status') && is_string($row->stock_status) ? $row->stock_status : null,
+                    'menu_section' => property_exists($row, 'menu_section') && is_string($row->menu_section) ? $row->menu_section : null,
+                ];
+            }
+
+            $tenantSlug = is_string($first->tenant_slug ?? null) ? $first->tenant_slug : null;
+
+            $recommendations[] = [
+                'tenant' => [
+                    'id' => $first->tenant_id,
+                    'name' => is_string($first->tenant_name ?? null) ? $first->tenant_name : null,
+                    'slug' => $tenantSlug,
+                    'microsite_path' => $tenantSlug !== null ? '/t/'.$tenantSlug : null,
+                    'city' => [
+                        'name' => is_string($first->city_name ?? null) ? $first->city_name : null,
+                        'slug' => is_string($first->city_slug ?? null) ? $first->city_slug : null,
+                    ],
+                    'category' => [
+                        'name' => is_string($first->category_name ?? null) ? $first->category_name : null,
+                        'slug' => is_string($first->category_slug ?? null) ? $first->category_slug : null,
+                    ],
+                ],
+                'reason' => $this->reasonForBudgetFit($budget, $minPrice, count($topRows)),
+                'price_range' => [
+                    'min' => round($minPrice, 2),
+                    'max' => round($maxPrice, 2),
+                ],
+                'products' => $products,
+            ];
+        }
+
+        $priceSortKeys = [];
+        foreach ($recommendations as $index => $recommendation) {
+            $priceSortKeys[$index] = (float) data_get($recommendation, 'price_range.min', INF);
+        }
+
+        if ($priceSortKeys !== []) {
+            array_multisort($priceSortKeys, SORT_ASC, $recommendations);
+        }
+
+        return array_slice($recommendations, 0, $limit);
     }
 
     public function rerankRecommendations(
