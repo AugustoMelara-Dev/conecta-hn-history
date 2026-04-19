@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\V1\BusinessClaimController;
+use App\Http\Controllers\Api\V1\BusinessClaimDisputeController;
 use App\Http\Controllers\Api\V1\CouponController;
 use App\Http\Controllers\Api\V1\DirectoryGuideController;
 use App\Http\Controllers\Api\V1\InteractionController;
@@ -87,6 +89,14 @@ Route::prefix('v1')->group(function () {
         Route::get('/guide', [DirectoryGuideController::class, 'guide'])
             ->middleware(['auth:sanctum', 'throttle:directory-guide-daily', 'throttle:api']);
     });
+
+    Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('business-claims')->group(function () {
+        Route::post('/{tenant:slug}/submit', [BusinessClaimController::class, 'submit']);
+        Route::post('/{tenant:slug}/review', [BusinessClaimController::class, 'review']);
+    });
+
+    Route::post('/business-claims/{tenant:slug}/disputes', [BusinessClaimDisputeController::class, 'store'])
+        ->middleware(['throttle:api']);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC COUPONS

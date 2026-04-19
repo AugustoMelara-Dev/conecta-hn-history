@@ -5,6 +5,7 @@ use App\Http\Controllers\Public\BookingController;
 use App\Http\Controllers\Public\DirectoryController;
 use App\Http\Controllers\Public\ExploreController;
 use App\Http\Controllers\Public\InteractionController;
+use App\Http\Controllers\Public\LegalPageController;
 use App\Http\Controllers\Public\LocationController;
 use App\Http\Controllers\Public\TenantMicrositeController;
 use App\Http\Controllers\Public\WelcomeController;
@@ -17,8 +18,8 @@ use Inertia\Inertia;
 | Public Routes - React/Inertia Frontend
 |--------------------------------------------------------------------------
 |
-| Rutas del frontend público usando Inertia.js + React.
-| Prioridad: rutas específicas primero; el wildcard (/{slug}) va al final.
+| Rutas del frontend pï¿½blico usando Inertia.js + React.
+| Prioridad: rutas especï¿½ficas primero; el wildcard (/{slug}) va al final.
 |
 */
 
@@ -45,8 +46,11 @@ Route::get('/ciudad/{city:slug}', [DirectoryController::class, 'byCity'])->name(
 // Listado de todas las ciudades (redirige a directorio)
 Route::get('/ciudades', [DirectoryController::class, 'index'])->name('cities.index');
 
-// Ruta SEO para categorías (ej. /categoria/restaurantes)
+// Ruta SEO para categorï¿½as (ej. /categoria/restaurantes)
 Route::get('/categoria/{category:slug}', [DirectoryController::class, 'byCategory'])->name('category.show');
+
+Route::get('/legal/privacy', [LegalPageController::class, 'privacy'])->name('legal.privacy');
+Route::get('/legal/terms', [LegalPageController::class, 'terms'])->name('legal.terms');
 
 // 3. REGISTRO DE NEGOCIOS [MIGRATED TO REACT - 2026-01-08]
 // [MIGRATED TO REACT] Route::get('/registrar-negocio', \App\Livewire\Pages\RegisterTenant::class)->name('tenant.register');

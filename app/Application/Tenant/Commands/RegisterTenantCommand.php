@@ -38,6 +38,15 @@ final readonly class RegisterTenantCommand implements IdempotentCommandInterface
 
         // Metadata
         public ?string $logoPath = null,
+        public ?string $claimEvidenceType = null,
+        public ?string $claimEvidenceUrl = null,
+        public ?string $claimEvidenceNotes = null,
+        public bool $termsAccepted = true,
+        public bool $privacyAccepted = true,
+        public ?string $termsVersion = null,
+        public ?string $privacyVersion = null,
+        public ?string $acceptedIpAddress = null,
+        public ?string $acceptedUserAgent = null,
 
         // Explicit Idempotency
         public ?string $idempotencyKey = null,

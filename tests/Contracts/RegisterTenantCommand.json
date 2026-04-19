@@ -44,6 +44,63 @@
             ],
             "default": null
         },
+        "claimEvidenceType": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "claimEvidenceUrl": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "claimEvidenceNotes": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "termsAccepted": {
+            "type": "boolean",
+            "default": true
+        },
+        "privacyAccepted": {
+            "type": "boolean",
+            "default": true
+        },
+        "termsVersion": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "privacyVersion": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "acceptedIpAddress": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "acceptedUserAgent": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
         "idempotencyKey": {
             "type": [
                 "string",

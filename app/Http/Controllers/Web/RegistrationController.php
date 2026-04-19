@@ -59,6 +59,10 @@ final class RegistrationController extends Controller
                 'platformDirectoryUrl' => config('app.platform_directory_url'),
                 'platformAppUrl' => config('app.platform_app_url'),
                 'directoryHost' => $this->resolveDirectoryHost($request),
+                'legalVersions' => [
+                    'terms' => (string) config('legal.current_versions.terms'),
+                    'privacy' => (string) config('legal.current_versions.privacy'),
+                ],
             ],
         ]);
     }
@@ -112,6 +116,15 @@ final class RegistrationController extends Controller
             whatsapp: $request->validated('whatsapp'),
             selectedPlan: $request->validated('selected_plan', 'free'),
             logoPath: $logoPath,
+            claimEvidenceType: $request->validated('claim_evidence_type'),
+            claimEvidenceUrl: $request->validated('claim_evidence_url'),
+            claimEvidenceNotes: $request->validated('claim_evidence_notes'),
+            termsAccepted: (bool) $request->validated('terms_accepted', false),
+            privacyAccepted: (bool) $request->validated('privacy_accepted', false),
+            termsVersion: $request->validated('terms_version', (string) config('legal.current_versions.terms')),
+            privacyVersion: $request->validated('privacy_version', (string) config('legal.current_versions.privacy')),
+            acceptedIpAddress: $request->ip(),
+            acceptedUserAgent: $request->userAgent(),
             idempotencyKey: $request->header('X-Idempotency-Key'),
         );
 
@@ -123,7 +136,7 @@ final class RegistrationController extends Controller
 
         return redirect()
             ->to(AuthRedirector::destinationFor($user))
-            ->with('success', 'Bienvenido a Conecta HN. Tu negocio ya quedó activo.');
+            ->with('success', 'Bienvenido a Vito Business OS. Tu panel está listo y tu verificación de titularidad queda en revisión.');
     }
 
     /**

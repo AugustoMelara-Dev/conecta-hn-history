@@ -621,6 +621,8 @@ final class E2EStorefrontSeeder extends Seeder
             'subscription_status' => 'active',
             'subscription_ends_at' => now()->addMonths(6),
             'product_limit' => 500,
+            'verification_status' => Tenant::VERIFICATION_STATUS_VERIFIED,
+            'verified_at' => now(),
         ]));
 
         $owner->forceFill(['tenant_id' => $tenant->id])->save();

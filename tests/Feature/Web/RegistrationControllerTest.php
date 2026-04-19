@@ -77,6 +77,17 @@ final class RegistrationControllerTest extends TestCase
         $this->assertSame('service', $tenant->getRawOriginal('business_type'));
         $this->assertSame('semilla', $tenant->getRawOriginal('plan_type'));
         $this->assertSame('inactive', $tenant->getRawOriginal('subscription_status'));
+        $this->assertSame('provisional', $tenant->getRawOriginal('verification_status'));
+
+        $this->assertDatabaseHas('tenant_business_claims', [
+            'tenant_id' => $tenant->getKey(),
+            'status' => 'pending',
+        ]);
+        $this->assertDatabaseHas('legal_consents', [
+            'tenant_id' => $tenant->getKey(),
+            'terms_version' => config('legal.current_versions.terms'),
+            'privacy_version' => config('legal.current_versions.privacy'),
+        ]);
 
         /** @var CapabilityManagerInterface $capabilityManager */
         $capabilityManager = $this->app->make(CapabilityManagerInterface::class);

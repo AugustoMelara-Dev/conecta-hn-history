@@ -553,6 +553,7 @@ Para que no quede nada "suelto", vale la pena dejar registradas estas piezas:
 - `docs/architecture/decisions/*`
 - `docs/code-review/EVENT_REVIEW_CHECKLIST.md`
 - `docs/strategy/README.md`
+- `docs/strategy/VITO_CODE_VISION_MASTER.md`
 - `devops/README.md`
 - `SECURITY.md`
 

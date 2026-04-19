@@ -45,6 +45,9 @@ final class RegisterTenantRequest extends FormRequest
             'whatsapp' => $this->input('whatsapp', $this->input('whatsapp_number')),
             'selected_plan' => $this->input('selected_plan', $this->input('plan', 'free')),
             'business_type' => $this->input('business_type', config('business-types.default', 'retail')),
+            'privacy_accepted' => $this->input('privacy_accepted', $this->input('terms_accepted')),
+            'terms_version' => $this->input('terms_version', config('legal.current_versions.terms')),
+            'privacy_version' => $this->input('privacy_version', config('legal.current_versions.privacy')),
         ]);
     }
 
@@ -77,6 +80,12 @@ final class RegisterTenantRequest extends FormRequest
             'logo' => ['nullable', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=2000,max_height=2000'],
             'selected_plan' => ['nullable', 'in:free,pro'],
             'terms_accepted' => ['required', 'accepted'],
+            'privacy_accepted' => ['required', 'accepted'],
+            'terms_version' => ['required', 'string', 'max:50'],
+            'privacy_version' => ['required', 'string', 'max:50'],
+            'claim_evidence_type' => ['nullable', 'in:website,social,document,other'],
+            'claim_evidence_url' => ['nullable', 'url', 'max:500'],
+            'claim_evidence_notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
@@ -107,6 +116,9 @@ final class RegisterTenantRequest extends FormRequest
             'business_type.in' => 'El tipo de negocio seleccionado no es válido.',
             'selected_plan.in' => 'El plan seleccionado no es válido.',
             'terms_accepted.accepted' => 'Debes aceptar los términos para continuar.',
+            'privacy_accepted.accepted' => 'Debes aceptar la política de privacidad para continuar.',
+            'claim_evidence_type.in' => 'El tipo de evidencia no es válido.',
+            'claim_evidence_url.url' => 'La URL de evidencia debe ser válida.',
         ];
     }
 }

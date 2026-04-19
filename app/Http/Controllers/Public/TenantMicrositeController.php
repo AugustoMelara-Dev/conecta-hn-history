@@ -219,6 +219,19 @@ final class TenantMicrositeController extends Controller
             return 'La suscripcion actual no permite visibilidad publica.';
         }
 
+        $verificationStatus = (string) ($tenant->verification_status ?? 'provisional');
+        if ($verificationStatus === 'provisional') {
+            return 'Tu negocio aun no completa la verificacion de titularidad.';
+        }
+
+        if ($verificationStatus === 'rejected') {
+            return 'La verificacion del negocio fue rechazada. Revisa la evidencia y vuelve a enviar.';
+        }
+
+        if (! empty($tenant->publication_paused_at ?? null)) {
+            return 'La publicacion fue pausada temporalmente por una disputa de titularidad.';
+        }
+
         return 'Este negocio todavia no esta visible para visitantes.';
     }
 

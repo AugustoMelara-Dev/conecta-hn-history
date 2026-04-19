@@ -57,6 +57,12 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public const DEFAULT_SUBSCRIPTION_STATUS = 'active';
 
+    public const VERIFICATION_STATUS_PROVISIONAL = 'provisional';
+
+    public const VERIFICATION_STATUS_VERIFIED = 'verified';
+
+    public const VERIFICATION_STATUS_REJECTED = 'rejected';
+
     public const CRM_STATUS_NEW = 'new';
 
     public const CRM_STATUS_ONBOARDING = 'onboarding';
@@ -141,6 +147,12 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'subscription_ends_at',
         'plan_expires_at',
         'product_limit',
+        'verification_status',
+        'verified_at',
+        'verification_reviewed_at',
+        'verification_rejection_reason',
+        'publication_paused_at',
+        'publication_pause_reason',
     ];
 
     protected $casts = [
@@ -152,6 +164,9 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'plan_expires_at' => 'datetime',
         'next_billing_date' => 'date',
         'subscription_ends_at' => 'datetime',
+        'verified_at' => 'datetime',
+        'verification_reviewed_at' => 'datetime',
+        'publication_paused_at' => 'datetime',
         'payment_methods' => 'array',
         'delivery_enabled' => 'boolean',
         'pickup_enabled' => 'boolean',
@@ -522,7 +537,9 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     {
         return $query
             ->where('is_active', true)
-            ->where('subscription_status', 'active');
+            ->where('subscription_status', 'active')
+            ->where('verification_status', self::VERIFICATION_STATUS_VERIFIED)
+            ->whereNull('publication_paused_at');
     }
 
     public function scopeInPriorityOrder($query)

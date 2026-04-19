@@ -20,7 +20,10 @@ use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Factories\TenantFactory;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
+use App\Models\LegalConsent;
 use App\Models\Location;
+use App\Models\Tenant;
+use App\Models\TenantBusinessClaim;
 use App\Models\TenantMembership;
 
 /**
@@ -137,6 +140,47 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             'is_primary' => true,
             'is_active' => true,
         ])->save();
+
+        // 5.3 Start claim verification in provisional mode.
+        Tenant::query()
+            ->whereKey($tenantEntity->id())
+            ->update([
+                'verification_status' => Tenant::VERIFICATION_STATUS_PROVISIONAL,
+                'verified_at' => null,
+                'verification_reviewed_at' => null,
+                'verification_rejection_reason' => null,
+                'publication_paused_at' => null,
+                'publication_pause_reason' => null,
+            ]);
+
+        TenantBusinessClaim::query()->updateOrCreate(
+            ['tenant_id' => $tenantEntity->id()],
+            [
+                'user_id' => $userEntity->id(),
+                'status' => 'pending',
+                'email_verified_at' => null,
+                'whatsapp_number' => $command->whatsapp,
+                'whatsapp_otp_verified_at' => null,
+                'evidence_type' => $command->claimEvidenceType,
+                'evidence_url' => $command->claimEvidenceUrl,
+                'evidence_notes' => $command->claimEvidenceNotes,
+                'reviewed_by' => null,
+                'reviewed_at' => null,
+                'decision_notes' => null,
+            ]
+        );
+
+        if ($command->termsAccepted && $command->privacyAccepted) {
+            LegalConsent::query()->create([
+                'user_id' => $userEntity->id(),
+                'tenant_id' => $tenantEntity->id(),
+                'terms_version' => (string) ($command->termsVersion ?? config('legal.current_versions.terms')),
+                'privacy_version' => (string) ($command->privacyVersion ?? config('legal.current_versions.privacy')),
+                'accepted_at' => now(),
+                'ip_address' => $command->acceptedIpAddress,
+                'user_agent' => $command->acceptedUserAgent,
+            ]);
+        }
 
         // 6. Handle Payment (DELEGATED TO PROCESS MANAGER)
         // Billing setup is now eventually consistent to prevent cross-context DB locking.

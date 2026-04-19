@@ -31,5 +31,15 @@ final class TenantVisibilityService
         if (! in_array($tenant->subscription_status, ['active', 'trial'], true)) {
             throw TenantNotFoundException::withId((string) $tenant->id);
         }
+
+        // Layer 3: Claim verification (public discovery only for verified businesses)
+        if (($tenant->verification_status ?? 'provisional') !== 'verified') {
+            throw TenantNotFoundException::withId((string) $tenant->id);
+        }
+
+        // Layer 4: Publication paused due to dispute/safety review
+        if (! empty($tenant->publication_paused_at)) {
+            throw TenantNotFoundException::withId((string) $tenant->id);
+        }
     }
 }

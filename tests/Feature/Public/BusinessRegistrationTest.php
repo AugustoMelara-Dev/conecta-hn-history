@@ -46,6 +46,7 @@ final class BusinessRegistrationTest extends TestCase
             'category_id' => $category->id,
             'plan_type' => 'semilla',
             'subscription_status' => 'inactive',
+            'verification_status' => 'provisional',
         ]);
         $this->assertDatabaseHas('tenant_memberships', [
             'user_id' => \App\Models\User::query()->where('email', 'melarajose83@example.com')->value('id'),
@@ -55,6 +56,13 @@ final class BusinessRegistrationTest extends TestCase
             'slug' => 'principal',
             'name' => 'Principal',
             'is_primary' => true,
+        ]);
+        $this->assertDatabaseHas('tenant_business_claims', [
+            'tenant_id' => \App\Models\Tenant::query()->where('slug', 'comercial-yoly')->value('id'),
+            'status' => 'pending',
+        ]);
+        $this->assertDatabaseHas('legal_consents', [
+            'tenant_id' => \App\Models\Tenant::query()->where('slug', 'comercial-yoly')->value('id'),
         ]);
     }
 }

@@ -275,6 +275,8 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
             ->where('p.price', '<=', $budget)
             ->where('t.is_active', true)
             ->where('t.subscription_status', 'active')
+            ->where('t.verification_status', 'verified')
+            ->whereNull('t.publication_paused_at')
             ->orderBy('p.price')
             ->orderBy('p.name')
             ->limit($limit * 8);
@@ -505,7 +507,9 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
     ): void {
         $query
             ->where('is_active', true)
-            ->where('subscription_status', 'active');
+            ->where('subscription_status', 'active')
+            ->where('verification_status', 'verified')
+            ->whereNull('publication_paused_at');
 
         $term = trim((string) $search);
 
