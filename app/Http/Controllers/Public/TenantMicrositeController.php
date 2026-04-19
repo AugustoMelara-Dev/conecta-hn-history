@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Domain\Public\Contracts\TenantStorefrontRepository;
+use App\Domain\Shared\Services\TenantContext;
 use App\Domain\Tenant\Services\TenantVisibilityService;
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
@@ -36,21 +37,9 @@ final class TenantMicrositeController extends Controller
         private readonly TenantVisibilityService $visibilityService
     ) {}
 
-    public function show(Request $request, string $tenantSlug, \App\Domain\Shared\Services\TenantContext $tenantContext): Response
+    public function show(Request $request, string $tenantSlug, TenantContext $tenantContext): Response
     {
-        $tenantLookup = Tenant::query()
-            ->withoutGlobalScopes()
-            ->select(['id', 'slug'])
-            ->where('slug', $tenantSlug)
-            ->first();
-
-        if (! $tenantLookup) {
-            abort(404);
-        }
-
-        $this->hydrateTenantContext($tenantContext, (string) $tenantLookup->id);
-
-        $tenant = $this->repository->findBySlug($tenantSlug);
+        $tenant = $this->loadTenantForMicrosite($tenantSlug, $tenantContext);
         if (! $tenant) {
             abort(404);
         }
@@ -167,6 +156,45 @@ final class TenantMicrositeController extends Controller
 
             return $this->fallbackMicrositeResponse($request, $tenant);
         }
+    }
+
+    private function loadTenantForMicrosite(string $tenantSlug, TenantContext $tenantContext): ?object
+    {
+        $tenantLookup = Tenant::query()
+            ->withoutGlobalScopes()
+            ->select([
+                'id',
+                'slug',
+                'name',
+                'description',
+                'user_id',
+                'status',
+                'is_active',
+                'subscription_status',
+            ])
+            ->where('slug', $tenantSlug)
+            ->first();
+
+        if (! $tenantLookup) {
+            return null;
+        }
+
+        try {
+            $this->hydrateTenantContext($tenantContext, (string) $tenantLookup->id);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+
+        try {
+            $tenant = $this->repository->findBySlug($tenantSlug);
+            if ($tenant) {
+                return $tenant;
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+
+        return $tenantLookup;
     }
 
     private function resolvePreviewReason(object $tenant): string

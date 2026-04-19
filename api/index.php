@@ -32,7 +32,24 @@ putenv('APP_CONFIG_CACHE='.$tmpBootstrapCache.'/config.php');
 putenv('APP_ROUTES_CACHE='.$tmpBootstrapCache.'/routes.php');
 putenv('APP_EVENTS_CACHE='.$tmpBootstrapCache.'/events.php');
 
-if (isset($_GET['__codex_probe'])) {
+/**
+ * Vercel PHP runtime sets SCRIPT_NAME to /api/index.php for rewrites.
+ * Laravel then strips /api from PATH_INFO, breaking /api/* route matching.
+ * Normalize server vars so Laravel sees canonical /api paths.
+ */
+if (($_SERVER['SCRIPT_NAME'] ?? null) === '/api/index.php') {
+    $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+    if (isset($_SERVER['PHP_SELF']) && str_starts_with((string) $_SERVER['PHP_SELF'], '/api/index.php')) {
+        $_SERVER['PHP_SELF'] = '/index.php'.substr((string) $_SERVER['PHP_SELF'], strlen('/api/index.php'));
+    }
+
+    if (isset($_SERVER['PATH_INFO']) && ! str_starts_with((string) $_SERVER['PATH_INFO'], '/api/')) {
+        $_SERVER['PATH_INFO'] = '/api'.(string) $_SERVER['PATH_INFO'];
+    }
+}
+
+if (isset($_GET['__codex_probe']) && in_array((string) getenv('APP_ENV'), ['local', 'testing'], true)) {
     $logFile = $tmpStorage.'/logs/laravel.log';
     $logTail = null;
 
@@ -46,6 +63,11 @@ if (isset($_GET['__codex_probe'])) {
     header('Content-Type: application/json');
     echo json_encode([
         'cwd' => getcwd(),
+        'request_uri' => $_SERVER['REQUEST_URI'] ?? null,
+        'script_name' => $_SERVER['SCRIPT_NAME'] ?? null,
+        'php_self' => $_SERVER['PHP_SELF'] ?? null,
+        'path_info' => $_SERVER['PATH_INFO'] ?? null,
+        'orig_path_info' => $_SERVER['ORIG_PATH_INFO'] ?? null,
         'has_config_view' => file_exists(__DIR__.'/../config/view.php'),
         'has_bootstrap_providers' => file_exists(__DIR__.'/../bootstrap/providers.php'),
         'has_resources_views' => is_dir(__DIR__.'/../resources/views'),
