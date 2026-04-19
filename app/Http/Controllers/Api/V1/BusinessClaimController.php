@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Application\Actions\Auth\VerifyOtpAction;
+use App\Domain\Auth\Exceptions\InvalidOtpException;
+use App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
+use App\Domain\Auth\Exceptions\OtpExpiredException;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\TenantBusinessClaim;
@@ -12,6 +16,10 @@ use Illuminate\Http\Request;
 
 final class BusinessClaimController extends Controller
 {
+    public function __construct(
+        private readonly VerifyOtpAction $verifyOtpAction
+    ) {}
+
     public function submit(Request $request, Tenant $tenant): JsonResponse
     {
         $user = $request->user();
@@ -31,12 +39,35 @@ final class BusinessClaimController extends Controller
         }
 
         $validated = $request->validate([
-            'whatsapp_number' => ['nullable', 'string', 'max:30'],
-            'whatsapp_otp_verified' => ['nullable', 'boolean'],
+            'whatsapp_number' => ['nullable', 'string', 'max:30', 'regex:/^\+[1-9]\d{1,14}$/'],
+            'whatsapp_otp_code' => ['required', 'string', 'regex:/^\d{6}$/'],
             'evidence_type' => ['required', 'in:website,social,document,other'],
             'evidence_url' => ['nullable', 'url', 'max:500'],
             'evidence_notes' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        $whatsappNumber = $validated['whatsapp_number'] ?? $tenant->whatsapp_number;
+        if (! is_string($whatsappNumber) || $whatsappNumber === '') {
+            return response()->json([
+                'error_code' => 'BUSINESS_CLAIM_WHATSAPP_REQUIRED',
+                'message' => 'Debes registrar un numero de WhatsApp para verificar el negocio.',
+            ], 422);
+        }
+
+        try {
+            $this->verifyOtpAction->execute(
+                tenantId: (string) $tenant->getKey(),
+                identifier: $whatsappNumber,
+                code: (string) $validated['whatsapp_otp_code'],
+                ipAddress: $request->ip() ?? '127.0.0.1',
+                idempotencyKey: $request->header('Idempotency-Key')
+            );
+        } catch (InvalidOtpException|OtpExpiredException|MaxOtpAttemptsExceededException) {
+            return response()->json([
+                'error_code' => 'BUSINESS_CLAIM_WHATSAPP_OTP_INVALID',
+                'message' => 'No pudimos verificar el codigo OTP de WhatsApp.',
+            ], 422);
+        }
 
         $claim = TenantBusinessClaim::query()->updateOrCreate(
             ['tenant_id' => (string) $tenant->getKey()],
@@ -44,8 +75,8 @@ final class BusinessClaimController extends Controller
                 'user_id' => (string) $user->getAuthIdentifier(),
                 'status' => 'pending',
                 'email_verified_at' => $user->email_verified_at,
-                'whatsapp_number' => $validated['whatsapp_number'] ?? $tenant->whatsapp_number,
-                'whatsapp_otp_verified_at' => (bool) ($validated['whatsapp_otp_verified'] ?? false) ? now() : null,
+                'whatsapp_number' => $whatsappNumber,
+                'whatsapp_otp_verified_at' => now(),
                 'evidence_type' => $validated['evidence_type'],
                 'evidence_url' => $validated['evidence_url'] ?? null,
                 'evidence_notes' => $validated['evidence_notes'] ?? null,
