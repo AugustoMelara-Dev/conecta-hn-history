@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowRight, Filter, MapPin, Search, Sparkles, X } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { PUBLIC_DISPLAY_FONT } from '@/lib/publicTypography';
@@ -110,7 +110,275 @@ function EmptyState({ filters, onClear }) {
     );
 }
 
+function formatQuotaResetAt(resetAt) {
+    if (!resetAt) {
+        return 'manana';
+    }
+
+    const parsed = new Date(resetAt);
+    if (Number.isNaN(parsed.getTime())) {
+        return 'manana';
+    }
+
+    return parsed.toLocaleString('es-HN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        day: '2-digit',
+        month: '2-digit',
+    });
+}
+
+function resolveGuideTenant(entry) {
+    if (entry && typeof entry === 'object' && entry.tenant) {
+        return entry.tenant;
+    }
+
+    return entry;
+}
+
+function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
+    const [budget, setBudget] = useState('100');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [guideResults, setGuideResults] = useState([]);
+    const [guideMeta, setGuideMeta] = useState(null);
+    const [guideError, setGuideError] = useState(null);
+
+    const isCustomer = authUser?.role === 'customer';
+    const quotaLimit = guideMeta?.quota_limit ?? 5;
+    const quotaRemaining = guideMeta?.quota_remaining;
+    const quotaUsed = guideMeta?.quota_used;
+    const quotaResetAt = guideMeta?.quota_reset_at;
+
+    const runGuide = async (event) => {
+        event.preventDefault();
+
+        if (!isCustomer || isSubmitting) {
+            return;
+        }
+
+        setIsSubmitting(true);
+        setGuideError(null);
+
+        const query = new URLSearchParams();
+        query.set('budget', budget);
+
+        if ((searchTerm || '').trim()) {
+            query.set('search', searchTerm.trim());
+        }
+
+        if ((cityTerm || filters.city || '').trim()) {
+            query.set('city', cityTerm || filters.city);
+        }
+
+        if ((filters.category || '').trim()) {
+            query.set('category', filters.category);
+        }
+
+        query.set('limit', '8');
+
+        try {
+            const response = await fetch(`/api/v1/directory/guide?${query.toString()}`, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                },
+            });
+
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch {
+                payload = {};
+            }
+
+            const responseMeta = payload?.meta && typeof payload.meta === 'object'
+                ? { ...payload.meta }
+                : {};
+
+            if (payload?.quota_limit !== undefined) {
+                responseMeta.quota_limit = payload.quota_limit;
+            }
+            if (payload?.quota_remaining !== undefined) {
+                responseMeta.quota_remaining = payload.quota_remaining;
+            }
+            if (payload?.reset_at && !responseMeta.quota_reset_at) {
+                responseMeta.quota_reset_at = payload.reset_at;
+            }
+
+            if (!response.ok) {
+                setGuideMeta(Object.keys(responseMeta).length ? responseMeta : null);
+                setGuideResults([]);
+                setGuideError({
+                    status: response.status,
+                    code: payload?.error_code || 'DIRECTORY_GUIDE_REQUEST_FAILED',
+                    message: payload?.message || 'No pudimos procesar la guia en este momento.',
+                    retryAfterSeconds: payload?.retry_after_seconds || null,
+                    resetAt: payload?.reset_at || responseMeta.quota_reset_at || null,
+                });
+                return;
+            }
+
+            setGuideMeta(responseMeta);
+            setGuideResults(Array.isArray(payload?.data) ? payload.data : []);
+        } catch {
+            setGuideError({
+                status: 0,
+                code: 'DIRECTORY_GUIDE_NETWORK_ERROR',
+                message: 'No fue posible conectar con la guia. Intenta nuevamente.',
+                retryAfterSeconds: null,
+                resetAt: null,
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (!authUser) {
+        return (
+            <div className="mt-8 rounded-[28px] border border-stone-200 bg-white px-5 py-5 sm:px-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Guia personalizada</p>
+                <h2 className="mt-2 text-xl font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                    Inicia sesion para usar la guia (5 consultas al dia)
+                </h2>
+                <p className="mt-2 text-sm text-slate-600">
+                    La guia te recomienda negocios y productos con tu presupuesto, ciudad y categoria.
+                </p>
+                <div className="mt-4">
+                    <Link
+                        href={route('login')}
+                        className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    >
+                        Entrar como customer
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
+    if (!isCustomer) {
+        return (
+            <div className="mt-8 rounded-[28px] border border-amber-200 bg-amber-50 px-5 py-5 sm:px-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Guia personalizada</p>
+                <h2 className="mt-2 text-xl font-semibold text-amber-900" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                    Disponible solo para cuentas customer
+                </h2>
+                <p className="mt-2 text-sm text-amber-800/90">
+                    Tu cuenta actual es operativa para panel interno. Usa una cuenta customer para consultas del directorio.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="mt-8 rounded-[28px] border border-stone-200 bg-white px-5 py-5 shadow-sm sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Guia personalizada</p>
+                    <h2 className="mt-2 text-xl font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                        Recomendaciones por presupuesto
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                        Plan gratis: {quotaLimit} consultas por dia.
+                    </p>
+                </div>
+                <div className="rounded-full bg-[#f3f3f1] px-4 py-2 text-sm font-semibold text-slate-700" data-testid="directory-guide-quota">
+                    {quotaRemaining !== undefined && quotaRemaining !== null
+                        ? `Consultas restantes: ${quotaRemaining}/${quotaLimit}`
+                        : `Consultas restantes: ${quotaLimit}/${quotaLimit}`}
+                </div>
+            </div>
+
+            <form onSubmit={runGuide} className="mt-5 grid gap-3 sm:grid-cols-[180px,1fr,auto]">
+                <div>
+                    <label htmlFor="directory-guide-budget" className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        Presupuesto (L)
+                    </label>
+                    <input
+                        id="directory-guide-budget"
+                        name="budget"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={budget}
+                        onChange={(event) => setBudget(event.target.value)}
+                        className="h-12 w-full rounded-2xl border border-stone-200 bg-[#f3f3f1] px-4 text-sm text-slate-900 outline-none transition focus:border-slate-950"
+                        data-testid="directory-guide-budget-input"
+                    />
+                </div>
+                <div className="self-end rounded-2xl border border-stone-200 bg-[#f3f3f1] px-4 py-3 text-sm text-slate-600">
+                    Filtro actual: {filters.category || 'todas las categorias'} · {cityTerm || filters.city || 'todas las ciudades'}
+                </div>
+                <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="self-end inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+                    data-testid="directory-guide-submit"
+                >
+                    {isSubmitting ? 'Consultando...' : 'Pedir guia'}
+                </button>
+            </form>
+
+            {guideError ? (
+                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" data-testid="directory-guide-error">
+                    <p className="font-semibold">{guideError.message}</p>
+                    {guideError.status === 429 ? (
+                        <p className="mt-1">
+                            Te desbloqueas en {formatQuotaResetAt(guideError.resetAt)}. Puedes volver manana o seguir explorando sin guia.
+                        </p>
+                    ) : null}
+                </div>
+            ) : null}
+
+            {quotaUsed !== undefined && quotaUsed !== null ? (
+                <p className="mt-3 text-xs text-slate-500">
+                    Usadas hoy: {quotaUsed}/{quotaLimit}
+                    {quotaResetAt ? ` · Reinicio: ${formatQuotaResetAt(quotaResetAt)}` : ''}
+                </p>
+            ) : null}
+
+            {guideResults.length > 0 ? (
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    {guideResults.map((entry, index) => {
+                        const tenant = resolveGuideTenant(entry);
+                        const priceRange = entry?.price_range;
+
+                        if (!tenant?.slug) {
+                            return null;
+                        }
+
+                        return (
+                            <Link
+                                key={`${tenant.slug}-${index}`}
+                                href={route('tenant.microsite.show', { tenant: tenant.slug })}
+                                className="rounded-2xl border border-stone-200 bg-[#f8f8f6] px-4 py-4 transition hover:border-stone-300 hover:bg-white"
+                                data-testid="directory-guide-result"
+                            >
+                                <p className="text-sm font-semibold text-slate-900">{tenant.name}</p>
+                                <p className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-500">
+                                    {resolveTenantCategoryName(tenant)} · {resolveTenantCityName(tenant)}
+                                </p>
+                                {entry?.reason ? (
+                                    <p className="mt-2 text-sm text-slate-600">{entry.reason}</p>
+                                ) : null}
+                                {priceRange?.min !== undefined && priceRange?.max !== undefined ? (
+                                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                                        Rango sugerido: L {priceRange.min} - L {priceRange.max}
+                                    </p>
+                                ) : null}
+                            </Link>
+                        );
+                    })}
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
 export default function DirectoryIndex({ tenants, categories = [], cities = [], activeCity = null, filters = {} }) {
+    const { auth = {} } = usePage().props;
+    const authUser = auth?.user || null;
     const items = tenants?.data || tenants || [];
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [cityTerm, setCityTerm] = useState(filters.city || '');
@@ -258,6 +526,13 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
                             ))}
                         </div>
                     ) : null}
+
+                    <DirectoryGuidePanel
+                        authUser={authUser}
+                        filters={filters}
+                        searchTerm={searchTerm}
+                        cityTerm={cityTerm}
+                    />
 
                     <div className="mt-8 flex flex-col gap-4 rounded-[28px] border border-stone-200 bg-[#f3f3f1] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
                         <div>

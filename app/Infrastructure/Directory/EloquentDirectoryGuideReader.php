@@ -13,6 +13,7 @@ use App\Models\MenuSection;
 use App\Models\Product;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
@@ -69,8 +70,12 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
 
         $productsTable = (new Product)->getTable();
         $menuSectionsTable = (new MenuSection)->getTable();
+        $tenantsTable = (new Tenant)->getTable();
         $hasStockStatus = Schema::hasColumn($productsTable, 'stock_status');
         $hasMenuSection = Schema::hasColumn($productsTable, 'menu_section_id') && Schema::hasTable($menuSectionsTable);
+        $hasProductDescription = Schema::hasColumn($productsTable, 'description');
+        $hasTenantDescription = Schema::hasColumn($tenantsTable, 'description');
+        $hasTenantTags = Schema::hasColumn($tenantsTable, 'tags');
 
         $selectColumns = [
             'id',
@@ -92,8 +97,9 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
             ->withoutGlobalScope(TenantScope::class)
             ->select($selectColumns)
             ->where('price', '<=', $safeBudget)
-            ->whereHas('tenant', function (Builder $query) use ($search, $citySlug, $categorySlug): void {
-                $this->applyTenantFilters($query, $search, $citySlug, $categorySlug);
+            ->whereHas('tenant', function (Builder $query) use ($citySlug, $categorySlug): void {
+                $query->withoutGlobalScope(TenantScope::class);
+                $this->applyTenantFilters($query, null, $citySlug, $categorySlug);
             })
             ->orderBy('price')
             ->orderBy('name')
@@ -103,14 +109,60 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
             $productsQuery->whereIn('stock_status', self::PURCHASEABLE_STOCK_STATUSES);
         }
 
+        $term = trim((string) $search);
+        if ($term !== '') {
+            $productsQuery->where(function (Builder $query) use (
+                $term,
+                $hasMenuSection,
+                $hasProductDescription,
+                $hasTenantDescription,
+                $hasTenantTags
+            ): void {
+                $query
+                    ->where('name', 'like', "%{$term}%")
+                    ->orWhere('slug', 'like', "%{$term}%")
+                    ->orWhereHas('tenant', function (Builder $tenantQuery) use ($term, $hasTenantDescription, $hasTenantTags): void {
+                        $tenantQuery->withoutGlobalScope(TenantScope::class);
+                        $tenantQuery->where('name', 'like', "%{$term}%");
+
+                        if ($hasTenantDescription) {
+                            $tenantQuery->orWhere('description', 'like', "%{$term}%");
+                        }
+
+                        if ($hasTenantTags) {
+                            $tenantQuery->orWhere('tags', 'like', "%{$term}%");
+                        }
+                    });
+
+                if ($hasProductDescription) {
+                    $query->orWhere('description', 'like', "%{$term}%");
+                }
+
+                if ($hasMenuSection) {
+                    $query->orWhereHas('menuSection', function (Builder $menuSectionQuery) use ($term): void {
+                        $menuSectionQuery->withoutGlobalScope(TenantScope::class);
+                        $menuSectionQuery->where('name', 'like', "%{$term}%");
+                    });
+                }
+            });
+        }
+
         $withRelations = [
-            'tenant:id,name,slug,city_id,category_id',
+            'tenant' => static function ($query): void {
+                $query
+                    ->withoutGlobalScope(TenantScope::class)
+                    ->select(['id', 'name', 'slug', 'city_id', 'category_id']);
+            },
             'tenant.city:id,name,slug',
             'tenant.category:id,name,slug',
         ];
 
         if ($hasMenuSection) {
-            $withRelations[] = 'menuSection:id,name';
+            $withRelations['menuSection'] = static function ($query): void {
+                $query
+                    ->withoutGlobalScope(TenantScope::class)
+                    ->select(['id', 'name']);
+            };
         }
 
         try {
@@ -118,15 +170,19 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
                 ->with($withRelations)
                 ->get();
         } catch (\Throwable) {
-            return $this->recommendByBudgetRaw(
-                budget: $safeBudget,
-                citySlug: $citySlug,
-                categorySlug: $categorySlug,
-                search: $search,
-                limit: $safeLimit,
-                hasStockStatus: $hasStockStatus,
-                hasMenuSection: $hasMenuSection,
-            );
+            try {
+                return $this->recommendByBudgetRaw(
+                    budget: $safeBudget,
+                    citySlug: $citySlug,
+                    categorySlug: $categorySlug,
+                    search: $search,
+                    limit: $safeLimit,
+                    hasStockStatus: $hasStockStatus,
+                    hasMenuSection: $hasMenuSection,
+                );
+            } catch (\Throwable $rawException) {
+                throw new RuntimeException('sql_recommendation_query_failed', 0, $rawException);
+            }
         }
 
         /** @var array<string, list<Product>> $grouped */
@@ -247,9 +303,17 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
         if ($term !== '') {
             $hasTenantDescription = Schema::hasColumn($tenantsTable, 'description');
             $hasTenantTags = Schema::hasColumn($tenantsTable, 'tags');
+            $hasProductDescription = Schema::hasColumn($productsTable, 'description');
 
-            $query->where(function ($innerQuery) use ($term, $hasTenantDescription, $hasTenantTags): void {
-                $innerQuery->where('t.name', 'like', "%{$term}%");
+            $query->where(function ($innerQuery) use ($term, $hasTenantDescription, $hasTenantTags, $hasProductDescription, $hasMenuSection): void {
+                $innerQuery
+                    ->where('p.name', 'like', "%{$term}%")
+                    ->orWhere('p.slug', 'like', "%{$term}%")
+                    ->orWhere('t.name', 'like', "%{$term}%");
+
+                if ($hasProductDescription) {
+                    $innerQuery->orWhere('p.description', 'like', "%{$term}%");
+                }
 
                 if ($hasTenantDescription) {
                     $innerQuery->orWhere('t.description', 'like', "%{$term}%");
@@ -257,6 +321,10 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
 
                 if ($hasTenantTags) {
                     $innerQuery->orWhere('t.tags', 'like', "%{$term}%");
+                }
+
+                if ($hasMenuSection) {
+                    $innerQuery->orWhere('ms.name', 'like', "%{$term}%");
                 }
             });
         }
@@ -342,48 +410,76 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
     ): array {
         $query = $this->normalizeText($search);
         $safeLimit = max(1, min($limit, 20));
+        $safeRecommendations = $this->ensureTenantDiversity($recommendations);
 
         if ($query === '') {
-            return array_slice($recommendations, 0, $safeLimit);
+            return array_slice($safeRecommendations, 0, $safeLimit);
         }
 
-        $queryEmbedding = $this->fetchEmbeddings([$query])[0] ?? throw new RuntimeException('directory_guide_embedding_response_invalid');
+        $queryEmbedding = $this->fetchEmbeddings([$query])[0] ?? throw new RuntimeException('embedding_not_found');
 
-        $similarityByRecommendation = $this->similarityFromStoredEmbeddings($recommendations, $queryEmbedding);
+        $similarityByRecommendation = [];
+        $storedEmbeddingIssue = null;
+
+        try {
+            $similarityByRecommendation = $this->similarityFromStoredEmbeddings($safeRecommendations, $queryEmbedding);
+        } catch (RuntimeException $exception) {
+            $storedEmbeddingIssue = $exception->getMessage();
+        }
 
         if ($similarityByRecommendation === []) {
-            $similarityByRecommendation = $this->similarityFromOnTheFlyEmbeddings($recommendations, $queryEmbedding);
+            $similarityByRecommendation = $this->similarityFromOnTheFlyEmbeddings($safeRecommendations, $queryEmbedding);
         }
 
         if ($similarityByRecommendation === []) {
-            throw new RuntimeException('directory_guide_embedding_candidates_unavailable');
+            if (is_string($storedEmbeddingIssue) && $storedEmbeddingIssue !== '') {
+                throw new RuntimeException($storedEmbeddingIssue);
+            }
+
+            throw new RuntimeException('embedding_not_found');
         }
 
-        usort($recommendations, function (array $left, array $right) use ($query, $similarityByRecommendation): int {
+        $weights = (array) config('directory.guide.weights', []);
+        $vectorWeight = max(0.0, (float) ($weights['vector_similarity'] ?? 0.6));
+        $lexicalWeight = max(0.0, (float) ($weights['lexical_match'] ?? 0.25));
+        $priceWeight = max(0.0, (float) ($weights['price_fit'] ?? 0.15));
+
+        $normalizedBudget = $this->inferBudgetFromRecommendations($safeRecommendations);
+
+        usort($safeRecommendations, function (array $left, array $right) use (
+            $query,
+            $similarityByRecommendation,
+            $vectorWeight,
+            $lexicalWeight,
+            $priceWeight,
+            $normalizedBudget
+        ): int {
             $leftKey = $this->recommendationKey($left);
             $rightKey = $this->recommendationKey($right);
 
-            $leftSimilarity = $similarityByRecommendation[$leftKey] ?? -INF;
-            $rightSimilarity = $similarityByRecommendation[$rightKey] ?? -INF;
+            $leftVector = max(0.0, (float) ($similarityByRecommendation[$leftKey] ?? 0.0));
+            $rightVector = max(0.0, (float) ($similarityByRecommendation[$rightKey] ?? 0.0));
 
-            if ($leftSimilarity === $rightSimilarity) {
-                $leftScore = $this->recommendationScore($left, $query);
-                $rightScore = $this->recommendationScore($right, $query);
+            $leftLexical = $this->recommendationLexicalScore($left, $query);
+            $rightLexical = $this->recommendationLexicalScore($right, $query);
 
-                if ($leftScore === $rightScore) {
-                    $leftPrice = (float) data_get($left, 'price_range.min', INF);
-                    $rightPrice = (float) data_get($right, 'price_range.min', INF);
+            $leftPrice = $this->recommendationPriceFitScore($left, $normalizedBudget);
+            $rightPrice = $this->recommendationPriceFitScore($right, $normalizedBudget);
 
-                    return $leftPrice <=> $rightPrice;
-                }
+            $leftScore = ($vectorWeight * $leftVector) + ($lexicalWeight * $leftLexical) + ($priceWeight * $leftPrice);
+            $rightScore = ($vectorWeight * $rightVector) + ($lexicalWeight * $rightLexical) + ($priceWeight * $rightPrice);
 
-                return $rightScore <=> $leftScore;
+            if ($leftScore === $rightScore) {
+                $leftMinPrice = (float) data_get($left, 'price_range.min', INF);
+                $rightMinPrice = (float) data_get($right, 'price_range.min', INF);
+
+                return $leftMinPrice <=> $rightMinPrice;
             }
 
-            return $rightSimilarity <=> $leftSimilarity;
+            return $rightScore <=> $leftScore;
         });
 
-        return array_slice($recommendations, 0, $safeLimit);
+        return array_slice($safeRecommendations, 0, $safeLimit);
     }
 
     /**
@@ -524,24 +620,38 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
 
         $driver = DB::getDriverName();
         $productSimilarities = [];
+        $freshEmbeddingsFound = false;
+        $staleThresholdMinutes = max(1, (int) config('directory.guide.embedding_stale_minutes', 1440));
+        $staleCutoff = now()->subMinutes($staleThresholdMinutes);
+        $storedRowsCount = 0;
 
         if ($driver === 'pgsql' && Schema::hasColumn($table, 'embedding')) {
             $vectorLiteral = $this->toVectorLiteral($queryEmbedding);
 
-            $productSimilarities = DB::table($table)
-                ->select('product_id')
+            $rows = DB::table($table)
+                ->select('product_id', 'updated_at')
                 ->selectRaw('1 - (embedding <=> CAST(? AS vector)) AS similarity', [$vectorLiteral])
                 ->whereIn('product_id', $allProductIds)
                 ->whereNotNull('embedding')
-                ->pluck('similarity', 'product_id')
-                ->map(static fn (mixed $score): float => (float) $score)
-                ->all();
+                ->get();
+
+            $storedRowsCount = $rows->count();
+
+            foreach ($rows as $row) {
+                $productSimilarities[(int) $row->product_id] = (float) ($row->similarity ?? 0.0);
+
+                if ($this->isEmbeddingRowFresh($row->updated_at ?? null, $staleCutoff)) {
+                    $freshEmbeddingsFound = true;
+                }
+            }
         } elseif (Schema::hasColumn($table, 'embedding_json')) {
             $rows = DB::table($table)
-                ->select('product_id', 'embedding_json')
+                ->select('product_id', 'embedding_json', 'updated_at')
                 ->whereIn('product_id', $allProductIds)
                 ->whereNotNull('embedding_json')
                 ->get();
+
+            $storedRowsCount = $rows->count();
 
             foreach ($rows as $row) {
                 $vector = json_decode((string) $row->embedding_json, true);
@@ -551,11 +661,23 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
 
                 $normalized = array_map(static fn (mixed $value): float => (float) $value, $vector);
                 $productSimilarities[(int) $row->product_id] = $this->cosineSimilarity($queryEmbedding, $normalized);
+
+                if ($this->isEmbeddingRowFresh($row->updated_at ?? null, $staleCutoff)) {
+                    $freshEmbeddingsFound = true;
+                }
             }
         }
 
+        if ($storedRowsCount === 0) {
+            throw new RuntimeException('embedding_not_found');
+        }
+
+        if (! $freshEmbeddingsFound) {
+            throw new RuntimeException('embedding_sync_stale');
+        }
+
         if ($productSimilarities === []) {
-            return [];
+            throw new RuntimeException('embedding_not_found');
         }
 
         $result = [];
@@ -623,57 +745,223 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
      */
     private function fetchEmbeddings(array $inputs): array
     {
+        $model = (string) config('directory.guide.embedding_model', 'text-embedding-3-small');
+        $ttl = max(30, (int) config('directory.guide.embedding_cache_ttl_seconds', 300));
+        $resolved = [];
+        $missing = [];
+
+        foreach ($inputs as $index => $input) {
+            $normalizedInput = $this->normalizedEmbeddingInput($input);
+            $cacheKey = $this->embeddingCacheKey($model, $normalizedInput);
+            $cached = Cache::get($cacheKey);
+
+            if (is_array($cached) && $cached !== []) {
+                $resolved[$index] = array_map(static fn (mixed $value): float => (float) $value, $cached);
+
+                continue;
+            }
+
+            $missing[$index] = $normalizedInput;
+        }
+
+        if ($missing !== []) {
+            $fresh = $this->fetchEmbeddingsFromProvider(array_values($missing), $model);
+
+            foreach (array_keys($missing) as $position => $originalIndex) {
+                $embedding = $fresh[$position] ?? null;
+
+                if (! is_array($embedding) || $embedding === []) {
+                    continue;
+                }
+
+                $resolved[$originalIndex] = $embedding;
+                $cacheKey = $this->embeddingCacheKey($model, $missing[$originalIndex]);
+                Cache::put($cacheKey, $embedding, now()->addSeconds($ttl));
+            }
+        }
+
+        ksort($resolved);
+
+        if (count($resolved) !== count($inputs)) {
+            throw new RuntimeException('embedding_not_found');
+        }
+
+        return array_values($resolved);
+    }
+
+    /**
+     * @param  list<string>  $inputs
+     * @return list<list<float>>
+     */
+    private function fetchEmbeddingsFromProvider(array $inputs, string $model): array
+    {
         $apiKey = (string) config('services.openai.api_key', '');
 
         if (trim($apiKey) === '') {
-            throw new RuntimeException('directory_guide_openai_key_missing');
+            throw new RuntimeException('openai_auth_failed');
         }
 
-        $model = (string) config('directory.guide.embedding_model', 'text-embedding-3-small');
-        $timeout = (int) config('directory.guide.openai_timeout_seconds', 8);
-
-        $response = Http::withToken($apiKey)
-            ->acceptJson()
-            ->timeout(max(3, $timeout))
-            ->post('https://api.openai.com/v1/embeddings', [
-                'model' => $model,
-                'input' => $inputs,
-            ]);
-
-        if (! $response->ok()) {
-            throw new RuntimeException('directory_guide_openai_embedding_failed_'.$response->status());
+        if ($this->isOpenAiCircuitOpen()) {
+            throw new RuntimeException('openai_timeout');
         }
 
-        $data = $response->json('data');
+        $timeout = max(3, (int) config('directory.guide.openai_timeout_seconds', 8));
+        $maxRetries = max(0, (int) config('directory.guide.openai_max_retries', 1));
+        $attempts = max(1, $maxRetries + 1);
+        $lastFailure = 'openai_timeout';
 
-        if (! is_array($data) || $data === []) {
-            throw new RuntimeException('directory_guide_openai_embedding_empty');
-        }
+        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            try {
+                $response = Http::withToken($apiKey)
+                    ->acceptJson()
+                    ->timeout($timeout)
+                    ->post('https://api.openai.com/v1/embeddings', [
+                        'model' => $model,
+                        'input' => $inputs,
+                    ]);
+            } catch (\Throwable) {
+                $this->registerOpenAiCircuitFailure();
 
-        $byIndex = [];
+                if ($attempt < $attempts) {
+                    usleep($attempt * 150000);
 
-        foreach ($data as $item) {
-            if (! is_array($item)) {
-                continue;
+                    continue;
+                }
+
+                throw new RuntimeException('openai_timeout');
             }
 
-            $index = (int) ($item['index'] ?? count($byIndex));
-            $embedding = $item['embedding'] ?? null;
+            $status = $response->status();
 
-            if (! is_array($embedding) || $embedding === []) {
-                continue;
+            if ($status === 401 || $status === 403) {
+                $this->registerOpenAiCircuitFailure();
+                throw new RuntimeException('openai_auth_failed');
             }
 
-            $byIndex[$index] = array_map(static fn (mixed $value): float => (float) $value, $embedding);
+            if ($response->ok()) {
+                $data = $response->json('data');
+
+                if (! is_array($data) || $data === []) {
+                    $this->registerOpenAiCircuitFailure();
+                    throw new RuntimeException('embedding_not_found');
+                }
+
+                $byIndex = [];
+
+                foreach ($data as $item) {
+                    if (! is_array($item)) {
+                        continue;
+                    }
+
+                    $index = (int) ($item['index'] ?? count($byIndex));
+                    $embedding = $item['embedding'] ?? null;
+
+                    if (! is_array($embedding) || $embedding === []) {
+                        continue;
+                    }
+
+                    $byIndex[$index] = array_map(static fn (mixed $value): float => (float) $value, $embedding);
+                }
+
+                ksort($byIndex);
+
+                if (count($byIndex) !== count($inputs)) {
+                    $this->registerOpenAiCircuitFailure();
+                    throw new RuntimeException('embedding_not_found');
+                }
+
+                $this->resetOpenAiCircuitFailures();
+
+                return array_values($byIndex);
+            }
+
+            $this->registerOpenAiCircuitFailure();
+            $lastFailure = 'openai_timeout';
+
+            if ($attempt < $attempts) {
+                usleep($attempt * 150000);
+
+                continue;
+            }
         }
 
-        ksort($byIndex);
+        throw new RuntimeException($lastFailure);
+    }
 
-        if (count($byIndex) !== count($inputs)) {
-            throw new RuntimeException('directory_guide_openai_embedding_mismatch');
+    private function normalizedEmbeddingInput(string $input): string
+    {
+        $normalized = $this->normalizeText($input);
+
+        if ($normalized !== '') {
+            return $normalized;
         }
 
-        return array_values($byIndex);
+        return trim($input);
+    }
+
+    private function embeddingCacheKey(string $model, string $input): string
+    {
+        return 'directory:guide:embedding:'.hash('sha256', $model.'|'.$input);
+    }
+
+    private function openAiCircuitKey(): string
+    {
+        return 'directory:guide:openai:circuit-breaker';
+    }
+
+    private function isOpenAiCircuitOpen(): bool
+    {
+        $state = Cache::get($this->openAiCircuitKey(), [
+            'failures' => 0,
+            'opened_at' => null,
+        ]);
+
+        if (! is_array($state)) {
+            return false;
+        }
+
+        $threshold = max(1, (int) config('directory.guide.circuit_breaker.failure_threshold', 3));
+        $cooldownSeconds = max(5, (int) config('directory.guide.circuit_breaker.cooldown_seconds', 60));
+        $failures = (int) ($state['failures'] ?? 0);
+        $openedAt = $state['opened_at'] ?? null;
+
+        if ($failures < $threshold || ! is_string($openedAt) || $openedAt === '') {
+            return false;
+        }
+
+        return now()->diffInSeconds($openedAt) < $cooldownSeconds;
+    }
+
+    private function registerOpenAiCircuitFailure(): void
+    {
+        $key = $this->openAiCircuitKey();
+        $state = Cache::get($key, [
+            'failures' => 0,
+            'opened_at' => null,
+        ]);
+
+        if (! is_array($state)) {
+            $state = [
+                'failures' => 0,
+                'opened_at' => null,
+            ];
+        }
+
+        $threshold = max(1, (int) config('directory.guide.circuit_breaker.failure_threshold', 3));
+        $cooldownSeconds = max(5, (int) config('directory.guide.circuit_breaker.cooldown_seconds', 60));
+
+        $state['failures'] = ((int) ($state['failures'] ?? 0)) + 1;
+
+        if ((int) $state['failures'] >= $threshold) {
+            $state['opened_at'] = now()->toIso8601String();
+        }
+
+        Cache::put($key, $state, now()->addSeconds($cooldownSeconds * 5));
+    }
+
+    private function resetOpenAiCircuitFailures(): void
+    {
+        Cache::forget($this->openAiCircuitKey());
     }
 
     /**
@@ -728,13 +1016,17 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
         return trim("{$tenantName}. {$category}. {$city}. {$reason}. {$products}");
     }
 
-    private function recommendationScore(array $recommendation, string $query): int
+    private function recommendationLexicalScore(array $recommendation, string $query): float
     {
-        $score = 0;
+        if ($query === '') {
+            return 0.0;
+        }
+
+        $score = 0.0;
 
         $tenantName = $this->normalizeText((string) data_get($recommendation, 'tenant.name', ''));
         if ($tenantName !== '' && str_contains($tenantName, $query)) {
-            $score += 5;
+            $score += 0.45;
         }
 
         $productNames = collect((array) data_get($recommendation, 'products', []))
@@ -742,16 +1034,80 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
             ->filter(static fn ($name): bool => is_string($name))
             ->map(fn (string $name): string => $this->normalizeText($name));
 
-        $score += $productNames
+        $productMatches = $productNames
             ->filter(static fn (string $name): bool => str_contains($name, $query))
-            ->count() * 3;
+            ->count();
+
+        if ($productMatches > 0) {
+            $score += min(0.40, $productMatches * 0.20);
+        }
 
         $categoryName = $this->normalizeText((string) data_get($recommendation, 'tenant.category.name', ''));
         if ($categoryName !== '' && str_contains($categoryName, $query)) {
-            $score += 2;
+            $score += 0.15;
         }
 
-        return $score;
+        return min(1.0, max(0.0, $score));
+    }
+
+    private function recommendationPriceFitScore(array $recommendation, float $budget): float
+    {
+        if ($budget <= 0.0) {
+            return 0.0;
+        }
+
+        $minPrice = (float) data_get($recommendation, 'price_range.min', 0.0);
+
+        if ($minPrice <= 0.0 || $minPrice > $budget) {
+            return 0.0;
+        }
+
+        return min(1.0, $minPrice / $budget);
+    }
+
+    private function inferBudgetFromRecommendations(array $recommendations): float
+    {
+        $maxPrice = collect($recommendations)
+            ->map(static fn (array $recommendation): float => (float) data_get($recommendation, 'price_range.max', 0.0))
+            ->max();
+
+        return is_numeric($maxPrice) ? (float) $maxPrice : 0.0;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $recommendations
+     * @return list<array<string, mixed>>
+     */
+    private function ensureTenantDiversity(array $recommendations): array
+    {
+        $seenTenants = [];
+        $diverse = [];
+
+        foreach ($recommendations as $recommendation) {
+            $tenantId = (string) data_get($recommendation, 'tenant.id', data_get($recommendation, 'tenant.slug', ''));
+
+            if ($tenantId === '' || isset($seenTenants[$tenantId])) {
+                continue;
+            }
+
+            $seenTenants[$tenantId] = true;
+            $diverse[] = $recommendation;
+        }
+
+        return $diverse;
+    }
+
+    private function isEmbeddingRowFresh(mixed $updatedAt, \DateTimeInterface $staleCutoff): bool
+    {
+        if ($updatedAt === null) {
+            return false;
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse((string) $updatedAt)->greaterThanOrEqualTo($staleCutoff);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function normalizeText(?string $value): string

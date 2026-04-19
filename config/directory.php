@@ -17,6 +17,18 @@ return [
         'hybrid_rerank_enabled' => (bool) env('DIRECTORY_GUIDE_HYBRID_RERANK_ENABLED', false),
         'embedding_model' => env('DIRECTORY_GUIDE_EMBEDDING_MODEL', 'text-embedding-3-small'),
         'openai_timeout_seconds' => (int) env('DIRECTORY_GUIDE_OPENAI_TIMEOUT_SECONDS', 8),
+        'openai_max_retries' => (int) env('DIRECTORY_GUIDE_OPENAI_MAX_RETRIES', 1),
+        'embedding_cache_ttl_seconds' => (int) env('DIRECTORY_GUIDE_EMBEDDING_CACHE_TTL_SECONDS', 300),
+        'embedding_stale_minutes' => (int) env('DIRECTORY_GUIDE_EMBEDDING_STALE_MINUTES', 1440),
+        'circuit_breaker' => [
+            'failure_threshold' => (int) env('DIRECTORY_GUIDE_CIRCUIT_FAILURE_THRESHOLD', 3),
+            'cooldown_seconds' => (int) env('DIRECTORY_GUIDE_CIRCUIT_COOLDOWN_SECONDS', 60),
+        ],
+        'weights' => [
+            'vector_similarity' => (float) env('DIRECTORY_GUIDE_WEIGHT_VECTOR', 0.60),
+            'lexical_match' => (float) env('DIRECTORY_GUIDE_WEIGHT_LEXICAL', 0.25),
+            'price_fit' => (float) env('DIRECTORY_GUIDE_WEIGHT_PRICE', 0.15),
+        ],
         /*
         |----------------------------------------------------------------------
         | Cost guardrail for hybrid rerank
@@ -27,6 +39,9 @@ return [
         |
         */
         'max_rerank_candidates' => (int) env('DIRECTORY_GUIDE_MAX_RERANK_CANDIDATES', 10),
+        'daily_quota' => [
+            'limit' => (int) env('DIRECTORY_GUIDE_DAILY_LIMIT', 5),
+        ],
         'pgvector' => [
             'enabled' => (bool) env('PGVECTOR_ENABLED', false),
             'table' => env('PGVECTOR_TABLE', 'directory_product_embeddings'),

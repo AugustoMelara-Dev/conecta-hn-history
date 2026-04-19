@@ -21,6 +21,7 @@ final class SyncDirectoryEmbeddingsCommand extends Command
 {
     protected $signature = 'directory:sync-embeddings
         {--tenant= : Sync embeddings only for a specific tenant UUID}
+        {--since-hours=0 : Sync only records updated in the last N hours (0 = all)}
         {--limit=0 : Max products to process (0 = all)}
         {--chunk=100 : Chunk size for query iteration}
         {--force : Rebuild embeddings even when hash is unchanged}';
@@ -54,6 +55,7 @@ final class SyncDirectoryEmbeddingsCommand extends Command
         }
 
         $tenantFilter = $this->option('tenant');
+        $sinceHours = max(0, (int) $this->option('since-hours'));
         $limit = max(0, (int) $this->option('limit'));
         $chunk = max(10, min((int) $this->option('chunk'), 500));
         $force = (bool) $this->option('force');
@@ -72,6 +74,21 @@ final class SyncDirectoryEmbeddingsCommand extends Command
 
         if (is_string($tenantFilter) && $tenantFilter !== '') {
             $query->where('tenant_id', $tenantFilter);
+        }
+
+        if ($sinceHours > 0) {
+            $since = now()->subHours($sinceHours);
+
+            $query->where(function ($innerQuery) use ($since): void {
+                $innerQuery
+                    ->where('updated_at', '>=', $since)
+                    ->orWhereHas('tenant', static function ($tenantQuery) use ($since): void {
+                        $tenantQuery->where('updated_at', '>=', $since);
+                    })
+                    ->orWhereHas('menuSection', static function ($menuSectionQuery) use ($since): void {
+                        $menuSectionQuery->where('updated_at', '>=', $since);
+                    });
+            });
         }
 
         if ($limit > 0) {
@@ -141,10 +158,11 @@ final class SyncDirectoryEmbeddingsCommand extends Command
         });
 
         $this->info(sprintf(
-            'Directory embeddings sync completed. processed=%d updated=%d skipped=%d',
+            'Directory embeddings sync completed. processed=%d updated=%d skipped=%d since_hours=%d',
             $processed,
             $updated,
-            $skipped
+            $skipped,
+            $sinceHours
         ));
 
         return self::SUCCESS;

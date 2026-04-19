@@ -16,6 +16,7 @@ use App\Infrastructure\Sales\Adapters\EloquentCheckoutSessionAdapter;
 use App\Infrastructure\Sales\Adapters\EloquentInventoryHoldAdapter;
 use App\Infrastructure\Sales\Adapters\EloquentLocationReader;
 use App\Infrastructure\Scope\FilamentTenantContext;
+use App\Support\Directory\GuideQuota;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -371,6 +372,30 @@ class InfrastructureServiceProvider extends ServiceProvider
         // 20 attempts per minute per user/IP
         RateLimiter::for('api.transactions', function (Request $request) {
             return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // 12. DIRECTORY GUIDE DAILY QUOTA (Freemium v1)
+        // 5 calls/day per authenticated user_id with date-scoped key.
+        RateLimiter::for('directory-guide-daily', function (Request $request) {
+            $limit = GuideQuota::limit();
+
+            return Limit::perDay($limit)
+                ->by(GuideQuota::bucketKey($request))
+                ->response(function (Request $request, array $headers) use ($limit) {
+                    $retryAfter = GuideQuota::retryAfterSeconds($request);
+                    $status = GuideQuota::status($request);
+
+                    return response()->json([
+                        'error_code' => 'DIRECTORY_GUIDE_DAILY_LIMIT_EXCEEDED',
+                        'message' => 'Llegaste al limite diario de consultas de guia. Intenta nuevamente manana.',
+                        'retry_after_seconds' => $retryAfter,
+                        'reset_at' => $status['quota_reset_at'],
+                        'quota_limit' => $limit,
+                        'quota_remaining' => 0,
+                    ], 429, array_merge($headers, [
+                        'Retry-After' => (string) $retryAfter,
+                    ]));
+                });
         });
     }
 }

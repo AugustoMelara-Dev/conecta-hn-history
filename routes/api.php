@@ -85,7 +85,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/search', [DirectoryGuideController::class, 'search'])
             ->middleware(['throttle:api']);
         Route::get('/guide', [DirectoryGuideController::class, 'guide'])
-            ->middleware(['throttle:api']);
+            ->middleware(['auth:sanctum', 'throttle:directory-guide-daily', 'throttle:api']);
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
