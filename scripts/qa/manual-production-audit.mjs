@@ -12,6 +12,7 @@ const checks = [
   { id: 'register-business', route: '/registrar-negocio', marker: { type: 'selector', value: '#business_name' } },
   { id: 'login', route: '/login', marker: { type: 'selector', value: '#email' } },
   { id: 'admin-login', route: '/admin/login', marker: { type: 'text', value: 'Panel de superadministraci' } },
+  { id: 'guide-api', route: '/api/v1/directory/guide?budget=100&city=tegucigalpa&category=restaurantes&search=cafe', marker: null, expectedStatus: [200, 401, 429] },
   { id: 'microsite-restaurant', route: '/t/casa-brasa-bistro', marker: { type: 'selector', value: '[data-testid="tenant-microsite"]' } },
   { id: 'microsite-legal', route: '/t/bufete-lex-hn', marker: { type: 'selector', value: '[data-testid="tenant-microsite"]' } },
   { id: 'booking-entry', route: '/t/barberia-norte-pro/book', marker: { type: 'selector', value: '[data-testid="booking-wizard"]' } },
@@ -229,10 +230,19 @@ async function main() {
       const screenshotPath = path.join(outDir, `${check.id}.png`);
       await page.screenshot({ path: screenshotPath, fullPage: true });
 
-      row.ok = Boolean(row.status && row.status < 500 && markerResult.ok);
+      const expected = Array.isArray(check.expectedStatus) ? check.expectedStatus : null;
+      const statusOk = expected
+        ? expected.includes(Number(row.status))
+        : Boolean(row.status && row.status < 500);
+
+      row.ok = statusOk && markerResult.ok;
       row.finalUrl = page.url();
       row.screenshot = screenshotPath;
-      row.notes = markerResult.ok ? 'Ruta validada con evidencia visual.' : markerResult.details;
+      row.notes = markerResult.ok
+        ? expected
+          ? `Ruta validada (HTTP esperado: ${expected.join(', ')}) con evidencia visual.`
+          : 'Ruta validada con evidencia visual.'
+        : markerResult.details;
     } catch (error) {
       const screenshotPath = path.join(outDir, `${check.id}-failure.png`);
       await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => null);

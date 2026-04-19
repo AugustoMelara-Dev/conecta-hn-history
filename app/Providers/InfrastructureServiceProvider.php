@@ -17,6 +17,7 @@ use App\Infrastructure\Sales\Adapters\EloquentInventoryHoldAdapter;
 use App\Infrastructure\Sales\Adapters\EloquentLocationReader;
 use App\Infrastructure\Scope\FilamentTenantContext;
 use App\Support\Directory\GuideQuota;
+use App\Support\Directory\GuideRequestTelemetry;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class InfrastructureServiceProvider extends ServiceProvider
 {
@@ -384,6 +386,14 @@ class InfrastructureServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) use ($limit) {
                     $retryAfter = GuideQuota::retryAfterSeconds($request);
                     $status = GuideQuota::status($request);
+                    $requestId = (string) ($request->header('x-request-id') ?: Str::uuid()->toString());
+
+                    GuideRequestTelemetry::recordQuotaExceeded(
+                        request: $request,
+                        requestId: $requestId,
+                        quotaStatus: $status,
+                        retryAfterSeconds: $retryAfter,
+                    );
 
                     return response()->json([
                         'error_code' => 'DIRECTORY_GUIDE_DAILY_LIMIT_EXCEEDED',
@@ -394,6 +404,7 @@ class InfrastructureServiceProvider extends ServiceProvider
                         'quota_remaining' => 0,
                     ], 429, array_merge($headers, [
                         'Retry-After' => (string) $retryAfter,
+                        'x-request-id' => $requestId,
                     ]));
                 });
         });

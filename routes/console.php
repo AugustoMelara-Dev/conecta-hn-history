@@ -137,3 +137,22 @@ Schedule::call(function () {
         dispatch(new \App\Application\Billing\Commands\ReconcilePendingSubscriptionsCommand($tenantId));
     }
 })->hourly()->name('billing:reconcile-pending');
+
+// -------------------------------------------------------------------------------
+// DIRECTORY GUIDE OPERATIONS - runtime preflight + quality/cost dashboard
+// -------------------------------------------------------------------------------
+// Preflight validates APP_KEY/OpenAI/platform vars and embeddings table readiness.
+// Ops report emits hybrid/fallback rates, timeout/auth failures, and 429 pressure.
+// If alert thresholds are exceeded, the report command exits non-zero.
+// -------------------------------------------------------------------------------
+Schedule::command('directory:guide:preflight --strict --json')
+    ->everyThirtyMinutes()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/directory-guide-preflight.log'));
+
+Schedule::command('directory:guide:ops-report --hours=24 --json --fail-on-alert')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/directory-guide-ops.log'));

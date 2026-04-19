@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Directory\Contracts\DirectoryGuideReader;
 use App\Http\Controllers\Controller;
 use App\Support\Directory\GuideQuota;
+use App\Support\Directory\GuideRequestTelemetry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -249,6 +250,17 @@ final class DirectoryGuideController extends Controller
             'quota_remaining' => $quotaStatus['quota_remaining'] ?? null,
             'quota_reset_at' => $quotaStatus['quota_reset_at'] ?? null,
         ]);
+
+        GuideRequestTelemetry::recordGuideResponse(
+            request: $request,
+            requestId: $requestId,
+            statusCode: 200,
+            meta: $meta,
+            latencyMs: $latencyMs,
+            candidateCount: $candidateCount,
+            tenantCount: $tenantCount,
+            quotaStatus: $quotaStatus,
+        );
 
         $this->logGuideUsage($request, (string) ($meta['ranking_mode'] ?? 'sql'));
 

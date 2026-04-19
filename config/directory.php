@@ -42,6 +42,16 @@ return [
         'daily_quota' => [
             'limit' => (int) env('DIRECTORY_GUIDE_DAILY_LIMIT', 5),
         ],
+        'alerts' => [
+            // % of requests in window with degraded_reason=guide_runtime_unavailable
+            'guide_runtime_unavailable_rate' => (float) env('DIRECTORY_GUIDE_ALERT_RUNTIME_UNAVAILABLE_RATE', 0.05),
+            // absolute count in window with degraded_reason=openai_auth_failed
+            'openai_auth_failed_count' => (int) env('DIRECTORY_GUIDE_ALERT_OPENAI_AUTH_FAILED_COUNT', 1),
+            // % of requests in window with degraded_reason=openai_timeout
+            'openai_timeout_rate' => (float) env('DIRECTORY_GUIDE_ALERT_OPENAI_TIMEOUT_RATE', 0.25),
+            // % of requests in window returning HTTP 429
+            'quota_exceeded_rate' => (float) env('DIRECTORY_GUIDE_ALERT_QUOTA_EXCEEDED_RATE', 0.40),
+        ],
         'pgvector' => [
             'enabled' => (bool) env('PGVECTOR_ENABLED', false),
             'table' => env('PGVECTOR_TABLE', 'directory_product_embeddings'),
