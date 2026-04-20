@@ -1,4 +1,7 @@
 import { expect, test } from '@playwright/test';
+import { expectNoFatalServerText, expectNon5xx, gotoWithRetries } from './support/smoke-http';
+
+const isSmokeMode = process.env.E2E_MODE === 'smoke';
 
 async function waitForSelectOptions(selectLocator) {
     await expect.poll(async () => {
@@ -59,19 +62,34 @@ async function goToLocationStep(page) {
 
 test.describe('Auth journey', () => {
     test('login flow responds correctly (success or validation without 500)', async ({ page }) => {
-        await page.goto('/login');
-        const loginForm = page.getByTestId('login-form').or(page.locator('form').first());
+        const loginResponse = await gotoWithRetries(page, '/login', {
+            attempts: 2,
+            delayMs: 600,
+            responseTimeoutMs: 8_000,
+        });
+        expectNon5xx(loginResponse, '/login');
+        await expectNoFatalServerText(page);
+
+        const loginForm = page
+            .getByTestId('login-form')
+            .or(page.locator('form').first())
+            .or(page.locator('body').getByText(/iniciar sesi[oó]n|login|sign in/i).first())
+            .first();
         await expect(loginForm).toBeVisible();
+
+        if (isSmokeMode) {
+            return;
+        }
 
         await page.getByTestId('login-email-input').or(page.locator('#email')).fill('casa-brasa-bistro@example.test');
         await page.getByTestId('login-password-input').or(page.locator('#password')).fill('password');
-        const [loginResponse] = await Promise.all([
+        const [submitResponse] = await Promise.all([
             page.waitForResponse((response) => response.url().includes('/login') && response.request().method() === 'POST'),
             page.getByTestId('login-submit').or(page.getByRole('button', { name: /login|iniciar/i })).click(),
         ]);
 
         await page.waitForLoadState('networkidle');
-        expect([200, 302, 303, 422]).toContain(loginResponse.status());
+        expect([200, 302, 303, 422]).toContain(submitResponse.status());
 
         const stillOnLogin = page.url().includes('/login');
         if (!stillOnLogin) {
@@ -90,8 +108,23 @@ test.describe('Auth journey', () => {
         const email = `registro.e2e.${suffix}@example.test`;
         const slug = `registro-e2e-${suffix}`;
 
-        await page.goto('/registrar-negocio');
-        await expect(page.locator('#business_name')).toBeVisible();
+        const registerResponse = await gotoWithRetries(page, '/registrar-negocio', {
+            attempts: 2,
+            delayMs: 600,
+            responseTimeoutMs: 8_000,
+        });
+        expectNon5xx(registerResponse, '/registrar-negocio');
+        await expectNoFatalServerText(page);
+
+        const registrationSurface = page
+            .locator('#business_name')
+            .or(page.locator('body').getByText(/registrar negocio|crear negocio|crear cuenta/i).first())
+            .first();
+        await expect(registrationSurface).toBeVisible();
+
+        if (isSmokeMode) {
+            return;
+        }
 
         await page.locator('#business_name').fill(`Negocio E2E ${suffix}`);
         const slugInput = page.locator('#slug');
