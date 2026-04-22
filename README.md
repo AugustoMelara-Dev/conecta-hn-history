@@ -7,6 +7,13 @@ Este README documenta el estado actual del proyecto al 2026-03-12.
 > Nota de rebrand
 > El producto ya se documenta aqui como `Vito Business OS`, pero el codebase todavia conserva mucho naming heredado de `Conecta HN` en vistas, componentes, configs, correos, textos, providers y metadatos. Este README deja el nuevo nombre como referencia funcional, pero no implica que todo el repo ya fue renombrado.
 
+## Operacion y auditoria (No-MVP)
+
+- [Architecture Audit Pack 2026-04](docs/architecture/AUDIT_PACK_NO_MVP_2026-04.md)
+- [Deploy topology Vercel + Railway](docs/architecture/DEPLOY_TOPOLOGY_VERCEL_RAILWAY.md)
+- [Guide RAG readiness blueprint](docs/architecture/GUIDE_RAG_READINESS_BLUEPRINT.md)
+- [Credential incident closure checklist](docs/security/CREDENTIAL_INCIDENT_CLOSURE.md)
+
 ## Que contiene este repo
 
 Hoy el proyecto ya incluye:
