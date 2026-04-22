@@ -183,11 +183,10 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
             return;
         }
 
-        $message = match ($command->deliveryType) {
-            'pickup' => 'Este comercio no permite retiro en tienda.',
-            'delivery' => 'Este comercio no ofrece entrega a domicilio.',
-            'shipping' => 'Este comercio no realiza envios nacionales.',
-            default => 'Tipo de entrega no soportado.',
+        $message = match ($capability) {
+            Capability::PICKUP_ORDERS => 'Este comercio no permite retiro en tienda.',
+            Capability::DELIVERY_ORDERS => 'Este comercio no ofrece entrega a domicilio.',
+            Capability::SHIPPING_ORDERS => 'Este comercio no realiza envios nacionales.',
         };
 
         throw new DomainException($message);

@@ -337,7 +337,7 @@ final class FilamentAdminNotifier implements LegacyAdminNotifierInterface, Opera
     private function resolveLeadName(mixed $lead): string
     {
         if ($lead instanceof LeadEntity) {
-            return (string) ($lead->contactData['name'] ?? 'Nuevo lead');
+            return $lead->contactData['name'];
         }
 
         if (is_object($lead) && method_exists($lead, 'getAttribute')) {
