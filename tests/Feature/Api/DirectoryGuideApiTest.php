@@ -93,6 +93,36 @@ final class DirectoryGuideApiTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_directory_search_excludes_verified_tenants_when_publication_is_paused(): void
+    {
+        $city = City::factory()->create([
+            'name' => 'Tegucigalpa',
+            'slug' => 'tegucigalpa',
+        ]);
+        $category = Category::factory()->create([
+            'name' => 'Restaurantes',
+            'slug' => 'restaurantes',
+            'is_active' => true,
+        ]);
+
+        Tenant::factory()->create([
+            'name' => 'Bistro En Disputa',
+            'slug' => 'bistro-en-disputa',
+            'is_active' => true,
+            'subscription_status' => 'active',
+            'verification_status' => Tenant::VERIFICATION_STATUS_VERIFIED,
+            'publication_paused_at' => now(),
+            'city_id' => $city->getKey(),
+            'category_id' => $category->getKey(),
+        ]);
+
+        $response = $this->getJson('/api/v1/directory/search?city=tegucigalpa&category=restaurantes&limit=20');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
     public function test_directory_guide_recommends_only_available_products_within_budget(): void
     {
         $this->actingAsCustomer();
@@ -189,6 +219,40 @@ final class DirectoryGuideApiTest extends TestCase
             ->assertJsonPath('meta.ranking_mode', 'fallback')
             ->assertJsonPath('meta.reasoning_basis', 'directory_search_fallback')
             ->assertJsonPath('data.0.slug', $tenant->slug);
+    }
+
+    public function test_directory_guide_fallback_excludes_paused_tenants_from_public_results(): void
+    {
+        $this->actingAsCustomer();
+
+        $city = City::factory()->create([
+            'name' => 'Comayagua',
+            'slug' => 'comayagua',
+        ]);
+        $category = Category::factory()->create([
+            'name' => 'Servicios',
+            'slug' => 'servicios',
+            'is_active' => true,
+        ]);
+
+        Tenant::factory()->create([
+            'name' => 'Consultoria En Disputa',
+            'slug' => 'consultoria-en-disputa',
+            'is_active' => true,
+            'subscription_status' => 'active',
+            'verification_status' => Tenant::VERIFICATION_STATUS_VERIFIED,
+            'publication_paused_at' => now(),
+            'city_id' => $city->getKey(),
+            'category_id' => $category->getKey(),
+        ]);
+
+        $response = $this->getJson('/api/v1/directory/guide?city=comayagua&category=servicios');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('meta.degraded_to_search', true)
+            ->assertJsonPath('meta.degraded_reason', 'missing_budget')
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_directory_guide_uses_hybrid_ranking_mode_when_feature_flag_is_enabled(): void

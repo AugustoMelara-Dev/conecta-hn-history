@@ -133,6 +133,48 @@ final class RoutingTest extends TestCase
     }
 
     #[Test]
+    public function returns_404_for_provisional_tenant_for_public_visitors(): void
+    {
+        $user = User::factory()->create();
+        Tenant::factory()->create([
+            'user_id' => $user->id,
+            'slug' => 'tenant-provisional',
+            'status' => 'approved',
+            'is_active' => true,
+            'subscription_status' => 'active',
+            'verification_status' => Tenant::VERIFICATION_STATUS_PROVISIONAL,
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $response = $this->get('/t/tenant-provisional');
+
+        $response->assertStatus(404);
+    }
+
+    #[Test]
+    public function returns_404_for_paused_tenant_for_public_visitors(): void
+    {
+        $user = User::factory()->create();
+        Tenant::factory()->create([
+            'user_id' => $user->id,
+            'slug' => 'tenant-paused',
+            'status' => 'approved',
+            'is_active' => true,
+            'subscription_status' => 'active',
+            'verification_status' => Tenant::VERIFICATION_STATUS_VERIFIED,
+            'publication_paused_at' => now(),
+            'publication_pause_reason' => 'Disputa abierta',
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $response = $this->get('/t/tenant-paused');
+
+        $response->assertStatus(404);
+    }
+
+    #[Test]
     public function allows_the_owner_to_preview_an_unpublished_tenant(): void
     {
         $user = User::factory()->create();
@@ -154,6 +196,33 @@ final class RoutingTest extends TestCase
             ->component('Tenant/Show')
             ->where('previewMode', true)
             ->where('previewReason', 'La suscripcion actual no permite visibilidad publica.')
+        );
+    }
+
+    #[Test]
+    public function owner_preview_reason_mentions_claim_verification_when_tenant_is_provisional(): void
+    {
+        $user = User::factory()->create();
+        Tenant::factory()->create([
+            'user_id' => $user->id,
+            'slug' => 'preview-provisional-tenant',
+            'status' => 'approved',
+            'is_active' => true,
+            'subscription_status' => 'active',
+            'verification_status' => Tenant::VERIFICATION_STATUS_PROVISIONAL,
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/t/preview-provisional-tenant');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Tenant/Show')
+            ->where('previewMode', true)
+            ->where('previewReason', 'Tu negocio aun no completa la verificacion de titularidad.')
         );
     }
 
