@@ -33,6 +33,7 @@ auth.json
 # Cache and logs
 *.log
 *.cache
+.composer-cache/
 .phpunit.result.cache
 .phpunit.cache/
 storage/*.key

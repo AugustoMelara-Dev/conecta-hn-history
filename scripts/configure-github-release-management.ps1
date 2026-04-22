@@ -7,6 +7,10 @@ param(
 
     [string[]] $RequiredChecks = @(
         "CI Gate / Final Status",
+        "Quality Gate / Frontend",
+        "Quality Gate / Lint",
+        "Quality Gate / Static Analysis",
+        "Security Gate / Dependency Audit",
         "Security SAST / Final Status",
         "Security Secrets / Final Status",
         "Permissions and Webhook Governance"
