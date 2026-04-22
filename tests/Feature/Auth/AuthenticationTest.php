@@ -68,6 +68,62 @@ class AuthenticationTest extends TestCase
         );
     }
 
+    public function test_super_admins_are_redirected_to_the_filament_admin_panel_after_login(): void
+    {
+        $superAdmin = User::factory()->create([
+            'role' => UserRole::SUPER_ADMIN,
+        ]);
+        $token = 'auth-login-super-admin-token';
+
+        $response = $this->withSession(['_token' => $token])->post('/login', [
+            '_token' => $token,
+            'email' => $superAdmin->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect(route('filament.admin.pages.dashboard', [], false));
+    }
+
+    public function test_profile_route_redirects_customer_to_directory_surface(): void
+    {
+        $customer = User::factory()->create([
+            'role' => UserRole::CUSTOMER,
+            'tenant_id' => null,
+        ]);
+
+        $response = $this->actingAs($customer)->get('/profile');
+
+        $response->assertRedirect(route('directory.index', absolute: false));
+    }
+
+    public function test_profile_route_redirects_tenant_owner_to_filament_profile(): void
+    {
+        $tenantOwner = User::factory()->create([
+            'role' => UserRole::TENANT_OWNER,
+        ]);
+        $tenant = Tenant::factory()->create([
+            'user_id' => $tenantOwner->id,
+            'slug' => 'owner-surface-check',
+        ]);
+        $tenantOwner->forceFill(['tenant_id' => $tenant->id])->save();
+
+        $response = $this->actingAs($tenantOwner)->get('/profile');
+
+        $response->assertRedirect(route('filament.app.auth.profile', [], false));
+    }
+
+    public function test_profile_route_redirects_super_admin_to_admin_profile(): void
+    {
+        $superAdmin = User::factory()->create([
+            'role' => UserRole::SUPER_ADMIN,
+        ]);
+
+        $response = $this->actingAs($superAdmin)->get('/profile');
+
+        $response->assertRedirect(route('filament.admin.auth.profile', [], false));
+    }
+
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();

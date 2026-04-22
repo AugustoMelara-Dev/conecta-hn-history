@@ -4,6 +4,7 @@ param(
     [switch]$SkipE2E,
     [switch]$RunManualAudit,
     [switch]$RunGuideChecks,
+    [string]$GuideAuthToken = "",
     [switch]$RequireHybrid,
     [string]$GuideCity = "san-pedro-sula",
     [string]$GuideCategory = "restaurantes",
@@ -39,6 +40,41 @@ function Invoke-Step {
     } catch {
         Write-Log "FAIL  :: $Name"
         throw
+    }
+}
+
+function Invoke-HttpProbe {
+    param(
+        [Parameter(Mandatory = $true)][string]$Uri,
+        [hashtable]$Headers = @{},
+        [int]$TimeoutSec = 25,
+        [switch]$FollowRedirects
+    )
+
+    $tmp = [System.IO.Path]::GetTempFileName()
+    try {
+        $args = @('-sS', '-m', "$TimeoutSec", '-o', $tmp, '-w', '%{http_code}')
+        if ($FollowRedirects) {
+            $args += '-L'
+        }
+
+        foreach ($entry in $Headers.GetEnumerator()) {
+            $args += '-H'
+            $args += ("{0}: {1}" -f $entry.Key, $entry.Value)
+        }
+
+        $args += $Uri
+        $statusRaw = & curl.exe @args
+        $statusCode = 0
+        [void][int]::TryParse(($statusRaw | Out-String).Trim(), [ref]$statusCode)
+        $body = Get-Content $tmp -Raw -ErrorAction SilentlyContinue
+
+        return @{
+            StatusCode = $statusCode
+            Body = $body
+        }
+    } finally {
+        Remove-Item -Path $tmp -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -96,32 +132,73 @@ if ($RunGuideChecks) {
         throw "RunGuideChecks requires -BaseUrl"
     }
 
+    $base = $BaseUrl.TrimEnd('/')
+    $searchUri = "{0}/api/v1/directory/search?city={1}&category={2}&search={3}" -f `
+        $base, $GuideCity, $GuideCategory, $GuideSearch
     $budgetUri = "{0}/api/v1/directory/guide?budget={1}&city={2}&category={3}&search={4}" -f `
-        $BaseUrl.TrimEnd('/'), $GuideBudget, $GuideCity, $GuideCategory, $GuideSearch
+        $base, $GuideBudget, $GuideCity, $GuideCategory, $GuideSearch
     $fallbackUri = "{0}/api/v1/directory/guide?city={1}&category={2}&search={3}" -f `
-        $BaseUrl.TrimEnd('/'), $GuideCity, $GuideCategory, $GuideSearch
+        $base, $GuideCity, $GuideCategory, $GuideSearch
 
-    Write-Log "GET :: $budgetUri"
-    $budgetResult = Invoke-RestMethod -Uri $budgetUri -Method Get -TimeoutSec 25
-    $budgetMode = [string]$budgetResult.meta.ranking_mode
-    Write-Log "GUIDE budget ranking_mode=$budgetMode"
-
-    if ($RequireHybrid -and $budgetMode -ne "hybrid") {
-        throw "Expected ranking_mode=hybrid for budget query, got '$budgetMode'"
+    Write-Log "GET :: $searchUri"
+    $searchResponse = Invoke-HttpProbe -Uri $searchUri
+    if ($searchResponse.StatusCode -ne 200) {
+        throw "Directory search contract failed: expected HTTP 200, got $($searchResponse.StatusCode)"
     }
 
-    Write-Log "GET :: $fallbackUri"
-    $fallbackResult = Invoke-RestMethod -Uri $fallbackUri -Method Get -TimeoutSec 25
-    $fallbackMode = [string]$fallbackResult.meta.ranking_mode
-    $fallbackDegraded = [bool]$fallbackResult.meta.degraded_to_search
-    Write-Log "GUIDE fallback ranking_mode=$fallbackMode degraded_to_search=$fallbackDegraded"
+    $searchResult = $searchResponse.Body | ConvertFrom-Json
+    $searchMode = [string]$searchResult.meta.ranking_mode
+    Write-Log "SEARCH ranking_mode=$searchMode"
 
-    if ($fallbackMode -ne "fallback" -or -not $fallbackDegraded) {
-        throw "Fallback guide contract failed: expected ranking_mode=fallback and degraded_to_search=true"
+    if ([string]::IsNullOrWhiteSpace($GuideAuthToken)) {
+        Write-Log "No GuideAuthToken provided. Validating unauthenticated guide access is blocked."
+
+        foreach ($uri in @($budgetUri, $fallbackUri)) {
+            Write-Log "GET :: $uri"
+            $response = Invoke-HttpProbe -Uri $uri
+            $statusCode = $response.StatusCode
+            Write-Log "GUIDE unauth status=$statusCode"
+            if ($statusCode -notin @(302, 401)) {
+                throw "Guide unauth contract failed: expected HTTP 302 or 401, got $statusCode"
+            }
+        }
+    } else {
+        $headers = @{ Authorization = "Bearer $GuideAuthToken" }
+
+        Write-Log "GET :: $budgetUri (authenticated)"
+        $budgetResponse = Invoke-HttpProbe -Uri $budgetUri -Headers $headers
+        if ($budgetResponse.StatusCode -ne 200) {
+            throw "Authenticated guide budget contract failed: expected HTTP 200, got $($budgetResponse.StatusCode)"
+        }
+
+        $budgetResult = $budgetResponse.Body | ConvertFrom-Json
+        $budgetMode = [string]$budgetResult.meta.ranking_mode
+        Write-Log "GUIDE budget ranking_mode=$budgetMode"
+
+        if ($RequireHybrid -and $budgetMode -ne "hybrid") {
+            throw "Expected ranking_mode=hybrid for budget query, got '$budgetMode'"
+        }
+
+        Write-Log "GET :: $fallbackUri (authenticated)"
+        $fallbackResponse = Invoke-HttpProbe -Uri $fallbackUri -Headers $headers
+        if ($fallbackResponse.StatusCode -ne 200) {
+            throw "Authenticated guide fallback contract failed: expected HTTP 200, got $($fallbackResponse.StatusCode)"
+        }
+
+        $fallbackResult = $fallbackResponse.Body | ConvertFrom-Json
+        $fallbackMode = [string]$fallbackResult.meta.ranking_mode
+        $fallbackDegraded = [bool]$fallbackResult.meta.degraded_to_search
+        Write-Log "GUIDE fallback ranking_mode=$fallbackMode degraded_to_search=$fallbackDegraded"
+
+        if ($fallbackMode -ne "fallback" -or -not $fallbackDegraded) {
+            throw "Fallback guide contract failed: expected ranking_mode=fallback and degraded_to_search=true"
+        }
+
+        $budgetResult | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $outDir "guide-budget.json") -Encoding UTF8
+        $fallbackResult | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $outDir "guide-fallback.json") -Encoding UTF8
     }
 
-    $budgetResult | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $outDir "guide-budget.json") -Encoding UTF8
-    $fallbackResult | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $outDir "guide-fallback.json") -Encoding UTF8
+    $searchResult | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $outDir "directory-search.json") -Encoding UTF8
     $executedSteps.Add("guide-checks::$BaseUrl") | Out-Null
 }
 

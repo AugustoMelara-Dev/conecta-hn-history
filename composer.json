@@ -172,6 +172,14 @@
             "composer check:rbac-governance",
             "composer check:directory-guide-contract:stable"
         ],
+        "check:saas-surface-contract": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php -r \"is_dir('reports/saas-surface-contract') || mkdir('reports/saas-surface-contract', 0777, true);\"",
+            "Composer\\Config::disableProcessTimeout",
+            "@php vendor/bin/pest tests/Unit/Auth/AuthRedirectorTest.php tests/Feature/Auth/AuthenticationTest.php tests/Feature/Web/RegistrationControllerTest.php tests/Feature/Public/BusinessRegistrationTest.php tests/Feature/Public/TenantStatusMiddlewareTest.php tests/Feature/Api/BusinessClaimControllerTest.php tests/Feature/Api/DirectoryGuideApiTest.php tests/Feature/Filament/TenantPanelAccessTest.php tests/Feature/Filament/BusinessPageWorkflowTest.php tests/Feature/Tenant/OnboardingProgressServiceTest.php tests/Feature/Public/BookingPageRouteTest.php tests/Feature/Public/BookingFlowTest.php tests/Feature/Sales/StorefrontOrderTest.php --log-junit reports/saas-surface-contract/junit.xml -v"
+        ],
         "check:schema-key-type-governance": [
             "@php artisan config:clear --ansi",
             "@php artisan view:clear --ansi",
