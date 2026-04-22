@@ -10,6 +10,10 @@ use App\Http\Controllers\Public\LocationController;
 use App\Http\Controllers\Public\TenantMicrositeController;
 use App\Http\Controllers\Public\WelcomeController;
 use App\Http\Controllers\Tenant\AnalyticsController;
+use App\Http\Middleware\EnsureAppSurfaceAccess;
+use App\Http\Middleware\EnsurePublicSurfaceAccess;
+use App\Support\Auth\AuthRedirector;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -26,7 +30,9 @@ use Inertia\Inertia;
 require __DIR__.'/tenant.php';
 
 // 1. LANDING PAGE: React/Inertia (Welcome.jsx)
-Route::get('/', WelcomeController::class)->name('home');
+Route::get('/', WelcomeController::class)
+    ->middleware(EnsurePublicSurfaceAccess::class)
+    ->name('home');
 
 // [DEPRECATED] Old Livewire route:
 // Route::get('/', \App\Livewire\LandingPage::class)->name('home');
@@ -35,7 +41,9 @@ Route::get('/', WelcomeController::class)->name('home');
 // Route::get('/explorar', \App\Livewire\Pages\Home::class)->name('explore');
 
 // 2. EXPLORE: Marketplace Discovery (Luxury Entrance Strategy)
-Route::get('/explore', ExploreController::class)->name('public.explore');
+Route::get('/explore', ExploreController::class)
+    ->middleware(EnsurePublicSurfaceAccess::class)
+    ->name('public.explore');
 
 // 3. DIRECTORIO: React/Inertia (Directory/Index.jsx)
 Route::get('/directorio', [DirectoryController::class, 'index'])->name('directory.index');
@@ -104,9 +112,9 @@ Route::middleware('auth')->group(function () {
 });
 
 // Auth Routes (Dashboard, Mi Cuenta)
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', function (Request $request) {
+    return redirect()->to(AuthRedirector::destinationFor($request->user()));
+})->middleware(['auth', EnsureAppSurfaceAccess::class])->name('dashboard');
 
 // TENANT INERTIA ROUTES (Must be loaded BEFORE wildcards)
 

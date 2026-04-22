@@ -77,6 +77,7 @@ return [
     |
     */
     'platform_app_url' => env('PLATFORM_APP_URL'),
+    'platform_admin_url' => env('PLATFORM_ADMIN_URL'),
     'platform_directory_url' => env('PLATFORM_DIRECTORY_URL'),
 
     /*

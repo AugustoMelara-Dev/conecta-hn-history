@@ -25,11 +25,12 @@ use App\Http\Controllers\Tenant\ProductController;
 use App\Http\Controllers\Tenant\ReportController;
 use App\Http\Controllers\Tenant\SettingsController;
 use App\Http\Controllers\Tenant\UpgradeController;
+use App\Http\Middleware\EnsureAppSurfaceAccess;
 use App\Http\Middleware\RedirectLegacyWorkspaceToAppPanel;
 use Illuminate\Support\Facades\Route;
 
 // Authenticated tenant routes under /workspace to avoid collisions with Filament /app.
-Route::middleware(['auth', 'verified'])->prefix('workspace')->group(function () {
+Route::middleware(['auth', EnsureAppSurfaceAccess::class])->prefix('workspace')->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware(RedirectLegacyWorkspaceToAppPanel::class)

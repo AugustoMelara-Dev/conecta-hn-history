@@ -9,6 +9,32 @@ use App\Models\User;
 
 final class AuthRedirector
 {
+    public static function isDirectorySurfaceUser(?object $user): bool
+    {
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        if ($user->isSuperAdmin()) {
+            return false;
+        }
+
+        return self::resolveTenantSlug($user) === null;
+    }
+
+    public static function isAppSurfaceUser(?object $user): bool
+    {
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        if ($user->isSuperAdmin()) {
+            return false;
+        }
+
+        return self::resolveTenantSlug($user) !== null;
+    }
+
     public static function destinationFor(?object $user, bool $appendVerifiedFlag = false): string
     {
         $suffix = $appendVerifiedFlag ? '?verified=1' : '';
@@ -27,9 +53,7 @@ final class AuthRedirector
 
         // Business context wins over legacy role strings to avoid sending
         // owner/staff accounts with accepted tenant context to the B2C surface.
-        $tenantSlug = self::resolveTenantSlug($user);
-
-        if ($tenantSlug !== null) {
+        if (self::isAppSurfaceUser($user)) {
             return self::appPanelDestinationFor($user).$suffix;
         }
 
@@ -59,7 +83,9 @@ final class AuthRedirector
             return route('dashboard', [], false);
         }
 
-        return self::surfaceUrl(route('filament.admin.pages.dashboard', [], false), config('app.platform_app_url'));
+        $adminOrigin = config('app.platform_admin_url', config('app.platform_app_url'));
+
+        return self::surfaceUrl(route('filament.admin.pages.dashboard', [], false), $adminOrigin);
     }
 
     private static function resolveTenantSlug(User $user, bool $allowAnyTenant = false): ?string
@@ -106,7 +132,9 @@ final class AuthRedirector
         }
 
         if ($user->isSuperAdmin()) {
-            return route('filament.admin.auth.profile', [], false);
+            $adminOrigin = config('app.platform_admin_url', config('app.platform_app_url'));
+
+            return self::surfaceUrl(route('filament.admin.auth.profile', [], false), $adminOrigin);
         }
 
         // Mirror destinationFor(): tenant context must route to B2B profile.

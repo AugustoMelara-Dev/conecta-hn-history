@@ -20,6 +20,7 @@ final class AuthRedirectorTest extends TestCase
         config([
             'app.platform_directory_url' => 'https://www.vitobusinessos.com',
             'app.platform_app_url' => 'https://app.vitobusinessos.com',
+            'app.platform_admin_url' => 'https://admin.vitobusinessos.com',
         ]);
 
         $customer = User::factory()->create([
@@ -40,6 +41,7 @@ final class AuthRedirectorTest extends TestCase
         config([
             'app.platform_directory_url' => 'https://www.vitobusinessos.com',
             'app.platform_app_url' => 'https://app.vitobusinessos.com',
+            'app.platform_admin_url' => 'https://admin.vitobusinessos.com',
         ]);
 
         $owner = User::factory()->tenantOwner()->create();
@@ -62,6 +64,7 @@ final class AuthRedirectorTest extends TestCase
         config([
             'app.platform_directory_url' => 'https://www.vitobusinessos.com',
             'app.platform_app_url' => 'https://app.vitobusinessos.com',
+            'app.platform_admin_url' => 'https://admin.vitobusinessos.com',
         ]);
 
         $superAdmin = User::factory()->superAdmin()->create();
@@ -69,7 +72,7 @@ final class AuthRedirectorTest extends TestCase
         $destination = AuthRedirector::destinationFor($superAdmin);
 
         $this->assertSame(
-            'https://app.vitobusinessos.com'.route('filament.admin.pages.dashboard', [], false),
+            'https://admin.vitobusinessos.com'.route('filament.admin.pages.dashboard', [], false),
             $destination
         );
     }
@@ -79,6 +82,7 @@ final class AuthRedirectorTest extends TestCase
         config([
             'app.platform_directory_url' => 'https://www.vitobusinessos.com',
             'app.platform_app_url' => 'https://app.vitobusinessos.com',
+            'app.platform_admin_url' => 'https://admin.vitobusinessos.com',
         ]);
 
         $legacyUser = User::factory()->create([
@@ -103,6 +107,7 @@ final class AuthRedirectorTest extends TestCase
         config([
             'app.platform_directory_url' => 'https://www.vitobusinessos.com',
             'app.platform_app_url' => 'https://app.vitobusinessos.com',
+            'app.platform_admin_url' => 'https://admin.vitobusinessos.com',
         ]);
 
         $customer = User::factory()->create([
