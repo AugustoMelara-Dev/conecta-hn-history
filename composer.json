@@ -156,6 +156,22 @@
             "@php -r \"is_dir('reports/directory-guide-contract') || mkdir('reports/directory-guide-contract', 0777, true);\"",
             "@php vendor/bin/pest tests/Feature/Api/DirectoryGuideApiTest.php --log-junit reports/directory-guide-contract/junit.xml -v"
         ],
+        "check:directory-guide-contract:stable": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php -r \"is_dir('reports/directory-guide-contract-stable') || mkdir('reports/directory-guide-contract-stable', 0777, true);\"",
+            "@php vendor/bin/pest tests/Feature/Api/DirectoryGuideApiTest.php --log-junit reports/directory-guide-contract-stable/run-1.xml -v",
+            "@php artisan view:clear --ansi",
+            "@php vendor/bin/pest tests/Feature/Api/DirectoryGuideApiTest.php --log-junit reports/directory-guide-contract-stable/run-2.xml -v",
+            "@php artisan view:clear --ansi",
+            "@php vendor/bin/pest tests/Feature/Api/DirectoryGuideApiTest.php --log-junit reports/directory-guide-contract-stable/run-3.xml -v"
+        ],
+        "check:audit-foundation-ci": [
+            "composer check:migrations",
+            "composer check:rbac-governance",
+            "composer check:directory-guide-contract:stable"
+        ],
         "check:schema-key-type-governance": [
             "@php artisan config:clear --ansi",
             "@php artisan view:clear --ansi",

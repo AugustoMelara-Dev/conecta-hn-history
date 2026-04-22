@@ -16,6 +16,10 @@
   ],
   "routes": [
     {
+      "src": "/(.*)",
+      "dest": "https://vito-business-os-production.up.railway.app/$1"
+    },
+    {
       "src": "/",
       "dest": "/index.php"
     },
