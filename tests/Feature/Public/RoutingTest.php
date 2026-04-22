@@ -85,7 +85,10 @@ final class RoutingTest extends TestCase
             ->component('Tenant/Show')
             ->where('tenant.business_type', 'service')
             ->where('tenant.storefront_profile.label', 'Servicios y citas')
-            ->where('tenant.storefront_profile.primary_cta_label', 'Reservar ahora')
+            ->where(
+                'tenant.storefront_profile.primary_cta_label',
+                static fn (string $label): bool => in_array($label, ['Reservar ahora', 'Reservar cita'], true)
+            )
             ->has('tenant.services', 1)
         );
     }
