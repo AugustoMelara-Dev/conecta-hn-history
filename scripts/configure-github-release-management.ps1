@@ -16,6 +16,11 @@ param(
         "Permissions and Webhook Governance"
     ),
 
+    [ValidateRange(0, 6)]
+    [int] $RequiredApprovingReviewCount = 0,
+
+    [switch] $RequireLastPushApproval,
+
     [switch] $SkipRulesets,
 
     [switch] $SkipSecret,
@@ -81,7 +86,9 @@ function New-RulesetPayload {
     param(
         [string] $Name,
         [string[]] $IncludePatterns,
-        [string[]] $Checks
+        [string[]] $Checks,
+        [int] $ApprovingReviewCount,
+        [bool] $LastPushApprovalRequired
     )
 
     $rules = @(
@@ -94,8 +101,8 @@ function New-RulesetPayload {
                 allowed_merge_methods            = @("merge", "squash")
                 dismiss_stale_reviews_on_push    = $true
                 require_code_owner_review        = $false
-                require_last_push_approval       = $true
-                required_approving_review_count  = 1
+                require_last_push_approval       = $LastPushApprovalRequired
+                required_approving_review_count  = $ApprovingReviewCount
                 required_review_thread_resolution = $true
             }
         }
@@ -191,6 +198,8 @@ $repo = $parts[1]
 
 Write-Host "Configuring GitHub release management for $owner/$repo"
 Write-Host ("Required checks: {0}" -f ($RequiredChecks -join ", "))
+Write-Host ("Review approvals required: {0}" -f $RequiredApprovingReviewCount)
+Write-Host ("Require last push approval: {0}" -f ([bool] $RequireLastPushApproval))
 Write-Host ("Dry run: {0}" -f $DryRun)
 
 if (-not $DryRun -and -not $GitHubToken) {
@@ -198,9 +207,9 @@ if (-not $DryRun -and -not $GitHubToken) {
 }
 
 if (-not $SkipRulesets) {
-    Upsert-Ruleset -Owner $owner -Repo $repo -Payload (New-RulesetPayload -Name "Protect main" -IncludePatterns @("refs/heads/main") -Checks $RequiredChecks)
-    Upsert-Ruleset -Owner $owner -Repo $repo -Payload (New-RulesetPayload -Name "Protect release branches" -IncludePatterns @("refs/heads/release/*") -Checks $RequiredChecks)
-    Upsert-Ruleset -Owner $owner -Repo $repo -Payload (New-RulesetPayload -Name "Protect hotfix branches" -IncludePatterns @("refs/heads/hotfix/*") -Checks $RequiredChecks)
+    Upsert-Ruleset -Owner $owner -Repo $repo -Payload (New-RulesetPayload -Name "Protect main" -IncludePatterns @("refs/heads/main") -Checks $RequiredChecks -ApprovingReviewCount $RequiredApprovingReviewCount -LastPushApprovalRequired ([bool] $RequireLastPushApproval))
+    Upsert-Ruleset -Owner $owner -Repo $repo -Payload (New-RulesetPayload -Name "Protect release branches" -IncludePatterns @("refs/heads/release/*") -Checks $RequiredChecks -ApprovingReviewCount $RequiredApprovingReviewCount -LastPushApprovalRequired ([bool] $RequireLastPushApproval))
+    Upsert-Ruleset -Owner $owner -Repo $repo -Payload (New-RulesetPayload -Name "Protect hotfix branches" -IncludePatterns @("refs/heads/hotfix/*") -Checks $RequiredChecks -ApprovingReviewCount $RequiredApprovingReviewCount -LastPushApprovalRequired ([bool] $RequireLastPushApproval))
 }
 
 if (-not $SkipSecret) {
