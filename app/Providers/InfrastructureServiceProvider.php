@@ -272,6 +272,20 @@ class InfrastructureServiceProvider extends ServiceProvider
         if ($this->app->isProduction()) {
             URL::forceScheme('https');
 
+            if ($this->app->bound('request')) {
+                $request = $this->app->make('request');
+                $forwardedProto = trim((string) $request->headers->get('x-forwarded-proto', ''));
+                $forwardedHost = trim((string) $request->headers->get('x-forwarded-host', ''));
+                $requestHost = trim((string) $request->getHost());
+
+                $proto = $forwardedProto !== '' ? strtolower(explode(',', $forwardedProto)[0]) : 'https';
+                $host = $forwardedHost !== '' ? trim(explode(',', $forwardedHost)[0]) : $requestHost;
+
+                if ($host !== '') {
+                    URL::forceRootUrl(sprintf('%s://%s', $proto !== '' ? $proto : 'https', $host));
+                }
+            }
+
             return;
         }
 
