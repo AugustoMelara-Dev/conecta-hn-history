@@ -3,6 +3,7 @@
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob;
 use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -126,5 +127,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->back()
                 ->withInput($request->except(['password', 'password_confirmation']))
                 ->with('toast', 'Tu sesión expiró por seguridad. Reintentemos desde este paso.');
+        });
+
+        $exceptions->render(function (AuthenticationException $exception, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'message' => 'Unauthenticated.',
+                ], 401);
+            }
         });
     })->create();

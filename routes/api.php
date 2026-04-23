@@ -35,6 +35,11 @@ Route::prefix('v1')->group(function () {
         ->name('api.users.show'); // Maps to /user (profile) for now, ignoring parameter if passed, or we can add specific route
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+        Route::get('/me/context', \App\Http\Controllers\Api\V1\MeContextController::class)
+            ->name('api.me.context');
+        Route::get('/surfaces/bootstrap', \App\Http\Controllers\Api\V1\SurfaceBootstrapController::class)
+            ->name('api.surfaces.bootstrap');
+
         Route::post('/push-subscriptions', [\App\Http\Controllers\Api\V1\PushSubscriptionController::class, 'update'])
             ->name('api.push-subscriptions.update');
         Route::delete('/push-subscriptions', [\App\Http\Controllers\Api\V1\PushSubscriptionController::class, 'destroy'])
@@ -87,6 +92,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/search', [DirectoryGuideController::class, 'search'])
             ->middleware(['throttle:api']);
         Route::get('/guide', [DirectoryGuideController::class, 'guide'])
+            ->middleware(['auth:sanctum', 'throttle:directory-guide-daily', 'throttle:api']);
+        Route::post('/guide/chat', [DirectoryGuideController::class, 'chat'])
             ->middleware(['auth:sanctum', 'throttle:directory-guide-daily', 'throttle:api']);
     });
 
@@ -197,6 +204,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/generate', [\App\Http\Controllers\Api\V1\AiController::class, 'generate']);
         Route::post('/optimize-profile', [\App\Http\Controllers\Api\V1\AiOptimizationController::class, 'optimizeProfile'])
             ->name('api.ai.optimize-profile');
+        Route::post('/guide/chat', [DirectoryGuideController::class, 'chat'])
+            ->middleware('throttle:directory-guide-daily')
+            ->name('api.ai.guide.chat');
     });
 });
 

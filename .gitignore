@@ -12,6 +12,7 @@
 .env.staging
 .env.local
 auth.json
+.secrets/
 *.key
 *.pem
 *.p12

@@ -36,6 +36,20 @@ final class AuthRedirectorTest extends TestCase
         );
     }
 
+    public function test_guest_fallback_is_directory_surface_instead_of_legacy_dashboard(): void
+    {
+        config([
+            'app.platform_directory_url' => 'https://www.vitobusinessos.com',
+        ]);
+
+        $destination = AuthRedirector::destinationFor(null);
+
+        $this->assertSame(
+            'https://www.vitobusinessos.com'.route('directory.index', [], false),
+            $destination
+        );
+    }
+
     public function test_owner_with_tenant_context_is_redirected_to_app_surface(): void
     {
         config([

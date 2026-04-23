@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { officialFixtures, officialRoutes } from './support/fixtures';
 
 test.describe('Checkout journey', () => {
     test('visitor can create an order from storefront cart', async ({ page }) => {
@@ -8,9 +9,9 @@ test.describe('Checkout journey', () => {
             window.open = () => null;
         });
 
-        await page.goto('/t/casa-brasa-bistro');
+        await page.goto(officialRoutes.productMicrosite);
         await expect(page.getByTestId('tenant-microsite')).toBeVisible();
-        await expect(page.getByTestId('product-panel')).toContainText('Brasa Signature Burger');
+        await expect(page.getByTestId('product-panel')).toContainText(officialFixtures.product.expectedPanelText);
 
         await page.locator('[data-testid^="add-to-cart-"]').or(page.getByRole('button', { name: /agregar/i })).first().click();
         const cartFab = page

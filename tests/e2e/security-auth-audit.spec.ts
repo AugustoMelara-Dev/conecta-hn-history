@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { officialFixtures } from './support/fixtures';
 import {
     forgotPasswordFeedback,
     forgotPasswordHeading,
@@ -7,9 +8,9 @@ import {
 } from './support/auth-locators';
 
 const SEEDED_OWNER = {
-    email: 'casa-brasa-bistro@example.test',
-    password: 'password',
-    tenantSlug: 'casa-brasa-bistro',
+    email: officialFixtures.owner.email,
+    password: officialFixtures.owner.password,
+    tenantSlug: officialFixtures.product.slug,
 };
 
 test.describe('Security and auth audit', () => {
@@ -54,7 +55,7 @@ test.describe('Security and auth audit', () => {
         const appResponse = await page.goto('/app', { waitUntil: 'domcontentloaded' });
         expect(appResponse?.status(), '/app should be reachable for seeded owner').toBeLessThan(500);
 
-        const crossTenantPanelResponse = await page.request.get('/app/bufete-lex-hn', {
+        const crossTenantPanelResponse = await page.request.get(`/app/${officialFixtures.crossTenantSlug}`, {
             failOnStatusCode: false,
             maxRedirects: 0,
         });

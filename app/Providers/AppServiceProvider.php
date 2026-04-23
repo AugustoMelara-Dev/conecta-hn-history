@@ -1057,6 +1057,10 @@ class AppServiceProvider extends ServiceProvider
             \App\Domain\Booking\Events\AppointmentCancelled::class,
             \App\Infrastructure\Listeners\Booking\CheckWaitlistOnCancellation::class
         );
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\CatalogPublishedChanged::class,
+            \App\Listeners\Directory\SyncPublishedCatalogEmbeddings::class
+        );
 
         \Illuminate\Support\Facades\Bus::map([
             \App\Application\Identity\Commands\RegisterUserCommand::class => \App\Application\Identity\Handlers\RegisterUserHandlerInterface::class,

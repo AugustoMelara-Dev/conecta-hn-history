@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Department;
@@ -16,12 +17,15 @@ use App\Models\ServiceProvider;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 final class E2EStorefrontSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->initializeConsoleTenantContext();
+
         $this->call(CategorySeeder::class);
 
         $cities = [
@@ -34,6 +38,93 @@ final class E2EStorefrontSeeder extends Seeder
             ->whereIn('slug', ['restaurantes', 'tecnologia', 'salud', 'belleza', 'servicios', 'automotriz', 'hogar'])
             ->get()
             ->keyBy('slug');
+
+        $officialDirectoryFixture = $this->createTenant([
+            'name' => 'Demo AI Guide HN',
+            'slug' => 'demo-ai-guide-hn',
+            'business_type' => 'food',
+            'category_id' => $categories['restaurantes']->id,
+            'city_id' => $cities['tegucigalpa']->id,
+            'description' => 'Fixture oficial de directorio/IA para release-critical.',
+            'about' => 'Tenant persistente para validar recomendaciones por presupuesto y visibilidad publicada.',
+            'slogan' => 'Directorio IA con presupuesto real.',
+            'primary_color' => '#f97316',
+            'whatsapp_number' => '50499991110',
+            'address' => 'Boulevard Suyapa, Tegucigalpa',
+            'owner_email' => 'owner-demo-ai-guide-hn@conectahn.app',
+            'owner_password' => 'ChangeMe123!',
+        ]);
+
+        $officialDirectorySection = MenuSection::unguarded(fn () => MenuSection::query()->firstOrCreate([
+            'tenant_id' => $officialDirectoryFixture->id,
+            'name' => 'Destacados IA',
+        ], [
+            'is_active' => true,
+            'sort_order' => 1,
+        ]));
+
+        foreach ([
+            [
+                'name' => 'Combo Presupuesto 120 HNL',
+                'slug' => 'demo-ai-guide-hn-budget-120',
+                'price' => 120,
+                'description' => 'Opcion economica para presupuesto ajustado.',
+            ],
+            [
+                'name' => 'Combo Presupuesto 350 HNL',
+                'slug' => 'demo-ai-guide-hn-budget-350',
+                'price' => 350,
+                'description' => 'Opcion balanceada para presupuesto medio.',
+            ],
+            [
+                'name' => 'Combo Presupuesto 950 HNL',
+                'slug' => 'demo-ai-guide-hn-budget-950',
+                'price' => 950,
+                'description' => 'Opcion premium para presupuesto alto.',
+            ],
+        ] as $productFixture) {
+            Product::factory()->forTenant($officialDirectoryFixture)->create([
+                'name' => $productFixture['name'],
+                'slug' => $productFixture['slug'],
+                'description' => $productFixture['description'],
+                'price' => $productFixture['price'],
+                'menu_section_id' => $officialDirectorySection->id,
+                'is_visible' => true,
+                'is_featured' => true,
+            ]);
+        }
+
+        $officialBookingFixture = $this->createTenant([
+            'name' => 'Demo AI Booking HN',
+            'slug' => 'demo-ai-booking-hn',
+            'business_type' => 'service',
+            'category_id' => $categories['belleza']->id,
+            'city_id' => $cities['tegucigalpa']->id,
+            'description' => 'Fixture oficial de booking para release-critical.',
+            'about' => 'Tenant persistente para validar reserva publica end-to-end.',
+            'slogan' => 'Agenda simple, reserva clara.',
+            'primary_color' => '#111827',
+            'whatsapp_number' => '50499991111',
+            'address' => 'Colonia Palmira, Tegucigalpa',
+            'owner_email' => 'owner-demo-ai-booking-hn@conectahn.app',
+            'owner_password' => 'ChangeMe123!',
+        ]);
+
+        ServiceProvider::factory()->create([
+            'tenant_id' => $officialBookingFixture->id,
+            'name' => 'Laura Rivera',
+            'email' => 'laura.rivera@conectahn.app',
+            'is_active' => true,
+        ]);
+
+        Service::factory()->create([
+            'tenant_id' => $officialBookingFixture->id,
+            'name' => 'Corte y barba express',
+            'description' => 'Sesion completa de corte y barba para flujo de reserva release.',
+            'duration_minutes' => 45,
+            'price' => 320,
+            'is_active' => true,
+        ]);
 
         $restaurant = $this->createTenant([
             'name' => 'Casa Brasa Bistro',
@@ -569,6 +660,8 @@ final class E2EStorefrontSeeder extends Seeder
         ]);
 
         foreach ([
+            $officialDirectoryFixture,
+            $officialBookingFixture,
             $restaurant,
             $cellphoneStore,
             $lawFirm,
@@ -590,15 +683,39 @@ final class E2EStorefrontSeeder extends Seeder
             $this->seedOpeningHours($tenant);
         }
 
+        app(TenantContext::class)->reset();
+
         $this->command?->info('E2E storefront fixtures seeded.');
+    }
+
+    private function initializeConsoleTenantContext(): void
+    {
+        /** @var TenantContext $tenantContext */
+        $tenantContext = app(TenantContext::class);
+
+        if ($tenantContext->isInitialized() && ! $tenantContext->isRoot()) {
+            $tenantContext->reset();
+        }
+
+        if (! $tenantContext->isRoot()) {
+            $tenantContext->setAsSystemRoot(isConsoleOrTesting: true);
+        }
     }
 
     private function createTenant(array $attributes): Tenant
     {
-        $owner = User::factory()->create([
-            'name' => $attributes['name'].' Owner',
-            'email' => Str::slug($attributes['slug']).'@example.test',
-        ]);
+        $ownerEmail = (string) ($attributes['owner_email'] ?? Str::slug($attributes['slug']).'@example.test');
+        $ownerPassword = (string) ($attributes['owner_password'] ?? 'password');
+
+        $owner = User::query()->updateOrCreate(
+            ['email' => $ownerEmail],
+            [
+                'name' => $attributes['name'].' Owner',
+                'password' => Hash::make($ownerPassword),
+                'email_verified_at' => now(),
+                'role' => \App\Domain\Identity\Enums\UserRole::TENANT_OWNER->value,
+            ],
+        );
 
         $tenant = Tenant::withoutEvents(fn () => Tenant::query()->create([
             'user_id' => $owner->id,

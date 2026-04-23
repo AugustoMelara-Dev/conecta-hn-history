@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('directory_guide_request_metrics')) {
+            return;
+        }
+
         Schema::create('directory_guide_request_metrics', function (Blueprint $table): void {
             $table->id();
             $table->uuid('request_id')->index();

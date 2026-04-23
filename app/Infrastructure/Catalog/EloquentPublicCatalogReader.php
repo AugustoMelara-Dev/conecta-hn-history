@@ -16,14 +16,13 @@ final class EloquentPublicCatalogReader implements PublicCatalogReader
 {
     public function getFeaturedProducts(int $limit = 6): array
     {
-        return Product::query()
-            ->where('is_active', true)
-            ->whereHas('tenant', static function (Builder $query): void {
+        return Product::where('is_active', true)
+            ->where('is_visible', true)
+            ->whereHas('tenant', static function ($query): void {
                 $query
+                    ->where('status', 'approved')
                     ->where('is_active', true)
-                    ->where('subscription_status', 'active')
-                    ->where('verification_status', Tenant::VERIFICATION_STATUS_VERIFIED)
-                    ->whereNull('publication_paused_at');
+                    ->whereIn('subscription_status', ['active', 'trial']);
             })
             ->orderByDesc('created_at')
             ->limit($limit)

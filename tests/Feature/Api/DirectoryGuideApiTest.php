@@ -11,7 +11,7 @@ use App\Models\City;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -19,7 +19,7 @@ use Tests\TestCase;
 
 final class DirectoryGuideApiTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_directory_search_returns_only_published_tenants(): void
     {
@@ -36,6 +36,7 @@ final class DirectoryGuideApiTest extends TestCase
         $published = Tenant::factory()->create([
             'name' => 'Casa Brasa',
             'slug' => 'casa-brasa',
+            'status' => 'approved',
             'is_active' => true,
             'subscription_status' => 'active',
             'city_id' => $city->getKey(),
@@ -45,7 +46,18 @@ final class DirectoryGuideApiTest extends TestCase
         Tenant::factory()->create([
             'name' => 'Tenant Inactivo',
             'slug' => 'tenant-inactivo',
+            'status' => 'approved',
             'is_active' => false,
+            'subscription_status' => 'active',
+            'city_id' => $city->getKey(),
+            'category_id' => $category->getKey(),
+        ]);
+
+        Tenant::factory()->create([
+            'name' => 'Tenant Provisional',
+            'slug' => 'tenant-provisional',
+            'status' => 'pending',
+            'is_active' => true,
             'subscription_status' => 'active',
             'city_id' => $city->getKey(),
             'category_id' => $category->getKey(),
@@ -170,6 +182,7 @@ final class DirectoryGuideApiTest extends TestCase
         $tenant = Tenant::factory()->create([
             'name' => 'Tecno Norte',
             'slug' => 'tecno-norte',
+            'status' => 'approved',
             'is_active' => true,
             'subscription_status' => 'active',
             'city_id' => $city->getKey(),
@@ -200,13 +213,16 @@ final class DirectoryGuideApiTest extends TestCase
             'is_visible' => true,
         ]);
 
-        $response = $this->getJson('/api/v1/directory/guide?budget=100&city=san-pedro-sula&category=tecnologia');
+        $response = $this->getJson('/api/v1/directory/guide?budget=100&currency=HNL&city=san-pedro-sula&category=tecnologia');
 
         $response
             ->assertOk()
             ->assertJsonPath('meta.degraded_to_search', false)
             ->assertJsonPath('meta.ranking_mode', 'sql')
             ->assertJsonPath('meta.reasoning_basis', 'sql_budget_filter')
+            ->assertJsonPath('meta.budget_currency', 'HNL')
+            ->assertJsonPath('meta.budget_typed.currency', 'HNL')
+            ->assertJsonPath('meta.ranking_explanation.reasoning_basis', 'sql_budget_filter')
             ->assertJsonPath('meta.quota_limit', 5)
             ->assertJsonPath('meta.quota_used', 1)
             ->assertJsonPath('meta.quota_remaining', 4);
@@ -235,6 +251,7 @@ final class DirectoryGuideApiTest extends TestCase
         $tenant = Tenant::factory()->create([
             'name' => 'Consultoria Centro',
             'slug' => 'consultoria-centro',
+            'status' => 'approved',
             'is_active' => true,
             'subscription_status' => 'active',
             'city_id' => $city->getKey(),
@@ -249,6 +266,8 @@ final class DirectoryGuideApiTest extends TestCase
             ->assertJsonPath('meta.degraded_reason', 'missing_budget')
             ->assertJsonPath('meta.ranking_mode', 'fallback')
             ->assertJsonPath('meta.reasoning_basis', 'directory_search_fallback')
+            ->assertJsonPath('meta.budget_currency', 'HNL')
+            ->assertJsonPath('meta.ranking_explanation.reasoning_basis', 'directory_search_fallback')
             ->assertJsonPath('data.0.slug', $tenant->slug);
     }
 
@@ -324,6 +343,7 @@ final class DirectoryGuideApiTest extends TestCase
         $tenant = Tenant::factory()->create([
             'name' => 'Pizzeria Centro',
             'slug' => 'pizzeria-centro',
+            'status' => 'approved',
             'is_active' => true,
             'subscription_status' => 'active',
             'city_id' => $city->getKey(),
@@ -338,13 +358,15 @@ final class DirectoryGuideApiTest extends TestCase
             'is_visible' => true,
         ]);
 
-        $response = $this->getJson('/api/v1/directory/guide?budget=120&city=la-ceiba&category=comida&search=pizzeria');
+        $response = $this->getJson('/api/v1/directory/guide?budget=120&currency=USD&city=la-ceiba&category=comida&search=pizzeria');
 
         $response
             ->assertOk()
             ->assertJsonPath('meta.degraded_to_search', false)
             ->assertJsonPath('meta.ranking_mode', 'hybrid')
             ->assertJsonPath('meta.reasoning_basis', 'sql_filter_plus_embedding_rerank')
+            ->assertJsonPath('meta.budget_currency', 'USD')
+            ->assertJsonPath('meta.ranking_explanation.reasoning_basis', 'sql_filter_plus_embedding_rerank')
             ->assertHeader('x-request-id')
             ->assertJsonStructure([
                 'meta' => ['request_id'],
@@ -372,6 +394,7 @@ final class DirectoryGuideApiTest extends TestCase
         $tenant = Tenant::factory()->create([
             'name' => 'Clinica Sur',
             'slug' => 'clinica-sur',
+            'status' => 'approved',
             'is_active' => true,
             'subscription_status' => 'active',
             'city_id' => $city->getKey(),
@@ -393,7 +416,8 @@ final class DirectoryGuideApiTest extends TestCase
             ->assertJsonPath('meta.degraded_to_search', false)
             ->assertJsonPath('meta.degraded_reason', 'openai_auth_failed')
             ->assertJsonPath('meta.ranking_mode', 'sql')
-            ->assertJsonPath('meta.reasoning_basis', 'sql_budget_filter');
+            ->assertJsonPath('meta.reasoning_basis', 'sql_budget_filter')
+            ->assertJsonPath('meta.ranking_explanation.reasoning_basis', 'sql_budget_filter');
     }
 
     public function test_directory_guide_keeps_sql_results_when_openai_times_out(): void
@@ -424,6 +448,7 @@ final class DirectoryGuideApiTest extends TestCase
         $tenant = Tenant::factory()->create([
             'name' => 'Cafe Danli',
             'slug' => 'cafe-danli',
+            'status' => 'approved',
             'is_active' => true,
             'subscription_status' => 'active',
             'city_id' => $city->getKey(),
@@ -445,7 +470,8 @@ final class DirectoryGuideApiTest extends TestCase
             ->assertJsonPath('meta.degraded_to_search', false)
             ->assertJsonPath('meta.degraded_reason', 'openai_timeout')
             ->assertJsonPath('meta.ranking_mode', 'sql')
-            ->assertJsonPath('meta.reasoning_basis', 'sql_budget_filter');
+            ->assertJsonPath('meta.reasoning_basis', 'sql_budget_filter')
+            ->assertJsonPath('meta.ranking_explanation.reasoning_basis', 'sql_budget_filter');
     }
 
     public function test_directory_guide_falls_back_when_budget_has_no_matches(): void
@@ -465,6 +491,7 @@ final class DirectoryGuideApiTest extends TestCase
         $tenant = Tenant::factory()->create([
             'name' => 'Casa Brasa Bistro',
             'slug' => 'casa-brasa-bistro',
+            'status' => 'approved',
             'is_active' => true,
             'subscription_status' => 'active',
             'city_id' => $city->getKey(),
@@ -487,13 +514,174 @@ final class DirectoryGuideApiTest extends TestCase
             ->assertJsonPath('meta.degraded_reason', 'no_budget_matches')
             ->assertJsonPath('meta.ranking_mode', 'fallback')
             ->assertJsonPath('meta.reasoning_basis', 'directory_search_fallback')
+            ->assertJsonPath('meta.ranking_explanation.reasoning_basis', 'directory_search_fallback')
             ->assertJsonPath('data.0.slug', $tenant->slug);
+    }
+
+    public function test_directory_guide_chat_returns_typed_contract_with_trace_id_and_qdrant_metadata(): void
+    {
+        $this->actingAsCustomer();
+
+        config([
+            'directory.guide.qdrant.enabled' => true,
+            'directory.guide.qdrant.url' => 'https://qdrant.example.test',
+            'directory.guide.qdrant.collection' => 'directory_products',
+            'services.openai.api_key' => 'test-openai-key',
+        ]);
+
+        $city = City::factory()->create([
+            'name' => 'Tegucigalpa',
+            'slug' => 'tegucigalpa',
+        ]);
+        $category = Category::factory()->create([
+            'name' => 'Cafe',
+            'slug' => 'cafe',
+            'is_active' => true,
+        ]);
+        $tenant = Tenant::factory()->create([
+            'name' => 'Cafe Centro',
+            'slug' => 'cafe-centro',
+            'status' => 'approved',
+            'is_active' => true,
+            'subscription_status' => 'active',
+            'city_id' => $city->getKey(),
+            'category_id' => $category->getKey(),
+        ]);
+        $product = Product::factory()->forTenant($tenant)->create([
+            'name' => 'Latte Clasico',
+            'slug' => 'latte-clasico-'.Str::lower(Str::random(6)),
+            'price' => 95,
+            'stock_status' => StockStatus::InStock,
+            'is_visible' => true,
+        ]);
+
+        Http::fake([
+            'https://api.openai.com/v1/embeddings' => Http::response([
+                'data' => [
+                    ['index' => 0, 'embedding' => [0.1, 0.2, 0.3]],
+                ],
+            ], 200),
+            'https://qdrant.example.test/collections/directory_products/points/search' => Http::response([
+                'result' => [
+                    [
+                        'id' => $product->getKey(),
+                        'score' => 0.92,
+                        'payload' => [
+                            'product_id' => $product->getKey(),
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $response = $this->postJson(
+            '/api/v1/directory/guide/chat',
+            [
+                'query' => 'Quiero un cafe bueno y barato',
+                'budget_amount' => 120,
+                'currency' => 'HNL',
+                'city' => 'tegucigalpa',
+                'category' => 'cafe',
+                'limit' => 5,
+            ],
+            ['x-trace-id' => 'trace-test-001']
+        );
+
+        $response
+            ->assertOk()
+            ->assertHeader('x-request-id')
+            ->assertHeader('x-trace-id', 'trace-test-001')
+            ->assertJsonPath('meta.trace_id', 'trace-test-001')
+            ->assertJsonPath('meta.query', 'Quiero un cafe bueno y barato')
+            ->assertJsonPath('meta.budget_typed.amount', 120)
+            ->assertJsonPath('meta.budget_typed.currency', 'HNL')
+            ->assertJsonPath('meta.qdrant_applied', true)
+            ->assertJsonPath('meta.ranking_mode', 'hybrid')
+            ->assertJsonPath('meta.reasoning_basis', 'qdrant_semantic_retrieval_plus_sql_budget_filter')
+            ->assertJsonPath('meta.ranking_explanation.reasoning_basis', 'qdrant_semantic_retrieval_plus_sql_budget_filter')
+            ->assertJsonStructure([
+                'meta' => ['chat_answer'],
+            ]);
+    }
+
+    public function test_directory_guide_chat_keeps_sql_mode_when_qdrant_is_unavailable(): void
+    {
+        $this->actingAsCustomer();
+
+        config([
+            'directory.guide.qdrant.enabled' => true,
+            'directory.guide.qdrant.url' => 'https://qdrant.example.test',
+            'directory.guide.qdrant.collection' => 'directory_products',
+            'services.openai.api_key' => 'test-openai-key',
+            'directory.guide.hybrid_rerank_enabled' => false,
+        ]);
+
+        Http::fake([
+            'https://api.openai.com/v1/embeddings' => Http::response([
+                'data' => [
+                    ['index' => 0, 'embedding' => [0.1, 0.2, 0.3]],
+                ],
+            ], 200),
+            'https://qdrant.example.test/collections/directory_products/points/search' => Http::response([
+                'status' => 'error',
+            ], 503),
+        ]);
+
+        $city = City::factory()->create([
+            'name' => 'Choluteca',
+            'slug' => 'choluteca',
+        ]);
+        $category = Category::factory()->create([
+            'name' => 'Panaderias',
+            'slug' => 'panaderias',
+            'is_active' => true,
+        ]);
+        $tenant = Tenant::factory()->create([
+            'name' => 'Pan del Sur',
+            'slug' => 'pan-del-sur',
+            'status' => 'approved',
+            'is_active' => true,
+            'subscription_status' => 'active',
+            'city_id' => $city->getKey(),
+            'category_id' => $category->getKey(),
+        ]);
+
+        Product::factory()->forTenant($tenant)->create([
+            'name' => 'Pan de chocolate',
+            'slug' => 'pan-chocolate-'.Str::lower(Str::random(6)),
+            'price' => 40,
+            'stock_status' => StockStatus::InStock,
+            'is_visible' => true,
+        ]);
+
+        $response = $this->postJson('/api/v1/directory/guide/chat', [
+            'query' => 'Pan',
+            'budget_amount' => 120,
+            'currency' => 'HNL',
+            'city' => 'choluteca',
+            'category' => 'panaderias',
+            'limit' => 5,
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('meta.ranking_mode', 'sql')
+            ->assertJsonPath('meta.reasoning_basis', 'sql_budget_filter')
+            ->assertJsonPath('meta.degraded_reason', 'qdrant_unavailable')
+            ->assertJsonPath('meta.qdrant_applied', false)
+            ->assertJsonPath('meta.ranking_explanation.reasoning_basis', 'sql_budget_filter');
     }
 
     public function test_directory_guide_requires_authentication(): void
     {
         $this->getJson('/api/v1/directory/guide?budget=100')
             ->assertUnauthorized();
+
+        $this->postJson('/api/v1/directory/guide/chat', [
+            'query' => 'quiero comida',
+            'budget_amount' => 100,
+            'currency' => 'HNL',
+        ])->assertUnauthorized();
     }
 
     public function test_directory_guide_forbids_non_customer_roles(): void
@@ -503,6 +691,15 @@ final class DirectoryGuideApiTest extends TestCase
 
             $this->actingAs($user, 'sanctum')
                 ->getJson('/api/v1/directory/guide?budget=100')
+                ->assertForbidden()
+                ->assertJsonPath('error_code', 'DIRECTORY_GUIDE_CUSTOMER_ONLY');
+
+            $this->actingAs($user, 'sanctum')
+                ->postJson('/api/v1/directory/guide/chat', [
+                    'query' => 'quiero opciones',
+                    'budget_amount' => 100,
+                    'currency' => 'HNL',
+                ])
                 ->assertForbidden()
                 ->assertJsonPath('error_code', 'DIRECTORY_GUIDE_CUSTOMER_ONLY');
         }
@@ -524,6 +721,7 @@ final class DirectoryGuideApiTest extends TestCase
         $tenant = Tenant::factory()->create([
             'name' => 'Pan Centro',
             'slug' => 'pan-centro',
+            'status' => 'approved',
             'is_active' => true,
             'subscription_status' => 'active',
             'city_id' => $city->getKey(),

@@ -1,0 +1,22 @@
+{
+  "version": "surface-manifest-v1",
+  "migration_phase": "strangler_v1",
+  "surfaces": {
+    "user_app": {
+      "owner": "growth-user",
+      "scope": ["directory", "favorites", "checkout", "user_account"]
+    },
+    "business_app": {
+      "owner": "growth-business",
+      "scope": ["onboarding", "dashboard", "catalog", "orders", "billing", "crm", "marketing"]
+    },
+    "platform_api": {
+      "owner": "platform-core",
+      "scope": ["identity", "tenancy", "rbac", "directory_guide", "observability"]
+    }
+  },
+  "compatibility": {
+    "legacy_paths": ["/dashboard", "/workspace/dashboard", "/workspace/products", "/workspace/orders", "/workspace/settings", "/workspace/billing"],
+    "policy": "deprecated_redirect_only"
+  }
+}

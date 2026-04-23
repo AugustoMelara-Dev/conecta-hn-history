@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Enums\StockStatus;
+use App\Infrastructure\Directory\QdrantClient;
 use App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope;
 use App\Models\Category;
 use App\Models\City;
@@ -16,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Throwable;
 
 final class SyncDirectoryEmbeddingsCommand extends Command
 {
@@ -40,6 +43,12 @@ final class SyncDirectoryEmbeddingsCommand extends Command
 
     public function handle(): int
     {
+        /** @var TenantContext $tenantContext */
+        $tenantContext = app(TenantContext::class);
+        if (! $tenantContext->isInitialized()) {
+            $tenantContext->setAsSystemRoot(isConsoleOrTesting: true);
+        }
+
         $apiKey = (string) config('services.openai.api_key', '');
 
         if (trim($apiKey) === '') {
@@ -59,6 +68,7 @@ final class SyncDirectoryEmbeddingsCommand extends Command
         $limit = max(0, (int) $this->option('limit'));
         $chunk = max(10, min((int) $this->option('chunk'), 500));
         $force = (bool) $this->option('force');
+        $qdrantClient = app(QdrantClient::class);
 
         $query = Product::query()
             ->withoutGlobalScope(TenantScope::class)
@@ -67,9 +77,11 @@ final class SyncDirectoryEmbeddingsCommand extends Command
             ->whereIn('stock_status', self::PURCHASEABLE_STOCK_STATUSES)
             ->whereHas('tenant', static function ($tenantQuery): void {
                 $tenantQuery
+                    ->where('status', 'approved')
                     ->where('is_active', true)
-                    ->where('subscription_status', 'active');
+                    ->whereIn('subscription_status', ['active', 'trial']);
             })
+            ->where('is_visible', true)
             ->orderBy('id');
 
         if (is_string($tenantFilter) && $tenantFilter !== '') {
@@ -99,8 +111,9 @@ final class SyncDirectoryEmbeddingsCommand extends Command
         $processed = 0;
         $updated = 0;
         $skipped = 0;
+        $qdrantUpserted = 0;
 
-        $query->chunkById($chunk, function ($products) use ($model, $force, &$processed, &$updated, &$skipped): void {
+        $query->chunkById($chunk, function ($products) use ($model, $force, $qdrantClient, &$processed, &$updated, &$skipped, &$qdrantUpserted): void {
             foreach ($products as $product) {
                 $processed++;
 
@@ -152,16 +165,35 @@ final class SyncDirectoryEmbeddingsCommand extends Command
                 );
 
                 $this->syncPgvectorColumnIfAvailable($id, $embedding);
+                $qdrantSynced = $this->syncQdrantPoint(
+                    qdrantClient: $qdrantClient,
+                    product: $product,
+                    embedding: $embedding,
+                    model: $model,
+                    inputHash: $inputHash,
+                );
 
                 $updated++;
+                if ($qdrantSynced) {
+                    $qdrantUpserted++;
+                }
             }
         });
 
+        $pruned = $this->pruneStaleEmbeddings(
+            qdrantClient: $qdrantClient,
+            tenantFilter: is_string($tenantFilter) ? $tenantFilter : null,
+            sinceHours: $sinceHours,
+            model: $model,
+        );
+
         $this->info(sprintf(
-            'Directory embeddings sync completed. processed=%d updated=%d skipped=%d since_hours=%d',
+            'Directory embeddings sync completed. processed=%d updated=%d skipped=%d qdrant_upserted=%d pruned=%d since_hours=%d',
             $processed,
             $updated,
             $skipped,
+            $qdrantUpserted,
+            $pruned,
             $sinceHours
         ));
 
@@ -236,6 +268,161 @@ final class SyncDirectoryEmbeddingsCommand extends Command
         $input = trim(implode('. ', array_filter($parts, static fn (string $value): bool => $value !== '')));
 
         return mb_substr($input, 0, 2000);
+    }
+
+    /**
+     * @param  list<float>  $embedding
+     */
+    private function syncQdrantPoint(
+        QdrantClient $qdrantClient,
+        Product $product,
+        array $embedding,
+        string $model,
+        string $inputHash,
+    ): bool {
+        if (! $qdrantClient->enabled()) {
+            return false;
+        }
+
+        $tenant = $product->tenant;
+        $tenantSlug = $tenant instanceof Tenant ? (string) ($tenant->slug ?? '') : '';
+        $tenantName = $tenant instanceof Tenant ? (string) ($tenant->name ?? '') : '';
+        $citySlug = $tenant instanceof Tenant && $tenant->city instanceof City ? (string) ($tenant->city->slug ?? '') : '';
+        $categorySlug = $tenant instanceof Tenant && $tenant->category instanceof Category ? (string) ($tenant->category->slug ?? '') : '';
+        $stockStatus = $product->stock_status->value;
+        $published = $tenant instanceof Tenant
+            && (string) $tenant->status === 'approved'
+            && (bool) $tenant->is_active
+            && in_array((string) $tenant->subscription_status, ['active', 'trial'], true)
+            && (bool) $product->is_visible
+            && in_array($stockStatus, self::PURCHASEABLE_STOCK_STATUSES, true);
+
+        try {
+            $qdrantClient->upsertPoints([
+                [
+                    'id' => (int) $product->id,
+                    'vector' => $embedding,
+                    'payload' => [
+                        'product_id' => (int) $product->id,
+                        'tenant_id' => (string) $product->tenant_id,
+                        'tenant_slug' => $tenantSlug,
+                        'tenant_name' => $tenantName,
+                        'city_slug' => $citySlug,
+                        'category_slug' => $categorySlug,
+                        'product_slug' => (string) ($product->slug ?? ''),
+                        'product_name' => (string) ($product->name ?? ''),
+                        'price' => round((float) $product->price, 2),
+                        'currency' => 'HNL',
+                        'published' => $published,
+                        'embedding_model' => $model,
+                        'embedding_hash' => $inputHash,
+                        'updated_at' => now()->toIso8601String(),
+                    ],
+                ],
+            ]);
+
+            return true;
+        } catch (Throwable $exception) {
+            $this->warn('Qdrant upsert skipped for product '.$product->id.': '.$exception->getMessage());
+
+            return false;
+        }
+    }
+
+    private function pruneStaleEmbeddings(
+        QdrantClient $qdrantClient,
+        ?string $tenantFilter,
+        int $sinceHours,
+        string $model,
+    ): int {
+        $embeddingsTable = 'directory_product_embeddings';
+        $productsTable = (new Product)->getTable();
+        $tenantsTable = (new Tenant)->getTable();
+        $hasProductVisibility = Schema::hasColumn($productsTable, 'is_visible');
+        $hasProductDeletedAt = Schema::hasColumn($productsTable, 'deleted_at');
+        $hasProductStockStatus = Schema::hasColumn($productsTable, 'stock_status');
+        $safeTenantFilter = is_string($tenantFilter) && trim($tenantFilter) !== '' ? trim($tenantFilter) : null;
+
+        $affectedTenantIds = collect();
+        if ($safeTenantFilter !== null) {
+            $affectedTenantIds->push($safeTenantFilter);
+        } elseif ($sinceHours > 0) {
+            $since = now()->subHours($sinceHours);
+            $affectedTenantIds = $affectedTenantIds
+                ->merge(
+                    Tenant::query()
+                        ->withoutGlobalScopes()
+                        ->where('updated_at', '>=', $since)
+                        ->pluck('id')
+                )
+                ->merge(
+                    Product::query()
+                        ->withoutGlobalScope(TenantScope::class)
+                        ->where('updated_at', '>=', $since)
+                        ->pluck('tenant_id')
+                );
+        }
+
+        $affectedTenantIds = $affectedTenantIds
+            ->map(static fn (mixed $id): string => (string) $id)
+            ->filter(static fn (string $id): bool => $id !== '')
+            ->unique()
+            ->values();
+
+        $query = DB::table($embeddingsTable.' as d')
+            ->leftJoin($productsTable.' as p', 'p.id', '=', 'd.product_id')
+            ->leftJoin($tenantsTable.' as t', 't.id', '=', 'd.tenant_id')
+            ->select('d.product_id')
+            ->where('d.embedding_model', $model)
+            ->where(function ($innerQuery) use ($hasProductVisibility, $hasProductDeletedAt, $hasProductStockStatus): void {
+                $innerQuery->whereNull('p.id')
+                    ->orWhereNull('t.id')
+                    ->orWhere('t.status', '!=', 'approved')
+                    ->orWhere('t.is_active', false)
+                    ->orWhereNotIn('t.subscription_status', ['active', 'trial']);
+
+                if ($hasProductDeletedAt) {
+                    $innerQuery->orWhereNotNull('p.deleted_at');
+                }
+
+                if ($hasProductVisibility) {
+                    $innerQuery->orWhere('p.is_visible', false);
+                }
+
+                if ($hasProductStockStatus) {
+                    $innerQuery->orWhereNotIn('p.stock_status', self::PURCHASEABLE_STOCK_STATUSES);
+                }
+            });
+
+        if ($affectedTenantIds->isNotEmpty()) {
+            $query->whereIn('d.tenant_id', $affectedTenantIds->all());
+        }
+
+        $staleProductIds = $query->pluck('d.product_id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->filter(static fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($staleProductIds === []) {
+            return 0;
+        }
+
+        DB::table($embeddingsTable)
+            ->where('embedding_model', $model)
+            ->whereIn('product_id', $staleProductIds)
+            ->delete();
+
+        if ($qdrantClient->enabled()) {
+            try {
+                $qdrantClient->deletePointsByIds($staleProductIds);
+            } catch (Throwable $exception) {
+                $this->warn('Qdrant stale prune skipped: '.$exception->getMessage());
+            }
+        }
+
+        return count($staleProductIds);
     }
 
     /**

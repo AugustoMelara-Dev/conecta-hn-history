@@ -49,6 +49,8 @@ return [
             'openai_auth_failed_count' => (int) env('DIRECTORY_GUIDE_ALERT_OPENAI_AUTH_FAILED_COUNT', 1),
             // % of requests in window with degraded_reason=openai_timeout
             'openai_timeout_rate' => (float) env('DIRECTORY_GUIDE_ALERT_OPENAI_TIMEOUT_RATE', 0.25),
+            // % of requests in window with degraded_reason=qdrant_unavailable
+            'qdrant_unavailable_rate' => (float) env('DIRECTORY_GUIDE_ALERT_QDRANT_UNAVAILABLE_RATE', 0.30),
             // % of requests in window returning HTTP 429
             'quota_exceeded_rate' => (float) env('DIRECTORY_GUIDE_ALERT_QUOTA_EXCEEDED_RATE', 0.40),
         ],
@@ -56,6 +58,14 @@ return [
             'enabled' => (bool) env('PGVECTOR_ENABLED', false),
             'table' => env('PGVECTOR_TABLE', 'directory_product_embeddings'),
             'dimension' => (int) env('PGVECTOR_DIMENSION', 1536),
+        ],
+        'qdrant' => [
+            'enabled' => (bool) env('DIRECTORY_GUIDE_QDRANT_ENABLED', false),
+            'url' => env('DIRECTORY_GUIDE_QDRANT_URL', ''),
+            'api_key' => env('DIRECTORY_GUIDE_QDRANT_API_KEY', ''),
+            'collection' => env('DIRECTORY_GUIDE_QDRANT_COLLECTION', 'directory_products'),
+            'timeout_seconds' => (int) env('DIRECTORY_GUIDE_QDRANT_TIMEOUT_SECONDS', 6),
+            'max_candidates' => (int) env('DIRECTORY_GUIDE_QDRANT_MAX_CANDIDATES', 24),
         ],
     ],
 ];

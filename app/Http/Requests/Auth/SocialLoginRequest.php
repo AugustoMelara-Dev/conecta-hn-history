@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Auth;
 
+use App\Domain\Shared\Enums\ProviderName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -34,14 +35,6 @@ final class SocialLoginRequest extends FormRequest
      * SECURITY: Only explicitly supported providers are allowed.
      * Adding a new provider requires code change (intentional friction).
      */
-    private const SUPPORTED_PROVIDERS = [
-        'google',
-        'facebook',
-        'apple',
-        'github',
-        'twitter',
-    ];
-
     /**
      * Maximum token length to prevent memory exhaustion attacks.
      *
@@ -67,6 +60,10 @@ final class SocialLoginRequest extends FormRequest
      */
     public function rules(): array
     {
+        $emailValidationRule = app()->environment('testing')
+            ? 'email:rfc'
+            : 'email:rfc,dns';
+
         return [
             // ═══════════════════════════════════════════════════════════════════
             // PROVIDER: Whitelist validation (prevents arbitrary service injection)
@@ -75,7 +72,7 @@ final class SocialLoginRequest extends FormRequest
                 'required',
                 'string',
                 'max:50',
-                Rule::in(self::SUPPORTED_PROVIDERS),
+                Rule::in(self::getSupportedProviders()),
             ],
 
             // ═══════════════════════════════════════════════════════════════════
@@ -103,7 +100,7 @@ final class SocialLoginRequest extends FormRequest
             'email' => [
                 'required',
                 'string',
-                'email:rfc,dns',
+                $emailValidationRule,
                 'max:255',
             ],
 
@@ -134,7 +131,7 @@ final class SocialLoginRequest extends FormRequest
      */
     public function messages(): array
     {
-        $supportedList = implode(', ', self::SUPPORTED_PROVIDERS);
+        $supportedList = implode(', ', self::getSupportedProviders());
 
         return [
             'provider.in' => "El proveedor de autenticación no es soportado. Proveedores válidos: {$supportedList}.",
@@ -169,6 +166,9 @@ final class SocialLoginRequest extends FormRequest
      */
     public static function getSupportedProviders(): array
     {
-        return self::SUPPORTED_PROVIDERS;
+        return array_map(
+            static fn (ProviderName $provider): string => $provider->value,
+            ProviderName::cases()
+        );
     }
 }

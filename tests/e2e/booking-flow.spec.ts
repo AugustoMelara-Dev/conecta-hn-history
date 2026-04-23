@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { officialFixtures, officialRoutes } from './support/fixtures';
 
 function nextBookingDates(daysAhead = 7): string[] {
     const base = new Date();
@@ -19,12 +20,12 @@ function nextBookingDates(daysAhead = 7): string[] {
 
 test.describe('Reservas publicas', () => {
     test('service CTA from the microsite preselects the chosen service', async ({ page }) => {
-        await page.goto('/t/bufete-lex-hn');
+        await page.goto(officialRoutes.serviceMicrosite);
 
         await expect(page.getByTestId('service-panel')).toBeVisible();
         await page.getByTestId('service-panel').getByRole('link', { name: 'Reservar' }).first().click();
 
-        await expect(page).toHaveURL(/\/t\/bufete-lex-hn\/book\?service=/);
+        await expect(page).toHaveURL(new RegExp(`/t/${officialFixtures.service.slug}/book\\?service=`));
         await expect(page.getByTestId('booking-step-providers')).toBeVisible();
     });
 
@@ -38,7 +39,7 @@ test.describe('Reservas publicas', () => {
         await submitBookingWithFallback(page);
 
         await expect(page.getByTestId('booking-success')).toBeVisible({ timeout: 20000 });
-        await expect(page.getByTestId('booking-success')).toContainText('Corte premium con barba');
+        await expect(page.getByTestId('booking-success')).toContainText(officialFixtures.service.expectedPanelText);
     });
 });
 
@@ -52,14 +53,14 @@ async function fillBookingDetails(page) {
 }
 
 async function startBookingFlow(page) {
-    await page.goto('/t/barberia-norte-pro/book');
+    await page.goto(officialRoutes.serviceBooking);
 
     await expect(page.getByTestId('booking-wizard')).toBeVisible();
 
     await page.locator('[data-testid^="booking-service-"]').first().click();
     await expect(page.getByTestId('booking-step-providers')).toBeVisible();
 
-    await page.locator('[data-testid^="booking-provider-"]').filter({ hasText: 'Marco Diaz' }).click();
+    await page.locator('[data-testid^="booking-provider-"]').filter({ hasText: officialFixtures.service.expectedProviderName }).first().click();
     await expect(page.getByTestId('booking-step-slots')).toBeVisible();
 }
 
@@ -149,7 +150,7 @@ async function waitForSlotResults(page) {
 }
 
 async function submitBookingWithFallback(page) {
-    const successUrl = /\/t\/barberia-norte-pro\/book\/success\?appointment=/;
+    const successUrl = new RegExp(`/t/${officialFixtures.service.slug}/book/success\\?appointment=`);
 
     const firstAttempt = await submitBookingRequest(page);
     if (await finalizeBookingSuccess(page, firstAttempt, successUrl)) {
@@ -173,11 +174,11 @@ async function submitBookingWithFallback(page) {
 async function submitBookingRequest(page) {
     const bookingPostResponsePromise = page.waitForResponse((response) =>
         response.request().method() === 'POST'
-        && response.url().includes('/t/barberia-norte-pro/book')
+        && response.url().includes(`/t/${officialFixtures.service.slug}/book`)
     , { timeout: 20000 }).catch(() => null);
     const successPageResponsePromise = page.waitForResponse((response) =>
         response.request().method() === 'GET'
-        && /\/t\/barberia-norte-pro\/book\/success\?appointment=/.test(response.url())
+        && new RegExp(`/t/${officialFixtures.service.slug}/book/success\\?appointment=`).test(response.url())
     , { timeout: 12000 }).catch(() => null);
 
     await page.getByTestId('booking-submit').click();

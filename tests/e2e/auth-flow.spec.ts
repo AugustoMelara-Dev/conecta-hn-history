@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { expectNoFatalServerText, expectNon5xx, gotoWithRetries } from './support/smoke-http';
+import { officialFixtures } from './support/fixtures';
 
 const isSmokeMode = process.env.E2E_MODE === 'smoke';
 
@@ -81,8 +82,8 @@ test.describe('Auth journey', () => {
             return;
         }
 
-        await page.getByTestId('login-email-input').or(page.locator('#email')).fill('casa-brasa-bistro@example.test');
-        await page.getByTestId('login-password-input').or(page.locator('#password')).fill('password');
+        await page.getByTestId('login-email-input').or(page.locator('#email')).fill(officialFixtures.owner.email);
+        await page.getByTestId('login-password-input').or(page.locator('#password')).fill(officialFixtures.owner.password);
         const [submitResponse] = await Promise.all([
             page.waitForResponse((response) => response.url().includes('/login') && response.request().method() === 'POST'),
             page.getByTestId('login-submit').or(page.getByRole('button', { name: /login|iniciar/i })).click(),

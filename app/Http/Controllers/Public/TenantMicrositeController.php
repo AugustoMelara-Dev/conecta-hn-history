@@ -67,7 +67,7 @@ final class TenantMicrositeController extends Controller
 
                 $status = (string) ($tenant->status ?? '');
                 $isActive = (bool) ($tenant->is_active ?? false);
-                $isPublicTenant = $isActive && in_array($status, ['approved', 'active'], true);
+                $isPublicTenant = $isActive && $status === 'approved';
 
                 if (! $isPublicTenant) {
                     abort(404);
@@ -148,7 +148,7 @@ final class TenantMicrositeController extends Controller
 
             $status = (string) ($tenant->status ?? '');
             $isActive = (bool) ($tenant->is_active ?? false);
-            $isPublicTenant = $isActive && in_array($status, ['approved', 'active'], true);
+            $isPublicTenant = $isActive && $status === 'approved';
 
             if (! $isPublicTenant) {
                 abort(404);

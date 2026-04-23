@@ -10,12 +10,10 @@ use App\Http\Controllers\Public\LocationController;
 use App\Http\Controllers\Public\TenantMicrositeController;
 use App\Http\Controllers\Public\WelcomeController;
 use App\Http\Controllers\Tenant\AnalyticsController;
+use App\Http\Controllers\Web\LegacyDashboardController;
 use App\Http\Middleware\EnsureAppSurfaceAccess;
 use App\Http\Middleware\EnsurePublicSurfaceAccess;
-use App\Support\Auth\AuthRedirector;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
@@ -112,9 +110,9 @@ Route::middleware('auth')->group(function () {
 });
 
 // Auth Routes (Dashboard, Mi Cuenta)
-Route::get('/dashboard', function (Request $request) {
-    return redirect()->to(AuthRedirector::destinationFor($request->user()));
-})->middleware(['auth', EnsureAppSurfaceAccess::class])->name('dashboard');
+Route::get('/dashboard', LegacyDashboardController::class)
+    ->middleware(['auth', EnsureAppSurfaceAccess::class])
+    ->name('dashboard');
 
 // TENANT INERTIA ROUTES (Must be loaded BEFORE wildcards)
 

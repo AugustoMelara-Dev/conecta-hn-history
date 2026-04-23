@@ -1,35 +1,5 @@
-import type { APIRequestContext, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
-
-type DirectoryStorefront = {
-    slug: string;
-    name?: string;
-    category?: { slug?: string; name?: string } | null;
-};
-
-async function fetchPublishedStorefronts(request: APIRequestContext): Promise<DirectoryStorefront[]> {
-    const response = await request.get('/api/v1/directory/search?limit=12', {
-        headers: { accept: 'application/json' },
-    });
-
-    expect(response.ok()).toBeTruthy();
-
-    const payload = await response.json();
-    const rows = Array.isArray(payload?.data) ? payload.data : [];
-
-    return rows.filter((row): row is DirectoryStorefront => typeof row?.slug === 'string' && row.slug.length > 0);
-}
-
-async function assertStorefrontLoadsWithoutFatal(page: Page, slug: string): Promise<void> {
-    const response = await page.goto(`/t/${slug}`, { waitUntil: 'domcontentloaded' });
-    expect(response?.status()).toBeLessThan(500);
-
-    try {
-        await expect(page.getByTestId('tenant-microsite')).toBeVisible({ timeout: 10_000 });
-    } catch {
-        await expect(page.locator('body')).not.toContainText(/error interno del servidor|server error|500/i);
-    }
-}
+import { officialFixtures, officialRoutes } from './support/fixtures';
 
 test.describe('Smoke post-deploy @smoke', () => {
     test('health endpoint is up', async ({ page }) => {
@@ -47,77 +17,66 @@ test.describe('Smoke post-deploy @smoke', () => {
         await expect(page.getByTestId('login-password-input').or(page.locator('#password'))).toBeVisible();
     });
 
-    test('critical storefronts render without fatal errors', async ({ page, request }) => {
-        const storefronts = await fetchPublishedStorefronts(request);
-        test.skip(
-            storefronts.length === 0,
-            'No published storefronts are available in the target environment.'
-        );
+    test('owner login lands in business app', async ({ page }) => {
+        await page.goto('/login', { waitUntil: 'domcontentloaded' });
 
-        for (const storefront of storefronts.slice(0, 2)) {
-            await assertStorefrontLoadsWithoutFatal(page, storefront.slug);
+        await page.getByTestId('login-email-input').or(page.locator('#email')).fill(officialFixtures.owner.email);
+        await page.getByTestId('login-password-input').or(page.locator('#password')).fill(officialFixtures.owner.password);
+
+        await Promise.all([
+            page.waitForResponse((response) => response.url().includes('/login') && response.request().method() === 'POST'),
+            page.getByTestId('login-submit').or(page.getByRole('button', { name: /login|iniciar/i })).click(),
+        ]);
+
+        await page.waitForLoadState('networkidle');
+
+        if (page.url().includes('/login')) {
+            await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
+            throw new Error('Owner fixture authentication did not leave /login.');
         }
+
+        await expect(page).toHaveURL(/\/app(?:\/|$)/, { timeout: 20_000 });
     });
 
-    test('checkout entrypoint is usable in a product storefront', async ({ page, request }) => {
-        const storefronts = await fetchPublishedStorefronts(request);
-        test.skip(
-            storefronts.length === 0,
-            'No published storefronts are available in the target environment.'
-        );
+    test('critical storefronts render without fatal errors', async ({ page }) => {
+        await page.goto(officialRoutes.serviceMicrosite, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByTestId('tenant-microsite')).toBeVisible();
+        await expect(page.getByTestId('service-panel')).toContainText(officialFixtures.service.expectedPanelText);
 
-        const prioritized = [
-            ...storefronts.filter((storefront) => storefront.category?.slug === 'restaurantes'),
-            ...storefronts.filter((storefront) => storefront.category?.slug !== 'restaurantes'),
-        ];
+        await page.goto(officialRoutes.productMicrosite, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByTestId('tenant-microsite')).toBeVisible();
+        await expect(page.getByTestId('product-panel')).toContainText(officialFixtures.product.expectedPanelText);
+    });
 
-        let checkoutValidated = false;
+    test('booking entrypoint is reachable in service storefront', async ({ page }) => {
+        await page.goto(officialRoutes.serviceBooking, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByTestId('booking-wizard')).toBeVisible();
+    });
 
-        for (const storefront of prioritized) {
-            await assertStorefrontLoadsWithoutFatal(page, storefront.slug);
+    test('checkout entrypoint is usable in a product storefront', async ({ page }) => {
+        await page.goto(officialRoutes.productMicrosite, { waitUntil: 'domcontentloaded' });
 
-            const addToCart = page
-                .locator('[data-testid^="add-to-cart-"]')
-                .first()
-                .or(page.getByRole('button', { name: /agregar|anadir|a\u00f1adir|add to cart/i }).first());
+        await page.locator('[data-testid^="add-to-cart-"]').or(page.getByRole('button', { name: /agregar/i })).first().click();
+        const cartFab = page
+            .getByTestId('cart-fab')
+            .or(page.locator('button.fixed.bottom-6.right-6'))
+            .first();
+        await expect(cartFab).toBeVisible();
 
-            const addToCartVisible = await addToCart.isVisible({ timeout: 3000 }).catch(() => false);
-            if (!addToCartVisible) {
-                continue;
-            }
-
-            await addToCart.click();
-            const cartFab = page
-                .getByTestId('cart-fab')
-                .or(page.locator('button.fixed.bottom-6.right-6'))
-                .first();
-            await expect(cartFab).toBeVisible({ timeout: 10_000 });
-
-            await cartFab.click();
-            const drawerOrDialog = page.getByTestId('cart-drawer').or(page.getByRole('dialog'));
-            let drawerVisible = false;
-            try {
-                await expect(drawerOrDialog).toBeVisible({ timeout: 5000 });
-                drawerVisible = true;
-            } catch {
-                drawerVisible = false;
-            }
-
-            if (drawerVisible) {
-                await expect(page.getByTestId('cart-continue').or(page.getByRole('button', { name: /continuar|checkout|pagar/i }))).toBeVisible();
-            } else {
-                await expect(page.locator('body')).not.toContainText(/500|server error/i);
-            }
-
-            checkoutValidated = true;
-            break;
+        await cartFab.click();
+        const drawerOrDialog = page.getByTestId('cart-drawer').or(page.getByRole('dialog'));
+        let drawerVisible = false;
+        try {
+            await expect(drawerOrDialog).toBeVisible({ timeout: 5000 });
+            drawerVisible = true;
+        } catch {
+            drawerVisible = false;
         }
 
-        if (!checkoutValidated) {
-            test.info().annotations.push({
-                type: 'warning',
-                description: 'No published storefront with add-to-cart controls is currently available.',
-            });
+        if (drawerVisible) {
+            await expect(page.getByTestId('cart-continue').or(page.getByRole('button', { name: /continuar|checkout|pagar/i }))).toBeVisible();
+        } else {
+            await expect(page.locator('body')).not.toContainText(/500|server error/i);
         }
     });
 });

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { officialFixtures, officialRoutes } from './support/fixtures';
 import {
     loginSubmitButton,
     registerNextStepButton,
@@ -7,9 +8,9 @@ import {
 } from './support/auth-locators';
 
 const SEEDED_OWNER = {
-    email: 'casa-brasa-bistro@example.test',
-    password: 'password',
-    microsite: '/t/casa-brasa-bistro',
+    email: officialFixtures.owner.email,
+    password: officialFixtures.owner.password,
+    microsite: officialRoutes.productMicrosite,
 };
 
 function uniqueRegistrationIdentity() {
@@ -116,7 +117,7 @@ test.describe('Auditoria funcional E2E', () => {
         }
 
         const redirectedAfterSubmit = await page
-            .waitForURL(/\/(app|dashboard|verify-email|email\/verify|registro\/pago-pendiente)/, { timeout: 30_000 })
+            .waitForURL(/\/(app|verify-email|email\/verify|registro\/pago-pendiente)/, { timeout: 30_000 })
             .then(() => true)
             .catch(() => false);
 
@@ -137,7 +138,7 @@ test.describe('Auditoria funcional E2E', () => {
         await loginPage.locator('#password').fill(identity.password);
         await loginSubmitButton(loginPage).click();
 
-        await expect(loginPage).toHaveURL(/\/(app|dashboard|verify-email|email\/verify)/, { timeout: 20_000 });
+        await expect(loginPage).toHaveURL(/\/(app|verify-email|email\/verify)/, { timeout: 20_000 });
         await isolatedContext.close();
     });
 

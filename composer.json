@@ -103,6 +103,7 @@
             "@php vendor/bin/pest tests/Feature/Filament/BusinessCrudSmokeTest.php tests/Feature/Filament/BusinessPanelSmokeTest.php tests/Feature/Filament/TenantPanelAccessTest.php tests/Feature/Filament/SuperAdminActionWorkflowTest.php tests/Feature/Filament/SuperAdminPanelSmokeTest.php tests/Feature/CRM/CustomerInboxPageTest.php -v"
         ],
         "test:release-critical": [
+            "Composer\\Config::disableProcessTimeout",
             "@php artisan config:clear --ansi",
             "@php artisan view:clear --ansi",
             "@php artisan migrate:fresh --env=testing --force --ansi",

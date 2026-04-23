@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Directory\Contracts\DirectoryGuideReader;
 use App\Http\Controllers\Controller;
+use App\Infrastructure\Directory\DirectoryGuideQdrantRetriever;
 use App\Support\Directory\GuideQuota;
 use App\Support\Directory\GuideRequestTelemetry;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +19,8 @@ use Throwable;
 final class DirectoryGuideController extends Controller
 {
     public function __construct(
-        private readonly DirectoryGuideReader $reader
+        private readonly DirectoryGuideReader $reader,
+        private readonly DirectoryGuideQdrantRetriever $qdrantRetriever
     ) {}
 
     public function search(Request $request): JsonResponse
@@ -70,6 +72,7 @@ final class DirectoryGuideController extends Controller
 
         $validated = $request->validate([
             'budget' => ['nullable', 'numeric', 'min:1'],
+            'currency' => ['nullable', 'string', 'size:3', 'regex:/^[A-Z]{3}$/'],
             'search' => ['nullable', 'string', 'max:120'],
             'city' => ['nullable', 'string', 'max:120'],
             'category' => ['nullable', 'string', 'max:120'],
@@ -77,6 +80,7 @@ final class DirectoryGuideController extends Controller
         ]);
 
         $budget = isset($validated['budget']) ? (float) $validated['budget'] : 0.0;
+        $currency = strtoupper((string) ($validated['currency'] ?? 'HNL'));
         $limit = (int) ($validated['limit'] ?? 8);
         $search = $validated['search'] ?? null;
         $city = $validated['city'] ?? null;
@@ -96,11 +100,14 @@ final class DirectoryGuideController extends Controller
                     'data' => $fallback,
                     'meta' => [
                         'budget' => null,
+                        'budget_currency' => $currency,
+                        'budget_typed' => null,
                         'count' => count($fallback),
                         'degraded_to_search' => true,
                         'degraded_reason' => 'missing_budget',
                         'ranking_mode' => 'fallback',
                         'reasoning_basis' => 'directory_search_fallback',
+                        'ranking_explanation' => $this->rankingExplanation('fallback', 'directory_search_fallback', 'missing_budget'),
                         'generated_at' => now()->toIso8601String(),
                     ],
                 ],
@@ -123,11 +130,17 @@ final class DirectoryGuideController extends Controller
                         'data' => $fallback,
                         'meta' => [
                             'budget' => round($budget, 2),
+                            'budget_currency' => $currency,
+                            'budget_typed' => [
+                                'amount' => round($budget, 2),
+                                'currency' => $currency,
+                            ],
                             'count' => count($fallback),
                             'degraded_to_search' => true,
                             'degraded_reason' => 'no_budget_matches',
                             'ranking_mode' => 'fallback',
                             'reasoning_basis' => 'directory_search_fallback',
+                            'ranking_explanation' => $this->rankingExplanation('fallback', 'directory_search_fallback', 'no_budget_matches'),
                             'generated_at' => now()->toIso8601String(),
                         ],
                     ],
@@ -175,11 +188,17 @@ final class DirectoryGuideController extends Controller
                     'data' => $fallback,
                     'meta' => [
                         'budget' => round($budget, 2),
+                        'budget_currency' => $currency,
+                        'budget_typed' => [
+                            'amount' => round($budget, 2),
+                            'currency' => $currency,
+                        ],
                         'count' => count($fallback),
                         'degraded_to_search' => true,
                         'degraded_reason' => $degradedReason,
                         'ranking_mode' => 'fallback',
                         'reasoning_basis' => 'directory_search_fallback',
+                        'ranking_explanation' => $this->rankingExplanation('fallback', 'directory_search_fallback', $degradedReason),
                         'generated_at' => now()->toIso8601String(),
                     ],
                 ],
@@ -196,11 +215,17 @@ final class DirectoryGuideController extends Controller
                 'data' => $recommendations,
                 'meta' => [
                     'budget' => round($budget, 2),
+                    'budget_currency' => $currency,
+                    'budget_typed' => [
+                        'amount' => round($budget, 2),
+                        'currency' => $currency,
+                    ],
                     'count' => count($recommendations),
                     'degraded_to_search' => false,
                     'degraded_reason' => $degradedReason,
                     'ranking_mode' => $rankingMode,
                     'reasoning_basis' => $reasoningBasis,
+                    'ranking_explanation' => $this->rankingExplanation($rankingMode, $reasoningBasis, $degradedReason),
                     'generated_at' => now()->toIso8601String(),
                 ],
             ],
@@ -211,6 +236,237 @@ final class DirectoryGuideController extends Controller
         );
     }
 
+    public function chat(Request $request): JsonResponse
+    {
+        $startedAt = microtime(true);
+        $requestId = (string) ($request->header('x-request-id') ?: Str::uuid()->toString());
+        $traceId = (string) ($request->header('x-trace-id') ?: Str::uuid()->toString());
+        $user = $request->user();
+
+        if (! method_exists($user, 'isCustomer') || ! $user->isCustomer()) {
+            return response()
+                ->json([
+                    'error_code' => 'DIRECTORY_GUIDE_CUSTOMER_ONLY',
+                    'message' => 'La guia del directorio solo esta disponible para cuentas customer.',
+                ], 403)
+                ->header('x-request-id', $requestId)
+                ->header('x-trace-id', $traceId);
+        }
+
+        $quotaStatus = GuideQuota::status($request);
+        $validated = $request->validate([
+            'query' => ['required', 'string', 'max:240'],
+            'budget_amount' => ['nullable', 'numeric', 'min:1'],
+            'currency' => ['nullable', 'string', 'size:3', 'regex:/^[A-Z]{3}$/'],
+            'city' => ['nullable', 'string', 'max:120'],
+            'category' => ['nullable', 'string', 'max:120'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:20'],
+        ]);
+
+        $query = trim((string) ($validated['query'] ?? ''));
+        $budgetAmount = isset($validated['budget_amount']) ? (float) $validated['budget_amount'] : 0.0;
+        $currency = strtoupper((string) ($validated['currency'] ?? 'HNL'));
+        $city = $validated['city'] ?? null;
+        $category = $validated['category'] ?? null;
+        $limit = (int) ($validated['limit'] ?? 8);
+        $hybridRerankEnabled = (bool) config('directory.guide.hybrid_rerank_enabled', false);
+        $maxRerankCandidates = max(
+            $limit,
+            (int) config('directory.guide.max_rerank_candidates', 10)
+        );
+        $qdrantHints = [];
+        $qdrantApplied = false;
+        $degradedReason = null;
+
+        if ($budgetAmount <= 0) {
+            $fallback = $this->reader->searchPublishedTenants($query, $city, $category, $limit);
+
+            return $this->respondGuide(
+                request: $request,
+                payload: [
+                    'data' => $fallback,
+                    'meta' => [
+                        'query' => $query,
+                        'budget' => null,
+                        'budget_currency' => $currency,
+                        'budget_typed' => null,
+                        'count' => count($fallback),
+                        'degraded_to_search' => true,
+                        'degraded_reason' => 'missing_budget',
+                        'ranking_mode' => 'fallback',
+                        'reasoning_basis' => 'directory_search_fallback',
+                        'ranking_explanation' => $this->rankingExplanation('fallback', 'directory_search_fallback', 'missing_budget'),
+                        'generated_at' => now()->toIso8601String(),
+                        'chat_answer' => $this->chatAnswer($fallback, null, $currency),
+                    ],
+                ],
+                requestId: $requestId,
+                startedAt: $startedAt,
+                candidateCount: count($fallback),
+                quotaStatus: $quotaStatus,
+                traceId: $traceId,
+                endpoint: 'guide_chat',
+            );
+        }
+
+        try {
+            try {
+                $qdrantHints = $this->qdrantRetriever->resolveProductHints(
+                    query: $query,
+                    budgetAmount: $budgetAmount,
+                    currency: $currency,
+                    citySlug: $city,
+                    categorySlug: $category,
+                    limit: $limit,
+                );
+                $qdrantApplied = $qdrantHints !== [];
+            } catch (\Throwable $qdrantException) {
+                $degradedReason = 'qdrant_unavailable';
+                Log::warning('guide.chat.qdrant_unavailable', [
+                    'request_id' => $requestId,
+                    'trace_id' => $traceId,
+                    'error' => $qdrantException->getMessage(),
+                ]);
+            }
+
+            $recommendations = $this->reader->recommendByBudget(
+                budget: $budgetAmount,
+                citySlug: $city,
+                categorySlug: $category,
+                search: $qdrantApplied ? null : $query,
+                limit: $limit,
+                hintProductIds: $qdrantHints,
+            );
+
+            if ($recommendations === []) {
+                $fallback = $this->reader->searchPublishedTenants($query, $city, $category, $limit);
+
+                return $this->respondGuide(
+                    request: $request,
+                    payload: [
+                        'data' => $fallback,
+                        'meta' => [
+                            'query' => $query,
+                            'budget' => round($budgetAmount, 2),
+                            'budget_currency' => $currency,
+                            'budget_typed' => [
+                                'amount' => round($budgetAmount, 2),
+                                'currency' => $currency,
+                            ],
+                            'count' => count($fallback),
+                            'degraded_to_search' => true,
+                            'degraded_reason' => 'no_budget_matches',
+                            'ranking_mode' => 'fallback',
+                            'reasoning_basis' => 'directory_search_fallback',
+                            'qdrant_applied' => $qdrantApplied,
+                            'qdrant_candidates' => count($qdrantHints),
+                            'ranking_explanation' => $this->rankingExplanation('fallback', 'directory_search_fallback', 'no_budget_matches'),
+                            'generated_at' => now()->toIso8601String(),
+                            'chat_answer' => $this->chatAnswer($fallback, $budgetAmount, $currency),
+                        ],
+                    ],
+                    requestId: $requestId,
+                    startedAt: $startedAt,
+                    candidateCount: count($fallback),
+                    quotaStatus: $quotaStatus,
+                    traceId: $traceId,
+                    endpoint: 'guide_chat',
+                );
+            }
+
+            $rankingMode = $qdrantApplied ? 'hybrid' : 'sql';
+            $reasoningBasis = $qdrantApplied
+                ? 'qdrant_semantic_retrieval_plus_sql_budget_filter'
+                : 'sql_budget_filter';
+
+            if ($hybridRerankEnabled && $query !== '') {
+                $recommendations = array_slice($recommendations, 0, $maxRerankCandidates);
+
+                try {
+                    $recommendations = $this->reader->rerankRecommendations($recommendations, $query, $limit);
+                    $rankingMode = 'hybrid';
+                    $reasoningBasis = $qdrantApplied
+                        ? 'qdrant_semantic_retrieval_plus_embedding_rerank'
+                        : 'sql_filter_plus_embedding_rerank';
+                } catch (\Throwable $exception) {
+                    if ($degradedReason === null) {
+                        $degradedReason = $this->resolveDegradedReason($exception);
+                    }
+                }
+            }
+        } catch (\Throwable $exception) {
+            if ($degradedReason === null) {
+                $degradedReason = $this->resolveDegradedReason($exception);
+            }
+
+            $fallback = $this->reader->searchPublishedTenants($query, $city, $category, $limit);
+
+            return $this->respondGuide(
+                request: $request,
+                payload: [
+                    'data' => $fallback,
+                    'meta' => [
+                        'query' => $query,
+                        'budget' => round($budgetAmount, 2),
+                        'budget_currency' => $currency,
+                        'budget_typed' => [
+                            'amount' => round($budgetAmount, 2),
+                            'currency' => $currency,
+                        ],
+                        'count' => count($fallback),
+                        'degraded_to_search' => true,
+                        'degraded_reason' => $degradedReason,
+                        'ranking_mode' => 'fallback',
+                        'reasoning_basis' => 'directory_search_fallback',
+                        'qdrant_applied' => $qdrantApplied,
+                        'qdrant_candidates' => count($qdrantHints),
+                        'ranking_explanation' => $this->rankingExplanation('fallback', 'directory_search_fallback', $degradedReason),
+                        'generated_at' => now()->toIso8601String(),
+                        'chat_answer' => $this->chatAnswer($fallback, $budgetAmount, $currency),
+                    ],
+                ],
+                requestId: $requestId,
+                startedAt: $startedAt,
+                candidateCount: count($fallback),
+                quotaStatus: $quotaStatus,
+                traceId: $traceId,
+                endpoint: 'guide_chat',
+            );
+        }
+
+        return $this->respondGuide(
+            request: $request,
+            payload: [
+                'data' => $recommendations,
+                'meta' => [
+                    'query' => $query,
+                    'budget' => round($budgetAmount, 2),
+                    'budget_currency' => $currency,
+                    'budget_typed' => [
+                        'amount' => round($budgetAmount, 2),
+                        'currency' => $currency,
+                    ],
+                    'count' => count($recommendations),
+                    'degraded_to_search' => false,
+                    'degraded_reason' => $degradedReason,
+                    'ranking_mode' => $rankingMode,
+                    'reasoning_basis' => $reasoningBasis,
+                    'qdrant_applied' => $qdrantApplied,
+                    'qdrant_candidates' => count($qdrantHints),
+                    'ranking_explanation' => $this->rankingExplanation($rankingMode, $reasoningBasis, $degradedReason),
+                    'generated_at' => now()->toIso8601String(),
+                    'chat_answer' => $this->chatAnswer($recommendations, $budgetAmount, $currency),
+                ],
+            ],
+            requestId: $requestId,
+            startedAt: $startedAt,
+            candidateCount: count($recommendations),
+            quotaStatus: $quotaStatus,
+            traceId: $traceId,
+            endpoint: 'guide_chat',
+        );
+    }
+
     private function respondGuide(
         Request $request,
         array $payload,
@@ -218,6 +474,8 @@ final class DirectoryGuideController extends Controller
         float $startedAt,
         int $candidateCount,
         array $quotaStatus,
+        ?string $traceId = null,
+        string $endpoint = 'guide',
     ): JsonResponse {
         $meta = (array) ($payload['meta'] ?? []);
         $data = (array) ($payload['data'] ?? []);
@@ -226,17 +484,20 @@ final class DirectoryGuideController extends Controller
 
         $payload['meta'] = array_merge($meta, $quotaStatus, [
             'request_id' => $requestId,
+            'trace_id' => $traceId ?? $requestId,
         ]);
 
         Log::info('guide.request.completed', [
             'event' => 'guide.request.completed',
             'request_id' => $requestId,
+            'trace_id' => $traceId ?? $requestId,
+            'endpoint' => $endpoint,
             'filters' => [
-                'budget' => $request->query('budget'),
-                'search' => $request->query('search'),
-                'city' => $request->query('city'),
-                'category' => $request->query('category'),
-                'limit' => $request->query('limit'),
+                'budget' => $request->query('budget', $request->input('budget_amount')),
+                'search' => $request->query('search', $request->input('query')),
+                'city' => $request->query('city', $request->input('city')),
+                'category' => $request->query('category', $request->input('category')),
+                'limit' => $request->query('limit', $request->input('limit')),
             ],
             'candidate_count' => $candidateCount,
             'ranking_mode' => $meta['ranking_mode'] ?? null,
@@ -260,13 +521,16 @@ final class DirectoryGuideController extends Controller
             candidateCount: $candidateCount,
             tenantCount: $tenantCount,
             quotaStatus: $quotaStatus,
+            endpoint: $endpoint,
+            traceId: $traceId ?? $requestId,
         );
 
         $this->logGuideUsage($request, (string) ($meta['ranking_mode'] ?? 'sql'));
 
         return response()
             ->json($payload)
-            ->header('x-request-id', $requestId);
+            ->header('x-request-id', $requestId)
+            ->header('x-trace-id', $traceId ?? $requestId);
     }
 
     private function logGuideUsage(Request $request, string $rankingMode): void
@@ -312,10 +576,15 @@ final class DirectoryGuideController extends Controller
             return 'openai_timeout';
         }
 
+        if (str_starts_with($reason, 'qdrant_')) {
+            return 'qdrant_unavailable';
+        }
+
         return match ($reason) {
             'sql_recommendation_query_failed' => 'sql_recommendation_query_failed',
             'openai_auth_failed' => 'openai_auth_failed',
             'openai_timeout' => 'openai_timeout',
+            'qdrant_unavailable' => 'qdrant_unavailable',
             'embedding_not_found' => 'embedding_not_found',
             'embedding_sync_stale' => 'embedding_sync_stale',
             'directory_guide_openai_key_missing',
@@ -325,5 +594,74 @@ final class DirectoryGuideController extends Controller
                 ? 'openai_timeout'
                 : 'sql_recommendation_query_failed',
         };
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $recommendations
+     */
+    private function chatAnswer(array $recommendations, ?float $budgetAmount, string $currency): string
+    {
+        if ($recommendations === []) {
+            return 'No encontramos opciones publicadas para los filtros actuales.';
+        }
+
+        $head = array_slice($recommendations, 0, 3);
+        $summaries = [];
+
+        foreach ($head as $entry) {
+            $tenantName = (string) data_get($entry, 'tenant.name', data_get($entry, 'name', 'Negocio'));
+            $minPrice = (float) data_get($entry, 'price_range.min', 0);
+
+            if ($minPrice > 0) {
+                $summaries[] = sprintf('%s desde %.2f %s', $tenantName, $minPrice, strtoupper($currency));
+            } else {
+                $summaries[] = $tenantName;
+            }
+        }
+
+        $budgetLabel = is_numeric($budgetAmount)
+            ? sprintf('Con %.2f %s, ', (float) $budgetAmount, strtoupper($currency))
+            : '';
+
+        return $budgetLabel.'te recomiendo: '.implode('; ', $summaries).'.';
+    }
+
+    /**
+     * @return array{summary: string, factors: list<string>, degraded_reason: string|null, reasoning_basis: string}
+     */
+    private function rankingExplanation(string $rankingMode, string $reasoningBasis, ?string $degradedReason): array
+    {
+        if ($rankingMode === 'fallback') {
+            return [
+                'summary' => 'Se aplico busqueda publica como degradacion segura para mantener resultados disponibles.',
+                'factors' => ['published_only', 'city_filter', 'category_filter', 'search_match'],
+                'degraded_reason' => $degradedReason,
+                'reasoning_basis' => $reasoningBasis,
+            ];
+        }
+
+        if ($rankingMode === 'hybrid') {
+            $factors = ['published_only', 'budget_filter', 'city_filter', 'category_filter', 'embedding_rerank'];
+
+            if (str_contains($reasoningBasis, 'qdrant')) {
+                $factors[] = 'qdrant_semantic_filter';
+            }
+
+            return [
+                'summary' => str_contains($reasoningBasis, 'qdrant')
+                    ? 'Ranking hibrido: recuperacion semantica en Qdrant + filtros SQL publicados/presupuesto.'
+                    : 'Ranking hibrido: filtro SQL por presupuesto + reordenamiento semantico con embeddings.',
+                'factors' => $factors,
+                'degraded_reason' => $degradedReason,
+                'reasoning_basis' => $reasoningBasis,
+            ];
+        }
+
+        return [
+            'summary' => 'Ranking SQL deterministico por disponibilidad y ajuste al presupuesto.',
+            'factors' => ['published_only', 'budget_filter', 'city_filter', 'category_filter'],
+            'degraded_reason' => $degradedReason,
+            'reasoning_basis' => $reasoningBasis,
+        ];
     }
 }

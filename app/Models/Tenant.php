@@ -536,8 +536,9 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function scopePublished($query)
     {
         return $query
+            ->where('status', 'approved')
             ->where('is_active', true)
-            ->where('subscription_status', 'active')
+            ->whereIn('subscription_status', ['active', 'trial'])
             ->where('verification_status', self::VERIFICATION_STATUS_VERIFIED)
             ->whereNull('publication_paused_at');
     }

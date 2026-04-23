@@ -59,10 +59,18 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
         ?string $citySlug,
         ?string $categorySlug,
         ?string $search = null,
-        int $limit = 8
+        int $limit = 8,
+        array $hintProductIds = []
     ): array {
         $safeLimit = max(1, min($limit, 20));
         $safeBudget = max(0, $budget);
+        $safeHintProductIds = collect($hintProductIds)
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->filter(static fn (int $id): bool => $id > 0)
+            ->unique()
+            ->take(500)
+            ->values()
+            ->all();
 
         if ($safeBudget <= 0) {
             return [];
@@ -107,6 +115,10 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
 
         if ($hasStockStatus) {
             $productsQuery->whereIn('stock_status', self::PURCHASEABLE_STOCK_STATUSES);
+        }
+
+        if ($safeHintProductIds !== []) {
+            $productsQuery->whereIn('id', $safeHintProductIds);
         }
 
         $term = trim((string) $search);
@@ -179,6 +191,7 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
                     limit: $safeLimit,
                     hasStockStatus: $hasStockStatus,
                     hasMenuSection: $hasMenuSection,
+                    hintProductIds: $safeHintProductIds,
                 );
             } catch (\Throwable $rawException) {
                 throw new RuntimeException('sql_recommendation_query_failed', 0, $rawException);
@@ -249,6 +262,7 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
         int $limit,
         bool $hasStockStatus,
         bool $hasMenuSection,
+        array $hintProductIds = [],
     ): array {
         $productsTable = (new Product)->getTable();
         $tenantsTable = (new Tenant)->getTable();
@@ -273,8 +287,9 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
                 'cat.slug as category_slug',
             ])
             ->where('p.price', '<=', $budget)
+            ->where('t.status', 'approved')
             ->where('t.is_active', true)
-            ->where('t.subscription_status', 'active')
+            ->whereIn('t.subscription_status', ['active', 'trial'])
             ->where('t.verification_status', 'verified')
             ->whereNull('t.publication_paused_at')
             ->orderBy('p.price')
@@ -285,6 +300,10 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
             $query
                 ->addSelect('p.stock_status')
                 ->whereIn('p.stock_status', self::PURCHASEABLE_STOCK_STATUSES);
+        }
+
+        if ($hintProductIds !== []) {
+            $query->whereIn('p.id', $hintProductIds);
         }
 
         if ($hasMenuSection) {
@@ -506,8 +525,9 @@ final class EloquentDirectoryGuideReader implements DirectoryGuideReader
         ?string $categorySlug
     ): void {
         $query
+            ->where('status', 'approved')
             ->where('is_active', true)
-            ->where('subscription_status', 'active')
+            ->whereIn('subscription_status', ['active', 'trial'])
             ->where('verification_status', 'verified')
             ->whereNull('publication_paused_at');
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Events\CatalogPublishedChanged;
 use App\Models\Product;
 use Illuminate\Support\Facades\Cache;
 
@@ -41,5 +42,11 @@ class ProductObserver
     {
         // Surgical cache clearing using Tags
         Cache::tags(['products', "products_tenant_{$product->tenant_id}"])->flush();
+
+        CatalogPublishedChanged::dispatch(
+            tenantId: (string) $product->tenant_id,
+            productId: (int) $product->getKey(),
+            source: 'product_observer',
+        );
     }
 }

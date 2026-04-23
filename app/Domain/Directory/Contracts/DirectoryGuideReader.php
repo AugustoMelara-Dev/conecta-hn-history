@@ -28,7 +28,8 @@ interface DirectoryGuideReader
         ?string $citySlug,
         ?string $categorySlug,
         ?string $search = null,
-        int $limit = 8
+        int $limit = 8,
+        array $hintProductIds = []
     ): array;
 
     /**

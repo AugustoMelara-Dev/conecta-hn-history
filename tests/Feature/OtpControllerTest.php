@@ -55,7 +55,10 @@ class OtpControllerTest extends TestCase
         $response->assertOk()
             ->assertJson([
                 'requires_registration' => false,
-                'redirect' => '/dashboard',
+                'redirect' => '/app',
+                'redirect_to' => '/app',
+                'home_surface' => 'business_app',
+                'audience' => 'owner',
             ]);
 
         $this->assertInstanceOf(VerifyOtpCommand::class, $handler->command);

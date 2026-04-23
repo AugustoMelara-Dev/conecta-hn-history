@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Contracts\AuthTokenServiceInterface;
 use App\Application\Auth\Enums\AuthStatus;
-use App\Application\Auth\Handlers\LoginViaSocialProviderHandler;
+use App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface;
 use App\Application\Identity\Handlers\RegisterUserHandler;
 use App\Domain\Shared\Enums\ProviderName;
 use App\Http\Controllers\Controller;
@@ -15,6 +15,7 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\SocialLoginRequest;
 use App\Http\Resources\V1\AuthResource;
 use App\Models\Tenant;
+use App\Support\Auth\AuthRedirector;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -32,11 +33,14 @@ final class AuthController extends Controller
         $command = $request->toCommand();
         $result = $handler->handle($command);
         $tokenData = $this->tokenService->createTokenForUser($result->id, 'api-token');
+        $authContext = AuthRedirector::contextFor($tokenData['user']);
 
         $responsePayload = (object) [
             'user' => $tokenData['user'],
             'accessToken' => $tokenData['token'],
-            'redirectUrl' => '/dashboard',
+            'redirectUrl' => $authContext['redirect_to'],
+            'homeSurface' => $authContext['home_surface'],
+            'audience' => $authContext['audience'],
         ];
 
         return response()->json(new AuthResource($responsePayload), 201);
@@ -47,7 +51,7 @@ final class AuthController extends Controller
      */
     public function socialLogin(
         SocialLoginRequest $request,
-        LoginViaSocialProviderHandler $handler
+        LoginViaSocialProviderHandlerInterface $handler
     ): JsonResponse {
         $validated = $request->validatedData();
         $providerName = ProviderName::tryFrom((string) $validated['provider']);
@@ -64,7 +68,7 @@ final class AuthController extends Controller
             providerId: $validated['provider_id'],
             email: $validated['email'],
             name: $validated['name'] ?? explode('@', $validated['email'])[0],
-            avatarUrl: $validated['avatar'],
+            avatarUrl: $validated['avatar'] ?? null,
             accessToken: $validated['token'],
             refreshToken: null,
             idempotencyKey: (string) $request->header('Idempotency-Key', Str::uuid()->toString()),
@@ -72,13 +76,22 @@ final class AuthController extends Controller
 
         $result = $handler->handle($command);
         $tokenData = $this->tokenService->createTokenForUser($result->userId, 'social-api-token');
+        $authContext = AuthRedirector::contextFor($tokenData['user']);
+
+        if ($result->status === AuthStatus::REQUIRES_ONBOARDING || $result->status === AuthStatus::NEW_USER) {
+            $authContext = [
+                'redirect_to' => route('tenant.register', [], false),
+                'home_surface' => AuthRedirector::SURFACE_BUSINESS_APP,
+                'audience' => AuthRedirector::AUDIENCE_OWNER,
+            ];
+        }
 
         $responsePayload = (object) [
             'user' => $tokenData['user'],
             'accessToken' => $tokenData['token'],
-            'redirectUrl' => $result->status === AuthStatus::REQUIRES_ONBOARDING
-                ? '/onboarding'
-                : '/dashboard',
+            'redirectUrl' => $authContext['redirect_to'],
+            'homeSurface' => $authContext['home_surface'],
+            'audience' => $authContext['audience'],
         ];
 
         return response()->json(new AuthResource($responsePayload));

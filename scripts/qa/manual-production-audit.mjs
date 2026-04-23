@@ -5,6 +5,11 @@ import { chromium } from 'playwright';
 const baseURL = (process.env.PLAYWRIGHT_BASE_URL || 'https://vitobusinessos.vercel.app').replace(/\/$/, '');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = path.resolve('artifacts', 'manual-audit', stamp);
+const productTenantSlug = process.env.E2E_PRODUCT_TENANT_SLUG || 'demo-ai-guide-hn';
+const serviceTenantSlug = process.env.E2E_SERVICE_TENANT_SLUG || 'demo-ai-booking-hn';
+const productRoute = `/t/${productTenantSlug}`;
+const serviceRoute = `/t/${serviceTenantSlug}`;
+const bookingRoute = `${serviceRoute}/book`;
 
 const checks = [
   { id: 'home', route: '/', marker: null },
@@ -12,14 +17,15 @@ const checks = [
   { id: 'register-business', route: '/registrar-negocio', marker: { type: 'selector', value: '#business_name' } },
   { id: 'login', route: '/login', marker: { type: 'selector', value: '#email' } },
   { id: 'admin-login', route: '/admin/login', marker: { type: 'text', value: 'Panel de superadministraci' } },
-  { id: 'guide-api', route: '/api/v1/directory/guide?budget=100&city=tegucigalpa&category=restaurantes&search=cafe', marker: null, expectedStatus: [200, 401, 429] },
-  { id: 'microsite-restaurant', route: '/t/casa-brasa-bistro', marker: { type: 'selector', value: '[data-testid="tenant-microsite"]' } },
-  { id: 'microsite-legal', route: '/t/bufete-lex-hn', marker: { type: 'selector', value: '[data-testid="tenant-microsite"]' } },
-  { id: 'booking-entry', route: '/t/barberia-norte-pro/book', marker: { type: 'selector', value: '[data-testid="booking-wizard"]' } },
+  { id: 'guide-api', route: '/api/v1/directory/guide?budget=100&city=tegucigalpa&category=restaurantes&search=cafe', marker: null, expectedStatus: [200, 401, 403, 429] },
+  { id: 'guide-chat-route', route: '/api/v1/directory/guide/chat', marker: null, expectedStatus: [401, 403, 405] },
+  { id: 'microsite-product', route: productRoute, marker: { type: 'selector', value: '[data-testid="tenant-microsite"]' } },
+  { id: 'microsite-service', route: serviceRoute, marker: { type: 'selector', value: '[data-testid="tenant-microsite"]' } },
+  { id: 'booking-entry', route: bookingRoute, marker: { type: 'selector', value: '[data-testid="booking-wizard"]' } },
   { id: 'not-found', route: '/__manual-audit-not-found-404', marker: { type: 'text', value: '404' } },
 ];
 
-const defaultFlowRoute = '/t/casa-brasa-bistro';
+const defaultFlowRoute = productRoute;
 
 async function ensureDir(dir) {
   await fs.mkdir(dir, { recursive: true });

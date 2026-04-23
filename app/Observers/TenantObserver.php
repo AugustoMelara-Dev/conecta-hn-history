@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Domain\Identity\Enums\UserRole;
+use App\Events\CatalogPublishedChanged;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\TenantCacheManager;
@@ -54,6 +55,13 @@ class TenantObserver
         } catch (\Exception $e) {
             Log::warning("Cache invalidation failed for tenant {$tenant->id}: ".$e->getMessage());
         }
+
+        if ($tenant->wasChanged(['status', 'is_active', 'subscription_status', 'city_id', 'category_id', 'slug'])) {
+            CatalogPublishedChanged::dispatch(
+                tenantId: (string) $tenant->getKey(),
+                source: 'tenant_observer',
+            );
+        }
     }
 
     /**
@@ -94,6 +102,11 @@ class TenantObserver
         } catch (\Exception $e) {
             Log::warning("Cache cleanup failed for deleted tenant {$tenant->id}: ".$e->getMessage());
         }
+
+        CatalogPublishedChanged::dispatch(
+            tenantId: (string) $tenant->getKey(),
+            source: 'tenant_deleted',
+        );
     }
 
     /**
@@ -106,6 +119,11 @@ class TenantObserver
         } catch (\Exception $e) {
             Log::warning("Cache rotation failed for restored tenant {$tenant->id}: ".$e->getMessage());
         }
+
+        CatalogPublishedChanged::dispatch(
+            tenantId: (string) $tenant->getKey(),
+            source: 'tenant_restored',
+        );
     }
 
     /**

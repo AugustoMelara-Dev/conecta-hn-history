@@ -393,6 +393,8 @@ class InfrastructureServiceProvider extends ServiceProvider
                         requestId: $requestId,
                         quotaStatus: $status,
                         retryAfterSeconds: $retryAfter,
+                        endpoint: $request->is('api/v1/directory/guide/chat') ? 'guide_chat' : 'guide',
+                        traceId: (string) ($request->header('x-trace-id') ?: $requestId),
                     );
 
                     return response()->json([

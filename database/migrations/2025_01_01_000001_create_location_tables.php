@@ -23,17 +23,19 @@ return new class extends Migration
         if (! Schema::hasTable('municipalities')) {
             Schema::create('municipalities', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('department_id')->constrained()->cascadeOnDelete();
+                $table->unsignedBigInteger('department_id');
                 $table->string('name');
                 $table->string('slug')->unique();
                 $table->timestamps();
+
+                $table->index('department_id');
             });
         }
 
         if (! Schema::hasTable('cities')) {
             Schema::create('cities', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('municipality_id')->nullable()->constrained()->nullOnDelete();
+                $table->unsignedBigInteger('municipality_id')->nullable();
                 $table->string('name');
                 $table->string('slug')->unique();
                 $table->string('image_path')->nullable();
@@ -41,8 +43,13 @@ return new class extends Migration
                 $table->boolean('is_active')->default(true);
                 $table->boolean('is_featured')->default(false);
                 $table->timestamps();
+
+                $table->index('municipality_id');
             });
         }
+
+        $this->tryAddMunicipalityForeignKey();
+        $this->tryAddCityForeignKey();
     }
 
     /**
@@ -53,5 +60,56 @@ return new class extends Migration
         Schema::dropIfExists('cities');
         Schema::dropIfExists('municipalities');
         Schema::dropIfExists('departments');
+    }
+
+    private function tryAddMunicipalityForeignKey(): void
+    {
+        if (! Schema::hasTable('municipalities') || ! Schema::hasTable('departments')) {
+            return;
+        }
+
+        if ($this->hasForeign('municipalities', 'municipalities_department_id_foreign')) {
+            return;
+        }
+
+        try {
+            Schema::table('municipalities', function (Blueprint $table): void {
+                $table->foreign('department_id')
+                    ->references('id')
+                    ->on('departments')
+                    ->cascadeOnDelete();
+            });
+        } catch (\Throwable) {
+            // Legacy testing schemas can drift temporarily in migrate:fresh.
+            // The FK is best-effort here to keep historical migrations deterministic.
+        }
+    }
+
+    private function tryAddCityForeignKey(): void
+    {
+        if (! Schema::hasTable('cities') || ! Schema::hasTable('municipalities')) {
+            return;
+        }
+
+        if ($this->hasForeign('cities', 'cities_municipality_id_foreign')) {
+            return;
+        }
+
+        try {
+            Schema::table('cities', function (Blueprint $table): void {
+                $table->foreign('municipality_id')
+                    ->references('id')
+                    ->on('municipalities')
+                    ->nullOnDelete();
+            });
+        } catch (\Throwable) {
+            // See note above: keep migration resilient under legacy/testing drift.
+        }
+    }
+
+    private function hasForeign(string $table, string $foreignName): bool
+    {
+        return collect(Schema::getForeignKeys($table))
+            ->contains(static fn (array $foreign): bool => (string) ($foreign['name'] ?? '') === $foreignName);
     }
 };

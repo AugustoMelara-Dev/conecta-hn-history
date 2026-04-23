@@ -9,6 +9,20 @@ use App\Models\User;
 
 final class AuthRedirector
 {
+    public const SURFACE_BUSINESS_APP = 'business_app';
+
+    public const SURFACE_USER_APP = 'user_app';
+
+    public const SURFACE_ADMIN_APP = 'admin_app';
+
+    public const AUDIENCE_OWNER = 'owner';
+
+    public const AUDIENCE_STAFF = 'staff';
+
+    public const AUDIENCE_CUSTOMER = 'customer';
+
+    public const AUDIENCE_ADMIN = 'admin';
+
     public static function isDirectorySurfaceUser(?object $user): bool
     {
         if (! $user instanceof User) {
@@ -40,7 +54,7 @@ final class AuthRedirector
         $suffix = $appendVerifiedFlag ? '?verified=1' : '';
 
         if (! $user instanceof User) {
-            return route('dashboard', [], false).$suffix;
+            return self::directoryDestination().$suffix;
         }
 
         if (! $user->hasVerifiedEmail()) {
@@ -63,7 +77,7 @@ final class AuthRedirector
     public static function appPanelDestinationFor(?object $user): string
     {
         if (! $user instanceof User) {
-            return route('dashboard', [], false);
+            return self::directoryDestination();
         }
 
         $tenantSlug = self::resolveTenantSlug($user);
@@ -74,13 +88,13 @@ final class AuthRedirector
             return self::surfaceUrl($path, config('app.platform_app_url'));
         }
 
-        return route('dashboard', [], false);
+        return self::directoryDestination();
     }
 
     public static function adminPanelDestinationFor(?object $user): string
     {
         if (! $user instanceof User) {
-            return route('dashboard', [], false);
+            return self::directoryDestination();
         }
 
         $adminOrigin = config('app.platform_admin_url', config('app.platform_app_url'));
@@ -124,7 +138,7 @@ final class AuthRedirector
     public static function profileDestinationFor(?object $user): string
     {
         if (! $user instanceof User) {
-            return route('dashboard', [], false);
+            return self::directoryDestination();
         }
 
         if (! $user->hasVerifiedEmail()) {
@@ -143,6 +157,61 @@ final class AuthRedirector
         }
 
         return self::directoryDestination();
+    }
+
+    public static function hasBusinessContext(?object $user): bool
+    {
+        return $user instanceof User && self::resolveTenantSlug($user) !== null;
+    }
+
+    public static function homeSurfaceFor(?object $user): string
+    {
+        if (! $user instanceof User) {
+            return self::SURFACE_USER_APP;
+        }
+
+        if ($user->isSuperAdmin()) {
+            return self::SURFACE_ADMIN_APP;
+        }
+
+        if (self::hasBusinessContext($user)) {
+            return self::SURFACE_BUSINESS_APP;
+        }
+
+        return self::SURFACE_USER_APP;
+    }
+
+    public static function audienceFor(?object $user): string
+    {
+        if (! $user instanceof User) {
+            return self::AUDIENCE_CUSTOMER;
+        }
+
+        if ($user->isSuperAdmin()) {
+            return self::AUDIENCE_ADMIN;
+        }
+
+        if ($user->isStaff()) {
+            return self::AUDIENCE_STAFF;
+        }
+
+        if (self::hasBusinessContext($user)) {
+            return self::AUDIENCE_OWNER;
+        }
+
+        return self::AUDIENCE_CUSTOMER;
+    }
+
+    /**
+     * @return array{redirect_to: string, home_surface: string, audience: string}
+     */
+    public static function contextFor(?object $user): array
+    {
+        return [
+            'redirect_to' => self::destinationFor($user),
+            'home_surface' => self::homeSurfaceFor($user),
+            'audience' => self::audienceFor($user),
+        ];
     }
 
     private static function directoryDestination(): string

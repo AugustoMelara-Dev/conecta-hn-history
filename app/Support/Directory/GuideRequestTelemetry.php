@@ -27,9 +27,13 @@ final class GuideRequestTelemetry
         int $candidateCount,
         int $tenantCount,
         array $quotaStatus = [],
+        string $endpoint = 'guide',
+        ?string $traceId = null,
     ): void {
         self::insert([
             'request_id' => $requestId,
+            'trace_id' => self::nullableString($traceId, 64),
+            'endpoint' => self::nullableString($endpoint, 40),
             'user_id' => self::resolveUserId($request),
             'status_code' => $statusCode,
             'ranking_mode' => self::nullableString($meta['ranking_mode'] ?? null, 32),
@@ -43,10 +47,10 @@ final class GuideRequestTelemetry
             'quota_used' => self::nullableInt($quotaStatus['quota_used'] ?? null),
             'quota_remaining' => self::nullableInt($quotaStatus['quota_remaining'] ?? null),
             'quota_reset_at' => self::nullableTimestamp($quotaStatus['quota_reset_at'] ?? null),
-            'budget' => self::nullableDecimal($request->query('budget')),
-            'city' => self::nullableString($request->query('city'), 120),
-            'category' => self::nullableString($request->query('category'), 120),
-            'search' => self::nullableString($request->query('search'), 120),
+            'budget' => self::nullableDecimal(self::requestValue($request, 'budget', 'budget_amount')),
+            'city' => self::nullableString(self::requestValue($request, 'city'), 120),
+            'category' => self::nullableString(self::requestValue($request, 'category'), 120),
+            'search' => self::nullableString(self::requestValue($request, 'search', 'query'), 120),
         ]);
     }
 
@@ -58,9 +62,13 @@ final class GuideRequestTelemetry
         string $requestId,
         array $quotaStatus,
         int $retryAfterSeconds,
+        string $endpoint = 'guide',
+        ?string $traceId = null,
     ): void {
         self::insert([
             'request_id' => $requestId,
+            'trace_id' => self::nullableString($traceId, 64),
+            'endpoint' => self::nullableString($endpoint, 40),
             'user_id' => self::resolveUserId($request),
             'status_code' => 429,
             'ranking_mode' => null,
@@ -74,10 +82,10 @@ final class GuideRequestTelemetry
             'quota_used' => self::nullableInt($quotaStatus['quota_used'] ?? null),
             'quota_remaining' => self::nullableInt($quotaStatus['quota_remaining'] ?? 0),
             'quota_reset_at' => self::nullableTimestamp($quotaStatus['quota_reset_at'] ?? null),
-            'budget' => self::nullableDecimal($request->query('budget')),
-            'city' => self::nullableString($request->query('city'), 120),
-            'category' => self::nullableString($request->query('category'), 120),
-            'search' => self::nullableString($request->query('search'), 120),
+            'budget' => self::nullableDecimal(self::requestValue($request, 'budget', 'budget_amount')),
+            'city' => self::nullableString(self::requestValue($request, 'city'), 120),
+            'category' => self::nullableString(self::requestValue($request, 'category'), 120),
+            'search' => self::nullableString(self::requestValue($request, 'search', 'query'), 120),
         ]);
     }
 
@@ -91,10 +99,20 @@ final class GuideRequestTelemetry
         }
 
         try {
-            DB::table(self::TABLE)->insert(array_merge($payload, [
+            $columns = Schema::getColumnListing(self::TABLE);
+            $basePayload = array_merge($payload, [
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]));
+            ]);
+            $sanitized = [];
+
+            foreach ($basePayload as $key => $value) {
+                if (in_array((string) $key, $columns, true)) {
+                    $sanitized[$key] = $value;
+                }
+            }
+
+            DB::table(self::TABLE)->insert($sanitized);
         } catch (\Throwable $exception) {
             Log::warning('guide.telemetry.persist_failed', [
                 'table' => self::TABLE,
@@ -162,5 +180,24 @@ final class GuideRequestTelemetry
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private static function requestValue(Request $request, string ...$keys): mixed
+    {
+        foreach ($keys as $key) {
+            $value = $request->query($key);
+
+            if ($value !== null && $value !== '') {
+                return $value;
+            }
+
+            $value = $request->input($key);
+
+            if ($value !== null && $value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
     }
 }
