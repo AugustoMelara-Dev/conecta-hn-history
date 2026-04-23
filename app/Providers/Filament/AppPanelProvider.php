@@ -137,6 +137,7 @@ class AppPanelProvider extends PanelProvider
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
+                \App\Http\Middleware\NormalizeInternalRedirectLocation::class,
                 \App\Http\Middleware\HydrateTenantContextFromPanelRoute::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
