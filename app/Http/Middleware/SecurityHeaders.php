@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -146,6 +147,11 @@ class SecurityHeaders
     private function buildContentSecurityPolicy(string $nonce): string
     {
         $isProduction = app()->environment('production');
+        $runtimeConnectSources = $this->runtimeConnectSources();
+        $connectSources = implode(
+            ' ',
+            array_values(array_unique(array_merge(self::TRUSTED_CONNECT, $runtimeConnectSources)))
+        );
 
         // ═══════════════════════════════════════════════════════════════════════
         // SCRIPT-SRC: Control JavaScript execution
@@ -186,7 +192,7 @@ class SecurityHeaders
             "img-src 'self' data: https: blob:".$viteDevSrc,
             "manifest-src 'self' https:",
             "font-src 'self' https://fonts.gstatic.com https://fonts.bunny.net",
-            "connect-src 'self' ".implode(' ', self::TRUSTED_CONNECT).' wss:'.$viteDevSrc.$viteDevWs.$reverbWs.(app()->environment('local') ? ' http://localhost:* http://127.0.0.1:*' : ''),
+            "connect-src 'self' ".$connectSources.' wss:'.$viteDevSrc.$viteDevWs.$reverbWs.(app()->environment('local') ? ' http://localhost:* http://127.0.0.1:*' : ''),
             "frame-src 'self' https://js.stripe.com https://www.facebook.com",
             "frame-ancestors 'none'",
             "form-action 'self'",
@@ -195,5 +201,46 @@ class SecurityHeaders
         ];
 
         return implode('; ', $directives);
+    }
+
+    /**
+     * Collect runtime API origins that may appear in generated routes or redirects.
+     *
+     * This prevents CSP drift in hybrid Vercel->Railway topologies when absolute URLs
+     * are emitted from environment-driven URL generators.
+     *
+     * @return array<int, string>
+     */
+    private function runtimeConnectSources(): array
+    {
+        $candidates = [
+            (string) config('app.url', ''),
+            (string) config('app.platform_app_url', ''),
+            (string) config('app.platform_directory_url', ''),
+            (string) config('surfaces.origins.platform_api', ''),
+        ];
+
+        $sources = [];
+
+        foreach ($candidates as $candidate) {
+            $candidate = trim($candidate);
+
+            if ($candidate === '' || ! Str::startsWith($candidate, ['http://', 'https://'])) {
+                continue;
+            }
+
+            $parts = parse_url($candidate);
+            $scheme = $parts['scheme'] ?? null;
+            $host = $parts['host'] ?? null;
+
+            if ($scheme === null || $host === null) {
+                continue;
+            }
+
+            $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+            $sources[] = sprintf('%s://%s%s', $scheme, $host, $port);
+        }
+
+        return array_values(array_unique($sources));
     }
 }

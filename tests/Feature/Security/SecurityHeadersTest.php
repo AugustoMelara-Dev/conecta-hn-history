@@ -25,6 +25,15 @@ function extractScriptSrc(string $csp): string
     return '';
 }
 
+function extractConnectSrc(string $csp): string
+{
+    if (preg_match('/connect-src\s+([^;]+)/', $csp, $m)) {
+        return trim($m[1]);
+    }
+
+    return '';
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CSP: unsafe-eval Isolation Invariant
 // ═══════════════════════════════════════════════════════════════════════════
@@ -84,4 +93,29 @@ it('includes nonce in production script-src', function () {
     }
 
     expect($scriptSrc)->toMatch("/'nonce-[A-Za-z0-9+\/=]+'/");
+});
+
+it('includes runtime surface origins in production connect-src', function () {
+    config()->set('app.url', 'https://vito-business-os-production.up.railway.app');
+    config()->set('app.platform_app_url', 'https://vitobusinessos.vercel.app');
+    config()->set('app.platform_directory_url', 'https://vitobusinessos.vercel.app');
+    config()->set('surfaces.origins.platform_api', 'https://api.vitobusinessos.com');
+
+    app()['env'] = 'production';
+
+    try {
+        $middleware = new SecurityHeaders;
+        $request = Request::create('/', 'GET');
+
+        $response = $middleware->handle($request, fn () => new Response('OK'));
+
+        $csp = $response->headers->get('Content-Security-Policy');
+        $connectSrc = extractConnectSrc($csp);
+    } finally {
+        app()['env'] = 'testing';
+    }
+
+    expect($connectSrc)->toContain('https://vito-business-os-production.up.railway.app');
+    expect($connectSrc)->toContain('https://vitobusinessos.vercel.app');
+    expect($connectSrc)->toContain('https://api.vitobusinessos.com');
 });

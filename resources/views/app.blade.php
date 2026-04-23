@@ -12,20 +12,27 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@700;800&family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-        <!-- Favicon -->
-        <link rel="icon" type="image/svg+xml" href="{{ secure_asset('favicon.svg') }}">
-        <link rel="icon" type="image/x-icon" href="{{ secure_asset('favicon.ico') }}">
+        <!-- Favicon (same-origin to avoid Vercel<->Railway CORS drift) -->
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+        <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
         <!-- PWA Meta Tags -->
         <meta name="theme-color" content="#0f172a">
-        <link rel="apple-touch-icon" href="{{ secure_asset('icon-192x192.png') }}">
-        <link rel="manifest" href="{{ secure_asset('manifest.webmanifest') }}">
+        <link rel="apple-touch-icon" href="/icon-192x192.png">
+        <link rel="manifest" href="/manifest.webmanifest">
 
         <!-- Inertia Head -->
         @inertiaHead
 
         <!-- Ziggy Routes -->
         @routes(null, app('csp-nonce'))
+        <script type="text/javascript" nonce="{{ app('csp-nonce') }}">
+            // Ensure route() resolves against the current origin in proxied deployments.
+            if (window.Ziggy && window.location && window.location.origin) {
+                window.Ziggy.url = window.location.origin;
+                window.Ziggy.port = null;
+            }
+        </script>
 
         <!-- React Fast Refresh -->
         @viteReactRefresh
