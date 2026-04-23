@@ -6,6 +6,7 @@ namespace App\Infrastructure\Search;
 
 use App\Domain\Search\Contracts\GlobalSearchReader;
 use App\Models\Tenant;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * EloquentGlobalSearchReader - Implementation
@@ -28,12 +29,12 @@ final class EloquentGlobalSearchReader implements GlobalSearchReader
     public function searchTenants(string $query, ?string $citySlug = null, ?string $categorySlug = null, int $limit = 20): array
     {
         return Tenant::query()
-            ->where('is_active', true)
+            ->published()
             ->where('name', 'like', "%{$query}%")
-            ->when($citySlug, function ($q) use ($citySlug) {
+            ->when($citySlug, function (Builder $q) use ($citySlug): void {
                 $q->whereHas('city', fn ($sq) => $sq->where('slug', $citySlug));
             })
-            ->when($categorySlug, function ($q) use ($categorySlug) {
+            ->when($categorySlug, function (Builder $q) use ($categorySlug): void {
                 $q->whereHas('category', fn ($sq) => $sq->where('slug', $categorySlug));
             })
             ->with(['city', 'category'])

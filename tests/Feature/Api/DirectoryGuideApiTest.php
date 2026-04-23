@@ -93,6 +93,37 @@ final class DirectoryGuideApiTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_directory_search_excludes_rejected_tenants_after_claim_review(): void
+    {
+        $city = City::factory()->create([
+            'name' => 'Tegucigalpa',
+            'slug' => 'tegucigalpa',
+        ]);
+        $category = Category::factory()->create([
+            'name' => 'Restaurantes',
+            'slug' => 'restaurantes',
+            'is_active' => true,
+        ]);
+
+        Tenant::factory()->create([
+            'name' => 'Rejected Bistro',
+            'slug' => 'rejected-bistro',
+            'is_active' => true,
+            'subscription_status' => 'active',
+            'verification_status' => Tenant::VERIFICATION_STATUS_REJECTED,
+            'verification_rejection_reason' => 'Evidencia no valida',
+            'verified_at' => null,
+            'city_id' => $city->getKey(),
+            'category_id' => $category->getKey(),
+        ]);
+
+        $response = $this->getJson('/api/v1/directory/search?city=tegucigalpa&category=restaurantes&limit=20');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
     public function test_directory_search_excludes_verified_tenants_when_publication_is_paused(): void
     {
         $city = City::factory()->create([

@@ -30,7 +30,7 @@ final class EloquentLandingPageRepository implements LandingPageRepository
         return City::query()
             ->where('is_available', true)
             ->select(['id', 'name', 'slug', 'hero_image', 'department'])
-            ->withCount(['tenants' => fn ($q) => $q->where('is_active', true)])
+            ->withCount(['tenants' => fn ($q) => $q->published()])
             ->orderByDesc('tenants_count')
             ->take(6)
             ->get()
@@ -40,8 +40,7 @@ final class EloquentLandingPageRepository implements LandingPageRepository
     public function getLatestTenants(): array
     {
         return Tenant::query()
-            ->where('is_active', true)
-            ->where('status', 'approved')
+            ->published()
             ->with(['category:id,name,color'])
             ->select(['id', 'name', 'slug', 'logo_path', 'category_id', 'created_at', 'subscription_status', 'plan_type'])
             ->latest()
@@ -61,7 +60,7 @@ final class EloquentLandingPageRepository implements LandingPageRepository
     public function getStats(): array
     {
         return [
-            'tenants' => Tenant::where('is_active', true)->count(),
+            'tenants' => Tenant::query()->published()->count(),
             'cities' => City::where('is_available', true)->count(),
             'categories' => Category::where('is_active', true)->count(),
         ];

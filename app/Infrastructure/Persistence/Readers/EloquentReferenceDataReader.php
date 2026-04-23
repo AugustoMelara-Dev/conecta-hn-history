@@ -54,7 +54,7 @@ final class EloquentReferenceDataReader implements ReferenceDataReaderInterface
         return City::query()
             ->where('is_available', true)
             ->select(['id', 'name', 'slug', 'hero_image', 'department'])
-            ->withCount(['tenants' => fn ($query) => $query->where('is_active', true)])
+            ->withCount(['tenants' => fn ($query) => $query->published()])
             ->orderByDesc('tenants_count')
             ->take($limit)
             ->get()

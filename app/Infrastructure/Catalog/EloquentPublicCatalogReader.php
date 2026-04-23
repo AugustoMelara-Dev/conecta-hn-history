@@ -7,6 +7,7 @@ namespace App\Infrastructure\Catalog;
 use App\Domain\Catalog\Contracts\PublicCatalogReader;
 use App\Models\Product;
 use App\Models\Tenant;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * EloquentPublicCatalogReader - Implementation
@@ -15,7 +16,15 @@ final class EloquentPublicCatalogReader implements PublicCatalogReader
 {
     public function getFeaturedProducts(int $limit = 6): array
     {
-        return Product::where('is_active', true)
+        return Product::query()
+            ->where('is_active', true)
+            ->whereHas('tenant', static function (Builder $query): void {
+                $query
+                    ->where('is_active', true)
+                    ->where('subscription_status', 'active')
+                    ->where('verification_status', Tenant::VERIFICATION_STATUS_VERIFIED)
+                    ->whereNull('publication_paused_at');
+            })
             ->orderByDesc('created_at')
             ->limit($limit)
             ->with(['category', 'tenant'])
@@ -25,7 +34,7 @@ final class EloquentPublicCatalogReader implements PublicCatalogReader
 
     public function getLocations(): array
     {
-        return Tenant::where('is_active', true)
+        return $this->publishedTenants()
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->select(['id', 'name', 'slug', 'latitude', 'longitude', 'address', 'category_id'])
@@ -36,10 +45,15 @@ final class EloquentPublicCatalogReader implements PublicCatalogReader
 
     public function getDirectoryListing(): array
     {
-        return Tenant::where('is_active', true)
+        return $this->publishedTenants()
             ->orderBy('name')
             ->with(['category', 'city'])
             ->get()
             ->toArray();
+    }
+
+    private function publishedTenants(): Builder
+    {
+        return Tenant::query()->published();
     }
 }
