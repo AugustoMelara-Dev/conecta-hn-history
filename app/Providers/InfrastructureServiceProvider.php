@@ -277,9 +277,16 @@ class InfrastructureServiceProvider extends ServiceProvider
                 $forwardedProto = trim((string) $request->headers->get('x-forwarded-proto', ''));
                 $forwardedHost = trim((string) $request->headers->get('x-forwarded-host', ''));
                 $requestHost = trim((string) $request->getHost());
+                $platformAppUrl = trim((string) config('app.platform_app_url', ''));
+                $platformHost = trim((string) parse_url($platformAppUrl, PHP_URL_HOST));
+                $platformScheme = trim((string) parse_url($platformAppUrl, PHP_URL_SCHEME));
 
-                $proto = $forwardedProto !== '' ? strtolower(explode(',', $forwardedProto)[0]) : 'https';
-                $host = $forwardedHost !== '' ? trim(explode(',', $forwardedHost)[0]) : $requestHost;
+                $proto = $forwardedProto !== ''
+                    ? strtolower(trim(explode(',', $forwardedProto)[0]))
+                    : ($platformScheme !== '' ? strtolower($platformScheme) : 'https');
+                $host = $forwardedHost !== ''
+                    ? trim(explode(',', $forwardedHost)[0])
+                    : ($platformHost !== '' ? $platformHost : $requestHost);
 
                 if ($host !== '') {
                     URL::forceRootUrl(sprintf('%s://%s', $proto !== '' ? $proto : 'https', $host));
