@@ -127,6 +127,11 @@ class SecurityHeaders
         $response->headers->remove('Server');
         $response->headers->remove('X-Laravel');
 
+        // Production-only: prevent runtime cross-origin redirect drift in proxied topology.
+        if (app()->environment('production')) {
+            $this->normalizeInternalRedirectLocation($request, $response);
+        }
+
         return $response;
     }
 
@@ -242,5 +247,78 @@ class SecurityHeaders
         }
 
         return array_values(array_unique($sources));
+    }
+
+    /**
+     * Keep redirect locations same-origin when runtime emits an internal absolute URL.
+     */
+    private function normalizeInternalRedirectLocation(Request $request, Response $response): void
+    {
+        if (! $response->isRedirection()) {
+            return;
+        }
+
+        $location = $response->headers->get('Location');
+
+        if (! is_string($location) || ! Str::startsWith($location, ['http://', 'https://'])) {
+            return;
+        }
+
+        $targetHost = strtolower((string) parse_url($location, PHP_URL_HOST));
+        $requestHost = strtolower((string) $request->getHost());
+
+        if ($targetHost === '' || $requestHost === '' || $targetHost === $requestHost) {
+            return;
+        }
+
+        if (! in_array($targetHost, $this->runtimeInternalHosts(), true)) {
+            return;
+        }
+
+        $path = (string) (parse_url($location, PHP_URL_PATH) ?? '/');
+        $query = (string) (parse_url($location, PHP_URL_QUERY) ?? '');
+        $fragment = (string) (parse_url($location, PHP_URL_FRAGMENT) ?? '');
+        $relativeLocation = $path
+            .($query !== '' ? '?'.$query : '')
+            .($fragment !== '' ? '#'.$fragment : '');
+
+        $response->headers->set('Location', $relativeLocation);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function runtimeInternalHosts(): array
+    {
+        $candidates = [
+            (string) config('app.url', ''),
+            (string) config('app.platform_app_url', ''),
+            (string) config('app.platform_directory_url', ''),
+            (string) config('app.platform_admin_url', ''),
+            (string) config('surfaces.origins.user_app', ''),
+            (string) config('surfaces.origins.business_app', ''),
+            (string) config('surfaces.origins.admin_app', ''),
+            (string) config('surfaces.origins.platform_api', ''),
+        ];
+
+        $hosts = [];
+
+        foreach ($candidates as $candidate) {
+            $candidate = trim($candidate);
+
+            if ($candidate === '' || ! Str::startsWith($candidate, ['http://', 'https://'])) {
+                continue;
+            }
+
+            $host = parse_url($candidate, PHP_URL_HOST);
+
+            if (! is_string($host) || $host === '') {
+                continue;
+            }
+
+            $hosts[] = strtolower($host);
+        }
+
+        return array_values(array_unique($hosts));
     }
 }

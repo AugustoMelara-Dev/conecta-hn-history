@@ -28,9 +28,17 @@
         @routes(null, app('csp-nonce'))
         <script type="text/javascript" nonce="{{ app('csp-nonce') }}">
             // Ensure route() resolves against the current origin in proxied deployments.
-            if (window.Ziggy && window.location && window.location.origin) {
-                window.Ziggy.url = window.location.origin;
-                window.Ziggy.port = null;
+            if (window.location && window.location.origin) {
+                const runtimeOrigin = window.location.origin;
+                const ziggyConfig = typeof Ziggy !== 'undefined'
+                    ? Ziggy
+                    : (window.Ziggy || null);
+
+                if (ziggyConfig && typeof ziggyConfig === 'object') {
+                    ziggyConfig.url = runtimeOrigin;
+                    ziggyConfig.port = null;
+                    window.Ziggy = ziggyConfig;
+                }
             }
         </script>
 

@@ -105,7 +105,7 @@ function routeUrlIfExists(name) {
     } catch {}
 
     try {
-        const value = route(name)
+        const value = route(name, undefined, false)
         return typeof value === "string" && value !== "" ? value : null
     } catch {
         return null
@@ -348,7 +348,7 @@ export function RegisterTenantWizard({
         const candidates = []
 
         try {
-            candidates.push(route("tenant.register.store"))
+            candidates.push(route("tenant.register.store", undefined, false))
         } catch {}
 
         return firstValidUrl(...candidates, "/registrar-negocio") || "/registrar-negocio"

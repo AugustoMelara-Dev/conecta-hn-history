@@ -119,3 +119,50 @@ it('includes runtime surface origins in production connect-src', function () {
     expect($connectSrc)->toContain('https://vitobusinessos.vercel.app');
     expect($connectSrc)->toContain('https://api.vitobusinessos.com');
 });
+
+it('normalizes internal absolute redirect locations to same-origin relative paths', function () {
+    config()->set('app.url', 'https://vito-business-os-production.up.railway.app');
+    config()->set('app.platform_app_url', 'https://vitobusinessos.vercel.app');
+    config()->set('app.platform_directory_url', 'https://vitobusinessos.vercel.app');
+
+    app()['env'] = 'production';
+
+    try {
+        $middleware = new SecurityHeaders;
+        $request = Request::create('https://vitobusinessos.vercel.app/app', 'GET');
+
+        $response = $middleware->handle(
+            $request,
+            fn () => new Response('', 302, [
+                'Location' => 'https://vito-business-os-production.up.railway.app/app/login?tenant=demo',
+            ])
+        );
+    } finally {
+        app()['env'] = 'testing';
+    }
+
+    expect($response->headers->get('Location'))->toBe('/app/login?tenant=demo');
+});
+
+it('does not rewrite external redirect locations', function () {
+    config()->set('app.url', 'https://vito-business-os-production.up.railway.app');
+    config()->set('app.platform_app_url', 'https://vitobusinessos.vercel.app');
+
+    app()['env'] = 'production';
+
+    try {
+        $middleware = new SecurityHeaders;
+        $request = Request::create('https://vitobusinessos.vercel.app/checkout', 'GET');
+
+        $response = $middleware->handle(
+            $request,
+            fn () => new Response('', 302, [
+                'Location' => 'https://checkout.stripe.com/pay/cs_test_123',
+            ])
+        );
+    } finally {
+        app()['env'] = 'testing';
+    }
+
+    expect($response->headers->get('Location'))->toBe('https://checkout.stripe.com/pay/cs_test_123');
+});

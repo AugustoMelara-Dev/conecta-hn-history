@@ -38,6 +38,29 @@ function buildRouteFallback(name, params = {}) {
     return '#';
 }
 
+function toRelativeUrl(value) {
+    if (typeof value !== 'string') {
+        return value;
+    }
+
+    const normalized = value.trim();
+    if (normalized === '' || normalized === '#') {
+        return normalized;
+    }
+
+    if (typeof window === 'undefined') {
+        return normalized;
+    }
+
+    try {
+        const parsed = new URL(normalized, window.location.origin);
+
+        return `${parsed.pathname}${parsed.search}${parsed.hash}` || '/';
+    } catch {
+        return normalized;
+    }
+}
+
 function safeRoute(...args) {
     if (args.length === 0) {
         try {
@@ -52,7 +75,12 @@ function safeRoute(...args) {
     }
 
     try {
-        return route(...args);
+        const [name, params, absolute, config] = args;
+        const resolved = args.length >= 3
+            ? route(name, params, absolute, config)
+            : route(name, params, false, config);
+
+        return toRelativeUrl(resolved);
     } catch {
         return buildRouteFallback(args[0], args[1]);
     }
