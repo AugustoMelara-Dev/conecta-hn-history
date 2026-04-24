@@ -225,9 +225,52 @@ final class AuthRedirector
             return $path;
         }
 
+        if (self::shouldPreferSameOriginPath($baseUrl)) {
+            return $path;
+        }
+
         $origin = rtrim($baseUrl, '/');
         $normalizedPath = '/'.ltrim($path, '/');
 
         return $origin.$normalizedPath;
+    }
+
+    private static function shouldPreferSameOriginPath(string $baseUrl): bool
+    {
+        if (! app()->bound('request')) {
+            return false;
+        }
+
+        $request = request();
+
+        $forwardedHost = self::normalizeHost((string) $request->headers->get('x-forwarded-host', ''));
+        $originalHost = self::normalizeHost((string) $request->headers->get('x-original-host', ''));
+        $runtimeHost = $forwardedHost ?? $originalHost;
+        $baseHost = self::normalizeHost((string) parse_url($baseUrl, PHP_URL_HOST));
+
+        if ($runtimeHost === null || $baseHost === null) {
+            return false;
+        }
+
+        return ! hash_equals($runtimeHost, $baseHost);
+    }
+
+    private static function normalizeHost(string $value): ?string
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (str_contains($value, ',')) {
+            $value = trim(explode(',', $value)[0]);
+        }
+
+        $value = preg_replace('#^https?://#i', '', $value) ?? $value;
+        $value = preg_replace('#[:/].*$#', '', $value) ?? $value;
+        $value = strtolower(trim($value));
+
+        return $value !== '' ? $value : null;
     }
 }

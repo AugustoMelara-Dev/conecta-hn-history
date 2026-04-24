@@ -89,6 +89,7 @@ class AdminPanelProvider extends PanelProvider
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
                 \App\Http\Middleware\NormalizeInternalRedirectLocation::class,
+                \App\Http\Middleware\SecurityHeaders::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])

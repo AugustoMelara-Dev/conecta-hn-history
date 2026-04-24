@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Auth\AuthRedirector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 final class AuthRedirectorTest extends TestCase
@@ -141,6 +142,32 @@ final class AuthRedirectorTest extends TestCase
         $this->assertSame(
             route('filament.app.auth.profile', [], false),
             AuthRedirector::profileDestinationFor($owner)
+        );
+    }
+
+    public function test_owner_redirect_prefers_same_origin_when_forwarded_host_differs_from_configured_surface_origin(): void
+    {
+        config([
+            'app.platform_directory_url' => 'https://vitobusinessos.vercel.app',
+            'app.platform_app_url' => 'https://vito-business-os-production.up.railway.app',
+            'app.platform_admin_url' => 'https://vito-business-os-production.up.railway.app',
+        ]);
+
+        $owner = User::factory()->tenantOwner()->create();
+        $tenant = Tenant::factory()->forUser($owner)->create([
+            'slug' => 'demo-ai-guide-hn',
+        ]);
+        $owner->forceFill(['tenant_id' => $tenant->id])->save();
+
+        $request = Request::create('https://vito-business-os-production.up.railway.app/login', 'POST');
+        $request->headers->set('x-forwarded-host', 'vitobusinessos.vercel.app');
+        $this->app->instance('request', $request);
+
+        $destination = AuthRedirector::destinationFor($owner);
+
+        $this->assertSame(
+            route('filament.app.pages.dashboard', ['tenant' => $tenant->slug], false),
+            $destination
         );
     }
 }

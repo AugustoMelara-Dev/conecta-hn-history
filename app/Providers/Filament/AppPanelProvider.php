@@ -138,6 +138,7 @@ class AppPanelProvider extends PanelProvider
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
                 \App\Http\Middleware\NormalizeInternalRedirectLocation::class,
+                \App\Http\Middleware\SecurityHeaders::class,
                 \App\Http\Middleware\HydrateTenantContextFromPanelRoute::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
