@@ -30,8 +30,8 @@ final class NormalizeInternalRedirectLocation
             return $response;
         }
 
-        $targetHost = strtolower((string) parse_url($location, PHP_URL_HOST));
-        $requestHost = strtolower((string) $request->getHost());
+        $targetHost = $this->normalizeHost((string) parse_url($location, PHP_URL_HOST));
+        $requestHost = $this->requestHost($request);
 
         if ($targetHost === '' || $targetHost === $requestHost) {
             return $response;
@@ -88,5 +88,40 @@ final class NormalizeInternalRedirectLocation
         }
 
         return array_values(array_unique($hosts));
+    }
+
+    private function requestHost(Request $request): string
+    {
+        $forwardedHost = $this->normalizeHost((string) $request->headers->get('x-forwarded-host', ''));
+
+        if ($forwardedHost !== '') {
+            return $forwardedHost;
+        }
+
+        $originalHost = $this->normalizeHost((string) $request->headers->get('x-original-host', ''));
+
+        if ($originalHost !== '') {
+            return $originalHost;
+        }
+
+        return $this->normalizeHost((string) $request->getHost());
+    }
+
+    private function normalizeHost(string $host): string
+    {
+        $host = trim($host);
+
+        if ($host === '') {
+            return '';
+        }
+
+        if (str_contains($host, ',')) {
+            $host = trim(explode(',', $host, 2)[0]);
+        }
+
+        $host = preg_replace('#^https?://#i', '', $host) ?? $host;
+        $host = preg_replace('#[:/].*$#', '', $host) ?? $host;
+
+        return strtolower(trim($host));
     }
 }
