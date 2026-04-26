@@ -72,6 +72,10 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Resources\CouponResource::class,
                 \App\Filament\Resources\CategoryResource::class,
                 \App\Filament\Resources\CityResource::class,
+                \App\Filament\Resources\EntityDefinitionResource::class,
+                \App\Filament\Resources\FieldDefinitionResource::class,
+                \App\Filament\Resources\LayoutDefinitionResource::class,
+                \App\Filament\Resources\DynamicPrintTemplateResource::class,
             ])
             ->pages([
                 \App\Filament\Pages\Dashboard::class,

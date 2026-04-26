@@ -1,0 +1,19 @@
+{
+    "layout_json": {
+        "field_order": [
+            "patient_allergies"
+        ],
+        "sections": [
+            {
+                "fields": [
+                    "patient_allergies"
+                ],
+                "key": "clinical",
+                "title": "Datos clinicos"
+            }
+        ]
+    },
+    "layout_key": "form.default",
+    "status": "draft"
+}
+

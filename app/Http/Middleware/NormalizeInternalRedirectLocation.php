@@ -33,11 +33,18 @@ final class NormalizeInternalRedirectLocation
         $targetHost = $this->normalizeHost((string) parse_url($location, PHP_URL_HOST));
         $requestHost = $this->requestHost($request);
 
-        if ($targetHost === '' || $targetHost === $requestHost) {
+        if ($targetHost === '') {
             return $response;
         }
 
-        if (! in_array($targetHost, $this->runtimeInternalHosts(), true)) {
+        $isRuntimeInternal = in_array($targetHost, $this->runtimeInternalHosts(), true);
+        $isRailwayHost = $this->isRailwayHost($targetHost);
+
+        if (! $isRuntimeInternal && ! $isRailwayHost) {
+            return $response;
+        }
+
+        if (! $isRailwayHost && $targetHost !== $requestHost) {
             return $response;
         }
 
@@ -123,5 +130,11 @@ final class NormalizeInternalRedirectLocation
         $host = preg_replace('#[:/].*$#', '', $host) ?? $host;
 
         return strtolower(trim($host));
+    }
+
+    private function isRailwayHost(string $host): bool
+    {
+        return str_ends_with($host, '.up.railway.app')
+            || str_ends_with($host, '.railway.internal');
     }
 }

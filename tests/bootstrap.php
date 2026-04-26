@@ -195,6 +195,73 @@ function bootstrapParallelMysqlDatabase(): void
 }
 
 /**
+ * Isolate non-parallel MySQL runs in a per-process database to avoid stale
+ * schema collisions between local executions.
+ */
+function bootstrapSingleProcessMysqlDatabase(): void
+{
+    if (testingRunsInParallel()) {
+        return;
+    }
+
+    $defaultIsolation = filter_var(testingEnv('CI', 'false'), FILTER_VALIDATE_BOOLEAN)
+        ? 'false'
+        : 'true';
+
+    if (! filter_var(testingEnv('TESTS_MYSQL_SINGLE_PROCESS_ISOLATION', $defaultIsolation), FILTER_VALIDATE_BOOLEAN)) {
+        return;
+    }
+
+    $connection = testingEnv('DB_CONNECTION', 'mysql');
+
+    if (! in_array($connection, ['mysql', 'mariadb'], true)) {
+        return;
+    }
+
+    $baseDatabase = testingEnv('DB_DATABASE');
+
+    if ($baseDatabase === null) {
+        return;
+    }
+
+    $safeBase = preg_replace('/[^A-Za-z0-9_]/', '_', $baseDatabase) ?: 'testing';
+    $safeSuffix = preg_replace('/[^A-Za-z0-9_]/', '_', testingProcessSuffix()) ?: 'main';
+    $maxBaseLength = max(1, 63 - strlen('_run_') - strlen($safeSuffix));
+    $safeBase = substr($safeBase, 0, $maxBaseLength);
+    $isolatedDatabase = "{$safeBase}_run_{$safeSuffix}";
+    $charset = preg_replace('/[^A-Za-z0-9_]/', '', testingEnv('DB_CHARSET', 'utf8mb4') ?? 'utf8mb4') ?: 'utf8mb4';
+    $collation = preg_replace('/[^A-Za-z0-9_]/', '', testingEnv('DB_COLLATION', 'utf8mb4_unicode_ci') ?? 'utf8mb4_unicode_ci') ?: 'utf8mb4_unicode_ci';
+
+    try {
+        $pdo = new PDO(
+            sprintf(
+                'mysql:host=%s;port=%s;charset=%s',
+                testingEnv('DB_HOST', '127.0.0.1'),
+                testingEnv('DB_PORT', '3306'),
+                $charset,
+            ),
+            testingEnv('DB_USERNAME', 'root') ?? 'root',
+            testingEnv('DB_PASSWORD', '') ?? '',
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ],
+        );
+
+        $quotedDatabase = str_replace('`', '``', $isolatedDatabase);
+        $pdo->exec("DROP DATABASE IF EXISTS `{$quotedDatabase}`");
+        $pdo->exec("CREATE DATABASE `{$quotedDatabase}` CHARACTER SET {$charset} COLLATE {$collation}");
+    } catch (Throwable $exception) {
+        fwrite(
+            STDERR,
+            "[tests/bootstrap] Unable to prepare the isolated testing database '{$isolatedDatabase}': {$exception->getMessage()}".PHP_EOL
+        );
+        exit(1);
+    }
+
+    testingSetEnv('DB_DATABASE', $isolatedDatabase);
+}
+
+/**
  * Reset Laravel's per-worker MySQL database when running `artisan test --parallel`.
  *
  * Laravel assigns names like `conecta_hn_testing_test_1`. If a previous local
@@ -336,4 +403,5 @@ $_SERVER['APP_ENV'] = 'testing';
 
 configureTestingRuntimeStorage();
 bootstrapParallelMysqlDatabase();
+bootstrapSingleProcessMysqlDatabase();
 ensureTestingMysqlDatabaseAvailable();

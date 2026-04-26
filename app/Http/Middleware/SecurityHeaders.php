@@ -126,6 +126,7 @@ class SecurityHeaders
         $response->headers->remove('X-Powered-By');
         $response->headers->remove('Server');
         $response->headers->remove('X-Laravel');
+        $this->normalizeInternalRedirectLocation($request, $response);
 
         // Production-only: prevent runtime cross-origin redirect drift in proxied topology.
         if (app()->environment('production')) {

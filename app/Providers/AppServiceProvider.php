@@ -64,6 +64,48 @@ class AppServiceProvider extends ServiceProvider
             \App\Application\Shared\Contracts\TenantCacheManagerInterface::class,
             \App\Services\TenantCacheManager::class
         );
+        $this->app->bind(
+            \App\Application\DynamicForms\Contracts\DynamicSchemaRegistryInterface::class,
+            \App\Services\DynamicForms\SchemaRegistryService::class
+        );
+        $this->app->bind(
+            \App\Application\DynamicForms\Contracts\DynamicFormCompilerInterface::class,
+            \App\Services\DynamicForms\FormCompilerService::class
+        );
+        $this->app->bind(
+            \App\Application\DynamicForms\Contracts\DynamicRecordPersistenceInterface::class,
+            \App\Services\DynamicForms\RecordPersistenceService::class
+        );
+        $this->app->bind(
+            \App\Application\DynamicForms\Contracts\DynamicSearchInterface::class,
+            \App\Services\DynamicForms\DynamicSearchService::class
+        );
+        $this->app->bind(
+            \App\Application\DynamicForms\Contracts\DynamicTemplateRendererInterface::class,
+            \App\Services\DynamicForms\TemplateRenderService::class
+        );
+        $this->app->bind(
+            \App\Application\DynamicForms\Contracts\DynamicContractCompatibilityInterface::class,
+            \App\Services\DynamicForms\DynamicContractCompatibilityService::class
+        );
+        $this->app->bind(
+            \App\Application\DynamicForms\Contracts\DynamicSchemaLinterInterface::class,
+            \App\Services\DynamicForms\DynamicSchemaLinterService::class
+        );
+        $this->app->bind(
+            \App\Application\DynamicForms\Contracts\DynamicCompiledCacheInterface::class,
+            \App\Services\DynamicForms\DynamicCompiledCacheService::class
+        );
+        $this->app->bind(
+            \App\Application\DynamicForms\Contracts\DynamicConfigAuditInterface::class,
+            \App\Services\DynamicForms\DynamicConfigAuditService::class
+        );
+        $this->app->singleton(
+            \App\Services\DynamicForms\DynamicModuleAdapterRegistry::class,
+            static fn ($app) => new \App\Services\DynamicForms\DynamicModuleAdapterRegistry(
+                $app->make(\App\Services\DynamicForms\DynamicRuntimeFeatureManager::class)
+            )
+        );
 
         // EVENT UPCASTING: Schema Evolution Registry (Singleton)
         $this->app->singleton(
@@ -1006,6 +1048,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Coupon::class, CouponPolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);
         Gate::policy(MenuSection::class, MenuSectionPolicy::class);
+        Gate::policy(\App\Models\Dynamic\EntityDefinition::class, \App\Policies\EntityDefinitionPolicy::class);
+        Gate::policy(\App\Models\Dynamic\FieldDefinition::class, \App\Policies\FieldDefinitionPolicy::class);
+        Gate::policy(\App\Models\Dynamic\LayoutDefinition::class, \App\Policies\LayoutDefinitionPolicy::class);
+        Gate::policy(\App\Models\Dynamic\DynamicPrintTemplate::class, \App\Policies\DynamicPrintTemplatePolicy::class);
+        Gate::policy(\App\Models\Dynamic\DynamicRecord::class, \App\Policies\DynamicRecordPolicy::class);
 
         // Observers
         Product::observe(\App\Observers\ProductObserver::class);

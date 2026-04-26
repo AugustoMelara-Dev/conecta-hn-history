@@ -52,6 +52,26 @@ class EventServiceProvider extends ServiceProvider
             \App\Listeners\NotifyRepeatPurchaseOpportunityListener::class,
         ],
 
+        // DYNAMIC FORMS PLATFORM EVENTS
+        \App\Events\DynamicForms\SchemaPublished::class => [
+            \App\Listeners\DynamicForms\LogDynamicFormsEvent::class,
+            \App\Listeners\DynamicForms\InvalidateDynamicCompiledCache::class,
+            \App\Listeners\DynamicForms\PersistDynamicConfigAudit::class,
+        ],
+        \App\Events\DynamicForms\TemplatePublished::class => [
+            \App\Listeners\DynamicForms\LogDynamicFormsEvent::class,
+            \App\Listeners\DynamicForms\InvalidateDynamicCompiledCache::class,
+            \App\Listeners\DynamicForms\PersistDynamicConfigAudit::class,
+        ],
+        \App\Events\DynamicForms\TenantBlueprintCloned::class => [
+            \App\Listeners\DynamicForms\LogDynamicFormsEvent::class,
+            \App\Listeners\DynamicForms\InvalidateDynamicCompiledCache::class,
+            \App\Listeners\DynamicForms\PersistDynamicConfigAudit::class,
+        ],
+        \App\Events\DynamicForms\DynamicRecordPersisted::class => [
+            \App\Listeners\DynamicForms\LogDynamicFormsEvent::class,
+        ],
+
         // INTERACTIONS DOMAIN
         \App\Domain\Interactions\Events\InteractionRecorded::class => [
             \App\Listeners\Interactions\ProcessInteractionSideEffects::class,

@@ -29,6 +29,10 @@ return Application::configure(basePath: dirname(__DIR__))
         __DIR__.'/../app/Console/Commands',
     ])
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind Vercel/Railway edges, trust forwarded headers so URL generation
+        // and redirect locations use the public host instead of internal hosts.
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(
             prepend: [
                 \App\Http\Middleware\UseRequestHostSessionDomain::class, // Prevent 419 when SESSION_DOMAIN mismatches runtime host

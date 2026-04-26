@@ -1,0 +1,27 @@
+{
+    "conditions_json": [],
+    "default_value": null,
+    "field_key": "patient_allergies",
+    "field_type": "textarea",
+    "help_text": null,
+    "hooks_json": [],
+    "is_indexed": true,
+    "is_locked": false,
+    "is_required": false,
+    "label": "Alergias",
+    "options_json": [],
+    "placeholder": "Ingrese alergias conocidas",
+    "sort_order": 10,
+    "status": "draft",
+    "storage_mode": "json",
+    "validation_rules": [
+        "max:1000"
+    ],
+    "visibility_json": {
+        "roles": [
+            "owner",
+            "staff"
+        ]
+    }
+}
+

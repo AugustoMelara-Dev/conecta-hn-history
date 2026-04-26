@@ -2,7 +2,7 @@
 
 Vito Business OS es una plataforma SaaS multi-tenant para comercio local, catalogos, pedidos, citas, marketing y operacion de negocios. Este repositorio concentra el sitio publico, los micrositios de negocio, las apps operativas, los paneles Filament, las APIs y la capa de contratos del sistema.
 
-Este README documenta el estado actual del proyecto al 2026-04-25.
+Este README documenta el estado actual del proyecto al 2026-04-26.
 
 > Nota de rebrand
 > El producto ya se documenta aqui como `Vito Business OS`, pero el codebase todavia conserva mucho naming heredado de `Conecta HN` en vistas, componentes, configs, correos, textos, providers y metadatos. Este README deja el nuevo nombre como referencia funcional, pero no implica que todo el repo ya fue renombrado.
@@ -42,6 +42,18 @@ Nota de repositorio:
 
 - El remoto canonico de organizacion para integracion es `VitoCode-Technologies/Vito-Business-OS`.
 - La rama principal objetivo de integracion es `main`.
+
+## Estado operacional actual (2026-04-26)
+
+- Lote 002 (frentes A/B/C/D) ya fue integrado en `main` mediante squash merge por frente.
+- Las protecciones de `main` se mantienen activas: ruleset + branch protection con check requerido `PR Gate / Final Status`.
+- Se ejecuto limpieza de ramas remotas legacy para reducir ruido operativo.
+- Inventario remoto intencional actual:
+  - `main`
+  - `codex/dynforms-v2-pr-a-contract-semver-r2`
+  - `codex/dynforms-v2-pr-d-compiled-cache`
+  - `codex/dynforms-v2-pr-e-reindex-pipeline`
+  - `codex/dynforms-v2-pr-f-config-audit`
 
 ## Que contiene este repo
 

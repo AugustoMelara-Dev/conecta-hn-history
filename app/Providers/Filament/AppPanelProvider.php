@@ -113,6 +113,9 @@ class AppPanelProvider extends PanelProvider
                 \App\Filament\App\Resources\InventoryMovementResource::class,
                 \App\Filament\App\Resources\LocationResource::class,
                 \App\Filament\App\Resources\TenantUserResource::class,
+                \App\Filament\App\Resources\Dynamic\EntityDefinitionResource::class,
+                \App\Filament\App\Resources\Dynamic\DynamicPrintTemplateResource::class,
+                \App\Filament\App\Resources\Dynamic\DynamicRecordResource::class,
             ])
             ->pages([
                 Dashboard::class,

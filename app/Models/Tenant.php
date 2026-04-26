@@ -804,6 +804,21 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->hasMany(Appointment::class);
     }
 
+    public function dynamicEntityDefinitions(): HasMany
+    {
+        return $this->hasMany(\App\Models\Dynamic\EntityDefinition::class);
+    }
+
+    public function dynamicRecords(): HasMany
+    {
+        return $this->hasMany(\App\Models\Dynamic\DynamicRecord::class);
+    }
+
+    public function dynamicPrintTemplates(): HasMany
+    {
+        return $this->hasMany(\App\Models\Dynamic\DynamicPrintTemplate::class);
+    }
+
     public function getThemeConfigAttribute($value): array
     {
         $config = $value ? json_decode($value, true) : [];
