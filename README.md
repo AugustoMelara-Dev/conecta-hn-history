@@ -13,6 +13,7 @@ Este README documenta el estado actual del proyecto al 2026-04-26.
 - [Deploy topology Vercel + Railway](docs/architecture/DEPLOY_TOPOLOGY_VERCEL_RAILWAY.md)
 - [Guide RAG readiness blueprint](docs/architecture/GUIDE_RAG_READINESS_BLUEPRINT.md)
 - [Credential incident closure checklist](docs/security/CREDENTIAL_INCIDENT_CLOSURE.md)
+- [Git Ops rapido](docs/git-ops.md)
 
 ## Operacion global por lotes (subagentes)
 
