@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\BusinessClaimController;
 use App\Http\Controllers\Api\V1\BusinessClaimDisputeController;
+use App\Http\Controllers\Api\V1\BusinessAiRagController;
 use App\Http\Controllers\Api\V1\CouponController;
 use App\Http\Controllers\Api\V1\DirectoryGuideController;
 use App\Http\Controllers\Api\V1\InteractionController;
@@ -103,7 +104,7 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::post('/business-claims/{tenant:slug}/disputes', [BusinessClaimDisputeController::class, 'store'])
-        ->middleware(['throttle:api']);
+        ->middleware(['auth:sanctum', 'throttle:api']);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC COUPONS
@@ -126,6 +127,7 @@ Route::prefix('v1')->group(function () {
         // Note: CheckoutController is Public (Storefront), not Api/V1 yet, but used in API contexts.
         // Keeping as is for now, assuming it handles JSON.
         Route::post('/hold-inventory', [\App\Http\Controllers\Public\CheckoutController::class, 'holdInventory'])
+            ->middleware('throttle:api.transactions')
             ->name('checkout.hold-inventory');
 
         Route::post('/validate-coupon', [\App\Http\Controllers\Public\CheckoutController::class, 'validateCoupon'])
@@ -181,7 +183,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/reports/download/{path}', [\App\Http\Controllers\Api\V1\ReportDownloadController::class, 'download'])
         ->where('path', '.*')
         ->name('reports.download')
-        ->middleware('signed');
+        ->middleware(['auth:sanctum', 'signed']);
 
     Route::get('/exports/download', [\App\Http\Controllers\Api\V1\SalesExportController::class, 'download'])
         ->name('api.exports.download')
@@ -203,7 +205,14 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('ai')->group(function () {
         Route::post('/generate', [\App\Http\Controllers\Api\V1\AiController::class, 'generate']);
         Route::post('/optimize-profile', [\App\Http\Controllers\Api\V1\AiOptimizationController::class, 'optimizeProfile'])
+            ->middleware('throttle:ai-optimization')
             ->name('api.ai.optimize-profile');
+        Route::prefix('business')->middleware('throttle:business-ai')->group(function () {
+            Route::post('/knowledge/reindex', [BusinessAiRagController::class, 'reindex'])
+                ->name('api.ai.business.knowledge.reindex');
+            Route::post('/chat', [BusinessAiRagController::class, 'chat'])
+                ->name('api.ai.business.chat');
+        });
         Route::post('/guide/chat', [DirectoryGuideController::class, 'chat'])
             ->middleware('throttle:directory-guide-daily')
             ->name('api.ai.guide.chat');
@@ -227,16 +236,20 @@ Route::post('/orders', [\App\Http\Controllers\Public\OrderController::class, 'st
 // ═══════════════════════════════════════════════════════════════════════════
 Route::post('/webhooks/payment', [\App\Http\Controllers\Webhook\PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
+    ->middleware('throttle:webhooks')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::post('/webhooks/resend/email', [\App\Http\Controllers\Webhook\ResendWebhookController::class, 'handle'])
     ->name('webhooks.resend.email')
+    ->middleware('throttle:webhooks')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::get('/webhooks/whatsapp-cloud', [\App\Http\Controllers\Webhook\WhatsAppCloudWebhookController::class, 'verify'])
     ->name('webhooks.whatsapp-cloud.verify')
+    ->middleware('throttle:webhooks')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::post('/webhooks/whatsapp-cloud', [\App\Http\Controllers\Webhook\WhatsAppCloudWebhookController::class, 'handle'])
     ->name('webhooks.whatsapp-cloud.handle')
+    ->middleware('throttle:webhooks')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);

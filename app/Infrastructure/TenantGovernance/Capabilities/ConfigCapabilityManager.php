@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace App\Infrastructure\TenantGovernance\Capabilities;
 
 use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Tenant;
 
 final class ConfigCapabilityManager implements CapabilityManagerInterface
 {
+    public function __construct(
+        private readonly RubroManifestReaderInterface $rubroManifestReader,
+    ) {}
+
     public function has(Tenant $tenant, Capability $capability): bool
     {
         return in_array($capability, $this->allForTenant($tenant), true);
@@ -31,14 +36,12 @@ final class ConfigCapabilityManager implements CapabilityManagerInterface
      */
     public function allForTenant(Tenant $tenant): array
     {
-        $always = $this->normalize(config('capabilities.always', []));
-        $businessType = $tenant->business_type;
-        $typeSpecific = $this->normalize(
-            config("capabilities.business_types.{$businessType->value}", [])
+        $manifestCapabilities = $this->normalize(
+            $this->rubroManifestReader->capabilitiesForTenant($tenant)
         );
 
         $merged = [];
-        foreach (array_merge($always, $typeSpecific) as $capability) {
+        foreach ($manifestCapabilities as $capability) {
             $merged[$capability->value] = $capability;
         }
 

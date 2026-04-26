@@ -74,6 +74,15 @@ final class SlotCalculator
                             $bufferBefore,
                             $bufferAfter
                         );
+                    } else {
+                        $isAvailable = collect($this->providerRepository->getActiveForTenant($tenantId))
+                            ->contains(fn (array $provider): bool => $this->providerRepository->isAvailableAt(
+                                (string) $provider['id'],
+                                $current,
+                                $slotEnd,
+                                $bufferBefore,
+                                $bufferAfter
+                            ));
                     }
 
                     $slots[] = [

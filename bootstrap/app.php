@@ -40,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
             append: [
                 \App\Http\Middleware\IdentifyTenantBySubdomain::class, // FIRST: Tenant Context from Subdomain
                 \App\Http\Middleware\ShareObservabilityContext::class, // Trace + domain context for production observability
+                \App\Http\Middleware\MeasureHttpPerformance::class, // p95-ready structured HTTP metrics behind feature flag
                 \App\Http\Middleware\SecurityHeaders::class, // Zero-Trust Security Headers
                 \App\Http\Middleware\HandleInertiaRequests::class,
                 \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
@@ -50,7 +51,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->api(append: [
             \App\Http\Middleware\ShareObservabilityContext::class,
+            \App\Http\Middleware\MeasureHttpPerformance::class,
         ]);
+
+        // Allow first-party Inertia/browser sessions to authenticate same-origin API calls.
+        $middleware->statefulApi();
 
         $middleware->alias([
             'tenant.status' => \App\Http\Middleware\CheckTenantStatus::class,

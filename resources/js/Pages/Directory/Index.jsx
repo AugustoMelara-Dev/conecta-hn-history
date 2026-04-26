@@ -143,11 +143,12 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
     const [guideMeta, setGuideMeta] = useState(null);
     const [guideError, setGuideError] = useState(null);
 
-    const isCustomer = authUser?.role === 'customer';
+    const isCustomer = Boolean(authUser?.persona?.is_customer) || authUser?.role === 'customer' || authUser?.role === 'user';
     const quotaLimit = guideMeta?.quota_limit ?? 5;
     const quotaRemaining = guideMeta?.quota_remaining;
     const quotaUsed = guideMeta?.quota_used;
     const quotaResetAt = guideMeta?.quota_reset_at;
+    const diagnostic = guideMeta?.diagnostic;
 
     const runGuide = async (event) => {
         event.preventDefault();
@@ -336,6 +337,26 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                     Usadas hoy: {quotaUsed}/{quotaLimit}
                     {quotaResetAt ? ` · Reinicio: ${formatQuotaResetAt(quotaResetAt)}` : ''}
                 </p>
+            ) : null}
+
+            {diagnostic ? (
+                <div className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700 sm:grid-cols-3">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Estado</p>
+                        <p className="mt-1 font-semibold text-slate-900">{diagnostic.status}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Causa probable</p>
+                        <p className="mt-1">{diagnostic.probable_cause}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Accion</p>
+                        <p className="mt-1">{diagnostic.recommended_action}</p>
+                        {diagnostic.trace_id ? (
+                            <p className="mt-2 text-xs text-slate-500">REF: {diagnostic.trace_id}</p>
+                        ) : null}
+                    </div>
+                </div>
             ) : null}
 
             {guideResults.length > 0 ? (

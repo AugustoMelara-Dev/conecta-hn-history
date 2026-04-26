@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Coupon;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -25,7 +25,7 @@ use Tests\TestCase;
  */
 class CouponIsolationTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected Tenant $tenantA;
 
@@ -38,7 +38,7 @@ class CouponIsolationTest extends TestCase
     {
         parent::setUp();
 
-        // Use numeric-string IDs because the current coupon API still validates tenant_id as integer.
+        // Keep the legacy scenarios on numeric-string IDs while the API also accepts UUID tenants.
         $this->tenantA = Tenant::factory()->create([
             'id' => '1001',
             'name' => 'Pizzeria Mario',
@@ -170,6 +170,37 @@ class CouponIsolationTest extends TestCase
         $codes = array_column($coupons, 'code');
         $this->assertNotContains('SECRETO_A', $codes);
         $this->assertNotContains('PROMO_A', $codes);
+    }
+
+    public function test_coupon_api_accepts_uuid_tenant_ids(): void
+    {
+        $tenant = Tenant::factory()->create([
+            'name' => 'UUID Tenant',
+            'slug' => 'uuid-tenant',
+        ]);
+
+        Coupon::forceCreate([
+            'tenant_id' => $tenant->id,
+            'code' => 'UUID_OK',
+            'type' => 'fixed',
+            'value' => 25.00,
+            'is_active' => true,
+        ]);
+
+        $this->actingAsTenant((string) $tenant->id);
+
+        $response = $this->postJson('/api/v1/coupons/verify', [
+            'tenant_id' => $tenant->id,
+            'code' => 'UUID_OK',
+            'cart_subtotal' => 100.00,
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'valid' => true,
+            'discount_amount' => 25.00,
+            'new_total' => 75.00,
+        ]);
     }
 
     public function it_calculates_percentage_discount_precisely(): void

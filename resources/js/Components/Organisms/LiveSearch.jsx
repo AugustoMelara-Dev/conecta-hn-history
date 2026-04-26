@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/Components/ui/input';
 import { Search, Loader2, Store, ShoppingBag } from 'lucide-react';
-import { Link, router } from '@inertiajs/react';
-import { useDebounce } from '@/Hooks/useDebounce'; // Assuming you have this or I'll implement simple debounce
+import { Link } from '@inertiajs/react';
 import axios from 'axios';
 
 export default function LiveSearch() {
@@ -10,6 +9,7 @@ export default function LiveSearch() {
     const [results, setResults] = useState({ tenants: [], products: [] });
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
+    const [error, setError] = useState('');
     const wrapperRef = useRef(null);
 
     // Simple debounce implementation inside effect if hook not available
@@ -17,12 +17,18 @@ export default function LiveSearch() {
         const delayDebounceFn = setTimeout(async () => {
             if (query.length >= 2) {
                 setLoading(true);
+                setError('');
                 try {
-                    const response = await axios.get(route('api.search'), { params: { query } });
-                    setResults(response.data);
+                    const response = await axios.get('/api/v1/directory/search', {
+                        params: { search: query, limit: 6 },
+                    });
+                    const tenants = Array.isArray(response.data?.data) ? response.data.data : [];
+                    setResults({ tenants, products: [] });
                     setIsOpen(true);
                 } catch (error) {
-                    console.error("Search failed", error);
+                    setError('No pudimos buscar en vivo. Presiona Enter para ver el directorio.');
+                    setResults({ tenants: [], products: [] });
+                    setIsOpen(true);
                 } finally {
                     setLoading(false);
                 }
@@ -145,6 +151,12 @@ export default function LiveSearch() {
                             Ver todos los resultados para "{query}"
                         </button>
                     </div>
+                </div>
+            )}
+
+            {isOpen && error && (
+                <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 shadow-xl z-50">
+                    {error}
                 </div>
             )}
         </div>

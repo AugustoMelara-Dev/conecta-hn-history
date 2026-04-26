@@ -13,6 +13,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Auth\AuthRedirector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Socialite\Contracts\Factory as SocialiteFactory;
 use Mockery;
 use Tests\TestCase;
 
@@ -35,9 +36,6 @@ final class SocialLoginSurfaceContractTest extends TestCase
         $response = $this->postJson('/api/v1/auth/social', [
             'provider' => 'google',
             'token' => 'social-token-123',
-            'provider_id' => 'provider-user-1',
-            'email' => 'customer@gmail.com',
-            'name' => 'Customer Surface',
         ]);
 
         $context = AuthRedirector::contextFor($customer);
@@ -68,9 +66,6 @@ final class SocialLoginSurfaceContractTest extends TestCase
         $response = $this->postJson('/api/v1/auth/social', [
             'provider' => 'google',
             'token' => 'social-token-456',
-            'provider_id' => 'provider-owner-1',
-            'email' => 'owner@gmail.com',
-            'name' => 'Owner Surface',
         ]);
 
         $context = AuthRedirector::contextFor($owner);
@@ -83,6 +78,50 @@ final class SocialLoginSurfaceContractTest extends TestCase
 
     private function bindSocialLoginFakes(User $user, Tenant $tenant, AuthStatus $status): void
     {
+        $socialUser = new class($user) {
+            public array $user = ['email_verified' => true];
+
+            public function __construct(private readonly User $userModel) {}
+
+            public function getId(): string
+            {
+                return 'provider-'.$this->userModel->getKey();
+            }
+
+            public function getEmail(): string
+            {
+                return (string) $this->userModel->email;
+            }
+
+            public function getName(): string
+            {
+                return (string) $this->userModel->name;
+            }
+
+            public function getAvatar(): ?string
+            {
+                return null;
+            }
+        };
+
+        $provider = new class($socialUser) {
+            public function __construct(private readonly object $socialUser) {}
+
+            public function stateless(): self
+            {
+                return $this;
+            }
+
+            public function userFromToken(string $token): object
+            {
+                return $this->socialUser;
+            }
+        };
+
+        $socialite = Mockery::mock(SocialiteFactory::class);
+        $socialite->expects('driver')->with('google')->andReturn($provider);
+        $this->app->instance(SocialiteFactory::class, $socialite);
+
         $handler = Mockery::mock(LoginViaSocialProviderHandlerInterface::class);
         $handler->expects('handle')
             ->andReturn(new SocialLoginResult(

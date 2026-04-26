@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Enums\BusinessType;
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Filament\App\Resources\OrderResource\Pages;
 use App\Models\Location;
 use App\Models\Order;
@@ -38,7 +38,7 @@ class OrderResource extends Resource
         $tenant = static::getTenantRecord();
 
         return $tenant instanceof Tenant
-            && $tenant->business_type !== BusinessType::SERVICE
+            && app(RubroManifestReaderInterface::class)->hasModule($tenant, 'orders')
             && Gate::allows('viewAny', Order::class);
     }
 

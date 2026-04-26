@@ -70,6 +70,7 @@ it('validates RegisterTenantCommand against its JSON schema contract', function 
         cityId: 5,
         categoryId: 12,
         businessType: 'service',
+        rubroKey: 'service_general',
         whatsapp: '+0987654321',
         selectedPlan: 'pro',
         logoPath: '/storage/logos/vitocode.png',

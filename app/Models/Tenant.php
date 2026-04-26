@@ -128,6 +128,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'minimum_order',
         'business_type',
         'business_segment_key',
+        'rubro_key',
         // Premium Profile Fields (unlocked for microsite customization)
         'logo_path',
         'about',

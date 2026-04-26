@@ -9,6 +9,7 @@ use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Domain\TenantGovernance\Services\BusinessOperationsBlueprint;
 use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
 use App\Domain\TenantGovernance\Services\TenantOnboardingProgressService;
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\CouponResource;
 use App\Filament\App\Resources\Leads\LeadResource;
@@ -235,6 +236,8 @@ class Dashboard extends \Filament\Pages\Page
 
     public string $growthUrl = '#';
 
+    public string $copilotUrl = '#';
+
     public int $openPlaybookTasksCount = 0;
 
     public int $myPlaybookTasksCount = 0;
@@ -335,6 +338,7 @@ class Dashboard extends \Filament\Pages\Page
         $this->billingUrl = $this->safeRoute('filament.app.pages.manage-billing', ['tenant' => $tenantSlug]);
         $this->operationsUrl = $this->safeResourceUrl(OperationalPlaybookTaskResource::class, ['tenant' => $tenantSlug]);
         $this->growthUrl = $this->safeRoute('filament.app.pages.growth-center', ['tenant' => $tenantSlug]);
+        $this->copilotUrl = BusinessCopilot::getUrl(['tenant' => $tenantSlug]);
         $this->loadPlaybookExecutionState($tenant);
 
         $this->configureExperience($tenant);
@@ -343,15 +347,17 @@ class Dashboard extends \Filament\Pages\Page
 
     private function configureExperience(Tenant $tenant): void
     {
+        $manifest = app(RubroManifestReaderInterface::class)->forTenant($tenant);
+        $presentation = (array) data_get($manifest, 'presentation', []);
         $config = config("business-types.options.{$this->businessType}", []);
 
-        $this->businessTypeLabel = (string) ($config['label'] ?? 'Negocio');
-        $this->businessTypeDescription = (string) ($config['description'] ?? 'Organiza tu operación desde una base clara.');
+        $this->businessTypeLabel = (string) ($presentation['label'] ?? $config['label'] ?? 'Negocio');
+        $this->businessTypeDescription = (string) ($presentation['description'] ?? $config['description'] ?? 'Organiza tu operacion desde una base clara.');
         $this->businessTypeCapabilities = collect($config['capabilities'] ?? [])
             ->filter(static fn (mixed $item): bool => is_string($item) && $item !== '')
             ->values()
             ->all();
-        $this->businessExamples = collect($config['examples'] ?? [])
+        $this->businessExamples = collect($presentation['examples'] ?? $config['examples'] ?? [])
             ->filter(static fn (mixed $item): bool => is_string($item) && $item !== '')
             ->values()
             ->all();
@@ -1086,3 +1092,4 @@ class Dashboard extends \Filament\Pages\Page
         return static::$routePath;
     }
 }
+

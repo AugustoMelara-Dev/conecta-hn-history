@@ -12,7 +12,7 @@ use App\Application\Catalog\Handlers\CreateMenuSectionHandler;
 use App\Application\Catalog\Handlers\DeleteMenuSectionHandler;
 use App\Application\Catalog\Handlers\ReorderMenuSectionsHandler;
 use App\Application\Catalog\Handlers\UpdateMenuSectionHandler;
-use App\Domain\TenantGovernance\Enums\BusinessType;
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Filament\App\Resources\MenuSectionResource\Pages;
 use App\Models\MenuSection;
 use App\Models\Tenant;
@@ -63,7 +63,7 @@ class MenuSectionResource extends Resource
         $tenant = static::getTenantRecord();
 
         return $tenant instanceof Tenant
-            && $tenant->business_type !== BusinessType::SERVICE
+            && app(RubroManifestReaderInterface::class)->hasModule($tenant, 'menu_sections')
             && Gate::allows('viewAny', MenuSection::class);
     }
 

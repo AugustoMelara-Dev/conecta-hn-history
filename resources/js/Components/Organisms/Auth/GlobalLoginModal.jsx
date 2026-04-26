@@ -49,7 +49,7 @@ export default function GlobalLoginModal() {
         setOtpSuccess('');
 
         try {
-            const response = await axios.post('/api/otp/generate', {
+            const response = await axios.post('/api/v1/otp/generate', {
                 identifier: identifier,
             });
 
@@ -70,7 +70,7 @@ export default function GlobalLoginModal() {
         setOtpError('');
 
         try {
-            const response = await axios.post('/api/otp/verify', {
+            const response = await axios.post('/api/v1/otp/verify', {
                 identifier: otpIdentifier,
                 code: code,
             });

@@ -21,6 +21,9 @@ final class BusinessClaimDisputeController extends Controller
         ]);
 
         $user = $request->user();
+        if ($user === null) {
+            return response()->json(['message' => 'Unauthorized.'], 401);
+        }
 
         $dispute = BusinessClaimDispute::query()->create([
             'tenant_id' => (string) $tenant->getKey(),
@@ -31,16 +34,24 @@ final class BusinessClaimDisputeController extends Controller
             'details' => $validated['details'] ?? null,
         ]);
 
-        $tenant->forceFill([
-            'publication_paused_at' => now(),
-            'publication_pause_reason' => 'Disputa de titularidad abierta: '.$validated['reason'],
-        ])->save();
+        $canPausePublication = (string) $tenant->user_id === (string) $user->getAuthIdentifier()
+            || $user->isSuperAdmin();
+
+        if ($canPausePublication) {
+            $tenant->forceFill([
+                'publication_paused_at' => now(),
+                'publication_pause_reason' => 'Disputa de titularidad abierta: '.$validated['reason'],
+            ])->save();
+        }
 
         return response()->json([
-            'message' => 'Disputa registrada. El negocio queda pausado mientras revisamos la titularidad.',
+            'message' => $canPausePublication
+                ? 'Disputa registrada. El negocio queda pausado mientras revisamos la titularidad.'
+                : 'Disputa registrada. Nuestro equipo revisara la titularidad sin pausar la publicacion automaticamente.',
             'data' => [
                 'dispute_id' => $dispute->id,
                 'status' => $dispute->status,
+                'publication_paused' => $canPausePublication,
             ],
         ], 202);
     }

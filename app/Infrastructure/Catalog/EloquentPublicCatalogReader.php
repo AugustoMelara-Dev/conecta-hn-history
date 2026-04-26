@@ -19,10 +19,7 @@ final class EloquentPublicCatalogReader implements PublicCatalogReader
         return Product::where('is_active', true)
             ->where('is_visible', true)
             ->whereHas('tenant', static function ($query): void {
-                $query
-                    ->where('status', 'approved')
-                    ->where('is_active', true)
-                    ->whereIn('subscription_status', ['active', 'trial']);
+                $query->published();
             })
             ->orderByDesc('created_at')
             ->limit($limit)

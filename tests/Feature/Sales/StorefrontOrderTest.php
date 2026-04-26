@@ -14,13 +14,13 @@ use App\Models\Location;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class StorefrontOrderTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     #[Test]
     public function it_returns_the_expected_json_for_public_cart_checkout(): void
@@ -146,6 +146,60 @@ final class StorefrontOrderTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['delivery_type'])
             ->assertJsonPath('errors.delivery_type.0', 'Este comercio no ofrece entrega a domicilio.');
+
+        self::assertCount(0, $handler->commands);
+    }
+
+    #[Test]
+    public function it_rejects_products_that_do_not_belong_to_the_checkout_tenant(): void
+    {
+        $user = User::factory()->create();
+        $tenant = Tenant::factory()->forUser($user)->create();
+        $foreignTenant = Tenant::factory()->create();
+        $user->forceFill(['tenant_id' => $tenant->id])->save();
+
+        Location::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Main Location',
+            'slug' => 'main-location',
+            'address' => 'Tegucigalpa',
+            'is_primary' => true,
+            'is_active' => true,
+        ]);
+
+        $foreignProduct = Product::factory()->forTenant($foreignTenant)->create();
+        $handler = new StorefrontCreateOrderHandler(new CreateOrderResult(
+            id: 303,
+            orderNumber: '#303',
+            totalAmount: 100.0,
+            status: 'pending',
+            itemsCount: 1,
+            currency: 'HNL',
+            items: [],
+        ));
+
+        $this->app->instance(CreateOrderHandlerInterface::class, $handler);
+        $this->app->instance(OrderReader::class, new StorefrontOrderReader);
+
+        $response = $this->actingAs($user)->postJson('/api/orders', [
+            'tenant_id' => (string) $tenant->id,
+            'customer_name' => 'John Doe',
+            'customer_phone' => '12345678',
+            'customer_email' => $user->email,
+            'delivery_type' => 'pickup',
+            'payment_method' => 'pending',
+            'items' => [
+                [
+                    'product_id' => $foreignProduct->id,
+                    'name' => 'Foreign product',
+                    'price' => 1,
+                    'quantity' => 1,
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['items']);
 
         self::assertCount(0, $handler->commands);
     }

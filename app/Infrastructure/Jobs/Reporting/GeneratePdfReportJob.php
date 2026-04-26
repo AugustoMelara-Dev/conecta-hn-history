@@ -100,7 +100,7 @@ final class GeneratePdfReportJob implements ShouldBeUnique, ShouldQueue
             $storage->disk((string) config('filesystems.exports', 'local'))->put($filename, $pdfContent);
 
             $expiresAt = now()->addHours(24);
-            $downloadUrl = $this->generateDownloadUrl($filename, $expiresAt);
+            $downloadUrl = $this->generateDownloadUrl($filename, $expiresAt, $tenant->getKey(), $requestor->getKey());
 
             $requestor->notify(new ReportReadyNotification(
                 reportType: $this->data->reportType,

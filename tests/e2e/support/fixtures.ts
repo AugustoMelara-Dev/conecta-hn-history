@@ -9,6 +9,10 @@ export const officialFixtures = {
         email: env.BUSINESS_OWNER_EMAIL || 'owner-demo-ai-guide-hn@conectahn.app',
         password: env.BUSINESS_OWNER_PASSWORD || 'ChangeMe123!',
     },
+    customer: {
+        email: env.CUSTOMER_EMAIL || 'customer-e2e@conectahn.app',
+        password: env.CUSTOMER_PASSWORD || 'ChangeMe123!',
+    },
     product: {
         slug: env.E2E_PRODUCT_TENANT_SLUG || 'demo-ai-guide-hn',
         expectedPanelText: env.E2E_PRODUCT_PANEL_TEXT || 'Combo Presupuesto 120 HNL',

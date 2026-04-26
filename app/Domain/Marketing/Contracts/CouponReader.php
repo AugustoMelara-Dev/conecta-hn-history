@@ -17,10 +17,10 @@ interface CouponReader
      *
      * @return array<int, object>
      */
-    public function getValidCoupons(int $tenantId): array;
+    public function getValidCoupons(int|string $tenantId): array;
 
     /**
      * Find a specific coupon by code for a tenant.
      */
-    public function findByCode(int $tenantId, string $code): ?object;
+    public function findByCode(int|string $tenantId, string $code): ?object;
 }

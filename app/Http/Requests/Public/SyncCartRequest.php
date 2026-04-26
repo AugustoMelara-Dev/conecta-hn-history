@@ -20,8 +20,8 @@ final class SyncCartRequest extends FormRequest
             'items' => ['required', 'array'],
             'items.*.product_id' => ['required', 'integer'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
-            'items.*.price' => ['required', 'numeric', 'min:0'],
-            'subtotal' => ['required', 'numeric', 'min:0'],
+            'items.*.price' => ['nullable', 'numeric', 'min:0'],
+            'subtotal' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }

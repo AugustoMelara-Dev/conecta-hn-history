@@ -40,11 +40,19 @@ class AppointmentConfirmationMail extends Mailable
                 'serviceName' => $this->appointment->service->name,
                 'date' => $this->appointment->scheduled_at->format('d/m/Y h:i A'),
                 'providerName' => $this->appointment->provider->name,
-                'managementUrl' => URL::signedRoute(
+                'managementUrl' => URL::temporarySignedRoute(
                     'public.appointment.manage',
+                    $this->managementUrlExpiresAt(),
                     ['appointment' => $this->appointment->id]
                 ),
             ],
         );
+    }
+
+    private function managementUrlExpiresAt(): \DateTimeInterface
+    {
+        $expiresAt = $this->appointment->scheduled_at->copy()->addDay();
+
+        return $expiresAt->greaterThan(now()->addDay()) ? $expiresAt : now()->addDay();
     }
 }

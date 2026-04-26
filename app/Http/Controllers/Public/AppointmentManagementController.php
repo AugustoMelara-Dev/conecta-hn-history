@@ -13,6 +13,7 @@ use App\Models\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -59,11 +60,17 @@ final class AppointmentManagementController extends Controller
                 'scheduled_at' => $appointment->scheduled_at->format('l, d M Y'),
                 'time' => $appointment->scheduled_at->format('h:i A'),
                 'can_cancel' => in_array($appointment->status, ['pending', 'confirmed']),
+                'cancel_url' => URL::temporarySignedRoute(
+                    'public.appointment.cancel',
+                    $this->signedUrlExpiresAt($request, $appointment->scheduled_at),
+                    ['appointment' => $appointment->id]
+                ),
             ],
             'tenant' => [
                 'name' => $tenant->name,
                 'slug' => $tenant->slug,
                 'logo_url' => $tenant->logo_path ? Storage::url($tenant->logo_path) : null,
+                'microsite_url' => route('tenant.microsite.show', ['tenant' => $tenant], false),
             ],
         ]);
     }
@@ -92,5 +99,17 @@ final class AppointmentManagementController extends Controller
         // Future: Dispatch AppointmentCancelled event for notifications
 
         return back()->with('success', 'Tu cita ha sido cancelada exitosamente.');
+    }
+
+    private function signedUrlExpiresAt(Request $request, \DateTimeInterface $fallbackBase): \DateTimeInterface
+    {
+        $expires = $request->query('expires');
+        if (is_numeric($expires) && (int) $expires > now()->timestamp) {
+            return now()->setTimestamp((int) $expires);
+        }
+
+        $fallback = \Illuminate\Support\Carbon::parse($fallbackBase->format(DATE_ATOM));
+
+        return $fallback->greaterThan(now()) ? $fallback : now()->addHours(12);
     }
 }

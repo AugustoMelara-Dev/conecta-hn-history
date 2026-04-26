@@ -196,7 +196,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
         setSlotTimeline([]);
         setData({
             ...data,
-            service_provider_id: provider?.id ?? providers[0]?.id ?? null,
+            service_provider_id: provider?.id ?? null,
             date: '',
             time: '',
         });

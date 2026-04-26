@@ -32,6 +32,9 @@ export default function AppLayout({ children }) {
             <nav className="md:hidden flex-none z-nav bg-background/80 border-t border-border/40 backdrop-blur-lg">
                 <MobileBottomNav />
             </nav>
+
+            <GlobalLoginModal />
+            <Toaster richColors position="top-center" />
         </div>
     );
 }

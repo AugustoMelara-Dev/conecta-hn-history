@@ -191,6 +191,24 @@ final class WhatsAppCloudWebhookControllerTest extends TestCase
         $this->assertNotNull($message->provider_thread_key);
     }
 
+    public function test_whatsapp_webhook_rejects_missing_signature_when_secret_is_configured(): void
+    {
+        config()->set('services.whatsapp_cloud.app_secret', 'top-secret');
+
+        $this->postJson(route('webhooks.whatsapp-cloud.handle', [], false), [
+            'entry' => [],
+        ])->assertUnauthorized();
+    }
+
+    public function test_whatsapp_webhook_fails_closed_when_secret_is_missing(): void
+    {
+        config()->set('services.whatsapp_cloud.app_secret', '');
+
+        $this->postJson(route('webhooks.whatsapp-cloud.handle', [], false), [
+            'entry' => [],
+        ])->assertStatus(500);
+    }
+
     /**
      * @return array<string, string>
      */

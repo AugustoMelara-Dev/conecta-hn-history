@@ -14,6 +14,7 @@ use App\Http\Requests\Public\HoldInventoryRequest;
 use App\Http\Requests\Public\SyncCartRequest;
 use App\Http\Requests\Public\ValidateCouponRequest;
 use App\Models\Tenant;
+use App\Support\Diagnostics\SupportDiagnosticFactory;
 use App\Services\CouponValidatorService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +27,8 @@ final class CheckoutController extends Controller
     public function __construct(
         private LoggerInterface $log,
         private HoldCartInventoryHandler $holdInventoryHandler,
-        private SyncCheckoutSessionHandler $syncSessionHandler
+        private SyncCheckoutSessionHandler $syncSessionHandler,
+        private SupportDiagnosticFactory $diagnostics
     ) {}
 
     public function getCartSummary(SyncCartRequest $request): JsonResponse
@@ -35,14 +37,27 @@ final class CheckoutController extends Controller
         $tenantId = $this->resolveTenantId($request);
 
         if ($tenantId === null || $tenantId === '') {
-            return response()->json(['message' => 'Tenant identification required.'], 400);
+            return response()->json([
+                'message' => 'Tenant identification required.',
+                'diagnostic' => $this->diagnostic('checkout', 'Tenant no identificado', 'La solicitud no incluyo tenant valido.', 'Recarga el negocio e intenta de nuevo.'),
+            ], 400);
+        }
+
+        try {
+            $cart = $this->normalizeCartForTenant($tenantId, $validated['items']);
+        } catch (DomainException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'diagnostic' => $this->diagnostic('checkout', 'Carrito no sincronizado', $e->getMessage(), 'Revisa los productos del carrito y vuelve a intentar.'),
+            ], 422);
         }
 
         $command = new SyncCheckoutSessionCommand(
             tenantId: $tenantId,
             sessionId: $validated['session_id'],
-            items: $validated['items'],
-            subtotal: (float) $validated['subtotal'],
+            items: $cart['items'],
+            subtotal: $cart['subtotal'],
             userId: $request->user()?->id
         );
 
@@ -51,7 +66,7 @@ final class CheckoutController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Cart synchronized successfully',
-            'subtotal' => $validated['subtotal'],
+            'subtotal' => $cart['subtotal'],
         ]);
     }
 
@@ -61,7 +76,10 @@ final class CheckoutController extends Controller
         $tenantId = $this->resolveTenantId($request);
 
         if ($tenantId === null || $tenantId === '') {
-            return response()->json(['message' => 'Tenant identification required.'], 400);
+            return response()->json([
+                'message' => 'Tenant identification required.',
+                'diagnostic' => $this->diagnostic('checkout', 'Tenant no identificado', 'La solicitud no incluyo tenant valido.', 'Recarga el negocio e intenta de nuevo.'),
+            ], 400);
         }
 
         try {
@@ -74,6 +92,8 @@ final class CheckoutController extends Controller
             if (! is_string($locationId) || $locationId === '') {
                 throw new DomainException('No active primary location found for this tenant.');
             }
+
+            $this->assertItemsBelongToTenant($tenantId, $validated['items']);
 
             $command = new HoldCartInventoryCommand(
                 tenantId: $tenantId,
@@ -97,6 +117,7 @@ final class CheckoutController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
+                'diagnostic' => $this->diagnostic('checkout', 'Inventario no reservado', $e->getMessage(), 'Actualiza el carrito o elige otra cantidad antes de pagar.'),
             ], 422);
         }
     }
@@ -111,6 +132,7 @@ final class CheckoutController extends Controller
                 'valid' => false,
                 'code' => 'TENANT_REQUIRED',
                 'message' => 'Tenant identification required.',
+                'diagnostic' => $this->diagnostic('checkout', 'Tenant no identificado', 'No pudimos asociar el cupon a un negocio.', 'Recarga el negocio e intenta aplicar el cupon otra vez.'),
             ], 400);
         }
 
@@ -153,6 +175,7 @@ final class CheckoutController extends Controller
                     'required_quantity',
                     'current_total',
                 ])),
+                'diagnostic' => $this->diagnostic('checkout', 'Cupon no aplicado', $e->getMessage(), 'Revisa condiciones del cupon o continua sin descuento.'),
             ], 422);
         }
     }
@@ -177,6 +200,14 @@ final class CheckoutController extends Controller
             'free_shipping' => '¡Cupón aplicado! Envío gratis',
             default => 'Cupón aplicado correctamente',
         };
+    }
+
+    /**
+     * @return array{surface:string,status:string,probable_cause:string,recommended_action:string,trace_id:string}
+     */
+    private function diagnostic(string $surface, string $status, string $cause, string $action): array
+    {
+        return $this->diagnostics->make($surface, $status, $cause, $action);
     }
 
     private function resolveTenant(Request $request): Tenant|string|int|null
@@ -217,5 +248,79 @@ final class CheckoutController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     */
+    private function assertItemsBelongToTenant(string $tenantId, array $items): void
+    {
+        $productIds = collect($items)
+            ->pluck('product_id')
+            ->filter(static fn (mixed $id): bool => is_numeric($id))
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($productIds->isEmpty()) {
+            throw new DomainException('Cart must include at least one valid product.');
+        }
+
+        $ownedCount = DB::table('products')
+            ->whereIn('id', $productIds->all())
+            ->where('tenant_id', $tenantId)
+            ->count();
+
+        if ($ownedCount !== $productIds->count()) {
+            throw new DomainException('Cart contains products that do not belong to this tenant.');
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     * @return array{items: list<array{product_id: int, quantity: int, price: float, line_total: float}>, subtotal: float}
+     */
+    private function normalizeCartForTenant(string $tenantId, array $items): array
+    {
+        $quantities = collect($items)
+            ->groupBy(static fn (array $item): int => (int) $item['product_id'])
+            ->map(static fn ($group): int => (int) $group->sum(static fn (array $item): int => (int) $item['quantity']))
+            ->filter(static fn (int $quantity, int $productId): bool => $productId > 0 && $quantity > 0);
+
+        if ($quantities->isEmpty()) {
+            throw new DomainException('Cart must include at least one valid product.');
+        }
+
+        $products = DB::table('products')
+            ->select(['id', 'price'])
+            ->where('tenant_id', $tenantId)
+            ->whereIn('id', $quantities->keys()->all())
+            ->get()
+            ->keyBy('id');
+
+        if ($products->count() !== $quantities->count()) {
+            throw new DomainException('Cart contains products that do not belong to this tenant.');
+        }
+
+        $normalizedItems = [];
+        $subtotal = 0.0;
+
+        foreach ($quantities as $productId => $quantity) {
+            $price = round((float) $products->get($productId)->price, 2);
+            $lineTotal = round($price * $quantity, 2);
+            $subtotal += $lineTotal;
+
+            $normalizedItems[] = [
+                'product_id' => (int) $productId,
+                'quantity' => (int) $quantity,
+                'price' => $price,
+                'line_total' => $lineTotal,
+            ];
+        }
+
+        return [
+            'items' => $normalizedItems,
+            'subtotal' => round($subtotal, 2),
+        ];
     }
 }

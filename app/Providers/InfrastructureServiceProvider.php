@@ -397,7 +397,54 @@ class InfrastructureServiceProvider extends ServiceProvider
             return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
         });
 
-        // 12. DIRECTORY GUIDE DAILY QUOTA (Freemium v1)
+        // 12. PUBLIC WAITLIST: prevent appointment spam without blocking normal traffic.
+        RateLimiter::for('public-waitlist', function (Request $request) {
+            $tenant = $request->route('tenant');
+            $tenantSlug = is_object($tenant) && isset($tenant->slug)
+                ? (string) $tenant->slug
+                : (string) ($tenant ?: 'unknown');
+
+            return Limit::perMinute(6)->by($tenantSlug.'|'.$request->ip());
+        });
+
+        // 13. WEBHOOKS: allow provider retries/bursts while limiting noisy abuse.
+        RateLimiter::for('webhooks', function (Request $request) {
+            $signature = (string) (
+                $request->header('x-signature')
+                ?: $request->header('x-hub-signature-256')
+                ?: $request->header('svix-id')
+                ?: ''
+            );
+            $limits = [
+                Limit::perMinute(120)->by($request->path().'|'.$request->ip()),
+            ];
+
+            if ($signature !== '') {
+                $limits[] = Limit::perMinute(240)->by(hash('sha256', $request->path().'|'.$signature));
+            }
+
+            return $limits;
+        });
+
+        // 14. AI OPTIMIZATION: protect LLM cost even before budget enforcement.
+        RateLimiter::for('ai-optimization', function (Request $request) {
+            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // 15. BUSINESS AI: private tenant RAG has both user and tenant buckets.
+        RateLimiter::for('business-ai', function (Request $request) {
+            $actor = (string) ($request->user()?->getAuthIdentifier() ?: $request->ip());
+            $tenant = (string) ($request->user()?->tenant_id ?? 'no-tenant');
+
+            return [
+                Limit::perMinute((int) config('ai-rag.private.rate_limits.per_user_minute', 20))
+                    ->by('business-ai:user|'.$actor),
+                Limit::perMinute((int) config('ai-rag.private.rate_limits.per_tenant_minute', 60))
+                    ->by('business-ai:tenant|'.$tenant),
+            ];
+        });
+
+        // 16. DIRECTORY GUIDE DAILY QUOTA (Freemium v1)
         // 5 calls/day per authenticated user_id with date-scoped key.
         RateLimiter::for('directory-guide-daily', function (Request $request) {
             $limit = GuideQuota::limit();

@@ -145,6 +145,8 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         Tenant::query()
             ->whereKey($tenantEntity->id())
             ->update([
+                'rubro_key' => $command->rubroKey,
+                'business_segment_key' => $command->rubroKey,
                 'verification_status' => Tenant::VERIFICATION_STATUS_PROVISIONAL,
                 'verified_at' => null,
                 'verification_reviewed_at' => null,

@@ -187,7 +187,9 @@ Route::prefix('/t/{tenant:slug}')->group(function () {
     Route::prefix('book')->group(function () {
         Route::get('/', [BookingController::class, 'index'])->name('public.booking.index');
         Route::post('/', [BookingController::class, 'store'])->name('public.booking.store');
-        Route::post('/waitlist', [\App\Http\Controllers\Public\WaitlistController::class, 'store'])->name('public.booking.waitlist.store');
+        Route::post('/waitlist', [\App\Http\Controllers\Public\WaitlistController::class, 'store'])
+            ->middleware('throttle:public-waitlist')
+            ->name('public.booking.waitlist.store');
         Route::get('/providers/{service}', [BookingController::class, 'getProviders'])->name('public.booking.providers');
         Route::get('/slots', [BookingController::class, 'getSlots'])->name('public.booking.slots');
         Route::get('/success', [BookingController::class, 'success'])->name('public.booking.success');

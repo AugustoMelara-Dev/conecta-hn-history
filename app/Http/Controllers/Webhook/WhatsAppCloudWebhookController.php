@@ -60,11 +60,15 @@ final class WhatsAppCloudWebhookController
      */
     private function verifySignature(string $payload, array $headers): void
     {
-        $appSecret = (string) config('services.whatsapp_cloud.app_secret', '');
+        $appSecret = trim((string) config('services.whatsapp_cloud.app_secret', ''));
         $signature = (string) ($headers['x-hub-signature-256'] ?? '');
 
-        if ($appSecret === '' || $signature === '') {
-            return;
+        if ($appSecret === '') {
+            abort(500, 'WhatsApp webhook app secret is not configured.');
+        }
+
+        if ($signature === '') {
+            abort(401, 'Missing WhatsApp webhook signature.');
         }
 
         $expected = 'sha256='.hash_hmac('sha256', $payload, $appSecret);

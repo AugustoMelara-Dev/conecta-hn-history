@@ -40,7 +40,7 @@ final class RegistrationControllerTest extends TestCase
             ->has('segmentProfiles')
             ->where('segmentProfiles.0.key', 'retail_general')
             ->where('segmentProfiles.0.label', 'Tienda y catalogo')
-            ->where('segmentProfiles.1.key', 'restaurant')
+            ->where('segmentProfiles.1.key', 'restaurant_general')
             ->where('segmentProfiles.1.businessType', 'food')
         );
     }
@@ -63,6 +63,7 @@ final class RegistrationControllerTest extends TestCase
             'city_id' => $city->id,
             'category_id' => $category->id,
             'business_type' => 'service',
+            'rubro_key' => 'service_general',
             'whatsapp' => '+50499990000',
             'selected_plan' => 'free',
             'terms_accepted' => true,
@@ -75,6 +76,8 @@ final class RegistrationControllerTest extends TestCase
 
         $this->assertInstanceOf(Tenant::class, $tenant);
         $this->assertSame('service', $tenant->getRawOriginal('business_type'));
+        $this->assertSame('service_general', $tenant->getRawOriginal('rubro_key'));
+        $this->assertSame('service_general', $tenant->getRawOriginal('business_segment_key'));
         $this->assertSame('semilla', $tenant->getRawOriginal('plan_type'));
         $this->assertSame('inactive', $tenant->getRawOriginal('subscription_status'));
         $this->assertSame('provisional', $tenant->getRawOriginal('verification_status'));

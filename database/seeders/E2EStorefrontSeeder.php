@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Shared\Services\TenantContext;
 use App\Models\Category;
 use App\Models\City;
@@ -27,6 +28,7 @@ final class E2EStorefrontSeeder extends Seeder
         $this->initializeConsoleTenantContext();
 
         $this->call(CategorySeeder::class);
+        $this->seedCustomerAccount();
 
         $cities = [
             'tegucigalpa' => $this->createCity('Francisco Morazan', 'Distrito Central', 'Tegucigalpa', 14.0723, -87.1921),
@@ -713,7 +715,7 @@ final class E2EStorefrontSeeder extends Seeder
                 'name' => $attributes['name'].' Owner',
                 'password' => Hash::make($ownerPassword),
                 'email_verified_at' => now(),
-                'role' => \App\Domain\Identity\Enums\UserRole::TENANT_OWNER->value,
+                'role' => UserRole::TENANT_OWNER->value,
             ],
         );
 
@@ -770,6 +772,20 @@ final class E2EStorefrontSeeder extends Seeder
                 'coordinates' => ['lat' => $lat, 'lng' => $lng],
                 'is_active' => true,
                 'is_featured' => true,
+            ],
+        );
+    }
+
+    private function seedCustomerAccount(): void
+    {
+        User::query()->updateOrCreate(
+            ['email' => 'customer-e2e@conectahn.app'],
+            [
+                'name' => 'Cliente E2E Directorio',
+                'password' => Hash::make('ChangeMe123!'),
+                'email_verified_at' => now(),
+                'role' => UserRole::CUSTOMER->value,
+                'tenant_id' => null,
             ],
         );
     }

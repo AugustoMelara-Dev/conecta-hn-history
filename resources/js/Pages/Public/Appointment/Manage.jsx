@@ -13,7 +13,7 @@ export default function ManageAppointment({ appointment, tenant }) {
     const handleCancel = (e) => {
         e.preventDefault();
         if (confirm('¿Estás seguro de que deseas cancelar esta cita?')) {
-            post(window.location.href.replace('/manage', '/cancel'));
+            post(appointment.cancel_url);
         }
     };
 
@@ -152,7 +152,7 @@ export default function ManageAppointment({ appointment, tenant }) {
                         {/* Back Link */}
                         <div className="mt-6 text-center">
                             <a 
-                                href={`/${tenant.slug}`}
+                                href={tenant.microsite_url}
                                 className="text-sm text-gray-500 hover:text-gray-700 underline"
                             >
                                 Volver a {tenant.name}

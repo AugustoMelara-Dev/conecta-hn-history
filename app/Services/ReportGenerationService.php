@@ -32,14 +32,16 @@ final class ReportGenerationService implements ReportGenerationInterface
             $query->where('status', $filters['status']);
         }
 
-        // Limit for PDF (prevent huge documents)
-        $orders = $query->limit(500)->get();
+        $rowLimit = $this->rowLimit('sales', 500);
+        $summaryQuery = clone $query;
+        $totalMatchingOrders = (clone $summaryQuery)->count();
 
-        // Calculate summary
+        $orders = $query->limit($rowLimit)->get();
+
         $summary = [
-            'total_orders' => $orders->count(),
-            'total_revenue' => $orders->sum('total'),
-            'avg_order_value' => $orders->avg('total') ?? 0,
+            'total_orders' => $totalMatchingOrders,
+            'total_revenue' => (float) (clone $summaryQuery)->sum('total'),
+            'avg_order_value' => $totalMatchingOrders > 0 ? (float) (clone $summaryQuery)->avg('total') : 0,
             'by_status' => $orders->groupBy('status')->map->count(),
             'by_payment' => $orders->groupBy(fn (Order $order) => $order->payment_method ?? 'unknown')->map->count(),
         ];
@@ -51,6 +53,9 @@ final class ReportGenerationService implements ReportGenerationInterface
             'start_date' => $filters['start_date'] ?? null,
             'end_date' => $filters['end_date'] ?? null,
             'generated_at' => now(),
+            'truncated' => $totalMatchingOrders > $orders->count(),
+            'row_limit' => $rowLimit,
+            'matching_rows' => $totalMatchingOrders,
         ])->output();
     }
 
@@ -62,7 +67,11 @@ final class ReportGenerationService implements ReportGenerationInterface
         $products = $tenant->products()
             ->where('is_active', true)
             ->where('manage_stock', true)
-            ->orderBy('name')
+            ->orderBy('name');
+        $totalMatchingProducts = (clone $products)->count();
+        $rowLimit = $this->rowLimit('inventory', 500);
+        $products = $products
+            ->limit($rowLimit)
             ->get(['id', 'name', 'sku', 'stock_quantity', 'low_stock_threshold']);
         /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\Product> $products */
         $pdf = Pdf::loadView('reports.inventory-manifest', [
@@ -75,6 +84,9 @@ final class ReportGenerationService implements ReportGenerationInterface
                 static fn (\App\Models\Product $product): bool => $product->stock_quantity <= 0
             )->count(),
             'generated_at' => now(),
+            'truncated' => $totalMatchingProducts > $products->count(),
+            'row_limit' => $rowLimit,
+            'matching_rows' => $totalMatchingProducts,
         ]);
 
         $pdf->setPaper('A4', 'portrait');
@@ -90,17 +102,31 @@ final class ReportGenerationService implements ReportGenerationInterface
         $orders = Order::where('tenant_id', $tenant->id)
             ->whereIn('status', [Order::STATUS_CONFIRMED, Order::STATUS_PROCESSING])
             ->with(['items.product:id,name'])
-            ->orderBy('created_at', 'asc')
+            ->orderBy('created_at', 'asc');
+        $totalMatchingOrders = (clone $orders)->count();
+        $rowLimit = $this->rowLimit('kitchen', 300);
+        $orders = $orders
+            ->limit($rowLimit)
             ->get();
 
         $pdf = Pdf::loadView('reports.kitchen-prep', [
             'tenant' => $tenant,
             'orders' => $orders,
             'generated_at' => now(),
+            'truncated' => $totalMatchingOrders > $orders->count(),
+            'row_limit' => $rowLimit,
+            'matching_rows' => $totalMatchingOrders,
         ]);
 
         $pdf->setPaper('A4', 'portrait');
 
         return $pdf->output();
+    }
+
+    private function rowLimit(string $reportType, int $default): int
+    {
+        $limit = (int) config("conecta.reports.pdf.max_rows.{$reportType}", $default);
+
+        return max(1, $limit);
     }
 }

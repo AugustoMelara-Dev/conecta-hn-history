@@ -39,4 +39,14 @@ return [
         'max_pending_per_contact_per_day' => (int) env('CONECTA_BOOKING_MAX_PENDING_PER_CONTACT_PER_DAY', 3),
     ],
 
+    'reports' => [
+        'pdf' => [
+            'max_rows' => [
+                'sales' => (int) env('CONECTA_REPORTS_PDF_MAX_SALES_ROWS', 500),
+                'inventory' => (int) env('CONECTA_REPORTS_PDF_MAX_INVENTORY_ROWS', 500),
+                'kitchen' => (int) env('CONECTA_REPORTS_PDF_MAX_KITCHEN_ROWS', 300),
+            ],
+        ],
+    ],
+
 ];

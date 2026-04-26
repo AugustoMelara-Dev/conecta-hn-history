@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests\Public;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Validator;
 
 final class StoreCheckoutRequest extends FormRequest
 {
@@ -44,5 +46,35 @@ final class StoreCheckoutRequest extends FormRequest
                 'coupon_code' => strtoupper(trim((string) $this->coupon_code)),
             ]);
         }
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $tenantId = $this->input('tenant_id');
+            if (! is_string($tenantId) || $tenantId === '') {
+                return;
+            }
+
+            $productIds = collect($this->input('items', []))
+                ->pluck('product_id')
+                ->filter(static fn (mixed $id): bool => is_numeric($id))
+                ->map(static fn (mixed $id): int => (int) $id)
+                ->unique()
+                ->values();
+
+            if ($productIds->isEmpty()) {
+                return;
+            }
+
+            $ownedCount = DB::table('products')
+                ->whereIn('id', $productIds->all())
+                ->where('tenant_id', $tenantId)
+                ->count();
+
+            if ($ownedCount !== $productIds->count()) {
+                $validator->errors()->add('items', 'Todos los productos deben pertenecer al negocio seleccionado.');
+            }
+        });
     }
 }

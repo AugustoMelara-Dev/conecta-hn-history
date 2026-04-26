@@ -92,7 +92,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
 
     public function findById(string $id): ?PaymentEntity
     {
-        $model = PaymentModel::find($id);
+        $model = PaymentModel::query()->withoutGlobalScopes()->find($id);
 
         return $model ? $this->toEntity($model) : null;
     }
@@ -114,6 +114,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
         // useWritePdo() forces Laravel to use the Write connection (Primary Node)
         // This bypasses any read-replica routing middleware or sticky sessions.
         $model = PaymentModel::query()
+            ->withoutGlobalScopes()
             ->useWritePdo()
             ->find($id);
 
@@ -123,6 +124,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
     public function findByIdempotencyKey(string $tenantId, string $idempotencyKey): ?PaymentEntity
     {
         $model = PaymentModel::query()
+            ->withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->where('idempotency_key', $idempotencyKey)
             ->first();

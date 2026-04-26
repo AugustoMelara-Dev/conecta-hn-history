@@ -50,12 +50,12 @@ it('Email template includes management button', function () {
     expect($contents)->toContain('Gestionar mi Cita');
 });
 
-// TEST 6: Mailable generates signed URL
-it('Mailable includes managementUrl in content', function () {
+// TEST 6: Mailable generates temporary signed URL
+it('Mailable includes temporary managementUrl in content', function () {
     $mailablePath = base_path('app/Mail/AppointmentConfirmationMail.php');
     $contents = file_get_contents($mailablePath);
 
-    expect($contents)->toContain('URL::signedRoute');
+    expect($contents)->toContain('URL::temporarySignedRoute');
     expect($contents)->toContain('managementUrl');
     expect($contents)->toContain('public.appointment.manage');
 });

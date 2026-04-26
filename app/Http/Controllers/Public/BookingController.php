@@ -15,11 +15,13 @@ use App\Http\Controllers\Controller;
 use App\Infrastructure\Observability\DomainTelemetry;
 use App\Models\Appointment;
 use App\Models\Tenant;
+use App\Support\Diagnostics\SupportDiagnosticFactory;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -41,6 +43,7 @@ final class BookingController extends Controller
         private CommandBusInterface $commandBus,
         private \App\Domain\Booking\Services\SlotCalculator $slotCalculator,
         private DomainTelemetry $telemetry,
+        private SupportDiagnosticFactory $diagnostics,
     ) {}
 
     /**
@@ -166,11 +169,20 @@ final class BookingController extends Controller
             abort(404, 'Service not found');
         }
 
+        $providerId = isset($validated['provider_id']) ? (string) $validated['provider_id'] : null;
+        if ($providerId !== null) {
+            $provider = $this->providerRepository->findById($providerId);
+
+            if (! $provider || (string) $provider->tenant_id !== $tenant->id()) {
+                abort(404, 'Provider not found');
+            }
+        }
+
         $slots = $this->slotCalculator->calculate(
             $tenant->id(),
             $date,
             $service->duration_minutes,
-            $validated['provider_id'] ?? null,
+            $providerId,
             $service->buffer_before,
             $service->buffer_after
         );
@@ -178,7 +190,7 @@ final class BookingController extends Controller
             $tenant->id(),
             $date,
             $service->duration_minutes,
-            $validated['provider_id'] ?? null,
+            $providerId,
             $service->buffer_before,
             $service->buffer_after
         );
@@ -186,13 +198,13 @@ final class BookingController extends Controller
         $this->telemetry->record('booking', 'booking_slots_retrieved', [
             'tenant_id' => $tenant->id(),
             'service_id' => $service->id,
-            'provider_id' => $validated['provider_id'] ?? null,
+            'provider_id' => $providerId,
             'status' => 'ok',
             'slot_count' => count($slots),
         ]);
         $this->telemetry->gauge('booking', 'conecta.booking.slot_lookup.duration_ms', $durationMs, [
             'service_id' => (string) $service->id,
-            'provider_id' => isset($validated['provider_id']) ? (string) $validated['provider_id'] : 'unassigned',
+            'provider_id' => $providerId ?? 'unassigned',
         ], [
             'tenant_id' => $tenant->id(),
             'slot_count' => count($slots),
@@ -230,7 +242,7 @@ final class BookingController extends Controller
 
         $validated = $request->validate([
             'service_id' => 'required|integer',
-            'service_provider_id' => 'required|integer',
+            'service_provider_id' => 'nullable|integer',
             'date' => 'required|date|after_or_equal:today',
             'time' => 'required|date_format:H:i',
             'customer_name' => ['required', 'string', 'max:255', 'regex:/.*\S.*/'],
@@ -241,18 +253,31 @@ final class BookingController extends Controller
         ]);
 
         $service = $this->serviceRepository->findById($validated['service_id']);
-        $provider = $this->providerRepository->findById($validated['service_provider_id']);
 
-        if (! $service || ! $provider) {
-            abort(404, 'Service or Provider not found.');
+        if (! $service) {
+            abort(404, 'Service not found.');
         }
 
-        if ((string) $service->tenant_id !== $tenant->id() || (string) $provider->tenant_id !== $tenant->id()) {
-            abort(403, 'Invalid service or provider');
+        if ((string) $service->tenant_id !== $tenant->id()) {
+            abort(404, 'Service not found');
         }
 
         $scheduledAt = Carbon::parse($validated['date'].' '.$validated['time']);
         $endAt = $scheduledAt->copy()->addMinutes($service->duration_minutes);
+        $provider = $this->resolveProviderForBooking(
+            tenantId: $tenant->id(),
+            requestedProviderId: isset($validated['service_provider_id']) ? (string) $validated['service_provider_id'] : null,
+            scheduledAt: $scheduledAt,
+            endAt: $endAt,
+            bufferBefore: $service->buffer_before,
+            bufferAfter: $service->buffer_after
+        );
+
+        if (! $provider) {
+            return back()->withErrors([
+                'service_provider_id' => 'No encontramos una persona disponible para ese horario. Elige otro horario o intenta mas tarde.',
+            ]);
+        }
 
         if ($this->hasExcessivePendingBookings(
             tenantId: $tenant->id(),
@@ -305,10 +330,10 @@ final class BookingController extends Controller
             'appointment_id' => $result['id'] ?? null,
         ]);
 
-        return redirect()->route('public.booking.success', [
+        return redirect()->to(URL::signedRoute('public.booking.success', [
             'tenant' => $tenant->slug(),
             'appointment' => $result['id'],
-        ]);
+        ]));
     }
 
     /**
@@ -331,7 +356,13 @@ final class BookingController extends Controller
         $appointment = null;
 
         if ($appointmentId) {
+            abort_unless($request->hasValidSignature(), 403);
+
             $appointment = $this->appointmentRepository->findWithRelations($appointmentId);
+
+            if ($appointment === null || (string) $appointment->tenant_id !== $tenant->id()) {
+                abort(404);
+            }
         }
 
         return Inertia::render('Public/Book/Success', [
@@ -348,6 +379,12 @@ final class BookingController extends Controller
                 'time' => Carbon::parse($appointment->scheduled_at)->format('h:i A'),
                 'customer_name' => $appointment->customer_name,
             ] : null,
+            'diagnostic' => $this->diagnostics->make(
+                'booking',
+                $appointment ? 'Reserva recibida' : 'Reserva recibida sin detalle firmado',
+                $appointment ? 'La cita fue creada y queda pendiente de confirmacion del negocio.' : 'El enlace no incluye una cita firmada visible.',
+                $appointment ? 'Guarda esta pantalla y espera confirmacion por el canal indicado.' : 'Si necesitas soporte, comparte esta referencia y el negocio.'
+            ),
         ]);
     }
 
@@ -401,5 +438,44 @@ final class BookingController extends Controller
         })->count();
 
         return $matches >= $maxPerContactPerDay;
+    }
+
+    private function resolveProviderForBooking(
+        string $tenantId,
+        ?string $requestedProviderId,
+        Carbon $scheduledAt,
+        Carbon $endAt,
+        int $bufferBefore,
+        int $bufferAfter
+    ): ?object {
+        if ($requestedProviderId !== null && $requestedProviderId !== '') {
+            $provider = $this->providerRepository->findById($requestedProviderId);
+
+            if (! $provider || (string) $provider->tenant_id !== $tenantId) {
+                abort(404, 'Provider not found');
+            }
+
+            return $this->providerRepository->isAvailableAt($provider->id, $scheduledAt, $endAt, $bufferBefore, $bufferAfter)
+                ? $provider
+                : null;
+        }
+
+        foreach ($this->providerRepository->getActiveForTenant($tenantId) as $candidate) {
+            $candidateId = (string) ($candidate['id'] ?? '');
+            if ($candidateId === '') {
+                continue;
+            }
+
+            $provider = $this->providerRepository->findById($candidateId);
+            if (! $provider || (string) $provider->tenant_id !== $tenantId) {
+                continue;
+            }
+
+            if ($this->providerRepository->isAvailableAt($provider->id, $scheduledAt, $endAt, $bufferBefore, $bufferAfter)) {
+                return $provider;
+            }
+        }
+
+        return null;
     }
 }

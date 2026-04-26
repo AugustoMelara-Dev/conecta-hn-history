@@ -213,6 +213,18 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Directory\EloquentDirectoryGuideReader::class
         );
         $this->app->bind(
+            \App\Application\BusinessAi\Contracts\BusinessAiAuthorizerInterface::class,
+            \App\Infrastructure\BusinessAi\TenantBusinessAiAuthorizer::class
+        );
+        $this->app->bind(
+            \App\Application\BusinessAi\Contracts\BusinessKnowledgeIndexerInterface::class,
+            \App\Infrastructure\BusinessAi\EloquentBusinessKnowledgeIndexer::class
+        );
+        $this->app->bind(
+            \App\Application\BusinessAi\Contracts\BusinessRagServiceInterface::class,
+            \App\Infrastructure\BusinessAi\TenantPrivateRagService::class
+        );
+        $this->app->bind(
             \App\Domain\Catalog\Contracts\ProductCatalogReader::class,
             \App\Infrastructure\Catalog\CachedProductReader::class
         );

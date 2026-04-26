@@ -12,6 +12,7 @@ import {
     User2,
     X,
 } from 'lucide-react';
+import SupportDiagnosticCard from '@/Components/SupportDiagnosticCard';
 import { PUBLIC_BODY_FONT, PUBLIC_DISPLAY_FONT, PUBLIC_LABEL_FONT } from '@/lib/publicTypography';
 
 function Toast({ message, type = 'success', onClose }) {
@@ -513,6 +514,11 @@ export default function PublicLayout({ children, hideFooter = false }) {
 
             {toast ? (
                 <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+            ) : null}
+            {flash?.diagnostic ? (
+                <div className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-3xl md:bottom-6">
+                    <SupportDiagnosticCard diagnostic={flash.diagnostic} />
+                </div>
             ) : null}
         </div>
     );

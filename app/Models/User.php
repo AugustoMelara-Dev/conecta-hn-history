@@ -264,7 +264,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
             ->wherePivotNotNull('accepted_at')
             ->get();
 
-        if ($tenant = $this->tenant) {
+        if (($tenant = $this->tenant) instanceof Tenant && (string) $tenant->user_id === (string) $this->id) {
             $tenants->prepend($tenant);
         }
 
@@ -273,11 +273,9 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
 
     public function canAccessPanel(Panel $panel): bool
     {
-        $tenantId = $this->resolveTenantId();
-
         return match ($panel->getId()) {
             self::PANEL_ADMIN => $this->isSuperAdmin(),
-            self::PANEL_APP => $tenantId !== null
+            self::PANEL_APP => $this->tenants()->exists()
                 || $this->tenantMemberships()->whereNotNull('accepted_at')->exists()
                 || $this->isSuperAdmin(),
             default => false,
@@ -286,8 +284,6 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
 
     public function canAccessTenant(Model $tenant): bool
     {
-        $tenantId = $this->resolveTenantId();
-
         if (! $tenant instanceof Tenant) {
             return false;
         }
@@ -296,7 +292,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
             return true;
         }
 
-        if ($tenantId !== null && (string) $tenantId === (string) $tenant->id) {
+        if ((string) $tenant->user_id === (string) $this->id) {
             return true;
         }
 

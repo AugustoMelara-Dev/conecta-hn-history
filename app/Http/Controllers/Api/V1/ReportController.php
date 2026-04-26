@@ -8,7 +8,6 @@ use App\Application\Reporting\Commands\QueuePdfReportCommand;
 use App\Application\Reporting\Commands\QueueSalesExportCommand;
 use App\Application\Reporting\Handlers\QueuePdfReportHandler;
 use App\Application\Reporting\Handlers\QueueSalesExportHandler;
-use App\Domain\Shared\Contracts\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Reports\InventoryReportRequest;
 use App\Http\Requests\Api\V1\Reports\KitchenReportRequest;
@@ -18,10 +17,6 @@ use Illuminate\Http\JsonResponse;
 
 final class ReportController extends Controller
 {
-    public function __construct(
-        private readonly TenantContext $tenantContext
-    ) {}
-
     public function salesExcel(
         SalesReportRequest $request,
         QueueSalesExportHandler $handler
@@ -31,7 +26,7 @@ final class ReportController extends Controller
 
         $handler->handle(new QueueSalesExportCommand(
             requestorId: $user->getAuthIdentifier(),
-            tenantId: $this->tenantContext->getTenantUuid(),
+            tenantId: (string) $request->tenantForRequest()->getKey(),
             criteriaData: [
                 'start_date' => $request->getStartDate(),
                 'end_date' => $request->getEndDate(),
@@ -56,7 +51,7 @@ final class ReportController extends Controller
         $user = $request->user();
 
         $handler->handle(new QueuePdfReportCommand(
-            tenantId: $this->tenantContext->getTenantUuid(),
+            tenantId: (string) $request->tenantForRequest()->getKey(),
             requestorId: $user->getAuthIdentifier(),
             reportType: 'sales',
             startDate: $request->getStartDate(),
@@ -79,7 +74,7 @@ final class ReportController extends Controller
         $user = $request->user();
 
         $handler->handle(new QueuePdfReportCommand(
-            tenantId: $this->tenantContext->getTenantUuid(),
+            tenantId: (string) $request->tenantForRequest()->getKey(),
             requestorId: $user->getAuthIdentifier(),
             reportType: 'inventory',
         ));
@@ -100,7 +95,7 @@ final class ReportController extends Controller
         $user = $request->user();
 
         $handler->handle(new QueuePdfReportCommand(
-            tenantId: $this->tenantContext->getTenantUuid(),
+            tenantId: (string) $request->tenantForRequest()->getKey(),
             requestorId: $user->getAuthIdentifier(),
             reportType: 'kitchen',
         ));

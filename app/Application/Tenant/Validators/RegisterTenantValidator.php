@@ -22,6 +22,7 @@ final readonly class RegisterTenantValidator
             'cityId' => ['required', 'integer', 'exists:cities,id'],
             'categoryId' => ['required', 'integer', 'exists:categories,id'],
             'businessType' => ['required', 'in:retail,food,service,hybrid'],
+            'rubroKey' => ['nullable', 'string', 'max:120'],
             'whatsapp' => ['nullable', 'string', 'max:20'],
             'selectedPlan' => ['nullable', 'in:free,pro'],
             'logoPath' => ['nullable', 'string', 'max:2048'],

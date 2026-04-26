@@ -1,8 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import SupportDiagnosticCard from '@/Components/SupportDiagnosticCard';
 import { CalendarClock, CheckCircle2, Clock3, Sparkles } from 'lucide-react';
 
-export default function BookingSuccess({ tenant, appointment }) {
+export default function BookingSuccess({ tenant, appointment, diagnostic = null }) {
     const micrositeHref = route('tenant.microsite.show', { tenant: tenant.slug });
     const bookingHref = route('public.booking.index', { tenant: tenant.slug });
 
@@ -75,6 +76,8 @@ export default function BookingSuccess({ tenant, appointment }) {
                                     Esta confirmacion forma parte de una experiencia premium para negocios que quieren verse serios desde el primer contacto.
                                 </div>
                             </div>
+
+                            <SupportDiagnosticCard diagnostic={diagnostic} />
 
                             <div className="flex flex-col gap-3 sm:flex-row">
                                 <Link

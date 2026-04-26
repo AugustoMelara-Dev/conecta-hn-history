@@ -4,17 +4,20 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\StoreWaitlistRequest;
 use App\Models\Waitlist;
+use App\Support\Diagnostics\SupportDiagnosticFactory;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 
 final class WaitlistController extends Controller
 {
     public function __construct(
-        private readonly TenantRepositoryInterface $tenantRepository
+        private readonly TenantRepositoryInterface $tenantRepository,
+        private readonly SupportDiagnosticFactory $diagnostics
     ) {}
 
     public function store(StoreWaitlistRequest $request, string $tenantSlug): RedirectResponse
@@ -24,6 +27,8 @@ final class WaitlistController extends Controller
         if (! $tenant) {
             abort(404, 'Tenant not found.');
         }
+
+        app(TenantContext::class)->setTenant((string) $tenant->id());
 
         $validated = $request->validated();
         $date = Carbon::parse($validated['date'])->toDateString();
@@ -48,6 +53,16 @@ final class WaitlistController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Te hemos añadido a la lista de espera. Te notificaremos si se libera un espacio.');
+        return back()
+            ->with('success', $exists
+                ? 'Ya estabas en la lista de espera para esa fecha. Te avisaremos si se libera un espacio.'
+                : 'Te hemos anadido a la lista de espera. Te notificaremos si se libera un espacio.')
+            ->with('diagnostic', $this->diagnostics->make(
+                'waitlist',
+                $exists ? 'Registro existente' : 'Lista de espera activa',
+                $exists ? 'Ya existia una solicitud activa con ese correo, servicio y fecha.' : 'La solicitud quedo registrada para seguimiento del negocio.',
+                'Si necesitas soporte, comparte la referencia visible y el negocio.'
+            ));
     }
 }
+

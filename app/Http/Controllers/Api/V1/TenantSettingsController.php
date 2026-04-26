@@ -10,8 +10,7 @@ use App\Domain\Shared\DTOs\FileTransferObject;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateTenantSettingsRequest;
 use App\Http\Resources\TenantSettingsResource;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Support\Tenancy\RequestTenantResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use OpenApi\Attributes as OA;
@@ -31,13 +30,7 @@ final class TenantSettingsController extends Controller
         UpdateTenantSettingsRequest $request,
         UpdateTenantBrandingHandler $handler
     ): TenantSettingsResource {
-        $user = $request->user();
-
-        if (! $user instanceof User || ! $user->tenant instanceof Tenant) {
-            abort(403, 'No tenant associated with user.');
-        }
-
-        $tenant = $user->tenant;
+        $tenant = $request->tenantForRequest();
         $validated = $request->validated();
 
         if ($request->boolean('remove_logo') && is_string($tenant->logo_path) && $tenant->logo_path !== '') {
@@ -79,12 +72,6 @@ final class TenantSettingsController extends Controller
     )]
     public function show(Request $request): TenantSettingsResource
     {
-        $user = $request->user();
-
-        if (! $user instanceof User || ! $user->tenant instanceof Tenant) {
-            abort(403, 'No tenant associated with user.');
-        }
-
-        return new TenantSettingsResource($user->tenant);
+        return new TenantSettingsResource(app(RequestTenantResolver::class)->resolve($request));
     }
 }

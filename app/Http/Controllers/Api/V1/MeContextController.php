@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\User;
@@ -18,6 +19,7 @@ final class MeContextController extends Controller
 {
     public function __construct(
         private readonly CapabilityManagerInterface $capabilityManager,
+        private readonly RubroManifestReaderInterface $rubroManifest,
         private readonly SurfaceSplitBootstrapAdapter $bootstrapAdapter
     ) {}
 
@@ -49,7 +51,7 @@ final class MeContextController extends Controller
                 'allowed_surfaces' => [$context['home_surface']],
                 'active_tenant' => $this->serializeTenant($activeTenant),
                 'memberships' => $this->serializeMemberships($user),
-                'feature_capability_map' => $this->featureCapabilityMap(),
+                'feature_capability_map' => $this->rubroManifest->featureCapabilityMap(),
                 'surface_bootstrap' => $this->bootstrapAdapter->forUser($user, $request),
             ],
             'meta' => [
@@ -147,32 +149,4 @@ final class MeContextController extends Controller
             ->all();
     }
 
-    /**
-     * @return array<string, array{capabilities: list<string>}>
-     */
-    private function featureCapabilityMap(): array
-    {
-        $always = array_values((array) config('capabilities.always', []));
-        $businessTypeMap = (array) config('capabilities.business_types', []);
-        $result = [];
-
-        foreach ($businessTypeMap as $businessType => $capabilities) {
-            if (! is_string($businessType)) {
-                continue;
-            }
-
-            $merged = array_values(array_unique(array_merge(
-                $always,
-                array_values((array) $capabilities)
-            )));
-
-            sort($merged);
-
-            $result[$businessType] = [
-                'capabilities' => $merged,
-            ];
-        }
-
-        return $result;
-    }
 }

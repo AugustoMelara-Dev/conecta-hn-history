@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Auth;
 
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules;
 
@@ -35,6 +36,11 @@ final class RegisterTenantRequest extends FormRequest
     {
         $businessName = $this->input('business_name', $this->input('name'));
         $ownerName = $this->input('owner_name', $this->input('name'));
+        $rubroKey = (string) $this->input('rubro_key', '');
+        $manifest = $rubroKey !== '' ? app(RubroManifestReaderInterface::class)->get($rubroKey) : [];
+        $businessType = is_array($manifest) && $manifest !== []
+            ? data_get($manifest, 'business_type')
+            : $this->input('business_type', app(RubroManifestReaderInterface::class)->defaultBusinessType());
 
         $this->merge([
             'business_name' => $businessName,
@@ -44,7 +50,7 @@ final class RegisterTenantRequest extends FormRequest
                 : \Illuminate\Support\Str::slug((string) $businessName),
             'whatsapp' => $this->input('whatsapp', $this->input('whatsapp_number')),
             'selected_plan' => $this->input('selected_plan', $this->input('plan', 'free')),
-            'business_type' => $this->input('business_type', config('business-types.default', 'retail')),
+            'business_type' => $businessType,
             'privacy_accepted' => $this->input('privacy_accepted', $this->input('terms_accepted')),
             'terms_version' => $this->input('terms_version', config('legal.current_versions.terms')),
             'privacy_version' => $this->input('privacy_version', config('legal.current_versions.privacy')),
@@ -72,7 +78,8 @@ final class RegisterTenantRequest extends FormRequest
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'city_id' => ['required', 'integer', 'exists:cities,id'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
-            'business_type' => ['required', 'in:retail,food,service,hybrid'],
+            'business_type' => ['required', 'in:'.implode(',', app(RubroManifestReaderInterface::class)->allowedBusinessTypes())],
+            'rubro_key' => ['nullable', 'string', 'max:120', 'in:'.implode(',', array_keys((array) config('rubro-manifest.rubros', [])))],
             'whatsapp' => ['nullable', 'string', 'max:20'],
             'description' => ['nullable', 'string', 'max:1000'],
             'phone' => ['nullable', 'string', 'max:20'],

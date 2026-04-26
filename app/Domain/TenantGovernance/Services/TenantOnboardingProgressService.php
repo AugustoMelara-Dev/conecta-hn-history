@@ -17,20 +17,12 @@ final class TenantOnboardingProgressService
     /**
      * @return array{
      *   role: string,
+     *   businessType: string,
+     *   businessLabel: string,
      *   progress: int,
-     *   milestones: list<array{
-     *     key: string,
-     *     title: string,
-     *     copy: string,
-     *     href: string,
-     *     completed: bool
-     *   }>,
-     *   nextAction: array{
-     *     key: string,
-     *     title: string,
-     *     copy: string,
-     *     href: string
-     *   },
+     *   milestones: list<array{key:string,title:string,copy:string,href:string,completed:bool}>,
+     *   nextAction: array{key:string,title:string,copy:string,href:string},
+     *   supportTips: list<array{title:string,copy:string}>,
      *   lastCompletedAt: ?Carbon
      * }
      */
@@ -38,51 +30,32 @@ final class TenantOnboardingProgressService
     {
         $role = $this->normalizeRole($user);
         $tenantSlug = (string) ($tenant->slug ?? '');
+        $businessType = $this->businessType($tenant);
 
         $hasCatalog = $tenant->products()->exists() || $tenant->services()->exists();
         $hasSchedule = $tenant->openingHours()->exists() || filled($tenant->simple_schedule ?? null);
         $hasContactChannel = filled($tenant->whatsapp_number ?? null) || filled($tenant->phone ?? null);
         $hasProfileEssentials = filled($tenant->description ?? null) && filled($tenant->address ?? null);
         $hasMicrositeReady = $tenantSlug !== '' && (bool) ($tenant->is_active ?? false);
+        $hasOperations = $this->tenantHasOrdersOrAppointments($tenant);
 
         $milestones = match ($role) {
-            UserRole::STAFF->value => [
-                $this->milestone('staff_profile', 'Perfil operativo', $hasProfileEssentials, 'Completa el perfil del negocio para operar sin dudas.', $this->settingsHref($tenantSlug)),
-                $this->milestone('staff_queue', 'Primera cola operativa', $this->tenantHasOrdersOrAppointments($tenant), 'Valida pedidos o citas para dominar el flujo diario.', $this->operationsHref($tenantSlug)),
-                $this->milestone('staff_schedule', 'Agenda activa', $hasSchedule, 'Configura horarios reales para evitar fricciÃƒÆ’Ã‚Â³n con clientes.', $this->appointmentsHref($tenantSlug)),
-                $this->milestone('staff_contact', 'Canal de contacto', $hasContactChannel, 'Activa WhatsApp/telÃƒÆ’Ã‚Â©fono para seguimiento rÃƒÆ’Ã‚Â¡pido.', $this->settingsHref($tenantSlug)),
-                $this->milestone('staff_publish', 'Micrositio listo', $hasMicrositeReady, 'Comprueba que el micrositio estÃƒÆ’Ã‚Â© publicado y confiable.', $this->micrositeHref($tenantSlug)),
-            ],
-            UserRole::CUSTOMER->value => [
-                $this->milestone('customer_account', 'Cuenta creada', true, 'Tu cuenta ya estÃƒÆ’Ã‚Â¡ lista para seguir y reservar.', route('mi-cuenta.edit')),
-                $this->milestone('customer_follow', 'Primer negocio seguido', $tenant->followers()->exists(), 'Sigue tus negocios favoritos para recibir novedades.', $this->micrositeHref($tenantSlug)),
-                $this->milestone('customer_booking', 'Primera reserva/pedido', $this->tenantHasOrdersOrAppointments($tenant), 'Completa una acciÃƒÆ’Ã‚Â³n para personalizar tu experiencia.', $this->micrositeHref($tenantSlug)),
-                $this->milestone('customer_contact', 'Canal confirmado', $hasContactChannel, 'Confirma un canal para recordatorios y estado de pedidos.', route('mi-cuenta.edit')),
-                $this->milestone('customer_trust', 'Experiencia completa', $hasProfileEssentials, 'Usa perfiles completos para decidir con confianza.', $this->micrositeHref($tenantSlug)),
-            ],
-            default => [
-                $this->milestone('owner_profile', 'Perfil completo', $hasProfileEssentials, 'Completa descripciÃƒÆ’Ã‚Â³n y direcciÃƒÆ’Ã‚Â³n para transmitir confianza.', $this->settingsHref($tenantSlug)),
-                $this->milestone('owner_catalog', 'Primer producto/servicio', $hasCatalog, 'Publica tu primera oferta para no abrir en vacÃƒÆ’Ã‚Â­o.', $this->catalogHref($tenantSlug)),
-                $this->milestone('owner_schedule', 'Primer horario', $hasSchedule, 'Define disponibilidad real para evitar fricciÃƒÆ’Ã‚Â³n comercial.', $this->settingsHref($tenantSlug)),
-                $this->milestone('owner_contact', 'Canal principal activo', $hasContactChannel, 'Activa WhatsApp/telÃƒÆ’Ã‚Â©fono para conversiones rÃƒÆ’Ã‚Â¡pidas.', $this->settingsHref($tenantSlug)),
-                $this->milestone('owner_publish', 'Micrositio publicado', $hasMicrositeReady, 'Verifica que tu pÃƒÆ’Ã‚Â¡gina pÃƒÆ’Ã‚Âºblica estÃƒÆ’Ã‚Â© lista para vender.', $this->micrositeHref($tenantSlug)),
-            ],
+            UserRole::STAFF->value => $this->staffMilestones($tenantSlug, $hasProfileEssentials, $hasSchedule, $hasContactChannel, $hasMicrositeReady, $hasOperations),
+            UserRole::CUSTOMER->value => $this->customerMilestones($tenantSlug, $tenant, $hasProfileEssentials, $hasContactChannel, $hasOperations),
+            default => $this->ownerMilestones($tenantSlug, $businessType, $hasProfileEssentials, $hasCatalog, $hasSchedule, $hasContactChannel, $hasMicrositeReady),
         };
 
         $completedCount = collect($milestones)->where('completed', true)->count();
         $progress = (int) round(($completedCount / max(1, count($milestones))) * 100);
         /** @var array{key:string,title:string,copy:string,href:string,completed:bool} $defaultNextAction */
         $defaultNextAction = collect($milestones)->firstWhere('completed', false) ?? $milestones[count($milestones) - 1];
-        $nextAction = $this->resolveContextualNextAction(
-            $moduleContext,
-            $role,
-            $milestones,
-            $defaultNextAction,
-        );
+        $nextAction = $this->resolveContextualNextAction($moduleContext, $role, $milestones, $defaultNextAction);
         $lastCompletedAt = $completedCount > 0 ? now() : null;
 
         return [
             'role' => $role,
+            'businessType' => $businessType,
+            'businessLabel' => $this->businessLabel($businessType),
             'progress' => $progress,
             'milestones' => $milestones,
             'nextAction' => [
@@ -91,13 +64,12 @@ final class TenantOnboardingProgressService
                 'copy' => (string) $nextAction['copy'],
                 'href' => (string) $nextAction['href'],
             ],
+            'supportTips' => $this->supportTips($businessType, $progress),
             'lastCompletedAt' => $lastCompletedAt,
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function persist(Tenant $tenant, ?User $user = null, ?string $moduleContext = null): array
     {
         $snapshot = $this->buildForTenant($tenant, $user, $moduleContext);
@@ -123,34 +95,70 @@ final class TenantOnboardingProgressService
     }
 
     /**
-     * @param  list<array{
-     *    key: string,
-     *    title: string,
-     *    copy: string,
-     *    href: string,
-     *    completed: bool
-     *  }>  $milestones
-     * @param  array{
-     *    key: string,
-     *    title: string,
-     *    copy: string,
-     *    href: string,
-     *    completed: bool
-     *  }  $defaultNextAction
-     * @return array{
-     *   key: string,
-     *   title: string,
-     *   copy: string,
-     *   href: string,
-     *   completed: bool
-     * }
+     * @return list<array{key:string,title:string,copy:string,href:string,completed:bool}>
      */
-    private function resolveContextualNextAction(
-        ?string $moduleContext,
-        string $role,
-        array $milestones,
-        array $defaultNextAction,
-    ): array {
+    private function ownerMilestones(string $tenantSlug, string $businessType, bool $hasProfile, bool $hasCatalog, bool $hasSchedule, bool $hasContact, bool $isPublished): array
+    {
+        $catalogTitle = match ($businessType) {
+            'food' => 'Primer plato o combo',
+            'service' => 'Primer servicio reservable',
+            'hybrid' => 'Primera oferta vendible',
+            default => 'Primer producto publicado',
+        };
+
+        $catalogCopy = match ($businessType) {
+            'food' => 'Carga al menos un plato con precio para que el cliente pueda decidir rapido.',
+            'service' => 'Define un servicio con duracion, precio y disponibilidad para recibir solicitudes claras.',
+            'hybrid' => 'Publica un producto o servicio base antes de invitar clientes al perfil.',
+            default => 'Publica tu primera oferta para que el directorio no mande clientes a una vitrina vacia.',
+        };
+
+        $scheduleCopy = match ($businessType) {
+            'food' => 'Configura horarios reales de atencion, cocina o delivery para evitar reclamos.',
+            'service' => 'Configura disponibilidad para que las reservas no choquen con tu operacion.',
+            default => 'Define disponibilidad real para evitar friccion comercial.',
+        };
+
+        return [
+            $this->milestone('owner_profile', 'Perfil confiable', $hasProfile, 'Agrega descripcion, direccion y datos base para que el cliente entienda que vendes y donde atiendes.', $this->settingsHref($tenantSlug)),
+            $this->milestone('owner_catalog', $catalogTitle, $hasCatalog, $catalogCopy, $this->catalogHref($tenantSlug, $businessType)),
+            $this->milestone('owner_schedule', 'Horario o disponibilidad', $hasSchedule, $scheduleCopy, $this->settingsHref($tenantSlug)),
+            $this->milestone('owner_contact', 'Canal principal activo', $hasContact, 'Activa WhatsApp o telefono para que el cliente sepa como contactarte sin escribir a soporte.', $this->settingsHref($tenantSlug)),
+            $this->milestone('owner_publish', 'Micrositio publicado', $isPublished, 'Abre tu pagina publica y revisa que nombre, contacto y oferta se vean correctos.', $this->micrositeHref($tenantSlug)),
+        ];
+    }
+
+    /** @return list<array{key:string,title:string,copy:string,href:string,completed:bool}> */
+    private function staffMilestones(string $tenantSlug, bool $hasProfile, bool $hasSchedule, bool $hasContact, bool $isPublished, bool $hasOperations): array
+    {
+        return [
+            $this->milestone('staff_profile', 'Entender el negocio', $hasProfile, 'Revisa el perfil para responder igual que el dueno y evitar mensajes contradictorios.', $this->settingsHref($tenantSlug)),
+            $this->milestone('staff_queue', 'Primera cola operativa', $hasOperations, 'Valida pedidos, citas o tareas abiertas para dominar el flujo diario.', $this->operationsHref($tenantSlug)),
+            $this->milestone('staff_schedule', 'Agenda activa', $hasSchedule, 'Confirma horarios reales antes de prometer tiempos al cliente.', $this->appointmentsHref($tenantSlug)),
+            $this->milestone('staff_contact', 'Canal de contacto', $hasContact, 'Verifica WhatsApp o telefono para seguimiento rapido.', $this->settingsHref($tenantSlug)),
+            $this->milestone('staff_publish', 'Micrositio listo', $isPublished, 'Comprueba que la pagina publica este lista para compartirse.', $this->micrositeHref($tenantSlug)),
+        ];
+    }
+
+    /** @return list<array{key:string,title:string,copy:string,href:string,completed:bool}> */
+    private function customerMilestones(string $tenantSlug, Tenant $tenant, bool $hasProfile, bool $hasContact, bool $hasOperations): array
+    {
+        return [
+            $this->milestone('customer_account', 'Cuenta creada', true, 'Tu cuenta ya esta lista para seguir, reservar y comprar en negocios locales.', route('mi-cuenta.edit')),
+            $this->milestone('customer_follow', 'Primer negocio seguido', $tenant->followers()->exists(), 'Sigue tus negocios favoritos para recibir novedades y encontrarlos rapido.', $this->micrositeHref($tenantSlug)),
+            $this->milestone('customer_booking', 'Primera reserva o pedido', $hasOperations, 'Completa una accion para que la plataforma aprenda tus preferencias.', $this->micrositeHref($tenantSlug)),
+            $this->milestone('customer_contact', 'Canal confirmado', $hasContact, 'Confirma un canal para recordatorios y estado de pedidos.', route('mi-cuenta.edit')),
+            $this->milestone('customer_trust', 'Experiencia completa', $hasProfile, 'Usa perfiles completos para decidir con confianza.', $this->micrositeHref($tenantSlug)),
+        ];
+    }
+
+    /**
+     * @param list<array{key:string,title:string,copy:string,href:string,completed:bool}> $milestones
+     * @param array{key:string,title:string,copy:string,href:string,completed:bool} $defaultNextAction
+     * @return array{key:string,title:string,copy:string,href:string,completed:bool}
+     */
+    private function resolveContextualNextAction(?string $moduleContext, string $role, array $milestones, array $defaultNextAction): array
+    {
         $module = $this->normalizeModuleContext($moduleContext);
         if ($module === null) {
             return $defaultNextAction;
@@ -163,11 +171,7 @@ final class TenantOnboardingProgressService
 
         /** @var array{key:string,title:string,copy:string,href:string,completed:bool}|null $match */
         $match = collect($milestones)->firstWhere('key', $preferredKey);
-        if (! is_array($match)) {
-            return $defaultNextAction;
-        }
-
-        if ($match['completed'] === true) {
+        if (! is_array($match) || $match['completed'] === true) {
             return $defaultNextAction;
         }
 
@@ -188,29 +192,22 @@ final class TenantOnboardingProgressService
     {
         return match ($role) {
             UserRole::STAFF->value => match ($moduleContext) {
-                'catalog' => 'staff_profile',
                 'agenda' => 'staff_schedule',
                 'orders' => 'staff_queue',
                 'marketing' => 'staff_contact',
-                'team' => 'staff_profile',
-                'settings' => 'staff_profile',
-                default => null,
+                default => 'staff_profile',
             },
             UserRole::CUSTOMER->value => match ($moduleContext) {
-                'catalog' => 'customer_follow',
                 'agenda', 'orders' => 'customer_booking',
-                'marketing' => 'customer_follow',
-                'team' => 'customer_account',
                 'settings' => 'customer_contact',
-                default => null,
+                default => 'customer_follow',
             },
             default => match ($moduleContext) {
                 'catalog' => 'owner_catalog',
                 'agenda' => 'owner_schedule',
                 'orders' => 'owner_publish',
                 'marketing' => 'owner_contact',
-                'team', 'settings' => 'owner_profile',
-                default => null,
+                default => 'owner_profile',
             },
         };
     }
@@ -222,6 +219,8 @@ final class TenantOnboardingProgressService
 
         if ($role instanceof BackedEnum) {
             $raw = (string) $role->value;
+        } elseif (is_string($role)) {
+            $raw = $role;
         }
 
         return match ($raw) {
@@ -232,42 +231,71 @@ final class TenantOnboardingProgressService
         };
     }
 
-    /**
-     * @return array{key: string, title: string, copy: string, href: string, completed: bool}
-     */
+    private function businessType(Tenant $tenant): string
+    {
+        $raw = $tenant->business_type;
+        if ($raw instanceof BackedEnum) {
+            return (string) $raw->value;
+        }
+
+        return in_array($raw, ['retail', 'food', 'service', 'hybrid'], true) ? (string) $raw : 'retail';
+    }
+
+    private function businessLabel(string $businessType): string
+    {
+        return match ($businessType) {
+            'food' => 'Restaurante y comida',
+            'service' => 'Servicios y citas',
+            'hybrid' => 'Negocio mixto',
+            default => 'Tienda y catalogo',
+        };
+    }
+
+    /** @return list<array{title:string,copy:string}> */
+    private function supportTips(string $businessType, int $progress): array
+    {
+        $primary = $progress >= 100
+            ? ['title' => 'Listo para compartir', 'copy' => 'Tu base esta completa. Ahora comparte el micrositio y empieza a medir contactos, pedidos o reservas.']
+            : ['title' => 'Siguiente paso claro', 'copy' => 'Completa el boton principal antes de pedir soporte: el panel actualiza este checklist automaticamente.'];
+
+        $specific = match ($businessType) {
+            'food' => ['title' => 'Para comida', 'copy' => 'Prioriza menu, horarios y WhatsApp. Es lo que mas evita reclamos de clientes hambrientos.'],
+            'service' => ['title' => 'Para servicios', 'copy' => 'Prioriza servicios, disponibilidad y confianza del perfil antes de abrir agenda.'],
+            'hybrid' => ['title' => 'Para negocio mixto', 'copy' => 'Empieza con una oferta principal y luego activa productos, servicios o agenda segun demanda.'],
+            default => ['title' => 'Para tienda', 'copy' => 'Prioriza catalogo, precios y contacto. Sin oferta visible el directorio no convierte.'],
+        };
+
+        return [$primary, $specific];
+    }
+
+    /** @return array{key:string,title:string,copy:string,href:string,completed:bool} */
     private function milestone(string $key, string $title, bool $completed, string $copy, string $href): array
     {
-        return [
-            'key' => $key,
-            'title' => $title,
-            'copy' => $copy,
-            'href' => $href,
-            'completed' => $completed,
-        ];
+        return compact('key', 'title', 'copy', 'href', 'completed');
     }
 
     private function micrositeHref(string $tenantSlug): string
     {
-        return $tenantSlug !== ''
-            ? $this->safeRoute('tenant.microsite.show', ['tenant' => $tenantSlug])
-            : '#';
+        return $tenantSlug !== '' ? $this->safeRoute('tenant.microsite.show', ['tenant' => $tenantSlug]) : '#';
     }
 
     private function settingsHref(string $tenantSlug): string
     {
-        return $tenantSlug !== ''
-            ? $this->safeRoute('filament.app.pages.settings', ['tenant' => $tenantSlug])
-            : '#';
+        return $tenantSlug !== '' ? $this->safeRoute('filament.app.pages.settings', ['tenant' => $tenantSlug]) : '#';
     }
 
-    private function catalogHref(string $tenantSlug): string
+    private function catalogHref(string $tenantSlug, string $businessType = 'retail'): string
     {
         if ($tenantSlug === '') {
             return '#';
         }
 
+        $resource = $businessType === 'service'
+            ? 'filament.app.resources.services.index'
+            : 'filament.app.resources.products.index';
+
         try {
-            return $this->safeRoute('filament.app.resources.products.index', ['tenant' => $tenantSlug]);
+            return $this->safeRoute($resource, ['tenant' => $tenantSlug]);
         } catch (\Throwable) {
             return $this->safeRoute('filament.app.pages.dashboard', ['tenant' => $tenantSlug]);
         }
@@ -275,9 +303,7 @@ final class TenantOnboardingProgressService
 
     private function operationsHref(string $tenantSlug): string
     {
-        return $tenantSlug !== ''
-            ? $this->safeRoute('filament.app.resources.operational-playbook-tasks.index', ['tenant' => $tenantSlug])
-            : '#';
+        return $tenantSlug !== '' ? $this->safeRoute('filament.app.resources.operational-playbook-tasks.index', ['tenant' => $tenantSlug]) : '#';
     }
 
     private function appointmentsHref(string $tenantSlug): string
@@ -301,6 +327,7 @@ final class TenantOnboardingProgressService
             ->exists() || $tenant->appointments()->exists();
     }
 
+    /** @param array<string, mixed> $parameters */
     private function safeRoute(string $name, array $parameters = []): string
     {
         try {

@@ -19,11 +19,13 @@ use App\Support\Auth\AuthRedirector;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Laravel\Socialite\Contracts\Factory as SocialiteFactory;
 
 final class AuthController extends Controller
 {
     public function __construct(
         private readonly AuthTokenServiceInterface $tokenService,
+        private readonly SocialiteFactory $socialite,
     ) {}
 
     public function register(
@@ -62,13 +64,15 @@ final class AuthController extends Controller
             ]);
         }
 
+        $providerUser = $this->verifyProviderToken($providerName, (string) $validated['token']);
+
         $command = new LoginViaSocialProviderCommand(
             tenantId: $this->resolveTenantId(),
             providerName: $providerName,
-            providerId: $validated['provider_id'],
-            email: $validated['email'],
-            name: $validated['name'] ?? explode('@', $validated['email'])[0],
-            avatarUrl: $validated['avatar'] ?? null,
+            providerId: $providerUser['id'],
+            email: $providerUser['email'],
+            name: $providerUser['name'],
+            avatarUrl: $providerUser['avatar'],
             accessToken: $validated['token'],
             refreshToken: null,
             idempotencyKey: (string) $request->header('Idempotency-Key', Str::uuid()->toString()),
@@ -95,6 +99,61 @@ final class AuthController extends Controller
         ];
 
         return response()->json(new AuthResource($responsePayload));
+    }
+
+    /**
+     * @return array{id: string, email: string, name: string, avatar: ?string}
+     *
+     * @throws ValidationException
+     */
+    private function verifyProviderToken(ProviderName $providerName, string $token): array
+    {
+        try {
+            $provider = $this->socialite->driver($providerName->value);
+
+            if (method_exists($provider, 'stateless')) {
+                $provider = $provider->stateless();
+            }
+
+            if (! method_exists($provider, 'userFromToken')) {
+                throw ValidationException::withMessages([
+                    'provider' => 'El proveedor solicitado no soporta verificacion por token en servidor.',
+                ]);
+            }
+
+            $socialUser = $provider->userFromToken($token);
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (\Throwable) {
+            throw ValidationException::withMessages([
+                'provider_token' => 'No pudimos verificar el token con el proveedor OAuth.',
+            ]);
+        }
+
+        $providerId = (string) $socialUser->getId();
+        $email = (string) $socialUser->getEmail();
+
+        if ($providerId === '' || $email === '') {
+            throw ValidationException::withMessages([
+                'provider_token' => 'El proveedor OAuth no devolvio una identidad completa.',
+            ]);
+        }
+
+        $raw = is_array($socialUser->user ?? null) ? $socialUser->user : [];
+        $emailVerified = $raw['email_verified'] ?? $raw['verified_email'] ?? null;
+
+        if ($emailVerified !== null && filter_var($emailVerified, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) !== true) {
+            throw ValidationException::withMessages([
+                'provider_token' => 'El proveedor OAuth no confirmo el correo electronico.',
+            ]);
+        }
+
+        return [
+            'id' => $providerId,
+            'email' => $email,
+            'name' => (string) ($socialUser->getName() ?: explode('@', $email)[0]),
+            'avatar' => $socialUser->getAvatar(),
+        ];
     }
 
     /**

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
@@ -16,7 +17,6 @@ use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -28,6 +28,7 @@ final class RegistrationController extends Controller
         private readonly ReferenceDataReaderInterface $referenceDataReader,
         private readonly TenantRepositoryInterface $tenantRepository,
         private readonly StatefulGuard $guard,
+        private readonly RubroManifestReaderInterface $rubroManifest,
     ) {}
 
     public function create(Request $request): Response|RedirectResponse
@@ -113,6 +114,7 @@ final class RegistrationController extends Controller
             cityId: $cityId,
             categoryId: $categoryId,
             businessType: $request->validated('business_type', config('business-types.default', BusinessType::RETAIL->value)),
+            rubroKey: $request->validated('rubro_key'),
             whatsapp: $request->validated('whatsapp'),
             selectedPlan: $request->validated('selected_plan', 'free'),
             logoPath: $logoPath,
@@ -144,18 +146,7 @@ final class RegistrationController extends Controller
      */
     private function businessTypes(): array
     {
-        return collect(config('business-types.options', []))
-            ->map(
-                static fn (array $definition, string $value): array => [
-                    'value' => $value,
-                    'label' => (string) ($definition['label'] ?? Str::of($value)->replace('_', ' ')->title()),
-                    'description' => (string) ($definition['description'] ?? ''),
-                    'examples' => array_values((array) ($definition['examples'] ?? [])),
-                    'capabilities' => array_values((array) ($definition['capabilities'] ?? [])),
-                ]
-            )
-            ->values()
-            ->all();
+        return $this->rubroManifest->registrationOptions();
     }
 
     /**
@@ -163,16 +154,7 @@ final class RegistrationController extends Controller
      */
     private function businessTypeSuggestions(): array
     {
-        /** @var Collection<string, array<string, mixed>> $options */
-        $options = collect(config('business-types.options', []));
-
-        return $options
-            ->flatMap(function (array $definition, string $value): array {
-                return collect((array) ($definition['suggested_categories'] ?? []))
-                    ->mapWithKeys(static fn (string $slug): array => [$slug => $value])
-                    ->all();
-            })
-            ->all();
+        return $this->rubroManifest->categorySuggestions();
     }
 
     /**
@@ -190,26 +172,7 @@ final class RegistrationController extends Controller
      */
     private function segmentProfiles(): array
     {
-        return collect(config('business-segments.profiles', []))
-            ->map(
-                static fn (array $profile, string $key): array => [
-                    'key' => $key,
-                    'businessType' => (string) ($profile['business_type'] ?? ''),
-                    'label' => (string) ($profile['label'] ?? Str::of($key)->replace('_', ' ')->title()),
-                    'teaser' => (string) ($profile['teaser'] ?? ''),
-                    'onboardingTitle' => (string) ($profile['onboarding_title'] ?? 'Ruta sugerida para tu panel'),
-                    'onboardingCopy' => (string) ($profile['onboarding_copy'] ?? ''),
-                    'playbookTitle' => (string) ($profile['playbook_title'] ?? 'Playbook operativo'),
-                    'categories' => array_values((array) ($profile['categories'] ?? [])),
-                    'modules' => collect((array) ($profile['recommended_modules'] ?? []))
-                        ->pluck('title')
-                        ->filter(static fn (mixed $title): bool => is_string($title) && $title !== '')
-                        ->values()
-                        ->all(),
-                ]
-            )
-            ->values()
-            ->all();
+        return $this->rubroManifest->segmentProfiles();
     }
 
     private function resolveDirectoryHost(Request $request): string

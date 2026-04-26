@@ -277,6 +277,7 @@ final class DirectoryGuideController extends Controller
         $qdrantHints = [];
         $qdrantApplied = false;
         $degradedReason = null;
+        $queryRelaxed = false;
 
         if ($budgetAmount <= 0) {
             $fallback = $this->reader->searchPublishedTenants($query, $city, $category, $limit);
@@ -337,6 +338,22 @@ final class DirectoryGuideController extends Controller
                 limit: $limit,
                 hintProductIds: $qdrantHints,
             );
+
+            if ($recommendations === [] && ! $qdrantApplied && $query !== '') {
+                $recommendations = $this->reader->recommendByBudget(
+                    budget: $budgetAmount,
+                    citySlug: $city,
+                    categorySlug: $category,
+                    search: null,
+                    limit: $limit,
+                    hintProductIds: [],
+                );
+
+                if ($recommendations !== []) {
+                    $queryRelaxed = true;
+                    $degradedReason = 'directory_query_relaxed';
+                }
+            }
 
             if ($recommendations === []) {
                 $fallback = $this->reader->searchPublishedTenants($query, $city, $category, $limit);
@@ -453,6 +470,7 @@ final class DirectoryGuideController extends Controller
                     'reasoning_basis' => $reasoningBasis,
                     'qdrant_applied' => $qdrantApplied,
                     'qdrant_candidates' => count($qdrantHints),
+                    'query_relaxed' => $queryRelaxed,
                     'ranking_explanation' => $this->rankingExplanation($rankingMode, $reasoningBasis, $degradedReason),
                     'generated_at' => now()->toIso8601String(),
                     'chat_answer' => $this->chatAnswer($recommendations, $budgetAmount, $currency),
@@ -485,6 +503,7 @@ final class DirectoryGuideController extends Controller
         $payload['meta'] = array_merge($meta, $quotaStatus, [
             'request_id' => $requestId,
             'trace_id' => $traceId ?? $requestId,
+            'diagnostic' => $this->guideDiagnostic($meta, $candidateCount, $traceId ?? $requestId),
         ]);
 
         Log::info('guide.request.completed', [
@@ -531,6 +550,49 @@ final class DirectoryGuideController extends Controller
             ->json($payload)
             ->header('x-request-id', $requestId)
             ->header('x-trace-id', $traceId ?? $requestId);
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @return array{status:string,probable_cause:string,recommended_action:string,trace_id:string}
+     */
+    private function guideDiagnostic(array $meta, int $candidateCount, string $traceId): array
+    {
+        $degradedReason = (string) ($meta['degraded_reason'] ?? '');
+
+        if ($candidateCount <= 0) {
+            return [
+                'status' => 'Sin recomendaciones visibles',
+                'probable_cause' => $degradedReason !== '' ? $degradedReason : 'No hay negocios publicados que coincidan con presupuesto, ciudad y categoria.',
+                'recommended_action' => 'Prueba ampliar presupuesto, quitar filtros o explorar otra categoria.',
+                'trace_id' => $traceId,
+            ];
+        }
+
+        if ((bool) ($meta['degraded_to_search'] ?? false)) {
+            return [
+                'status' => 'Busqueda segura',
+                'probable_cause' => $degradedReason !== '' ? $degradedReason : 'La guia uso resultados publicados como fallback.',
+                'recommended_action' => 'Revisa las opciones y ajusta presupuesto/filtros si necesitas mas precision.',
+                'trace_id' => $traceId,
+            ];
+        }
+
+        if ($degradedReason !== '') {
+            return [
+                'status' => 'Respuesta degradada',
+                'probable_cause' => $degradedReason,
+                'recommended_action' => 'Puedes usar estos resultados; si se repite, comparte la referencia con soporte.',
+                'trace_id' => $traceId,
+            ];
+        }
+
+        return [
+            'status' => 'Recomendaciones listas',
+            'probable_cause' => 'La guia encontro negocios publicados dentro de tus filtros.',
+            'recommended_action' => 'Abre una recomendacion o ajusta el presupuesto para comparar alternativas.',
+            'trace_id' => $traceId,
+        ];
     }
 
     private function logGuideUsage(Request $request, string $rankingMode): void

@@ -106,7 +106,11 @@ final class AuthRedirector
     {
         $primaryTenant = $user->tenant;
 
-        if ($primaryTenant instanceof Tenant && filled($primaryTenant->slug)) {
+        if (
+            $primaryTenant instanceof Tenant
+            && (string) $primaryTenant->user_id === (string) $user->id
+            && filled($primaryTenant->slug)
+        ) {
             return (string) $primaryTenant->slug;
         }
 
@@ -252,7 +256,17 @@ final class AuthRedirector
             return false;
         }
 
+        if (self::isLocalHost($runtimeHost) || self::isLocalHost($baseHost)) {
+            return false;
+        }
+
         return ! hash_equals($runtimeHost, $baseHost);
+    }
+
+    private static function isLocalHost(string $host): bool
+    {
+        return in_array($host, ['localhost', '127.0.0.1', '::1'], true)
+            || str_ends_with($host, '.localhost');
     }
 
     private static function normalizeHost(string $value): ?string

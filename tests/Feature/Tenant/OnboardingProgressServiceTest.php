@@ -128,6 +128,27 @@ final class OnboardingProgressServiceTest extends TestCase
         self::assertSame('owner_catalog', (string) $snapshot['nextAction']['key']);
     }
 
+    public function test_service_business_owner_catalog_action_points_to_services(): void
+    {
+        $owner = User::factory()->create([
+            'role' => UserRole::TENANT_OWNER->value,
+        ]);
+
+        $tenant = Tenant::factory()->forUser($owner)->create([
+            'description' => 'Consultoria fiscal para pymes.',
+            'address' => 'Tegucigalpa',
+            'business_type' => 'service',
+        ]);
+
+        $this->actingAsTenant((string) $tenant->id);
+        $snapshot = app(TenantOnboardingProgressService::class)->buildForTenant($tenant, $owner, 'catalog');
+
+        self::assertSame('owner_catalog', (string) $snapshot['nextAction']['key']);
+        self::assertSame('Primer servicio reservable', (string) $snapshot['nextAction']['title']);
+        self::assertStringContainsString('/services', (string) $snapshot['nextAction']['href']);
+        self::assertSame('Servicios y citas', (string) $snapshot['businessLabel']);
+    }
+
     public function test_staff_context_prioritizes_agenda_next_action_when_incomplete(): void
     {
         $staff = User::factory()->create([

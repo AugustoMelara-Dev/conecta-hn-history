@@ -6,9 +6,10 @@ namespace Tests\Feature;
 
 use App\Domain\Shared\Services\TenantContext;
 use App\Models\Coupon;
+use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -25,7 +26,7 @@ use Tests\TestCase;
  */
 class CheckoutApiTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private Tenant $tenant;
 
@@ -438,17 +439,21 @@ class CheckoutApiTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_cart_summary_with_applied_coupon(): void
     {
+        $product = Product::factory()->forTenant($this->tenant)->create([
+            'price' => 50.00,
+        ]);
+
         $response = $this->postJson('/api/v1/checkout/cart-summary', [
             'tenant' => $this->tenant->id,
             'session_id' => 'test-session-001',
             'items' => [
                 [
-                    'product_id' => 1,
+                    'product_id' => $product->id,
                     'quantity' => 2,
-                    'price' => 50.00,
+                    'price' => 1.00,
                 ],
             ],
-            'subtotal' => 100.00,
+            'subtotal' => 2.00,
         ]);
 
         $response->assertStatus(200);
@@ -461,6 +466,28 @@ class CheckoutApiTest extends TestCase
         $json = $response->json();
         $this->assertTrue($json['success']);
         $this->assertEquals(100.00, $json['subtotal']);
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function it_rejects_cart_summary_items_from_other_tenants(): void
+    {
+        $otherTenant = Tenant::factory()->create();
+        $product = Product::factory()->forTenant($otherTenant)->create([
+            'price' => 50.00,
+        ]);
+
+        $this->postJson('/api/v1/checkout/cart-summary', [
+            'tenant' => $this->tenant->id,
+            'session_id' => 'test-session-tenant-leak',
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                    'price' => 0.01,
+                ],
+            ],
+            'subtotal' => 0.01,
+        ])->assertStatus(422);
     }
 
     /**

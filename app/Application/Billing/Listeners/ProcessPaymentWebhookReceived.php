@@ -145,8 +145,9 @@ final readonly class ProcessPaymentWebhookReceived
                 $query->where(function ($inner) use ($tenantId, $idempotencyKey): void {
                     $inner->where('tenant_id', $tenantId)
                         ->where('idempotency_key', $idempotencyKey);
-                })->orWhere(function ($inner) use ($bank, $referenceNumber): void {
-                    $inner->where('bank', $bank)
+                })->orWhere(function ($inner) use ($tenantId, $bank, $referenceNumber): void {
+                    $inner->where('tenant_id', $tenantId)
+                        ->where('bank', $bank)
                         ->where('reference_number', $referenceNumber);
                 });
             })

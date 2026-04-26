@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Webhook;
 use App\Domain\TenantGovernance\Services\CustomerTouchpointEventRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 final class ResendWebhookController
 {
@@ -34,9 +35,13 @@ final class ResendWebhookController
                 ->webhooks
                 ->verify($payload, $headers, $secret);
         } catch (\Throwable $exception) {
+            Log::warning('webhooks.resend.invalid_signature', [
+                'error' => $exception->getMessage(),
+                'request_id' => $request->headers->get('X-Request-Id'),
+            ]);
+
             return response()->json([
                 'message' => 'Invalid webhook signature.',
-                'error' => $exception->getMessage(),
             ], 401);
         }
 

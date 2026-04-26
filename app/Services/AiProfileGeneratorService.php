@@ -181,10 +181,10 @@ PROMPT;
      */
     private function getApiKey(): string
     {
-        $apiKey = config('services.openai.key');
+        $apiKey = config('services.openai.api_key') ?: config('services.openai.key');
 
         if (empty($apiKey)) {
-            throw new Exception('OpenAI API key is not configured. Set OPENAI_KEY in .env');
+            throw new Exception('OpenAI API key is not configured. Set OPENAI_API_KEY in .env');
         }
 
         return $apiKey;

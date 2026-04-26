@@ -5,8 +5,8 @@
                 <div class="biz-split">
                     <div>
                         <p class="biz-kicker">Activacion 7 dias</p>
-                        <h3 class="biz-heading">Checklist por rol ({{ $roleLabel }})</h3>
-                        <p class="biz-kicker">Contexto: {{ $moduleLabel ?? 'General' }}</p>
+                        <h3 class="biz-heading">Tu ruta de arranque en Vito Business OS</h3>
+                        <p class="biz-kicker">{{ $businessLabel ?? 'Negocio' }} · Rol: {{ $roleLabel }} · Contexto: {{ $moduleLabel ?? 'General' }}</p>
                         <p class="biz-copy">{{ $nextAction['copy'] ?? 'Avanza con el siguiente paso recomendado.' }}</p>
                     </div>
                     <x-filament::badge color="{{ $progress >= 80 ? 'success' : ($progress >= 50 ? 'warning' : 'danger') }}">
@@ -26,6 +26,20 @@
                         {{ $nextAction['title'] ?? 'Continuar activacion' }}
                     </a>
                 </div>
+
+                @if (! empty($supportTips))
+                    <div class="biz-list">
+                        @foreach ($supportTips as $tip)
+                            <div class="biz-checklist-item">
+                                <div class="biz-checklist-index is-pending">?</div>
+                                <div>
+                                    <p class="biz-checklist-title">{{ $tip['title'] ?? 'Guia rapida' }}</p>
+                                    <p class="biz-checklist-copy">{{ $tip['copy'] ?? '' }}</p>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
 
             <div class="biz-list">

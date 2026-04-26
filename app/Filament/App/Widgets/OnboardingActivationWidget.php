@@ -30,8 +30,10 @@ final class OnboardingActivationWidget extends Widget
      *   progress:int,
      *   roleLabel:string,
      *   moduleLabel:string,
+     *   businessLabel:string,
      *   milestones:list<array{key:string,title:string,copy:string,href:string,completed:bool}>,
-     *   nextAction:array{key:string,title:string,copy:string,href:string}
+     *   nextAction:array{key:string,title:string,copy:string,href:string},
+     *   supportTips:list<array{title:string,copy:string}>
      * }
      */
     protected function getViewData(): array
@@ -43,6 +45,7 @@ final class OnboardingActivationWidget extends Widget
                 'progress' => 0,
                 'roleLabel' => 'Sin rol',
                 'moduleLabel' => 'General',
+                'businessLabel' => 'Negocio',
                 'milestones' => [],
                 'nextAction' => [
                     'key' => 'none',
@@ -50,6 +53,7 @@ final class OnboardingActivationWidget extends Widget
                     'copy' => 'No se detecto un tenant activo.',
                     'href' => '#',
                 ],
+                'supportTips' => [],
             ];
         }
 
@@ -59,12 +63,14 @@ final class OnboardingActivationWidget extends Widget
         return [
             'progress' => (int) ($snapshot['progress'] ?? 0),
             'moduleLabel' => $this->moduleLabel($moduleContext),
+            'businessLabel' => (string) ($snapshot['businessLabel'] ?? 'Negocio'),
             'roleLabel' => match ($role) {
                 'staff' => 'Staff',
                 'customer' => 'Usuario final',
                 default => 'Dueno',
             },
             'milestones' => (array) ($snapshot['milestones'] ?? []),
+            'supportTips' => (array) ($snapshot['supportTips'] ?? []),
             'nextAction' => (array) ($snapshot['nextAction'] ?? [
                 'key' => 'none',
                 'title' => 'Sin acciones disponibles',

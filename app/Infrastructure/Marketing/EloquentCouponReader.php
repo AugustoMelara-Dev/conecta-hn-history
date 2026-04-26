@@ -14,7 +14,7 @@ use App\Models\Coupon;
  */
 final class EloquentCouponReader implements CouponReader
 {
-    public function getValidCoupons(int $tenantId): array
+    public function getValidCoupons(int|string $tenantId): array
     {
         return Coupon::where('tenant_id', $tenantId)
             ->where('is_active', true)
@@ -24,7 +24,7 @@ final class EloquentCouponReader implements CouponReader
             ->toArray();
     }
 
-    public function findByCode(int $tenantId, string $code): ?object
+    public function findByCode(int|string $tenantId, string $code): ?object
     {
         return Coupon::where('tenant_id', $tenantId)
             ->where('code', $code)

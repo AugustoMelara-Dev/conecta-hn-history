@@ -44,10 +44,6 @@ class SocialLoginTest extends TestCase
         $payload = [
             'provider' => 'google',
             'token' => 'ya29.valid-google-oauth-token-'.str_repeat('x', 100),
-            'provider_id' => '123456789012345678901',
-            'email' => 'valid.user@gmail.com',
-            'name' => 'Test User',
-            'avatar' => 'https://lh3.googleusercontent.com/a/photo.jpg',
         ];
 
         $request = new SocialLoginRequest;
@@ -58,8 +54,7 @@ class SocialLoginTest extends TestCase
         $validated = $validator->validated();
 
         $this->assertSame('google', $validated['provider']);
-        $this->assertSame($payload['email'], $validated['email']);
-        $this->assertSame($payload['provider_id'], $validated['provider_id']);
+        $this->assertSame($payload['token'], $validated['token']);
     }
 
     /**
@@ -80,9 +75,6 @@ class SocialLoginTest extends TestCase
         $payload = [
             'provider' => 'google',
             'token' => $maliciousToken,
-            'provider_id' => '123456789',
-            'email' => 'attacker@evil.com',
-            'name' => 'Attacker',
         ];
 
         $response = $this->postJson(self::SOCIAL_LOGIN_ENDPOINT, $payload);
@@ -93,7 +85,7 @@ class SocialLoginTest extends TestCase
 
         // Verify specific error mentions size limit (Spanish translation)
         $this->assertStringContainsStringIgnoringCase(
-            'límite',
+            'limite',
             $response->json('errors.token.0') ?? $response->json('message'),
             'Error message should mention size/character limit'
         );
@@ -115,9 +107,6 @@ class SocialLoginTest extends TestCase
         $payload = [
             'provider' => 'malicious_service',
             'token' => 'legitimate-looking-token',
-            'provider_id' => '123456789',
-            'email' => 'attacker@evil.com',
-            'name' => 'Attacker',
         ];
 
         $response = $this->postJson(self::SOCIAL_LOGIN_ENDPOINT, $payload);
@@ -137,7 +126,7 @@ class SocialLoginTest extends TestCase
         $response = $this->postJson(self::SOCIAL_LOGIN_ENDPOINT, []);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['provider', 'token', 'provider_id', 'email']);
+            ->assertJsonValidationErrors(['provider', 'token']);
     }
 
     /**
@@ -145,20 +134,21 @@ class SocialLoginTest extends TestCase
      * TEST 5: Validation - Invalid Email Format
      * ═══════════════════════════════════════════════════════════════════════════
      */
-    public function test_validation_rejects_invalid_email_format(): void
+    public function test_security_rejects_client_supplied_identity_claims(): void
     {
         $payload = [
             'provider' => 'google',
             'token' => 'valid-token-123',
             'provider_id' => '123456789',
-            'email' => 'not-an-email',
+            'email' => 'victim@example.com',
             'name' => 'Test User',
+            'avatar' => 'https://example.com/avatar.jpg',
         ];
 
         $response = $this->postJson(self::SOCIAL_LOGIN_ENDPOINT, $payload);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['email']);
+            ->assertJsonValidationErrors(['provider_id', 'email', 'name', 'avatar']);
     }
 
     /**
@@ -172,8 +162,6 @@ class SocialLoginTest extends TestCase
             'provider' => 'google',
             'token' => 'valid-token-123',
             'provider_id' => str_repeat('9', 300), // 300 chars > max:255
-            'email' => 'user@example.com',
-            'name' => 'Test User',
         ];
 
         $response = $this->postJson(self::SOCIAL_LOGIN_ENDPOINT, $payload);
@@ -195,10 +183,7 @@ class SocialLoginTest extends TestCase
             $payload = [
                 'provider' => $provider,
                 'token' => 'valid-token-'.$provider,
-                'provider_id' => '123456789',
-                'email' => "user.{$provider}@example.com",
-                'name' => 'Test User',
-            ];
+        ];
 
             $response = $this->postJson(self::SOCIAL_LOGIN_ENDPOINT, $payload);
 
@@ -225,9 +210,6 @@ class SocialLoginTest extends TestCase
         $payload = [
             'provider' => 'google',
             'token' => $maxToken,
-            'provider_id' => '123456789',
-            'email' => 'user@example.com',
-            'name' => 'Test User',
         ];
 
         $response = $this->postJson(self::SOCIAL_LOGIN_ENDPOINT, $payload);
@@ -254,9 +236,6 @@ class SocialLoginTest extends TestCase
         $payload = [
             'provider' => 'google',
             'token' => $oversizedToken,
-            'provider_id' => '123456789',
-            'email' => 'user@example.com',
-            'name' => 'Test User',
         ];
 
         $response = $this->postJson(self::SOCIAL_LOGIN_ENDPOINT, $payload);
@@ -275,9 +254,6 @@ class SocialLoginTest extends TestCase
         $payload = [
             'provider' => 'google',
             'token' => 'valid-token-123',
-            'provider_id' => '123456789',
-            'email' => 'user@example.com',
-            // name and avatar omitted
         ];
 
         $response = $this->postJson(self::SOCIAL_LOGIN_ENDPOINT, $payload);

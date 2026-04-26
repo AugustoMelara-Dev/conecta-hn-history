@@ -72,10 +72,10 @@ return [
     |--------------------------------------------------------------------------
     | Regex patterns for dynamic tenant subdomains in production.
     */
-    'allowed_origins_patterns' => [
-        // Allow all subdomains of the main application domain
-        '/^https?:\/\/.*\.'.preg_quote((string) (parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost'), '/').'$/',
-    ],
+    'allowed_origins_patterns' => array_filter(array_map(
+        static fn (string $pattern): string => trim($pattern),
+        explode(',', (string) env('CORS_ALLOWED_ORIGIN_PATTERNS', ''))
+    )),
 
     /*
     |--------------------------------------------------------------------------

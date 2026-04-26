@@ -201,9 +201,11 @@ final class OrderController extends Controller
     }
 
     /**
-     * Resolve authenticated customer or create a tenant-scoped guest user.
+     * Resolve authenticated customer or create an isolated guest identity.
      *
-     * This keeps public storefront checkout functional without requiring prior auth.
+     * Public checkout must not attach orders to an existing account only because
+     * someone typed that email. The order still stores the provided email, but
+     * the auth user link is created only after a real login/verification flow.
      *
      * @param  array<string, mixed>  $validated
      */
@@ -213,40 +215,19 @@ final class OrderController extends Controller
             return $request->user();
         }
 
-        $providedEmail = isset($validated['customer_email']) && is_string($validated['customer_email'])
-            ? trim(mb_strtolower($validated['customer_email']))
-            : '';
-
-        if ($providedEmail !== '') {
-            $existingTenantCustomer = $this->userRepository->findByEmail($providedEmail, $tenantId);
-            if ($existingTenantCustomer !== null) {
-                $existingModel = User::query()->find($existingTenantCustomer->id());
-                if ($existingModel instanceof User) {
-                    return $existingModel;
-                }
-            }
-
-            $globalEmailCollision = User::query()->where('email', $providedEmail)->first();
-            if ($globalEmailCollision instanceof User && (string) $globalEmailCollision->tenant_id !== $tenantId) {
-                $providedEmail = '';
-            }
-        }
-
         $name = isset($validated['customer_name']) && is_string($validated['customer_name'])
             ? trim($validated['customer_name'])
             : '';
 
         $guest = new User;
         $guest->name = $name !== '' ? $name : 'Cliente invitado';
-        $guest->email = $providedEmail !== ''
-            ? $providedEmail
-            : sprintf('guest+%s+%s@vito.local', Str::slug($tenantId), Str::lower((string) Str::ulid()));
+        $guest->email = sprintf('guest+%s+%s@vito.local', Str::slug($tenantId), Str::lower((string) Str::ulid()));
         $guest->password = Hash::make(Str::random(48));
         $guest->tenant_id = $tenantId;
         $guest->phone = isset($validated['customer_phone']) && is_string($validated['customer_phone'])
             ? trim($validated['customer_phone'])
             : null;
-        $guest->email_verified_at = now()->toDateTimeString();
+        $guest->email_verified_at = null;
         $guest->save();
 
         return $guest;

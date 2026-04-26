@@ -92,7 +92,7 @@ final class AuthRedirectorTest extends TestCase
         );
     }
 
-    public function test_legacy_customer_with_tenant_context_is_redirected_to_app_surface(): void
+    public function test_customer_with_tenant_context_but_no_business_membership_is_redirected_to_directory(): void
     {
         config([
             'app.platform_directory_url' => 'https://www.vitobusinessos.com',
@@ -103,7 +103,8 @@ final class AuthRedirectorTest extends TestCase
         $legacyUser = User::factory()->create([
             'role' => UserRole::CUSTOMER,
         ]);
-        $tenant = Tenant::factory()->forUser($legacyUser)->create([
+        $owner = User::factory()->tenantOwner()->create();
+        $tenant = Tenant::factory()->forUser($owner)->create([
             'slug' => 'barberia-norte-pro',
         ]);
 
@@ -112,7 +113,7 @@ final class AuthRedirectorTest extends TestCase
         $destination = AuthRedirector::destinationFor($legacyUser);
 
         $this->assertSame(
-            'https://app.vitobusinessos.com'.route('filament.app.pages.dashboard', ['tenant' => $tenant->slug], false),
+            'https://www.vitobusinessos.com'.route('directory.index', [], false),
             $destination
         );
     }
@@ -167,6 +168,31 @@ final class AuthRedirectorTest extends TestCase
 
         $this->assertSame(
             route('filament.app.pages.dashboard', ['tenant' => $tenant->slug], false),
+            $destination
+        );
+    }
+
+    public function test_local_forwarded_host_does_not_override_configured_surface_origin(): void
+    {
+        config([
+            'app.platform_directory_url' => 'https://www.vitobusinessos.com',
+            'app.platform_app_url' => 'https://app.vitobusinessos.com',
+            'app.platform_admin_url' => 'https://admin.vitobusinessos.com',
+        ]);
+
+        $customer = User::factory()->create([
+            'role' => UserRole::CUSTOMER,
+            'tenant_id' => null,
+        ]);
+
+        $request = Request::create('http://127.0.0.1:8011/login', 'POST');
+        $request->headers->set('x-forwarded-host', '127.0.0.1:8011');
+        $this->app->instance('request', $request);
+
+        $destination = AuthRedirector::destinationFor($customer);
+
+        $this->assertSame(
+            'https://www.vitobusinessos.com'.route('directory.index', [], false),
             $destination
         );
     }

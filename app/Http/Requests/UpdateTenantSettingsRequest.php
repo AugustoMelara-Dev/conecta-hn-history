@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Application\Access\Contracts\TenantPermissionGuardInterface;
+use App\Domain\Access\Enums\Permission;
+use App\Domain\TenantGovernance\Enums\Capability;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Support\Tenancy\RequestTenantResolver;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -32,7 +38,28 @@ final class UpdateTenantSettingsRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user() !== null && $this->user()->tenant !== null;
+        $user = $this->user();
+
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        $tenant = app(RequestTenantResolver::class)->resolve($this);
+
+        if (! $tenant instanceof Tenant) {
+            return false;
+        }
+
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return app(TenantPermissionGuardInterface::class)->allows(
+            $user,
+            $tenant,
+            Capability::CATALOG_BASIC,
+            Permission::SETTINGS_UPDATE
+        );
     }
 
     /**
@@ -106,5 +133,10 @@ final class UpdateTenantSettingsRequest extends FormRequest
             'whatsapp_number.max' => 'El número de WhatsApp no puede exceder 20 caracteres.',
             'whatsapp_number.regex' => 'El número de WhatsApp debe contener solo dígitos y formato válido (ej: +504 9999-9999).',
         ];
+    }
+
+    public function tenantForRequest(): Tenant
+    {
+        return app(RequestTenantResolver::class)->resolve($this);
     }
 }

@@ -26,10 +26,10 @@ test('report download validates path without fatal error', function () {
     $method->setAccessible(true);
 
     // Test URL-encoded path - should not throw "undefined function" error
-    $result = $method->invoke($controller, 'reports%2Ftest.pdf');
+    $result = $method->invoke($controller, 'tenants%2Ftenant-1%2Freports%2Ftest.pdf');
 
     // Key assertion: no Fatal Error, returns sanitized path
-    expect($result)->toBe('reports/test.pdf');
+    expect($result)->toBe('tenants/tenant-1/reports/test.pdf');
 });
 
 test('report download blocks path traversal', function () {
