@@ -46,7 +46,9 @@ Nota de repositorio:
 ## Estado operacional actual (2026-04-26)
 
 - Lote 002 (frentes A/B/C/D) ya fue integrado en `main` mediante squash merge por frente.
-- Las protecciones de `main` se mantienen activas: ruleset + branch protection con check requerido `PR Gate / Final Status`.
+- Las protecciones de `main` se mantienen activas: ruleset + branch protection.
+- Modo temporal por billing de GitHub Actions: sin `required status check` obligatorio en `main` para evitar bloqueo operativo por falta de credito.
+- Politica CI temporal: ejecucion automatica solo en `push` a `main`; en PRs se usa validacion manual bajo demanda (`workflow_dispatch`).
 - Se ejecuto limpieza de ramas remotas legacy para reducir ruido operativo.
 - Inventario remoto intencional actual:
   - `main`
@@ -484,7 +486,7 @@ Herramientas y gates activos:
 - Laravel Pint
 - CI en `.github/workflows/ci.yml`
 
-La pipeline principal ejecuta:
+La pipeline principal ejecuta (en `push` a `main`):
 
 - calidad y arquitectura con `pint`, `phpstan` y tests `arch`
 - integridad frontend con `php artisan typescript:transform` y `npm run build`
