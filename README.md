@@ -50,10 +50,6 @@ Nota de repositorio:
 - Se ejecuto limpieza de ramas remotas legacy para reducir ruido operativo.
 - Inventario remoto intencional actual:
   - `main`
-  - `codex/dynforms-v2-pr-a-contract-semver-r2`
-  - `codex/dynforms-v2-pr-d-compiled-cache`
-  - `codex/dynforms-v2-pr-e-reindex-pipeline`
-  - `codex/dynforms-v2-pr-f-config-audit`
 
 ## Que contiene este repo
 
