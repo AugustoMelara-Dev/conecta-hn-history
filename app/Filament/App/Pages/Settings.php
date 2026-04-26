@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
+use App\Application\Access\Contracts\TenantPermissionGuardInterface;
 use App\Application\Tenant\Commands\UpdateTenantPanelSettingsCommand;
 use App\Application\Tenant\Handlers\UpdateTenantPanelSettingsHandler;
+use App\Domain\Access\Enums\Permission;
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Tenant;
+use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Textarea;
@@ -123,11 +127,21 @@ class Settings extends Page
     {
         $data = $this->form->getState();
         $tenant = $this->getTenantRecord();
+        $user = auth()->user();
 
         if (! $tenant instanceof Tenant) {
             Notification::make()
                 ->danger()
                 ->title('No se pudo guardar la configuración')
+                ->send();
+
+            return;
+        }
+
+        if (! $user instanceof User || ! app(TenantPermissionGuardInterface::class)->allows($user, $tenant, Capability::CATALOG_BASIC, Permission::SETTINGS_UPDATE)) {
+            Notification::make()
+                ->warning()
+                ->title('No tienes permisos para guardar cambios')
                 ->send();
 
             return;

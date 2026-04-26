@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
+use App\Application\Access\Contracts\TenantPermissionGuardInterface;
+use App\Domain\Access\Enums\Permission;
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Settings\GeneralSettings;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -228,12 +232,22 @@ class ManageBilling extends Page implements HasForms, HasTable
     {
         $data = $this->form->getState();
         $tenant = $this->getTenantRecord();
+        $user = auth()->user();
 
         if (! $tenant instanceof Tenant) {
             Notification::make()
                 ->danger()
                 ->title('No se pudo procesar el pago')
                 ->body('No encontramos el negocio actual.')
+                ->send();
+
+            return;
+        }
+
+        if (! $user instanceof User || ! app(TenantPermissionGuardInterface::class)->allows($user, $tenant, Capability::CATALOG_BASIC, Permission::BILLING_MANAGE)) {
+            Notification::make()
+                ->warning()
+                ->title('No tienes permisos para reportar pagos')
                 ->send();
 
             return;

@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Filament;
 
+use App\Application\Access\Contracts\TenantPermissionGuardInterface;
+use App\Domain\Access\Enums\Permission;
 use App\Domain\Identity\Enums\UserRole;
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Pages\EditTenantProfile;
 use App\Filament\App\Pages\ManageBilling;
 use App\Filament\App\Pages\ManageMarketing;
@@ -505,6 +508,43 @@ final class BusinessPageWorkflowTest extends TestCase
         $this->assertSame('Hola, quiero información de {business_name}.', $tenant->whatsapp_message);
     }
 
+    public function test_user_without_settings_update_permission_cannot_save_business_settings(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner(isPro: false, slug: 'cafe-norte-settings-viewer');
+
+        $originalName = $tenant->name;
+        $originalPhone = $tenant->whatsapp_number;
+        $originalAddress = $tenant->address;
+        $originalMessage = $tenant->whatsapp_message;
+
+        app()->instance(TenantPermissionGuardInterface::class, new class implements TenantPermissionGuardInterface
+        {
+            public function allows(User $user, Tenant $tenant, Capability $capability, Permission $permission): bool
+            {
+                return $permission !== Permission::SETTINGS_UPDATE;
+            }
+        });
+
+        $this->actingAs($user);
+        $this->setAppPanelTenantContext($tenant);
+
+        Livewire::test(Settings::class)
+            ->set('data.name', 'No Debe Persistir')
+            ->set('data.whatsapp_number', '1111-2222')
+            ->set('data.description', 'Intento sin permiso update.')
+            ->set('data.address', 'Direccion no autorizada')
+            ->set('data.whatsapp_message', 'Mensaje no autorizado')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $tenant->refresh();
+
+        $this->assertSame($originalName, $tenant->name);
+        $this->assertSame($originalPhone, $tenant->whatsapp_number);
+        $this->assertSame($originalAddress, $tenant->address);
+        $this->assertSame($originalMessage, $tenant->whatsapp_message);
+    }
+
     public function test_pro_owner_can_save_marketing_whatsapp_configuration(): void
     {
         [$user, $tenant] = $this->makeTenantOwner(isPro: true, slug: 'cafe-norte-marketing');
@@ -705,6 +745,35 @@ final class BusinessPageWorkflowTest extends TestCase
         $this->assertSame('TRX-998877', $payment->reference_number);
         $this->assertSame(SubscriptionPayment::STATUS_PENDING, $payment->status);
         $this->assertTrue(Storage::disk('local')->exists($payment->proof_path));
+    }
+
+    public function test_user_without_billing_manage_permission_cannot_submit_payment_proof(): void
+    {
+        Storage::fake('local');
+
+        [$user, $tenant] = $this->makeTenantOwner(isPro: false, slug: 'cafe-norte-proof-viewer');
+
+        app()->instance(TenantPermissionGuardInterface::class, new class implements TenantPermissionGuardInterface
+        {
+            public function allows(User $user, Tenant $tenant, Capability $capability, Permission $permission): bool
+            {
+                return $permission !== Permission::BILLING_MANAGE;
+            }
+        });
+
+        $this->actingAs($user);
+        $this->setAppPanelTenantContext($tenant);
+
+        Livewire::test(ManageBilling::class)
+            ->set('data.bank_reference', 'TRX-NO-MANAGE')
+            ->set('data.proof_image_path', UploadedFile::fake()->image('proof-no-manage.png'))
+            ->call('submitPayment')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseMissing('subscription_payments', [
+            'tenant_id' => $tenant->getKey(),
+            'reference_number' => 'TRX-NO-MANAGE',
+        ]);
     }
 
     public function test_pro_owner_can_download_receipt_from_billing_page(): void
