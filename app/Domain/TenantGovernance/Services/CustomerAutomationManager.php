@@ -417,13 +417,13 @@ class CustomerAutomationManager
                 'last_contacted_at' => now(),
                 'last_engaged_channel' => 'email',
             ])->save();
-
-            $this->conversationOpsManager->markOutboundResponse($profile, $touchpoint, $actorUserId);
         } catch (\Throwable $exception) {
             report($exception);
 
             return $this->markFailed($touchpoint, $exception->getMessage(), CustomerTouchpoint::DELIVERY_FAILED);
         }
+
+        $this->syncConversationAfterDispatch($profile, $touchpoint, $actorUserId);
 
         return $touchpoint->fresh();
     }
@@ -536,15 +536,37 @@ class CustomerAutomationManager
                 'last_contacted_at' => now(),
                 'last_engaged_channel' => 'whatsapp',
             ])->save();
-
-            $this->conversationOpsManager->markOutboundResponse($profile, $touchpoint, $actorUserId);
         } catch (\Throwable $exception) {
             report($exception);
 
             return $this->markFailed($touchpoint, $exception->getMessage(), CustomerTouchpoint::DELIVERY_FAILED);
         }
 
+        $this->syncConversationAfterDispatch($profile, $touchpoint, $actorUserId);
+
         return $touchpoint->fresh();
+    }
+
+    private function syncConversationAfterDispatch(CustomerProfile $profile, CustomerTouchpoint $touchpoint, ?string $actorUserId): void
+    {
+        try {
+            $this->conversationOpsManager->markOutboundResponse($profile, $touchpoint, $actorUserId);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            $syncWarnings = array_values((array) data_get($touchpoint->metadata, 'sync_warnings', []));
+            $syncWarnings[] = [
+                'scope' => 'conversation',
+                'message' => $exception->getMessage(),
+                'recorded_at' => now()->toIso8601String(),
+            ];
+
+            $touchpoint->forceFill([
+                'metadata' => array_merge((array) $touchpoint->metadata, [
+                    'sync_warnings' => $syncWarnings,
+                ]),
+            ])->save();
+        }
     }
 
     private function prepareAttempt(CustomerTouchpoint $touchpoint): void
@@ -693,3 +715,4 @@ class CustomerAutomationManager
         return (string) ($tenant->business_segment_key ?: app(BusinessSegmentResolver::class)->resolveForTenant($tenant));
     }
 }
+

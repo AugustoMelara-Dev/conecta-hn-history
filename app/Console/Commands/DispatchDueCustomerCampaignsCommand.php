@@ -56,19 +56,21 @@ class DispatchDueCustomerCampaignsCommand extends Command
     private function queueCampaign(Campaign $campaign, Carbon $now): void
     {
         if ($campaign->usesCadence()) {
+            DispatchCampaignSegment::dispatch((int) $campaign->getKey(), (string) $campaign->tenant_id);
+
             $campaign->forceFill([
                 'status' => 'scheduled',
                 'last_dispatched_at' => $now,
                 'next_run_at' => $now->copy()->addDays((int) $campaign->cadence_interval_days),
             ])->save();
         } else {
+            DispatchCampaignSegment::dispatch((int) $campaign->getKey(), (string) $campaign->tenant_id);
+
             $campaign->forceFill([
                 'status' => 'queued',
                 'last_dispatched_at' => $now,
                 'next_run_at' => null,
             ])->save();
         }
-
-        DispatchCampaignSegment::dispatch((int) $campaign->getKey(), (string) $campaign->tenant_id);
     }
 }

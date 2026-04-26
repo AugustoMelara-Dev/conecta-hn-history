@@ -6,6 +6,7 @@ namespace Tests\Feature\CRM;
 
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\TenantGovernance\Services\CustomerAutomationManager;
+use App\Domain\TenantGovernance\Services\CustomerConversationOpsManager;
 use App\Domain\TenantGovernance\Services\CustomerMessagingGateway;
 use App\Mail\CustomerLifecycleMail;
 use App\Models\Category;
@@ -192,6 +193,55 @@ final class CustomerAutomationManagerTest extends TestCase
         $this->assertSame('email_123', $touchpoint->provider_message_id);
         $this->assertSame('sent', $touchpoint->delivery_status);
         $this->assertSame('sent', data_get($touchpoint->provider_payload, 'last_event'));
+    }
+
+    public function test_failed_conversation_sync_does_not_overwrite_sent_touchpoint_status(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner('crm-automation-sync-warning');
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Maria Gomez',
+            'email' => 'maria-sync@example.com',
+            'preferred_channel' => 'email',
+            'customer_segment' => 'active',
+            'lifecycle_stage' => 'active',
+            'email_opt_in' => true,
+            'marketing_opt_in' => true,
+        ]);
+
+        $gateway = \Mockery::mock(CustomerMessagingGateway::class);
+        $gateway->shouldReceive('sendLifecycleEmail')
+            ->once()
+            ->andReturn([
+                'provider' => 'resend',
+                'provider_message_id' => 'email_sync_123',
+                'delivery_status' => 'sent',
+                'payload' => ['last_event' => 'sent'],
+            ]);
+
+        $conversationOps = \Mockery::mock(CustomerConversationOpsManager::class);
+        $conversationOps->shouldReceive('markOutboundResponse')
+            ->once()
+            ->andThrow(new \RuntimeException('CRM sync downstream timeout'));
+
+        $this->app->instance(CustomerMessagingGateway::class, $gateway);
+        $this->app->instance(CustomerConversationOpsManager::class, $conversationOps);
+
+        $touchpoint = app(CustomerAutomationManager::class)->sendEmailTouchpoint(
+            profile: $profile,
+            subject: 'Seguimiento premium',
+            body: 'Queremos ayudarte a cerrar tu siguiente compra.',
+            automationKey: 'manual_follow_up',
+            actorUserId: (string) $user->getKey(),
+        );
+
+        $this->assertSame(CustomerTouchpoint::STATUS_SENT, $touchpoint->status);
+        $this->assertNull($touchpoint->failed_at);
+        $this->assertNull($touchpoint->next_retry_at);
+        $this->assertSame('sent', $touchpoint->delivery_status);
+        $this->assertSame('conversation', data_get($touchpoint->metadata, 'sync_warnings.0.scope'));
+        $this->assertStringContainsString('CRM sync downstream timeout', (string) data_get($touchpoint->metadata, 'sync_warnings.0.message'));
     }
 
     public function test_whatsapp_follow_up_is_sent_and_logged_with_provider_metadata(): void

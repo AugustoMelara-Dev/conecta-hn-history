@@ -12,6 +12,7 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
@@ -66,6 +67,42 @@ final class DispatchDueCustomerCampaignsCommandTest extends TestCase
         $this->assertTrue($recurring->next_run_at->greaterThan(now()->addDays(6)));
 
         Bus::assertDispatchedTimes(DispatchCampaignSegment::class, 2);
+    }
+
+    public function test_it_does_not_advance_campaign_status_when_enqueue_fails(): void
+    {
+        [$owner, $tenant] = $this->makeTenantOwner('crm-campaign-enqueue-fail');
+
+        $scheduled = Campaign::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'subject' => 'Reactiva base tibia',
+            'content' => 'Tenemos novedades para ti.',
+            'type' => 'email',
+            'audience_type' => AudienceType::CRM_CUSTOMERS,
+            'status' => 'scheduled',
+            'scheduled_at' => now()->subMinutes(10),
+            'recipients_count' => 0,
+        ]);
+
+        $dispatcher = \Mockery::mock(Dispatcher::class);
+        $dispatcher->shouldIgnoreMissing();
+        $dispatcher->shouldReceive('dispatch')
+            ->once()
+            ->andThrow(new \RuntimeException('Queue transport unavailable'));
+        $this->app->instance(Dispatcher::class, $dispatcher);
+
+        try {
+            $this->artisan('crm:dispatch-due-campaigns --tenant='.(string) $tenant->getKey().' --limit=10');
+            $this->fail('Expected queue transport failure was not thrown.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('Queue transport unavailable', $exception->getMessage());
+        }
+
+        $scheduled->refresh();
+
+        $this->assertSame('scheduled', $scheduled->status);
+        $this->assertNull($scheduled->last_dispatched_at);
+        $this->assertNull($scheduled->next_run_at);
     }
 
     /**

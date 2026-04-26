@@ -30,8 +30,8 @@ final class TenantCampaignActionCoordinator
             ];
         }
 
-        $this->dispatchPlanner->queueCampaign($campaign, $dispatch['next_run_at']);
         DispatchCampaignSegment::dispatch($campaign->id, (string) $tenant->getKey());
+        $this->dispatchPlanner->queueCampaign($campaign, $dispatch['next_run_at']);
 
         return [
             'status' => 'success',
