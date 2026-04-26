@@ -234,17 +234,18 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
 
     public function tenants(): HasMany
     {
-        return $this->hasMany(Tenant::class);
+        // Explicit key keeps relation stable for subclasses like Infrastructure FilamentUser.
+        return $this->hasMany(Tenant::class, 'user_id');
     }
 
     public function tenantMemberships(): HasMany
     {
-        return $this->hasMany(TenantMembership::class);
+        return $this->hasMany(TenantMembership::class, 'user_id');
     }
 
     public function memberTenants(): BelongsToMany
     {
-        return $this->belongsToMany(Tenant::class, 'tenant_memberships')
+        return $this->belongsToMany(Tenant::class, 'tenant_memberships', 'user_id', 'tenant_id')
             ->withPivot(['role', 'preset_key', 'granted_permissions', 'accepted_at'])
             ->withTimestamps();
     }
@@ -309,7 +310,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
 
     public function favorites(): HasMany
     {
-        return $this->hasMany(Favorite::class);
+        return $this->hasMany(Favorite::class, 'user_id');
     }
 
     public function favoritedTenants()
@@ -358,7 +359,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
 
     public function following()
     {
-        return $this->belongsToMany(Tenant::class, 'follows')
+        return $this->belongsToMany(Tenant::class, 'follows', 'user_id', 'tenant_id')
             ->withTimestamps();
     }
 
@@ -369,7 +370,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
      */
     public function loyaltyLedger(): HasMany
     {
-        return $this->hasMany(LoyaltyLedger::class);
+        return $this->hasMany(LoyaltyLedger::class, 'user_id');
     }
 
     /**
