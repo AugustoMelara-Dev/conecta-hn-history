@@ -2,7 +2,7 @@
 
 Vito Business OS es una plataforma SaaS multi-tenant para comercio local, catalogos, pedidos, citas, marketing y operacion de negocios. Este repositorio concentra el sitio publico, los micrositios de negocio, las apps operativas, los paneles Filament, las APIs y la capa de contratos del sistema.
 
-Este README documenta el estado actual del proyecto al 2026-03-12.
+Este README documenta el estado actual del proyecto al 2026-04-25.
 
 > Nota de rebrand
 > El producto ya se documenta aqui como `Vito Business OS`, pero el codebase todavia conserva mucho naming heredado de `Conecta HN` en vistas, componentes, configs, correos, textos, providers y metadatos. Este README deja el nuevo nombre como referencia funcional, pero no implica que todo el repo ya fue renombrado.
@@ -13,6 +13,35 @@ Este README documenta el estado actual del proyecto al 2026-03-12.
 - [Deploy topology Vercel + Railway](docs/architecture/DEPLOY_TOPOLOGY_VERCEL_RAILWAY.md)
 - [Guide RAG readiness blueprint](docs/architecture/GUIDE_RAG_READINESS_BLUEPRINT.md)
 - [Credential incident closure checklist](docs/security/CREDENTIAL_INCIDENT_CLOSURE.md)
+
+## Operacion global por lotes (subagentes)
+
+Estandar operativo activo para auditoria y mejora continua:
+
+- Auditoria primero, correccion despues.
+- Lotes largos de 8-12h con checkpoints cada 2-3h.
+- Rama y PR separada por frente (ownership disjunto).
+- Cierre por frente solo con: tests pasando + evidencia reproducible + PR lista.
+- Si hay bloqueo externo (infra/credenciales), estado `partial` con operador-step explicito.
+
+Frentes de trabajo actuales:
+
+- Frente A: negocio + superadmin.
+- Frente B: CRM + campanas + inbox.
+- Frente C: billing + settings.
+- Frente D: calidad transversal (regresion, estabilidad de suite, evidencia de riesgo).
+
+Merge order recomendado para lotes de producto critico:
+
+1. A
+2. D
+3. B
+4. C
+
+Nota de repositorio:
+
+- El remoto canonico de organizacion para integracion es `VitoCode-Technologies/Vito-Business-OS`.
+- La rama principal objetivo de integracion es `main`.
 
 ## Que contiene este repo
 

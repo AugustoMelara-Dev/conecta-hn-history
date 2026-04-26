@@ -141,7 +141,10 @@
             "@php artisan db:audit-migrations --json"
         ],
         "check:parallel-schema-governance": [
-            "@php vendor/bin/pest tests/Contracts/CommandSchemaContractTest.php -v"
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php vendor/bin/pest tests/Contracts/CommandSchemaContractTest.php tests/Architecture/CommandSchemaTest.php tests/Architecture/Contracts/EventSchemaTest.php -v"
         ],
         "check:rbac-governance": [
             "@php artisan config:clear --ansi",
@@ -237,8 +240,11 @@
             "@php -r \"is_dir('reports/schema-wave3-governance') || mkdir('reports/schema-wave3-governance', 0777, true);\"",
             "@php vendor/bin/pest tests/Unit/Database/WaveThreeConsolidationGovernanceTest.php --log-junit reports/schema-wave3-governance/junit.xml -v"
         ],
-        "check:todo-governance": [
+        "check:workflow-legacy-warnings": [
             "node scripts/ci/check-workflow-legacy-warnings.mjs"
+        ],
+        "check:todo-governance": [
+            "git diff --unified=0 --no-color HEAD | node scripts/ci/check-todo-governance.mjs"
         ],
         "check:security-governance": [
             "@php scripts/security/governance-check.php"
