@@ -29,3 +29,12 @@ test('payment webhook value object extracts canonical billing fields', function 
         ->and($webhook->currency())->toBe('HNL')
         ->and($webhook->providerName())->toBe('stripe');
 });
+
+test('payment webhook value object rejects missing provider event id', function () {
+    PaymentWebhook::fromArray('payment.success', [
+        'meta' => [
+            'tenant_id' => 'tenant_123',
+            'provider' => 'stripe',
+        ],
+    ]);
+})->throws(InvalidArgumentException::class, 'Missing provider event ID');

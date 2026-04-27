@@ -79,6 +79,14 @@ return [
     'payment' => [
         'webhook_secret' => env('PAYMENT_WEBHOOK_SECRET'),
         'provider' => env('PAYMENT_PROVIDER', 'generic'), // stripe, paypal, local
+        'webhook_require_timestamp' => env('PAYMENT_WEBHOOK_REQUIRE_TIMESTAMP', true),
+        'webhook_timestamp_tolerance_seconds' => env('PAYMENT_WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS', 300),
+    ],
+
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET', env('PAYMENT_WEBHOOK_SECRET')),
     ],
 
 ];

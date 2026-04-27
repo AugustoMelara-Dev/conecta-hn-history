@@ -9,7 +9,12 @@ use App\Domain\ValueObjects\Payment\PaymentWebhook;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Carbon;
+use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
+use Stripe\Exception\SignatureVerificationException;
+use Stripe\Webhook;
+use UnexpectedValueException;
 
 /**
  * PaymentWebhookController - HTTP Gateway for Payment Callbacks
@@ -31,14 +36,18 @@ final class PaymentWebhookController extends Controller
      */
     public function handle(Request $request): JsonResponse
     {
-        // 1. Verify Signature
-        if (! $this->verifySignature($request)) {
-            $this->logger->warning('PaymentWebhook: Invalid signature', ['ip' => $request->ip()]);
+        $verifiedPayload = $this->verifiedPayload($request);
+
+        if ($verifiedPayload === null) {
+            $this->logger->warning('PaymentWebhook: Invalid signature', [
+                'ip' => $request->ip(),
+                'provider' => config('services.payment.provider', 'generic'),
+            ]);
 
             return response()->json(['message' => 'Invalid signature'], 403);
         }
 
-        $payload = $request->json()->all();
+        $payload = $verifiedPayload;
         $eventType = $payload['event'] ?? null;
         $eventData = $payload['data'] ?? [];
 
@@ -66,6 +75,13 @@ final class PaymentWebhookController extends Controller
 
             return response()->json($result, $status);
 
+        } catch (InvalidArgumentException $e) {
+            $this->logger->warning('PaymentWebhook: Invalid payload', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status' => 'invalid',
+                'message' => $e->getMessage(),
+            ], 422);
         } catch (\Throwable $e) {
             $this->logger->error('PaymentWebhook: Processing Error', ['error' => $e->getMessage()]);
 
@@ -73,10 +89,71 @@ final class PaymentWebhookController extends Controller
         }
     }
 
+    private function verifiedPayload(Request $request): ?array
+    {
+        if ($this->isStripeWebhook($request)) {
+            return $this->verifiedStripePayload($request);
+        }
+
+        if (! $this->verifyGenericSignature($request)) {
+            return null;
+        }
+
+        $payload = $request->json()->all();
+
+        return is_array($payload) ? $payload : null;
+    }
+
+    private function isStripeWebhook(Request $request): bool
+    {
+        return strtolower((string) config('services.payment.provider', 'generic')) === 'stripe'
+            || $request->headers->has('Stripe-Signature');
+    }
+
     /**
-     * Verify the HMAC signature from the request using strict comparison.
+     * Stripe requires the unmodified raw body plus Stripe-Signature header.
+     *
+     * @return array<string, mixed>|null
      */
-    private function verifySignature(Request $request): bool
+    private function verifiedStripePayload(Request $request): ?array
+    {
+        $signature = (string) $request->header('Stripe-Signature', '');
+
+        if ($signature === '') {
+            return null;
+        }
+
+        try {
+            $event = Webhook::constructEvent(
+                $request->getContent(),
+                $signature,
+                $this->webhookSecret,
+                (int) config('services.payment.webhook_timestamp_tolerance_seconds', 300),
+            );
+        } catch (SignatureVerificationException|UnexpectedValueException $exception) {
+            $this->logger->warning('PaymentWebhook: Stripe verification failed', [
+                'error' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
+
+        /** @var array<string, mixed> $payload */
+        $payload = $event->toArray();
+        $payload['event'] = (string) ($payload['type'] ?? 'unknown');
+        $payload['provider'] = 'stripe';
+        $payload['meta'] = array_replace(
+            (array) ($payload['meta'] ?? []),
+            ['provider' => 'stripe'],
+        );
+
+        return $payload;
+    }
+
+    /**
+     * Verify the generic HMAC signature from the request using strict comparison.
+     */
+    private function verifyGenericSignature(Request $request): bool
     {
         $signature = $request->header('X-Signature');
 
@@ -85,8 +162,45 @@ final class PaymentWebhookController extends Controller
         }
 
         $payload = $request->getContent();
-        $expectedSignature = hash_hmac('sha256', (string) $payload, $this->webhookSecret);
+        $timestamp = $request->header('X-Timestamp') ?? $request->header('X-Webhook-Timestamp');
 
-        return hash_equals($expectedSignature, (string) $signature);
+        if (is_string($timestamp) && $timestamp !== '') {
+            if (! $this->isFreshTimestamp($timestamp)) {
+                return false;
+            }
+
+            $signedPayload = $timestamp.'.'.(string) $payload;
+            $timestampedSignature = hash_hmac('sha256', $signedPayload, $this->webhookSecret);
+
+            if (hash_equals($timestampedSignature, (string) $signature)) {
+                return true;
+            }
+        }
+
+        if ((bool) config('services.payment.webhook_require_timestamp', false)) {
+            return false;
+        }
+
+        $legacySignature = hash_hmac('sha256', (string) $payload, $this->webhookSecret);
+
+        return hash_equals($legacySignature, (string) $signature);
+    }
+
+    private function isFreshTimestamp(string $timestamp): bool
+    {
+        try {
+            $moment = is_numeric($timestamp)
+                ? Carbon::createFromTimestamp((int) $timestamp)
+                : Carbon::parse($timestamp);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        $toleranceSeconds = (int) config('services.payment.webhook_timestamp_tolerance_seconds', 300);
+
+        return $moment->betweenIncluded(
+            now()->subSeconds($toleranceSeconds),
+            now()->addSeconds(30),
+        );
     }
 }

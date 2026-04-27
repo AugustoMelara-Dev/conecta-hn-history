@@ -20,6 +20,15 @@ interface WebhookLogRepositoryInterface
     public function hasBeenProcessed(string $provider, string $externalEventId): bool;
 
     /**
+     * Atomically reserve a provider event before side effects run.
+     *
+     * Returns false when another request already reserved the same event.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function recordFirstSeen(string $provider, string $externalEventId, string $eventType, array $payload): bool;
+
+    /**
      * Log a webhook event for audit trail.
      *
      * @param  string  $provider  External provider

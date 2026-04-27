@@ -9,6 +9,7 @@ use App\Application\Shared\Contracts\EventBusInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\Payment\PaymentWebhookHandlerInterface;
 use App\Domain\Billing\Events\PaymentWebhookReceived;
+use App\Domain\Billing\Repositories\WebhookLogRepositoryInterface;
 use App\Domain\ValueObjects\Payment\PaymentWebhook;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -21,6 +22,7 @@ final class HandlePaymentWebhookActionTest extends TestCase
         $action = new HandlePaymentWebhookAction(
             new RecordingEventBus,
             new RecordingLogger,
+            new RecordingWebhookLogRepository,
         );
 
         self::assertInstanceOf(PaymentWebhookHandlerInterface::class, $action);
@@ -39,7 +41,7 @@ final class HandlePaymentWebhookActionTest extends TestCase
         $eventBus = new RecordingEventBus;
         $logger = new RecordingLogger;
 
-        $action = new HandlePaymentWebhookAction($eventBus, $logger);
+        $action = new HandlePaymentWebhookAction($eventBus, $logger, new RecordingWebhookLogRepository);
         $result = $action->handle($webhook);
 
         self::assertCount(1, $eventBus->dispatchedEvents);
@@ -55,6 +57,26 @@ final class HandlePaymentWebhookActionTest extends TestCase
         self::assertSame('tenant_123', $result['tenant_id']);
         self::assertTrue($result['processed']);
         self::assertIsString($result['timestamp']);
+    }
+
+    #[Test]
+    public function handle_method_ignores_duplicate_events_before_dispatching(): void
+    {
+        $webhook = PaymentWebhook::fromArray('payment.success', [
+            'meta' => ['tenant_id' => 'tenant_123'],
+            'id' => 'evt_123',
+        ]);
+        $eventBus = new RecordingEventBus;
+        $logger = new RecordingLogger;
+        $webhookLogs = new RecordingWebhookLogRepository(false);
+
+        $action = new HandlePaymentWebhookAction($eventBus, $logger, $webhookLogs);
+        $result = $action->handle($webhook);
+
+        self::assertCount(0, $eventBus->dispatchedEvents);
+        self::assertSame('ignored', $result['status']);
+        self::assertFalse($result['processed']);
+        self::assertSame('duplicate_event', $result['reason']);
     }
 }
 
@@ -119,5 +141,24 @@ final class RecordingLogger implements LoggerInterface
     public function critical(string $message, array $context = []): void
     {
         $this->criticalLogs[] = ['message' => $message, 'context' => $context];
+    }
+}
+
+final class RecordingWebhookLogRepository implements WebhookLogRepositoryInterface
+{
+    public function __construct(private readonly bool $firstSeen = true) {}
+
+    public function hasBeenProcessed(string $provider, string $externalEventId): bool
+    {
+        return ! $this->firstSeen;
+    }
+
+    public function recordFirstSeen(string $provider, string $externalEventId, string $eventType, array $payload): bool
+    {
+        return $this->firstSeen;
+    }
+
+    public function log(string $provider, string $externalEventId, string $eventType, array $payload): void
+    {
     }
 }
