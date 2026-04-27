@@ -28,11 +28,14 @@ final class SendCustomerCampaignTouchpoint implements ShouldBeUnique, ShouldQueu
         public readonly string $tenantId,
         public readonly int $campaignId,
         public readonly int $customerProfileId,
+        public readonly ?string $campaignRunKey = null,
     ) {}
 
     public function uniqueId(): string
     {
-        return "customer_campaign_{$this->campaignId}_profile_{$this->customerProfileId}";
+        $runKey = $this->campaignRunKey ?? 'legacy';
+
+        return "customer_campaign_{$this->campaignId}_{$runKey}_profile_{$this->customerProfileId}";
     }
 
     public function handle(CustomerAutomationManager $automationManager, CustomerLoyaltyManager $loyaltyManager): void
@@ -87,6 +90,7 @@ final class SendCustomerCampaignTouchpoint implements ShouldBeUnique, ShouldQueu
                         (string) ($reward->name ?? 'beneficio'),
                     ])),
                     'campaign_id' => $campaign->id,
+                    'campaign_run_key' => $this->campaignRunKey,
                     'campaign_subject' => $campaign->subject,
                     'reward_name' => $reward?->name,
                     'reward_points_cost' => $reward?->points_cost,
@@ -107,6 +111,7 @@ final class SendCustomerCampaignTouchpoint implements ShouldBeUnique, ShouldQueu
             options: [
                 'requires_marketing_opt_in' => (bool) $campaign->requires_marketing_opt_in,
                 'campaign_id' => $campaign->id,
+                'campaign_run_key' => $this->campaignRunKey,
                 'campaign_subject' => $campaign->subject,
                 'reward_name' => $reward?->name,
                 'reward_points_cost' => $reward?->points_cost,

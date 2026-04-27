@@ -75,8 +75,21 @@ class CustomerCampaignAudienceResolver
     public function profileIdsForCampaign(Tenant|string $tenant, Campaign $campaign): array
     {
         return $this->queryForCampaign($tenant, $campaign)
-            ->orderByDesc('reactivation_score')
-            ->orderByDesc('total_spent')
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(static fn (mixed $value): int => (int) $value)
+            ->all();
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function profileIdsForCampaignChunk(Tenant|string $tenant, Campaign $campaign, ?int $afterProfileId, int $limit): array
+    {
+        return $this->queryForCampaign($tenant, $campaign)
+            ->when($afterProfileId !== null, fn ($query) => $query->where('id', '>', $afterProfileId))
+            ->orderBy('id')
+            ->limit(max(1, $limit))
             ->pluck('id')
             ->map(static fn (mixed $value): int => (int) $value)
             ->all();

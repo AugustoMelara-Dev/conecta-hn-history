@@ -8,6 +8,7 @@ use App\Domain\Marketing\Enums\AudienceType;
 use App\Domain\TenantGovernance\Services\CustomerCampaignAudienceResolver;
 use App\Infrastructure\Jobs\Marketing\SendCampaignEmail;
 use App\Models\Campaign;
+use App\Models\CampaignDispatchRun;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,14 +23,22 @@ final class DispatchCampaignSegment implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 3;
 
+    private const CRM_CHUNK_SIZE = 100;
+
     public function __construct(
         public readonly int $campaignId,
         public readonly string $tenantId,
+        public readonly ?string $runKey = null,
+        public readonly ?int $cursorProfileId = null,
+        public readonly int $queuedCount = 0,
     ) {}
 
     public function uniqueId(): string
     {
-        return "dispatch_campaign_{$this->campaignId}";
+        $runKey = $this->resolvedRunKey();
+        $cursor = $this->cursorProfileId ?? 0;
+
+        return "dispatch_campaign_{$this->campaignId}_{$runKey}_{$cursor}";
     }
 
     public function handle(CustomerCampaignAudienceResolver $audienceResolver): void
@@ -45,19 +54,69 @@ final class DispatchCampaignSegment implements ShouldBeUnique, ShouldQueue
         }
 
         if ($campaign->audience_type === AudienceType::CRM_CUSTOMERS) {
-            $profileIds = $audienceResolver->profileIdsForCampaign($this->tenantId, $campaign);
+            $runKey = $this->resolvedRunKey();
+            $run = CampaignDispatchRun::query()->firstOrCreate([
+                'tenant_id' => $this->tenantId,
+                'campaign_id' => $campaign->id,
+                'run_key' => $runKey,
+            ], [
+                'status' => 'running',
+                'cursor_profile_id' => $this->cursorProfileId,
+                'queued_count' => $this->queuedCount,
+            ]);
+
+            if ($run->status === 'completed') {
+                return;
+            }
+
+            $profileIds = $audienceResolver->profileIdsForCampaignChunk(
+                $this->tenantId,
+                $campaign,
+                $this->cursorProfileId,
+                self::CRM_CHUNK_SIZE
+            );
 
             if ($profileIds === []) {
-                $this->markEmptyAudience($campaign);
+                if ($this->queuedCount === 0) {
+                    $this->markEmptyAudience($campaign);
+                } else {
+                    $this->finalizeDispatch($campaign, $this->queuedCount);
+                }
+
+                $run->forceFill([
+                    'status' => 'completed',
+                    'completed_at' => now(),
+                    'queued_count' => $this->queuedCount,
+                ])->save();
 
                 return;
             }
 
             foreach ($profileIds as $profileId) {
-                SendCustomerCampaignTouchpoint::dispatch($this->tenantId, $campaign->id, $profileId);
+                SendCustomerCampaignTouchpoint::dispatch($this->tenantId, $campaign->id, $profileId, $runKey);
             }
 
-            $this->finalizeDispatch($campaign, count($profileIds));
+            $queuedCount = $this->queuedCount + count($profileIds);
+            $lastProfileId = max($profileIds);
+
+            $run->forceFill([
+                'cursor_profile_id' => $lastProfileId,
+                'queued_count' => $queuedCount,
+            ])->save();
+
+            if (count($profileIds) >= self::CRM_CHUNK_SIZE) {
+                self::dispatch($this->campaignId, $this->tenantId, $runKey, $lastProfileId, $queuedCount);
+
+                return;
+            }
+
+            $this->finalizeDispatch($campaign, $queuedCount);
+
+            $run->forceFill([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'queued_count' => $queuedCount,
+            ])->save();
 
             return;
         }
@@ -163,5 +222,14 @@ final class DispatchCampaignSegment implements ShouldBeUnique, ShouldQueue
         }
 
         return $fallback->copy()->addDays((int) $campaign->cadence_interval_days);
+    }
+
+    private function resolvedRunKey(): string
+    {
+        if (is_string($this->runKey) && $this->runKey !== '') {
+            return $this->runKey;
+        }
+
+        return 'campaign_'.$this->campaignId.'_'.now()->format('YmdHis');
     }
 }

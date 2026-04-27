@@ -47,6 +47,8 @@ class CustomerTouchpoint extends Model
     protected $fillable = [
         'tenant_id',
         'customer_profile_id',
+        'campaign_id',
+        'campaign_run_key',
         'customer_conversation_id',
         'created_by_user_id',
         'channel',

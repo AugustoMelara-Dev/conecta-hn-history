@@ -40,7 +40,7 @@ class CustomerAutomationManager
             : null;
 
         $governance = $this->governance->definition($automationKey, 'email', $options);
-        $touchpoint = $this->touchpoints->create([
+        $attributes = [
             'tenant_id' => (string) $profile->tenant_id,
             'customer_profile_id' => (int) $profile->getKey(),
             'created_by_user_id' => $actorUserId,
@@ -63,7 +63,15 @@ class CustomerAutomationManager
                 'provider_thread_key' => $providerThreadKey,
                 'provider_reply_to' => $providerReplyTo,
             ]), $governance),
-        ]);
+        ];
+        $attributes['campaign_id'] = $options['campaign_id'] ?? null;
+        $attributes['campaign_run_key'] = $options['campaign_run_key'] ?? null;
+
+        $touchpoint = $this->createOutboundTouchpoint($attributes);
+
+        if (in_array($touchpoint->status, [CustomerTouchpoint::STATUS_SENT, CustomerTouchpoint::STATUS_SKIPPED], true)) {
+            return $touchpoint;
+        }
 
         return $this->dispatchEmailTouchpoint($touchpoint, $profile, $subject, $body, $actorUserId, $options);
     }
@@ -87,7 +95,7 @@ class CustomerAutomationManager
             : null;
 
         $governance = $this->governance->definition($automationKey, 'whatsapp', $options);
-        $touchpoint = $this->touchpoints->create([
+        $attributes = [
             'tenant_id' => (string) $profile->tenant_id,
             'customer_profile_id' => (int) $profile->getKey(),
             'created_by_user_id' => $actorUserId,
@@ -110,9 +118,36 @@ class CustomerAutomationManager
                 'provider_thread_key' => $providerThreadKey,
                 'provider_reply_to' => $providerReplyTo,
             ]), $governance),
-        ]);
+        ];
+        $attributes['campaign_id'] = $options['campaign_id'] ?? null;
+        $attributes['campaign_run_key'] = $options['campaign_run_key'] ?? null;
+
+        $touchpoint = $this->createOutboundTouchpoint($attributes);
+
+        if (in_array($touchpoint->status, [CustomerTouchpoint::STATUS_SENT, CustomerTouchpoint::STATUS_SKIPPED], true)) {
+            return $touchpoint;
+        }
 
         return $this->dispatchWhatsAppTouchpoint($touchpoint, $profile, $body, $actorUserId, $options);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createOutboundTouchpoint(array $attributes): CustomerTouchpoint
+    {
+        if (! empty($attributes['campaign_id']) && ! empty($attributes['campaign_run_key'])) {
+            return CustomerTouchpoint::query()
+                ->withoutGlobalScopes()
+                ->firstOrCreate([
+                    'tenant_id' => $attributes['tenant_id'],
+                    'campaign_id' => $attributes['campaign_id'],
+                    'campaign_run_key' => $attributes['campaign_run_key'],
+                    'customer_profile_id' => $attributes['customer_profile_id'],
+                ], $attributes);
+        }
+
+        return $this->touchpoints->create($attributes);
     }
 
     public function retryTouchpoint(CustomerTouchpoint $touchpoint, ?string $actorUserId = null): CustomerTouchpoint
@@ -715,4 +750,3 @@ class CustomerAutomationManager
         return (string) ($tenant->business_segment_key ?: app(BusinessSegmentResolver::class)->resolveForTenant($tenant));
     }
 }
-

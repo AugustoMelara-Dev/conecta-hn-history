@@ -8,6 +8,7 @@ use App\Application\Marketing\Jobs\DispatchCampaignSegment;
 use App\Models\Campaign;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class DispatchDueCustomerCampaignsCommand extends Command
 {
@@ -56,7 +57,11 @@ class DispatchDueCustomerCampaignsCommand extends Command
     private function queueCampaign(Campaign $campaign, Carbon $now): void
     {
         if ($campaign->usesCadence()) {
-            DispatchCampaignSegment::dispatch((int) $campaign->getKey(), (string) $campaign->tenant_id);
+            DispatchCampaignSegment::dispatch(
+                (int) $campaign->getKey(),
+                (string) $campaign->tenant_id,
+                $this->runKey($campaign, $now),
+            );
 
             $campaign->forceFill([
                 'status' => 'scheduled',
@@ -64,7 +69,11 @@ class DispatchDueCustomerCampaignsCommand extends Command
                 'next_run_at' => $now->copy()->addDays((int) $campaign->cadence_interval_days),
             ])->save();
         } else {
-            DispatchCampaignSegment::dispatch((int) $campaign->getKey(), (string) $campaign->tenant_id);
+            DispatchCampaignSegment::dispatch(
+                (int) $campaign->getKey(),
+                (string) $campaign->tenant_id,
+                $this->runKey($campaign, $now),
+            );
 
             $campaign->forceFill([
                 'status' => 'queued',
@@ -72,5 +81,15 @@ class DispatchDueCustomerCampaignsCommand extends Command
                 'next_run_at' => null,
             ])->save();
         }
+    }
+
+    private function runKey(Campaign $campaign, Carbon $now): string
+    {
+        return sprintf(
+            'campaign_%s_%s_%s',
+            $campaign->getKey(),
+            $now->format('YmdHis'),
+            Str::lower(Str::random(8)),
+        );
     }
 }
