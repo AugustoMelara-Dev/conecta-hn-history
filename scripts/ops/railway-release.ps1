@@ -37,7 +37,7 @@ $commands = @(
 
 foreach ($command in $commands) {
     Write-Host "Running remote command: $command"
-    Invoke-Railway @("ssh", "--service", $service, "--environment", $environment, "--command", $command)
+    Invoke-Railway @("ssh", "--service", $service, "--environment", $environment, $command)
 }
 
 if ($healthUrl) {

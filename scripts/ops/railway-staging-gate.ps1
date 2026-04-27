@@ -18,4 +18,5 @@ if (-not $env:APP_HEALTH_URL -and $env:PERF_BASE_URL) {
 }
 
 Write-Host "Running Railway staging gate for service $($env:RAILWAY_SERVICE) in environment $($env:RAILWAY_ENVIRONMENT)..."
-pwsh $PSScriptRoot\railway-release.ps1
+$runner = if (Get-Command pwsh -ErrorAction SilentlyContinue) { "pwsh" } else { "powershell.exe" }
+& $runner -ExecutionPolicy Bypass -File "$PSScriptRoot\railway-release.ps1"
