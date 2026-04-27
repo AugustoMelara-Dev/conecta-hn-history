@@ -92,4 +92,16 @@ final class RubroManifestReaderTest extends TestCase
         self::assertSame('CRM y continuidad de servicios', $reader->growthProfileForTenant($tenant)['headline']);
         self::assertCount(2, $reader->growthProfileForTenant($tenant)['journeys']);
     }
+
+    public function test_legacy_segment_and_storefront_configs_are_removed(): void
+    {
+        foreach ([
+            'business-segments.php',
+            'storefront-playbooks.php',
+            'storefront-segments.php',
+            'storefront-verticals.php',
+        ] as $configFile) {
+            self::assertFileDoesNotExist(config_path($configFile));
+        }
+    }
 }
