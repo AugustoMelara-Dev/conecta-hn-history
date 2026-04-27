@@ -372,11 +372,8 @@ final class SuperAdminRevenueInsightsReader
 
     public function segmentLabel(string $segmentKey): string
     {
-        $label = config("business-segments.profiles.{$segmentKey}.label");
-
-        return is_string($label) && $label !== ''
-            ? $label
-            : Str::of($segmentKey === '' ? 'general' : $segmentKey)->replace('_', ' ')->title()->value();
+        return app(\App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface::class)
+            ->labelForRubroKey($segmentKey);
     }
 
     public function planKeyForTenant(Tenant $tenant): string

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\Dynamic;
 
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Filament\App\Resources\Dynamic\DynamicRecordResource\Pages;
 use App\Models\Dynamic\DynamicPrintTemplate;
 use App\Models\Dynamic\DynamicRecord;
@@ -247,6 +248,8 @@ class DynamicRecordResource extends Resource
             return [];
         }
 
+        $allowedEntityKeys = app(RubroManifestReaderInterface::class)->allowedDynamicEntityKeysForTenant($tenant);
+
         return EntityDefinition::query()
             ->where(function (Builder $query) use ($tenant): void {
                 $query->where('tenant_id', $tenant->getKey())
@@ -254,6 +257,12 @@ class DynamicRecordResource extends Resource
                         $global->whereNull('tenant_id')
                             ->where('status', 'published');
                     });
+            })
+            ->when($allowedEntityKeys !== [], function (Builder $query) use ($allowedEntityKeys, $tenant): void {
+                $query->where(function (Builder $scoped) use ($allowedEntityKeys, $tenant): void {
+                    $scoped->where('tenant_id', $tenant->getKey())
+                        ->orWhereIn('entity_key', $allowedEntityKeys);
+                });
             })
             ->orderBy('name')
             ->get()

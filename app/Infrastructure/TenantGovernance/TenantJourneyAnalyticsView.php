@@ -7,6 +7,7 @@ namespace App\Infrastructure\TenantGovernance;
 use App\Application\TenantGovernance\Contracts\TenantJourneyAnalyticsViewInterface;
 use App\Infrastructure\TenantGovernance\Readers\TenantJourneyAnalyticsReader;
 use App\Models\Tenant;
+use Illuminate\Support\Facades\Cache;
 
 final readonly class TenantJourneyAnalyticsView implements TenantJourneyAnalyticsViewInterface
 {
@@ -16,7 +17,11 @@ final readonly class TenantJourneyAnalyticsView implements TenantJourneyAnalytic
 
     public function summarize(string $tenantId): array
     {
-        return $this->reader->summarize($this->resolveTenant($tenantId));
+        return Cache::remember(
+            "tenant_journey_analytics:{$tenantId}",
+            now()->addSeconds(45),
+            fn (): array => $this->reader->summarize($this->resolveTenant($tenantId)),
+        );
     }
 
     private function resolveTenant(string $tenantId): Tenant

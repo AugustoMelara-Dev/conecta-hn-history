@@ -105,7 +105,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(
             \App\Services\DynamicForms\DynamicModuleAdapterRegistry::class,
             static fn ($app) => new \App\Services\DynamicForms\DynamicModuleAdapterRegistry(
-                $app->make(\App\Services\DynamicForms\DynamicRuntimeFeatureManager::class)
+                $app->make(\App\Services\DynamicForms\DynamicRuntimeFeatureManager::class),
+                $app->make(\App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface::class)
             )
         );
 
@@ -265,7 +266,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Tenant\EloquentTenantProductRepository::class
         );
         // Shared Domains
-        $this->app->singleton(
+        $this->app->scoped(
             \App\Domain\Shared\Contracts\TenantContext::class,
             \App\Infrastructure\Shared\RequestTenantContext::class
         );
@@ -848,7 +849,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Services\S3PresignerService::class
         );
 
-        $this->app->singleton(
+        $this->app->scoped(
             \App\Application\Shared\Contracts\TraceContextInterface::class,
             \App\Infrastructure\Shared\Telemetry\TraceContext::class
         );

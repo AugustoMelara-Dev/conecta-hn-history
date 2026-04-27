@@ -6,6 +6,7 @@ namespace App\Infrastructure\Tenant\Transformers;
 
 use App\Application\Shared\Contracts\FileUrlResolverInterface;
 use App\Application\Shared\Contracts\SlugGeneratorInterface;
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
@@ -27,6 +28,7 @@ final readonly class TenantMicrositeTransformer
         private FileUrlResolverInterface $filesystem,
         private SlugGeneratorInterface $slugGenerator,
         private BusinessSegmentResolver $segmentResolver,
+        private RubroManifestReaderInterface $rubroManifest,
     ) {}
 
     /**
@@ -297,98 +299,9 @@ final readonly class TenantMicrositeTransformer
     private function buildStorefrontProfile(Tenant $tenant): array
     {
         $businessType = $tenant->business_type ?? BusinessType::RETAIL;
-
-        $baseProfile = match ($businessType) {
-            BusinessType::FOOD => [
-                'label' => 'Restaurante y comida',
-                'hero_title' => 'Menu claro, pedidos directos y presencia lista para abrir apetito.',
-                'hero_copy' => 'Ideal para restaurantes, cafeterias y dark kitchens que necesitan convertir visitas en pedidos con menos friccion.',
-                'offer_title' => 'Lo mejor del menu',
-                'offer_copy' => 'Explora categorias, platos destacados y canales rapidos para pedir.',
-                'catalog_title' => 'Menu disponible',
-                'catalog_copy' => 'Consulta platos, combos y bebidas visibles en este momento.',
-                'primary_cta_label' => 'Pedir por WhatsApp',
-                'secondary_cta_label' => 'Ver menu',
-                'mobile_tab_label' => 'Menu',
-                'footer_copy' => 'Micrositio gastronomico conectado a Conecta HN para mostrar menu, captar pedidos y crecer con mejor presencia digital.',
-            ],
-            BusinessType::SERVICE => [
-                'label' => 'Servicios y citas',
-                'hero_title' => 'Agenda, confianza y servicios claros desde la primera visita.',
-                'hero_copy' => 'Pensado para consultorias, abogados, clinicas, belleza y negocios donde reservar o cotizar es tan importante como la presentacion.',
-                'offer_title' => 'Servicios destacados',
-                'offer_copy' => 'Conoce servicios, duracion y precio antes de reservar.',
-                'catalog_title' => 'Servicios y complementos',
-                'catalog_copy' => 'Si este negocio tambien vende productos o paquetes, aqui los encontraras.',
-                'primary_cta_label' => 'Reservar ahora',
-                'secondary_cta_label' => 'Hablar por WhatsApp',
-                'mobile_tab_label' => 'Servicios',
-                'footer_copy' => 'Micrositio profesional conectado a Conecta HN para mostrar servicios, captar consultas y convertir reservas con una experiencia mas clara.',
-            ],
-            BusinessType::HYBRID => [
-                'label' => 'Negocio mixto',
-                'hero_title' => 'Productos, servicios y atencion coordinados en un solo frente digital.',
-                'hero_copy' => 'Creado para negocios que venden, asesoran, atienden citas o combinan varias lineas de operacion sin perder claridad.',
-                'offer_title' => 'Oferta principal del negocio',
-                'offer_copy' => 'Descubre el mix entre catalogo, servicios y atencion especializada.',
-                'catalog_title' => 'Catalogo y soluciones',
-                'catalog_copy' => 'Aqui conviven productos, paquetes y frentes comerciales complementarios.',
-                'primary_cta_label' => 'Explorar negocio',
-                'secondary_cta_label' => 'Reservar o consultar',
-                'mobile_tab_label' => 'Ofertas',
-                'footer_copy' => 'Micrositio hibrido conectado a Conecta HN para presentar productos y servicios sin fragmentar la experiencia del cliente.',
-            ],
-            default => [
-                'label' => 'Tienda y catalogo',
-                'hero_title' => 'Catalogo potente, contacto directo y una vitrina lista para vender.',
-                'hero_copy' => 'Pensado para tiendas de celulares, ferreterias, moda, hogar y negocios que viven de su catalogo e inventario.',
-                'offer_title' => 'Lo mas buscado de la vitrina',
-                'offer_copy' => 'Explora productos, secciones y razones para comprar en este negocio.',
-                'catalog_title' => 'Catalogo publico',
-                'catalog_copy' => 'Revisa productos visibles, precios y opciones de contacto rapido.',
-                'primary_cta_label' => 'Ver catalogo',
-                'secondary_cta_label' => 'Hablar por WhatsApp',
-                'mobile_tab_label' => 'Catalogo',
-                'footer_copy' => 'Micrositio comercial conectado a Conecta HN con escaparate publico, contacto directo y una presencia mas solida para vender.',
-            ],
-        };
-
         $verticalKey = $this->resolveStorefrontVerticalKey($tenant, $businessType);
-        $verticalProfile = $this->resolveVerticalProfile($verticalKey);
-        $verticalPlaybook = $this->resolveVerticalPlaybook($verticalKey);
 
-        $mergedProfile = array_merge($baseProfile, array_intersect_key($verticalProfile, [
-            'hero_title' => true,
-            'hero_copy' => true,
-            'offer_title' => true,
-            'offer_copy' => true,
-            'catalog_title' => true,
-            'catalog_copy' => true,
-            'primary_cta_label' => true,
-            'secondary_cta_label' => true,
-            'mobile_tab_label' => true,
-            'footer_copy' => true,
-        ]));
-        $mergedProfile = array_merge($mergedProfile, array_intersect_key($verticalPlaybook, [
-            'journey_title' => true,
-            'journey_copy' => true,
-            'journey_steps' => true,
-            'growth_title' => true,
-            'growth_copy' => true,
-            'growth_cards' => true,
-            'catalog_panel_title' => true,
-            'catalog_panel_copy' => true,
-            'service_panel_title' => true,
-            'service_panel_copy' => true,
-        ]));
-
-        $mergedProfile['vertical_key'] = $verticalKey;
-        $mergedProfile['vertical_label'] = $verticalProfile['vertical_label'] ?? $mergedProfile['label'];
-        $mergedProfile['trust_points'] = $verticalProfile['trust_points'] ?? [];
-        $mergedProfile['specialized_blocks'] = $verticalProfile['specialized_blocks'] ?? [];
-        $mergedProfile['focus_cards'] = $verticalProfile['focus_cards'] ?? [];
-
-        return $mergedProfile;
+        return $this->rubroManifest->storefrontProfileForRubroKey($verticalKey, $tenant);
     }
 
     private function resolveStorefrontVerticalKey(Tenant $tenant, BusinessType $businessType): string
@@ -405,54 +318,6 @@ final readonly class TenantMicrositeTransformer
             categorySlug: $category?->slug,
             categoryName: $category?->name,
         );
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function resolveVerticalProfile(string $verticalKey): array
-    {
-        /** @var array<string, mixed> $segmentProfiles */
-        $segmentProfiles = config('storefront-segments.profiles', []);
-
-        if (isset($segmentProfiles[$verticalKey]) && is_array($segmentProfiles[$verticalKey])) {
-            /** @var array<string, mixed> $segmentProfile */
-            $segmentProfile = $segmentProfiles[$verticalKey];
-
-            return $segmentProfile;
-        }
-
-        /** @var array<string, mixed> $profiles */
-        $profiles = config('storefront-verticals.profiles', []);
-
-        /** @var array<string, mixed> $profile */
-        $profile = $profiles[$verticalKey] ?? [];
-
-        return $profile;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function resolveVerticalPlaybook(string $verticalKey): array
-    {
-        /** @var array<string, mixed> $segmentPlaybooks */
-        $segmentPlaybooks = config('storefront-segments.playbooks', []);
-
-        if (isset($segmentPlaybooks[$verticalKey]) && is_array($segmentPlaybooks[$verticalKey])) {
-            /** @var array<string, mixed> $segmentPlaybook */
-            $segmentPlaybook = $segmentPlaybooks[$verticalKey];
-
-            return $segmentPlaybook;
-        }
-
-        /** @var array<string, mixed> $playbooks */
-        $playbooks = config('storefront-playbooks', []);
-
-        /** @var array<string, mixed> $playbook */
-        $playbook = $playbooks[$verticalKey] ?? [];
-
-        return $playbook;
     }
 
     /**

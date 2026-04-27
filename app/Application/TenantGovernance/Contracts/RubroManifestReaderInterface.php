@@ -44,6 +44,13 @@ interface RubroManifestReaderInterface
     public function segmentProfiles(): array;
 
     /**
+     * @return array<string, string>
+     */
+    public function rubroLabels(): array;
+
+    public function labelForRubroKey(?string $rubroKey): string;
+
+    /**
      * @return array<string, array{capabilities: list<string>}>
      */
     public function featureCapabilityMap(): array;
@@ -57,6 +64,36 @@ interface RubroManifestReaderInterface
      * @return array<string, mixed>
      */
     public function dynamicFormsForTenant(Tenant $tenant): array;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function businessAppForTenant(Tenant $tenant): array;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function storefrontProfileForTenant(Tenant $tenant): array;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function storefrontProfileForRubroKey(string $rubroKey, Tenant $tenant): array;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function crmForTenant(Tenant $tenant): array;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function growthProfileForTenant(Tenant $tenant): array;
+
+    /**
+     * @return list<string>
+     */
+    public function allowedDynamicEntityKeysForTenant(Tenant $tenant): array;
 
     /**
      * @return list<string>

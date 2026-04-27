@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Models\Tenant;
 
 final class BusinessGrowthBlueprint
 {
     public function __construct(
         private readonly BusinessSegmentResolver $segmentResolver,
+        private readonly RubroManifestReaderInterface $rubroManifest,
     ) {}
 
     /**
@@ -19,8 +21,10 @@ final class BusinessGrowthBlueprint
     {
         $businessType = $tenant->business_type->value;
         $segmentKey = $this->segmentResolver->resolveForTenant($tenant);
+        $legacy = $this->forSegment($segmentKey, $businessType);
+        $manifest = $this->rubroManifest->growthProfileForTenant($tenant);
 
-        return $this->forSegment($segmentKey, $businessType);
+        return array_replace_recursive($legacy, $manifest);
     }
 
     /**

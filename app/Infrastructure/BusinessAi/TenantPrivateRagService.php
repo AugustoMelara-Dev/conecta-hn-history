@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Infrastructure\BusinessAi;
 
 use App\Application\BusinessAi\Contracts\BusinessRagServiceInterface;
+use App\Exceptions\InsufficientAiCreditsException;
+use App\Infrastructure\AI\BudgetEnforcer;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -18,6 +20,7 @@ final class TenantPrivateRagService implements BusinessRagServiceInterface
         private readonly BusinessEmbeddingClient $embeddingClient,
         private readonly PrivateBusinessQdrantClient $qdrantClient,
         private readonly PrivateRagRedactor $redactor,
+        private readonly BudgetEnforcer $budgetEnforcer,
     ) {}
 
     public function answer(Tenant $tenant, string $query, ?string $userId = null, int $limit = 6): array
@@ -51,7 +54,7 @@ final class TenantPrivateRagService implements BusinessRagServiceInterface
             $degradedReason ??= 'lexical_retrieval';
         }
 
-        $answer = $this->generateAnswer($tenant, $safeQuery, $sources, $degradedReason);
+        $answer = $this->generateAnswer($tenant, $safeQuery, $sources, $degradedReason, $userId);
         $latencyMs = (int) round((microtime(true) - $startedAt) * 1000);
 
         $this->audit($tenant, $userId, $safeQuery, $answer, $sources, $latencyMs, $degradedReason, 200);
@@ -218,7 +221,7 @@ final class TenantPrivateRagService implements BusinessRagServiceInterface
     /**
      * @param  list<array<string,mixed>>  $sources
      */
-    private function generateAnswer(Tenant $tenant, string $query, array $sources, ?string $degradedReason): string
+    private function generateAnswer(Tenant $tenant, string $query, array $sources, ?string $degradedReason, ?string $userId): string
     {
         if ($sources === []) {
             return 'No encontre informacion privada indexada para responder esa pregunta. Reindexa el conocimiento del negocio y vuelve a intentar.';
@@ -233,13 +236,25 @@ final class TenantPrivateRagService implements BusinessRagServiceInterface
             ->map(static fn (array $source): string => '- '.$source['title'].': '.$source['excerpt'])
             ->implode("\n");
 
+        $estimatedCost = max(0.000001, (float) config('ai-rag.private.estimated_chat_cost_usd', 0.002));
+        $reservationId = null;
+        $model = (string) config('ai-rag.private.chat_model', 'gpt-4o-mini');
+        $maxTokens = max(128, (int) config('ai-rag.private.max_completion_tokens', 700));
+
         try {
+            $reservationId = $this->budgetEnforcer->reserve(
+                tenantId: (string) $tenant->getKey(),
+                estimatedCost: $estimatedCost,
+                operation: 'business_private_rag_chat'
+            );
+
             $response = Http::withToken($apiKey)
                 ->acceptJson()
                 ->timeout(max(5, (int) config('ai-rag.private.openai_timeout_seconds', 12)))
                 ->post('https://api.openai.com/v1/chat/completions', [
-                    'model' => (string) config('ai-rag.private.chat_model', 'gpt-4o-mini'),
+                    'model' => $model,
                     'temperature' => 0.2,
+                    'max_tokens' => $maxTokens,
                     'messages' => [
                         [
                             'role' => 'system',
@@ -255,17 +270,89 @@ final class TenantPrivateRagService implements BusinessRagServiceInterface
             if ($response->ok()) {
                 $answer = trim((string) $response->json('choices.0.message.content', ''));
                 if ($answer !== '') {
+                    $usage = (array) $response->json('usage', []);
+                    $inputTokens = max(0, (int) ($usage['prompt_tokens'] ?? 0));
+                    $outputTokens = max(0, (int) ($usage['completion_tokens'] ?? 0));
+                    $actualCost = $this->calculateChatCost($inputTokens, $outputTokens);
+
+                    $this->budgetEnforcer->settle(
+                        tenantId: (string) $tenant->getKey(),
+                        estimatedCost: $estimatedCost,
+                        actualCost: $actualCost,
+                        reservationId: $reservationId,
+                        usageMetadata: [
+                            'model' => $model,
+                            'input_tokens' => $inputTokens,
+                            'output_tokens' => $outputTokens,
+                            'operation' => 'business_private_rag_chat',
+                        ]
+                    );
+
+                    $this->logAiUsage($tenant, $userId, $model, $inputTokens, $outputTokens, $actualCost);
+
                     return $this->redactSensitive($answer);
                 }
             }
+        } catch (InsufficientAiCreditsException $exception) {
+            Log::warning('business_rag.llm_budget_insufficient', [
+                'tenant_id' => (string) $tenant->getKey(),
+                'error' => $exception->getMessage(),
+            ]);
+
+            return $this->deterministicAnswer($query, $sources, 'ai_budget_insufficient');
         } catch (\Throwable $exception) {
+            if (is_string($reservationId)) {
+                $this->budgetEnforcer->refund(
+                    tenantId: (string) $tenant->getKey(),
+                    estimatedCost: $estimatedCost,
+                    reservationId: $reservationId,
+                    failureReason: $exception->getMessage()
+                );
+            }
+
             Log::warning('business_rag.llm_failed', [
                 'tenant_id' => (string) $tenant->getKey(),
                 'error' => $exception->getMessage(),
             ]);
         }
 
+        if (is_string($reservationId)) {
+            $this->budgetEnforcer->refund(
+                tenantId: (string) $tenant->getKey(),
+                estimatedCost: $estimatedCost,
+                reservationId: $reservationId,
+                failureReason: 'business_rag_llm_empty_or_error'
+            );
+        }
+
         return $this->deterministicAnswer($query, $sources, $degradedReason ?? 'llm_unavailable');
+    }
+
+    private function calculateChatCost(int $inputTokens, int $outputTokens): float
+    {
+        $inputPerMillion = (float) config('ai-rag.private.chat_input_cost_per_1m_tokens', 0.15);
+        $outputPerMillion = (float) config('ai-rag.private.chat_output_cost_per_1m_tokens', 0.60);
+
+        return round(($inputTokens / 1_000_000 * $inputPerMillion) + ($outputTokens / 1_000_000 * $outputPerMillion), 6);
+    }
+
+    private function logAiUsage(Tenant $tenant, ?string $userId, string $model, int $inputTokens, int $outputTokens, float $actualCost): void
+    {
+        if ($userId === null || ! Schema::hasTable('ai_usage_logs')) {
+            return;
+        }
+
+        DB::table('ai_usage_logs')->insert([
+            'user_id' => $userId,
+            'tenant_id' => (string) $tenant->getKey(),
+            'provider' => 'openai',
+            'model' => $model,
+            'input_tokens' => $inputTokens,
+            'output_tokens' => $outputTokens,
+            'cost' => $actualCost,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     /**

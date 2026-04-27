@@ -354,6 +354,10 @@ class CustomerConversationTemplateManager
             return null;
         }
 
+        if (filled($tenant->rubro_key)) {
+            return (string) $tenant->rubro_key;
+        }
+
         return filled($tenant->business_segment_key) ? (string) $tenant->business_segment_key : null;
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Enums\UserRole;
 use App\Models\Order;
 use App\Models\Tenant;
@@ -31,6 +32,7 @@ final class TenantOnboardingProgressService
         $role = $this->normalizeRole($user);
         $tenantSlug = (string) ($tenant->slug ?? '');
         $businessType = $this->businessType($tenant);
+        $manifestOnboarding = app(RubroManifestReaderInterface::class)->onboardingForTenant($tenant);
 
         $hasCatalog = $tenant->products()->exists() || $tenant->services()->exists();
         $hasSchedule = $tenant->openingHours()->exists() || filled($tenant->simple_schedule ?? null);
@@ -42,7 +44,7 @@ final class TenantOnboardingProgressService
         $milestones = match ($role) {
             UserRole::STAFF->value => $this->staffMilestones($tenantSlug, $hasProfileEssentials, $hasSchedule, $hasContactChannel, $hasMicrositeReady, $hasOperations),
             UserRole::CUSTOMER->value => $this->customerMilestones($tenantSlug, $tenant, $hasProfileEssentials, $hasContactChannel, $hasOperations),
-            default => $this->ownerMilestones($tenantSlug, $businessType, $hasProfileEssentials, $hasCatalog, $hasSchedule, $hasContactChannel, $hasMicrositeReady),
+            default => $this->ownerMilestones($tenantSlug, $businessType, $hasProfileEssentials, $hasCatalog, $hasSchedule, $hasContactChannel, $hasMicrositeReady, $manifestOnboarding),
         };
 
         $completedCount = collect($milestones)->where('completed', true)->count();
@@ -55,7 +57,7 @@ final class TenantOnboardingProgressService
         return [
             'role' => $role,
             'businessType' => $businessType,
-            'businessLabel' => $this->businessLabel($businessType),
+            'businessLabel' => $this->businessLabel($tenant, $businessType),
             'progress' => $progress,
             'milestones' => $milestones,
             'nextAction' => [
@@ -64,7 +66,7 @@ final class TenantOnboardingProgressService
                 'copy' => (string) $nextAction['copy'],
                 'href' => (string) $nextAction['href'],
             ],
-            'supportTips' => $this->supportTips($businessType, $progress),
+            'supportTips' => $this->supportTips($businessType, $progress, $manifestOnboarding),
             'lastCompletedAt' => $lastCompletedAt,
         ];
     }
@@ -97,7 +99,16 @@ final class TenantOnboardingProgressService
     /**
      * @return list<array{key:string,title:string,copy:string,href:string,completed:bool}>
      */
-    private function ownerMilestones(string $tenantSlug, string $businessType, bool $hasProfile, bool $hasCatalog, bool $hasSchedule, bool $hasContact, bool $isPublished): array
+    private function ownerMilestones(
+        string $tenantSlug,
+        string $businessType,
+        bool $hasProfile,
+        bool $hasCatalog,
+        bool $hasSchedule,
+        bool $hasContact,
+        bool $isPublished,
+        array $manifestOnboarding = [],
+    ): array
     {
         $catalogTitle = match ($businessType) {
             'food' => 'Primer plato o combo',
@@ -119,6 +130,34 @@ final class TenantOnboardingProgressService
             default => 'Define disponibilidad real para evitar friccion comercial.',
         };
 
+        $manifestMilestones = $this->ownerMilestonesFromManifest(
+            tenantSlug: $tenantSlug,
+            businessType: $businessType,
+            hasProfile: $hasProfile,
+            hasCatalog: $hasCatalog,
+            hasSchedule: $hasSchedule,
+            hasContact: $hasContact,
+            isPublished: $isPublished,
+            manifestOnboarding: $manifestOnboarding,
+        );
+
+        if ($manifestMilestones !== []) {
+            $legacyMilestones = [
+                $this->milestone('owner_profile', 'Perfil confiable', $hasProfile, 'Agrega descripcion, direccion y datos base para que el cliente entienda que vendes y donde atiendes.', $this->settingsHref($tenantSlug)),
+                $this->milestone('owner_catalog', $catalogTitle, $hasCatalog, $catalogCopy, $this->catalogHref($tenantSlug, $businessType)),
+                $this->milestone('owner_schedule', 'Horario o disponibilidad', $hasSchedule, $scheduleCopy, $this->settingsHref($tenantSlug)),
+                $this->milestone('owner_contact', 'Canal principal activo', $hasContact, 'Activa WhatsApp o telefono para que el cliente sepa como contactarte sin escribir a soporte.', $this->settingsHref($tenantSlug)),
+                $this->milestone('owner_publish', 'Micrositio publicado', $isPublished, 'Abre tu pagina publica y revisa que nombre, contacto y oferta se vean correctos.', $this->micrositeHref($tenantSlug)),
+            ];
+
+            return collect($manifestMilestones)
+                ->concat($legacyMilestones)
+                ->unique(fn (array $milestone): string => (string) $milestone['title'])
+                ->take(5)
+                ->values()
+                ->all();
+        }
+
         return [
             $this->milestone('owner_profile', 'Perfil confiable', $hasProfile, 'Agrega descripcion, direccion y datos base para que el cliente entienda que vendes y donde atiendes.', $this->settingsHref($tenantSlug)),
             $this->milestone('owner_catalog', $catalogTitle, $hasCatalog, $catalogCopy, $this->catalogHref($tenantSlug, $businessType)),
@@ -126,6 +165,47 @@ final class TenantOnboardingProgressService
             $this->milestone('owner_contact', 'Canal principal activo', $hasContact, 'Activa WhatsApp o telefono para que el cliente sepa como contactarte sin escribir a soporte.', $this->settingsHref($tenantSlug)),
             $this->milestone('owner_publish', 'Micrositio publicado', $isPublished, 'Abre tu pagina publica y revisa que nombre, contacto y oferta se vean correctos.', $this->micrositeHref($tenantSlug)),
         ];
+    }
+
+    /**
+     * @return list<array{key:string,title:string,copy:string,href:string,completed:bool}>
+     */
+    private function ownerMilestonesFromManifest(
+        string $tenantSlug,
+        string $businessType,
+        bool $hasProfile,
+        bool $hasCatalog,
+        bool $hasSchedule,
+        bool $hasContact,
+        bool $isPublished,
+        array $manifestOnboarding,
+    ): array {
+        $healthChecks = collect((array) ($manifestOnboarding['health_checks'] ?? []))
+            ->values();
+
+        if ($healthChecks->isEmpty()) {
+            return [];
+        }
+
+        return $healthChecks
+            ->map(function (mixed $check, int $index) use ($tenantSlug, $businessType, $hasProfile, $hasCatalog, $hasSchedule, $hasContact, $isPublished): array {
+                $state = is_array($check) ? (string) ($check['state'] ?? '') : (string) $check;
+                $title = is_array($check) ? (string) ($check['title'] ?? '') : '';
+                $pendingCopy = is_array($check) ? (string) ($check['pending_copy'] ?? '') : '';
+                $completeCopy = is_array($check) ? (string) ($check['complete_copy'] ?? '') : '';
+                $completed = $this->manifestStateCompleted($state, $hasProfile, $hasCatalog, $hasSchedule, $hasContact, $isPublished);
+
+                return $this->milestone(
+                    "owner_manifest_{$index}",
+                    $title !== '' ? $title : $this->manifestStateTitle($state),
+                    $completed,
+                    $completed
+                        ? ($completeCopy !== '' ? $completeCopy : 'Este frente ya esta cubierto.')
+                        : ($pendingCopy !== '' ? $pendingCopy : 'Completa este frente para destrabar el siguiente paso del negocio.'),
+                    $this->manifestStateHref($tenantSlug, $businessType, $state),
+                );
+            })
+            ->all();
     }
 
     /** @return list<array{key:string,title:string,copy:string,href:string,completed:bool}> */
@@ -241,8 +321,14 @@ final class TenantOnboardingProgressService
         return in_array($raw, ['retail', 'food', 'service', 'hybrid'], true) ? (string) $raw : 'retail';
     }
 
-    private function businessLabel(string $businessType): string
+    private function businessLabel(Tenant $tenant, string $businessType): string
     {
+        $label = (string) data_get(app(RubroManifestReaderInterface::class)->forTenant($tenant), 'presentation.label', '');
+
+        if ($label !== '') {
+            return $label;
+        }
+
         return match ($businessType) {
             'food' => 'Restaurante y comida',
             'service' => 'Servicios y citas',
@@ -252,11 +338,20 @@ final class TenantOnboardingProgressService
     }
 
     /** @return list<array{title:string,copy:string}> */
-    private function supportTips(string $businessType, int $progress): array
+    private function supportTips(string $businessType, int $progress, array $manifestOnboarding = []): array
     {
         $primary = $progress >= 100
             ? ['title' => 'Listo para compartir', 'copy' => 'Tu base esta completa. Ahora comparte el micrositio y empieza a medir contactos, pedidos o reservas.']
             : ['title' => 'Siguiente paso claro', 'copy' => 'Completa el boton principal antes de pedir soporte: el panel actualiza este checklist automaticamente.'];
+
+        $manifestCopy = (string) ($manifestOnboarding['copy'] ?? '');
+
+        if ($manifestCopy !== '') {
+            return [$primary, [
+                'title' => (string) ($manifestOnboarding['title'] ?? 'Ruta del rubro'),
+                'copy' => $manifestCopy,
+            ]];
+        }
 
         $specific = match ($businessType) {
             'food' => ['title' => 'Para comida', 'copy' => 'Prioriza menu, horarios y WhatsApp. Es lo que mas evita reclamos de clientes hambrientos.'],
@@ -266,6 +361,41 @@ final class TenantOnboardingProgressService
         };
 
         return [$primary, $specific];
+    }
+
+    private function manifestStateCompleted(
+        string $state,
+        bool $hasProfile,
+        bool $hasCatalog,
+        bool $hasSchedule,
+        bool $hasContact,
+        bool $isPublished,
+    ): bool {
+        return match ($state) {
+            'has_profile', 'profile_branding', 'profile_branding_whatsapp' => $hasProfile,
+            'has_products', 'has_menu_items', 'has_products_or_services', 'products', 'services' => $hasCatalog,
+            'has_provider', 'schedule', 'booking_ready', 'staff' => $hasSchedule,
+            'has_payment_method', 'has_order_channel', 'service_channel', 'whatsapp' => $hasContact,
+            'coverage', 'pickup_delivery', 'hybrid_coverage' => $isPublished,
+            default => false,
+        };
+    }
+
+    private function manifestStateTitle(string $state): string
+    {
+        return $state !== ''
+            ? str_replace('  ', ' ', ucwords(str_replace('_', ' ', $state)))
+            : 'Hito del rubro';
+    }
+
+    private function manifestStateHref(string $tenantSlug, string $businessType, string $state): string
+    {
+        return match ($state) {
+            'has_products', 'has_menu_items', 'has_products_or_services', 'products', 'services' => $this->catalogHref($tenantSlug, $businessType),
+            'has_provider', 'schedule', 'booking_ready', 'staff' => $this->appointmentsHref($tenantSlug),
+            'coverage', 'pickup_delivery', 'hybrid_coverage' => $this->micrositeHref($tenantSlug),
+            default => $this->settingsHref($tenantSlug),
+        };
     }
 
     /** @return array{key:string,title:string,copy:string,href:string,completed:bool} */

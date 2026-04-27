@@ -73,4 +73,23 @@ final class RubroManifestReaderTest extends TestCase
         self::assertSame('service_intake', $reader->dynamicFormsForTenant($tenant)['entities'][0]['entity_key']);
         self::assertContains(Capability::APPOINTMENT_BOOKING->value, $reader->featureCapabilityMap()['service']['capabilities']);
     }
+
+    public function test_manifest_is_source_for_business_app_crm_labels_and_dynamic_entity_scope(): void
+    {
+        $tenant = Tenant::factory()->create([
+            'business_type' => 'service',
+            'rubro_key' => 'service_general',
+            'business_segment_key' => 'legacy_service',
+        ]);
+
+        $reader = app(RubroManifestReaderInterface::class);
+
+        self::assertSame('Servicios y citas', $reader->labelForRubroKey('service_general'));
+        self::assertSame('Legacy Service', $reader->labelForRubroKey('legacy_service'));
+        self::assertSame('Tu centro operativo para servicios y agenda', $reader->businessAppForTenant($tenant)['dashboard_title']);
+        self::assertContains('service_rebook', $reader->crmForTenant($tenant)['templates']);
+        self::assertSame(['service_intake', 'client_discovery'], $reader->allowedDynamicEntityKeysForTenant($tenant));
+        self::assertSame('CRM y continuidad de servicios', $reader->growthProfileForTenant($tenant)['headline']);
+        self::assertCount(2, $reader->growthProfileForTenant($tenant)['journeys']);
+    }
 }

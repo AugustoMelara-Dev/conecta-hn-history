@@ -6,23 +6,23 @@ function asRoute(slug: string): string {
 
 export const officialFixtures = {
     owner: {
-        email: env.BUSINESS_OWNER_EMAIL || 'owner-demo-ai-guide-hn@conectahn.app',
-        password: env.BUSINESS_OWNER_PASSWORD || 'ChangeMe123!',
+        email: env.SMOKE_OWNER_EMAIL || env.BUSINESS_OWNER_EMAIL || 'owner-demo-ai-guide-hn@conectahn.app',
+        password: env.SMOKE_OWNER_PASSWORD || env.BUSINESS_OWNER_PASSWORD || 'ChangeMe123!',
     },
     customer: {
-        email: env.CUSTOMER_EMAIL || 'customer-e2e@conectahn.app',
-        password: env.CUSTOMER_PASSWORD || 'ChangeMe123!',
+        email: env.SMOKE_CUSTOMER_EMAIL || env.CUSTOMER_EMAIL || 'customer-e2e@conectahn.app',
+        password: env.SMOKE_CUSTOMER_PASSWORD || env.CUSTOMER_PASSWORD || 'ChangeMe123!',
     },
     product: {
-        slug: env.E2E_PRODUCT_TENANT_SLUG || 'demo-ai-guide-hn',
-        expectedPanelText: env.E2E_PRODUCT_PANEL_TEXT || 'Combo Presupuesto 120 HNL',
+        slug: env.SMOKE_PRODUCT_TENANT_SLUG || env.E2E_PRODUCT_TENANT_SLUG || 'demo-ai-guide-hn',
+        expectedPanelText: env.SMOKE_PRODUCT_PANEL_TEXT || env.E2E_PRODUCT_PANEL_TEXT || 'Combo Presupuesto 120 HNL',
     },
     service: {
-        slug: env.E2E_SERVICE_TENANT_SLUG || 'demo-ai-booking-hn',
-        expectedPanelText: env.E2E_SERVICE_PANEL_TEXT || 'Corte y barba express',
-        expectedProviderName: env.E2E_SERVICE_PROVIDER_NAME || 'Laura Rivera',
+        slug: env.SMOKE_SERVICE_TENANT_SLUG || env.E2E_SERVICE_TENANT_SLUG || 'demo-ai-booking-hn',
+        expectedPanelText: env.SMOKE_SERVICE_PANEL_TEXT || env.E2E_SERVICE_PANEL_TEXT || 'Corte y barba express',
+        expectedProviderName: env.SMOKE_SERVICE_PROVIDER_NAME || env.E2E_SERVICE_PROVIDER_NAME || 'Laura Rivera',
     },
-    crossTenantSlug: env.E2E_CROSS_TENANT_SLUG || env.E2E_SERVICE_TENANT_SLUG || 'demo-ai-booking-hn',
+    crossTenantSlug: env.SMOKE_CROSS_TENANT_SLUG || env.E2E_CROSS_TENANT_SLUG || env.E2E_SERVICE_TENANT_SLUG || 'demo-ai-booking-hn',
 };
 
 export const officialRoutes = {

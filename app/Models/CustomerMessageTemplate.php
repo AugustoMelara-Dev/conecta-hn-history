@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -72,10 +73,6 @@ class CustomerMessageTemplate extends Model
             return 'Cualquier rubro';
         }
 
-        $label = config("business-segments.profiles.{$this->business_segment_key}.label");
-
-        return is_string($label) && $label !== ''
-            ? $label
-            : str((string) $this->business_segment_key)->replace('_', ' ')->title()->value();
+        return app(RubroManifestReaderInterface::class)->labelForRubroKey((string) $this->business_segment_key);
     }
 }

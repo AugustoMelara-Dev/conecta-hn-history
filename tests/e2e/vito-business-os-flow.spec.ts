@@ -106,7 +106,7 @@ test.describe('Vito Business OS critical journey', () => {
         await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
     });
 
-    test('seeded owner can open admin, onboarding dashboard, settings, and public microsite', async ({ page }) => {
+    test('seeded owner can open admin, onboarding dashboard, settings, copilot, and public microsite', async ({ page }) => {
         test.setTimeout(90_000);
 
         await loginAs(page, officialFixtures.owner.email, officialFixtures.owner.password);
@@ -121,6 +121,16 @@ test.describe('Vito Business OS critical journey', () => {
         const settingsResponse = await page.goto(`/app/${officialFixtures.product.slug}/settings`, { waitUntil: 'domcontentloaded' });
         expect(settingsResponse?.status(), 'tenant settings must be reachable').toBeLessThan(500);
         await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
+        await expect(page.locator('body')).toContainText(/configur|perfil|ajustes|negocio/i, {
+            timeout: 20_000,
+        });
+
+        const copilotResponse = await page.goto(`/app/${officialFixtures.product.slug}/copilot`, { waitUntil: 'domcontentloaded' });
+        expect(copilotResponse?.status(), 'business copilot must be reachable').toBeLessThan(500);
+        await expect(page.getByTestId('business-copilot-diagnostic')).toBeVisible({ timeout: 20_000 });
+        await expect(page.locator('body')).toContainText(/copiloto|autodiagnostico|ia privada/i, {
+            timeout: 20_000,
+        });
 
         const micrositeResponse = await page.goto(officialRoutes.productMicrosite, { waitUntil: 'domcontentloaded' });
         expect(micrositeResponse?.status(), 'published microsite must be reachable').toBeLessThan(500);
@@ -152,7 +162,31 @@ test.describe('Vito Business OS critical journey', () => {
             await expect(page.getByTestId('directory-guide-result').first()).toBeVisible({ timeout: 20_000 });
         }
 
-        const chatResult = await page.evaluate(async () => {
+        await page.getByTestId('directory-guide-chat-input').fill('Que puedo comprar con 120 lps para comer?');
+
+        const chatResponsePromise = page.waitForResponse((response) =>
+            response.url().includes('/api/v1/directory/guide/chat')
+            && response.request().method() === 'POST'
+        , { timeout: 20_000 });
+
+        await page.getByTestId('directory-guide-chat-submit').click();
+        const chatResponse = await chatResponsePromise;
+        expect(chatResponse.status(), 'directory guide chat must answer for customer accounts').toBe(200);
+        await expect(page.getByTestId('directory-guide-chat-answer')).toContainText(/recomiendo|opciones|L/i, { timeout: 20_000 });
+    });
+
+    test('support-facing boundaries explain owner vs customer AI expectations', async ({ page }) => {
+        test.setTimeout(90_000);
+
+        await page.goto('/directorio?category=restaurantes&city=tegucigalpa', { waitUntil: 'domcontentloaded' });
+        await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
+        await expect(page.getByTestId('directory-guide-budget-input')).toHaveCount(0);
+        await expect(page.locator('body')).toContainText(/directorio|negocios|inicia sesi[oÃ³]n|cuenta|login/i, { timeout: 20_000 });
+
+        await loginAs(page, officialFixtures.owner.email, officialFixtures.owner.password);
+        await page.goto('/directorio?category=restaurantes&city=tegucigalpa', { waitUntil: 'domcontentloaded' });
+
+        const ownerChatResult = await page.evaluate(async () => {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 
             const response = await fetch('/api/v1/directory/guide/chat', {
@@ -162,10 +196,10 @@ test.describe('Vito Business OS critical journey', () => {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
-                    'x-trace-id': 'e2e-directory-chat-vito-business-os',
+                    'x-trace-id': 'e2e-owner-directory-chat-boundary',
                 },
                 body: JSON.stringify({
-                    query: 'Que puedo comprar con 120 lps para comer?',
+                    query: 'Que puedo comprar con 120 lps?',
                     budget_amount: 120,
                     currency: 'HNL',
                     city: 'tegucigalpa',
@@ -180,12 +214,7 @@ test.describe('Vito Business OS critical journey', () => {
             };
         });
 
-        expect(chatResult.status, 'directory guide chat must answer for customer accounts').toBe(200);
-
-        const payload = chatResult.payload;
-        expect(payload.meta?.trace_id).toBe('e2e-directory-chat-vito-business-os');
-        expect(payload.meta?.chat_answer).toEqual(expect.any(String));
-        expect(Array.isArray(payload.data)).toBeTruthy();
-        expect(payload.data.length).toBeGreaterThan(0);
+        expect(ownerChatResult.status, 'owners should get an explicit customer-only boundary, not a silent failure').toBe(403);
+        expect(JSON.stringify(ownerChatResult.payload)).toMatch(/customer|cliente|Disponible solo/i);
     });
 });

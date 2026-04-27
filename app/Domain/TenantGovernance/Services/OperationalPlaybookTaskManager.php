@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Domain\Access\Enums\Role;
 use App\Domain\TenantGovernance\Repositories\OperationalPlaybookTaskRepositoryInterface;
 use App\Models\OperationalPlaybookTask;
@@ -177,12 +178,21 @@ final class OperationalPlaybookTaskManager
         $base = config("operational-playbooks.triggers.{$triggerKey}", []);
         $segmentKey = $this->segmentResolver->resolveForTenant($tenant);
         $segmentOverride = config("operational-playbooks.segments.{$segmentKey}.{$triggerKey}", []);
+        $manifestOverride = data_get(
+            app(RubroManifestReaderInterface::class)->forTenant($tenant),
+            "operational_playbooks.triggers.{$triggerKey}",
+            []
+        );
 
         if (! is_array($base)) {
             return [];
         }
 
-        return array_replace_recursive($base, is_array($segmentOverride) ? $segmentOverride : []);
+        return array_replace_recursive(
+            $base,
+            is_array($segmentOverride) ? $segmentOverride : [],
+            is_array($manifestOverride) ? $manifestOverride : []
+        );
     }
 
     /**

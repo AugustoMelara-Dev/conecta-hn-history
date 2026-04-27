@@ -18,6 +18,7 @@ use App\Models\TenantUser;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 final class CustomerInboxReadModel
 {
@@ -184,12 +185,18 @@ final class CustomerInboxReadModel
 
     public function badgeCount(Tenant $tenant): int
     {
-        return CustomerNote::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $tenant->getKey())
-            ->where('requires_follow_up', true)
-            ->whereIn('status', ['open', 'in_progress'])
-            ->count();
+        $tenantId = (string) $tenant->getKey();
+
+        return Cache::remember(
+            "customer_inbox_badge_count:{$tenantId}",
+            now()->addSeconds(30),
+            fn (): int => CustomerNote::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('requires_follow_up', true)
+                ->whereIn('status', ['open', 'in_progress'])
+                ->count(),
+        );
     }
 
     private function mapQueueNote(CustomerNote $note, Tenant $tenant): array

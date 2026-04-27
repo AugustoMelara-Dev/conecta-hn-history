@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Models\CustomerMessageTemplate;
 use App\Models\CustomerNote;
 use App\Models\CustomerProfile;
@@ -17,8 +18,11 @@ final class CustomerConversationTemplateCatalog
      */
     public function journeyDefinition(CustomerProfile $profile, ?string $segmentKey = null): array
     {
-        $segmentKey ??= (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new');
-        $segmentDefinition = $this->segmentDefinition($profile, $segmentKey);
+        $resolvedSegmentKey = $this->resolveManifestSegmentKey(
+            $profile,
+            $segmentKey ?? (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new'),
+        );
+        $segmentDefinition = $this->segmentDefinition($profile, $resolvedSegmentKey);
 
         return collect((array) ($segmentDefinition['journey'] ?? []))
             ->map(function (mixed $step, int $index): array {
@@ -107,9 +111,19 @@ final class CustomerConversationTemplateCatalog
      */
     public function templateKeysForConversation(CustomerProfile $profile, string $segmentKey, ?string $preferredKey = null): Collection
     {
-        $segmentDefinition = $this->segmentDefinition($profile, $segmentKey);
+        $resolvedSegmentKey = $this->resolveManifestSegmentKey($profile, $segmentKey);
+        $segmentDefinition = $this->segmentDefinition($profile, $resolvedSegmentKey);
         $configKeys = collect((array) ($segmentDefinition['templates'] ?? []))
             ->map(static fn (string $key): string => $key);
+        $manifestKeys = $this->manifestTemplateKeys($profile);
+
+        if ($manifestKeys->isNotEmpty()) {
+            $configKeys = $configKeys
+                ->intersect($manifestKeys)
+                ->concat($manifestKeys)
+                ->unique()
+                ->values();
+        }
 
         $customTemplates = $this->eligibleCustomTemplates($profile);
         $disabledKeys = $customTemplates
@@ -321,7 +335,29 @@ final class CustomerConversationTemplateCatalog
             return null;
         }
 
+        if (filled($tenant->rubro_key)) {
+            return (string) $tenant->rubro_key;
+        }
+
         return filled($tenant->business_segment_key) ? (string) $tenant->business_segment_key : null;
+    }
+
+    /**
+     * @return Collection<int, string>
+     */
+    private function manifestTemplateKeys(CustomerProfile $profile): Collection
+    {
+        $tenantRecord = $profile->tenant()->withoutGlobalScopes()->first();
+        $tenant = $tenantRecord instanceof Tenant ? $tenantRecord : null;
+
+        if (! $tenant instanceof Tenant) {
+            return collect();
+        }
+
+        return collect((array) data_get(app(RubroManifestReaderInterface::class)->crmForTenant($tenant), 'templates', []))
+            ->map(static fn (mixed $key): string => (string) $key)
+            ->filter(static fn (string $key): bool => $key !== '')
+            ->values();
     }
 
     /**
@@ -331,6 +367,14 @@ final class CustomerConversationTemplateCatalog
     {
         $base = (array) config("customer-conversations.segments.{$segmentKey}", []);
         $vertical = (array) config('customer-conversations.verticals.'.$this->businessSegmentKey($profile).".segments.{$segmentKey}", []);
+        $manifest = (array) data_get($this->manifestCrm($profile), "journeys.{$segmentKey}", []);
+
+        if ($manifest !== []) {
+            return array_replace_recursive([
+                'journey' => [],
+                'templates' => [],
+            ], $manifest);
+        }
 
         return array_replace_recursive($base, $vertical);
     }
@@ -346,6 +390,73 @@ final class CustomerConversationTemplateCatalog
             return [];
         }
 
-        return (array) config("customer-conversations.verticals.{$businessSegmentKey}.templates.{$templateKey}", []);
+        $legacy = (array) config("customer-conversations.verticals.{$businessSegmentKey}.templates.{$templateKey}", []);
+        $manifest = (array) data_get($this->manifestCrm($profile), "template_overrides.{$templateKey}", []);
+
+        return array_replace_recursive($legacy, $manifest);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function manifestCrm(CustomerProfile $profile): array
+    {
+        $tenantRecord = $profile->tenant()->withoutGlobalScopes()->first();
+        $tenant = $tenantRecord instanceof Tenant ? $tenantRecord : null;
+
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
+        return app(RubroManifestReaderInterface::class)->crmForTenant($tenant);
+    }
+
+    private function resolveManifestSegmentKey(CustomerProfile $profile, string $segmentKey): string
+    {
+        $normalized = trim($segmentKey);
+        if ($normalized === '') {
+            $normalized = 'new';
+        }
+
+        $manifestCrm = $this->manifestCrm($profile);
+        $journeys = (array) ($manifestCrm['journeys'] ?? []);
+
+        if (array_key_exists($normalized, $journeys)) {
+            return $normalized;
+        }
+
+        $aliases = [
+            'new' => 'prospect',
+            'lead' => 'prospect',
+            'active' => 'repeat',
+            'vip' => 'repeat',
+            'booked' => 'booked_service',
+            'booked_service' => 'booked_service',
+        ];
+        $alias = $aliases[$normalized] ?? null;
+
+        if (is_string($alias) && $alias !== '' && array_key_exists($alias, $journeys)) {
+            return $alias;
+        }
+
+        $preferred = array_values(array_filter(
+            (array) ($manifestCrm['preferred_segments'] ?? []),
+            static fn (mixed $value): bool => is_string($value) && $value !== ''
+        ));
+
+        foreach ($preferred as $candidate) {
+            if (array_key_exists($candidate, $journeys)) {
+                return $candidate;
+            }
+        }
+
+        if ($journeys !== []) {
+            $firstJourneyKey = array_key_first($journeys);
+            if (is_string($firstJourneyKey) && $firstJourneyKey !== '') {
+                return $firstJourneyKey;
+            }
+        }
+
+        return $normalized;
     }
 }

@@ -16,6 +16,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import SupportDiagnosticCard from '@/Components/SupportDiagnosticCard';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FORMATTERS
@@ -125,11 +126,27 @@ function PaymentTimeline({ status }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════════════
-export default function PaymentPending({ payment, tenant, checkUrl }) {
+export default function PaymentPending({ payment, tenant, checkUrl, diagnostic = null }) {
     const [status, setStatus] = useState(payment?.status || 'pending');
     const [elapsedTime, setElapsedTime] = useState(0);
+    const [pollDiagnostic, setPollDiagnostic] = useState(null);
     const appDashboardHref = tenant?.slug ? route('filament.app.pages.dashboard', { tenant: tenant.slug }) : route('dashboard');
     const appBillingHref = tenant?.slug ? route('filament.app.pages.manage-billing', { tenant: tenant.slug }) : route('dashboard');
+    const visibleDiagnostic = pollDiagnostic || diagnostic || {
+        surface: 'billing',
+        status: status === 'pending' ? 'Pago en verificacion' : status === 'completed' ? 'Pago confirmado' : 'Pago no procesado',
+        probable_cause: status === 'pending'
+            ? 'Estamos esperando confirmacion del proveedor de pago o del webhook asociado.'
+            : status === 'completed'
+                ? 'El proveedor confirmo el cobro y el sistema actualizo el estado.'
+                : 'El proveedor no confirmo el cobro o la verificacion devolvio un estado fallido.',
+        recommended_action: status === 'pending'
+            ? 'No cierres la pagina. Si tarda demasiado, comparte la referencia con soporte.'
+            : status === 'completed'
+                ? 'Puedes volver al panel y continuar usando tu cuenta.'
+                : 'Intenta nuevamente desde billing o contacta soporte con esta referencia.',
+        trace_id: payment?.reference_number || payment?.id || null,
+    };
 
     // Poll for status updates
     useEffect(() => {
@@ -139,6 +156,10 @@ export default function PaymentPending({ payment, tenant, checkUrl }) {
             fetch(checkUrl || `/api/payments/${payment?.id}/status`)
                 .then(res => res.json())
                 .then(data => {
+                    if (data.diagnostic) {
+                        setPollDiagnostic(data.diagnostic);
+                    }
+
                     if (data.status && data.status !== 'pending') {
                         setStatus(data.status);
                         if (data.status === 'completed') {
@@ -149,7 +170,15 @@ export default function PaymentPending({ payment, tenant, checkUrl }) {
                         }
                     }
                 })
-                .catch(() => { });
+                .catch(() => {
+                    setPollDiagnostic({
+                        surface: 'billing',
+                        status: 'No pudimos verificar el pago',
+                        probable_cause: 'La consulta de estado no respondio o el proveedor esta tardando mas de lo normal.',
+                        recommended_action: 'Mantente en esta pagina y reintenta desde billing si el estado no cambia. Comparte la referencia con soporte.',
+                        trace_id: payment?.reference_number || payment?.id || null,
+                    });
+                });
         }, 5000); // Poll every 5 seconds
 
         return () => clearInterval(pollInterval);
@@ -218,6 +247,8 @@ export default function PaymentPending({ payment, tenant, checkUrl }) {
                                 </div>
                             </div>
                         )}
+
+                        <SupportDiagnosticCard diagnostic={visibleDiagnostic} className="mb-6 text-left" />
 
                         {/* Elapsed Time */}
                         {status === 'pending' && (

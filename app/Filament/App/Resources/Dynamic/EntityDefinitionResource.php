@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\Dynamic;
 
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Filament\App\Resources\Dynamic\EntityDefinitionResource\Pages;
 use App\Models\Dynamic\EntityDefinition;
 use App\Models\Tenant;
@@ -105,8 +106,11 @@ class EntityDefinitionResource extends Resource
                         ->label('Nombre')
                         ->required()
                         ->maxLength(255),
-                    TextInput::make('business_segment_key')
+                    Select::make('business_segment_key')
                         ->label('Segmento')
+                        ->options(fn (): array => app(RubroManifestReaderInterface::class)->rubroLabels())
+                        ->searchable()
+                        ->placeholder('Todos los rubros')
                         ->maxLength(120),
                     Select::make('status')
                         ->label('Estado')

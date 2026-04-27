@@ -138,10 +138,15 @@ function resolveGuideTenant(entry) {
 
 function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
     const [budget, setBudget] = useState('100');
+    const [chatPrompt, setChatPrompt] = useState('Que puedo comprar con 100 lps cerca de mi?');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isChatting, setIsChatting] = useState(false);
     const [guideResults, setGuideResults] = useState([]);
     const [guideMeta, setGuideMeta] = useState(null);
     const [guideError, setGuideError] = useState(null);
+    const [chatAnswer, setChatAnswer] = useState(null);
+    const [chatError, setChatError] = useState(null);
+    const [chatMeta, setChatMeta] = useState(null);
 
     const isCustomer = Boolean(authUser?.persona?.is_customer) || authUser?.role === 'customer' || authUser?.role === 'user';
     const quotaLimit = guideMeta?.quota_limit ?? 5;
@@ -149,6 +154,27 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
     const quotaUsed = guideMeta?.quota_used;
     const quotaResetAt = guideMeta?.quota_reset_at;
     const diagnostic = guideMeta?.diagnostic;
+
+    const currentCity = cityTerm || filters.city || 'tegucigalpa';
+    const currentCategory = filters.category || '';
+
+    const mergeMeta = (payload) => {
+        const responseMeta = payload?.meta && typeof payload.meta === 'object'
+            ? { ...payload.meta }
+            : {};
+
+        if (payload?.quota_limit !== undefined) {
+            responseMeta.quota_limit = payload.quota_limit;
+        }
+        if (payload?.quota_remaining !== undefined) {
+            responseMeta.quota_remaining = payload.quota_remaining;
+        }
+        if (payload?.reset_at && !responseMeta.quota_reset_at) {
+            responseMeta.quota_reset_at = payload.reset_at;
+        }
+
+        return responseMeta;
+    };
 
     const runGuide = async (event) => {
         event.preventDefault();
@@ -193,19 +219,7 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                 payload = {};
             }
 
-            const responseMeta = payload?.meta && typeof payload.meta === 'object'
-                ? { ...payload.meta }
-                : {};
-
-            if (payload?.quota_limit !== undefined) {
-                responseMeta.quota_limit = payload.quota_limit;
-            }
-            if (payload?.quota_remaining !== undefined) {
-                responseMeta.quota_remaining = payload.quota_remaining;
-            }
-            if (payload?.reset_at && !responseMeta.quota_reset_at) {
-                responseMeta.quota_reset_at = payload.reset_at;
-            }
+            const responseMeta = mergeMeta(payload);
 
             if (!response.ok) {
                 setGuideMeta(Object.keys(responseMeta).length ? responseMeta : null);
@@ -232,6 +246,68 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
             });
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const runChat = async (event) => {
+        event.preventDefault();
+
+        if (!isCustomer || isChatting || !chatPrompt.trim()) {
+            return;
+        }
+
+        setIsChatting(true);
+        setChatError(null);
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+            const response = await fetch('/api/v1/directory/guide/chat', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'x-trace-id': `directory-chat-ui-${Date.now()}`,
+                },
+                body: JSON.stringify({
+                    query: chatPrompt.trim(),
+                    budget_amount: Number.parseFloat(budget || '0') || 0,
+                    currency: 'HNL',
+                    city: currentCity,
+                    category: currentCategory,
+                    limit: 5,
+                }),
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            const responseMeta = mergeMeta(payload);
+            setChatMeta(responseMeta);
+            setGuideMeta(responseMeta);
+
+            if (!response.ok) {
+                setChatAnswer(null);
+                setChatError({
+                    status: response.status,
+                    code: payload?.error_code || 'DIRECTORY_GUIDE_CHAT_FAILED',
+                    message: payload?.message || 'No pudimos responder con IA en este momento.',
+                    resetAt: payload?.reset_at || responseMeta.quota_reset_at || null,
+                });
+
+                return;
+            }
+
+            setChatAnswer(responseMeta.chat_answer || payload?.data?.answer || 'Te dejo opciones recomendadas con el presupuesto indicado.');
+            setGuideResults(Array.isArray(payload?.data) ? payload.data : []);
+        } catch {
+            setChatError({
+                status: 0,
+                code: 'DIRECTORY_GUIDE_CHAT_NETWORK_ERROR',
+                message: 'No fue posible conectar con el chat. Intenta nuevamente.',
+                resetAt: null,
+            });
+        } finally {
+            setIsChatting(false);
         }
     };
 
@@ -393,6 +469,57 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                     })}
                 </div>
             ) : null}
+
+            <div className="mt-6 overflow-hidden rounded-[28px] border border-slate-900/10 bg-slate-950 text-white shadow-2xl shadow-slate-950/10">
+                <div className="relative px-5 py-5 sm:px-6">
+                    <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-lime-300/20 blur-3xl" />
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-lime-200">Chat IA del directorio</p>
+                    <h3 className="mt-2 text-2xl font-semibold" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                        Pregunta como hablaria un cliente real
+                    </h3>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                        Ejemplo: "tengo 100 lps y quiero comer algo en Tegucigalpa". El chat responde con negocios publicados, presupuesto y trazabilidad.
+                    </p>
+
+                    <form onSubmit={runChat} className="mt-5 grid gap-3 lg:grid-cols-[1fr,auto]">
+                        <textarea
+                            value={chatPrompt}
+                            onChange={(event) => setChatPrompt(event.target.value)}
+                            rows={3}
+                            className="min-h-[96px] rounded-3xl border border-white/10 bg-white/10 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-slate-400 focus:border-lime-200"
+                            placeholder="Que puedo comprar con 100 lps?"
+                            data-testid="directory-guide-chat-input"
+                        />
+                        <button
+                            type="submit"
+                            disabled={isChatting || !chatPrompt.trim()}
+                            className="inline-flex items-center justify-center rounded-3xl bg-lime-200 px-6 py-3 text-sm font-black text-slate-950 transition hover:bg-lime-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            data-testid="directory-guide-chat-submit"
+                        >
+                            {isChatting ? 'Pensando...' : 'Preguntar'}
+                        </button>
+                    </form>
+
+                    {chatError ? (
+                        <div className="mt-4 rounded-3xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100" data-testid="directory-guide-chat-error">
+                            <p className="font-semibold">{chatError.message}</p>
+                            {chatError.status === 429 ? (
+                                <p className="mt-1">Tu cuota vuelve en {formatQuotaResetAt(chatError.resetAt)}.</p>
+                            ) : null}
+                        </div>
+                    ) : null}
+
+                    {chatAnswer ? (
+                        <div className="mt-4 rounded-3xl border border-white/10 bg-white px-5 py-4 text-slate-900" data-testid="directory-guide-chat-answer">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Respuesta</p>
+                            <p className="mt-2 text-sm leading-7">{chatAnswer}</p>
+                            {chatMeta?.trace_id ? (
+                                <p className="mt-3 text-xs font-semibold text-slate-500">REF soporte: {chatMeta.trace_id}</p>
+                            ) : null}
+                        </div>
+                    ) : null}
+                </div>
+            </div>
         </div>
     );
 }

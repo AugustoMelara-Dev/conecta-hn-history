@@ -11,6 +11,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
+use Filament\Panel;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
 
@@ -31,6 +32,11 @@ class BusinessCopilot extends Page
     protected static ?string $title = 'Copiloto privado';
 
     protected string $view = 'filament.app.pages.business-copilot';
+
+    public static function getRoutePath(Panel $panel): string
+    {
+        return '/' . static::$routePath;
+    }
 
     public string $question = '';
 

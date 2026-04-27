@@ -364,7 +364,10 @@ class Dashboard extends \Filament\Pages\Page
 
         $segmentResolver = app(BusinessSegmentResolver::class);
         $this->segmentKey = $segmentResolver->resolveForTenant($tenant);
-        $this->segmentProfile = $segmentResolver->internalProfile($this->segmentKey, $this->businessType);
+        $this->segmentProfile = array_replace_recursive(
+            $segmentResolver->internalProfile($this->segmentKey, $this->businessType),
+            app(RubroManifestReaderInterface::class)->businessAppForTenant($tenant),
+        );
         $this->segmentLabel = (string) ($this->segmentProfile['label'] ?? $this->businessTypeLabel);
         $this->segmentTeaser = (string) ($this->segmentProfile['teaser'] ?? '');
         $this->operationsProfile = app(BusinessOperationsBlueprint::class)->forSegment($this->segmentKey, $this->businessType);
@@ -484,7 +487,7 @@ class Dashboard extends \Filament\Pages\Page
             ->all();
 
         $this->workspaceModules = collect((array) ($this->segmentProfile['recommended_modules'] ?? []))
-            ->map(fn (array $item): array => $this->workspaceModule($item))
+            ->map(fn (mixed $item): array => $this->workspaceModule($item))
             ->filter(static fn (array $item): bool => $item['title'] !== '')
             ->values()
             ->all();
@@ -834,8 +837,21 @@ class Dashboard extends \Filament\Pages\Page
     /**
      * @return array{eyebrow: string, title: string, copy: string, href: string, ready: bool, stateLabel: string, stateColor: string}
      */
-    private function workspaceModule(array $definition): array
+    private function workspaceModule(mixed $definition): array
     {
+        if (is_string($definition)) {
+            $definition = [
+                'route_key' => $definition,
+                'state' => $definition,
+                'title' => \Illuminate\Support\Str::of($definition)->replace('_', ' ')->title()->value(),
+                'copy' => 'Modulo recomendado por RubroManifest para este tipo de negocio.',
+            ];
+        }
+
+        if (! is_array($definition)) {
+            $definition = [];
+        }
+
         $routeKey = (string) ($definition['route_key'] ?? '');
         $state = (string) ($definition['state'] ?? '');
         $ready = $this->resolveOperationalState($state);
@@ -1092,4 +1108,3 @@ class Dashboard extends \Filament\Pages\Page
         return static::$routePath;
     }
 }
-

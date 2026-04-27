@@ -4,13 +4,22 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Models\Tenant;
 use Illuminate\Support\Str;
 
 final class BusinessSegmentResolver
 {
+    public function __construct(
+        private readonly RubroManifestReaderInterface $rubroManifest,
+    ) {}
+
     public function resolveForTenant(Tenant $tenant): string
     {
+        if (filled($tenant->rubro_key)) {
+            return (string) $tenant->rubro_key;
+        }
+
         $category = $tenant->category;
 
         return $this->resolve(
@@ -33,18 +42,14 @@ final class BusinessSegmentResolver
         ?string $categorySlug = null,
         ?string $categoryName = null,
     ): string {
-        /** @var array<string, array<int, string>> $segmentKeywordMap */
-        $segmentKeywordMap = config('storefront-segments.keyword_map', []);
         /** @var array<string, string> $slugOverrides */
-        $slugOverrides = config('storefront-segments.slug_overrides', []);
-        /** @var array<string, mixed> $verticalConfig */
-        $verticalConfig = config('storefront-verticals', []);
+        $slugOverrides = config('rubro-manifest.resolution.slug_overrides', []);
         /** @var array<string, array<int, string>> $keywordMap */
-        $keywordMap = array_merge($segmentKeywordMap, $verticalConfig['keyword_map'] ?? []);
+        $keywordMap = config('rubro-manifest.resolution.keyword_map', []);
         /** @var array<string, string> $categoryMap */
-        $categoryMap = $verticalConfig['category_map'] ?? [];
+        $categoryMap = config('rubro-manifest.resolution.category_map', []);
         /** @var array<string, string> $defaults */
-        $defaults = $verticalConfig['defaults'] ?? [];
+        $defaults = config('rubro-manifest.resolution.business_type_defaults', []);
 
         $normalizedSlug = Str::lower(Str::ascii((string) $slug));
         if ($normalizedSlug !== '' && isset($slugOverrides[$normalizedSlug])) {
@@ -81,23 +86,119 @@ final class BusinessSegmentResolver
      */
     public function internalProfile(string $segmentKey, string $businessType): array
     {
-        /** @var array<string, mixed> $profiles */
-        $profiles = config('business-segments.profiles', []);
-        /** @var array<string, string> $defaults */
-        $defaults = config('business-segments.defaults', []);
-
-        $fallbackKey = $defaults[$businessType] ?? 'retail_general';
-
-        /** @var array<string, mixed> $fallbackProfile */
-        $fallbackProfile = $profiles[$fallbackKey] ?? [];
-
-        if (isset($profiles[$segmentKey]) && is_array($profiles[$segmentKey])) {
-            /** @var array<string, mixed> $profile */
-            $profile = $profiles[$segmentKey];
-
-            return array_replace_recursive($fallbackProfile, $profile);
+        $manifest = $this->rubroManifest->get($segmentKey);
+        if ($manifest !== []) {
+            return [
+                'key' => $segmentKey,
+                'label' => (string) data_get($manifest, 'presentation.label', Str::of($segmentKey)->replace('_', ' ')->title()),
+                'description' => (string) data_get($manifest, 'presentation.description', ''),
+                'teaser' => (string) data_get($manifest, 'presentation.teaser', ''),
+                'recommended_modules' => array_values((array) data_get($manifest, 'onboarding.recommended_modules', [])),
+                'business_type' => (string) data_get($manifest, 'business_type', $businessType),
+                'dashboard_title' => (string) data_get($manifest, 'business_app.dashboard_title', ''),
+                'dashboard_copy' => (string) data_get($manifest, 'business_app.dashboard_copy', ''),
+                'workspace_title' => (string) data_get($manifest, 'business_app.workspace_title', ''),
+                'workspace_copy' => (string) data_get($manifest, 'business_app.workspace_copy', ''),
+                'onboarding_title' => (string) data_get($manifest, 'onboarding.title', ''),
+                'onboarding_copy' => (string) data_get($manifest, 'onboarding.copy', ''),
+                'playbook_title' => (string) data_get($manifest, 'onboarding.playbook_title', ''),
+                'playbook_copy' => (string) data_get($manifest, 'business_app.playbook_copy', ''),
+                'playbook_steps' => $this->manifestPlaybookSteps($manifest),
+                'health_checks' => $this->manifestHealthChecks($manifest),
+                'source' => 'rubro_manifest',
+            ];
         }
 
-        return $fallbackProfile;
+        $defaults = (array) config('rubro-manifest.business_type_defaults', []);
+        $fallbackKey = (string) ($defaults[$businessType] ?? config('rubro-manifest.default_rubro', 'retail_general'));
+        $fallbackManifest = $this->rubroManifest->get($fallbackKey);
+
+        if ($fallbackManifest !== []) {
+            return [
+                'key' => $fallbackKey,
+                'label' => (string) data_get($fallbackManifest, 'presentation.label', Str::of($fallbackKey)->replace('_', ' ')->title()),
+                'description' => (string) data_get($fallbackManifest, 'presentation.description', ''),
+                'teaser' => (string) data_get($fallbackManifest, 'presentation.teaser', ''),
+                'recommended_modules' => array_values((array) data_get($fallbackManifest, 'onboarding.recommended_modules', [])),
+                'business_type' => (string) data_get($fallbackManifest, 'business_type', $businessType),
+                'dashboard_title' => (string) data_get($fallbackManifest, 'business_app.dashboard_title', ''),
+                'dashboard_copy' => (string) data_get($fallbackManifest, 'business_app.dashboard_copy', ''),
+                'workspace_title' => (string) data_get($fallbackManifest, 'business_app.workspace_title', ''),
+                'workspace_copy' => (string) data_get($fallbackManifest, 'business_app.workspace_copy', ''),
+                'onboarding_title' => (string) data_get($fallbackManifest, 'onboarding.title', ''),
+                'onboarding_copy' => (string) data_get($fallbackManifest, 'onboarding.copy', ''),
+                'playbook_title' => (string) data_get($fallbackManifest, 'onboarding.playbook_title', ''),
+                'playbook_copy' => (string) data_get($fallbackManifest, 'business_app.playbook_copy', ''),
+                'playbook_steps' => $this->manifestPlaybookSteps($fallbackManifest),
+                'health_checks' => $this->manifestHealthChecks($fallbackManifest),
+                'source' => 'rubro_manifest_fallback',
+            ];
+        }
+
+        return [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $manifest
+     * @return list<array{title:string,copy:string}>
+     */
+    private function manifestPlaybookSteps(array $manifest): array
+    {
+        $explicit = collect((array) data_get($manifest, 'onboarding.playbook_steps', []))
+            ->filter(static fn (mixed $step): bool => is_array($step))
+            ->map(static fn (array $step): array => [
+                'title' => (string) ($step['title'] ?? ''),
+                'copy' => (string) ($step['copy'] ?? ''),
+            ])
+            ->filter(static fn (array $step): bool => $step['title'] !== '')
+            ->values()
+            ->all();
+
+        if ($explicit !== []) {
+            return $explicit;
+        }
+
+        return collect((array) data_get($manifest, 'onboarding.recommended_modules', []))
+            ->map(static fn (mixed $module, int $index): array => [
+                'title' => Str::of((string) $module)->replace('_', ' ')->title()->value(),
+                'copy' => $index === 0
+                    ? 'Activa este modulo primero para darle base comercial y operativa al negocio.'
+                    : 'Completa este modulo para conectar mejor la experiencia publica con la operacion interna.',
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $manifest
+     * @return list<array<string, mixed>>
+     */
+    private function manifestHealthChecks(array $manifest): array
+    {
+        return collect((array) data_get($manifest, 'onboarding.health_checks', []))
+            ->map(function (mixed $item, int $index): array {
+                if (is_array($item)) {
+                    return [
+                        'title' => (string) ($item['title'] ?? Str::of((string) ($item['state'] ?? "check_{$index}"))->replace('_', ' ')->title()->value()),
+                        'pending_copy' => (string) ($item['pending_copy'] ?? 'Completa este frente para destrabar el siguiente paso del negocio.'),
+                        'complete_copy' => (string) ($item['complete_copy'] ?? 'Este frente ya esta cubierto para el rubro actual.'),
+                        'weight' => (int) ($item['weight'] ?? 20),
+                        'state' => (string) ($item['state'] ?? "manifest_check_{$index}"),
+                    ];
+                }
+
+                $state = (string) $item;
+
+                return [
+                    'title' => Str::of($state)->replace('_', ' ')->title()->value(),
+                    'pending_copy' => 'Completa este frente para destrabar el siguiente paso del negocio.',
+                    'complete_copy' => 'Este frente ya esta cubierto para el rubro actual.',
+                    'weight' => 20,
+                    'state' => $state !== '' ? $state : "manifest_check_{$index}",
+                ];
+            })
+            ->filter(static fn (array $item): bool => $item['title'] !== '')
+            ->values()
+            ->all();
     }
 }

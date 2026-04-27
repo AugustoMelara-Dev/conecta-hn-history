@@ -7,6 +7,7 @@ namespace App\Infrastructure\TenantGovernance;
 use App\Application\TenantGovernance\Contracts\TenantGrowthSignalsViewInterface;
 use App\Infrastructure\TenantGovernance\Readers\TenantGrowthSignalsReader;
 use App\Models\Tenant;
+use Illuminate\Support\Facades\Cache;
 
 final readonly class TenantGrowthSignalsView implements TenantGrowthSignalsViewInterface
 {
@@ -16,9 +17,13 @@ final readonly class TenantGrowthSignalsView implements TenantGrowthSignalsViewI
 
     public function summarize(string $tenantId, string $businessType): array
     {
-        return $this->reader->summarize(
-            tenant: $this->resolveTenant($tenantId),
-            businessType: $businessType,
+        return Cache::remember(
+            "tenant_growth_signals:{$tenantId}:{$businessType}",
+            now()->addSeconds(45),
+            fn (): array => $this->reader->summarize(
+                tenant: $this->resolveTenant($tenantId),
+                businessType: $businessType,
+            ),
         );
     }
 

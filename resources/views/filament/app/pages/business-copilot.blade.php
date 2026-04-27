@@ -57,20 +57,28 @@
             </div>
         </div>
 
-        @if ($diagnosticState)
-            <div class="biz-card">
+        <div class="biz-card" data-testid="business-copilot-diagnostic">
+            <div class="biz-stack">
+                <div>
+                    <p class="biz-kicker">Autodiagnostico visible</p>
+                    <h2 class="biz-heading">Estado operativo del Copiloto</h2>
+                    <p class="biz-muted">
+                        Esta tarjeta existe para que el negocio y soporte vean que esta pasando sin adivinar.
+                    </p>
+                </div>
+
                 <div class="biz-grid-three">
                     <div class="biz-stat">
                         <p class="biz-stat-label">Estado</p>
-                        <p class="biz-stat-value" style="font-size: 1.2rem;">{{ $diagnosticState }}</p>
+                        <p class="biz-stat-value" style="font-size: 1.2rem;">{{ $diagnosticState ?: 'Listo para consultar' }}</p>
                     </div>
                     <div class="biz-stat">
                         <p class="biz-stat-label">Causa probable</p>
-                        <p class="biz-stat-copy">{{ $probableCause }}</p>
+                        <p class="biz-stat-copy">{{ $probableCause ?: 'Aun no se ha ejecutado una consulta o reindexacion en esta sesion.' }}</p>
                     </div>
                     <div class="biz-stat">
                         <p class="biz-stat-label">Accion recomendada</p>
-                        <p class="biz-stat-copy">{{ $recommendedAction }}</p>
+                        <p class="biz-stat-copy">{{ $recommendedAction ?: 'Haz una pregunta o reindexa conocimiento si acabas de cambiar catalogo, clientes o pedidos.' }}</p>
                     </div>
                 </div>
 
@@ -78,7 +86,7 @@
                     <p class="biz-muted" style="margin-top: 1rem;">Referencia soporte: <code>{{ $traceId }}</code></p>
                 @endif
             </div>
-        @endif
+        </div>
 
         @if ($answer)
             <div class="biz-grid-two">

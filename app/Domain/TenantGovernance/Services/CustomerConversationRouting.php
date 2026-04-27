@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Models\CustomerProfile;
+use App\Models\Tenant;
 
 class CustomerConversationRouting
 {
@@ -20,15 +22,26 @@ class CustomerConversationRouting
     {
         $segmentKey = (string) ($profile->manual_segment ?: $profile->customer_segment ?: 'new');
         $tenant = $profile->tenant;
-        $businessSegmentKey = $tenant instanceof \App\Models\Tenant && filled($tenant->business_segment_key)
-            ? (string) $tenant->business_segment_key
-            : null;
+        $businessSegmentKey = $tenant instanceof Tenant && filled($tenant->rubro_key)
+            ? (string) $tenant->rubro_key
+            : ($tenant instanceof Tenant && filled($tenant->business_segment_key)
+                ? (string) $tenant->business_segment_key
+                : null);
+        $manifestRouting = $tenant instanceof Tenant
+            ? (array) data_get(app(RubroManifestReaderInterface::class)->crmForTenant($tenant), 'routing', [])
+            : [];
+        $manifestSegmentRouting = (array) data_get($manifestRouting, "segments.{$segmentKey}", []);
+        $manifestDefaultRouting = (array) data_get($manifestRouting, 'default', []);
+        $manifestRubroRouting = $businessSegmentKey !== null
+            ? (array) data_get($manifestRouting, "rubros.{$businessSegmentKey}", [])
+            : [];
         $groups = (array) config('customer-operations.groups', []);
         $segmentGroups = (array) config('customer-operations.segment_groups', []);
         $baseGroup = (string) ($segmentGroups[$segmentKey] ?? 'sales');
         $override = $businessSegmentKey !== null
             ? (array) config("customer-operations.business_segment_overrides.{$businessSegmentKey}", [])
             : [];
+        $override = array_replace_recursive($override, $manifestDefaultRouting, $manifestRubroRouting, $manifestSegmentRouting);
         $groupKey = (string) ($override['group'] ?? $baseGroup);
         $groupDefinition = (array) ($groups[$groupKey] ?? $groups['sales'] ?? []);
         $channelDelta = (int) data_get(config('customer-operations.channels', []), "{$channel}.sla_delta_minutes", 0);

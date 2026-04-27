@@ -364,7 +364,7 @@ class GrowthCenter extends Page
         $this->segmentKey = $resolver->resolveForTenant($tenant);
         $internalProfile = $resolver->internalProfile($this->segmentKey, $this->businessType);
         $this->segmentLabel = (string) ($internalProfile['label'] ?? $this->businessTypeLabel);
-        $this->growthProfile = app(BusinessGrowthBlueprint::class)->forSegment($this->segmentKey, $this->businessType);
+        $this->growthProfile = app(BusinessGrowthBlueprint::class)->forTenant($tenant);
 
         $this->headline = (string) ($this->growthProfile['headline'] ?? 'CRM y crecimiento');
         $this->copy = (string) ($this->growthProfile['copy'] ?? 'Ordena tu pipeline, entiende tu negocio y activa crecimiento con mejor disciplina.');

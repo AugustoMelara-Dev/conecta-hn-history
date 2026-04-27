@@ -453,11 +453,8 @@ final class TenantCrmPortfolioManager
 
     private function segmentLabel(string $segmentKey): string
     {
-        $label = config("business-segments.profiles.{$segmentKey}.label");
-
-        return is_string($label) && $label !== ''
-            ? $label
-            : str($segmentKey)->replace('_', ' ')->title()->value();
+        return app(\App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface::class)
+            ->labelForRubroKey($segmentKey);
     }
 
     private function isPaidPlan(Tenant $tenant): bool

@@ -237,6 +237,49 @@ final class CustomerConversationTemplateManagerTest extends TestCase
         $this->assertFalse(collect($playbook['templates'])->contains(fn (array $template): bool => $template['key'] === 'service_rebook'));
     }
 
+    public function test_rubro_key_has_priority_over_legacy_business_segment_for_journey_context(): void
+    {
+        Mail::fake();
+
+        [$user, $tenant] = $this->makeTenantOwner('crm-template-rubro-priority');
+        $tenant->forceFill([
+            'business_type' => 'service',
+            'rubro_key' => 'service_general',
+            'business_segment_key' => 'legacy_service',
+        ])->save();
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'name' => 'Marco Rubro',
+            'email' => 'marco.rubro@example.com',
+            'preferred_channel' => 'email',
+            'customer_segment' => 'new',
+            'lifecycle_stage' => 'new',
+            'email_opt_in' => true,
+            'marketing_opt_in' => true,
+        ]);
+
+        $note = CustomerNote::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $profile->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'note_type' => 'inbound_reply',
+            'conversation_key' => 'conv-rubro-priority-001',
+            'status' => 'open',
+            'priority' => 'normal',
+            'source_channel' => 'email',
+            'requires_follow_up' => true,
+            'body' => 'Hola, quiero agendar mi primera consulta.',
+            'response_due_at' => now()->addHours(2),
+        ]);
+
+        $touchpoint = app(CustomerConversationTemplateManager::class)->send($profile, 'fast_follow_up', $note, (string) $user->getKey());
+
+        $this->assertStringStartsWith('service_general:', (string) data_get($touchpoint->metadata, 'journey_key'));
+        $this->assertStringNotContainsString('legacy_service:', (string) data_get($touchpoint->metadata, 'journey_key'));
+    }
+
     /**
      * @return array{0: User, 1: Tenant}
      */

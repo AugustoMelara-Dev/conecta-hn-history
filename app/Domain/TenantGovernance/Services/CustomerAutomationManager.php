@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Domain\TenantGovernance\Repositories\CustomerTouchpointRepositoryInterface;
 use App\Mail\CustomerLifecycleMail;
 use App\Models\CustomerProfile;
@@ -313,7 +314,10 @@ class CustomerAutomationManager
         $segmentKey = $this->segmentKey($profile, $tenant);
         $defaults = (array) config("customer-automation.defaults.{$automationKey}", []);
         $overrides = (array) config("customer-automation.profiles.{$segmentKey}.{$automationKey}", []);
-        $definition = array_replace($defaults, $overrides);
+        $manifestOverrides = $tenant instanceof Tenant
+            ? (array) data_get(app(RubroManifestReaderInterface::class)->crmForTenant($tenant), "automation.{$automationKey}", [])
+            : [];
+        $definition = array_replace($defaults, $overrides, $manifestOverrides);
 
         $resolvedChannel = $channel ?? (string) ($definition['channel'] ?? 'email');
         $governance = $this->governance->definition($automationKey, $resolvedChannel, $definition);
@@ -745,6 +749,10 @@ class CustomerAutomationManager
 
         if (! $tenant instanceof Tenant) {
             return 'retail_growth';
+        }
+
+        if (filled($tenant->rubro_key)) {
+            return (string) $tenant->rubro_key;
         }
 
         return (string) ($tenant->business_segment_key ?: app(BusinessSegmentResolver::class)->resolveForTenant($tenant));

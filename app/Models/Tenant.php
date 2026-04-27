@@ -453,11 +453,8 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             return 'General';
         }
 
-        $label = config("business-segments.profiles.{$segmentKey}.label");
-
-        return is_string($label) && $label !== ''
-            ? $label
-            : Str::of($segmentKey)->replace('_', ' ')->title()->value();
+        return app(\App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface::class)
+            ->labelForRubroKey($segmentKey);
     }
 
     public function getPlanExpiresAtAttribute(mixed $value): ?Carbon

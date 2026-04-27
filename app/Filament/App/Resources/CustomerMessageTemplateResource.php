@@ -298,11 +298,8 @@ class CustomerMessageTemplateResource extends Resource
      */
     public static function businessSegmentOptions(): array
     {
-        return collect((array) config('business-segments.profiles', []))
-            ->mapWithKeys(static fn (array $profile, string $key): array => [
-                $key => (string) ($profile['label'] ?? str($key)->replace('_', ' ')->title()->value()),
-            ])
-            ->all();
+        return app(\App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface::class)
+            ->rubroLabels();
     }
 
     protected static function getTenantRecord(): ?Tenant
