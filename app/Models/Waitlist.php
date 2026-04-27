@@ -19,6 +19,7 @@ class Waitlist extends Model
         'user_id',
         'customer_name',
         'customer_email',
+        'normalized_email',
         'customer_phone',
         'requested_date',
         'status',

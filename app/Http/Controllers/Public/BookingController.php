@@ -10,6 +10,7 @@ use App\Application\Shared\Contracts\ServiceProviderRepositoryInterface;
 use App\Application\Shared\Contracts\ServiceRepositoryInterface;
 use App\Application\Tenant\Commands\CreateAppointmentCommand;
 use App\Domain\Shared\Services\TenantContext;
+use App\Domain\Tenant\Services\TenantVisibilityService;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Infrastructure\Observability\DomainTelemetry;
@@ -20,6 +21,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
@@ -44,6 +46,7 @@ final class BookingController extends Controller
         private \App\Domain\Booking\Services\SlotCalculator $slotCalculator,
         private DomainTelemetry $telemetry,
         private SupportDiagnosticFactory $diagnostics,
+        private TenantVisibilityService $visibility,
     ) {}
 
     /**
@@ -148,6 +151,12 @@ final class BookingController extends Controller
         if (RateLimiter::tooManyAttempts($slotsRateLimitKey, 90)) {
             return response()->json([
                 'message' => 'Demasiadas consultas de horarios. Espera un momento e intenta de nuevo.',
+                'diagnostic' => $this->diagnostics->make(
+                    'booking',
+                    'Consulta de horarios limitada',
+                    'Se detectaron demasiadas consultas de disponibilidad para este negocio desde la misma conexion.',
+                    'Espera un minuto y vuelve a elegir fecha u horario. Si persiste, comparte esta referencia con soporte.'
+                ),
             ], 429);
         }
         RateLimiter::hit($slotsRateLimitKey, 60);
@@ -236,7 +245,12 @@ final class BookingController extends Controller
         if (RateLimiter::tooManyAttempts($bookingRateLimitKey, 8)) {
             return back()->withErrors([
                 'customer_email' => 'Demasiados intentos de reserva en poco tiempo. Espera un minuto antes de reintentar.',
-            ]);
+            ])->with('diagnostic', $this->diagnostics->make(
+                'booking',
+                'Reserva limitada por seguridad',
+                'Se recibieron demasiados intentos de crear reserva para este negocio desde la misma conexion.',
+                'Espera un minuto antes de reintentar. Si el cliente no puede reservar, comparte esta referencia con soporte.'
+            ));
         }
         RateLimiter::hit($bookingRateLimitKey, 60);
 
@@ -276,7 +290,12 @@ final class BookingController extends Controller
         if (! $provider) {
             return back()->withErrors([
                 'service_provider_id' => 'No encontramos una persona disponible para ese horario. Elige otro horario o intenta mas tarde.',
-            ]);
+            ])->with('diagnostic', $this->diagnostics->make(
+                'booking',
+                'Sin disponibilidad para atender',
+                'El flujo permitio avanzar sin preferencia, pero no hay proveedor activo disponible para ese bloque.',
+                'Elige otro horario o revisa disponibilidad del equipo en el panel del negocio.'
+            ));
         }
 
         if ($this->hasExcessivePendingBookings(
@@ -287,16 +306,49 @@ final class BookingController extends Controller
         )) {
             return back()->withErrors([
                 'customer_email' => 'Detectamos demasiadas reservas activas con este contacto para hoy. Confirma o cancela una reserva anterior antes de crear otra.',
-            ]);
+            ])->with('diagnostic', $this->diagnostics->make(
+                'booking',
+                'Reserva duplicada detenida',
+                'El contacto ya tiene demasiadas reservas activas para este dia y se bloqueo otra reserva preventiva.',
+                'Confirma una reserva anterior o contacta al negocio. Si es un falso positivo, comparte esta referencia.'
+            ));
         }
 
-        if (! $this->providerRepository->isAvailableAt(
-            $provider->id,
-            $scheduledAt,
-            $endAt,
-            $service->buffer_before,
-            $service->buffer_after
-        )) {
+        $bookingResult = DB::transaction(function () use ($tenant, $service, $provider, $scheduledAt, $endAt, $validated): array {
+            DB::table('service_providers')
+                ->where('id', $provider->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $this->providerRepository->isAvailableAt(
+                $provider->id,
+                $scheduledAt,
+                $endAt,
+                $service->buffer_before,
+                $service->buffer_after
+            )) {
+                return ['status' => 'conflict'];
+            }
+
+            $command = new CreateAppointmentCommand(
+                tenantId: $tenant->id(),
+                serviceId: $service->id,
+                serviceProviderId: $provider->id,
+                scheduledAt: $scheduledAt,
+                endAt: $endAt,
+                customerName: $validated['customer_name'],
+                customerEmail: $validated['customer_email'],
+                customerPhone: $validated['customer_phone'],
+                customerNotes: $validated['customer_notes'] ?? null
+            );
+
+            return [
+                'status' => 'created',
+                'result' => $this->commandBus->dispatch($command),
+            ];
+        }, 3);
+
+        if (($bookingResult['status'] ?? null) === 'conflict') {
             $this->telemetry->record('booking', 'booking_slot_conflict_detected', [
                 'tenant_id' => $tenant->id(),
                 'service_id' => $service->id,
@@ -306,22 +358,16 @@ final class BookingController extends Controller
 
             return back()->withErrors([
                 'time' => 'Este horario ya no esta disponible. Por favor selecciona otro.',
-            ]);
+            ])->with('diagnostic', $this->diagnostics->make(
+                'booking',
+                'Horario tomado por otra reserva',
+                'Otro cliente o el equipo del negocio ocupo el bloque mientras se completaba el formulario.',
+                'Selecciona otro horario disponible. Si ocurre varias veces, comparte esta referencia con soporte.'
+            ));
         }
 
-        $command = new CreateAppointmentCommand(
-            tenantId: $tenant->id(),
-            serviceId: $service->id,
-            serviceProviderId: $provider->id,
-            scheduledAt: $scheduledAt,
-            endAt: $endAt,
-            customerName: $validated['customer_name'],
-            customerEmail: $validated['customer_email'],
-            customerPhone: $validated['customer_phone'],
-            customerNotes: $validated['customer_notes'] ?? null
-        );
-
-        $result = $this->commandBus->dispatch($command);
+        /** @var array{id:string|int} $result */
+        $result = $bookingResult['result'];
         $this->telemetry->record('booking', 'booking_appointment_created', [
             'tenant_id' => $tenant->id(),
             'service_id' => $service->id,
@@ -392,13 +438,23 @@ final class BookingController extends Controller
     {
         $tenant = Tenant::query()
             ->withoutGlobalScopes()
-            ->select(['id', 'slug'])
+            ->select([
+                'id',
+                'slug',
+                'status',
+                'is_active',
+                'subscription_status',
+                'verification_status',
+                'publication_paused_at',
+            ])
             ->where('slug', $tenantSlug)
             ->first();
 
         if ($tenant === null) {
             return null;
         }
+
+        $this->visibility->check($tenant);
 
         app(TenantContext::class)->setTenant((string) $tenant->id);
 

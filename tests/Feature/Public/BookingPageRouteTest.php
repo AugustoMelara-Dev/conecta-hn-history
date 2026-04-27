@@ -62,6 +62,69 @@ final class BookingPageRouteTest extends TestCase
     }
 
     #[Test]
+    public function it_hides_booking_page_for_non_public_tenants(): void
+    {
+        $tenant = Tenant::factory()->pro()->create([
+            'slug' => 'booking-hidden-tenant',
+            'business_type' => 'service',
+            'publication_paused_at' => now(),
+        ]);
+
+        Service::factory()->create([
+            'tenant_id' => $tenant->id,
+            'is_active' => true,
+        ]);
+
+        ServiceProvider::factory()->create([
+            'tenant_id' => $tenant->id,
+            'is_active' => true,
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $this->get("/t/{$tenant->slug}/book")->assertNotFound();
+    }
+
+    #[Test]
+    public function it_rejects_public_booking_creation_for_non_public_tenants(): void
+    {
+        $tenant = Tenant::factory()->pro()->create([
+            'slug' => 'booking-hidden-post',
+            'business_type' => 'service',
+            'publication_paused_at' => now(),
+        ]);
+
+        $service = Service::factory()->create([
+            'tenant_id' => $tenant->id,
+            'duration_minutes' => 45,
+            'is_active' => true,
+        ]);
+
+        $provider = ServiceProvider::factory()->create([
+            'tenant_id' => $tenant->id,
+            'is_active' => true,
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $this->post("/t/{$tenant->slug}/book", [
+            'service_id' => $service->id,
+            'service_provider_id' => $provider->id,
+            'date' => now()->addDay()->format('Y-m-d'),
+            'time' => '09:00',
+            'customer_name' => 'Cliente Bloqueado',
+            'customer_email' => 'cliente.bloqueado@example.test',
+            'customer_phone' => '9999-3333',
+            'contact_consent' => true,
+        ])->assertNotFound();
+
+        $this->assertDatabaseMissing('appointments', [
+            'tenant_id' => $tenant->id,
+            'customer_email' => 'cliente.bloqueado@example.test',
+        ]);
+    }
+
+    #[Test]
     public function it_accepts_numeric_ids_from_the_public_booking_wizard_and_redirects_to_success(): void
     {
         $user = User::factory()->create();
@@ -189,6 +252,78 @@ final class BookingPageRouteTest extends TestCase
             'customer_email' => 'sin.preferencia@example.test',
             'status' => Appointment::STATUS_PENDING,
         ]);
+    }
+
+    #[Test]
+    public function it_rejects_a_second_booking_for_the_same_provider_and_time_slot(): void
+    {
+        $user = User::factory()->create();
+        /** @var Tenant $tenant */
+        $tenant = Tenant::factory()->pro()->create([
+            'user_id' => $user->id,
+            'slug' => 'booking-race-guard',
+            'business_type' => 'service',
+            'status' => 'approved',
+            'subscription_status' => 'active',
+        ]);
+
+        /** @var Service $service */
+        $service = Service::factory()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Consulta bloqueada',
+            'duration_minutes' => 45,
+            'is_active' => true,
+        ]);
+
+        /** @var ServiceProvider $provider */
+        $provider = ServiceProvider::factory()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Proveedor Unico',
+            'is_active' => true,
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $date = now()->addDay()->format('Y-m-d');
+
+        $this->from("/t/{$tenant->slug}/book")
+            ->post("/t/{$tenant->slug}/book", [
+                'service_id' => $service->id,
+                'service_provider_id' => $provider->id,
+                'date' => $date,
+                'time' => '09:00',
+                'customer_name' => 'Cliente Primero',
+                'customer_email' => 'cliente.primero@example.test',
+                'customer_phone' => '9999-1111',
+                'contact_consent' => true,
+            ])
+            ->assertRedirectContains("/t/{$tenant->slug}/book/success?appointment=");
+
+        app(TenantContext::class)->reset();
+
+        $this->from("/t/{$tenant->slug}/book")
+            ->post("/t/{$tenant->slug}/book", [
+                'service_id' => $service->id,
+                'service_provider_id' => $provider->id,
+                'date' => $date,
+                'time' => '09:00',
+                'customer_name' => 'Cliente Segundo',
+                'customer_email' => 'cliente.segundo@example.test',
+                'customer_phone' => '9999-2222',
+                'contact_consent' => true,
+            ])
+            ->assertRedirect("/t/{$tenant->slug}/book")
+            ->assertSessionHasErrors('service_provider_id')
+            ->assertSessionHas('diagnostic');
+
+        app(TenantContext::class)->setTenant($tenant->id);
+
+        $this->assertSame(1, Appointment::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('service_provider_id', $provider->id)
+            ->whereDate('scheduled_at', $date)
+            ->whereTime('scheduled_at', '09:00:00')
+            ->count());
     }
 
     #[Test]

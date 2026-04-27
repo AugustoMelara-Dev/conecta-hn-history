@@ -73,3 +73,61 @@ test('waitlist creates a tenant scoped entry for a valid service', function () {
         ->where('customer_email', 'espera@example.test')
         ->exists())->toBeTrue();
 });
+
+test('waitlist rejects hidden tenants before creating entries', function () {
+    $tenant = Tenant::factory()->pro()->create([
+        'slug' => 'waitlist-hidden',
+        'business_type' => 'service',
+        'publication_paused_at' => now(),
+    ]);
+    $service = Service::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->from("/t/{$tenant->slug}/book")
+        ->post(route('public.booking.waitlist.store', ['tenant' => $tenant->slug], false), [
+            'service_id' => $service->id,
+            'date' => now()->addDay()->format('Y-m-d'),
+            'customer_name' => 'Cliente Oculto',
+            'customer_email' => 'oculto@example.test',
+            'customer_phone' => '9999-2222',
+        ])
+        ->assertNotFound();
+
+    expect(Waitlist::query()->withoutGlobalScopes()->where('tenant_id', $tenant->id)->count())->toBe(0);
+});
+
+test('waitlist deduplicates active entries by normalized email service and date', function () {
+    $tenant = Tenant::factory()->pro()->create([
+        'slug' => 'waitlist-dedupe',
+        'business_type' => 'service',
+    ]);
+    $service = Service::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+    $date = now()->addDay()->format('Y-m-d');
+
+    foreach (['ESPERA@example.test', 'espera@example.test'] as $email) {
+        $this->from("/t/{$tenant->slug}/book")
+            ->post(route('public.booking.waitlist.store', ['tenant' => $tenant->slug], false), [
+                'service_id' => $service->id,
+                'date' => $date,
+                'customer_name' => 'Cliente Espera',
+                'customer_email' => $email,
+                'customer_phone' => '9999-1111',
+            ])
+            ->assertRedirect("/t/{$tenant->slug}/book")
+            ->assertSessionHas('success')
+            ->assertSessionHas('diagnostic');
+    }
+
+    app(TenantContext::class)->setTenant($tenant->id);
+
+    expect(Waitlist::query()
+        ->where('tenant_id', $tenant->id)
+        ->where('service_id', $service->id)
+        ->where('normalized_email', 'espera@example.test')
+        ->where('requested_date', $date)
+        ->active()
+        ->count())->toBe(1);
+});

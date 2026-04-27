@@ -123,4 +123,30 @@ final class BookingSlotsTest extends TestCase
             $available->contains(fn (array $slot): bool => $slot['time'] === $firstAvailable['time'])
         );
     }
+
+    #[Test]
+    public function hidden_tenant_cannot_expose_booking_slots(): void
+    {
+        $tenant = Tenant::factory()->pro()->create([
+            'slug' => 'hidden-booking-slots',
+            'business_type' => 'service',
+            'publication_paused_at' => now(),
+        ]);
+
+        app(TenantContext::class)->setTenant($tenant->id);
+
+        $service = Service::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+        $provider = ServiceProvider::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $date = now()->addDay()->format('Y-m-d');
+
+        $this->getJson("/t/{$tenant->slug}/book/slots?date={$date}&service_id={$service->id}&provider_id={$provider->id}")
+            ->assertNotFound();
+    }
 }

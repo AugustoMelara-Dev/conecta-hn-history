@@ -1,7 +1,8 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import PublicLayout from '@/Layouts/PublicLayout';
+import SupportDiagnosticCard from '@/Components/SupportDiagnosticCard';
 import {
     CalendarClock,
     CheckCircle2,
@@ -87,6 +88,7 @@ function SummaryCard({ tenant, selectedService, selectedProvider, selectedDate, 
 }
 
 export default function BookingWizard({ tenant, services, providers, preselectedServiceId = null }) {
+    const { flash = {} } = usePage().props;
     const [step, setStep] = useState(1);
     const [selectedService, setSelectedService] = useState(null);
     const [selectedProvider, setSelectedProvider] = useState(null);
@@ -94,6 +96,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
     const [availableSlots, setAvailableSlots] = useState([]);
     const [slotTimeline, setSlotTimeline] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
+    const [slotDiagnostic, setSlotDiagnostic] = useState(null);
 
     const { data, setData, post, processing, errors } = useForm({
         service_id: null,
@@ -148,12 +151,20 @@ export default function BookingWizard({ tenant, services, providers, preselected
                 if (!cancelled) {
                     setAvailableSlots(response.data.slots || []);
                     setSlotTimeline(response.data.timeline || []);
+                    setSlotDiagnostic(null);
                 }
             } catch (error) {
                 if (!cancelled) {
                     console.error('Error fetching slots:', error);
                     setAvailableSlots([]);
                     setSlotTimeline([]);
+                    setSlotDiagnostic(error.response?.data?.diagnostic || {
+                        surface: 'booking',
+                        status: 'No pudimos cargar horarios',
+                        probable_cause: error.response?.data?.message || 'La disponibilidad no respondio o la consulta fue limitada.',
+                        recommended_action: 'Cambia la fecha o espera un momento antes de reintentar. Si persiste, comparte esta pantalla con soporte.',
+                        trace_id: error.response?.headers?.['x-request-id'] || null,
+                    });
                 }
             } finally {
                 if (!cancelled) {
@@ -172,6 +183,13 @@ export default function BookingWizard({ tenant, services, providers, preselected
     const today = useMemo(() => new Date().toISOString().split('T')[0], []);
     const micrositeHref = route('tenant.microsite.show', { tenant: tenant.slug });
     const bookingFlowError = errors.service_id || errors.service_provider_id;
+    const bookingDiagnostic = flash.diagnostic || slotDiagnostic || (bookingFlowError ? {
+        surface: 'booking',
+        status: 'Reserva incompleta',
+        probable_cause: bookingFlowError,
+        recommended_action: 'Revisa servicio, persona que atiende, fecha y hora antes de confirmar.',
+        trace_id: null,
+    } : null);
 
     const handleServiceSelect = (service) => {
         setSelectedService(service);
@@ -274,6 +292,8 @@ export default function BookingWizard({ tenant, services, providers, preselected
                         </div>
 
                         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5 md:p-8">
+                            <SupportDiagnosticCard diagnostic={bookingDiagnostic} className="mb-6" />
+
                             {services.length === 0 ? (
                                 <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center">
                                     <CalendarClock className="mx-auto h-12 w-12 text-slate-400" />
