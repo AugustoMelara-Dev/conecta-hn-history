@@ -99,6 +99,19 @@ final class SalesExportController extends Controller
             ], 400);
         }
 
+        $safePath = $this->validateExportPath((string) $filePath, $requestedTenantId);
+        if ($safePath === null) {
+            $this->log->warning('Invalid export download path rejected', [
+                'requested_tenant_id' => $requestedTenantId,
+                'file_path' => $filePath,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permiso para descargar este archivo.',
+            ], 403);
+        }
+
         /** @var User|null $user */
         $user = $this->auth->user();
 
@@ -116,7 +129,7 @@ final class SalesExportController extends Controller
                 'user_id' => $user->getAuthIdentifier(),
                 'user_tenant_id' => $userTenantId,
                 'requested_tenant_id' => $requestedTenantId,
-                'file_path' => $filePath,
+                'file_path' => $safePath,
             ]);
 
             return response()->json([
@@ -125,15 +138,38 @@ final class SalesExportController extends Controller
             ], 403);
         }
 
-        if (! $this->storage->disk('local')->exists($filePath)) {
+        if (! $this->storage->disk('local')->exists($safePath)) {
             return response()->json([
                 'success' => false,
                 'message' => 'El archivo ya no esta disponible. Los reportes expiran despues de 24 horas.',
             ], 404);
         }
 
-        return $this->storage->disk('local')->download($filePath, basename($filePath), [
+        return $this->storage->disk('local')->download($safePath, basename($safePath), [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
+    }
+
+    private function validateExportPath(string $path, string $tenantId): ?string
+    {
+        $path = str_replace('\\', '/', urldecode($path));
+
+        if ($path === '' || str_contains($path, '..') || str_starts_with($path, '/') || preg_match('/^[a-zA-Z]:/', $path)) {
+            return null;
+        }
+
+        $allowedPrefixes = [
+            "exports/tenant_{$tenantId}/",
+            "tenants/{$tenantId}/exports/",
+            "tenants/{$tenantId}/reports/",
+        ];
+
+        foreach ($allowedPrefixes as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 }

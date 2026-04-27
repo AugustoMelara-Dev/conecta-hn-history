@@ -110,8 +110,10 @@ class SubscriptionPayment extends Model
             return null;
         }
 
-        // Generate temporary signed URL for private file
-        return Storage::disk('private')->temporaryUrl(
+        $disk = (string) config('filesystems.payment_evidence_disk', 'media');
+
+        // Evidence must be read from the same durable private disk used to store it.
+        return Storage::disk($disk)->temporaryUrl(
             $this->proof_path,
             now()->addMinutes(30)
         );

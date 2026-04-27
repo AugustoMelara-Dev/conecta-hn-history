@@ -11,12 +11,10 @@ use Illuminate\Support\Facades\Storage;
 /**
  * LaravelMediaStorageService - Infrastructure Adapter for Media Storage
  *
- * Uses Laravel's Storage facade with the 'public' disk.
+ * Uses Laravel's Storage facade with the configured media disk.
  */
 final class LaravelMediaStorageService implements MediaStorageServiceInterface
 {
-    private const DISK = 'public';
-
     /**
      * {@inheritDoc}
      */
@@ -42,7 +40,7 @@ final class LaravelMediaStorageService implements MediaStorageServiceInterface
             return true;
         }
 
-        return Storage::disk(self::DISK)->delete($path);
+        return Storage::disk($this->disk())->delete($path);
     }
 
     /**
@@ -53,12 +51,17 @@ final class LaravelMediaStorageService implements MediaStorageServiceInterface
         $directory = "tenants/{$tenantId}/{$subfolder}";
         $filename = time().'_'.$file->originalName;
 
-        Storage::disk(self::DISK)->putFileAs(
+        Storage::disk($this->disk())->putFileAs(
             $directory,
             $file->tempPath,
             $filename
         );
 
         return "{$directory}/{$filename}";
+    }
+
+    private function disk(): string
+    {
+        return (string) config('filesystems.media_disk', env('MEDIA_DISK', 'media'));
     }
 }

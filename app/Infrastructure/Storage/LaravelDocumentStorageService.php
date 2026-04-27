@@ -16,8 +16,6 @@ use Illuminate\Support\Str;
  */
 final class LaravelDocumentStorageService implements DocumentStorageServiceInterface
 {
-    private const DISK = 'public'; // Or 's3' for production
-
     private const BASE_PATH = 'payments/receipts';
 
     /**
@@ -43,13 +41,13 @@ final class LaravelDocumentStorageService implements DocumentStorageServiceInter
 
         // Move file from temporary location to permanent storage
         // If sourcePath is already on the same disk, use move. Otherwise, copy and delete.
-        if (Storage::disk(self::DISK)->exists($sourcePath)) {
+        if (Storage::disk($this->disk())->exists($sourcePath)) {
             // File is already on target disk, just move it
-            Storage::disk(self::DISK)->move($sourcePath, $destinationPath);
+            Storage::disk($this->disk())->move($sourcePath, $destinationPath);
         } else {
             // File is on local filesystem (from upload), copy to storage
             $contents = file_get_contents($sourcePath);
-            Storage::disk(self::DISK)->put($destinationPath, $contents);
+            Storage::disk($this->disk())->put($destinationPath, $contents);
             // Optionally delete temp file
             @unlink($sourcePath);
         }
@@ -72,7 +70,7 @@ final class LaravelDocumentStorageService implements DocumentStorageServiceInter
      */
     public function delete(string $path): void
     {
-        Storage::disk(self::DISK)->delete($path);
+        Storage::disk($this->disk())->delete($path);
     }
 
     /**
@@ -80,12 +78,12 @@ final class LaravelDocumentStorageService implements DocumentStorageServiceInter
      */
     public function deleteProofOfPayment(string $storagePath): bool
     {
-        return Storage::disk(self::DISK)->delete($storagePath);
+        return Storage::disk($this->disk())->delete($storagePath);
     }
 
     public function verifyPresence(string $path): void
     {
-        $disk = Storage::disk(self::DISK);
+        $disk = Storage::disk($this->disk());
 
         if (! $disk->exists($path)) {
             throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::atPath($path);
@@ -94,5 +92,10 @@ final class LaravelDocumentStorageService implements DocumentStorageServiceInter
         if ($disk->size($path) === 0) {
             throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::checkSumFailed($path);
         }
+    }
+
+    private function disk(): string
+    {
+        return (string) config('filesystems.payment_evidence_disk', config('filesystems.media_disk', 'media'));
     }
 }

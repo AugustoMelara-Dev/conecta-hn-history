@@ -18,20 +18,30 @@ if (bearer) {
 
 if (cookie) {
     commonHeaders.cookie = cookie;
+    const xsrfToken = cookie
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith('XSRF-TOKEN='))
+        ?.slice('XSRF-TOKEN='.length);
+
+    if (xsrfToken) {
+        commonHeaders['x-xsrf-token'] = decodeURIComponent(xsrfToken);
+    }
 }
 
 const surfaces = [
     { surface: 'dashboard', method: 'GET', path: `/app/${tenant}` },
     { surface: 'reports', method: 'GET', path: `/app/${tenant}/growth-center` },
     { surface: 'campaigns', method: 'GET', path: `/app/${tenant}/campaigns` },
-    { surface: 'business_copilot', method: 'GET', path: `/app/${tenant}/business-copilot` },
+    { surface: 'business_copilot', method: 'GET', path: `/app/${tenant}/copilot` },
     {
         surface: 'directory_chat',
         method: 'POST',
         path: '/api/v1/directory/guide/chat',
         body: {
             query: 'Que puedo comprar con 100 HNL cerca de mi?',
-            budget: 100,
+            budget_amount: 100,
+            currency: 'HNL',
             city: 'tegucigalpa',
             limit: 5,
         },
@@ -69,6 +79,7 @@ async function measure(surface) {
             method: surface.method,
             headers: {
                 ...commonHeaders,
+                ...(surface.surface === 'business_copilot_chat' ? { 'x-tenant-id': tenant } : {}),
                 ...(surface.body ? { 'content-type': 'application/json' } : {}),
             },
             body: surface.body ? JSON.stringify(surface.body) : undefined,

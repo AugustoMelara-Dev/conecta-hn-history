@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Application\Shared\Contracts\TraceContextInterface;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class MeasureHttpPerformance
 {
+    public function __construct(
+        private readonly TraceContextInterface $traceContext,
+    ) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         if (! (bool) config('performance.http.enabled', false)) {
@@ -50,7 +55,7 @@ final class MeasureHttpPerformance
             'surface' => $this->surface($routeName, $routeUri),
             'tenant_id' => $this->tenantId($request),
             'user_id' => $request->user()?->getAuthIdentifier(),
-            'trace_id' => (string) ($request->headers->get('x-trace-id') ?: $request->headers->get('x-request-id') ?: ''),
+            'trace_id' => $this->traceContext->getTraceId(),
             'query_count' => $queryCount,
             'query_time_ms' => round($queryTimeMs, 2),
         ]);

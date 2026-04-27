@@ -7,11 +7,15 @@ import { fileURLToPath } from 'node:url';
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, '..');
 const viteManifestPath = path.join(projectRoot, 'public', 'build', 'manifest.json');
+const appUrl = process.env.PLAYWRIGHT_BASE_URL || process.env.APP_URL || 'http://127.0.0.1:8011';
+const parsedAppUrl = new URL(appUrl);
+const serverHost = parsedAppUrl.hostname || '127.0.0.1';
+const serverPort = parsedAppUrl.port || (parsedAppUrl.protocol === 'https:' ? '443' : '80');
 
 const rootEnv = {
     ...process.env,
     APP_ENV: 'testing',
-    APP_URL: 'http://127.0.0.1:8011',
+    APP_URL: appUrl,
     APP_KEY: 'base64:2fl+Ktvkfl+Fuz4Qk/NaWvy1Pt7EQqHMA2wc/ulkZyo=',
     CACHE_STORE: 'array',
     BROADCAST_CONNECTION: 'null',
@@ -99,9 +103,9 @@ let server = null;
 let shuttingDown = false;
 
 function startLaravelServer() {
-    console.error('\n[e2e-server] Starting Laravel server on http://127.0.0.1:8011');
+    console.error(`\n[e2e-server] Starting Laravel server on http://${serverHost}:${serverPort}`);
 
-    server = spawn('php', ['artisan', 'serve', '--host=127.0.0.1', '--port=8011', '--no-reload'], {
+    server = spawn('php', ['artisan', 'serve', `--host=${serverHost}`, `--port=${serverPort}`, '--no-reload'], {
         stdio: 'inherit',
         env: rootEnv,
         cwd: projectRoot,
