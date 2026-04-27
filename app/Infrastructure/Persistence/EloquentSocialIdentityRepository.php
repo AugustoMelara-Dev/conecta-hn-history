@@ -47,6 +47,8 @@ final class EloquentSocialIdentityRepository implements SocialIdentityRepository
         string $provider,
         string $providerId,
         ?string $token = null,
+        ?string $refreshToken = null,
+        ?\DateTimeInterface $tokenExpiresAt = null,
         ?string $avatar = null
     ): void {
         $identity = SocialIdentityModel::query()
@@ -67,16 +69,33 @@ final class EloquentSocialIdentityRepository implements SocialIdentityRepository
                 'user_id' => $user->id(),
                 'user_type' => 'App\Models\User',
                 'token' => $token,
+                'refresh_token' => $refreshToken,
+                'token_expires_at' => $tokenExpiresAt,
                 'avatar' => $avatar,
             ]
         );
     }
 
-    public function updateToken(string $provider, string $providerId, ?string $token): void
-    {
+    public function updateToken(
+        string $provider,
+        string $providerId,
+        ?string $token,
+        ?string $refreshToken = null,
+        ?\DateTimeInterface $tokenExpiresAt = null,
+    ): void {
+        $attributes = ['token' => $token];
+
+        if ($refreshToken !== null) {
+            $attributes['refresh_token'] = $refreshToken;
+        }
+
+        if ($tokenExpiresAt !== null) {
+            $attributes['token_expires_at'] = $tokenExpiresAt;
+        }
+
         SocialIdentityModel::query()
             ->where('provider_name', $provider)
             ->where('provider_id', $providerId)
-            ->update(['token' => $token]);
+            ->update($attributes);
     }
 }

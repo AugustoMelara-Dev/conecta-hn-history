@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertCircle, User, Package, Truck, Check, MapPin, Loader2, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculateItemTotal } from '@/Stores/useCartStore';
+import SupportDiagnosticCard from '@/Components/SupportDiagnosticCard';
 
 export default function CheckoutForm({
     customerName,
@@ -19,6 +20,7 @@ export default function CheckoutForm({
     handleSubmitOrder,
     isSubmitting,
     submitError,
+    submitDiagnostic,
     errors,
 }) {
     return (
@@ -30,6 +32,8 @@ export default function CheckoutForm({
                         <p className="text-sm text-rose-200">{submitError}</p>
                     </div>
                 ) : null}
+
+                <SupportDiagnosticCard diagnostic={submitDiagnostic} />
 
                 <div>
                     <label className="mb-2 block text-sm font-medium text-slate-300">

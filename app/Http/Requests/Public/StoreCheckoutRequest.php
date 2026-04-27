@@ -29,6 +29,7 @@ final class StoreCheckoutRequest extends FormRequest
             'payment_method' => ['nullable', 'string', 'max:50'],
             'coupon_code' => ['nullable', 'string', 'max:50'],
             'session_id' => ['nullable', 'string', 'max:255'],
+            'checkout_nonce' => ['nullable', 'string', 'max:255'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.name' => ['required', 'string', 'max:255'],

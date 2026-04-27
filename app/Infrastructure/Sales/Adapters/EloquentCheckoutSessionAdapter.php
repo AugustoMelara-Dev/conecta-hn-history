@@ -16,7 +16,7 @@ class EloquentCheckoutSessionAdapter implements CheckoutSessionPortInterface
         float $subtotal,
         string|int|null $userId
     ): void {
-        CheckoutSession::updateOrCreate(
+        CheckoutSession::query()->withoutGlobalScopes()->updateOrCreate(
             [
                 'tenant_id' => $tenantId,
                 'session_id' => $sessionId,
@@ -35,7 +35,8 @@ class EloquentCheckoutSessionAdapter implements CheckoutSessionPortInterface
     {
         $threshold = now()->subMinutes($timeoutMinutes);
 
-        $abandoned = CheckoutSession::where('status', 'active')
+        $abandoned = CheckoutSession::query()->withoutGlobalScopes()
+            ->where('status', 'active')
             ->where('last_active_at', '<=', $threshold)
             ->get();
 
@@ -43,7 +44,8 @@ class EloquentCheckoutSessionAdapter implements CheckoutSessionPortInterface
             return [];
         }
 
-        CheckoutSession::whereIn('id', $abandoned->pluck('id'))
+        CheckoutSession::query()->withoutGlobalScopes()
+            ->whereIn('id', $abandoned->pluck('id'))
             ->update(['status' => 'abandoned']);
 
         return $abandoned->map(fn ($session) => [
@@ -57,7 +59,8 @@ class EloquentCheckoutSessionAdapter implements CheckoutSessionPortInterface
 
     public function markAsConverted(string|int $tenantId, string $sessionId): void
     {
-        CheckoutSession::where('tenant_id', $tenantId)
+        CheckoutSession::query()->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
             ->where('session_id', $sessionId)
             ->update(['status' => 'converted']);
     }

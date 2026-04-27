@@ -66,6 +66,7 @@ export default function FloatingCart() {
     // Submission state
     const isSubmitting = useCartStore(state => state.isSubmitting);
     const submitError = useCartStore(state => state.submitError);
+    const submitDiagnostic = useCartStore(state => state.submitDiagnostic);
     const submitOrder = useCartStore(state => state.submitOrder);
     const validateCheckout = useCartStore(state => state.validateCheckout);
     const clearError = useCartStore(state => state.clearError);
@@ -367,6 +368,7 @@ export default function FloatingCart() {
                                                 handleSubmitOrder={handleSubmitOrder}
                                                 isSubmitting={isSubmitting}
                                                 submitError={submitError}
+                                                submitDiagnostic={submitDiagnostic}
                                                 errors={errors}
                                             />
                                         )}

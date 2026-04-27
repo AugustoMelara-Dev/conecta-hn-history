@@ -14,6 +14,7 @@ use App\Domain\TenantGovernance\Enums\Capability;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\StoreCheckoutRequest;
 use App\Models\Location;
+use App\Models\CheckoutSession;
 use App\Models\User;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -56,6 +57,18 @@ final class OrderController extends Controller
         }
 
         $this->tenantContext->setTenant($tenantId);
+
+        if (! $request->user() instanceof User) {
+            $sessionId = $validated['session_id'] ?? $request->header('X-Checkout-Session');
+            $nonce = $request->header('X-Checkout-Nonce') ?? $validated['checkout_nonce'] ?? null;
+
+            if (! is_string($sessionId) || ! is_string($nonce) || ! $this->checkoutNonceIsValid($tenantId, $sessionId, $nonce)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid checkout session.',
+                ], 419);
+            }
+        }
 
         $checkoutCustomer = $this->resolveOrCreateCheckoutCustomer($request, $validated, $tenantId);
         $customerId = (string) $checkoutCustomer->id;
@@ -198,6 +211,25 @@ final class OrderController extends Controller
         throw ValidationException::withMessages([
             'location_id' => 'No active primary location found for this tenant.',
         ]);
+    }
+
+    private function checkoutNonceIsValid(string $tenantId, string $sessionId, string $nonce): bool
+    {
+        $session = CheckoutSession::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('session_id', $sessionId)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $session instanceof CheckoutSession || ! is_string($session->nonce_hash) || $session->nonce_hash === '') {
+            return false;
+        }
+
+        return hash_equals(
+            $session->nonce_hash,
+            hash_hmac('sha256', $nonce, (string) config('app.key')),
+        );
     }
 
     /**

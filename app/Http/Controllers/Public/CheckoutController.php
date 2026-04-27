@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\HoldInventoryRequest;
 use App\Http\Requests\Public\SyncCartRequest;
 use App\Http\Requests\Public\ValidateCouponRequest;
+use App\Models\CheckoutSession;
 use App\Models\Tenant;
 use App\Support\Diagnostics\SupportDiagnosticFactory;
 use App\Services\CouponValidatorService;
@@ -20,6 +21,8 @@ use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 
 final class CheckoutController extends Controller
@@ -31,6 +34,52 @@ final class CheckoutController extends Controller
         private SupportDiagnosticFactory $diagnostics
     ) {}
 
+    public function startSession(Request $request): JsonResponse
+    {
+        $tenantId = $this->resolveTenantId($request);
+
+        if ($tenantId === null || $tenantId === '') {
+            return response()->json([
+                'message' => 'Tenant identification required.',
+                'diagnostic' => $this->diagnostic('checkout', 'Tenant no identificado', 'No pudimos crear una sesion segura sin tenant.', 'Recarga el negocio e intenta de nuevo.'),
+            ], 400);
+        }
+
+        $rateLimitKey = sprintf('checkout-session:%s:%s', $tenantId, (string) $request->ip());
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 30)) {
+            return response()->json([
+                'message' => 'Demasiadas sesiones de checkout creadas. Espera un momento e intenta de nuevo.',
+                'diagnostic' => $this->diagnostic(
+                    'checkout',
+                    'Checkout limitado por seguridad',
+                    'Se crearon demasiadas sesiones de compra para este negocio desde la misma conexion.',
+                    'Espera un minuto y vuelve a abrir el carrito. Si persiste, comparte esta referencia con soporte.'
+                ),
+            ], 429);
+        }
+        RateLimiter::hit($rateLimitKey, 60);
+
+        $sessionId = (string) Str::uuid();
+        $nonce = Str::random(48);
+
+        CheckoutSession::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenantId,
+            'session_id' => $sessionId,
+            'nonce_hash' => $this->hashCheckoutNonce($nonce),
+            'user_id' => $request->user()?->id,
+            'items' => [],
+            'subtotal' => 0,
+            'last_active_at' => now(),
+            'status' => 'active',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'session_id' => $sessionId,
+            'checkout_nonce' => $nonce,
+        ], 201);
+    }
+
     public function getCartSummary(SyncCartRequest $request): JsonResponse
     {
         $validated = $request->validated();
@@ -41,6 +90,14 @@ final class CheckoutController extends Controller
                 'message' => 'Tenant identification required.',
                 'diagnostic' => $this->diagnostic('checkout', 'Tenant no identificado', 'La solicitud no incluyo tenant valido.', 'Recarga el negocio e intenta de nuevo.'),
             ], 400);
+        }
+
+        if (! $this->checkoutNonceIsValid($tenantId, (string) $validated['session_id'], $this->checkoutNonceFromRequest($request))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid checkout session.',
+                'diagnostic' => $this->diagnostic('checkout', 'Sesion de checkout invalida', 'El token de seguridad del carrito no coincide.', 'Recarga el negocio y vuelve a intentar.'),
+            ], 419);
         }
 
         try {
@@ -80,6 +137,14 @@ final class CheckoutController extends Controller
                 'message' => 'Tenant identification required.',
                 'diagnostic' => $this->diagnostic('checkout', 'Tenant no identificado', 'La solicitud no incluyo tenant valido.', 'Recarga el negocio e intenta de nuevo.'),
             ], 400);
+        }
+
+        if (! $this->checkoutNonceIsValid($tenantId, (string) $validated['session_id'], $this->checkoutNonceFromRequest($request))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid checkout session.',
+                'diagnostic' => $this->diagnostic('checkout', 'Sesion de checkout invalida', 'El token de seguridad de la reserva no coincide.', 'Recarga el negocio y vuelve a intentar.'),
+            ], 419);
         }
 
         try {
@@ -248,6 +313,38 @@ final class CheckoutController extends Controller
         }
 
         return null;
+    }
+
+    private function checkoutNonceFromRequest(Request $request): ?string
+    {
+        $nonce = $request->header('X-Checkout-Nonce') ?? $request->input('checkout_nonce');
+
+        return is_string($nonce) && $nonce !== '' ? $nonce : null;
+    }
+
+    private function checkoutNonceIsValid(string $tenantId, string $sessionId, ?string $nonce): bool
+    {
+        if ($nonce === null) {
+            return false;
+        }
+
+        $session = CheckoutSession::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('session_id', $sessionId)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $session instanceof CheckoutSession || ! is_string($session->nonce_hash) || $session->nonce_hash === '') {
+            return false;
+        }
+
+        return hash_equals($session->nonce_hash, $this->hashCheckoutNonce($nonce));
+    }
+
+    private function hashCheckoutNonce(string $nonce): string
+    {
+        return hash_hmac('sha256', $nonce, (string) config('app.key'));
     }
 
     /**

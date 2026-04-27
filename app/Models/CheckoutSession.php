@@ -15,6 +15,7 @@ class CheckoutSession extends Model
 
     protected $fillable = [
         'session_id',
+        'nonce_hash',
         'user_id',
         'items',
         'subtotal',

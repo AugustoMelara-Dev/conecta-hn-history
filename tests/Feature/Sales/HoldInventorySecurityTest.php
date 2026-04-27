@@ -28,10 +28,14 @@ final class HoldInventorySecurityTest extends TestCase
         ]);
 
         $foreignProduct = Product::factory()->forTenant($foreignTenant)->create();
+        $session = $this->postJson('/api/v1/checkout/session', [
+            'tenant' => (string) $tenant->id,
+        ])->assertCreated();
 
         $response = $this->postJson('/api/v1/checkout/hold-inventory', [
             'tenant' => (string) $tenant->id,
-            'session_id' => 'checkout-session-1',
+            'session_id' => $session->json('session_id'),
+            'checkout_nonce' => $session->json('checkout_nonce'),
             'items' => [
                 [
                     'product_id' => $foreignProduct->id,

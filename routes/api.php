@@ -126,6 +126,10 @@ Route::prefix('v1')->group(function () {
     Route::prefix('checkout')->group(function () {
         // Note: CheckoutController is Public (Storefront), not Api/V1 yet, but used in API contexts.
         // Keeping as is for now, assuming it handles JSON.
+        Route::post('/session', [\App\Http\Controllers\Public\CheckoutController::class, 'startSession'])
+            ->middleware('throttle:api.transactions')
+            ->name('checkout.session');
+
         Route::post('/hold-inventory', [\App\Http\Controllers\Public\CheckoutController::class, 'holdInventory'])
             ->middleware('throttle:api.transactions')
             ->name('checkout.hold-inventory');

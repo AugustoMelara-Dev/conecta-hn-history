@@ -157,6 +157,8 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
             $command->providerName->value,
             $command->providerId,
             $command->accessToken,
+            $command->refreshToken,
+            null,
             $command->avatarUrl
         );
     }
@@ -166,7 +168,8 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
         $this->socialIdentityRepository->updateToken(
             $command->providerName->value,
             $command->providerId,
-            $command->accessToken
+            $command->accessToken,
+            $command->refreshToken,
         );
     }
 
