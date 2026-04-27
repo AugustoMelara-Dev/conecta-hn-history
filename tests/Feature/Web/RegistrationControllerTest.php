@@ -8,6 +8,7 @@ use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Category;
 use App\Models\City;
+use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
@@ -97,5 +98,45 @@ final class RegistrationControllerTest extends TestCase
 
         $this->assertTrue($capabilityManager->has($tenant, Capability::APPOINTMENT_BOOKING));
         $this->assertFalse($capabilityManager->has($tenant, Capability::KITCHEN_DISPLAY));
+    }
+
+    #[Test]
+    public function pro_registration_opens_payment_boundary_before_panel_access(): void
+    {
+        /** @var Category $category */
+        $category = Category::factory()->create(['name' => 'Servicios', 'slug' => 'servicios']);
+        /** @var City $city */
+        $city = City::factory()->create();
+
+        $response = $this->post(route('tenant.register.store', [], false), [
+            'business_name' => 'Consultoria Pro Norte',
+            'slug' => 'consultoria-pro-norte',
+            'name' => 'Carlos Consultor',
+            'email' => 'carlos@consultoriapro.test',
+            'password' => 'SecurePass123!',
+            'password_confirmation' => 'SecurePass123!',
+            'city_id' => $city->id,
+            'category_id' => $category->id,
+            'business_type' => 'service',
+            'rubro_key' => 'service_general',
+            'whatsapp' => '+50499990001',
+            'selected_plan' => 'pro',
+            'terms_accepted' => true,
+        ]);
+
+        $this->assertAuthenticated();
+
+        $tenant = Tenant::query()->where('slug', 'consultoria-pro-norte')->firstOrFail();
+        $payment = SubscriptionPayment::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenant->getKey())
+            ->firstOrFail();
+
+        $response->assertRedirect(route('payment.pending', ['payment' => $payment->id], false));
+
+        $this->assertSame('pro', $tenant->getRawOriginal('plan_type'));
+        $this->assertSame(SubscriptionPayment::STATUS_PENDING, $payment->status);
+        $this->assertSame('bank_transfer', $payment->bank);
+        $this->assertStringStartsWith('REG-', $payment->reference_number);
     }
 }

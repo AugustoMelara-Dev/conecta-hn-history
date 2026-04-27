@@ -19,6 +19,8 @@ final readonly class RegisterTenantResult
         public string $domain,
         public string $ownerEmail,
         public string $setupUrl,
+        public bool $requiresPayment = false,
+        public ?string $paymentId = null,
     ) {}
 
     public function toArray(): array
@@ -28,6 +30,8 @@ final readonly class RegisterTenantResult
             'domain' => $this->domain,
             'ownerEmail' => $this->ownerEmail,
             'setupUrl' => $this->setupUrl,
+            'requiresPayment' => $this->requiresPayment,
+            'paymentId' => $this->paymentId,
         ];
     }
 
@@ -38,6 +42,8 @@ final readonly class RegisterTenantResult
             domain: (string) $data['domain'],
             ownerEmail: (string) $data['ownerEmail'],
             setupUrl: (string) $data['setupUrl'],
+            requiresPayment: (bool) ($data['requiresPayment'] ?? false),
+            paymentId: isset($data['paymentId']) ? (string) $data['paymentId'] : null,
         );
     }
 
@@ -47,7 +53,8 @@ final readonly class RegisterTenantResult
     public static function fromEntities(
         object $tenant,
         object $user,
-        string $appUrl
+        string $appUrl,
+        ?string $paymentId = null,
     ): self {
         // Domain construction logic
         $domain = $tenant->domain().'.'.parse_url($appUrl, PHP_URL_HOST);
@@ -58,6 +65,8 @@ final readonly class RegisterTenantResult
             domain: $domain,
             ownerEmail: $user->email(),
             setupUrl: $setupUrl,
+            requiresPayment: $paymentId !== null,
+            paymentId: $paymentId,
         );
     }
 }

@@ -22,9 +22,11 @@ use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use App\Models\LegalConsent;
 use App\Models\Location;
+use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\TenantBusinessClaim;
 use App\Models\TenantMembership;
+use Illuminate\Support\Str;
 
 /**
  * RegisterTenantHandler - Command Handler for Tenant Registration
@@ -184,8 +186,12 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             ]);
         }
 
-        // 6. Handle Payment (DELEGATED TO PROCESS MANAGER)
-        // Billing setup is now eventually consistent to prevent cross-context DB locking.
+        // 6. Open the payment boundary immediately for paid registrations.
+        $paymentId = $this->createPendingPaymentForPaidRegistration(
+            tenantId: $tenantEntity->id(),
+            businessName: $command->businessName,
+            selectedPlan: $command->selectedPlan,
+        );
 
         // 7. Dispatch Event
         $this->eventDispatcher->dispatch(new TenantRegistered(
@@ -201,6 +207,31 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             'slug' => $tenantEntity->domain(),
         ], $this->scrubber));
 
-        return RegisterTenantResult::fromEntities($tenantEntity, $userEntity, $this->appUrl);
+        return RegisterTenantResult::fromEntities($tenantEntity, $userEntity, $this->appUrl, $paymentId);
+    }
+
+    private function createPendingPaymentForPaidRegistration(
+        string $tenantId,
+        string $businessName,
+        string $selectedPlan,
+    ): ?string {
+        if ($selectedPlan !== 'pro') {
+            return null;
+        }
+
+        $priceInLempiras = $this->pricingService->getPlanPrice($selectedPlan);
+        $payment = SubscriptionPayment::forceCreate([
+            'tenant_id' => $tenantId,
+            'amount' => (int) round($priceInLempiras * 100),
+            'bank' => 'bank_transfer',
+            'reference_number' => 'REG-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
+            'proof_path' => '',
+            'status' => SubscriptionPayment::STATUS_PENDING,
+            'idempotency_key' => 'registration:'.$tenantId.':'.$selectedPlan,
+            'plan_before_upgrade' => 'semilla',
+            'admin_notes' => 'Registro Pro pendiente de pago para '.$businessName,
+        ]);
+
+        return (string) $payment->getKey();
     }
 }

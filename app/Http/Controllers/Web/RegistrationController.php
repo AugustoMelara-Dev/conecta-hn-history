@@ -136,6 +136,12 @@ final class RegistrationController extends Controller
         $user = \App\Models\User::where('email', $result->ownerEmail)->firstOrFail();
         $this->guard->login($user);
 
+        if ($result->requiresPayment && $result->paymentId !== null) {
+            return redirect()
+                ->route('payment.pending', ['payment' => $result->paymentId])
+                ->with('success', 'Tu negocio fue registrado. Completa el pago para activar el plan Pro.');
+        }
+
         return redirect()
             ->to(AuthRedirector::destinationFor($user))
             ->with('success', 'Bienvenido a Vito Business OS. Tu panel está listo y tu verificación de titularidad queda en revisión.');
