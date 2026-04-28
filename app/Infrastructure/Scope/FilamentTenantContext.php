@@ -24,13 +24,6 @@ final class FilamentTenantContext implements TenantContextInterface
         return $tenant !== null ? (string) $tenant->getKey() : null;
     }
 
-    public function getTenantId(): ?string
-    {
-        $tenant = $this->resolveTenant();
-
-        return $tenant !== null ? (string) $tenant->getKey() : null;
-    }
-
     private function resolveTenant(): ?Tenant
     {
         return $this->resolveFilamentTenant() ?? $this->resolveAuthenticatedTenant();

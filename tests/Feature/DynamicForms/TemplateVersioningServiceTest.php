@@ -10,13 +10,13 @@ use App\Models\Dynamic\EntityDefinition;
 use App\Models\Dynamic\FieldDefinition;
 use App\Models\User;
 use App\Services\DynamicForms\TemplateVersioningService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 final class TemplateVersioningServiceTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_it_publishes_template_versions_and_dispatches_domain_event(): void
     {

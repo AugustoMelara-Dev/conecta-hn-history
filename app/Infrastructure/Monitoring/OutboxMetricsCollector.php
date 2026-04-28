@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Monitoring;
 
+use App\Events\Infrastructure\SystemSaturationDetected;
 use App\Infrastructure\Models\OutboxMessage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -32,7 +33,7 @@ final class OutboxMetricsCollector
         $lagSeconds = $lagMs / 1000;
         $partition = $message->partition_key ?? 0;
 
-        // Emit structured log for log aggregation (Datadog, ELK, etc.)
+        // Emit structured log for external log aggregation.
         Log::info('outbox_processing_lag', [
             'message_id' => $message->id,
             'partition_key' => $partition,
@@ -119,7 +120,11 @@ final class OutboxMetricsCollector
             'action_required' => 'Consider scaling Outbox workers or investigating slow consumers',
         ]);
 
-        // TODO: Dispatch SystemSaturationEvent for auto-scaling integration
-        // event(new SystemSaturationEvent($partition, $lagSeconds));
+        event(new SystemSaturationDetected(
+            component: 'outbox',
+            partition: $partition,
+            lagSeconds: $lagSeconds,
+            thresholdSeconds: self::LAG_THRESHOLD_SECONDS,
+        ));
     }
 }

@@ -14,13 +14,13 @@ use App\Models\User;
 use App\Services\DynamicForms\EntityDefinitionClonerService;
 use App\Services\DynamicForms\SchemaRegistryService;
 use App\Services\DynamicForms\TemplateVersioningService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class DynamicConfigAuditTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_it_persists_schema_publish_audit_and_mirrors_activity_log(): void
     {

@@ -11,14 +11,14 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\DynamicForms\RecordPersistenceService;
 use App\Services\DynamicForms\SchemaRegistryService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class DynamicFormsOpsCommandsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_ops_report_returns_runtime_and_usage_metrics(): void
     {

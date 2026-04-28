@@ -4,13 +4,13 @@ namespace Tests\Integration\Auth;
 
 use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
 use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class IdempotencyLifecycleTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private AtomicIdempotencyInterface $service;
 

@@ -7,12 +7,12 @@ namespace Tests\Feature\Public;
 use App\Models\Favorite;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class FavoriteTenantFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_user_can_toggle_tenant_favorite_with_uuid_identifier(): void
     {

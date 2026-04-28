@@ -8,13 +8,13 @@ use App\Filament\App\Resources\MenuSectionResource;
 use App\Models\MenuSection;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Gate;
 use Tests\TestCase;
 
 final class MenuSectionResourceManifestTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_menu_sections_follow_rubro_manifest_modules(): void
     {

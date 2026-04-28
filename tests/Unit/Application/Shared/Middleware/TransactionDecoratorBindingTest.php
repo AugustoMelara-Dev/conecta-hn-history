@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 
-uses(RefreshDatabase::class);
+uses(DatabaseTransactions::class);
 
 it('confirms the command bus execution is wrapped by the transaction decorator', function () {
     $pipeline = app(\App\Application\Auth\Handlers\VerifyOtpHandlerInterface::class);

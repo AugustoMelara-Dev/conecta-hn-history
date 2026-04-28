@@ -6,12 +6,12 @@ namespace Tests\Feature\Api;
 
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class BusinessClaimDisputeControllerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_guest_cannot_open_dispute_or_pause_publication(): void
     {

@@ -126,7 +126,7 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
             'order_number' => $this->orderNumber->toString(),
             'transaction_id' => $this->transactionId,
             'payment_method' => $this->paymentMethod,
-            'amount_cents' => $this->amountPaid->amount(),
+            'amount_cents' => $this->amountPaid->cents(),
             'currency' => $this->amountPaid->currency(),
             'occurred_at' => $this->occurredAt->format(DATE_ATOM),
         ];

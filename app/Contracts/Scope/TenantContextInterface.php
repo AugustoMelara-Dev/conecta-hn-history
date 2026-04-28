@@ -35,12 +35,4 @@ interface TenantContextInterface
      */
     public function getTenantUuid(): ?string;
 
-    /**
-     * Resolve the current tenant ID from the execution context.
-     *
-     * @return string|int|null The tenant ID, or null if no tenant context is available
-     *
-     * @deprecated Use getTenantUuid() once Option 1 full migration is executed.
-     */
-    public function getTenantId(): string|int|null;
 }

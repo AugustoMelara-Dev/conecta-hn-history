@@ -7,12 +7,12 @@ namespace Tests\Feature\Sales;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class HoldInventorySecurityTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_hold_inventory_rejects_products_from_another_tenant(): void
     {

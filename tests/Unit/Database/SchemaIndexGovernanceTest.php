@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Database;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class SchemaIndexGovernanceTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_critical_index_invariants_exist(): void
     {

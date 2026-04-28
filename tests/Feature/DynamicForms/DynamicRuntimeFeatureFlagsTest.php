@@ -11,13 +11,13 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\DynamicForms\RecordPersistenceService;
 use App\Services\DynamicForms\SchemaRegistryService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 final class DynamicRuntimeFeatureFlagsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_it_blocks_schema_publish_when_runtime_is_disabled(): void
     {

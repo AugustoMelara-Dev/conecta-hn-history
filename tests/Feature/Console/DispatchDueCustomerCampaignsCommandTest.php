@@ -13,13 +13,13 @@ use App\Models\City;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Contracts\Bus\Dispatcher;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 
 final class DispatchDueCustomerCampaignsCommandTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_it_queues_due_campaigns_and_rolls_cadence_forward(): void
     {

@@ -50,7 +50,7 @@ final class ConfigPlanRepository implements PlanRepositoryInterface
                 amount: $prices[$plan->value],
                 currency: 'HNL'
             ),
-            externalGatewayId: 'plan_'.$plan->value
+            externalGatewayId: (string) (config("services.stripe.prices.{$plan->value}") ?: 'plan_'.$plan->value)
         );
     }
 }

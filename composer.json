@@ -23,6 +23,7 @@
         "maatwebsite/excel": "^3.1",
         "predis/predis": "^3.4",
         "resend/resend-php": "^1.1",
+        "sentry/sentry-laravel": "^4.25",
         "spatie/laravel-activitylog": "^4.12",
         "spatie/laravel-health": "^1.34",
         "spatie/laravel-medialibrary": "*",
@@ -225,6 +226,23 @@
             "@php artisan migrate:fresh --env=testing --force --ansi",
             "@php -r \"is_dir('reports/schema-index-governance') || mkdir('reports/schema-index-governance', 0777, true);\"",
             "@php vendor/bin/pest tests/Unit/Database/SchemaIndexGovernanceTest.php --log-junit reports/schema-index-governance/junit.xml -v"
+        ],
+        "check:schema-governance-fast": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "composer check:schema-governance-fast:warm"
+        ],
+        "check:schema-governance-fast:warm": [
+            "@php -r \"is_dir('reports/schema-governance-fast') || mkdir('reports/schema-governance-fast', 0777, true);\"",
+            "@php vendor/bin/pest tests/Unit/Database/SchemaFkGovernanceTest.php tests/Unit/Database/SchemaDuplicateColumnsGovernanceTest.php tests/Unit/Database/SchemaIndexGovernanceTest.php tests/Unit/Database/SchemaJsonGovernanceTest.php tests/Unit/Database/SchemaKeyTypeGovernanceTest.php tests/Unit/Database/SchemaNullabilityGovernanceTest.php --log-junit reports/schema-governance-fast/junit.xml -v"
+        ],
+        "check:schema-governance-heavy": [
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
+            "@php artisan migrate:fresh --env=testing --force --ansi",
+            "@php -r \"is_dir('reports/schema-governance-heavy') || mkdir('reports/schema-governance-heavy', 0777, true);\"",
+            "@php vendor/bin/pest tests/Unit/Database/WaveTwoConsolidationGovernanceTest.php tests/Unit/Database/WaveThreeConsolidationGovernanceTest.php tests/Architecture/Scalability/OutboxScalingTest.php --log-junit reports/schema-governance-heavy/junit.xml -v"
         ],
         "check:schema-wave2-governance": [
             "@php artisan config:clear --ansi",

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Log;
 
-uses(RefreshDatabase::class);
+uses(DatabaseTransactions::class);
 
 test('http performance middleware emits structured metric when enabled', function () {
     config()->set('performance.http.enabled', true);

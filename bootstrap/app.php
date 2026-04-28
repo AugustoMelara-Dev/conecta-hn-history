@@ -67,6 +67,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'maintenance' => \App\Http\Middleware\CheckMaintenanceMode::class, // Alias para uso granular
             'tenant.ownership' => \App\Http\Middleware\EnsureTenantOwnership::class, // Security: IDOR protection
             'idempotency' => \App\Http\Middleware\EnsureIdempotencyKey::class, // Metadata Transport
+            'api.lifecycle' => \App\Http\Middleware\ApiLifecycleHeaders::class,
         ]);
 
         //
@@ -95,6 +96,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->respond(function (SymfonyResponse $response, \Throwable $exception, Request $request) {
+            $response = \App\Support\Http\ApiLifecycleHeaderFactory::apply($request, $response);
+
             if ($response->isRedirection()) {
                 $location = $response->headers->get('Location');
                 $targetHost = is_string($location) ? strtolower((string) parse_url($location, PHP_URL_HOST)) : '';

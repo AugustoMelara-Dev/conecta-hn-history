@@ -451,7 +451,7 @@ class OrderResource extends Resource
                 ->title($title)
                 ->success()
                 ->send();
-        } catch (\Exception $exception) {
+        } catch (\Throwable $exception) {
             Notification::make()
                 ->title('Error')
                 ->body($exception->getMessage())

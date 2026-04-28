@@ -33,7 +33,7 @@ use Tests\TestCase;
  */
 class SalesExportTest extends TestCase
 {
-    // RefreshDatabase: En MySQL envuelve el test en transacción + ROLLBACK
+    // MySQL transaction rollback keeps this tenant-isolation suite fast and deterministic.
     use DatabaseTransactions;
 
     protected function setUp(): void

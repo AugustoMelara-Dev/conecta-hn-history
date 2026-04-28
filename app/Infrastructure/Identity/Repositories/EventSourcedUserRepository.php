@@ -10,6 +10,7 @@ use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotStrategyInterface;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Exceptions\UserAlreadyExistsException;
+use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Infrastructure\Common\Outbox\OutboxRepository;
 use Illuminate\Database\QueryException;
@@ -78,7 +79,7 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
                     $user->version(),
                     $user->toStateArray()
                 );
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // Swallow snapshot errors to not block flow?
             }
         }
@@ -88,32 +89,44 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
 
     public function findById(string $id, string $tenantId): ?UserEntity
     {
-        // TODO: Implement Read Model lookup
-        return null;
+        return $this->findReadModel([
+            ['id', '=', $id],
+            ['tenant_id', '=', $tenantId],
+        ]);
     }
 
     public function findByEmail(string $email, string $tenantId): ?UserEntity
     {
-        // TODO: Implement Read Model lookup
-        return null;
+        return $this->findReadModel([
+            ['email', '=', $email],
+            ['tenant_id', '=', $tenantId],
+        ]);
     }
 
     public function updateAvatarIfMissing(string $userId, string $avatarUrl): bool
     {
-        // TODO: Implement update logic
-        return false;
+        return DB::table('users')
+            ->where('id', $userId)
+            ->where(static function ($query): void {
+                $query->whereNull('avatar')->orWhere('avatar', '');
+            })
+            ->update([
+                'avatar' => $avatarUrl,
+                'updated_at' => now(),
+            ]) > 0;
     }
 
     public function delete(UserEntity $user): void
     {
-        // TODO: Implement delete logic (tombstone event?)
+        DB::table('users')
+            ->where('id', $user->id())
+            ->where('tenant_id', $user->tenantId())
+            ->delete();
     }
 
     public function resetPassword(string $userId, string $tenantId, string $passwordHash, string $rememberToken): void
     {
-        // TODO: Implement via PasswordReset domain event
-        // For now, delegate to inline projection update
-        DB::table('users')
+        $updated = DB::table('users')
             ->where('id', $userId)
             ->where('tenant_id', $tenantId)
             ->update([
@@ -121,6 +134,10 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
                 'remember_token' => $rememberToken,
                 'updated_at' => now(),
             ]);
+
+        if ($updated === 0) {
+            throw UserNotFoundException::withIdAndTenant($userId, $tenantId);
+        }
     }
 
     public function existsByEmail(string $email): bool
@@ -144,6 +161,26 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
             ['id'], // Unique Key
             ['email', 'password', 'banned_at', 'updated_at'] // Update Columns
         );
+    }
+
+    /**
+     * @param  list<array{0: string, 1: string, 2: mixed}>  $wheres
+     */
+    private function findReadModel(array $wheres): ?UserEntity
+    {
+        $query = DB::table('users');
+
+        foreach ($wheres as [$column, $operator, $value]) {
+            $query->where($column, $operator, $value);
+        }
+
+        $row = $query->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        return UserEntity::fromStateArray((array) $row);
     }
 
     private function handleConcurrencyException(QueryException $e, string $context): void

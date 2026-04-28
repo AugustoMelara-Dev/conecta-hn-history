@@ -25,12 +25,7 @@ final readonly class PhoneNumber
 
     public function toWhatsappLink(string $message = ''): string
     {
-        $phone = $this->value;
-
-        // Honduras Prefix Logic encapsulated
-        if (strlen($phone) === 8) {
-            $phone = '504'.$phone;
-        }
+        $phone = $this->toInternationalDigits();
 
         $url = "https://wa.me/{$phone}";
 
@@ -44,5 +39,20 @@ final readonly class PhoneNumber
     public function toCallLink(): string
     {
         return "tel:{$this->value}";
+    }
+
+    public function toInternationalDigits(string $defaultCountryCode = '504'): string
+    {
+        $phone = $this->value;
+
+        if (str_starts_with($phone, '00')) {
+            return substr($phone, 2);
+        }
+
+        if (strlen($phone) === 8) {
+            return $defaultCountryCode.$phone;
+        }
+
+        return $phone;
     }
 }
