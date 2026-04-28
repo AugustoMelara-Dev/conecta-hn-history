@@ -7,12 +7,12 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Application\BusinessAi\Contracts\BusinessKnowledgeIndexerInterface;
 use App\Jobs\BusinessAi\ReindexTenantBusinessKnowledgeJob;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
-uses(DatabaseTransactions::class);
+uses(RefreshDatabase::class);
 
 function businessRagOwnerFor(Tenant $tenant): User
 {

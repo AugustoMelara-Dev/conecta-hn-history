@@ -8,14 +8,14 @@ use App\Application\Shared\Contracts\IdGeneratorInterface;
 use App\Application\Shared\Contracts\SensitiveDataInterface;
 use App\Infrastructure\Bus\TransactionalCommandBus;
 use Illuminate\Contracts\Bus\Dispatcher;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class TransactionalOutboxTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

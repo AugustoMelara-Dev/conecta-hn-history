@@ -7,13 +7,13 @@ namespace Tests\Feature\Api;
 use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 final class MeContextApiTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_owner_receives_business_surface_context_and_capability_map(): void
     {

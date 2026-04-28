@@ -139,7 +139,7 @@ return [
         | - Suspicious activity patterns
         |
         | This channel is separate from application logs for:
-        | - Easy ingestion by external log platforms and SIEM tools
+        | - Easy ingestion by SIEM tools (Datadog, Splunk, etc.)
         | - Fail2Ban integration for IP blocking
         | - Compliance audit trail (90-day retention)
         | - Real-time Slack/Discord alerts for CRITICAL events

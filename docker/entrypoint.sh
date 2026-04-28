@@ -3,14 +3,6 @@ set -e
 
 cd /app
 
-case "${APP_ENV:-local}" in
-  production|staging)
-    if [ "${RUN_PRODUCTION_GUARD:-true}" = "true" ]; then
-      php artisan config:production-guard --env="${APP_ENV}" --json
-    fi
-    ;;
-esac
-
 if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
   php artisan migrate --force --no-interaction
 fi

@@ -32,12 +32,6 @@ return [
         'version' => env('WHATSAPP_CLOUD_VERSION', 'v23.0'),
     ],
 
-    'twilio' => [
-        'sid' => env('TWILIO_SID'),
-        'token' => env('TWILIO_TOKEN'),
-        'from' => env('TWILIO_FROM'),
-    ],
-
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
@@ -93,10 +87,6 @@ return [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET', env('PAYMENT_WEBHOOK_SECRET')),
-        'prices' => [
-            'semilla' => env('STRIPE_PRICE_SEMILLA'),
-            'pro' => env('STRIPE_PRICE_PRO', env('STRIPE_PRICE_ID')),
-        ],
     ],
 
 ];

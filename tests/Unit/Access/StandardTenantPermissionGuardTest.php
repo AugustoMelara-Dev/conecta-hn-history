@@ -10,9 +10,9 @@ use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(DatabaseTransactions::class);
+uses(RefreshDatabase::class);
 
 it('allows the legacy owner fallback when the tenant has the capability', function () {
     $user = User::factory()->create();

@@ -133,7 +133,7 @@ final readonly class PaymentApproved implements DomainEvent, ShouldDispatchAfter
             'order_number' => $this->orderNumber->toString(),
             'transaction_id' => $this->transactionId,
             'gateway_name' => $this->gatewayName,
-            'amount_cents' => $this->amountApproved->cents(),
+            'amount_cents' => $this->amountApproved->amount(),
             'currency' => $this->amountApproved->currency(),
             'occurred_at' => $this->occurredAt->format(DATE_ATOM),
         ];

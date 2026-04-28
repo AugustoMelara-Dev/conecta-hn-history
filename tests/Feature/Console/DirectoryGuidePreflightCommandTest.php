@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 final class DirectoryGuidePreflightCommandTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_it_fails_in_strict_mode_when_required_variables_are_missing(): void
     {
         config([

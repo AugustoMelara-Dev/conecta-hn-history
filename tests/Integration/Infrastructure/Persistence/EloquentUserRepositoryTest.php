@@ -7,14 +7,14 @@ namespace Tests\Integration\Infrastructure\Persistence;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Infrastructure\Identity\Persistence\EloquentUserRepository;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class EloquentUserRepositoryTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private EloquentUserRepository $repository;
 

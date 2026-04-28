@@ -8,13 +8,13 @@ use App\Filament\App\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use Tests\TestCase;
 
 final class OrderResourceManifestTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_order_resource_uses_rubro_manifest_modules_for_access(): void
     {

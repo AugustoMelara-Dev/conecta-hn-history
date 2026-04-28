@@ -18,7 +18,7 @@ Route::post('/analytics/track', [\App\Http\Controllers\Api\V1\AnalyticsControlle
 // ═══════════════════════════════════════════════════════════════════════════
 // API V1 ROUTING GROUP
 // ═══════════════════════════════════════════════════════════════════════════
-Route::prefix('v1')->middleware('api.lifecycle:v1')->group(function () {
+Route::prefix('v1')->group(function () {
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC REGISTRATION

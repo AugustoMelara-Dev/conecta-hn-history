@@ -9,7 +9,7 @@ use App\Models\Coupon;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\CouponValidatorService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -26,7 +26,7 @@ use Tests\TestCase;
  */
 class CouponServiceTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private CouponValidatorService $service;
 

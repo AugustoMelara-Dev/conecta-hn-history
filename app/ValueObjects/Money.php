@@ -333,4 +333,15 @@ final readonly class Money implements \JsonSerializable
         );
     }
 
+    /**
+     * Alias for cents() - for interface consistency with event serialization.
+     *
+     * @deprecated Use cents() instead for clarity. This method will be removed in v2.0.
+     *             - cents() returns int (raw value in smallest currency unit)
+     *             - toDecimal() returns float (for display purposes)
+     */
+    public function amount(): int
+    {
+        return $this->cents;
+    }
 }

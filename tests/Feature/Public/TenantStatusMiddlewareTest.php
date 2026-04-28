@@ -9,13 +9,13 @@ use App\Enums\UserRole;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 final class TenantStatusMiddlewareTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

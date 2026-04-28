@@ -10,12 +10,12 @@ use App\Infrastructure\Search\EloquentGlobalSearchReader;
 use App\Infrastructure\Search\EloquentSearchRepository;
 use App\Models\Product;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class PublicVisibilityReadersTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

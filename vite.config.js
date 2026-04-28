@@ -88,19 +88,6 @@ export default defineConfig(({ mode }) => {
 
     return {
         plugins,
-        build: {
-            rollupOptions: {
-                output: {
-                    manualChunks: {
-                        react: ["react", "react-dom", "@inertiajs/react"],
-                        observability: ["@sentry/react"],
-                        charts: ["recharts"],
-                        motion: ["framer-motion"],
-                        ui: ["@radix-ui/react-dialog", "@radix-ui/react-select", "@radix-ui/react-tabs"],
-                    },
-                },
-            },
-        },
         server: {
             host: "localhost",
             port: 5173,

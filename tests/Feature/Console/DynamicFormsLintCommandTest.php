@@ -9,13 +9,13 @@ use App\Models\Dynamic\FieldDefinition;
 use App\Models\Dynamic\LayoutDefinition;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 final class DynamicFormsLintCommandTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_it_fails_in_strict_mode_when_lint_errors_exist(): void
     {
@@ -113,3 +113,4 @@ final class DynamicFormsLintCommandTest extends TestCase
         return $entity;
     }
 }
+

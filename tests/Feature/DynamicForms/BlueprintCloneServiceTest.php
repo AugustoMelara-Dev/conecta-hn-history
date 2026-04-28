@@ -11,14 +11,14 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\DynamicForms\EntityDefinitionClonerService;
 use App\Services\DynamicForms\PrintTemplateClonerService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 final class BlueprintCloneServiceTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_it_clones_global_entity_blueprint_to_tenant_and_dispatches_event(): void
     {

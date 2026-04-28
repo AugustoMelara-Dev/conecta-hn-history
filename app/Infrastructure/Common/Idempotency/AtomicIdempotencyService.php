@@ -75,7 +75,7 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
                 // (though in collision case, it failed to create it).
                 $this->db->rollBack();
 
-                return $this->handleCollision($idempotencyKey, $tenantId, $commandHash, $operation);
+                return $this->handleCollision($idempotencyKey, $commandHash);
             }
 
             // Other DB error? Rollback and rethrow.
@@ -94,7 +94,7 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
         }
     }
 
-    private function handleCollision(string $key, string $tenantId, string $hash, Closure $operation): mixed
+    private function handleCollision(string $key, string $hash): mixed
     {
         // Read the existing state
         $record = $this->db->table(self::TABLE)
@@ -128,10 +128,6 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
         }
 
         if ($record->status === 'PROCESSING') {
-            if ($this->recoverStaleProcessingLock($record, $key, $tenantId, $hash)) {
-                return $this->execute($key, $tenantId, $hash, $operation);
-            }
-
             throw new ConcurrentRequestException('Request is currently being processed by another worker.');
         }
 
@@ -140,24 +136,6 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
         }
 
         return null;
-    }
-
-    private function recoverStaleProcessingLock(object $record, string $key, string $tenantId, string $hash): bool
-    {
-        $ttlSeconds = max(1, (int) config('auth.idempotency_processing_lock_ttl_seconds', 60));
-        $updatedAt = $record->updated_at ?? null;
-
-        if ($updatedAt === null || \Illuminate\Support\Carbon::parse($updatedAt)->greaterThan(now()->subSeconds($ttlSeconds))) {
-            return false;
-        }
-
-        return $this->db->table(self::TABLE)
-            ->where('idempotency_key', $key)
-            ->where('tenant_id', $tenantId)
-            ->where('command_hash', $hash)
-            ->where('status', 'PROCESSING')
-            ->where('updated_at', '<=', now()->subSeconds($ttlSeconds))
-            ->delete() === 1;
     }
 
     private function isDuplicateKeyViolation(QueryException $e): bool

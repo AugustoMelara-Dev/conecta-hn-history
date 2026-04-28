@@ -7,10 +7,10 @@ namespace Tests\Unit\Models;
 use App\Domain\Shared\Services\TenantContext;
 use App\Models\Payment;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 
-uses(DatabaseTransactions::class);
+uses(RefreshDatabase::class);
 
 /**
  * VC-AUDIT-002 Verification: Payment Mass Assignment Protection

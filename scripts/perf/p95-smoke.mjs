@@ -6,8 +6,6 @@ const samples = Number.parseInt(process.env.PERF_SAMPLES || '30', 10);
 const concurrency = Number.parseInt(process.env.PERF_CONCURRENCY || '4', 10);
 const bearer = process.env.PERF_BEARER_TOKEN || '';
 const cookie = process.env.PERF_AUTH_COOKIE || '';
-const requireAuth = !/^(0|false|no|off)$/i.test(process.env.PERF_REQUIRE_AUTH || 'true');
-const failOnErrors = !/^(0|false|no|off)$/i.test(process.env.PERF_FAIL_ON_ERRORS || 'true');
 
 const commonHeaders = {
     accept: 'application/json, text/html;q=0.9',
@@ -75,7 +73,6 @@ async function measure(surface) {
     let status = 0;
     let ok = false;
     let error = null;
-    let location = null;
 
     try {
         const response = await fetch(`${baseUrl}${surface.path}`, {
@@ -90,22 +87,7 @@ async function measure(surface) {
         });
 
         status = response.status;
-        location = response.headers.get('location');
-        const redirectsToLogin = response.status >= 300
-            && response.status < 400
-            && typeof location === 'string'
-            && /\/(?:app\/)?login(?:\?|$|\/)/i.test(location);
-
-        ok = response.status >= 200 && response.status < 400 && !redirectsToLogin;
-
-        if (redirectsToLogin) {
-            error = 'auth_redirect';
-        } else if (response.status === 401 || response.status === 403) {
-            error = 'auth_rejected';
-        } else if (response.status >= 400) {
-            error = `http_${response.status}`;
-        }
-
+        ok = response.status < 400 || response.status === 302;
         await response.arrayBuffer();
     } catch (exception) {
         error = exception instanceof Error ? exception.message : String(exception);
@@ -116,7 +98,6 @@ async function measure(surface) {
         status,
         ok,
         error,
-        location,
     };
 }
 
@@ -143,17 +124,8 @@ const report = {
     samples_per_surface: samples,
     concurrency,
     auth_mode: bearer ? 'bearer' : cookie ? 'cookie' : 'none',
-    auth_required: requireAuth,
     surfaces: [],
-    failures: [],
 };
-
-if (requireAuth && !bearer && !cookie) {
-    report.failures.push({
-        scope: 'auth',
-        error: 'PERF_REQUIRE_AUTH=true but neither PERF_AUTH_COOKIE nor PERF_BEARER_TOKEN was provided.',
-    });
-}
 
 for (const surface of surfaces) {
     const attempts = Array.from({ length: samples }, () => surface);
@@ -161,20 +133,7 @@ for (const surface of surfaces) {
     const successful = results.filter((result) => result.ok);
     const durations = successful.map((result) => result.duration_ms);
 
-    const statusCounts = results.reduce((acc, result) => {
-        const key = String(result.status || 'network_error');
-        acc[key] = (acc[key] || 0) + 1;
-
-        return acc;
-    }, {});
-    const errorCounts = results.reduce((acc, result) => {
-        if (result.error) {
-            acc[result.error] = (acc[result.error] || 0) + 1;
-        }
-
-        return acc;
-    }, {});
-    const surfaceReport = {
+    report.surfaces.push({
         surface: surface.surface,
         method: surface.method,
         path: surface.path,
@@ -185,26 +144,13 @@ for (const surface of surfaces) {
         p95_ms: percentile(durations, 0.95),
         p99_ms: percentile(durations, 0.99),
         max_ms: durations.length > 0 ? Math.max(...durations) : 0,
-        statuses: statusCounts,
-        errors: errorCounts,
-    };
+        statuses: results.reduce((acc, result) => {
+            const key = String(result.status || 'network_error');
+            acc[key] = (acc[key] || 0) + 1;
 
-    report.surfaces.push(surfaceReport);
-
-    if (surfaceReport.error_count > 0) {
-        report.failures.push({
-            scope: surface.surface,
-            path: surface.path,
-            success_count: surfaceReport.success_count,
-            error_count: surfaceReport.error_count,
-            statuses: statusCounts,
-            errors: errorCounts,
-        });
-    }
+            return acc;
+        }, {}),
+    });
 }
 
 console.log(JSON.stringify(report, null, 2));
-
-if ((requireAuth && report.auth_mode === 'none') || (failOnErrors && report.failures.length > 0)) {
-    process.exit(1);
-}

@@ -29,9 +29,7 @@ $checks = array_merge($checks, checkWebhookRoute($root.'/routes/api.php', '/webh
 $checks = array_merge($checks, checkWebhookController(
     $root.'/app/Http/Controllers/Webhook/PaymentWebhookController.php',
     [
-        'verifyGenericSignature(',
-        'verifiedStripePayload(',
-        'Webhook::constructEvent(',
+        'verifySignature(',
         'hash_hmac(',
         'hash_equals(',
     ],

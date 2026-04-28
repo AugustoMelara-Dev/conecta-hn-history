@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Application\Billing\Listeners;
 
 use App\Application\Shared\Contracts\LoggerInterface;
-use App\Domain\Billing\Entities\SubscriptionIntent;
 use App\Domain\Billing\Events\PaymentWebhookReceived;
 use App\Domain\Billing\Repositories\PlanRepositoryInterface;
 use App\Domain\Shared\Services\TenantContext;
@@ -13,7 +12,6 @@ use App\Models\SubscriptionPayment;
 use App\Domain\ValueObjects\Payment\PaymentWebhook;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -37,10 +35,6 @@ final readonly class ProcessPaymentWebhookReceived
 
         try {
             if (! $webhook->isSuccessful()) {
-                if ($webhook->isStripe()) {
-                    $this->handleStripeNonSuccessfulEvent($webhook);
-                }
-
                 $this->logger->info('Payment webhook ignored: event type is not billable.', [
                     'tenant_id' => $webhook->tenantId,
                     'event_type' => $webhook->eventType,
@@ -91,7 +85,6 @@ final readonly class ProcessPaymentWebhookReceived
 
             if ($payment->isPending()) {
                 $payment->approve();
-                $this->markReceiptIssued($payment);
                 $this->markStripeIntentCompleted($webhook);
 
                 $this->logger->info('Payment webhook materialized and approved subscription payment.', [
@@ -105,7 +98,6 @@ final readonly class ProcessPaymentWebhookReceived
             }
 
             if ($payment->isApproved()) {
-                $this->markReceiptIssued($payment);
                 $this->markStripeIntentCompleted($webhook);
 
                 event(\App\Events\PaymentApproved::fromPayment(
@@ -197,19 +189,6 @@ final readonly class ProcessPaymentWebhookReceived
         return (string) $e->getCode() === '23000'
             || (string) ($e->errorInfo[0] ?? '') === '23000'
             || ($e->errorInfo[1] ?? null) === 1062;
-    }
-
-    private function markReceiptIssued(SubscriptionPayment $payment): void
-    {
-        if (! Schema::hasColumn('subscription_payments', 'receipt_issued_at')) {
-            return;
-        }
-
-        if ($payment->receipt_issued_at !== null) {
-            return;
-        }
-
-        $payment->forceFill(['receipt_issued_at' => now()])->save();
     }
 
     private function stripeWebhookMatchesLocalIntent(PaymentWebhook $webhook): bool
@@ -304,7 +283,7 @@ final readonly class ProcessPaymentWebhookReceived
         }
 
         $gatewayTransactionId = $intent->gateway_transaction_id;
-        if (is_string($gatewayTransactionId) && $gatewayTransactionId !== '' && $gatewayTransactionId !== $webhook->paymentReference() && $this->requiresExactGatewayTransactionMatch($webhook)) {
+        if (is_string($gatewayTransactionId) && $gatewayTransactionId !== '' && $gatewayTransactionId !== $webhook->paymentReference()) {
             $this->logger->warning('Stripe webhook ignored: payment intent mismatch.', [
                 'tenant_id' => $webhook->tenantId,
                 'intent_id' => (string) $intent->id,
@@ -324,70 +303,6 @@ final readonly class ProcessPaymentWebhookReceived
             ]);
 
         return true;
-    }
-
-    private function requiresExactGatewayTransactionMatch(PaymentWebhook $webhook): bool
-    {
-        return str_starts_with($webhook->eventType, 'payment_intent.')
-            || str_starts_with($webhook->eventType, 'checkout.session.');
-    }
-
-    private function handleStripeNonSuccessfulEvent(PaymentWebhook $webhook): void
-    {
-        if (! in_array($webhook->eventType, [
-            'invoice.payment_failed',
-            'customer.subscription.deleted',
-            'customer.subscription.updated',
-        ], true)) {
-            return;
-        }
-
-        $intent = $this->findLocalIntentForWebhook($webhook);
-        if ($intent === null) {
-            $this->logger->warning('Stripe non-success webhook ignored: no matching local subscription intent.', [
-                'tenant_id' => $webhook->tenantId,
-                'event_type' => $webhook->eventType,
-                'subscription_intent_id' => $webhook->subscriptionIntentId(),
-            ]);
-
-            return;
-        }
-
-        $tenantStatus = match ($webhook->eventType) {
-            'invoice.payment_failed' => 'past_due',
-            'customer.subscription.deleted' => 'canceled',
-            'customer.subscription.updated' => $this->stripeSubscriptionStatus($webhook),
-            default => null,
-        };
-
-        DB::table('subscription_intents')
-            ->where('id', (string) $intent->id)
-            ->update([
-                'status' => $tenantStatus === 'active' ? SubscriptionIntent::STATUS_PROCESSING : SubscriptionIntent::STATUS_FAILED,
-                'error_reason' => $tenantStatus === 'active' ? null : $webhook->eventType,
-                'updated_at' => now(),
-            ]);
-
-        if ($tenantStatus !== null) {
-            DB::table('tenants')
-                ->where('id', $webhook->tenantId)
-                ->update([
-                    'subscription_status' => $tenantStatus,
-                    'updated_at' => now(),
-                ]);
-        }
-    }
-
-    private function stripeSubscriptionStatus(PaymentWebhook $webhook): ?string
-    {
-        $status = (string) data_get($webhook->payload, 'data.object.status', '');
-
-        return match ($status) {
-            'active', 'trialing' => 'active',
-            'past_due', 'unpaid' => 'past_due',
-            'canceled', 'incomplete_expired' => 'canceled',
-            default => null,
-        };
     }
 
     private function markStripeIntentCompleted(PaymentWebhook $webhook): void

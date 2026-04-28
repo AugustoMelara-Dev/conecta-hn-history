@@ -6,12 +6,12 @@ namespace Tests\Feature\Database;
 
 use App\Models\Tenant;
 use Database\Seeders\ProductionShowcaseTenantSeeder;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class ProductionShowcaseTenantSeederTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_it_publishes_expected_storefront_tenants(): void
     {

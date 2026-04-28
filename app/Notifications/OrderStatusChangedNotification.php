@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Log;
  * Gracefully aborts if customer_email is null/empty to prevent
  * queue worker exceptions.
  *
- * TRIGGER: Dispatched from OrderStateService::transition().
+ * TRIGGER: Dispatched from Order::transitionTo() method
  */
 class OrderStatusChangedNotification extends Notification implements ShouldQueue
 {

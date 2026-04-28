@@ -11,13 +11,13 @@ use App\Models\Dynamic\LayoutDefinition;
 use App\Models\User;
 use App\Services\DynamicForms\Exceptions\InvalidDynamicTemplateException;
 use App\Services\DynamicForms\SchemaRegistryService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 final class SchemaRegistryServiceTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_it_builds_and_publishes_schema_versions_from_definition_tables(): void
     {

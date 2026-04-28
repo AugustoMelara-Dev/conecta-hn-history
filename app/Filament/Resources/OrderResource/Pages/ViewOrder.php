@@ -6,7 +6,6 @@ namespace App\Filament\Resources\OrderResource\Pages;
 
 use App\Filament\Resources\OrderResource;
 use App\Models\Order;
-use App\Services\OrderStateService;
 use Filament\Actions;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -38,21 +37,21 @@ class ViewOrder extends ViewRecord
                 ->color('info')
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->getRecord()->status === 'pending')
-                ->action(fn (): bool => $this->transitionOrder('confirmed')),
+                ->action(fn (): bool => $this->getRecord()->transitionTo('confirmed')),
 
             Actions\Action::make('process')
                 ->label('En Preparación')
                 ->icon('heroicon-o-fire')
                 ->color('warning')
                 ->visible(fn (): bool => in_array($this->getRecord()->status, ['pending', 'confirmed'], true))
-                ->action(fn (): bool => $this->transitionOrder('processing')),
+                ->action(fn (): bool => $this->getRecord()->transitionTo('processing')),
 
             Actions\Action::make('ready')
                 ->label('Listo')
                 ->icon('heroicon-o-gift')
                 ->color('success')
                 ->visible(fn (): bool => $this->getRecord()->status === 'processing')
-                ->action(fn (): bool => $this->transitionOrder('ready')),
+                ->action(fn (): bool => $this->getRecord()->transitionTo('ready')),
 
             Actions\Action::make('deliver')
                 ->label('Entregado')
@@ -60,7 +59,7 @@ class ViewOrder extends ViewRecord
                 ->color('gray')
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->getRecord()->status === 'ready')
-                ->action(fn (): bool => $this->transitionOrder('delivered')),
+                ->action(fn (): bool => $this->getRecord()->transitionTo('delivered')),
 
             Actions\Action::make('whatsapp')
                 ->label('WhatsApp')
@@ -71,13 +70,6 @@ class ViewOrder extends ViewRecord
 
             Actions\EditAction::make(),
         ];
-    }
-
-    private function transitionOrder(string $status): bool
-    {
-        app(OrderStateService::class)->transition($this->getRecord(), $status);
-
-        return true;
     }
 
     public function infolist(Schema $schema): Schema

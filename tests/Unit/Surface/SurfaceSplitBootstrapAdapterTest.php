@@ -8,12 +8,12 @@ use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Surface\SurfaceSplitBootstrapAdapter;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class SurfaceSplitBootstrapAdapterTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_owner_gets_business_compatibility_redirects_for_legacy_workspace_paths(): void
     {

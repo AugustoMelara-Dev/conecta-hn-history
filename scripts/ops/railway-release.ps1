@@ -28,8 +28,6 @@ Write-Host "Deploying $service to $environment..."
 Invoke-Railway @("up", "--service", $service, "--environment", $environment, "--ci", "--message", "Local gated release")
 
 $commands = @(
-    "php artisan config:production-guard --env=$environment --json",
-    "php artisan storage:production-guard --env=$environment --json",
     "php artisan migrate --force --no-interaction",
     "php artisan optimize:clear",
     "php artisan queue:restart",

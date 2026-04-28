@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Database;
 
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class SchemaDuplicateColumnsGovernanceTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_semantic_duplicate_columns_do_not_exceed_contract(): void
     {

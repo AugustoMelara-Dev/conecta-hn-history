@@ -16,14 +16,14 @@ use App\Models\CustomerTouchpoint;
 use App\Models\LoyaltyReward;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 final class DispatchCustomerCampaignSegmentTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_it_fans_out_crm_campaigns_to_customer_touchpoint_jobs(): void
     {

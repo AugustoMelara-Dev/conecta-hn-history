@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature\Console;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class DirectoryGuideOpsReportCommandTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_it_outputs_quality_and_cost_summary_in_json_mode(): void
     {

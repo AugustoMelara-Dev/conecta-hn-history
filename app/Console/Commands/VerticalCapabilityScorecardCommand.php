@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Application\TenantGovernance\VerticalCapabilityScorecard;
 use App\Models\Announcement;
 use App\Models\Appointment;
 use App\Models\Campaign;
@@ -22,12 +21,6 @@ final class VerticalCapabilityScorecardCommand extends Command
     protected $signature = 'tenant:vertical-scorecard {--json : Output raw JSON scorecard}';
 
     protected $description = 'Generate capability scorecard by business vertical (ready|partial|missing).';
-
-    public function __construct(
-        private readonly VerticalCapabilityScorecard $verticalCapabilityScorecard,
-    ) {
-        parent::__construct();
-    }
 
     /**
      * @var array<string, list<string>>
@@ -48,10 +41,7 @@ final class VerticalCapabilityScorecardCommand extends Command
             ->values();
 
         if ((bool) $this->option('json')) {
-            $this->line((string) json_encode([
-                'verticals' => $this->verticalCapabilityScorecard->byBusinessType(),
-                'tenants' => $rows,
-            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            $this->line((string) json_encode($rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
             return self::SUCCESS;
         }
@@ -84,24 +74,6 @@ final class VerticalCapabilityScorecardCommand extends Command
                 ->implode(', ');
 
             $this->line("- {$row['slug']} ({$row['vertical']}): {$missingModules}");
-        }
-
-        $this->newLine();
-        $this->info('Readiness RubroManifest (billing | operations | marketing | loyalty | ai_content | analytics | experience):');
-
-        foreach ($this->verticalCapabilityScorecard->byBusinessType() as $businessType => $vertical) {
-            $readiness = $vertical['readiness'];
-            $this->line(sprintf(
-                '- %s: billing=%s, operations=%s, marketing=%s, loyalty=%s, ai_content=%s, analytics=%s, experience=%s',
-                $businessType,
-                $readiness['billing']['status'],
-                $readiness['operations']['status'],
-                $readiness['marketing']['status'],
-                $readiness['loyalty']['status'],
-                $readiness['ai_content']['status'],
-                $readiness['analytics']['status'],
-                $readiness['experience']['status'],
-            ));
         }
 
         return self::SUCCESS;

@@ -6,13 +6,13 @@ namespace Tests\Feature\Public;
 
 use App\Models\Category;
 use App\Models\City;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class BusinessRegistrationTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     #[Test]
     public function it_registers_a_business_without_hitting_container_resolution_errors(): void

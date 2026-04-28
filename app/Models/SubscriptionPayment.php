@@ -57,11 +57,6 @@ class SubscriptionPayment extends Model
         'reviewed_at',
         'subscription_extended_at',
         'plan_before_upgrade',
-        'receipt_issued_at',
-        'refund_transaction_id',
-        'refund_amount',
-        'refunded_at',
-        'refund_reason',
     ];
 
     /**
@@ -74,8 +69,6 @@ class SubscriptionPayment extends Model
         'amount' => 'decimal:2',
         'reviewed_at' => 'datetime',
         'subscription_extended_at' => 'datetime',
-        'receipt_issued_at' => 'datetime',
-        'refunded_at' => 'datetime',
         'plan_before_upgrade' => 'string',
         'id' => 'string',
         'version' => 'integer',

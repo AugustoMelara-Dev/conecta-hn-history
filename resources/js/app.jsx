@@ -3,11 +3,9 @@ import './bootstrap';
 
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import * as Sentry from '@sentry/react';
 import { createRoot } from 'react-dom/client';
 
 import { route } from 'ziggy-js';
-import { initializeTheme } from '@/Stores/useThemeStore';
 
 // Global Toast System
 import { ToastProvider } from '@/Components/Toast/ToastProvider';
@@ -116,35 +114,21 @@ if (typeof window !== 'undefined') {
 }
 
 const appName = import.meta.env.VITE_APP_NAME || 'Conecta HN';
-const pages = import.meta.glob('./Pages/**/*.jsx');
-const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
-
-if (sentryDsn) {
-    Sentry.init({
-        dsn: sentryDsn,
-        environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || import.meta.env.MODE,
-        release: import.meta.env.VITE_SENTRY_RELEASE,
-        tracesSampleRate: Number(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE || 0),
-        sendDefaultPii: false,
-    });
-}
-
-initializeTheme();
 
 createInertiaApp({
     title: (title) => title ? `${title} - ${appName}` : appName,
     resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.jsx`,
-            pages,
+            import.meta.glob('./Pages/**/*.jsx'),
         ),
     setup({ el, App, props }) {
         const root = createRoot(el);
         root.render(
-            <Sentry.ErrorBoundary fallback={null}>
+            <>
                 <App {...props} />
                 <ToastProvider />
-            </Sentry.ErrorBoundary>
+            </>
         );
     },
     progress: {

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 
-uses(DatabaseTransactions::class);
+uses(RefreshDatabase::class);
 
 test('signed report downloads still require an authenticated user', function () {
     Storage::fake('local');

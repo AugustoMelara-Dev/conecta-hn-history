@@ -6,13 +6,13 @@ namespace Tests\Feature\Auth;
 
 use App\Infrastructure\Persistence\Models\SocialIdentityModel;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class SocialIdentityPersistenceTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_social_provider_tokens_are_encrypted_at_rest_and_hidden(): void
     {

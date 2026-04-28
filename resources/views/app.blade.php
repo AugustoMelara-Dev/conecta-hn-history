@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="system">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -51,31 +51,6 @@
                 : file_get_contents(base_path('vendor/tightenco/ziggy/dist/route.umd.js'));
         @endphp
         <script type="text/javascript" nonce="{{ app('csp-nonce') }}">const Ziggy=@json($ziggy);{!! $ziggyRouteFunction !!}</script>
-        <script type="text/javascript" nonce="{{ app('csp-nonce') }}">
-            (function () {
-                var key = 'preferences:v1:theme';
-                var mode = 'system';
-
-                try {
-                    var stored = JSON.parse(window.localStorage.getItem(key) || '{}');
-                    mode = stored && stored.state && stored.state.mode ? stored.state.mode : mode;
-                } catch (error) {
-                    mode = 'system';
-                }
-
-                if (['system', 'light', 'dark'].indexOf(mode) === -1) {
-                    mode = 'system';
-                }
-
-                var resolved = mode === 'system'
-                    ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-                    : mode;
-
-                document.documentElement.classList.toggle('dark', resolved === 'dark');
-                document.documentElement.dataset.theme = mode;
-                document.documentElement.style.colorScheme = resolved;
-            })();
-        </script>
         <script type="text/javascript" nonce="{{ app('csp-nonce') }}">
             // Ensure route() resolves against the current origin in proxied deployments.
             if (window.location && window.location.origin) {

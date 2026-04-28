@@ -63,10 +63,6 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\OrderStateService::class
         );
         $this->app->bind(
-            \App\Domain\Tenant\Contracts\SlugAvailabilityCheckerInterface::class,
-            \App\Infrastructure\Tenant\EloquentSlugAvailabilityChecker::class
-        );
-        $this->app->bind(
             \App\Application\Shared\Contracts\TenantCacheManagerInterface::class,
             \App\Services\TenantCacheManager::class
         );
@@ -372,10 +368,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Domain\Billing\Repositories\PlanRepositoryInterface::class,
             \App\Infrastructure\Billing\Persistence\ConfigPlanRepository::class
-        );
-        $this->app->bind(
-            \App\Domain\Billing\Repositories\SubscriptionIntentRepositoryInterface::class,
-            \App\Infrastructure\Billing\Persistence\EloquentSubscriptionIntentRepository::class
         );
         $this->app->bind(
             \App\Domain\Marketing\Contracts\CouponReader::class,
@@ -895,16 +887,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(
             \App\Application\Shared\Contracts\MetricsCollectorInterface::class,
-            \App\Infrastructure\Monitoring\StructuredLogMetricsAdapter::class
-        );
-
-        $this->app->bind(
-            \App\Domain\Billing\Gateways\SubscriptionCheckoutGatewayInterface::class,
-            function () {
-                return strtolower((string) config('services.payment.provider', 'generic')) === 'stripe'
-                    ? new \App\Infrastructure\Payments\Stripe\StripeSubscriptionCheckoutGateway
-                    : new \App\Infrastructure\Payments\ManualSubscriptionCheckoutGateway;
-            }
+            \App\Infrastructure\Monitoring\DatadogMetricsAdapter::class
         );
 
         $this->app->bind(

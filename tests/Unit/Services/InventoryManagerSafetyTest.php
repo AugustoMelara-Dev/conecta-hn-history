@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Services\InventoryManager;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 /**
  * VC-AUDIT-102 / VC-AUDIT-104 Test Suite

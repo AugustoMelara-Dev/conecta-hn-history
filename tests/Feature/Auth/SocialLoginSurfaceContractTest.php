@@ -12,14 +12,14 @@ use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Auth\AuthRedirector;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Socialite\Contracts\Factory as SocialiteFactory;
 use Mockery;
 use Tests\TestCase;
 
 final class SocialLoginSurfaceContractTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_social_login_returns_surface_contract_for_customer(): void
     {

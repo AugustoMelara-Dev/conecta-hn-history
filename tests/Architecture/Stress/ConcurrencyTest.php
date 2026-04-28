@@ -4,12 +4,12 @@ namespace Tests\Architecture\Stress;
 
 use App\Application\Shared\Common\Exceptions\IdempotencyKeyReuseException;
 use App\Infrastructure\Common\Idempotency\AtomicIdempotencyService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ConcurrencyTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private AtomicIdempotencyService $service;
 

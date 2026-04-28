@@ -3,20 +3,12 @@
 namespace Tests\Infrastructure\Idempotency;
 
 use App\Infrastructure\Common\Idempotency\AtomicIdempotencyService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ZombieLockTest extends TestCase
 {
-    use DatabaseTransactions;
-
-    protected function tearDown(): void
-    {
-        \Carbon\Carbon::setTestNow();
-
-        parent::tearDown();
-    }
+    use \Illuminate\Foundation\Testing\RefreshDatabase;
 
     #[\PHPUnit\Framework\Attributes\Test]
     public function it_recovers_stale_processing_locks()

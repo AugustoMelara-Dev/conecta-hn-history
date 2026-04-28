@@ -6,12 +6,12 @@ namespace Tests\Feature\Sales;
 
 use App\Models\Product;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class CheckoutSessionNonceTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_cart_summary_rejects_missing_checkout_nonce(): void
     {

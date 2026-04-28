@@ -12,12 +12,12 @@ use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class PermissionsMatrixContractTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_permissions_matrix_modules_are_enforced_for_all_roles(): void
     {

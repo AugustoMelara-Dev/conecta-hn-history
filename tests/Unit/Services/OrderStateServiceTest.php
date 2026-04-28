@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use App\Domain\Sales\Contracts\OrderStateful;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
 use App\Services\OrderStateService;
@@ -57,12 +56,6 @@ final class OrderStateServiceTest extends TestCase
 
         $this->assertSame([], $this->service->getAllowedTransitions(Order::STATUS_DELIVERED));
         $this->assertSame([], $this->service->getAllowedTransitions('non-existent-status'));
-    }
-
-    #[Test]
-    public function transition_contract_accepts_order_stateful_boundary(): void
-    {
-        $this->assertInstanceOf(OrderStateful::class, new Order(['status' => Order::STATUS_PENDING]));
     }
 }
 

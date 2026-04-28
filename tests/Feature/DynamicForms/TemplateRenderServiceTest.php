@@ -9,12 +9,12 @@ use App\Models\Dynamic\EntityDefinition;
 use App\Models\Dynamic\FieldDefinition;
 use App\Services\DynamicForms\Exceptions\InvalidDynamicTemplateException;
 use App\Services\DynamicForms\TemplateRenderService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class TemplateRenderServiceTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_it_renders_blocks_with_safe_placeholders(): void
     {

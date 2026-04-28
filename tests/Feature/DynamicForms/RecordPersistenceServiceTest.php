@@ -12,14 +12,14 @@ use App\Models\User;
 use App\Services\DynamicForms\DynamicSearchService;
 use App\Services\DynamicForms\RecordPersistenceService;
 use App\Services\DynamicForms\SchemaRegistryService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 final class RecordPersistenceServiceTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_it_persists_payload_and_syncs_index_values_for_dynamic_records(): void
     {

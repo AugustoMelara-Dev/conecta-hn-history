@@ -122,7 +122,6 @@ class AppPanelProvider extends PanelProvider
                 BusinessCopilot::class,
                 CustomerInbox::class,
                 GrowthCenter::class,
-                \App\Filament\App\Pages\KitchenDisplay::class,
                 \App\Filament\App\Pages\Settings::class,
                 \App\Filament\App\Pages\ManageMarketing::class,
                 \App\Filament\App\Pages\ManageBilling::class,

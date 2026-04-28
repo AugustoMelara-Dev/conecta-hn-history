@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Billing\Gateways;
 
 use App\Domain\Billing\DTOs\ChargeResult;
-use App\Domain\Billing\DTOs\PaymentIntentResult;
 
 /**
  * PaymentGatewayInterface - Port for Payment Processing
@@ -19,18 +18,6 @@ use App\Domain\Billing\DTOs\PaymentIntentResult;
  */
 interface PaymentGatewayInterface
 {
-    /**
-     * Create a provider checkout/payment intent without confirming it.
-     *
-     * @param  array<string, mixed>  $metadata
-     */
-    public function createPaymentIntent(
-        int $amountInCents,
-        string $currency,
-        string $idempotencyKey,
-        array $metadata = []
-    ): PaymentIntentResult;
-
     /**
      * Charge a payment method.
      *
