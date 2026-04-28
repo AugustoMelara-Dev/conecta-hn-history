@@ -31,9 +31,9 @@
             $forwardedProto = trim((string) request()->headers->get('x-forwarded-proto', ''));
             $forwardedProto = $forwardedProto !== '' ? strtolower(trim(explode(',', $forwardedProto)[0])) : 'https';
             $configuredOrigin = collect([
+                'https://vitobusinessos.vercel.app',
                 config('app.platform_directory_url'),
                 config('app.platform_app_url'),
-                'https://vitobusinessos.vercel.app',
                 config('app.url'),
                 request()->getSchemeAndHttpHost(),
             ])
