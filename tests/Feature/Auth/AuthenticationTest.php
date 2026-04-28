@@ -19,6 +19,27 @@ class AuthenticationTest extends TestCase
         $response->assertStatus(200);
     }
 
+    public function test_login_ziggy_origin_uses_public_proxy_surface(): void
+    {
+        config([
+            'app.url' => 'https://vito-business-os-production.up.railway.app',
+            'app.platform_directory_url' => 'https://vitobusinessos.vercel.app',
+            'app.platform_app_url' => 'https://vitobusinessos.vercel.app',
+        ]);
+
+        $response = $this->withHeaders([
+            'Host' => 'vitobusinessos.vercel.app',
+            'X-Forwarded-Host' => 'vitobusinessos.vercel.app',
+            'X-Forwarded-Proto' => 'https',
+        ])->get('/login');
+
+        $response->assertOk();
+        $content = $response->getContent();
+
+        $this->assertStringContainsString('"url":"https:\/\/vitobusinessos.vercel.app"', $content);
+        $this->assertStringNotContainsString('"url":"https:\/\/vito-business-os-production.up.railway.app"', $content);
+    }
+
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
         config([

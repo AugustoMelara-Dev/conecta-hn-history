@@ -25,7 +25,28 @@
         @inertiaHead
 
         <!-- Ziggy Routes -->
-        @routes(null, app('csp-nonce'))
+        @php
+            $forwardedHost = trim((string) request()->headers->get('x-forwarded-host', ''));
+            $forwardedHost = $forwardedHost !== '' ? trim(explode(',', $forwardedHost)[0]) : '';
+            $forwardedProto = trim((string) request()->headers->get('x-forwarded-proto', ''));
+            $forwardedProto = $forwardedProto !== '' ? strtolower(trim(explode(',', $forwardedProto)[0])) : 'https';
+            $configuredOrigin = collect([
+                config('app.platform_directory_url'),
+                config('app.platform_app_url'),
+                config('app.url'),
+                request()->getSchemeAndHttpHost(),
+            ])
+                ->map(fn ($origin) => trim((string) $origin))
+                ->first(fn (string $origin): bool => $origin !== '') ?? '';
+            $ziggyOrigin = $forwardedHost !== ''
+                ? sprintf('%s://%s', $forwardedProto !== '' ? $forwardedProto : 'https', $forwardedHost)
+                : $configuredOrigin;
+            $ziggy = new \Tighten\Ziggy\Ziggy(null, $ziggyOrigin);
+            $ziggyRouteFunction = config('ziggy.skip-route-function')
+                ? ''
+                : file_get_contents(base_path('vendor/tightenco/ziggy/dist/route.umd.js'));
+        @endphp
+        <script type="text/javascript" nonce="{{ app('csp-nonce') }}">const Ziggy=@json($ziggy);{!! $ziggyRouteFunction !!}</script>
         <script type="text/javascript" nonce="{{ app('csp-nonce') }}">
             // Ensure route() resolves against the current origin in proxied deployments.
             if (window.location && window.location.origin) {
