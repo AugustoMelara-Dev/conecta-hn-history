@@ -144,6 +144,30 @@ it('normalizes internal absolute redirect locations to same-origin relative path
     expect($response->headers->get('Location'))->toBe('/app/login?tenant=demo');
 });
 
+it('normalizes railway redirect locations even when public app url is canonical', function () {
+    config()->set('app.url', 'https://vitobusinessos.vercel.app');
+    config()->set('app.platform_app_url', 'https://vitobusinessos.vercel.app');
+    config()->set('app.platform_directory_url', 'https://vitobusinessos.vercel.app');
+
+    app()['env'] = 'production';
+
+    try {
+        $middleware = new SecurityHeaders;
+        $request = Request::create('https://vitobusinessos.vercel.app/app', 'GET');
+
+        $response = $middleware->handle(
+            $request,
+            fn () => new Response('', 302, [
+                'Location' => 'https://vito-business-os-production.up.railway.app/app/login',
+            ])
+        );
+    } finally {
+        app()['env'] = 'testing';
+    }
+
+    expect($response->headers->get('Location'))->toBe('/app/login');
+});
+
 it('does not rewrite external redirect locations', function () {
     config()->set('app.url', 'https://vito-business-os-production.up.railway.app');
     config()->set('app.platform_app_url', 'https://vitobusinessos.vercel.app');

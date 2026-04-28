@@ -272,7 +272,7 @@ class SecurityHeaders
             return;
         }
 
-        if (! in_array($targetHost, $this->runtimeInternalHosts(), true)) {
+        if (! in_array($targetHost, $this->runtimeInternalHosts(), true) && ! $this->isRailwayHost($targetHost)) {
             return;
         }
 
@@ -321,5 +321,11 @@ class SecurityHeaders
         }
 
         return array_values(array_unique($hosts));
+    }
+
+    private function isRailwayHost(string $host): bool
+    {
+        return str_ends_with($host, '.up.railway.app')
+            || str_ends_with($host, '.railway.internal');
     }
 }
