@@ -95,6 +95,29 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->respond(function (SymfonyResponse $response, \Throwable $exception, Request $request) {
+            if ($response->isRedirection()) {
+                $location = $response->headers->get('Location');
+                $targetHost = is_string($location) ? strtolower((string) parse_url($location, PHP_URL_HOST)) : '';
+
+                if (
+                    is_string($location)
+                    && str_starts_with($location, 'http')
+                    && ($targetHost !== '')
+                    && (str_ends_with($targetHost, '.up.railway.app') || str_ends_with($targetHost, '.railway.internal'))
+                ) {
+                    $path = (string) (parse_url($location, PHP_URL_PATH) ?? '/');
+                    $query = (string) (parse_url($location, PHP_URL_QUERY) ?? '');
+                    $fragment = (string) (parse_url($location, PHP_URL_FRAGMENT) ?? '');
+
+                    $response->headers->set(
+                        'Location',
+                        $path
+                        .($query !== '' ? '?'.$query : '')
+                        .($fragment !== '' ? '#'.$fragment : '')
+                    );
+                }
+            }
+
             if (app()->environment(['local', 'testing'])) {
                 return $response;
             }
