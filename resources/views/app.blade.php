@@ -39,7 +39,10 @@
             ])
                 ->map(fn ($origin) => trim((string) $origin))
                 ->first(fn (string $origin): bool => $origin !== '') ?? '';
-            $ziggyOrigin = $forwardedHost !== ''
+            $isForwardedHostPublic = $forwardedHost !== ''
+                && ! str_ends_with(strtolower($forwardedHost), '.up.railway.app')
+                && ! str_ends_with(strtolower($forwardedHost), '.railway.internal');
+            $ziggyOrigin = $isForwardedHostPublic
                 ? sprintf('%s://%s', $forwardedProto !== '' ? $forwardedProto : 'https', $forwardedHost)
                 : $configuredOrigin;
             $ziggy = new \Tighten\Ziggy\Ziggy(null, $ziggyOrigin);
