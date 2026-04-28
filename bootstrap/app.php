@@ -41,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 \App\Http\Middleware\IdentifyTenantBySubdomain::class, // FIRST: Tenant Context from Subdomain
                 \App\Http\Middleware\ShareObservabilityContext::class, // Trace + domain context for production observability
                 \App\Http\Middleware\MeasureHttpPerformance::class, // p95-ready structured HTTP metrics behind feature flag
+                \App\Http\Middleware\NormalizeInternalRedirectLocation::class, // Keep proxied redirects same-origin
                 \App\Http\Middleware\SecurityHeaders::class, // Zero-Trust Security Headers
                 \App\Http\Middleware\HandleInertiaRequests::class,
                 \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
