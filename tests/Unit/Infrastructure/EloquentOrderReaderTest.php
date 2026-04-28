@@ -5,9 +5,9 @@ declare(strict_types=1);
 use App\Infrastructure\Sales\EloquentOrderReader;
 use App\Models\Order;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 
-uses(RefreshDatabase::class);
+uses(DatabaseTransactions::class);
 
 describe('EloquentOrderReader Tenant Isolation', function () {
 

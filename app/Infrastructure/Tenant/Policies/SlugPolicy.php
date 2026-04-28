@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Tenant\Policies;
 
-use App\Models\Tenant;
+use App\Domain\Tenant\Contracts\SlugAvailabilityCheckerInterface;
+use App\Infrastructure\Tenant\EloquentSlugAvailabilityChecker;
 use Illuminate\Support\Str;
 
 /**
@@ -58,27 +59,27 @@ final class SlugPolicy
     }
 
     /**
-     * Check slug availability (reserved + database).
-     *
-     * TODO (W-02): Inject SlugAvailabilityCheckerInterface to remove Eloquent coupling.
+     * Check slug availability (reserved + configured availability checker).
      */
-    public static function isSlugAvailable(string $slug): bool
+    public static function isSlugAvailable(string $slug, ?SlugAvailabilityCheckerInterface $checker = null): bool
     {
         if (self::isReservedSlug($slug)) {
             return false;
         }
 
-        return ! Tenant::where('slug', $slug)->exists();
+        return self::checker($checker)->isAvailable($slug);
     }
 
     /**
      * Generate smart suggestions for taken slugs.
      *
-     * TODO (W-02): Receive availability checker via parameter to remove Eloquent coupling.
-     *
      * @return array<string>
      */
-    public static function generateSuggestions(string $baseSlug, int $limit = 3): array
+    public static function generateSuggestions(
+        string $baseSlug,
+        int $limit = 3,
+        ?SlugAvailabilityCheckerInterface $checker = null
+    ): array
     {
         $candidates = [
             $baseSlug.'-hn',
@@ -89,9 +90,10 @@ final class SlugPolicy
         ];
 
         $suggestions = [];
+        $checker = self::checker($checker);
 
         foreach ($candidates as $candidate) {
-            if (self::isSlugAvailable($candidate)) {
+            if (self::isSlugAvailable($candidate, $checker)) {
                 $suggestions[] = $candidate;
             }
 
@@ -101,5 +103,18 @@ final class SlugPolicy
         }
 
         return $suggestions;
+    }
+
+    private static function checker(?SlugAvailabilityCheckerInterface $checker): SlugAvailabilityCheckerInterface
+    {
+        if ($checker !== null) {
+            return $checker;
+        }
+
+        if (app()->bound(SlugAvailabilityCheckerInterface::class)) {
+            return app(SlugAvailabilityCheckerInterface::class);
+        }
+
+        return new EloquentSlugAvailabilityChecker;
     }
 }

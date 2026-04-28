@@ -7,12 +7,12 @@ namespace Tests\Feature\Security;
 use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class ApiAuthorizationHardeningTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_customer_cannot_update_tenant_settings_with_only_tenant_id_context(): void
     {

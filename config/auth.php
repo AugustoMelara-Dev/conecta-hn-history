@@ -131,6 +131,8 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    'idempotency_processing_lock_ttl_seconds' => env('AUTH_IDEMPOTENCY_PROCESSING_LOCK_TTL', 60),
+
     /*
     |--------------------------------------------------------------------------
     | OTP (One-Time Password) Configuration

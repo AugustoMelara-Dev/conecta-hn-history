@@ -7,12 +7,12 @@ namespace Tests\Unit\TenantGovernance;
 use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class RubroManifestReaderTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_service_tenant_resolves_service_manifest_and_capabilities(): void
     {

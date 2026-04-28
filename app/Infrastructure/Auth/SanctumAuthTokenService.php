@@ -23,7 +23,7 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
 
     public function createTokenForUser(int|string $userId, string $tokenName = 'api-token'): array
     {
-        $currentTenantId = $this->tenantContext->getTenantId();
+        $currentTenantId = $this->tenantContext->getTenantUuid();
 
         if ($currentTenantId === null) {
             throw new TenantMismatchException(

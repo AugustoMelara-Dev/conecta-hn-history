@@ -85,9 +85,15 @@ class InfrastructureServiceProvider extends ServiceProvider
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
             \App\Domain\Billing\Gateways\PaymentGatewayInterface::class,
-            fn () => app()->environment('testing')
-                ? new \App\Infrastructure\Payments\FakePaymentGateway
-                : new \App\Infrastructure\Payments\Stripe\StripePaymentGateway
+            function () {
+                if (app()->environment('testing')) {
+                    return new \App\Infrastructure\Payments\FakePaymentGateway;
+                }
+
+                return strtolower((string) config('services.payment.provider', 'generic')) === 'stripe'
+                    ? new \App\Infrastructure\Payments\Stripe\StripePaymentGateway
+                    : new \App\Infrastructure\Payments\ManualPaymentGateway;
+            }
         );
 
         $this->app->singleton(\App\Infrastructure\Shared\Context\IdempotencyContext::class);

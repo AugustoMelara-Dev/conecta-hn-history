@@ -184,7 +184,7 @@ class OrderResource extends Resource
                                 ->title('Pedido Completado')
                                 ->success()
                                 ->send();
-                        } catch (\Exception $e) {
+                        } catch (\Throwable $e) {
                             Notification::make()
                                 ->title('Error al completar')
                                 ->body($e->getMessage())

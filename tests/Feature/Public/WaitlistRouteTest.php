@@ -5,10 +5,10 @@ use App\Domain\Shared\Services\TenantContext;
 use App\Models\Service;
 use App\Models\Tenant;
 use App\Models\Waitlist;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Route;
 
-uses(RefreshDatabase::class);
+uses(DatabaseTransactions::class);
 
 test('waitlist controller compiles and public route is registered', function () {
     expect(class_exists(WaitlistController::class))->toBeTrue();

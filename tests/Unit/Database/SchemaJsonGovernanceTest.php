@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Database;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class SchemaJsonGovernanceTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_json_contract_columns_exist_with_allowed_storage_types_and_size_budget(): void
     {

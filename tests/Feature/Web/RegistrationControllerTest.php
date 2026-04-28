@@ -10,14 +10,14 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class RegistrationControllerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function registration_page_exposes_business_type_and_segment_metadata_for_multi_rubro_onboarding(): void

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\App\Pages;
 
 use App\Application\Access\Contracts\TenantPermissionGuardInterface;
+use App\Application\Billing\Results\BillingCheckoutResult;
+use App\Application\Billing\Services\BillingCheckoutService;
 use App\Domain\Access\Enums\Permission;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\TenantGovernance\Enums\TenantFeature;
@@ -29,6 +31,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 /**
  * @property-read Schema $form
@@ -286,6 +289,59 @@ class ManageBilling extends Page implements HasForms, HasTable
         $this->redirect(self::getUrl());
     }
 
+    public function startStripeCheckout(BillingCheckoutService $billingCheckoutService)
+    {
+        $tenant = $this->getTenantRecord();
+        $user = auth()->user();
+
+        if (! $tenant instanceof Tenant) {
+            Notification::make()
+                ->danger()
+                ->title('No se pudo iniciar el checkout')
+                ->body('No encontramos el negocio actual.')
+                ->send();
+
+            return null;
+        }
+
+        if (! $user instanceof User || ! app(TenantPermissionGuardInterface::class)->allows($user, $tenant, Capability::CATALOG_BASIC, Permission::BILLING_MANAGE)) {
+            Notification::make()
+                ->warning()
+                ->title('No tienes permisos para gestionar billing')
+                ->send();
+
+            return null;
+        }
+
+        $result = $billingCheckoutService->start(
+            tenantId: (string) $tenant->getKey(),
+            planIdentifier: 'pro',
+            clientIdempotencyKey: 'filament-upgrade-'.$tenant->getKey().'-'.Str::uuid(),
+        );
+
+        if ($result->status === BillingCheckoutResult::STATUS_REQUIRES_PAYMENT && filled($result->checkoutUrl)) {
+            return redirect()->away((string) $result->checkoutUrl);
+        }
+
+        if ($result->status === BillingCheckoutResult::STATUS_MANUAL_PENDING) {
+            Notification::make()
+                ->warning()
+                ->title('Pago manual activo')
+                ->body('Stripe no esta activo en este entorno. Usa el flujo de comprobante bancario.')
+                ->send();
+
+            return null;
+        }
+
+        Notification::make()
+            ->danger()
+            ->title('No se pudo iniciar el checkout')
+            ->body($result->message ?? 'Revisa la configuracion de Stripe antes de reintentar.')
+            ->send();
+
+        return null;
+    }
+
     public function table(Table $table): Table
     {
         $tenant = $this->getTenantRecord();
@@ -364,12 +420,20 @@ class ManageBilling extends Page implements HasForms, HasTable
         $supportUrl = $this->getSupportWhatsAppUrl();
 
         if ($this->isFree && ! $this->isPending) {
-            $actions[] = Action::make('submit_payment')
-                ->label('Enviar pago a revisión')
-                ->icon('heroicon-o-paper-airplane')
-                ->color('success')
-                ->keyBindings(['mod+s'])
-                ->action('submitPayment');
+            if (strtolower((string) config('services.payment.provider', 'generic')) === 'stripe') {
+                $actions[] = Action::make('start_stripe_checkout')
+                    ->label('Activar PRO con tarjeta')
+                    ->icon('heroicon-o-credit-card')
+                    ->color('success')
+                    ->action('startStripeCheckout');
+            } else {
+                $actions[] = Action::make('submit_payment')
+                    ->label('Enviar pago a revisión')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('success')
+                    ->keyBindings(['mod+s'])
+                    ->action('submitPayment');
+            }
         }
 
         if ($this->isPro && $this->daysRemaining <= 7) {

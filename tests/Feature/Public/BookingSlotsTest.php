@@ -12,13 +12,13 @@ use App\Models\Tenant;
 use Carbon\Carbon;
 use Database\Seeders\E2EStorefrontSeeder;
 use Database\Seeders\GeoSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class BookingSlotsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function e2e_barbershop_fixture_exposes_available_slots(): void

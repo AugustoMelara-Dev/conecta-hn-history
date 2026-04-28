@@ -6,10 +6,10 @@ use App\Events\Inventory\LowStockThresholdReached;
 use App\Listeners\SendLowStockNotification;
 use App\Models\Product;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Log;
 
-uses(RefreshDatabase::class);
+uses(DatabaseTransactions::class);
 
 /**
  * @return array{

@@ -10,13 +10,13 @@ use App\Models\InventoryMovement;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 final class LegacyStockMigrationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[Test]
     public function it_migrates_legacy_stock_to_the_primary_location_idempotently(): void

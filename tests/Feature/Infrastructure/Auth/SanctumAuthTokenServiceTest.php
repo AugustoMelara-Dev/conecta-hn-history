@@ -144,11 +144,6 @@ final class SanctumAuthTokenServiceTest extends TestCase
             {
                 return null;
             }
-
-            public function getTenantId(): string|int|null
-            {
-                return null;
-            }
         };
 
         $service = new SanctumAuthTokenService($context);
@@ -189,12 +184,7 @@ final class SanctumAuthTokenServiceTest extends TestCase
 
             public function getTenantUuid(): ?string
             {
-                return null;
-            }
-
-            public function getTenantId(): string|int|null
-            {
-                return $this->tenantId;
+                return $this->tenantId !== null ? (string) $this->tenantId : null;
             }
         };
     }

@@ -9,9 +9,9 @@ use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\User;
 use Filament\Panel;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 
-uses(RefreshDatabase::class);
+uses(DatabaseTransactions::class);
 
 /**
  * @return Panel&\Mockery\MockInterface

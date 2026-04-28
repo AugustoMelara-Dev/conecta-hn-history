@@ -3,6 +3,20 @@ set -e
 
 cd /app
 
+case "${APP_ENV:-local}" in
+  production|staging)
+    if [ "${RUN_PRODUCTION_GUARD:-true}" = "true" ]; then
+      if ! php artisan config:production-guard --env="${APP_ENV}" --json; then
+        if [ "${ENFORCE_PRODUCTION_GUARD:-false}" = "true" ]; then
+          exit 1
+        fi
+
+        echo "Production guard reported violations; continuing because ENFORCE_PRODUCTION_GUARD is not true." >&2
+      fi
+    fi
+    ;;
+esac
+
 if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
   php artisan migrate --force --no-interaction
 fi

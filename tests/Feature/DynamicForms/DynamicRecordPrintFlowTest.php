@@ -15,12 +15,12 @@ use App\Services\DynamicForms\RecordPersistenceService;
 use App\Services\DynamicForms\SchemaRegistryService;
 use App\Services\DynamicForms\TemplateRenderService;
 use App\Services\DynamicForms\TemplateVersioningService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class DynamicRecordPrintFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_it_supports_admin_blueprint_clone_record_and_print_pdf_flow(): void
     {

@@ -6,12 +6,12 @@ namespace Tests\Feature\DynamicForms;
 
 use App\Models\Tenant;
 use App\Services\DynamicForms\DynamicModuleAdapterRegistry;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class DynamicModuleAdapterRegistryTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_it_resolves_config_driven_adapter_for_module(): void
     {

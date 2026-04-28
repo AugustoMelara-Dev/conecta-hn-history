@@ -9,11 +9,11 @@ use App\Infrastructure\AI\BudgetEnforcer;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AI\OpenAIService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
-uses(RefreshDatabase::class);
+uses(DatabaseTransactions::class);
 
 const AI_ESTIMATED_COST = 0.0111;
 const AI_ACTUAL_COST = 0.002375;

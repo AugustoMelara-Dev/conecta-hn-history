@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Infrastructure\Outbox;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
 final class TracePropagationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     #[\PHPUnit\Framework\Attributes\Test]
     public function it_processes_an_outbox_message_that_contains_trace_metadata(): void

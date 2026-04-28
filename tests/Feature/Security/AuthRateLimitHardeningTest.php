@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class AuthRateLimitHardeningTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_throttles_forgot_password_requests_to_prevent_abuse(): void
     {

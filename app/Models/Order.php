@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Domain\Sales\Contracts\OrderStateful;
+use App\Domain\Shared\ValueObjects\PhoneNumber;
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -37,9 +39,14 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property-read Tenant $tenant
  * @property-read \Illuminate\Database\Eloquent\Collection<int, OrderItem> $items
  */
-class Order extends Model
+class Order extends Model implements OrderStateful
 {
     use BelongsToTenant, HasFactory, LogsActivity, SoftDeletes;
+
+    public function currentStatus(): string
+    {
+        return (string) $this->status;
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // EAGER LOADING POLICY (N+1 Prevention)
@@ -449,24 +456,7 @@ class Order extends Model
             return null;
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // STEP 1: Clean all non-numeric characters (dashes, spaces, parentheses)
-        // ═══════════════════════════════════════════════════════════════════════
-        $cleanPhone = preg_replace('/\D/', '', $phone);
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // STEP 2: HONDURAS LOCALIZATION - Auto-prepend country code
-        // ═══════════════════════════════════════════════════════════════════════
-        // Honduran mobile/landline numbers are exactly 8 digits.
-        // If user entered local format (e.g., "9999-9999" → "99999999"),
-        // we auto-prepend the country code 504 for WhatsApp compatibility.
-        //
-        // PASSTHROUGH: Numbers that are NOT 8 digits are left untouched.
-        // This preserves already-international numbers (11-12 digits) and
-        // prevents corrupting valid numbers from other countries.
-        if (strlen($cleanPhone) === 8) {
-            $cleanPhone = '504'.$cleanPhone;
-        }
+        $cleanPhone = (new PhoneNumber($phone))->toInternationalDigits();
 
         // ═══════════════════════════════════════════════════════════════════════
         // STEP 3: RFC 3986 compliant URL encoding
@@ -531,23 +521,6 @@ class Order extends Model
     public function wasPaid(): bool
     {
         return $this->payment_status === 'paid' && $this->paid_at !== null;
-    }
-
-    /**
-     * Transition to a new status.
-     *
-     * @deprecated Use OrderStateService::transition() instead.
-     *             This method bypasses FSM validation and is retained
-     *             only for backward compatibility during migration.
-     *
-     * @throws \RuntimeException Always throws to prevent bypass of FSM.
-     */
-    public function transitionTo(string $status): bool
-    {
-        throw new \RuntimeException(
-            'DEPRECATED: Use app(OrderStateService::class)->transition($order, $status) instead. '
-            .'Direct model transitions bypass FSM validation and side-effects.'
-        );
     }
 
     /**

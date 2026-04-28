@@ -2,10 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
-
 it('verifies legacy commands retain tenant string identifier during schema version upcasting', function () {
     // Scaffold strict Tenant Context (UUID String representation)
     $tenantId = 'tnt_'.bin2hex(random_bytes(8));

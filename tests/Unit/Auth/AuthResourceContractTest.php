@@ -8,13 +8,13 @@ use App\Domain\Identity\Enums\UserRole;
 use App\Http\Resources\V1\AuthResource;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\Request;
 use Tests\TestCase;
 
 final class AuthResourceContractTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_auth_resource_infers_surface_contract_from_user_context(): void
     {

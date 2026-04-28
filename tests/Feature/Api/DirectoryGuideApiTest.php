@@ -11,7 +11,7 @@ use App\Models\City;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -19,7 +19,7 @@ use Tests\TestCase;
 
 final class DirectoryGuideApiTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_directory_search_returns_only_published_tenants(): void
     {

@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Application\Sales\Contracts\OrderStateServiceInterface;
 use App\Domain\Sales\Events\OrderCancelled;
+use App\Domain\Sales\Contracts\OrderStateful;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Events\Order\OrderDelivered;
 use App\Exceptions\InvalidOrderTransitionException;
@@ -78,9 +79,13 @@ class OrderStateService implements OrderStateServiceInterface
      *
      * @throws InvalidOrderTransitionException If transition is not allowed
      */
-    public function transition(Order $order, string $newStatus): Order
+    public function transition(OrderStateful $order, string $newStatus): OrderStateful
     {
-        $currentStatus = $order->status;
+        if (! $order instanceof Order) {
+            throw new \InvalidArgumentException('OrderStateService currently requires a persistable Eloquent order adapter.');
+        }
+
+        $currentStatus = $order->currentStatus();
 
         // Validate transition is allowed
         $this->validateTransition($currentStatus, $newStatus);

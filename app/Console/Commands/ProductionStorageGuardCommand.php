@@ -18,23 +18,25 @@ final class ProductionStorageGuardCommand extends Command
     {
         $environment = (string) ($this->option('env') ?: app()->environment());
         $isProduction = $environment === 'production';
-        $allowedDurableDisks = ['s3', 'r2'];
+        $allowedDurableDisks = ['r2'];
         $defaultDisk = (string) config('filesystems.default', 'local');
         $selectedMediaDisk = (string) config('filesystems.media_disk', 'media');
         $selectedEvidenceDisk = (string) config('filesystems.payment_evidence_disk', $selectedMediaDisk);
         $mediaDriver = (string) config('filesystems.disks.media.driver', 'local');
-        $mediaDiskIsDurable = in_array($selectedMediaDisk, $allowedDurableDisks, true)
-            || ($selectedMediaDisk === 'media' && in_array($mediaDriver, $allowedDurableDisks, true));
-        $evidenceDiskIsDurable = in_array($selectedEvidenceDisk, $allowedDurableDisks, true)
-            || ($selectedEvidenceDisk === 'media' && in_array($mediaDriver, $allowedDurableDisks, true));
+        $mediaEndpoint = (string) config('filesystems.disks.media.endpoint', '');
+        $r2Endpoint = (string) config('filesystems.disks.r2.endpoint', '');
+        $mediaDiskIsDurable = $selectedMediaDisk === 'r2'
+            || ($selectedMediaDisk === 'media' && $mediaDriver === 's3' && $this->looksLikeR2Endpoint($mediaEndpoint ?: $r2Endpoint));
+        $evidenceDiskIsDurable = $selectedEvidenceDisk === 'r2'
+            || ($selectedEvidenceDisk === 'media' && $mediaDiskIsDurable);
         $violations = [];
 
         if ($isProduction && ! in_array($defaultDisk, $allowedDurableDisks, true)) {
             $violations[] = [
                 'key' => 'FILESYSTEM_DISK',
                 'actual' => $defaultDisk,
-                'expected' => implode('|', $allowedDurableDisks),
-                'reason' => 'Production uploads and generated files must not depend on ephemeral local disk.',
+                'expected' => 'r2',
+                'reason' => 'Production uploads and generated files must use Cloudflare R2 to avoid ephemeral disk and unpredictable egress costs.',
             ];
         }
 
@@ -42,7 +44,7 @@ final class ProductionStorageGuardCommand extends Command
             $violations[] = [
                 'key' => 'MEDIA_DISK or MEDIA_DISK_DRIVER',
                 'actual' => "{$selectedMediaDisk} ({$mediaDriver})",
-                'expected' => 'MEDIA_DISK=r2|s3 or MEDIA_DISK=media with MEDIA_DISK_DRIVER=s3',
+                'expected' => 'MEDIA_DISK=r2 or MEDIA_DISK=media with MEDIA_DISK_DRIVER=s3 and R2 endpoint',
                 'reason' => 'Tenant/product images must survive redeploys and container restarts.',
             ];
         }
@@ -51,7 +53,7 @@ final class ProductionStorageGuardCommand extends Command
             $violations[] = [
                 'key' => 'PAYMENT_EVIDENCE_DISK',
                 'actual' => "{$selectedEvidenceDisk} ({$mediaDriver})",
-                'expected' => 'PAYMENT_EVIDENCE_DISK=r2|s3 or media backed by S3/R2',
+                'expected' => 'PAYMENT_EVIDENCE_DISK=r2 or media backed by R2',
                 'reason' => 'Payment proofs and receipts are audit evidence and must not be stored on ephemeral disk.',
             ];
         }
@@ -63,6 +65,7 @@ final class ProductionStorageGuardCommand extends Command
             'media_disk' => $selectedMediaDisk,
             'payment_evidence_disk' => $selectedEvidenceDisk,
             'media_driver' => $mediaDriver,
+            'media_endpoint' => $mediaEndpoint,
             'violations' => $violations,
         ];
 
@@ -79,5 +82,14 @@ final class ProductionStorageGuardCommand extends Command
         }
 
         return $violations === [] ? self::SUCCESS : self::FAILURE;
+    }
+
+    private function looksLikeR2Endpoint(string $endpoint): bool
+    {
+        $endpoint = strtolower(trim($endpoint));
+
+        return $endpoint !== ''
+            && str_contains($endpoint, '.r2.cloudflarestorage.com')
+            && filter_var($endpoint, FILTER_VALIDATE_URL) !== false;
     }
 }

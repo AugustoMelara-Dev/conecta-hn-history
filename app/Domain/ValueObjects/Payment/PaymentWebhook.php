@@ -23,6 +23,7 @@ final readonly class PaymentWebhook
         // 1. Solve "Anemic Domain": Encapsulate validation logic here.
         $tenantId = $data['meta']['tenant_id']
                  ?? $data['data']['object']['metadata']['tenant_id']
+                 ?? $data['data']['object']['subscription_details']['metadata']['tenant_id']
                  ?? $data['data']['object']['client_reference_id']
                  ?? null;
 
@@ -78,6 +79,7 @@ final readonly class PaymentWebhook
             ?? $this->payload['data']['object']['amount_paid']
             ?? $this->payload['data']['object']['amount_received']
             ?? $this->payload['data']['object']['amount_total']
+            ?? $this->payload['data']['object']['amount_due']
             ?? $this->payload['data']['object']['amount']
             ?? 0
         );
@@ -108,6 +110,7 @@ final readonly class PaymentWebhook
         return $this->providerName() === 'stripe'
             || str_starts_with($this->eventType, 'payment_intent.')
             || str_starts_with($this->eventType, 'checkout.session.')
+            || str_starts_with($this->eventType, 'customer.subscription.')
             || str_starts_with($this->eventType, 'invoice.');
     }
 
@@ -116,9 +119,17 @@ final readonly class PaymentWebhook
      */
     public function metadata(): array
     {
-        $metadata = $this->payload['data']['object']['metadata']
-            ?? $this->payload['meta']
-            ?? [];
+        $metadata = [];
+
+        foreach ([
+            $this->payload['meta'] ?? [],
+            $this->payload['data']['object']['subscription_details']['metadata'] ?? [],
+            $this->payload['data']['object']['metadata'] ?? [],
+        ] as $candidate) {
+            if (is_array($candidate)) {
+                $metadata = array_merge($metadata, $candidate);
+            }
+        }
 
         return is_array($metadata) ? $metadata : [];
     }

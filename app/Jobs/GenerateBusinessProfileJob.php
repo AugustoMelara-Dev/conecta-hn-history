@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Services\AI\OpenAIService;
+use App\Models\Tenant;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -90,12 +91,13 @@ class GenerateBusinessProfileJob implements ShouldQueue
             keywords: $this->keywords
         );
 
-        // TODO: Implement result persistence.
-        // The calling context must define where to store the generated profile.
-        // Options:
-        //   1. Fire an event: ProfileGeneratedEvent::dispatch($this->tenantId, $result);
-        //   2. Update a model: Tenant::find($this->tenantId)->update(['profile' => $result]);
-        //   3. Store in cache: Cache::put("profile_{$this->tenantId}", $result, 3600);
+        $tenant = Tenant::query()
+            ->whereKey($this->tenantId)
+            ->where('user_id', $this->userId)
+            ->firstOrFail();
+
+        $tenant->applyAiEnhancement($result, allowReEnhancement: true);
+        $tenant->save();
 
         Log::info('[GenerateBusinessProfileJob] Profile generation completed.', [
             'tenant_id' => $this->tenantId,

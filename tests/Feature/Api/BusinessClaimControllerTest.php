@@ -14,12 +14,12 @@ use App\Models\Tenant;
 use App\Models\TenantBusinessClaim;
 use App\Models\User;
 use DateTimeImmutable;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 final class BusinessClaimControllerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_owner_submit_requires_valid_whatsapp_otp(): void
     {

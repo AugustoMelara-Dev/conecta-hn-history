@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
-
 use App\Domain\Identity\Events\UserRegistered;
 use App\Domain\Identity\Events\UserRegisteredViaSocial;
 use App\Domain\Sales\Events\OrderCancelled;

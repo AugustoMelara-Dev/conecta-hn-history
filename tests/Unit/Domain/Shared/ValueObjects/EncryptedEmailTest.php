@@ -1,10 +1,6 @@
 <?php
 
 use App\Domain\Shared\ValueObjects\EncryptedEmail;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
-
 test('it accepts an encrypted string and stores it immutably', function () {
     $encryptedPayload = base64_encode('user@example.com'); // Mock encrypted payload format
     $vo = new EncryptedEmail($encryptedPayload);
