@@ -33,6 +33,7 @@
             $configuredOrigin = collect([
                 config('app.platform_directory_url'),
                 config('app.platform_app_url'),
+                'https://vitobusinessos.vercel.app',
                 config('app.url'),
                 request()->getSchemeAndHttpHost(),
             ])
