@@ -10,7 +10,6 @@ use App\Filament\App\Pages\BusinessCopilot;
 use App\Filament\App\Pages\GrowthCenter;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
-use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -152,7 +151,7 @@ class AppPanelProvider extends PanelProvider
                 \App\Http\Middleware\HydrateTenantContextFromPanelRoute::class,
             ])
             ->authMiddleware([
-                Authenticate::class,
+                \App\Http\Middleware\SameOriginFilamentAuthenticate::class,
             ]);
     }
 
