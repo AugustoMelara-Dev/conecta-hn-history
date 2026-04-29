@@ -16,8 +16,17 @@ class GeneralSettings extends BaseSettings
     // FINANZAS Y SUSCRIPCIONES
     // ═══════════════════════════════════════════════════════════════════════
 
+    /** Precio mensual del Plan Semilla en Lempiras */
+    public float $free_plan_price = 0.0;
+
     /** Precio mensual del Plan PRO en Lempiras */
-    public float $pro_plan_price;
+    public float $pro_plan_price = 499.0;
+
+    /** Precio de referencia del Plan PRO para mostrar descuento */
+    public float $pro_plan_original_price = 799.0;
+
+    /** Fee unico de setup asistido en Lempiras */
+    public float $setup_fee_price = 2500.0;
 
     /** Días de gracia antes de suspender servicio */
     public int $grace_period_days;

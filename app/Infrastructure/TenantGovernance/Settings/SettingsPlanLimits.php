@@ -29,8 +29,10 @@ final readonly class SettingsPlanLimits implements PlanLimitsInterface
 
     public function getPlanPrice(string $plan): float
     {
-        return $plan === 'pro'
-            ? ($this->settings->pro_plan_price ?? 500.00)
-            : 0.00;
+        return match ($plan) {
+            'pro' => $this->settings->pro_plan_price ?? 499.00,
+            'semilla', 'free' => $this->settings->free_plan_price ?? 0.00,
+            default => 0.00,
+        };
     }
 }

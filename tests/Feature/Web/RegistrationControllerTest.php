@@ -53,8 +53,10 @@ final class RegistrationControllerTest extends TestCase
         $category = Category::factory()->create(['name' => 'Servicios', 'slug' => 'servicios']);
         /** @var City $city */
         $city = City::factory()->create();
+        $token = 'registration-test-token';
 
-        $response = $this->post(route('tenant.register.store', [], false), [
+        $response = $this->withSession(['_token' => $token])->post(route('tenant.register.store', [], false), [
+            '_token' => $token,
             'business_name' => 'Legal Norte',
             'slug' => 'legal-norte',
             'name' => 'Ana Abogada',
@@ -107,8 +109,10 @@ final class RegistrationControllerTest extends TestCase
         $category = Category::factory()->create(['name' => 'Servicios', 'slug' => 'servicios']);
         /** @var City $city */
         $city = City::factory()->create();
+        $token = 'pro-registration-test-token';
 
-        $response = $this->post(route('tenant.register.store', [], false), [
+        $response = $this->withSession(['_token' => $token])->post(route('tenant.register.store', [], false), [
+            '_token' => $token,
             'business_name' => 'Consultoria Pro Norte',
             'slug' => 'consultoria-pro-norte',
             'name' => 'Carlos Consultor',

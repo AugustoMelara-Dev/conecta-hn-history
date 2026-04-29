@@ -12,6 +12,7 @@ use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
 use App\Infrastructure\Tenant\Policies\SlugPolicy;
+use App\Settings\GeneralSettings;
 use App\Support\Auth\AuthRedirector;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 final class RegistrationController extends Controller
 {
@@ -43,6 +45,8 @@ final class RegistrationController extends Controller
             return redirect()->to(AuthRedirector::destinationFor($user));
         }
 
+        $settings = $this->generalSettings();
+
         return Inertia::render('Auth/RegisterTenant', [
             'cities' => $this->referenceDataReader->getAvailableCities(),
             'categories' => $this->referenceDataReader->getActiveCategories(),
@@ -50,9 +54,12 @@ final class RegistrationController extends Controller
             'businessTypeSuggestions' => $this->businessTypeSuggestions(),
             'segmentProfiles' => $this->segmentProfiles(),
             'settings' => [
-                'freeProductLimit' => config('conecta.free_plan_product_limit', 10),
-                'proProductLimit' => config('conecta.pro_plan_product_limit', 100),
-                'proPlanPrice' => config('conecta.pro_plan_price', 500.00),
+                'freeProductLimit' => (int) ($settings?->free_plan_product_limit ?? config('conecta.free_plan_product_limit', 10)),
+                'proProductLimit' => (int) ($settings?->pro_plan_product_limit ?? config('conecta.pro_plan_product_limit', 100)),
+                'freePlanPrice' => (float) ($settings?->free_plan_price ?? 0.00),
+                'proPlanPrice' => (float) ($settings?->pro_plan_price ?? config('conecta.pro_plan_price', 499.00)),
+                'proPlanOriginalPrice' => (float) ($settings?->pro_plan_original_price ?? 799.00),
+                'setupFeePrice' => (float) ($settings?->setup_fee_price ?? 2500.00),
                 'slugBaseHost' => $this->resolveDirectoryHost($request),
                 'slugCheckUrl' => route('api.check-slug'),
                 'requestHost' => request()->header('x-forwarded-host', request()->getHost()),
@@ -213,5 +220,14 @@ final class RegistrationController extends Controller
         }
 
         return null;
+    }
+
+    private function generalSettings(): ?GeneralSettings
+    {
+        try {
+            return app(GeneralSettings::class);
+        } catch (Throwable) {
+            return null;
+        }
     }
 }

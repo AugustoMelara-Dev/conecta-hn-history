@@ -39,7 +39,6 @@ final class SuperAdminPanelSmokeTest extends TestCase
 
         $this->actingAs($superAdmin);
 
-
         $this->get(route('filament.admin.pages.manage-general-settings', [], false))
             ->assertOk()
             ->assertSee('Control de disponibilidad')
@@ -166,7 +165,10 @@ final class SuperAdminPanelSmokeTest extends TestCase
         Filament::setCurrentPanel('admin');
 
         Livewire::test(ManageGeneralSettings::class)
+            ->set('data.free_plan_price', 0.00)
             ->set('data.pro_plan_price', 599.00)
+            ->set('data.pro_plan_original_price', 899.00)
+            ->set('data.setup_fee_price', 2500.00)
             ->set('data.grace_period_days', 5)
             ->set('data.free_plan_product_limit', 15)
             ->set('data.pro_plan_product_limit', 300)
@@ -180,7 +182,10 @@ final class SuperAdminPanelSmokeTest extends TestCase
 
         $settings = new GeneralSettings;
 
+        $this->assertSame(0.0, $settings->free_plan_price);
         $this->assertSame(599.0, $settings->pro_plan_price);
+        $this->assertSame(899.0, $settings->pro_plan_original_price);
+        $this->assertSame(2500.0, $settings->setup_fee_price);
         $this->assertSame(5, $settings->grace_period_days);
         $this->assertSame(15, $settings->free_plan_product_limit);
         $this->assertSame(300, $settings->pro_plan_product_limit);

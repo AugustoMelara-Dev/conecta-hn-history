@@ -69,7 +69,10 @@ class ManageGeneralSettings extends Page implements HasForms
         $settings = app(GeneralSettings::class);
 
         $this->form->fill([
+            'free_plan_price' => $settings->free_plan_price,
             'pro_plan_price' => $settings->pro_plan_price,
+            'pro_plan_original_price' => $settings->pro_plan_original_price,
+            'setup_fee_price' => $settings->setup_fee_price,
             'grace_period_days' => $settings->grace_period_days,
             'free_plan_product_limit' => $settings->free_plan_product_limit,
             'pro_plan_product_limit' => $settings->pro_plan_product_limit,
@@ -93,19 +96,41 @@ class ManageGeneralSettings extends Page implements HasForms
                                 Section::make('Precios y suscripciones')
                                     ->description('Controla precios, períodos de gracia y límites por plan.')
                                     ->schema([
+                                        TextInput::make('free_plan_price')
+                                            ->label('Precio plan Semilla (lempiras)')
+                                            ->numeric()
+                                            ->prefix('L.')
+                                            ->required()
+                                            ->minValue(0)
+                                            ->helperText('Normalmente debe quedar en L. 0.00. Se deja editable por si cambia el modelo comercial.'),
                                         TextInput::make('pro_plan_price')
                                             ->label('Precio plan PRO (lempiras)')
                                             ->numeric()
                                             ->prefix('L.')
                                             ->required()
+                                            ->minValue(0)
                                             ->helperText('Precio mensual de la suscripción PRO.'),
+                                        TextInput::make('pro_plan_original_price')
+                                            ->label('Precio referencia PRO (lempiras)')
+                                            ->numeric()
+                                            ->prefix('L.')
+                                            ->required()
+                                            ->minValue(0)
+                                            ->helperText('Precio tachado o referencia comercial para mostrar descuento.'),
+                                        TextInput::make('setup_fee_price')
+                                            ->label('Setup asistido (lempiras)')
+                                            ->numeric()
+                                            ->prefix('L.')
+                                            ->required()
+                                            ->minValue(0)
+                                            ->helperText('Fee unico para ventas asistidas y configuracion inicial.'),
                                         TextInput::make('grace_period_days')
                                             ->label('Días de gracia')
                                             ->numeric()
                                             ->suffix('días')
                                             ->required()
                                             ->helperText('Días antes de suspender el servicio por falta de pago.'),
-                                    ])->columns(2),
+                                    ])->columns(3),
                                 Section::make('Límites de productos')
                                     ->description('Define la capacidad de catálogo disponible por plan.')
                                     ->schema([
@@ -186,7 +211,10 @@ class ManageGeneralSettings extends Page implements HasForms
         $data = $this->form->getState();
         $settings = app(GeneralSettings::class);
 
+        $settings->free_plan_price = (float) $data['free_plan_price'];
         $settings->pro_plan_price = (float) $data['pro_plan_price'];
+        $settings->pro_plan_original_price = (float) $data['pro_plan_original_price'];
+        $settings->setup_fee_price = (float) $data['setup_fee_price'];
         $settings->grace_period_days = (int) $data['grace_period_days'];
         $settings->free_plan_product_limit = (int) $data['free_plan_product_limit'];
         $settings->pro_plan_product_limit = (int) $data['pro_plan_product_limit'];

@@ -366,6 +366,7 @@ export function RegisterTenantWizard({
     const progress = ((step + 1) / STEPS.length) * 100
     const freeLimit = Number(settings.freeProductLimit ?? 10)
     const proLimit = Number(settings.proProductLimit ?? 100)
+    const freePrice = money(settings.freePlanPrice ?? 0)
     const proPrice = money(settings.proPlanPrice ?? 500)
     const canSubmit = categories.length > 0 && cities.length > 0
 
@@ -906,8 +907,8 @@ export function RegisterTenantWizard({
                             {step === 3 ? (
                                 <FieldGroup>
                                     <div className="grid gap-4 md:grid-cols-2">
-                                        <PlanCard active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price="$0" bullets={["Perfil digital publico", `Catalogo de ${freeLimit} productos`, "Panel base para operar"]} onClick={() => updateField("selected_plan", "free")} />
-                                        <PlanCard active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`$${proPrice}`} bullets={["Ventas ilimitadas", "Analiticas avanzadas", `Capacidad comercial de ${proLimit} productos`]} onClick={() => updateField("selected_plan", "pro")} />
+                                        <PlanCard active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price={`L. ${freePrice}`} bullets={["Perfil digital publico", `Catalogo de ${freeLimit} productos`, "Panel base para operar"]} onClick={() => updateField("selected_plan", "free")} />
+                                        <PlanCard active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`L. ${proPrice}`} bullets={["Ventas ilimitadas", "Analiticas avanzadas", `Capacidad comercial de ${proLimit} productos`]} onClick={() => updateField("selected_plan", "pro")} />
                                     </div>
                                     {errorFor("selected_plan") ? <FieldDescription className="text-rose-600">{errorFor("selected_plan")}</FieldDescription> : null}
 

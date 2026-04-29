@@ -390,8 +390,9 @@ function IndustriesSection({ image = null }) {
 }
 
 function PricingSection({ settings = {} }) {
-    const starterPrice = formatCurrency(settings.starterPlanPrice ?? 29);
-    const proPrice = formatCurrency(settings.proPlanPrice ?? 79);
+    const starterPrice = formatCurrency(settings.starterPlanPrice ?? settings.freePlanPrice ?? 0);
+    const proPrice = formatCurrency(settings.proPlanPrice ?? 499);
+    const proOriginalPrice = Number(settings.proPlanOriginalPrice ?? 0);
     const starterLimit = Number(settings.freeProductLimit ?? 50);
     const proLimit = Number(settings.proProductLimit ?? 999);
 
@@ -412,7 +413,7 @@ function PricingSection({ settings = {} }) {
                             <p className="mb-6 mt-2 text-sm text-slate-500">Para emprendedores digitalizandose.</p>
                             <div className="mb-8 flex items-baseline gap-1">
                                 <span className="text-4xl font-extrabold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                    ${starterPrice}
+                                    L. {starterPrice}
                                 </span>
                                 <span className="font-medium text-slate-500">/mes</span>
                             </div>
@@ -451,9 +452,14 @@ function PricingSection({ settings = {} }) {
                             <p className="mb-6 mt-2 text-sm text-slate-300">Para negocios en expansion.</p>
                             <div className="mb-8 flex items-baseline gap-1">
                                 <span className="text-4xl font-extrabold" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                    ${proPrice}
+                                    L. {proPrice}
                                 </span>
                                 <span className="font-medium text-slate-300">/mes</span>
+                                {proOriginalPrice > Number(settings.proPlanPrice ?? 499) ? (
+                                    <span className="ml-3 text-sm font-semibold text-slate-400 line-through">
+                                        L. {formatCurrency(proOriginalPrice)}
+                                    </span>
+                                ) : null}
                             </div>
                             <ul className="mb-10 space-y-4 text-sm">
                                 {[
