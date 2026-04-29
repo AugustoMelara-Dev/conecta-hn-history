@@ -156,13 +156,16 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create();
         $token = 'auth-login-invalid-token';
 
-        $this->withSession(['_token' => $token])->post('/login', [
+        $response = $this->withSession(['_token' => $token])->post('/login', [
             '_token' => $token,
             'email' => $user->email,
             'password' => 'wrong-password',
         ]);
 
         $this->assertGuest();
+        $response->assertRedirect();
+        $response->assertSessionHasErrors('email');
+        $this->assertNotSame(500, $response->getStatusCode());
     }
 
     public function test_users_can_logout(): void

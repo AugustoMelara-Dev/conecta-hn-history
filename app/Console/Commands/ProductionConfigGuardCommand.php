@@ -26,6 +26,9 @@ final class ProductionConfigGuardCommand extends Command
             'APP_KEY',
             'QUEUE_CONNECTION',
             'CACHE_STORE',
+            'REDIS_CACHE_CONNECTION',
+            'REDIS_CACHE_DB',
+            'REDIS_SUPPORTS_MULTIPLE_DATABASES',
             'ERROR_TRACKING_PROVIDER',
             'LOG_AGGREGATION_PROVIDER',
             'PAYMENT_PROVIDER',
@@ -80,6 +83,15 @@ final class ProductionConfigGuardCommand extends Command
                 $cacheStore,
                 'redis',
                 'Release runtimes must use managed Redis for cache, rate limits, idempotency locks, and circuit-breaker state.'
+            );
+        }
+
+        if ($isReleaseEnvironment && $cacheStore === 'redis' && $this->redisCacheUsesUnsupportedDatabase()) {
+            $violations[] = $this->violation(
+                'REDIS_CACHE_DB',
+                (string) $this->redisDatabaseFor((string) config('cache.stores.redis.connection', 'default')),
+                '0 or REDIS_SUPPORTS_MULTIPLE_DATABASES=true',
+                'The selected Redis provider appears to expose a single logical database; using a separate cache DB breaks login rate limiting before credentials are validated.'
             );
         }
 
@@ -386,6 +398,69 @@ final class ProductionConfigGuardCommand extends Command
         }
 
         return false;
+    }
+
+    private function redisCacheUsesUnsupportedDatabase(): bool
+    {
+        if ($this->redisSupportsMultipleDatabases()) {
+            return false;
+        }
+
+        if (! $this->looksLikeSingleDatabaseRedisProvider()) {
+            return false;
+        }
+
+        $cacheConnection = (string) config('cache.stores.redis.connection', 'default');
+
+        return $this->redisDatabaseFor($cacheConnection) !== 0;
+    }
+
+    private function redisSupportsMultipleDatabases(): bool
+    {
+        $configured = env('REDIS_SUPPORTS_MULTIPLE_DATABASES');
+
+        if ($configured === null) {
+            return false;
+        }
+
+        return filter_var($configured, FILTER_VALIDATE_BOOL);
+    }
+
+    private function looksLikeSingleDatabaseRedisProvider(): bool
+    {
+        $redisUrl = (string) config('database.redis.default.url', '');
+        $cacheUrl = (string) config('database.redis.cache.url', '');
+        $host = strtolower((string) parse_url($cacheUrl !== '' ? $cacheUrl : $redisUrl, PHP_URL_HOST));
+
+        if ($host === '') {
+            $host = strtolower((string) config('database.redis.cache.host', config('database.redis.default.host', '')));
+        }
+
+        foreach (['redislabs.com', 'upstash.io'] as $marker) {
+            if (str_contains($host, $marker)) {
+                return true;
+            }
+        }
+
+        $singleDatabase = env('REDIS_SINGLE_DATABASE');
+
+        return $singleDatabase !== null && filter_var($singleDatabase, FILTER_VALIDATE_BOOL);
+    }
+
+    private function redisDatabaseFor(string $connection): int
+    {
+        $connectionConfig = (array) config("database.redis.{$connection}", []);
+        $url = (string) ($connectionConfig['url'] ?? '');
+
+        if ($url !== '') {
+            $path = trim((string) parse_url($url, PHP_URL_PATH), '/');
+
+            if ($path !== '' && ctype_digit($path)) {
+                return (int) $path;
+            }
+        }
+
+        return (int) ($connectionConfig['database'] ?? ($connection === 'cache' ? env('REDIS_CACHE_DB', 1) : env('REDIS_DB', 0)));
     }
 
     private function redact(string $value): string

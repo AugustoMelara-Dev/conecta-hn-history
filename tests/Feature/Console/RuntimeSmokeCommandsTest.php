@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Console;
 
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -55,6 +56,39 @@ final class RuntimeSmokeCommandsTest extends TestCase
             ));
     }
 
+    public function test_cache_production_smoke_writes_reads_and_deletes_key(): void
+    {
+        config(['cache.default' => 'array']);
+
+        $exitCode = Artisan::call('cache:production-smoke', [
+            '--json' => true,
+        ]);
+
+        $payload = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame(0, $exitCode);
+        $this->assertSame('ok', $payload['status']);
+        $this->assertSame('array', $payload['cache_store']);
+        $this->assertTrue($payload['read_matches_write']);
+    }
+
+    public function test_cache_production_smoke_reports_single_database_redis_failure(): void
+    {
+        Cache::shouldReceive('put')
+            ->once()
+            ->andThrow(new \RuntimeException('ERR DB index is out of range'));
+
+        $exitCode = Artisan::call('cache:production-smoke', [
+            '--json' => true,
+        ]);
+
+        $payload = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame(1, $exitCode);
+        $this->assertSame('failed', $payload['status']);
+        $this->assertStringContainsString('REDIS_CACHE_DB=0', $payload['message']);
+    }
+
     public function test_ops_runtime_smoke_passes_local_runtime_with_sync_queue(): void
     {
         Storage::fake('smoke-disk');
@@ -81,6 +115,7 @@ final class RuntimeSmokeCommandsTest extends TestCase
         $this->assertSame('ok', $payload['checks']['config_guard']['payload']['status']);
         $this->assertSame('ok', $payload['checks']['storage_guard']['payload']['status']);
         $this->assertSame('ok', $payload['checks']['storage_smoke']['payload']['status']);
+        $this->assertSame('ok', $payload['checks']['cache_smoke']['payload']['status']);
         $this->assertSame('ok', $payload['checks']['cache_lock']['payload']['status']);
         $this->assertSame('ok', $payload['checks']['queue']['payload']['status']);
     }

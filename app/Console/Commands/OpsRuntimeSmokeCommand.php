@@ -42,6 +42,10 @@ final class OpsRuntimeSmokeCommand extends Command
             '--json' => true,
         ]);
 
+        $checks['cache_smoke'] = $this->callJson('cache:production-smoke', [
+            '--json' => true,
+        ]);
+
         $checks['cache_lock'] = $this->cacheLockSmoke();
         $checks['queue'] = $this->queueSmoke((bool) $this->option('skip-worker'));
 
