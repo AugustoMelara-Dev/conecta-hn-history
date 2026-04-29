@@ -1,68 +1,75 @@
 :root {
-    color-scheme: dark;
+    color-scheme: light;
 
     /* Core palette */
-    --ds-surface-950: #09090b;
-    --ds-surface-900: #111827;
-    --ds-surface-850: #18181b;
-    --ds-surface-800: #27272a;
-    --ds-surface-700: #3f3f46;
+    --ds-primary: #123c2f;
+    --ds-primary-hover: #0d2f25;
+    --ds-accent: #1f9d68;
+    --ds-accent-soft: #ddf5e9;
+    --ds-canvas: #f6f4ef;
+    --ds-surface: #ffffff;
+    --ds-surface-muted: #ece8df;
+    --ds-surface-950: #111827;
+    --ds-surface-900: #1f2937;
+    --ds-surface-850: #2b3442;
+    --ds-surface-800: #374151;
+    --ds-surface-700: #4b5563;
     --ds-surface-overlay: rgba(0, 0, 0, 0.22);
 
-    --ds-text-strong: #ffffff;
-    --ds-text-base: #e4e4e7;
-    --ds-text-soft: #d4d4d8;
-    --ds-text-muted: #a1a1aa;
+    --ds-text-strong: #111827;
+    --ds-text-base: #344054;
+    --ds-text-soft: #475467;
+    --ds-text-muted: #667085;
 
-    --ds-success: #10b981;
-    --ds-success-strong: #34d399;
-    --ds-success-soft: #6ee7b7;
-    --ds-warning: #f59e0b;
-    --ds-warning-soft: #fcd34d;
-    --ds-danger: #f43f5e;
-    --ds-danger-soft: #fda4af;
-    --ds-info-soft: #93c5fd;
+    --ds-success: #027a48;
+    --ds-success-strong: #039855;
+    --ds-success-soft: #d1fadf;
+    --ds-warning: #b54708;
+    --ds-warning-soft: #fef0c7;
+    --ds-danger: #b42318;
+    --ds-danger-soft: #fee4e2;
+    --ds-info-soft: #d1e9ff;
 
     /* Borders + shape + elevation */
-    --ds-border-subtle: rgba(255, 255, 255, 0.08);
-    --ds-border-faint: rgba(255, 255, 255, 0.06);
-    --ds-border-strong: rgba(255, 255, 255, 0.1);
+    --ds-border-subtle: rgba(17, 24, 39, 0.12);
+    --ds-border-faint: rgba(17, 24, 39, 0.08);
+    --ds-border-strong: rgba(17, 24, 39, 0.18);
 
-    --ds-radius-control: 1rem;
-    --ds-radius-card: 1.5rem;
-    --ds-radius-card-sm: 1.25rem;
+    --ds-radius-control: 0.5rem;
+    --ds-radius-card: 0.5rem;
+    --ds-radius-card-sm: 0.5rem;
     --ds-radius-pill: 999px;
 
-    --ds-shadow-panel: 0 20px 50px rgba(0, 0, 0, 0.24);
-    --ds-shadow-elevated: 0 24px 70px rgba(0, 0, 0, 0.32);
+    --ds-shadow-panel: 0 16px 40px rgba(17, 24, 39, 0.08);
+    --ds-shadow-elevated: 0 24px 70px rgba(17, 24, 39, 0.14);
 
     /* Input system */
-    --ds-input-border: rgba(148, 163, 184, 0.14);
-    --ds-input-bg: rgba(255, 255, 255, 0.06);
-    --ds-input-placeholder: #94a3b8;
-    --ds-input-focus-ring: rgba(16, 185, 129, 0.12);
+    --ds-input-border: rgba(17, 24, 39, 0.14);
+    --ds-input-bg: #ffffff;
+    --ds-input-placeholder: #98a2b3;
+    --ds-input-focus-ring: rgba(31, 157, 104, 0.18);
 
     /* shadcn semantic aliases */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 142 72% 29%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 350 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 142 72% 29%;
-    --radius: 1rem;
+    --background: 45 28% 95%;
+    --foreground: 221 39% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 221 39% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 221 39% 11%;
+    --primary: 162 54% 15%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 42 18% 89%;
+    --secondary-foreground: 221 39% 11%;
+    --muted: 42 18% 91%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 151 67% 37%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 4 75% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 43 17% 83%;
+    --input: 43 17% 83%;
+    --ring: 151 67% 37%;
+    --radius: 0.5rem;
 
     /* Backward compatibility for existing Filament shell tokens */
     --biz-surface-950: var(--ds-surface-950);

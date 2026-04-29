@@ -3,6 +3,9 @@ import { Head, Link, usePage, router } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
+import { Skeleton } from '@/Components/ui/skeleton';
+import { ActionableAlert, EmptyState } from '@/Components/Feedback/UXStates';
+import { toast } from '@/Components/Toast/index.js';
 import { User, Heart, Store, Shield, LogOut, MapPin, TrendingUp } from 'lucide-react';
 import AnalyticsChart from '@/Components/Organisms/AnalyticsChart';
 
@@ -10,6 +13,7 @@ export default function UserDashboard({ auth }) {
     const [activeTab, setActiveTab] = useState('profile');
     const [analyticsData, setAnalyticsData] = useState(null);
     const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+    const [analyticsError, setAnalyticsError] = useState('');
     const user = auth.user;
     const isSeller = user.role === 'seller';
 
@@ -31,10 +35,13 @@ export default function UserDashboard({ auth }) {
                 .then(res => res.json())
                 .then(data => {
                     setAnalyticsData(data);
+                    setAnalyticsError('');
                     setLoadingAnalytics(false);
                 })
                 .catch(err => {
                     console.error('Failed to load analytics:', err);
+                    setAnalyticsError('No pudimos cargar las estadísticas del negocio. Reintenta en unos segundos.');
+                    toast.error('No pudimos cargar tus estadísticas. Reintenta desde Analíticas.');
                     setLoadingAnalytics(false);
                 });
         }
@@ -146,49 +153,71 @@ export default function UserDashboard({ auth }) {
                             )}
 
                             {activeTab === 'following' && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    {following.map((business) => (
-                                        <Card key={business.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                                            <div className="h-24 bg-slate-100 relative">
-                                                <div className="absolute -bottom-6 left-4 w-12 h-12 bg-white rounded-full border-2 border-white shadow-sm flex items-center justify-center">
-                                                    <Store className="w-6 h-6 text-slate-400" />
+                                following.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        {following.map((business) => (
+                                            <Card key={business.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                                                <div className="h-24 bg-slate-100 relative">
+                                                    <div className="absolute -bottom-6 left-4 w-12 h-12 bg-white rounded-full border-2 border-white shadow-sm flex items-center justify-center">
+                                                        <Store className="w-6 h-6 text-slate-400" aria-hidden="true" />
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <CardContent className="pt-8 pb-4 px-4">
-                                                <h3 className="font-bold text-slate-900">{business.name}</h3>
-                                                <p className="text-sm text-slate-500 mb-4">{business.category}</p>
-                                                <div className="flex items-center justify-between">
-                                                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${business.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                        {business.status === 'open' ? 'Abierto' : 'Cerrado'}
-                                                    </span>
-                                                    <Button variant="outline" size="sm" className="text-xs">Dejar de Seguir</Button>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </div>
+                                                <CardContent className="pt-8 pb-4 px-4">
+                                                    <h3 className="font-bold text-slate-900">{business.name}</h3>
+                                                    <p className="text-sm text-slate-500 mb-4">{business.category}</p>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${business.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                            {business.status === 'open' ? 'Abierto' : 'Cerrado'}
+                                                        </span>
+                                                        <Button variant="outline" size="sm" className="text-xs">Dejar de seguir</Button>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <EmptyState
+                                        icon={Store}
+                                        eyebrow="Seguimiento"
+                                        title="Todavía no sigues negocios"
+                                        description="Explora negocios cercanos y guarda los que quieres revisar con frecuencia."
+                                        actionLabel="Explorar negocios"
+                                        actionHref={route('public.explore')}
+                                    />
+                                )
                             )}
 
                             {activeTab === 'favorites' && (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    {favorites.map((item) => (
-                                        <div key={item.id} className="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-100 hover:shadow-sm transition-shadow">
-                                            <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center">
-                                                <Heart className="w-6 h-6 text-slate-300" />
+                                favorites.length > 0 ? (
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        {favorites.map((item) => (
+                                            <div key={item.id} className="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-100 hover:shadow-sm transition-shadow">
+                                                <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center">
+                                                    <Heart className="w-6 h-6 text-slate-300" aria-hidden="true" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h3 className="font-bold text-slate-900 truncate">{item.name}</h3>
+                                                    <p className="text-sm text-slate-500 truncate">{item.business}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-bold text-slate-900">{item.price}</p>
+                                                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                                                        Eliminar
+                                                    </Button>
+                                                </div>
                                             </div>
-                                            <div className="flex-1">
-                                                <h3 className="font-bold text-slate-900">{item.name}</h3>
-                                                <p className="text-sm text-slate-500">{item.business}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="font-bold text-slate-900">{item.price}</p>
-                                                <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50">
-                                                    Eliminar
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <EmptyState
+                                        icon={Heart}
+                                        eyebrow="Favoritos"
+                                        title="No tienes productos favoritos"
+                                        description="Marca productos desde los micrositios para encontrarlos más rápido después."
+                                        actionLabel="Ir al directorio"
+                                        actionHref={route('directory.index')}
+                                    />
+                                )
                             )}
 
                             {/* Pilar 8: Analytics Tab for Sellers */}
@@ -200,21 +229,49 @@ export default function UserDashboard({ auth }) {
                                     </div>
 
                                     {loadingAnalytics ? (
-                                        <Card className="p-12">
-                                            <div className="text-center">
-                                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto mb-4"></div>
-                                                <p className="text-slate-500">Cargando estadísticas...</p>
+                                        <Card className="p-6" role="status" aria-live="polite">
+                                            <div className="space-y-4">
+                                                <Skeleton className="h-5 w-48" />
+                                                <Skeleton className="h-56 w-full" />
+                                                <div className="grid gap-3 md:grid-cols-3">
+                                                    <Skeleton className="h-20 w-full" />
+                                                    <Skeleton className="h-20 w-full" />
+                                                    <Skeleton className="h-20 w-full" />
+                                                </div>
                                             </div>
                                         </Card>
+                                    ) : analyticsError ? (
+                                        <ActionableAlert
+                                            icon={TrendingUp}
+                                            tone="warning"
+                                            title="Analíticas no disponibles"
+                                            actionLabel="Reintentar"
+                                            onAction={() => {
+                                                setAnalyticsError('');
+                                                setLoadingAnalytics(true);
+                                                fetch(route('analytics.data'))
+                                                    .then(res => res.json())
+                                                    .then(data => {
+                                                        setAnalyticsData(data);
+                                                        setLoadingAnalytics(false);
+                                                    })
+                                                    .catch(() => {
+                                                        setAnalyticsError('No pudimos cargar las estadísticas del negocio. Reintenta en unos segundos.');
+                                                        setLoadingAnalytics(false);
+                                                    });
+                                            }}
+                                        >
+                                            {analyticsError}
+                                        </ActionableAlert>
                                     ) : analyticsData ? (
                                         <AnalyticsChart data={analyticsData.data} summary={analyticsData.summary} />
                                     ) : (
-                                        <Card className="p-12">
-                                            <div className="text-center text-slate-500">
-                                                <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                                                <p>No se pudieron cargar las estadísticas</p>
-                                            </div>
-                                        </Card>
+                                        <EmptyState
+                                            icon={TrendingUp}
+                                            eyebrow="Analíticas"
+                                            title="Todavía no hay estadísticas"
+                                            description="Cuando tu micrositio reciba visitas, verás el rendimiento de los últimos 30 días aquí."
+                                        />
                                     )}
                                 </div>
                             )}

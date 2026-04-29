@@ -45,7 +45,7 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
             setError(
                 requestError.response?.data?.errors?.identifier?.[0]
                 || requestError.response?.data?.message
-                || "No pudimos enviar el acceso. Intenta de nuevo."
+                || "No pudimos enviar el acceso. Revisa el correo, espera unos segundos e intenta de nuevo."
             )
         } finally {
             setIsLoading(false)
@@ -77,7 +77,7 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
                 requestError.response?.data?.errors?.otp_code?.[0]
                 || requestError.response?.data?.errors?.code?.[0]
                 || requestError.response?.data?.message
-                || "Código inválido o vencido."
+                || "Código inválido o vencido. Solicita uno nuevo si el correo tardó en llegar."
             )
         } finally {
             setIsLoading(false)
@@ -132,7 +132,8 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
                     </Field>
 
                     {error ? (
-                        <Alert variant="destructive">
+                        <Alert variant="destructive" role="alert" aria-live="polite">
+                            <AlertTitle>No pudimos verificar el acceso</AlertTitle>
                             <AlertDescription>{error}</AlertDescription>
                         </Alert>
                     ) : null}
@@ -174,7 +175,8 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
                 </Field>
 
                 {error ? (
-                    <Alert variant="destructive">
+                    <Alert variant="destructive" role="alert" aria-live="polite">
+                        <AlertTitle>No pudimos enviar el acceso</AlertTitle>
                         <AlertDescription>{error}</AlertDescription>
                     </Alert>
                 ) : null}

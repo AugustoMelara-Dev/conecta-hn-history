@@ -16,9 +16,11 @@
 
 import { useState, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
+import { BarChart3, FileText } from 'lucide-react';
 import TenantLayout from '@/Layouts/TenantLayout';
 import StatCard from '@/Components/Stats/StatCard';
 import { DownloadSalesReportButton } from '@/Components/Reports/ReportActions';
+import { EmptyState, LoadingState } from '@/Components/Feedback/UXStates';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FORMATTERS
@@ -40,9 +42,14 @@ const dateFormatter = new Intl.DateTimeFormat('es-HN', {
 function DailySalesChart({ data }) {
     if (!data || data.length === 0) {
         return (
-            <div className="h-64 flex items-center justify-center text-gray-400">
-                No hay datos para mostrar
-            </div>
+            <EmptyState
+                icon={BarChart3}
+                eyebrow="Ventas"
+                title="No hay datos para este período"
+                description="Cambia el rango de fechas o espera a que entren nuevas órdenes para ver la tendencia diaria."
+                className="min-h-64"
+                testId="reports-daily-sales-empty"
+            />
         );
     }
 
@@ -106,6 +113,7 @@ export default function ReportsIndex({ stats = {}, dailySales = [], filters = {}
         startDate: filters.start_date || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         endDate: filters.end_date || new Date().toISOString().split('T')[0],
     });
+    const [isReloading, setIsReloading] = useState(false);
 
     // Reload data when date range changes
     useEffect(() => {
@@ -116,7 +124,13 @@ export default function ReportsIndex({ stats = {}, dailySales = [], filters = {}
                     start_date: dateRange.startDate,
                     end_date: dateRange.endDate,
                 },
-                { preserveState: true, preserveScroll: true, replace: true }
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true,
+                    onStart: () => setIsReloading(true),
+                    onFinish: () => setIsReloading(false),
+                }
             );
         }, 500); // Debounce
 
@@ -143,6 +157,16 @@ export default function ReportsIndex({ stats = {}, dailySales = [], filters = {}
                 </header>
 
                 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    {isReloading ? (
+                        <div className="mb-6">
+                            <LoadingState
+                                variant="inline"
+                                title="Actualizando reportes"
+                                testId="reports-refresh-loading"
+                            />
+                        </div>
+                    ) : null}
+
                     {/* Stats Summary */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <StatCard
@@ -197,7 +221,10 @@ export default function ReportsIndex({ stats = {}, dailySales = [], filters = {}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {/* Sales Summary */}
                             <div className="border border-gray-200 rounded-xl p-4 hover:border-blue-300 transition-colors">
-                                <h3 className="font-semibold text-gray-900 mb-2">Resumen de Ventas</h3>
+                                <h3 className="mb-2 flex items-center gap-2 font-semibold text-gray-900">
+                                    <FileText className="h-4 w-4" aria-hidden="true" />
+                                    Resumen de Ventas
+                                </h3>
                                 <p className="text-sm text-gray-500 mb-4">
                                     Ingresos, órdenes y métricas clave del período.
                                 </p>

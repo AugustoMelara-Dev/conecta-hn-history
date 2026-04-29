@@ -1,4 +1,6 @@
 import { ArrowRight, Inbox, RefreshCw } from 'lucide-react';
+import { Button } from '@/Components/ui/button';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/Components/ui/empty';
 import { Spinner } from '@/Components/ui/spinner';
 import { Skeleton } from '@/Components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -13,12 +15,12 @@ export function LoadingState({
     if (variant === 'inline') {
         return (
             <div
-                className={cn('inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm', className)}
+                className={cn('inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm font-semibold text-muted-foreground shadow-sm', className)}
                 role="status"
                 aria-live="polite"
                 data-testid={testId}
             >
-                <Spinner className="h-4 w-4 text-slate-500" />
+                <Spinner className="h-4 w-4 text-muted-foreground" />
                 <span>{title}</span>
             </div>
         );
@@ -26,27 +28,27 @@ export function LoadingState({
 
     return (
         <div
-            className={cn('rounded-2xl border border-stone-200 bg-white p-5 shadow-sm', className)}
+            className={cn('rounded-lg border bg-card p-5 text-card-foreground shadow-sm', className)}
             role="status"
             aria-live="polite"
             data-testid={testId}
         >
             <div className="mb-5 flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-white">
+                <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
                     <Spinner className="h-5 w-5" />
                 </span>
                 <div>
-                    <p className="font-semibold text-slate-950">{title}</p>
-                    <p className="text-sm text-slate-500">{description}</p>
+                    <p className="font-semibold text-foreground">{title}</p>
+                    <p className="text-sm text-muted-foreground">{description}</p>
                 </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, index) => (
-                    <div key={index} className="space-y-3 rounded-2xl border border-stone-100 bg-stone-50 p-4">
-                        <Skeleton className="aspect-[4/3] w-full rounded-xl bg-stone-200" />
-                        <Skeleton className="h-4 w-3/4 bg-stone-200" />
-                        <Skeleton className="h-3 w-full bg-stone-200" />
-                        <Skeleton className="h-3 w-2/3 bg-stone-200" />
+                    <div key={index} className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-4">
+                        <Skeleton className="aspect-[4/3] w-full rounded-md" />
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-full" />
+                        <Skeleton className="h-3 w-2/3" />
                     </div>
                 ))}
             </div>
@@ -67,47 +69,46 @@ export function EmptyState({
     className = '',
     testId = 'ux-empty-state',
 }) {
-    const ActionTag = actionHref ? 'a' : 'button';
-
     return (
-        <div
-            className={cn('rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-12 text-center shadow-sm sm:px-8', className)}
-            data-testid={testId}
-        >
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f3f3f1]">
-                <Icon className="h-7 w-7 text-slate-500" aria-hidden="true" />
-            </div>
-            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{eyebrow}</p>
-            <h3 className="mt-2 text-2xl font-semibold text-slate-950">{title}</h3>
+        <Empty className={className} data-testid={testId}>
+            <EmptyHeader>
+                <EmptyIcon icon={Icon} />
+                <p className="text-xs font-semibold uppercase text-muted-foreground">{eyebrow}</p>
+                <EmptyTitle>{title}</EmptyTitle>
+            </EmptyHeader>
             {description ? (
-                <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-600">{description}</p>
+                <EmptyDescription>{description}</EmptyDescription>
             ) : null}
             {(actionLabel || secondaryLabel) ? (
-                <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+                <EmptyContent>
                     {actionLabel ? (
-                        <ActionTag
-                            type={actionHref ? undefined : 'button'}
-                            href={actionHref}
-                            onClick={onAction}
-                            className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2"
-                        >
-                            {actionLabel}
-                            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                        </ActionTag>
+                        actionHref ? (
+                            <Button asChild>
+                                <a href={actionHref}>
+                                    {actionLabel}
+                                    <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                                </a>
+                            </Button>
+                        ) : (
+                            <Button type="button" onClick={onAction}>
+                                {actionLabel}
+                                <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                            </Button>
+                        )
                     ) : null}
                     {secondaryLabel ? (
-                        <button
+                        <Button
                             type="button"
+                            variant="outline"
                             onClick={onSecondaryAction}
-                            className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-stone-400 hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2"
                         >
-                            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                            <RefreshCw data-icon="inline-start" aria-hidden="true" />
                             {secondaryLabel}
-                        </button>
+                        </Button>
                     ) : null}
-                </div>
+                </EmptyContent>
             ) : null}
-        </div>
+        </Empty>
     );
 }
 
@@ -130,8 +131,9 @@ export function ActionableAlert({
 
     return (
         <div
-            className={cn('rounded-2xl border px-4 py-4', tones[tone] || tones.info, className)}
+            className={cn('rounded-lg border px-4 py-4', tones[tone] || tones.info, className)}
             role={tone === 'error' ? 'alert' : 'status'}
+            aria-live={tone === 'error' ? 'assertive' : 'polite'}
             data-testid={testId}
         >
             <div className="flex items-start gap-3">
@@ -143,7 +145,7 @@ export function ActionableAlert({
                         <button
                             type="button"
                             onClick={onAction}
-                            className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-sm font-semibold text-current transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-current focus:ring-offset-2"
+                            className="mt-3 inline-flex items-center gap-2 rounded-md bg-white/75 px-4 py-2 text-sm font-semibold text-current transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-2"
                         >
                             {actionLabel}
                             <ArrowRight className="h-4 w-4" aria-hidden="true" />
